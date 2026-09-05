@@ -1,0 +1,16 @@
+{
+  "format": "onlinecp_rank_curriculum_v1",
+  "experiment_id": "conditioned_context_rank_curriculum_v3",
+  "num_epochs": 250,
+  "candidate_count": 128,
+  "cp_probability": 0.5,
+  "score_floor": null,
+  "max_score_drop": 2.0,
+  "stages": [
+    {"start_epoch": 0, "end_epoch": 50, "top_rank": 1, "minimum_choices": 1, "temperature": null},
+    {"start_epoch": 50, "end_epoch": 100, "top_rank": 4, "minimum_choices": 2, "temperature": null},
+    {"start_epoch": 100, "end_epoch": 150, "top_rank": 8, "minimum_choices": 2, "temperature": null},
+    {"start_epoch": 150, "end_epoch": 200, "top_rank": 16, "minimum_choices": 4, "temperature": null},
+    {"start_epoch": 200, "end_epoch": 250, "top_rank": 32, "minimum_choices": 4, "temperature": null}
+  ]
+}

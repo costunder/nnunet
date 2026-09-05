@@ -13,6 +13,7 @@ from typing import Sequence
 import torch
 from torch import Tensor
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 
 from hiercp.schema import (
     DIFFICULTY_EASY,
@@ -106,6 +107,61 @@ def _masked_mean(values: Tensor, mask: Tensor) -> tuple[Tensor, Tensor]:
     return mean, count
 
 
+def _padded_scores(score_list: Sequence[Tensor]) -> tuple[Tensor, Tensor]:
+    """Pack variable-length cases once; all subsequent score math is batched."""
+
+    if not score_list:
+        raise ValueError("score_list must be non-empty")
+    if any(score.ndim != 1 or score.numel() < 1 for score in score_list):
+        raise ValueError("Each score tensor must be a non-empty vector")
+    reference = score_list[0]
+    if any(score.device != reference.device or score.dtype != reference.dtype
+           for score in score_list):
+        raise ValueError("All score tensors must have the same device and dtype")
+    scores = pad_sequence(score_list, batch_first=True, padding_value=0.0)
+    lengths = torch.tensor(
+        [score.numel() for score in score_list], device=scores.device,
+        dtype=torch.long,
+    )
+    valid = torch.arange(scores.shape[1], device=scores.device)[None] < lengths[:, None]
+    return scores, valid
+
+
+def _masked_row_mean(values: Tensor, mask: Tensor) -> tuple[Tensor, Tensor]:
+    weights = mask.to(values.dtype)
+    count = weights.sum(dim=-1)
+    return (values * weights).sum(dim=-1) / count.clamp_min(1.0), count
+
+
+def _batched_semi_hard_mask(
+    scores: Tensor, valid: Tensor, config: CurriculumConfig
+) -> Tensor:
+    """Exact per-case torch.quantile(linear) semantics without a case loop.
+
+    Padding sorts after every real negative. Interpolated order statistics use
+    each case's own count, not the padded width or the pooled batch quantiles.
+    As in the original objective, mining considers *all* real negatives.
+    """
+
+    detached = scores.detach().float()
+    ordered = detached.masked_fill(~valid, torch.inf).sort(dim=-1).values
+    count = valid.sum(dim=-1)
+    quantiles = detached.new_tensor(
+        [config.semi_hard_low_percentile, config.semi_hard_high_percentile]
+    )
+    positions = (count - 1).clamp_min(0)[:, None] * quantiles[None]
+    lower = positions.floor().long()
+    upper = positions.ceil().long()
+    lower_values = ordered.gather(1, lower)
+    upper_values = ordered.gather(1, upper)
+    thresholds = torch.lerp(lower_values, upper_values, positions - lower)
+    return (
+        valid & (count[:, None] >= 3)
+        & (detached >= thresholds[:, :1])
+        & (detached <= thresholds[:, 1:])
+    )
+
+
 def curriculum_ranking_loss(
     score_list: Sequence[Tensor],
     difficulty_list: Sequence[Tensor],
@@ -116,112 +172,58 @@ def curriculum_ranking_loss(
     config.validate()
     if len(score_list) != len(difficulty_list):
         raise ValueError("score_list and difficulty_list lengths differ")
+    if any(scores.numel() != difficulties.numel() or scores.numel() < 2
+           or difficulties.ndim != 1
+           for scores, difficulties in zip(score_list, difficulty_list)):
+        raise ValueError("Each sample needs one positive and at least one negative")
+    scores, valid = _padded_scores(score_list)
+    difficulties = pad_sequence(
+        difficulty_list, batch_first=True, padding_value=-1
+    ).to(device=scores.device, non_blocking=True)
     active_max = _active_max_difficulty(epoch, config)
-    total_terms: list[Tensor] = []
-    ce_terms: list[Tensor] = []
-    pair_terms: list[Tensor] = []
-    ordinal_terms_all: list[Tensor] = []
-    mined_terms: list[Tensor] = []
-
-    for scores, difficulties in zip(score_list, difficulty_list):
-        difficulties = difficulties.to(device=scores.device, non_blocking=True)
-        if scores.numel() != difficulties.numel() or scores.numel() < 2:
-            raise ValueError("Each sample needs one positive and at least one negative")
-
-        negative_difficulties_all = difficulties[1:]
-        negative_scores_all = scores[1:]
-        active_negative_mask = (
-            (negative_difficulties_all >= DIFFICULTY_EASY)
-            & (negative_difficulties_all <= active_max)
+    negatives, negative_valid = scores[:, 1:], valid[:, 1:]
+    negative_difficulties = difficulties[:, 1:]
+    active = (negative_valid & (negative_difficulties >= DIFFICULTY_EASY)
+              & (negative_difficulties <= active_max))
+    logits = torch.cat([scores[:, :1], negatives.masked_fill(~active, -torch.inf)], dim=1)
+    ce = F.cross_entropy(
+        logits, torch.zeros(scores.shape[0], dtype=torch.long, device=scores.device),
+        reduction="none",
+    )
+    pair, _ = _masked_row_mean(
+        F.softplus(_margins(negative_difficulties, config) - scores[:, :1] + negatives),
+        active,
+    )
+    levels = torch.tensor(
+        [DIFFICULTY_EASY, DIFFICULTY_INTER_REGION, DIFFICULTY_INTRA_CORRUPTED],
+        device=scores.device,
+    )
+    group_mask = (
+        negative_valid[:, None, :]
+        & (negative_difficulties[:, None, :] == levels[None, :, None])
+        & (levels[None, :, None] <= active_max)
+    )
+    group_means, group_counts = _masked_row_mean(negatives[:, None, :], group_mask)
+    ordinal, _ = _masked_row_mean(
+        F.softplus(config.ordinal_margin - group_means[:, 1:] + group_means[:, :-1]),
+        (group_counts[:, 1:] > 0) & (group_counts[:, :-1] > 0),
+    )
+    mined = scores.new_zeros((scores.shape[0],))
+    if epoch >= config.model_mine_start_epoch:
+        mined, _ = _masked_row_mean(
+            F.softplus(config.intra_margin - scores[:, :1] + negatives),
+            _batched_semi_hard_mask(negatives, negative_valid, config),
         )
-
-        # Keep tensor dimensions static: inactive logits are masked rather than
-        # dynamically indexed into a variable-length CUDA tensor.
-        masked_negative_logits = torch.where(
-            active_negative_mask,
-            negative_scores_all,
-            torch.full_like(negative_scores_all, -torch.inf),
-        )
-        active_logits = torch.cat([scores[:1], masked_negative_logits], dim=0)
-        ce = F.cross_entropy(
-            active_logits[None],
-            torch.zeros(1, dtype=torch.long, device=scores.device),
-        )
-        ce_terms.append(ce)
-
-        pair_values = F.softplus(
-            _margins(negative_difficulties_all, config).to(scores.device)
-            - scores[0]
-            + negative_scores_all
-        )
-        pair, _ = _masked_mean(pair_values, active_negative_mask)
-        pair_terms.append(pair)
-
-        group_means: dict[int, Tensor] = {}
-        group_counts: dict[int, Tensor] = {}
-        for level in (
-            DIFFICULTY_EASY,
-            DIFFICULTY_INTER_REGION,
-            DIFFICULTY_INTRA_CORRUPTED,
-        ):
-            mask = (negative_difficulties_all == level) & (level <= active_max)
-            mean, count = _masked_mean(negative_scores_all, mask)
-            group_means[level] = mean
-            group_counts[level] = count
-
-        ordinal_sum = scores.new_zeros(())
-        ordinal_count = scores.new_zeros(())
-        easy_inter_valid = (
-            (group_counts[DIFFICULTY_EASY] > 0)
-            & (group_counts[DIFFICULTY_INTER_REGION] > 0)
-        )
-        easy_inter = F.softplus(
-            config.ordinal_margin
-            - group_means[DIFFICULTY_INTER_REGION]
-            + group_means[DIFFICULTY_EASY]
-        )
-        easy_inter_weight = easy_inter_valid.to(scores.dtype)
-        ordinal_sum = ordinal_sum + easy_inter * easy_inter_weight
-        ordinal_count = ordinal_count + easy_inter_weight
-
-        inter_intra_valid = (
-            (group_counts[DIFFICULTY_INTER_REGION] > 0)
-            & (group_counts[DIFFICULTY_INTRA_CORRUPTED] > 0)
-        )
-        inter_intra = F.softplus(
-            config.ordinal_margin
-            - group_means[DIFFICULTY_INTRA_CORRUPTED]
-            + group_means[DIFFICULTY_INTER_REGION]
-        )
-        inter_intra_weight = inter_intra_valid.to(scores.dtype)
-        ordinal_sum = ordinal_sum + inter_intra * inter_intra_weight
-        ordinal_count = ordinal_count + inter_intra_weight
-        ordinal = ordinal_sum / ordinal_count.clamp_min(1.0)
-        ordinal_terms_all.append(ordinal)
-
-        mined = scores.new_zeros(())
-        if epoch >= config.model_mine_start_epoch:
-            semi_hard_mask = _semi_hard_mask(negative_scores_all, config)
-            mined_values = F.softplus(
-                config.intra_margin - scores[0] + negative_scores_all
-            )
-            mined, _ = _masked_mean(mined_values, semi_hard_mask)
-        mined_terms.append(mined)
-
-        total_terms.append(
-            config.cross_entropy_weight * ce
-            + config.pairwise_weight * pair
-            + config.ordinal_weight * ordinal
-            + config.mined_weight * mined
-        )
-
-    total = torch.stack(total_terms).mean()
+    total = (
+        config.cross_entropy_weight * ce + config.pairwise_weight * pair
+        + config.ordinal_weight * ordinal + config.mined_weight * mined
+    ).mean()
     metrics = {
         "loss": total.detach(),
-        "ce": torch.stack(ce_terms).mean().detach(),
-        "pair": torch.stack(pair_terms).mean().detach(),
-        "ordinal": torch.stack(ordinal_terms_all).mean().detach(),
-        "mined": torch.stack(mined_terms).mean().detach(),
+        "ce": ce.mean().detach(),
+        "pair": pair.mean().detach(),
+        "ordinal": ordinal.mean().detach(),
+        "mined": mined.mean().detach(),
         "active_max_difficulty": total.new_tensor(float(active_max)),
     }
     return total, metrics
@@ -230,19 +232,12 @@ def curriculum_ranking_loss(
 def ranking_metric_sums(score_list: Sequence[Tensor]) -> tuple[Tensor, Tensor, Tensor]:
     """Return device-side accuracy sum, reciprocal-rank sum and sample count."""
 
-    if not score_list:
-        raise ValueError("score_list must be non-empty")
-    device = score_list[0].device
-    accuracy_sum = torch.zeros((), device=device, dtype=torch.float32)
-    reciprocal_rank_sum = torch.zeros((), device=device, dtype=torch.float32)
-    for scores in score_list:
-        rank = 1 + torch.sum(scores[1:] >= scores[0])
-        accuracy_sum = accuracy_sum + (rank == 1).to(torch.float32)
-        reciprocal_rank_sum = reciprocal_rank_sum + rank.to(torch.float32).reciprocal()
+    scores, valid = _padded_scores(score_list)
+    rank = 1 + ((scores[:, 1:] >= scores[:, :1]) & valid[:, 1:]).sum(dim=1)
     return (
-        accuracy_sum,
-        reciprocal_rank_sum,
-        torch.tensor(float(len(score_list)), device=device),
+        (rank == 1).float().sum(),
+        rank.float().reciprocal().sum(),
+        scores.new_tensor(float(len(score_list)), dtype=torch.float32),
     )
 
 

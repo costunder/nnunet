@@ -1,0 +1,10 @@
+# Isolated CPU test environment only. Do not install over the server environment.
+# Install torch/torchvision using https://download.pytorch.org/whl/cpu first.
+torch==2.6.0
+torchvision==0.21.0
+torch-geometric==2.6.1
+numpy==2.2.6
+scipy==1.15.3
+nibabel==5.3.2
+psutil==7.0.0
+nnunetv2==2.6.2

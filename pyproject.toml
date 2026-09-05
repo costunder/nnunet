@@ -17,4 +17,7 @@ dependencies = [
 pyg = ["torch-geometric>=2.6"]
 
 [tool.setuptools.packages.find]
-include = ["hiercp*", "tools*"]
+include = ["hiercp*", "tools*", "custom_trainers*"]
+
+[tool.setuptools.package-data]
+custom_trainers = ["SHA256SUMS", "README.md"]

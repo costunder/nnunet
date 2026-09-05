@@ -865,6 +865,7 @@ def _preprocess_input_contract(
         "train_config_sha256": file_sha256(layout.train_config),
         "nnunet_config_sha256": file_sha256(layout.nnunet_config),
         "planner": str(nn_cfg["dataset"]["planner"]),
+        "planning_cohort": "outer_train_only_v1",
         "plans": str(nn_cfg["dataset"]["plans"]),
         "configuration": str(nn_cfg["dataset"]["configuration"]),
         "case_ids": [case.case_id for case in cases],
@@ -872,6 +873,27 @@ def _preprocess_input_contract(
         "val_ids": list(split["val"]),
     }
     return value, split, cases
+
+
+def _preprocessed_case_files(data_root: Path, case_ids: Sequence[str]):
+    """Recognize complete NumPy or Blosc2 storage; never guess partial/mixed runs."""
+    expected = set(case_ids)
+    npz = {p.name[:-4]: p for p in data_root.glob("*.npz")}
+    b2nd = {p.name: p for p in data_root.glob("*.b2nd")}
+    properties = {p.name[:-4]: p for p in data_root.glob("*.pkl")}
+    if set(properties) != expected:
+        raise OnlineBenchmarkError("Preprocessed properties do not exactly match the patient cohort")
+    if npz and b2nd:
+        raise OnlineBenchmarkError("Mixed NumPy/Blosc2 preprocessing is ambiguous; use a new complete output")
+    if npz:
+        if set(npz) != expected:
+            raise OnlineBenchmarkError("Preprocessed NPZ patient cohort is incomplete or contains extras")
+        return "npz", npz, {}, properties
+    wanted = {name + suffix for name in expected for suffix in (".b2nd", "_seg.b2nd")}
+    if set(b2nd) != wanted:
+        raise OnlineBenchmarkError("Preprocessed Blosc2 data/segmentation cohort is incomplete or contains extras")
+    return ("blosc2", {name: b2nd[name + ".b2nd"] for name in expected},
+            {name: b2nd[name + "_seg.b2nd"] for name in expected}, properties)
 
 
 def _preprocess_output_record(
@@ -897,16 +919,7 @@ def _preprocess_output_record(
     if not data_root.is_dir():
         raise OnlineBenchmarkError(f"Online preprocessing output missing: {data_root}")
     expected_ids = {case.case_id for case in cases}
-    npz = {path.name[: -len(".npz")]: path for path in data_root.glob("*.npz")}
-    properties = {path.name[: -len(".pkl")]: path for path in data_root.glob("*.pkl")}
-    if set(npz) != expected_ids or set(properties) != expected_ids:
-        raise OnlineBenchmarkError(
-            "Preprocessed case cohort is not exact: "
-            f"npz_missing={sorted(expected_ids - set(npz), key=natural_key)} "
-            f"npz_extra={sorted(set(npz) - expected_ids, key=natural_key)} "
-            f"pkl_missing={sorted(expected_ids - set(properties), key=natural_key)} "
-            f"pkl_extra={sorted(set(properties) - expected_ids, key=natural_key)}"
-        )
+    storage, data_files, seg_files, properties = _preprocessed_case_files(data_root, expected_ids)
     desired_split = [{"train": list(split["train"]), "val": list(split["val"])}]
     split_path = preprocessed / "splits_final.json"
     if load_json_value(split_path) != desired_split:
@@ -919,6 +932,7 @@ def _preprocess_output_record(
         )
     return {
         "data_identifier": identifier,
+        "storage_format": storage,
         "plans_sha256": file_sha256(plans_path),
         "dataset_fingerprint_sha256": file_sha256(fingerprint_path),
         "dataset_json_sha256": file_sha256(dataset_path),
@@ -926,7 +940,9 @@ def _preprocess_output_record(
         "cases": [
             {
                 "case_id": case.case_id,
-                "data_sha256": file_sha256(npz[case.case_id]),
+                "data_sha256": file_sha256(data_files[case.case_id]),
+                **({"segmentation_sha256": file_sha256(seg_files[case.case_id])}
+                   if storage == "blosc2" else {}),
                 "properties_sha256": file_sha256(properties[case.case_id]),
             }
             for case in cases
@@ -1143,6 +1159,41 @@ def build_original_dataset(
     print(f"[OK] verified original-only raw dataset: {target} cases={len(cases)}")
 
 
+def _training_only_planning_env(layout, outer_fold, dataset_id, split, env):
+    """Fit fingerprint/intensity statistics/plans without held-out labels.
+
+    Retain this uniquely named, hardlinked input view for audit. The full raw
+    dataset is used only by the subsequent transform-only preprocessing step.
+    Hardlink failure is explicit; no hidden full-cohort or copy fallback.
+    """
+    import tempfile
+    raw = raw_dataset_dir(layout, dataset_id, outer_fold)
+    root = layout.online_fold(outer_fold)
+    root.mkdir(parents=True, exist_ok=True)
+    view = Path(tempfile.mkdtemp(prefix="planning_train_only.", dir=root))
+    dataset = view / raw.name
+    (dataset / "imagesTr").mkdir(parents=True)
+    (dataset / "labelsTr").mkdir()
+    metadata = load_json(raw / "dataset.json")
+    ending = metadata["file_ending"]
+    channels = len(metadata["channel_names"])
+    for case_id in split["train"]:
+        for channel in range(channels):
+            name = f"{case_id}_{channel:04d}{ending}"
+            os.link(raw / "imagesTr" / name, dataset / "imagesTr" / name)
+        name = f"{case_id}{ending}"
+        os.link(raw / "labelsTr" / name, dataset / "labelsTr" / name)
+    metadata = {**metadata, "numTraining": len(split["train"])}
+    atomic_json(dataset / "dataset.json", metadata)
+    atomic_json(view / "cohort.json", {
+        "format": "outer_train_only_planning_v1", "outer_fold": outer_fold,
+        "train": split["train"], "validation_excluded": split["val"],
+        "outer_splits_sha256": file_sha256(layout.outer_splits),
+    })
+    print(f"[LeakageGuard] fingerprint/plans fit train-only raw view: {dataset}")
+    return {**env, "nnUNet_raw": str(view)}
+
+
 def plan_and_preprocess(
     layout: Layout,
     outer_fold: int,
@@ -1204,13 +1255,18 @@ def plan_and_preprocess(
             else:
                 preprocessed.unlink()
     env = nn_env(layout, nn_cfg)
+    planning_env = env
+    if not dry_run:
+        planning_env = _training_only_planning_env(
+            layout, outer_fold, dataset_id, split, env
+        )
     fingerprint = [require_command("nnUNetv2_extract_fingerprint"), "-d", str(dataset_id)]
     if bool(nn_cfg["preprocess"].get("verify_dataset_integrity", True)):
         fingerprint.append("--verify_dataset_integrity")
     run_command(
         fingerprint,
         cwd=layout.project,
-        env=env,
+        env=planning_env,
         log=layout.logs / f"fingerprint_online_of{outer_fold}.log",
         dry_run=dry_run,
     )
@@ -1223,7 +1279,7 @@ def plan_and_preprocess(
             planner,
         ],
         cwd=layout.project,
-        env=env,
+        env=planning_env,
         log=layout.logs / f"plan_online_of{outer_fold}.log",
         dry_run=dry_run,
     )

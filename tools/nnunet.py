@@ -479,6 +479,13 @@ def update_train_csv(path: Path, row: Mapping[str, Any]) -> None:
 
 def train_one(project: Path, p: Paths, cfg: Mapping[str, Any], condition: str, base_fold: int,
               nnfold: int, split: Mapping[str, Sequence[str]], device: str, dry: bool) -> None:
+    if condition == "hierarchical_copy_paste":
+        raise PipelineError(
+            "The legacy globally generated CP dataset cannot prove that this fold's "
+            "validation labels were excluded from GNN fitting/model selection. "
+            "Use the fold-specific pairedcp/onlinecp pipeline in a new workspace. "
+            "Existing datasets and results have not been changed."
+        )
     fold_dir = p.model_dir / f"fold_{nnfold}"
     final = fold_dir / "checkpoint_final.pth"
     val_ids = list(map(str, split["val"]))

@@ -549,4 +549,7 @@ def load_checkpoint(path: str | os.PathLike[str], device: torch.device) -> dict[
     payload = torch_load_compat(source, map_location=device)
     if not isinstance(payload, dict):
         raise ValueError(f"Checkpoint payload is not a dictionary: {source}")
+    if "model_kwargs" in payload:
+        from hiercp.contracts import require_current_checkpoint
+        require_current_checkpoint(payload)
     return payload

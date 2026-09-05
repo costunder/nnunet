@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Final
 
+from hiercp.contracts import GEOMETRY_CONTRACT
+
 NodeType = str
 EdgeType = tuple[str, str, str]
 
@@ -31,11 +33,11 @@ PROTOTYPE_EDGE_DIM: Final[int] = 6
 # backward-compatible deserialization, but the model masks them before every
 # projection.  Patient relations incident to the source tumor likewise mask
 # their position delta and distance columns.
-UPPER_FEATURE_POLICY: Final[str] = "shortcut_safe_upper_v1"
+UPPER_FEATURE_POLICY: Final[str] = "shortcut_safe_upper_v2"
 UPPER_POSITION_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2)
 UPPER_OCCUPIED_DISTANCE_INDEX: Final[int] = 4
 UPPER_FORBIDDEN_RAW_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2, 4)
-PATIENT_POSITION_EDGE_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2, 3)
+PATIENT_POSITION_EDGE_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2, 3, 11)
 
 LOCAL_NODE_TYPES: Final[tuple[NodeType, ...]] = (
     "tumor_surface",
@@ -148,6 +150,7 @@ class GraphBuildConfig:
     max_lesions: int | None = None
 
     graph_schema_version: str = "full_v22"
+    geometry_contract: str = GEOMETRY_CONTRACT
     adaptive_source_full_shape: bool = True
     adaptive_roi_margin_mm: float = 30.0
     adaptive_roi_max_radius_mm: float = 64.0
@@ -184,6 +187,8 @@ class GraphBuildConfig:
     sample_relation_edge_limit: int = 500_000
 
     def validate(self) -> None:
+        if self.geometry_contract != GEOMETRY_CONTRACT:
+            raise ValueError("Geometry contract is obsolete; use a new graph-cache workspace")
         if self.graph_schema_version != "full_v22":
             raise ValueError(
                 "Only graph_schema_version=full_v22 is supported by the active project"

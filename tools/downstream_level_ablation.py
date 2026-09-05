@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -33,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -64,7 +66,11 @@ MODE_LABELS = {
     "no_population": "M3 w/o Level 2 — Population",
 }
 BANK_FORMAT = "hiercp_online_bank_v2"
-DERIVED_BANK_VERSION = "hiercp_online_bank_level_ablation_exact_argmax_v1"
+DERIVED_BANK_VERSION = "hiercp_online_bank_level_ablation_exact_argmax_v2"
+BANK_CONTRACT_FORMAT = "hiercp_downstream_bank_inputs_v2"
+TRAINING_CONTRACT_FORMAT = "hiercp_downstream_training_inputs_v1"
+TRAINING_STARTED_NAME = "downstream_training_started.json"
+TRAINING_COMPLETE_NAME = "downstream_training_complete.json"
 TOOL_VERSION = "hiercp_downstream_level_ablation_v3"
 SCHEDULE_AUDIT_FORMAT = "hiercp_downstream_ablation_schedule_audit_v3"
 SCHEDULE_DUPLICATE_POLICIES = ("error", "coalesce-identical")
@@ -100,6 +106,7 @@ class RuntimeLayout:
     base: Layout
     outer_fold: int
     dataset_id: int
+    ablation_results: Path | None = None
 
     def bank_for(self, mode: str) -> Path:
         return (
@@ -210,6 +217,348 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _contract_sha256(payload: Any) -> str:
+    return hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")).hexdigest()
+
+
+def _file_record(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        raise DownstreamAblationError(f"Required provenance input is missing: {path}")
+    return {"path": str(path.resolve()), "sha256": _sha256(path)}
+
+
+def _verify_file_records(records: Mapping[str, Any]) -> None:
+    if not isinstance(records, Mapping) or not records:
+        raise DownstreamAblationError("Empty or malformed provenance file inventory")
+    for name, record in records.items():
+        if not isinstance(record, Mapping) or not isinstance(record.get("path"), str):
+            raise DownstreamAblationError(f"Malformed provenance record: {name}")
+        path = Path(record["path"])
+        if not path.is_file() or _sha256(path) != record.get("sha256"):
+            raise DownstreamAblationError(f"Provenance input changed or disappeared: {name}: {path}")
+
+
+def _bank_entry_names(source_index: Mapping[str, Any]) -> dict[str, list[str]]:
+    entries = source_index.get("entries_by_case")
+    if not isinstance(entries, Mapping) or not entries:
+        raise DownstreamAblationError("Source bank requires a nonempty exact entries_by_case mapping")
+    result: dict[str, list[str]] = {}
+    seen: set[str] = set()
+    for case_id, values in entries.items():
+        if not isinstance(case_id, str) or not case_id or Path(case_id).name != case_id:
+            raise DownstreamAblationError(f"Unsafe source case ID: {case_id!r}")
+        if not isinstance(values, list) or not values:
+            raise DownstreamAblationError(f"Source bank case has no entries: {case_id}")
+        names = []
+        for value in values:
+            if not isinstance(value, str):
+                raise DownstreamAblationError("Bank entry paths must be strings")
+            parts = value.replace("\\", "/").split("/")
+            if any(part in ("", ".", "..") or ":" in part for part in parts) or not value.endswith(".npz"):
+                raise DownstreamAblationError(f"Unsafe bank entry path: {value!r}")
+            name = "/".join(parts)
+            if name in seen:
+                raise DownstreamAblationError(f"Duplicate bank entry path: {name}")
+            seen.add(name)
+            names.append(name)
+        result[case_id] = names
+    return result
+
+
+def _safe_bank_path(root: Path, relative: str) -> Path:
+    path = root / relative
+    if not path.resolve().is_relative_to(root.resolve()):
+        raise DownstreamAblationError(f"Bank path escapes its root: {path}")
+    return path
+
+
+def _scoring_code_hashes() -> dict[str, str]:
+    files = [Path(__file__).resolve(), *sorted((PROJECT_ROOT / "hiercp").glob("*.py"))]
+    return {str(path.relative_to(PROJECT_ROOT)).replace("\\", "/"): _sha256(path) for path in files}
+
+
+def _bank_input_paths(run: RuntimeLayout, mode: str, source_index: Mapping[str, Any]) -> dict[str, Path]:
+    entries = _bank_entry_names(source_index)
+    paths = {
+        "source_bank_index": run.base.source_bank / "index.json",
+        "full_checkpoint": run.base.gnn / "model.pt",
+        "ablation_checkpoint": run.base.gnn / "ablation_independent" / mode / "model.pt",
+        "prototype": run.base.gnn / "prototype.pt",
+        "train_config": run.base.train_config,
+        "nnunet_config": run.base.nnunet_config,
+        "outer_splits": run.base.outer_splits,
+        "reference_training_complete": run.base.online / "folds" / f"fold_{run.outer_fold}" / "training_complete.json",
+    }
+    for case_id, names in entries.items():
+        paths[f"image/{case_id}"] = run.base.data / "image" / f"{case_id}_0000.nii.gz"
+        paths[f"label/{case_id}"] = run.base.data / "labels" / f"{case_id}.nii.gz"
+        for name in names:
+            paths[f"source_entry/{name}"] = _safe_bank_path(run.base.source_bank, name)
+    return paths
+
+
+def _bank_input_contract(run: RuntimeLayout, mode: str, source_index: Mapping[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    entries = _bank_entry_names(source_index)
+    paths = _bank_input_paths(run, mode, source_index)
+    return {
+        "format": BANK_CONTRACT_FORMAT, "mode": mode,
+        "outer_fold": run.outer_fold, "dataset_id": run.dataset_id,
+        "entries_by_case": entries,
+        "input_files": {name: _file_record(path) for name, path in paths.items()},
+        "scoring_code_sha256": _scoring_code_hashes(),
+        "scoring_parameters": {
+            "local_chunk_size": int(args.local_chunk_size),
+            "score_tolerance": float(args.score_tolerance),
+            "score_rtol": float(args.score_rtol),
+            "requested_device": str(args.device),
+        },
+    }
+
+
+def _verify_bank_input_contract(contract: Mapping[str, Any]) -> None:
+    if contract.get("format") != BANK_CONTRACT_FORMAT:
+        raise DownstreamAblationError("Legacy bank has no verified current input contract; rescore explicitly")
+    _verify_file_records(contract.get("input_files"))
+    if contract.get("scoring_code_sha256") != _scoring_code_hashes():
+        raise DownstreamAblationError("Bank scoring implementation changed; old scores cannot be relabelled as current")
+
+
+def _verified_derived_bank(run: RuntimeLayout, mode: str, expected: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    root = run.bank_for(mode)
+    index = _load_json(root / "index.json")
+    completion = _load_json(root / "complete.json")
+    started = _load_json(root / "build_started.json")
+    contract = index.get("input_contract")
+    if not isinstance(contract, Mapping):
+        raise DownstreamAblationError(f"Unverified legacy derived bank is preserved: {root}")
+    checksum = _contract_sha256(contract)
+    if (index.get("version") != DERIVED_BANK_VERSION or index.get("ablation_mode") != mode
+            or index.get("candidate_policy") != "exact_gnn_argmax"
+            or contract.get("mode") != mode or contract.get("outer_fold") != run.outer_fold
+            or contract.get("dataset_id") != run.dataset_id
+            or completion.get("format") != BANK_FORMAT or completion.get("ablation_mode") != mode
+            or completion.get("version") != DERIVED_BANK_VERSION or completion.get("complete") is not True
+            or started.get("version") != DERIVED_BANK_VERSION or started.get("complete") is not False
+            or completion.get("input_contract_sha256") != checksum
+            or index.get("input_contract_sha256") != checksum
+            or completion.get("build_id") != started.get("build_id")
+            or started.get("input_contract_sha256") != checksum):
+        raise DownstreamAblationError(f"Incomplete, stale, or mismatched derived bank: {root}")
+    if expected is not None and dict(contract) != dict(expected):
+        raise DownstreamAblationError(f"Derived bank inputs/GNN/scoring settings changed: {root}")
+    current_paths = _bank_input_paths(run, mode, _load_json(run.base.source_bank / "index.json"))
+    saved_files = contract.get("input_files")
+    if not isinstance(saved_files, Mapping) or set(current_paths) != set(saved_files):
+        raise DownstreamAblationError(f"Derived bank input cohort differs from the current run: {root}")
+    for name, path in current_paths.items():
+        if not isinstance(saved_files[name], Mapping) or saved_files[name].get("path") != str(path.resolve()):
+            raise DownstreamAblationError(f"Derived bank is bound to a different current input path: {name}: {root}")
+    _verify_bank_input_contract(contract)
+    entries = _bank_entry_names(index)
+    if entries != contract.get("entries_by_case"):
+        raise DownstreamAblationError(f"Derived bank entry cohort changed: {root}")
+    if (completion.get("source_entries") != sum(len(names) for names in entries.values())
+            or completion.get("candidate_count") != index.get("candidate_count")):
+        raise DownstreamAblationError(f"Derived completion count metadata is inconsistent: {root}")
+    expected_outputs = {name for names in entries.values() for name in names}
+    expected_outputs.update(("index.json", "manifest.csv", "build_started.json"))
+    outputs = completion.get("outputs")
+    if not isinstance(outputs, Mapping) or set(outputs) != expected_outputs:
+        raise DownstreamAblationError(f"Derived bank completion has incomplete output coverage: {root}")
+    actual = {str(path.relative_to(root)).replace("\\", "/") for path in root.rglob("*") if path.is_file()}
+    if actual != expected_outputs | {"complete.json"}:
+        raise DownstreamAblationError(f"Derived bank contains missing or unplanned outputs: {root}")
+    for name, digest in outputs.items():
+        path = _safe_bank_path(root, name)
+        if not path.is_file() or _sha256(path) != digest:
+            raise DownstreamAblationError(f"Derived bank output changed: {path}")
+    if completion.get("index_sha256") != _sha256(root / "index.json"):
+        raise DownstreamAblationError(f"Derived bank index hash mismatch: {root}")
+    return index
+
+
+def _preflight_derived_outputs(run: RuntimeLayout, source_index: Mapping[str, Any], contracts: Mapping[str, Mapping[str, Any]], *, overwrite: bool) -> bool:
+    """Check BOTH banks before any write; return True only for verified reuse."""
+    entries = _bank_entry_names(source_index)
+    allowed = {name for names in entries.values() for name in names}
+    allowed.update(("index.json", "manifest.csv", "complete.json", "build_started.json"))
+    if len({run.bank_for(mode).resolve() for mode in MODES}) != len(MODES):
+        raise DownstreamAblationError("Ablation output roots overlap each other")
+    existing = []
+    for mode in MODES:
+        root = run.bank_for(mode)
+        if (root.resolve() == run.base.source_bank.resolve()
+                or root.resolve().is_relative_to(run.base.source_bank.resolve())
+                or run.base.source_bank.resolve().is_relative_to(root.resolve())):
+            raise DownstreamAblationError("Derived bank output overlaps the immutable source bank")
+        if root.exists() and not root.is_dir():
+            raise DownstreamAblationError(f"Derived output is not a directory: {root}")
+        files = {str(path.relative_to(root)).replace("\\", "/") for path in root.rglob("*") if path.is_file()}
+        if files - allowed:
+            raise DownstreamAblationError(f"Unplanned derived files preserved under {root}: {sorted(files - allowed)}")
+        for name in allowed:
+            path = _safe_bank_path(root, name)
+            if path.exists() and not path.is_file():
+                raise DownstreamAblationError(f"Derived output collision: {path}")
+        if files:
+            existing.append(mode)
+    if existing and not overwrite:
+        if set(existing) != set(MODES):
+            raise DownstreamAblationError("Only part of the derived-bank pair exists; preserved without overwrite. Use an explicit --overwrite-banks or new work location.")
+        for mode in MODES:
+            _verified_derived_bank(run, mode, contracts[mode])
+        return True
+    if existing:
+        print("[Explicit overwrite] Replacing only planned derived entries/index/manifest/markers in: "
+              + ", ".join(str(run.bank_for(mode)) for mode in MODES)
+              + ". Source bank, GNN checkpoints, and nnU-Net results are not changed.", flush=True)
+    return False
+
+
+def _publish_bank_npz(path: Path, payload: Mapping[str, Any], *, overwrite: bool) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            np.savez(handle, **payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if overwrite:
+            os.replace(temporary, path)
+        else:
+            try:
+                os.link(temporary, path)
+            except FileExistsError as exc:
+                raise DownstreamAblationError(f"Derived bank write collision; existing file preserved: {path}") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _reference_training_contract(run: RuntimeLayout) -> dict[str, Any]:
+    """Verify a real baseline producer's receipt, never manufacture legacy proof.
+
+    The existing producer normally uses OnlineHierCP, not ExactArgmax. Such a
+    receipt is deliberately insufficient for this adapter even if all files
+    exist. Historical predictions remain usable by read-only evaluate only.
+    """
+    from tools import online_cp_benchmark as online
+    layout = online.Layout(
+        project=run.base.project, medical=run.base.medical, data=run.base.data,
+        paired=run.base.paired, online=run.base.online, source_work=run.base.full_work,
+        train_config=run.base.train_config, nnunet_config=run.base.nnunet_config,
+        outer_splits=run.base.outer_splits, nnroot=run.base.nnroot,
+        raw=run.base.raw, preprocessed=run.base.preprocessed,
+        results=run.base.results, logs=run.base.logs,
+    )
+    try:
+        completion, identity = online._verified_training_completion(
+            layout, run.outer_fold, _load_json(run.base.train_config),
+            _load_json(run.base.nnunet_config), run.dataset_id,
+        )
+    except (online.OnlineBenchmarkError, OSError, ValueError) as exc:
+        raise DownstreamAblationError(
+            "New ablation work requires a verified Basic/Full ExactArgmax baseline "
+            "trained with the CURRENT source bank and preprocessing. Legacy assets "
+            "are preserved and read-only evaluate remains available; no baseline "
+            f"training provenance will be fabricated. Details: {exc}"
+        ) from exc
+    wanted = {"basic": BASIC_TRAINER, "hier": FULL_TRAINER}
+    if identity.get("trainers") != wanted:
+        raise DownstreamAblationError(
+            f"Verified baseline trainers {identity.get('trainers')} are not {wanted}. "
+            "OnlineHierCP/curriculum/ExactArgmax are different experiments; new "
+            "ablation rescoring/training is blocked, but legacy read-only evaluate is preserved."
+        )
+    for side, trainer in wanted.items():
+        record = completion.get("outputs", {}).get(side, {})
+        if record.get("trainer") != trainer or record.get("checkpoint_final_sha256") != _sha256(
+            _model_dir(run, trainer) / "checkpoint_final.pth"
+        ):
+            raise DownstreamAblationError(f"Baseline receipt does not identify the requested {trainer} checkpoint")
+    return {
+        "completion": _file_record(layout.online_fold(run.outer_fold) / online.TRAIN_COMPLETE_NAME),
+        "input_contract_sha256": _contract_sha256(identity),
+        "trainers": wanted,
+    }
+
+
+def _training_input_identity(run: RuntimeLayout, mode: str, args: argparse.Namespace, reference: Mapping[str, Any]) -> dict[str, Any]:
+    from tools.online_trainer_contract import trainer_source_identity
+    trainer = MODE_TRAINERS[mode]
+    bank = _verified_derived_bank(run, mode)
+    files = {
+        "bank_index": run.bank_for(mode) / "index.json",
+        "bank_complete": run.bank_for(mode) / "complete.json",
+        "train_config": run.base.train_config,
+        "nnunet_config": run.base.nnunet_config,
+        "outer_splits": run.base.outer_splits,
+        "nnunet_entry_point": Path(_require_command("nnUNetv2_train")),
+    }
+    nn_cfg = _load_json(run.base.nnunet_config)
+    return {
+        "format": TRAINING_CONTRACT_FORMAT, "outer_fold": run.outer_fold,
+        "dataset_id": run.dataset_id, "mode": mode, "trainer": trainer,
+        "reference_training": dict(reference),
+        "bank_input_contract_sha256": bank["input_contract_sha256"],
+        "input_files": {name: _file_record(path) for name, path in files.items()},
+        "trainer_sources": trainer_source_identity(
+            "nnunetv2.training.nnUNetTrainer.nnUNetTrainer_OnlinePairedCP", (trainer,)
+        ),
+        "plans": str(nn_cfg["dataset"]["plans"]),
+        "configuration": str(nn_cfg["dataset"]["configuration"]),
+        "expected_epochs": 250, "validation_ids": _validation_ids(run),
+        "online_cp_seed": int(_load_json(run.base.train_config).get("seed", 42)) + run.outer_fold,
+        "requested_device": str(args.device),
+        "scoring_code_sha256": _scoring_code_hashes(),
+    }
+
+
+def _training_outputs(result: Path, val_ids: Sequence[str]) -> dict[str, str]:
+    validation = result / "validation"
+    if not val_ids or len(val_ids) != len(set(val_ids)):
+        raise DownstreamAblationError("Training verification requires exact nonempty validation IDs")
+    if {path.name[:-7] for path in validation.glob("*.nii.gz")} != set(val_ids):
+        raise DownstreamAblationError(f"Training validation cohort is incomplete or has extras: {validation}")
+    paths = [result / "checkpoint_final.pth", validation / "summary.json",
+             *[validation / f"{case_id}.nii.gz" for case_id in val_ids],
+             *sorted(result.glob("training_log*.txt"))]
+    if (result / "subprocess.log").is_file():
+        paths.append(result / "subprocess.log")
+    if not any(path.name.startswith("training_log") for path in paths):
+        raise DownstreamAblationError(f"No nnU-Net training logs were recorded: {result}")
+    return {str(path.relative_to(result)).replace("\\", "/"): _file_record(path)["sha256"] for path in paths}
+
+
+def _training_reuse_action(result: Path, identity: Mapping[str, Any]) -> str:
+    """Legacy/partial checkpoints never authorize an implicit --c or fresh run."""
+    if not result.exists():
+        if result.parent.exists() and any(result.parent.iterdir()):
+            raise DownstreamAblationError(f"Existing trainer artifacts preserved: {result.parent}. Choose a NEW --ablation-results-output.")
+        return "new"
+    started = result / TRAINING_STARTED_NAME
+    complete = result / TRAINING_COMPLETE_NAME
+    if not started.is_file() or not complete.is_file():
+        raise DownstreamAblationError(
+            f"Unverified or partial nnU-Net result preserved: {result}. No automatic "
+            "resume/retraining/validation overwrite is allowed; use a NEW --ablation-results-output."
+        )
+    start_payload, completion = _load_json(started), _load_json(complete)
+    if (start_payload.get("input_contract") != dict(identity)
+            or start_payload.get("input_contract_sha256") != _contract_sha256(identity)
+            or completion.get("format") != TRAINING_CONTRACT_FORMAT
+            or completion.get("complete") is not True
+            or completion.get("input_contract_sha256") != _contract_sha256(identity)
+            or completion.get("started_sha256") != _sha256(started)):
+        raise DownstreamAblationError(f"nnU-Net training identity changed: {result}; choose a NEW --ablation-results-output")
+    _verify_file_records(identity["input_files"])
+    if completion.get("outputs") != _training_outputs(result, identity["validation_ids"]):
+        raise DownstreamAblationError(f"nnU-Net training outputs/logs changed: {result}")
+    return "reuse"
+
+
 def _stable_seed(*values: object) -> int:
     payload = "|".join(str(value) for value in values).encode("utf-8")
     return int.from_bytes(hashlib.blake2b(payload, digest_size=8).digest(), "little") % (2**32)
@@ -281,7 +630,7 @@ def _model_dir(run: RuntimeLayout, trainer: str) -> Path:
     plans = str(nn_cfg["dataset"]["plans"])
     configuration = str(nn_cfg["dataset"]["configuration"])
     return (
-        run.base.results
+        (run.ablation_results if trainer in MODE_TRAINERS.values() and getattr(run, "ablation_results", None) is not None else run.base.results)
         / _dataset_name(run.dataset_id, run.outer_fold)
         / f"{trainer}__{plans}__{configuration}"
         / "fold_0"
@@ -359,7 +708,9 @@ def _make_layout(args: argparse.Namespace) -> RuntimeLayout:
         nnunet_config=project / "config" / "nnunet.json",
         outer_splits=paired / "outer_splits.json",
     )
-    return RuntimeLayout(base=base, outer_fold=int(args.outer_fold), dataset_id=int(args.dataset_id))
+    return RuntimeLayout(base=base, outer_fold=int(args.outer_fold), dataset_id=int(args.dataset_id),
+                         ablation_results=(Path(args.ablation_results_output).expanduser().resolve()
+                                           if getattr(args, "ablation_results_output", None) else None))
 
 
 def _check_required_assets(run: RuntimeLayout) -> None:
@@ -477,6 +828,7 @@ def _load_models(run: RuntimeLayout, device: Any) -> tuple[dict[str, Any], dict[
     import torch
     from hiercp.model import HierarchicalPyGPlacementModel
     from hiercp.tensor import torch_load_compat
+    from hiercp.contracts import require_current_checkpoint
 
     paths = {
         "full": run.base.gnn / "model.pt",
@@ -492,6 +844,7 @@ def _load_models(run: RuntimeLayout, device: Any) -> tuple[dict[str, Any], dict[
         checkpoint = torch_load_compat(path, map_location="cpu")
         if not isinstance(checkpoint, dict):
             raise DownstreamAblationError(f"Invalid checkpoint: {path}")
+        require_current_checkpoint(checkpoint)
         kwargs = dict(checkpoint.get("model_kwargs") or {})
         recorded = str(kwargs.get("ablation_mode", "full"))
         if recorded != mode:
@@ -611,11 +964,24 @@ def _write_derived_bank(
     source_index: Mapping[str, Any],
     checkpoint_path: Path,
     rows: Sequence[Mapping[str, Any]],
+    input_contract: Mapping[str, Any],
+    build_id: str,
+    overwrite: bool = False,
 ) -> None:
     root = run.bank_for(mode)
     entries_by_case = source_index.get("entries_by_case")
     if not isinstance(entries_by_case, dict):
         raise DownstreamAblationError("Source bank has no entries_by_case mapping")
+    _verify_bank_input_contract(input_contract)
+    started = _load_json(root / "build_started.json")
+    if (started.get("version") != DERIVED_BANK_VERSION or started.get("complete") is not False
+            or started.get("build_id") != build_id
+            or started.get("input_contract_sha256") != _contract_sha256(input_contract)):
+        raise DownstreamAblationError(f"Derived build marker changed before publication: {root}")
+    expected_entries = {name for names in _bank_entry_names(source_index).values() for name in names}
+    row_entries = [str(row.get("entry")) for row in rows]
+    if len(row_entries) != len(set(row_entries)) or set(row_entries) != expected_entries:
+        raise DownstreamAblationError("Derived manifest does not cover the exact source entries")
     metadata = dict(source_index)
     metadata.update(
         {
@@ -629,9 +995,12 @@ def _write_derived_bank(
             "prototype_sha256": _sha256(run.base.gnn / "prototype.pt"),
             "entries_by_case": entries_by_case,
             "manifest": str((root / "manifest.csv").resolve()),
+            "input_contract": dict(input_contract),
+            "input_contract_sha256": _contract_sha256(input_contract),
         }
     )
-    _atomic_json(root / "index.json", metadata)
+    publish_json = _atomic_json if overwrite else _publish_report_json
+    publish_json(root / "index.json", metadata)
     fields = (
         "case_id",
         "source_component",
@@ -648,12 +1017,27 @@ def _write_derived_bank(
         "score_std",
         "status",
     )
-    _atomic_csv(root / "manifest.csv", rows, fields)
-    _atomic_json(
+    if overwrite:
+        _atomic_csv(root / "manifest.csv", rows, fields)
+    else:
+        stream = io.StringIO(newline="")
+        writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+        _publish_report_text(root / "manifest.csv", stream.getvalue())
+    _verify_bank_input_contract(input_contract)
+    outputs = {name: _sha256(_safe_bank_path(root, name)) for name in sorted(
+        expected_entries | {"index.json", "manifest.csv", "build_started.json"}
+    )}
+    publish_json(
         root / "complete.json",
         {
             "format": BANK_FORMAT,
             "version": DERIVED_BANK_VERSION,
+            "complete": True,
+            "build_id": build_id,
+            "input_contract_sha256": _contract_sha256(input_contract),
+            "outputs": outputs,
             "ablation_mode": mode,
             "index_sha256": _sha256(root / "index.json"),
             "source_entries": len(rows),
@@ -666,9 +1050,19 @@ def _rescore_banks(run: RuntimeLayout, args: argparse.Namespace) -> None:
     if args.dry_run:
         print("[Dry-run] rescore existing Fold candidate bank with no_patient/no_population")
         return
-    if str(run.base.project) not in sys.path:
-        sys.path.insert(0, str(run.base.project))
-
+    _reference_training_contract(run)
+    source_index = _load_json(run.base.source_bank / "index.json")
+    contracts = {mode: _bank_input_contract(run, mode, source_index, args) for mode in MODES}
+    if _preflight_derived_outputs(run, source_index, contracts, overwrite=bool(args.overwrite_banks)):
+        print("[Reuse] both exact derived banks verified against current inputs, GNNs and output hashes", flush=True)
+        return
+    build_id = uuid.uuid4().hex
+    for mode in MODES:
+        root = run.bank_for(mode)
+        root.mkdir(parents=True, exist_ok=True)
+        marker = {"version": DERIVED_BANK_VERSION, "complete": False, "build_id": build_id,
+                  "input_contract_sha256": _contract_sha256(contracts[mode])}
+        (_atomic_json if args.overwrite_banks else _publish_report_json)(root / "build_started.json", marker)
     import torch
     from scipy import ndimage as ndi
     from hiercp.cache import build_inference_sample
@@ -752,37 +1146,6 @@ def _rescore_banks(run: RuntimeLayout, args: argparse.Namespace) -> None:
                 mode: run.bank_for(mode) / str(relative)
                 for mode in MODES
             }
-            if all(path.is_file() for path in target_paths.values()) and not args.overwrite_banks:
-                print(f"[Reuse] score bank {progress}/{total_entries} {case_id}/{Path(relative).name}", flush=True)
-                for mode in MODES:
-                    with np.load(target_paths[mode], allow_pickle=False) as payload:
-                        scores = np.asarray(payload["scores"], dtype=np.float32)
-                        component = int(np.asarray(payload["source_component"]).reshape(-1)[0])
-                        raw_centers = np.asarray(payload["candidate_raw_centers"], dtype=np.int32)
-                        pre_centers = np.asarray(payload["candidate_centers"], dtype=np.int32)
-                    reused_pool_hash = hashlib.sha256(
-                        raw_centers.tobytes() + pre_centers.tobytes()
-                    ).hexdigest()
-                    rows_by_mode[mode].append(
-                        {
-                            "case_id": case_id,
-                            "source_component": component,
-                            "entry": str(relative),
-                            "candidate_count": candidate_count,
-                            "source_pool_sha256": reused_pool_hash,
-                            "full_reproduction_max_abs": "reused",
-                            "full_argmax_match": "reused",
-                            "full_argmax_tie_equivalent": "reused",
-                            "full_original_top_gap": "reused",
-                            "full_reproduced_top_gap": "reused",
-                            "score_min": f"{float(scores.min()):.8f}",
-                            "score_max": f"{float(scores.max()):.8f}",
-                            "score_std": f"{float(scores.std()):.8f}",
-                            "status": "ok",
-                        }
-                    )
-                continue
-
             print(f"[Rescore] {progress}/{total_entries} {case_id}/{Path(relative).name}", flush=True)
             with np.load(source_path, allow_pickle=False) as payload:
                 source_data = np.asarray(payload["source_data"], dtype=np.float32)
@@ -911,12 +1274,10 @@ def _rescore_banks(run: RuntimeLayout, args: argparse.Namespace) -> None:
             ).hexdigest()
             for mode in MODES:
                 destination = target_paths[mode]
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                temporary = destination.with_suffix(destination.suffix + f".tmp.{os.getpid()}")
                 scores = scores_by_mode[mode]
-                with temporary.open("wb") as handle:
-                    np.savez(
-                        handle,
+                if scores.shape != (candidate_count,) or not np.all(np.isfinite(scores)):
+                    raise DownstreamAblationError(f"Invalid ablation scores for {mode}/{relative}")
+                _publish_bank_npz(destination, dict(
                         source_data=source_data,
                         source_mask=source_mask,
                         anchor_offset=anchor_offset,
@@ -925,10 +1286,7 @@ def _rescore_banks(run: RuntimeLayout, args: argparse.Namespace) -> None:
                         scores=scores,
                         source_component=np.asarray([source_component], dtype=np.int16),
                         source_diameter_mm=source_diameter,
-                    )
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(temporary, destination)
+                    ), overwrite=bool(args.overwrite_banks))
                 rows_by_mode[mode].append(
                     {
                         "case_id": case_id,
@@ -964,7 +1322,10 @@ def _rescore_banks(run: RuntimeLayout, args: argparse.Namespace) -> None:
                 run.base.gnn / "ablation_independent" / mode / "model.pt"
             ),
             rows=rows_by_mode[mode],
+            input_contract=contracts[mode], build_id=build_id,
+            overwrite=bool(args.overwrite_banks),
         )
+        _verified_derived_bank(run, mode, contracts[mode])
         print(f"[OK] derived exact-argmax bank {mode}: {run.bank_for(mode) / 'index.json'}")
 
 
@@ -980,7 +1341,7 @@ def _nn_env(
         {
             "nnUNet_raw": str(run.base.raw),
             "nnUNet_preprocessed": str(run.base.preprocessed),
-            "nnUNet_results": str(run.base.results),
+            "nnUNet_results": str(getattr(run, "ablation_results", None) or run.base.results),
             "nnUNet_n_proc_DA": "8",
             "ONLINE_CP_BANK": str(bank.resolve()),
             "ONLINE_CP_SEED": str(seed),
@@ -1020,18 +1381,23 @@ def _train_nnunet_ablations(run: RuntimeLayout, args: argparse.Namespace) -> Non
             f"CUDA_VISIBLE_DEVICES={physical_gpu} child_logical_device=cuda:0"
         )
     val_ids = _validation_ids(run)
+    reference = None if args.dry_run else _reference_training_contract(run)
+    prepared = []
+    # Preflight both methods before reserving a directory or launching a job.
     for mode in MODES:
         trainer = MODE_TRAINERS[mode]
         bank = run.bank_for(mode) / "index.json"
-        if not bank.is_file() and not args.dry_run:
-            raise DownstreamAblationError(f"Derived bank is missing: {bank}")
         result = _model_dir(run, trainer)
+        identity = None if args.dry_run else _training_input_identity(run, mode, args, reference)
+        action = "new" if args.dry_run else _training_reuse_action(result, identity)
+        prepared.append((mode, trainer, bank, result, identity, action))
+    for mode, trainer, bank, result, identity, action in prepared:
         final = result / "checkpoint_final.pth"
-        if final.is_file() and _validation_complete(result, val_ids):
-            print(f"[Reuse] nnU-Net {MODE_LABELS[mode]} complete")
+        if action == "reuse":
+            print(f"[Reuse] verified nnU-Net bank/trainer/config/output identity: {MODE_LABELS[mode]}")
             continue
         command: list[str | os.PathLike[str]] = [
-            _require_command("nnUNetv2_train"),
+            "nnUNetv2_train" if args.dry_run else _require_command("nnUNetv2_train"),
             str(run.dataset_id),
             configuration,
             "0",
@@ -1042,13 +1408,17 @@ def _train_nnunet_ablations(run: RuntimeLayout, args: argparse.Namespace) -> Non
             "-device",
             device,
         ]
-        if final.is_file():
-            command.append("--val")
-        elif (result / "checkpoint_latest.pth").is_file() or (
-            result / "checkpoint_best.pth"
-        ).is_file():
-            command.append("--c")
-        log = run.base.logs / f"train_online_hier_{mode}_exact_argmax_of{run.outer_fold}.log"
+        if not args.dry_run:
+            try:
+                result.mkdir(parents=True, exist_ok=False)
+            except FileExistsError as exc:
+                raise DownstreamAblationError(f"Training output appeared after preflight; preserved: {result}") from exc
+            _publish_report_json(result / TRAINING_STARTED_NAME, {
+                "format": TRAINING_CONTRACT_FORMAT, "complete": False,
+                "input_contract": identity, "input_contract_sha256": _contract_sha256(identity),
+                "resume_policy": "no_unverified_partial_resume",
+            })
+        log = result / "subprocess.log"
         _run(
             command,
             cwd=run.base.project,
@@ -1084,6 +1454,16 @@ def _train_nnunet_ablations(run: RuntimeLayout, args: argparse.Namespace) -> Non
             raise DownstreamAblationError(
                 f"Validation incomplete for {trainer}: {result}"
             )
+        current_identity = _training_input_identity(run, mode, args, _reference_training_contract(run))
+        if current_identity != identity:
+            raise DownstreamAblationError(f"Training inputs changed during execution; no completion published: {result}")
+        _publish_report_json(result / TRAINING_COMPLETE_NAME, {
+            "format": TRAINING_CONTRACT_FORMAT, "complete": True,
+            "input_contract_sha256": _contract_sha256(identity),
+            "started_sha256": _sha256(result / TRAINING_STARTED_NAME),
+            "outputs": _training_outputs(result, val_ids),
+            "training_executed": True, "checkpoint_resume_lineage": "fresh_run_no_resume",
+        })
 
 
 def _schedule_log_contract(result: Path) -> list[dict[str, str]]:
@@ -1662,12 +2042,14 @@ def command_check(run: RuntimeLayout, args: argparse.Namespace) -> None:
     evaluator = Path(__file__).resolve().with_name("online_eval_v2.py")
     if not evaluator.is_file():
         raise DownstreamAblationError(f"Matching online_eval_v2.py is missing: {evaluator}")
-    print("[OK] Fold-specific GNN, shared OnlineCP bank, Basic and Full exact-argmax assets")
+    print("[OK] Required asset paths and trainer import checked; training lineage is not certified by this check")
     _print_status(run)
 
 
 def command_prepare(run: RuntimeLayout, args: argparse.Namespace) -> None:
     _check_required_assets(run)
+    if not args.dry_run:
+        _reference_training_contract(run)
     _train_gnn_ablations(run, args)
     _rescore_banks(run, args)
 
@@ -1703,6 +2085,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bootstrap-iterations", type=int, default=20000)
     parser.add_argument("--permutation-iterations", type=int, default=50000)
     parser.add_argument("--evaluation-output", help="NEW directory for audit, pairwise reevaluation and combined report; existing outputs are never replaced.")
+    parser.add_argument("--ablation-results-output", help="NEW nnUNet_results root for only the two ablation trainers. Basic/Full reference paths stay unchanged; use the same option for evaluate.")
     parser.add_argument(
         "--schedule-duplicate-policy", choices=SCHEDULE_DUPLICATE_POLICIES, default="error",
         help="Default: reject every repeated epoch. coalesce-identical explicitly combines only identical applied/sample/schedule tuples, retains every source line, and does not certify training resume continuity.",

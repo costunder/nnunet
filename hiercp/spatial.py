@@ -7,11 +7,14 @@ Z-Y-X voxel convention; physical coordinates are ``coordinate * spacing``.
 """
 from __future__ import annotations
 
+from math import prod
 from typing import Any, Callable, Mapping, Sequence
 
 import numpy as np
 from scipy import ndimage as ndi
 from scipy.spatial import cKDTree
+
+LEVEL0_GEOMETRY_CONTRACT = "level0_physical_closure_v2"
 
 
 class CanonicalGraphUnavailable(ValueError):
@@ -127,6 +130,13 @@ def _odd(values: np.ndarray) -> np.ndarray:
     return result
 
 
+def _positive_spacing(spacing: Sequence[float]) -> np.ndarray:
+    result = np.asarray(spacing, dtype=np.float64)
+    if result.shape != (3,) or not np.all(np.isfinite(result)) or np.any(result <= 0):
+        raise ValueError(f"spacing must contain three finite positive values: {spacing}")
+    return result
+
+
 def adaptive_native_shape(
     footprint_shape: Sequence[int],
     spacing: Sequence[float],
@@ -136,7 +146,7 @@ def adaptive_native_shape(
 ) -> tuple[int, int, int]:
     """Compute a native ROI without silently reducing its requested context."""
     footprint = np.asarray(footprint_shape, dtype=np.int64)
-    spacing_array = np.maximum(np.asarray(spacing, dtype=np.float64), 1e-6)
+    spacing_array = _positive_spacing(spacing)
     if footprint.shape != (3,) or np.any(footprint < 1):
         raise ValueError(f"Invalid footprint shape: {tuple(footprint)}")
     context_outer = float(
@@ -168,7 +178,7 @@ def adaptive_native_shape(
     max_voxels = int(_cfg(config, "adaptive_roi_max_voxels", 8_000_000))
     if max_voxels <= 0:
         raise ValueError("adaptive_roi_max_voxels must be positive")
-    native_voxels = int(np.prod(native_shape, dtype=np.int64))
+    native_voxels = prod(int(value) for value in native_shape)
     if native_voxels > max_voxels:
         requested_shape = tuple(int(value) for value in native_shape)
         raise AdaptiveRoiBudgetError(
@@ -184,6 +194,163 @@ def adaptive_native_shape(
             "time, or explicitly revise the requested context with user approval."
         )
     return tuple(int(value) for value in native_shape)
+
+
+def transform_footprint_physical(
+    footprint: np.ndarray,
+    forward_mm: np.ndarray,
+    spacing: Sequence[float],
+    config: object,
+) -> np.ndarray:
+    """Resample a full mask in physical space about ``shape // 2``.
+
+    Both canonical node positions and Copy-Paste use this integer anchor. The
+    odd output box contains every transformed occupied voxel cell, including
+    rotations and expansions beyond the original padded source box. Resolution
+    is unchanged. Nearest-neighbour rasterization may change voxel count; an
+    unrepresentable empty result is an error, never an identity substitution.
+    """
+    mask = np.asarray(footprint, dtype=bool)
+    if mask.ndim != 3 or not np.any(mask):
+        raise ValueError("footprint must be a non-empty three-dimensional mask")
+    spacing_array = _positive_spacing(spacing)
+    forward = np.asarray(forward_mm, dtype=np.float64)
+    if forward.shape != (3, 3) or not np.all(np.isfinite(forward)):
+        raise ValueError("forward_mm must be a finite 3 by 3 physical transform")
+    try:
+        inverse = np.linalg.inv(forward)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("forward_mm must be invertible") from exc
+    if not np.all(np.isfinite(inverse)):
+        raise ValueError("forward_mm has no finite inverse")
+    if np.array_equal(forward, np.eye(3)):
+        return mask.copy()
+
+    anchor = np.asarray(mask.shape, dtype=np.int64) // 2
+    occupied = np.argwhere(mask)
+    lower = occupied.min(axis=0).astype(np.float64) - anchor - 0.5
+    upper = occupied.max(axis=0).astype(np.float64) - anchor + 0.5
+    corners = np.stack(
+        np.meshgrid(*[(lower[i], upper[i]) for i in range(3)], indexing="ij"),
+        axis=-1,
+    ).reshape(-1, 3)
+    output_corners = ((corners * spacing_array) @ forward.T) / spacing_array
+    half_float = np.ceil(np.max(np.abs(output_corners), axis=0))
+    if not np.all(np.isfinite(half_float)) or np.any(half_float >= 2**61):
+        raise AdaptiveRoiBudgetError("Transformed footprint dimensions are unrepresentable")
+    output_anchor = half_float.astype(np.int64)
+    output_shape = 2 * output_anchor + 1
+    # Check the full minimum-context request before allocating the transformed
+    # mask. Later ROI construction also checks its real liver-anchor request.
+    adaptive_native_shape(output_shape, spacing_array, config, center_liver_depth_mm=0.0)
+    inverse_voxel = (inverse * spacing_array[None, :]) / spacing_array[:, None]
+    # One explicit background cell avoids ndimage's array-boundary convention
+    # clipping a partially covered foreground voxel at a source-box boundary.
+    padded = np.pad(mask.astype(np.uint8), 1, mode="constant")
+    offset = anchor.astype(np.float64) + 1.0 - inverse_voxel @ output_anchor
+    transformed = ndi.affine_transform(
+        padded,
+        matrix=inverse_voxel,
+        offset=offset,
+        output_shape=tuple(int(value) for value in output_shape),
+        order=0,
+        mode="constant",
+        cval=0,
+        prefilter=False,
+    ).astype(bool)
+    if not np.any(transformed):
+        raise CanonicalGraphUnavailable(
+            "The requested physical transform rasterizes to an empty footprint at "
+            f"spacing_mm={tuple(spacing_array)}; no identity fallback was applied"
+        )
+    return transformed
+
+
+def _expanded_surface_shape(
+    *,
+    center: Sequence[int],
+    footprint: np.ndarray,
+    full_organ: np.ndarray,
+    organ_depth: np.ndarray,
+    spacing: Sequence[float],
+    config: object,
+    native_shape: Sequence[int],
+) -> tuple[int, int, int]:
+    """Find the smallest enclosing ROI extension containing a real liver band.
+
+    This rare-path search streams two-dimensional planes, not an oversized
+    dense graph ROI. The requested context/footprint are never reduced, and the
+    chosen extension is checked against the same physical and voxel ceilings.
+    """
+    spacing_array = _positive_spacing(spacing)
+    center_array = np.asarray(center, dtype=np.int64)
+    footprint_shape = np.asarray(footprint.shape, dtype=np.int64)
+    initial_half = np.asarray(native_shape, dtype=np.int64) // 2
+    radius = min(
+        float(_cfg(config, "adaptive_roi_max_radius_mm", 64.0)),
+        float(_cfg(config, "liver_anchor_search_mm", 64.0)),
+    )
+    maximum_half = np.maximum(
+        initial_half, footprint_shape // 2 + np.ceil(radius / spacing_array).astype(np.int64)
+    )
+    start = np.maximum(center_array - maximum_half, 0)
+    stop = np.minimum(center_array + maximum_half + 1, np.asarray(full_organ.shape))
+    footprint_start = center_array - footprint_shape // 2
+    footprint_stop = footprint_start + footprint_shape
+    boundary = float(_cfg(config, "boundary_depth_mm", 3.0))
+    best_shape: tuple[int, int, int] | None = None
+    best_volume: int | None = None
+    if np.all(stop > start):
+        for z in range(int(start[0]), int(stop[0])):
+            plane_depth = organ_depth[z, start[1]:stop[1], start[2]:stop[2]]
+            surface = (
+                np.asarray(full_organ[z, start[1]:stop[1], start[2]:stop[2]], dtype=bool)
+                & (plane_depth > 0.0)
+                & (plane_depth <= boundary)
+            )
+            if footprint_start[0] <= z < footprint_stop[0]:
+                overlap_start = np.maximum(start[1:], footprint_start[1:])
+                overlap_stop = np.minimum(stop[1:], footprint_stop[1:])
+                if np.all(overlap_stop > overlap_start):
+                    target_slices = tuple(
+                        slice(int(a - origin), int(b - origin))
+                        for a, b, origin in zip(overlap_start, overlap_stop, start[1:])
+                    )
+                    source_slices = tuple(
+                        slice(int(a - origin), int(b - origin))
+                        for a, b, origin in zip(overlap_start, overlap_stop, footprint_start[1:])
+                    )
+                    surface[target_slices] &= ~footprint[
+                        (int(z - footprint_start[0]),) + source_slices
+                    ]
+            coordinates_yx = np.argwhere(surface)
+            if not coordinates_yx.size:
+                continue
+            offsets = np.empty((coordinates_yx.shape[0], 3), dtype=np.int64)
+            offsets[:, 0] = abs(z - int(center_array[0]))
+            offsets[:, 1:] = np.abs(coordinates_yx + start[None, 1:] - center_array[None, 1:])
+            shapes = 2 * np.maximum(offsets, initial_half[None]) + 1
+            volumes = np.prod(shapes, axis=1, dtype=np.int64)
+            index = int(np.argmin(volumes))
+            volume = int(volumes[index])
+            if best_volume is None or volume < best_volume:
+                best_shape = tuple(int(value) for value in shapes[index])
+                best_volume = volume
+    if best_shape is None:
+        raise CanonicalGraphUnavailable(
+            "No actual liver-surface band outside the footprint is available within "
+            f"the configured search: center={tuple(center_array)}, "
+            f"native_shape={tuple(native_shape)}, search_radius_mm={radius}, "
+            f"boundary_depth_mm={boundary}; internal parenchyma was not substituted"
+        )
+    budget = int(_cfg(config, "adaptive_roi_max_voxels", 8_000_000))
+    if best_volume > budget:
+        raise AdaptiveRoiBudgetError(
+            "Including a real liver-surface anchor exceeds adaptive_roi_max_voxels: "
+            f"requested_shape={best_shape}, requested_voxels={best_volume}, "
+            f"voxel_budget={budget}; neither context nor resolution was reduced"
+        )
+    return best_shape
 
 
 def _resample_exact(array: np.ndarray, shape: Sequence[int], order: int) -> np.ndarray:
@@ -277,12 +444,6 @@ def build_patch_payload(
         config,
         center_liver_depth_mm=center_depth,
     )
-    raw_ct = extract_centered(
-        np.asarray(image),
-        center,
-        native_shape,
-        pad_value=float(ct_clip[0]),
-    ).astype(np.float32)
     organ = extract_centered(
         np.asarray(full_organ, dtype=np.uint8),
         center,
@@ -304,6 +465,34 @@ def build_patch_payload(
     after = int(np.count_nonzero(native_footprint))
     if before != after:
         raise RuntimeError(f"adaptive ROI cropped tumor: before={before}, after={after}")
+
+    boundary = float(_cfg(config, "boundary_depth_mm", 3.0))
+    if not np.any(organ & ~native_footprint & (depth > 0.0) & (depth <= boundary)):
+        native_shape = _expanded_surface_shape(
+            center=center,
+            footprint=footprint,
+            full_organ=np.asarray(full_organ),
+            organ_depth=np.asarray(organ_depth),
+            spacing=spacing,
+            config=config,
+            native_shape=native_shape,
+        )
+        organ = extract_centered(
+            np.asarray(full_organ, dtype=np.uint8), center, native_shape, pad_value=0
+        ).astype(bool)
+        depth = extract_centered(
+            np.asarray(organ_depth, dtype=np.float32), center, native_shape, pad_value=0.0
+        )
+        native_footprint = center_crop_or_pad(
+            footprint.astype(np.uint8), native_shape, pad_value=0
+        ).astype(bool)
+        if int(np.count_nonzero(native_footprint)) != before:
+            raise RuntimeError("Liver-surface ROI expansion changed the full footprint")
+        if not np.any(organ & ~native_footprint & (depth > 0.0) & (depth <= boundary)):
+            raise CanonicalGraphUnavailable("Expanded ROI has no actual liver-surface band")
+    raw_ct = extract_centered(
+        np.asarray(image), center, native_shape, pad_value=float(ct_clip[0])
+    ).astype(np.float32)
 
     if erase_target:
         if erase_fn is None:
@@ -509,12 +698,7 @@ def canonical_coordinate_sets(
     )
     context_all = np.argwhere(context_mask)
 
-    liver_mask = organ & ~footprint & (liver_depth <= boundary_depth)
-    if not np.any(liver_mask):
-        valid = organ & ~footprint
-        if np.any(valid):
-            minimum = float(np.min(liver_depth[valid]))
-            liver_mask = valid & (liver_depth <= minimum + max(1.0, boundary_depth))
+    liver_mask = organ & ~footprint & (liver_depth > 0.0) & (liver_depth <= boundary_depth)
     liver_all = np.argwhere(liver_mask)
 
     coordinates = {
@@ -597,6 +781,14 @@ def validate_canonical_coordinates(
     ):
         raise ValueError("V22 context nodes are outside the configured annulus")
     boundary = float(_cfg(config, "boundary_depth_mm", 3.0))
+    liver_index = tuple(liver.T)
+    if not np.all(
+        organ[liver_index]
+        & ~footprint[liver_index]
+        & (liver_depth[liver_index] > 0.0)
+        & (liver_depth[liver_index] <= boundary)
+    ):
+        raise ValueError("V22 liver-surface nodes are outside the actual liver-surface band")
     separation = float(_cfg(config, "context_liver_surface_separation_mm", 1.0))
     if bool(np.any(liver_depth[tuple(context.T)] <= boundary + separation - 1e-4)):
         raise ValueError("V22 context overlaps the liver-surface band")

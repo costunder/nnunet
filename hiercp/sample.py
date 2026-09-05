@@ -3,7 +3,8 @@
 The canonical cache contains every deterministic physical grid cell and every
 physical-radius edge.  A training view samples only context nodes, preserves all
 tumor and liver-surface anchors, and retains every cached edge whose endpoints
-remain.  No k-NN graph is introduced.
+remain. The context budget selects seeds, not a cap on their required interface
+or configured-hop closure. No k-NN graph is introduced.
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from hiercp.schema import (
     LOCAL_NODE_TYPES,
     GraphBuildConfig,
 )
+from hiercp.spatial import LEVEL0_GEOMETRY_CONTRACT
 
 
 def sample_dense_features_variable(
@@ -171,20 +173,9 @@ def _balanced_indices(
     )
     required_ids = required_ids[(required_ids >= 0) & (required_ids < count)]
     if required_ids.size >= budget:
-        # Preserve physical coverage even when interface-neighbour recall alone
-        # exceeds the view budget.
-        positions_req = positions_mm[required_ids]
-        features_req = features[required_ids]
-        local = _balanced_indices(
-            positions_req,
-            features_req,
-            budget,
-            rng,
-            radial_bins=radial_bins,
-            azimuth_bins=azimuth_bins,
-            elevation_bins=elevation_bins,
-        )
-        return np.sort(required_ids[local])
+        # Required physical neighbours are never discarded to meet a seed
+        # budget. Resource ceilings are checked by the graph builders.
+        return np.sort(required_ids)
 
     radius = np.linalg.norm(positions_mm, axis=1)
     unit = positions_mm / np.maximum(radius[:, None], 1e-6)
@@ -284,42 +275,24 @@ def _select_context(
     selected = _balanced_indices(
         position,
         features,
-        min(budget, max(int(required.size), budget // 2)),
+        budget,
         rng,
         radial_bins=int(config.context_radial_bins),
         azimuth_bins=int(config.context_azimuth_bins),
         elevation_bins=int(config.context_elevation_bins),
         required=required,
     )
-    for _ in range(max(0, int(config.sample_hops))):
+    hops = int(config.sample_hops)
+    if hops < 0:
+        raise ValueError("sample_hops must be non-negative")
+    for _ in range(hops):
         expanded = _radius_neighbor_ids(
             position,
             position[selected],
             float(config.sample_hop_radius_mm),
         )
-        union = np.union1d(selected, expanded).astype(np.int64, copy=False)
-        selected = _balanced_indices(
-            position,
-            features,
-            budget,
-            rng,
-            radial_bins=int(config.context_radial_bins),
-            azimuth_bins=int(config.context_azimuth_bins),
-            elevation_bins=int(config.context_elevation_bins),
-            required=union,
-        )
-        if selected.size >= budget:
-            break
-    return _balanced_indices(
-        position,
-        features,
-        budget,
-        rng,
-        radial_bins=int(config.context_radial_bins),
-        azimuth_bins=int(config.context_azimuth_bins),
-        elevation_bins=int(config.context_elevation_bins),
-        required=selected,
-    )
+        selected = np.union1d(selected, expanded).astype(np.int64, copy=False)
+    return selected
 
 
 def _edge_radius(edge_type: tuple[str, str, str], config: GraphBuildConfig) -> float:
@@ -445,6 +418,12 @@ def build_local_view(
 
     if source_local.get("format") != "canonical-full-v22" or target_local.get("format") != "canonical-full-v22":
         raise ValueError("Sampled views require canonical-full-v22 cache payloads")
+    for branch, payload in (("source", source_local), ("target", target_local)):
+        if payload.get("geometry_contract") != LEVEL0_GEOMETRY_CONTRACT:
+            raise ValueError(
+                f"{branch} local cache has an incompatible geometry contract; "
+                "rebuild the complete cache in a new work directory"
+            )
 
     selected: dict[str, np.ndarray] = {
         "tumor_surface": np.arange(

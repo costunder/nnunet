@@ -1,0 +1,26 @@
+{
+  "format": "onlinecp_segmentation_feedback_v1",
+  "experiment_id": "conditioned_context_actual_nnunet_feedback_v1",
+  "num_epochs": 250,
+  "candidate_count": 128,
+  "cp_probability": 0.5,
+  "quality_gate": {"score_floor": null, "max_score_drop": 2.0, "minimum_choices": 2},
+  "difficulty": {
+    "statistic": "ema",
+    "ema_alpha": 0.25,
+    "minimum_observations": 1,
+    "stale_after_epochs": 25,
+    "measurement_definition": "onlinecp_surviving_lesion_feedback_v1"
+  },
+  "metrics": {"foreground_ce": 1.0, "boundary_error": 1.0, "adjacent_fp": 1.0},
+  "mixture": {"exploration_weight": 0.2, "easy_retention_weight": 0.2, "easy_quantile": 0.3333333333333333},
+  "predictions": {"mode": "optional", "maximum_age_epochs": 1},
+  "stages": [
+    {"name": "easy", "start_epoch": 0, "end_epoch": 50, "target_quantile": [0.0, 0.3333333333333333]},
+    {"name": "easy_medium", "start_epoch": 50, "end_epoch": 100, "target_quantile": [0.1666666666666667, 0.5]},
+    {"name": "medium", "start_epoch": 100, "end_epoch": 150, "target_quantile": [0.3333333333333333, 0.6666666666666666]},
+    {"name": "medium_hard", "start_epoch": 150, "end_epoch": 200, "target_quantile": [0.5, 0.8333333333333333]},
+    {"name": "hard", "start_epoch": 200, "end_epoch": 250, "target_quantile": [0.6666666666666666, 1.0]}
+  ],
+  "design_notes": "Unvalidated research hypotheses: equal weights combine normalized foreground CE, boundary error and adjacent false-positive probability. EMA alpha 0.25 and age 25 epochs favor recent actual measurements; 20% exploration and 20% easy retention preserve coverage and easy examples. The remaining 60% follows measured/predicted error quantiles across five 50-epoch stages. Fixed compatibility-score gap 2.0 is a separate train-only quality gate, not a difficulty label or medical validity guarantee. Predictions are optional to this standalone policy but the Full trainer separately requires an independently trained feedback GNN configuration; absent or stale estimates remain explicit exploration. Tune only on training-side evidence before held-out evaluation."
+}

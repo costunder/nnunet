@@ -629,6 +629,18 @@ def _measurement_candidates(
     return candidates
 
 
+def _physical_batch_candidates(training: dict[str, Any], sample_count: int) -> list[int]:
+    if training.get("batch_size_candidates") != "powers_of_two_to_cohort":
+        return _measurement_candidates(training, "batch_size_candidates", minimum=1)
+    if sample_count < 2:
+        raise ValueError("Physical-batch calibration needs at least two real training samples")
+    candidates = [1]
+    while candidates[-1] * 2 < sample_count:
+        candidates.append(candidates[-1] * 2)
+    candidates.append(sample_count)
+    return candidates
+
+
 def _calibration_resource_fingerprint(
     resource_report: dict[str, Any],
     *,
@@ -725,7 +737,10 @@ def _measure_batch_candidates(
     optimizer_kwargs: dict[str, float],
     fused_optimizer: bool,
     trainable_parameters: list[Any],
+    curriculum_config,
+    consistency_weight: float,
 ) -> tuple[int, list[dict[str, Any]]]:
+    from hiercp.loss import curriculum_ranking_loss
     from hiercp.tensor import (
         capture_rng_state,
         cuda_memory_snapshot,
@@ -773,6 +788,7 @@ def _measure_batch_candidates(
             trial_error: BaseException | None = None
             trial_diagnostics: dict[str, Any] | None = None
             for _ in range(repeats):
+                restore_rng_state(rng_state)
                 batch = None
                 output = None
                 loss = None
@@ -795,9 +811,20 @@ def _measure_batch_candidates(
                         device_type=device.type, enabled=use_amp
                     ):
                         output = model(batch)
-                        score_terms = [score.mean() for score in output.scores]
-                        loss = torch_module.stack(score_terms).mean() + output.consistency
+                        ranking, _ = curriculum_ranking_loss(
+                            output.scores, batch.difficulty_list(),
+                            epoch=max(curriculum_config.model_mine_start_epoch,
+                                      curriculum_config.intra_epochs + 1),
+                            config=curriculum_config,
+                        )
+                        loss = ranking + consistency_weight * output.consistency
+                    if not bool(torch_module.isfinite(loss)):
+                        raise FloatingPointError("Non-finite actual ranking loss during batch calibration")
                     loss.backward()
+                    finite = [torch_module.isfinite(p.grad).all() for p in trainable_parameters
+                              if p.grad is not None]
+                    if not finite or not bool(torch_module.stack(finite).all()):
+                        raise FloatingPointError("Non-finite or absent gradients during batch calibration")
                     calibration_optimizer_kwargs = dict(optimizer_kwargs)
                     calibration_optimizer_kwargs["lr"] = 0.0
                     calibration_optimizer, calibration_fused = _create_adamw(
@@ -827,6 +854,8 @@ def _measure_batch_candidates(
                 finally:
                     model.zero_grad(set_to_none=True)
                     del calibration_optimizer, loss, output, batch
+                    if "ranking" in locals():
+                        del ranking
                     gc.collect()
                     if device.type == "cuda":
                         torch_module.cuda.empty_cache()
@@ -1194,6 +1223,11 @@ def run_train(args: argparse.Namespace) -> None:
         "prototype_fingerprint": expected_fingerprint,
         "graph_config": expected_graph_config,
         "model_kwargs": model_kwargs,
+        "cache_publication": {
+            "config_sha256": _sha256_file(Path(args.cache_dir) / "config.json"),
+            "index_sha256": _sha256_file(Path(args.cache_dir) / "index.json"),
+            "complete_sha256": _sha256_file(Path(args.cache_dir) / "complete.json"),
+        },
         "optimizer": {
             **optimizer_kwargs,
             "fused": fused_optimizer,
@@ -1254,9 +1288,7 @@ def run_train(args: argparse.Namespace) -> None:
             preflight_calibration = resumed_calibration
             calibration_reused = True
         else:
-            batch_candidates = _measurement_candidates(
-                training, "batch_size_candidates", minimum=1
-            )
+            batch_candidates = _physical_batch_candidates(training, len(train_files))
             if accumulation_auto:
                 if target_effective_batch_size is None:
                     raise RuntimeError(
@@ -1313,6 +1345,8 @@ def run_train(args: argparse.Namespace) -> None:
                 optimizer_kwargs=optimizer_kwargs,
                 fused_optimizer=fused_optimizer,
                 trainable_parameters=trainable_parameters,
+                curriculum_config=curriculum,
+                consistency_weight=float(training["consistency_weight"]),
             )
             preflight_calibration["batch_trials"] = trials
             preflight_calibration["selected_batch_size"] = batch_size
@@ -1528,6 +1562,9 @@ def run_train(args: argparse.Namespace) -> None:
     }
     static_checkpoint_metadata = {
         "method": CHECKPOINT_METHOD,
+        "architecture_version": model.architecture_version,
+        "geometry_contract": expected_graph_config["geometry_contract"],
+        "cache_publication": dict(calibration_identity["cache_publication"]),
         "framework": "torch_geometric",
         "upper_feature_policy": UPPER_FEATURE_POLICY,
         "model_kwargs": model_kwargs,

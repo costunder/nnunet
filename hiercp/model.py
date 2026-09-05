@@ -2,7 +2,8 @@
 
 Regular-grid CT encoding uses a compact 3D CNN. Every graph message-passing
 operation uses PyTorch Geometric ``HeteroConv`` with relation-specific
-``GATv2Conv`` layers; there is no hand-written scatter/index-add GNN path.
+compatibility-gated ``GATv2Conv`` layers. PyG still owns propagation and
+neighbor softmax; there is no hand-written scatter/index-add GNN path.
 
 The high-throughput path consumes a :class:`hiercp.data.HierarchicalBatch`
 that is assembled in DataLoader workers. This avoids rebuilding and copying
@@ -24,6 +25,7 @@ from torch.utils.checkpoint import checkpoint
 try:
     from torch_geometric.data import Batch
     from torch_geometric.nn import AttentionalAggregation, GATv2Conv, HeteroConv
+    from torch_geometric.utils import softmax as pyg_softmax
 except ModuleNotFoundError as exc:  # pragma: no cover
     raise ModuleNotFoundError(
         "PyTorch Geometric is required. Run: python -m tools.install"
@@ -69,6 +71,8 @@ ABLATION_MODES: tuple[str, ...] = (
     "no_patient",
     "no_population",
 )
+
+MODEL_ARCHITECTURE_VERSION = "hiercp_conditioned_readout_v3"
 
 _LOCAL_EMBEDDING_KEYS: tuple[str, ...] = (
     "tumor",
@@ -190,6 +194,37 @@ class PatchFeatureEncoder3D(nn.Module):
         return self.down2(self.down1(self.stem(x)))
 
 
+class CompatibilityGatedGATv2Conv(GATv2Conv):
+    """GATv2 neighbor attention times a source/destination/edge compatibility gate.
+
+    Ordinary relation-wise softmax is identically one for degree-one relations,
+    making their attention logits unidentifiable. Multiplying by sigmoid(logit)
+    preserves neighbor competition while learning whether even a sole neighbor
+    is compatible. No edges, relations, heads, or propagation layers are removed.
+    This is an explicit v3 operator change, not stock GATv2 checkpoint behavior.
+
+    The hook follows PyG's GATv2 ``edge_update`` interface; projections and
+    message propagation remain inherited from GATv2Conv.
+    """
+
+    def edge_update(
+        self, x_j: Tensor, x_i: Tensor, edge_attr: Tensor | None,
+        index: Tensor, ptr: Tensor | None, dim_size: int | None,
+    ) -> Tensor:
+        joint = x_i.float() + x_j.float()
+        if edge_attr is not None:
+            if self.lin_edge is None:
+                raise ValueError("Edge attributes supplied to a relation without edge_dim")
+            edge_features = edge_attr[:, None] if edge_attr.ndim == 1 else edge_attr
+            projected = self.lin_edge(edge_features)
+            joint = joint + projected.reshape(-1, self.heads, self.out_channels).float()
+        logits = (F.leaky_relu(joint, self.negative_slope) * self.att.float()).sum(-1)
+        neighbor_attention = pyg_softmax(logits, index, ptr, dim_size)
+        compatibility = torch.sigmoid(logits)
+        attention = neighbor_attention * compatibility
+        return F.dropout(attention, p=self.dropout, training=self.training).to(x_j.dtype)
+
+
 class HeteroGATv2Block(nn.Module):
     """Residual heterogeneous message passing implemented entirely by PyG."""
 
@@ -210,7 +245,7 @@ class HeteroGATv2Block(nn.Module):
         self.edge_types = tuple(edge_types)
         self.conv = HeteroConv(
             {
-                edge_type: GATv2Conv(
+                edge_type: CompatibilityGatedGATv2Conv(
                     (dim, dim),
                     dim // heads,
                     heads=heads,
@@ -371,7 +406,7 @@ class LocalTumorContextPyGEncoder(nn.Module):
             gate_nn=nn.Sequential(
                 nn.Linear(dim, max(1, dim // 2)),
                 nn.Tanh(),
-                nn.Linear(max(1, dim // 2), 1),
+                nn.Linear(max(1, dim // 2), 1, bias=False),
             )
         )
 
@@ -441,6 +476,7 @@ class LocalTumorContextPyGEncoder(nn.Module):
         x: Tensor,
         raw_x: Tensor,
         batch_index: Tensor,
+        graph_count: int,
     ) -> tuple[Tensor, list[Tensor]]:
         """Pool each physical shell without requiring fixed shell counts.
 
@@ -456,19 +492,13 @@ class LocalTumorContextPyGEncoder(nn.Module):
         )
         if batch_index.numel() == 0:
             raise RuntimeError(f"{node_type} contains no nodes")
-        graph_count = int(batch_index.max().item()) + 1
         shell_pooled: list[Tensor] = []
         for index in range(CONTEXT_SHELL_COUNT):
             mask = shell_id == index
             counts = torch.bincount(batch_index[mask], minlength=graph_count)
-            if bool(mask.any()):
-                pooled = self.context_shell_pool[f"{node_type}_c{index}"](
-                    x[mask],
-                    index=batch_index[mask],
-                    dim_size=graph_count,
-                )
-            else:
-                pooled = x.new_zeros((graph_count, self.hidden_dim))
+            pooled = self.context_shell_pool[f"{node_type}_c{index}"](
+                x[mask], index=batch_index[mask], dim_size=graph_count,
+            )
             empty = self.empty_context_shell[f"{node_type}_c{index}"].to(
                 dtype=pooled.dtype
             )
@@ -572,12 +602,14 @@ class LocalTumorContextPyGEncoder(nn.Module):
             x_dict["source_context"],
             batch["source_context"].x,
             batch["source_context"].batch,
+            int(source_map.shape[0]),
         )
         target_context_core, target_shells = self._pool_context_shells(
             "target_context",
             x_dict["target_context"],
             batch["target_context"].x,
             batch["target_context"].batch,
+            int(target_map.shape[0]),
         )
         tumor = self.tumor_fuse(
             self._pair(pooled["tumor_surface"], pooled["tumor_interior"])
@@ -639,15 +671,18 @@ class PatientRegionPyGEncoder(nn.Module):
         heads: int,
         layers: int,
         dropout: float,
+        use_local: bool = True,
     ) -> None:
         super().__init__()
+        self.use_local = bool(use_local)
+        local_input_dim = hidden_dim * 3 if self.use_local else 0
         self.tumor_project = nn.Sequential(
-            nn.Linear(hidden_dim * 3 + UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(local_input_dim + UPPER_RAW_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
         self.candidate_project = nn.Sequential(
-            nn.Linear(hidden_dim * 3 + UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(local_input_dim + UPPER_RAW_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
@@ -700,29 +735,20 @@ class PatientRegionPyGEncoder(nn.Module):
         )
         tumor_raw = _mask_upper_shortcuts(raw_batch["tumor"].raw_x)
         candidate_raw = _mask_upper_shortcuts(raw_batch["candidate"].raw_x)
+        tumor_input = tumor_raw
+        candidate_input = candidate_raw
+        if self.use_local:
+            tumor_input = torch.cat(
+                [local["tumor"][start_index], local["source_context"][start_index],
+                 local["source_relation"][start_index], tumor_raw], dim=-1,
+            )
+            candidate_input = torch.cat(
+                [local["fused"], local["target_context"], local["target_relation"],
+                 candidate_raw], dim=-1,
+            )
         x_dict: dict[str, Tensor] = {
-            "tumor": self.tumor_project(
-                torch.cat(
-                    [
-                        local["tumor"][start_index],
-                        local["source_context"][start_index],
-                        local["source_relation"][start_index],
-                        tumor_raw,
-                    ],
-                    dim=-1,
-                )
-            ),
-            "candidate": self.candidate_project(
-                torch.cat(
-                    [
-                        local["fused"],
-                        local["target_context"],
-                        local["target_relation"],
-                        candidate_raw,
-                    ],
-                    dim=-1,
-                )
-            ),
+            "tumor": self.tumor_project(tumor_input),
+            "candidate": self.candidate_project(candidate_input),
             "region": self.region_project(raw_batch["region"].raw_x),
             "lesion": self.lesion_project(raw_batch["lesion"].raw_x),
             "liver": self.liver_project(raw_batch["liver"].raw_x),
@@ -746,15 +772,18 @@ class PrototypePyGEncoder(nn.Module):
         heads: int,
         layers: int,
         dropout: float,
+        use_patient: bool = True,
     ) -> None:
         super().__init__()
+        self.use_patient = bool(use_patient)
+        patient_input_dim = hidden_dim if self.use_patient else 0
         self.candidate_bridge = nn.Sequential(
-            nn.Linear(hidden_dim + UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(patient_input_dim + UPPER_RAW_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
         self.region_bridge = nn.Sequential(
-            nn.Linear(hidden_dim + REGION_FEATURE_DIM, hidden_dim),
+            nn.Linear(patient_input_dim + REGION_FEATURE_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
@@ -782,19 +811,14 @@ class PrototypePyGEncoder(nn.Module):
         raw_batch: Batch,
         patient_x: dict[str, Tensor],
     ) -> dict[str, Tensor]:
+        candidate_input = _mask_upper_shortcuts(raw_batch["candidate"].raw_x)
+        region_input = raw_batch["region"].raw_x
+        if self.use_patient:
+            candidate_input = torch.cat([patient_x["candidate"], candidate_input], dim=-1)
+            region_input = torch.cat([patient_x["region"], region_input], dim=-1)
         x_dict: dict[str, Tensor] = {
-            "candidate": self.candidate_bridge(
-                torch.cat(
-                    [
-                        patient_x["candidate"],
-                        _mask_upper_shortcuts(raw_batch["candidate"].raw_x),
-                    ],
-                    dim=-1,
-                )
-            ),
-            "region": self.region_bridge(
-                torch.cat([patient_x["region"], raw_batch["region"].raw_x], dim=-1)
-            ),
+            "candidate": self.candidate_bridge(candidate_input),
+            "region": self.region_bridge(region_input),
             "prototype": self.prototype_project(raw_batch["prototype"].raw_x),
         }
         edge_attr_dict = {
@@ -806,8 +830,142 @@ class PrototypePyGEncoder(nn.Module):
         return x_dict
 
 
+class CandidateContextReadout(nn.Module):
+    """Candidate-conditioned readout over complete, patient-isolated node sets.
+
+    The mask is the disjoint-union graph ownership relation, not a node cap.
+    All candidates execute one matrix attention operation. In particular an
+    empty lesion set contributes no fabricated node: region/liver nodes still
+    provide the real patient context. Keys have no bias because a shared key
+    bias cancels identically in softmax and is not an identifiable parameter.
+    """
+
+    def __init__(self, query_dim: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.query = nn.Sequential(
+            nn.Linear(query_dim, hidden_dim), nn.LayerNorm(hidden_dim), nn.SiLU(),
+        )
+        self.key = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.value = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.scale = hidden_dim ** -0.5
+
+    def forward(
+        self, query_features: Tensor, context: Tensor,
+        candidate_batch: Tensor, context_batch: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        if context.ndim != 2 or context.shape[0] < 1:
+            raise ValueError("Context readout requires real region/liver or prototype nodes")
+        query = self.query(query_features)
+        key, value = self.key(context), self.value(context)
+        same_patient = candidate_batch[:, None] == context_batch[None, :]
+        logits = (query.float() @ key.float().transpose(0, 1)) * self.scale
+        weights = logits.masked_fill(~same_patient, -torch.inf).softmax(dim=-1)
+        attended = weights.to(value.dtype) @ value
+        # The interaction is a tumor/context compatibility feature, not an
+        # auxiliary loss or a constant path included just to manufacture grads.
+        return attended, query * attended
+
+
+class FeedbackDifficultyModel(nn.Module):
+    """Opt-in independent full hierarchy for observed segmentation difficulty.
+
+    The quality model/checkpoint is not changed. Its complete encoder and
+    readout widths are copied, and its ranking output is replaced (not kept
+    as an unused trainable head) by an identifiable difficulty logit. A bias
+    is meaningful here because absolute error, unlike rank, is supervised.
+    """
+
+    architecture_version = "hiercp_observed_difficulty_v1"
+
+    def __init__(self, quality_model: "HierarchicalPyGPlacementModel") -> None:
+        super().__init__()
+        import copy
+
+        if quality_model.ablation_mode != "full":
+            raise ValueError("Segmentation feedback requires the complete L0/L1/L2 quality architecture")
+        self.hierarchy = copy.deepcopy(quality_model)
+        previous = self.hierarchy.score_head[-1]
+        if not isinstance(previous, nn.Linear) or previous.out_features != 1:
+            raise ValueError("Unsupported quality readout contract")
+        self.hierarchy.score_head[-1] = nn.Linear(
+            previous.in_features, 1, bias=True,
+            device=previous.weight.device, dtype=previous.weight.dtype,
+        )
+        self.requires_grad_(True)
+
+    def forward(self, payload: Any, *, local_chunk_size: int | None = None) -> list[Tensor]:
+        if local_chunk_size is not None:
+            return self._training_chunked(payload, local_chunk_size)
+        return self.hierarchy(payload).scores
+
+    def _training_chunked(self, payload: Any, chunk_size: int) -> list[Tensor]:
+        """Differentiable full-pool streaming, with complete L1/L2 interactions.
+
+        Non-reentrant checkpointing retains CPU graph/patch inputs per local
+        chunk, not every chunk's CUDA GAT activations. The shared source CNN
+        and all seven GNN blocks receive the actual observed-difficulty loss.
+        This method is opt-in and does not change quality-model forward/state.
+        """
+        from torch.utils.checkpoint import checkpoint
+
+        if not self.training or not torch.is_grad_enabled():
+            raise RuntimeError("Difficulty training chunks require train mode and enabled gradients")
+        if type(chunk_size) is not int or chunk_size < 1:
+            raise ValueError("Difficulty local chunk size must be an explicit positive integer")
+        model = self.hierarchy
+        batch = model._coerce_batch(payload)
+        counts = tuple(batch.counts)
+        total = sum(counts)
+        if not counts or any(value < 1 for value in counts) or batch.source_patches.device.type != "cpu":
+            raise ValueError("Difficulty chunks require a nonempty, CPU-collated complete hierarchy")
+        first = batch.local_batch.to_data_list()
+        second = batch.local_batch_view2.to_data_list() if batch.local_batch_view2 is not None else None
+        if (len(first) != total or (second is not None and len(second) != total)
+                or batch.target_patches.shape[0] != total or batch.source_patches.shape[0] != len(counts)):
+            raise ValueError("Difficulty chunk source/candidate cardinality is not aligned")
+        device = next(self.parameters()).device
+        source = model.local_encoder._encode_dense(batch.source_patches.to(device))
+        owner = torch.repeat_interleave(torch.arange(len(counts), device=device),
+                                        torch.tensor(counts, device=device))
+        parts: dict[str, list[Tensor]] = {}
+        for start in range(0, total, chunk_size):
+            stop = min(start + chunk_size, total)
+            first_cpu = first[start:stop]
+            second_cpu = second[start:stop] if second is not None else None
+
+            def encode_chunk(source_features, target_cpu, source_owner,
+                             graph_first=first_cpu, graph_second=second_cpu):
+                source_map = source_features.index_select(0, source_owner)
+                target_map = model.local_encoder._encode_dense(target_cpu.to(device))
+                local_first = model.local_encoder.forward_graph(
+                    Batch.from_data_list(graph_first).to(device), source_map, target_map,
+                )
+                if graph_second is None:
+                    return local_first
+                local_second = model.local_encoder.forward_graph(
+                    Batch.from_data_list(graph_second).to(device), source_map, target_map,
+                )
+                return model._mean_embeddings(local_first, local_second)
+
+            merged = checkpoint(encode_chunk, source, batch.target_patches[start:stop], owner[start:stop],
+                                use_reentrant=False, preserve_rng_state=True)
+            for key, value in merged.items():
+                parts.setdefault(key, []).append(value)
+        embeddings = {key: torch.cat(values) for key, values in parts.items()}
+        batch.patient_batch = batch.patient_batch.to(device)
+        batch.prototype_batch = batch.prototype_batch.to(device)
+        return model._score_full(batch, embeddings)
+
+    def predict_logits(self, payload: Any, *, local_chunk_size: int) -> list[Tensor]:
+        return self.hierarchy.score_inference_chunked(
+            payload, local_chunk_size=local_chunk_size,
+        )
+
+
 class HierarchicalPyGPlacementModel(nn.Module):
     """Dense CT/SDF encoder + local PyG + patient PyG + prototype PyG."""
+
+    architecture_version = MODEL_ARCHITECTURE_VERSION
 
     def __init__(
         self,
@@ -831,6 +989,7 @@ class HierarchicalPyGPlacementModel(nn.Module):
             raise ValueError("hidden_dim must be divisible by heads")
         self.hidden_dim = int(hidden_dim)
         self.ablation_mode = _normalize_ablation_mode(ablation_mode)
+        self.register_buffer("_architecture_revision", torch.tensor(3, dtype=torch.int64))
         self.local_encoder = LocalTumorContextPyGEncoder(
             hidden_dim=hidden_dim,
             heads=heads,
@@ -848,18 +1007,32 @@ class HierarchicalPyGPlacementModel(nn.Module):
             heads=heads,
             layers=patient_layers,
             dropout=dropout,
+            use_local=self.ablation_mode != "no_local",
         )
         self.prototype_encoder = PrototypePyGEncoder(
             hidden_dim=hidden_dim,
             heads=heads,
             layers=prototype_layers,
             dropout=dropout,
+            use_patient=self.ablation_mode != "no_patient",
+        )
+        self.patient_readout = (
+            CandidateContextReadout(hidden_dim * 2, hidden_dim)
+            if self.ablation_mode != "no_patient" else None
+        )
+        population_query_blocks = (
+            1 + (3 if self.ablation_mode != "no_local" else 0)
+            + (2 if self.ablation_mode != "no_patient" else 0)
+        )
+        self.population_readout = (
+            CandidateContextReadout(hidden_dim * population_query_blocks, hidden_dim)
+            if self.ablation_mode != "no_population" else None
         )
         active_hidden_blocks = {
-            "full": 9,
-            "no_local": 4,
-            "no_patient": 7,
-            "no_population": 7,
+            "full": 12,
+            "no_local": 7,
+            "no_patient": 9,
+            "no_population": 8,
         }[self.ablation_mode]
         self.score_input_dim = hidden_dim * active_hidden_blocks + UPPER_RAW_DIM
         self.score_head = nn.Sequential(
@@ -870,7 +1043,9 @@ class HierarchicalPyGPlacementModel(nn.Module):
             nn.Linear(hidden_dim * 4, hidden_dim * 2),
             nn.SiLU(inplace=True),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim * 2, 1),
+            # A candidate-independent final bias is unidentifiable under every
+            # ranking/consistency objective; do not train a dead score offset.
+            nn.Linear(hidden_dim * 2, 1, bias=False),
         )
         disabled_encoder = {
             "no_local": self.local_encoder,
@@ -879,6 +1054,17 @@ class HierarchicalPyGPlacementModel(nn.Module):
         }.get(self.ablation_mode)
         if disabled_encoder is not None:
             disabled_encoder.requires_grad_(False)
+
+    def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
+        revision = state_dict.get("_architecture_revision")
+        if (not isinstance(revision, Tensor) or revision.numel() != 1
+                or int(revision.detach().cpu()) != 3):
+            raise RuntimeError(
+                f"Checkpoint architecture is not {MODEL_ARCHITECTURE_VERSION}; "
+                "legacy weights cannot be partially loaded into conditioned readouts. "
+                "Use a separately named experiment and train the new architecture."
+            )
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
 
     def trainable_parameters(self):
         """Iterate only parameters that can receive optimizer updates."""
@@ -946,58 +1132,7 @@ class HierarchicalPyGPlacementModel(nn.Module):
         self, batch: Any, local_embeddings: dict[str, Tensor]
     ) -> list[Tensor]:
         """Run the patient/prototype hierarchy from complete local embeddings."""
-
-        device = next(self.parameters()).device
-        patient_x = self.patient_encoder.forward_raw(
-            batch.patient_batch,
-            local_embeddings,
-            batch.counts,
-        )
-        prototype_x = self.prototype_encoder.forward_raw(
-            batch.prototype_batch,
-            patient_x,
-        )
-
-        candidate_patient = patient_x["candidate"]
-        candidate_sample = batch.patient_batch["candidate"].batch
-        tumor_for_candidate = patient_x["tumor"][candidate_sample]
-        candidate_prototype = prototype_x["candidate"]
-
-        membership = batch.prototype_batch[
-            ("candidate", "belongs_to", "region")
-        ].edge_index
-        candidate_region = torch.empty(
-            int(candidate_patient.shape[0]),
-            dtype=torch.long,
-            device=device,
-        )
-        candidate_region[membership[0]] = membership[1]
-        region_for_candidate = prototype_x["region"][candidate_region]
-        raw_candidate = _mask_upper_shortcuts(
-            batch.patient_batch["candidate"].raw_x
-        )
-
-        pair = torch.cat(
-            [
-                candidate_patient,
-                tumor_for_candidate,
-                candidate_prototype,
-                region_for_candidate,
-                local_embeddings["fused"],
-                local_embeddings["source_relation"],
-                local_embeddings["target_relation"],
-                torch.abs(
-                    local_embeddings["source_relation"]
-                    - local_embeddings["target_relation"]
-                ),
-                local_embeddings["source_relation"]
-                * local_embeddings["target_relation"],
-                raw_candidate,
-            ],
-            dim=-1,
-        )
-        flat_scores = self.score_head(pair).squeeze(-1)
-        return list(torch.split(flat_scores, batch.counts, dim=0))
+        return self._score_active(batch, local_embeddings)
 
     def _zero_local_embeddings(self, raw_candidate: Tensor) -> dict[str, Tensor]:
         zero = raw_candidate.new_zeros(
@@ -1030,32 +1165,20 @@ class HierarchicalPyGPlacementModel(nn.Module):
         candidate_region[membership[0]] = membership[1]
         return candidate_prototype, prototype_x["region"][candidate_region]
 
-    def _score_ablation(
+    def _score_active(
         self,
         batch: Any,
         local_embeddings: dict[str, Tensor] | None,
     ) -> list[Tensor]:
-        """Run a one-factor, leave-one-level-out ablation of full M3.
+        """Use only active levels, including their complete final node states.
 
-        Each mode removes exactly one hierarchy level while retaining the other
-        two levels. The score head receives only active feature blocks, so it
-        has no permanently zero trainable input columns:
-
-        - ``no_local``: Level 0 slots and Level-0 inputs to Level 1 are zeros;
-          Levels 1 and 2 remain active from their raw graph features.
-        - ``no_patient``: Level 1 slots and Level-1 inputs to Level 2 are zeros;
-          Levels 0 and 2 remain active.
-        - ``no_population``: Level 2 slots are zeros; Levels 0 and 1 remain active.
-
-        Disabled encoders are not executed or trained. Exact zero tensors are
-        used only at an active downstream encoder's removed-level interface;
-        those tensors are never concatenated into the ablation score input.
+        Removed-level interfaces do not allocate trainable input columns. L1
+        reads final region/lesion/liver context; L2 retrieves final population
+        states with a tumor-conditioned query. The zero dictionaries below are
+        shape-only compatibility carriers, never learned projection inputs.
         """
 
         mode = self.ablation_mode
-        if mode == "full":
-            raise RuntimeError("_score_ablation was called for full mode")
-
         raw_candidate = _mask_upper_shortcuts(
             batch.patient_batch["candidate"].raw_x
         )
@@ -1075,6 +1198,17 @@ class HierarchicalPyGPlacementModel(nn.Module):
             candidate_patient = patient_x["candidate"]
             candidate_sample = batch.patient_batch["candidate"].batch
             tumor_for_candidate = patient_x["tumor"][candidate_sample]
+            context_types = ("region", "lesion", "liver")
+            context = torch.cat([patient_x[key] for key in context_types], dim=0)
+            context_batch = torch.cat(
+                [batch.patient_batch[key].batch for key in context_types], dim=0,
+            )
+            if self.patient_readout is None:
+                raise RuntimeError("Active patient level has no context readout")
+            patient_context, _ = self.patient_readout(
+                torch.cat([candidate_patient, tumor_for_candidate], dim=-1),
+                context, candidate_sample, context_batch,
+            )
 
         if mode != "no_population":
             prototype_x = self.prototype_encoder.forward_raw(
@@ -1084,12 +1218,40 @@ class HierarchicalPyGPlacementModel(nn.Module):
             candidate_prototype, region_for_candidate = (
                 self._prototype_for_candidates(batch, prototype_x)
             )
+            population_query_parts = [candidate_prototype]
+            if mode != "no_local":
+                population_query_parts.extend(
+                    [local_embeddings["tumor"], local_embeddings["source_context"],
+                     local_embeddings["source_relation"]]
+                )
+            if mode != "no_patient":
+                membership = batch.patient_batch[
+                    ("candidate", "belongs_to", "region")
+                ].edge_index
+                candidate_region = torch.empty(
+                    candidate_patient.shape[0], dtype=torch.long,
+                    device=candidate_patient.device,
+                )
+                candidate_region[membership[0]] = membership[1]
+                population_query_parts.extend(
+                    [tumor_for_candidate, patient_x["region"][candidate_region]]
+                )
+            if self.population_readout is None:
+                raise RuntimeError("Active population level has no conditioned readout")
+            population_context, population_compatibility = self.population_readout(
+                torch.cat(population_query_parts, dim=-1), prototype_x["prototype"],
+                batch.prototype_batch["candidate"].batch,
+                batch.prototype_batch["prototype"].batch,
+            )
 
         score_parts: list[Tensor] = []
         if mode != "no_patient":
-            score_parts.extend([candidate_patient, tumor_for_candidate])
+            score_parts.extend([candidate_patient, tumor_for_candidate, patient_context])
         if mode != "no_population":
-            score_parts.extend([candidate_prototype, region_for_candidate])
+            score_parts.extend(
+                [candidate_prototype, region_for_candidate,
+                 population_context, population_compatibility]
+            )
         if mode != "no_local":
             if local_embeddings is None:  # defensive narrowing for type checkers
                 raise RuntimeError(f"{mode} requires Level-0 embeddings")
@@ -1113,6 +1275,13 @@ class HierarchicalPyGPlacementModel(nn.Module):
             )
         flat_scores = self.score_head(pair).squeeze(-1)
         return list(torch.split(flat_scores, batch.counts, dim=0))
+
+    def _score_ablation(
+        self, batch: Any, local_embeddings: dict[str, Tensor] | None,
+    ) -> list[Tensor]:
+        if self.ablation_mode == "full":
+            raise RuntimeError("_score_ablation was called for full mode")
+        return self._score_active(batch, local_embeddings)
 
     def _score_upper(
         self,

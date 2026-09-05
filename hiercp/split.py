@@ -49,11 +49,16 @@ def save_case_split(payload: dict[str, object], path: str | Path) -> None:
 
 
 def load_case_split(path: str | Path) -> dict[str, object]:
+    from hiercp.contracts import case_ids
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if payload.get("format") != SPLIT_FORMAT:
         raise ValueError(f"Unsupported split format: {payload.get('format')}")
-    train = [str(value) for value in payload.get("train", [])]
-    val = [str(value) for value in payload.get("val", [])]
+    train = case_ids(payload.get("train"), "GNN training")
+    val = case_ids(payload.get("val"), "GNN validation", allow_empty=True)
+    if "outer_validation_excluded" in payload:
+        excluded = case_ids(payload["outer_validation_excluded"], "outer validation")
+        if (set(train) | set(val)) & set(excluded):
+            raise ValueError("Outer validation/test patient occurs in GNN train/validation")
     if not train:
         raise ValueError("Split contains no training cases")
     if set(train) & set(val):

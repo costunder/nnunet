@@ -113,7 +113,11 @@ class PendingBankScorer:
 
     def _infer(self, samples: Sequence[Any]) -> list[np.ndarray]:
         case_ids = tuple(str(sample["case_id"]) for sample in samples)
-        counts = tuple(len(sample["local_graphs"]) for sample in samples)
+        # Bank builders submit canonical samples; collate materializes their
+        # inference views in place below. Validate counts before that operation
+        # without requiring a field that only exists after materialization.
+        counts = tuple(len(sample["local_graphs"] if "local_graphs" in sample
+                           else sample["target_locals"]) for sample in samples)
         if any(not value.strip() for value in case_ids) or any(count != self.candidate_count for count in counts):
             raise ValueError("Bank scoring input has an invalid case identity or candidate count")
         batch = self.collate(list(samples))

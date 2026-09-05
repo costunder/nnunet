@@ -30,6 +30,7 @@
     "prototype_temperature": 0.5,
     "max_lesions": null,
     "graph_schema_version": "full_v22",
+    "geometry_contract": "level0_physical_closure_v2",
     "adaptive_source_full_shape": true,
     "adaptive_roi_margin_mm": 30.0,
     "adaptive_roi_max_radius_mm": 64.0,
@@ -80,10 +81,7 @@
     "val_fraction": 0.2,
     "epochs": 40,
     "batch_size": "auto",
-    "batch_size_candidates": [
-      1,
-      2
-    ],
+    "batch_size_candidates": "powers_of_two_to_cohort",
     "batch_calibration_repeats": 3,
     "batch_calibration_max_vram_fraction": 0.9,
     "num_workers": "auto",
@@ -111,8 +109,8 @@
     "consistency_weight": 0.1,
     "fixed_validation_epoch": 29,
     "checkpoint_metric_precision": 8,
-    "gradient_accumulation_steps": "auto",
-    "target_effective_batch_size": 2,
+    "gradient_accumulation_steps": 1,
+    "target_effective_batch_size": null,
     "fused_optimizer": true,
     "pin_memory": true,
     "prefetch_factor": 1,
@@ -141,7 +139,10 @@
     "scoring_batch_size": "auto",
     "scoring_batch_size_candidates": [
       1,
-      2
+      2,
+      4,
+      8,
+      16
     ],
     "scoring_batch_calibration_repeats": 3,
     "scoring_batch_max_vram_fraction": 0.9,

@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 import numpy as np
-from scipy import ndimage as ndi
 import torch
 
 try:
@@ -35,6 +34,7 @@ from hiercp.schema import (
     GraphBuildConfig,
 )
 from hiercp.spatial import (
+    LEVEL0_GEOMETRY_CONTRACT,
     build_patch_payload,
     canonical_coordinate_sets,
     cross_radius_edges,
@@ -42,6 +42,7 @@ from hiercp.spatial import (
     radius_edges,
     source_node_specifications,
     target_node_specifications,
+    transform_footprint_physical,
 )
 
 
@@ -103,27 +104,13 @@ def _require_full_graph(config: GraphBuildConfig) -> None:
 def _transform_footprint(
     footprint: np.ndarray,
     spec: CandidateSpec,
+    *,
+    spacing: Sequence[float],
+    config: GraphBuildConfig,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Apply an explicit relation corruption around the footprint centre."""
-
+    """Apply the graph's physical-mm transform about the actual paste anchor."""
     forward = spec.rotation_matrix @ np.diag(spec.scale_array)
-    if np.allclose(forward, np.eye(3), atol=1e-6):
-        return footprint.astype(bool, copy=True), forward.astype(np.float32)
-    inverse = np.linalg.inv(forward).astype(np.float64)
-    center = (np.asarray(footprint.shape, dtype=np.float64) - 1.0) * 0.5
-    offset = center - inverse @ center
-    transformed = ndi.affine_transform(
-        footprint.astype(np.float32),
-        matrix=inverse,
-        offset=offset,
-        output_shape=footprint.shape,
-        order=0,
-        mode="constant",
-        cval=0.0,
-        prefilter=False,
-    ) > 0.5
-    if not np.any(transformed):
-        return footprint.astype(bool, copy=True), np.eye(3, dtype=np.float32)
+    transformed = transform_footprint_physical(footprint, forward, spacing, config)
     return transformed, forward.astype(np.float32)
 
 
@@ -186,10 +173,10 @@ def _node_features(
     index = tuple(coordinates.T)
     center = (np.asarray(fields.ct_norm.shape, dtype=np.float32) - 1.0) * 0.5
     relative_mm = (coordinates.astype(np.float32) - center[None]) * spacing[None]
-    position = np.clip(
-        relative_mm / max(float(config.context_radius_mm), 1.0),
-        -2.0,
-        2.0,
+    # Do not saturate distant full-shape nodes: these coordinates also define
+    # edge displacements and must remain a linear physical coordinate system.
+    position = (
+        relative_mm / max(float(config.context_radius_mm), 1.0)
     ).astype(np.float32)
     if normal_source == "liver":
         normal = fields.liver_normal[index]
@@ -414,7 +401,7 @@ def build_local_graph(
         ct_clip=ct_clip,
     )
     virtual_footprint, transform = _transform_footprint(
-        prepared.source_footprint, spec
+        prepared.source_footprint, spec, spacing=case.spacing, config=config
     )
     target_fields = _patch_fields(
         case,
@@ -448,6 +435,7 @@ def build_local_graph(
     )
     source_local = {
         "format": "canonical-full-v22",
+        "geometry_contract": LEVEL0_GEOMETRY_CONTRACT,
         "nodes": prepared.canonical_nodes,
         "edges": prepared.canonical_edges,
         "footprint_voxels": int(prepared.source_footprint.sum()),
@@ -459,6 +447,7 @@ def build_local_graph(
     }
     target_local = {
         "format": "canonical-full-v22",
+        "geometry_contract": LEVEL0_GEOMETRY_CONTRACT,
         "nodes": target_nodes,
         "edges": target_edges,
         "transform": torch.from_numpy(transform.astype(np.float32)),

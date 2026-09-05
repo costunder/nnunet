@@ -326,6 +326,45 @@ def _canonical_sample():
     return sample, config
 
 
+def _identical_context_is_complete(
+    first_ids: np.ndarray, second_ids: np.ndarray, positions: np.ndarray,
+    anchors: np.ndarray, config,
+) -> bool:
+    """DEBUG proof of no free seed choice, not a blanket identical-view waiver.
+
+    Full canonical retention is always legitimate. A smaller deterministic set
+    is legitimate only when mandatory interface seeds exhaust the seed budget
+    and BOTH views equal their independently reconstructed complete hop closure.
+    If optional seed slots remain, identical partial views are still rejected.
+    """
+    from scipy.spatial import cKDTree
+
+    count = int(positions.shape[0])
+    if count == 0:
+        return False
+    first = np.sort(np.asarray(first_ids, dtype=np.int64))
+    second = np.sort(np.asarray(second_ids, dtype=np.int64))
+    all_ids = np.arange(count, dtype=np.int64)
+    if np.array_equal(first, all_ids) and np.array_equal(second, all_ids):
+        return True
+    budget = int(config.sample_context_nodes)
+    if budget <= 0 or count <= budget:
+        return False  # These contracts require full retention, checked above.
+    tree = cKDTree(positions)
+
+    def neighbors(query, radius):
+        rows = tree.query_ball_point(query, float(radius))
+        return np.unique(np.asarray([item for row in rows for item in row], dtype=np.int64))
+
+    required = neighbors(anchors, config.sample_interface_radius_mm)
+    if required.size < budget:
+        return False
+    expected = required
+    for _ in range(int(config.sample_hops)):
+        expected = np.union1d(expected, neighbors(positions[expected], config.sample_hop_radius_mm))
+    return np.array_equal(first, expected) and np.array_equal(second, expected)
+
+
 def _assert_sampled_views(sample: dict, config) -> tuple[dict, bool]:
     from hiercp.sample import _edge_radius, _induced_edge_index, materialize_sample_views
     from hiercp.schema import LOCAL_EDGE_TYPES, LOCAL_NODE_TYPES
@@ -339,6 +378,7 @@ def _assert_sampled_views(sample: dict, config) -> tuple[dict, bool]:
         raise RuntimeError("Two sampled local views were not materialised")
     changed = False
     reduced = False
+    all_contexts_complete = True
     for candidate_index, (graph_a, graph_b) in enumerate(zip(first, second)):
         source_local = sample["source_local"]
         target_local = sample["target_locals"][candidate_index]
@@ -353,6 +393,14 @@ def _assert_sampled_views(sample: dict, config) -> tuple[dict, bool]:
                 reduced |= sample_count < full_count
                 changed |= not torch.equal(
                     graph_a[node_type].full_id, graph_b[node_type].full_id
+                )
+                anchors = source_local["nodes"]["tumor_surface"]["pos_mm"].cpu().numpy()
+                if node_type == "target_context":
+                    anchors = anchors @ target_local["transform"].cpu().numpy().T
+                all_contexts_complete &= _identical_context_is_complete(
+                    graph_a[node_type].full_id.cpu().numpy(),
+                    graph_b[node_type].full_id.cpu().numpy(),
+                    all_nodes[node_type]["pos_mm"].cpu().numpy(), anchors, config,
                 )
             elif sample_count != full_count:
                 raise RuntimeError(f"Anchor type {node_type} was sampled instead of preserved")
@@ -390,10 +438,12 @@ def _assert_sampled_views(sample: dict, config) -> tuple[dict, bool]:
                 raise RuntimeError(
                     f"Radius edge violation {edge_type}: {maximum:.4f} > {radius:.4f}"
                 )
-    if not reduced:
+    if not reduced and not all_contexts_complete:
         raise RuntimeError("Synthetic canonical graph was never reduced by the view sampler")
-    if not changed:
+    if not changed and not all_contexts_complete:
         raise RuntimeError("Two stochastic graph views selected identical node sets")
+    if not changed:
+        print("[OK] Identical debug views preserve the exact mandatory seed/hop closure; no free seed choice")
     return materialized, changed
 
 

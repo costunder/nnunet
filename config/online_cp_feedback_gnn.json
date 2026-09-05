@@ -1,0 +1,19 @@
+{
+  "format": "hiercp_feedback_gnn_config_v1",
+  "enabled": true,
+  "seed": 42073,
+  "measurement_definition": "onlinecp_surviving_lesion_feedback_v1",
+  "batch_size_candidates": "powers_of_two_to_cohort",
+  "calibration_repeats": 3,
+  "max_vram_fraction": 0.90,
+  "num_workers": "inherit_measured_quality_training",
+  "prefetch_factor": 2,
+  "learning_rate": 0.0001,
+  "weight_decay": 0.0001,
+  "grad_clip": 5.0,
+  "update_passes_per_epoch": 1,
+  "prediction_every_epochs": 1,
+  "local_candidate_chunk_size": "inherit_quality_generation",
+  "amp": true,
+  "notes": "Opt-in online adaptation: each completed nnU-Net epoch contributes one full pass over all its actual train-only CP observations. This is a separate stream-learning schedule, not a shortened quality-model training run. Full checkpoint architecture, every bank entry and every candidate are retained. Physical batches are remeasured with real observation loss/backward/AdamW while nnU-Net remains allocated. Raw dataset and immutable graph cache paths must be supplied explicitly by the launcher. DataLoader worker count is inherited from measured quality training and logged; it is not a new feedback-I/O throughput calibration. No observations means no GNN predictions."
+}

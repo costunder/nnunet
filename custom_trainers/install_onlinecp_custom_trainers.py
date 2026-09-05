@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the two HierCP OnlineCP custom trainer modules into nnU-Net v2.
+"""Install legacy, rank-curriculum and difficulty-feedback trainers into nnU-Net v2.
 
 The script is intentionally portable. By default it locates the active
 ``nnunetv2`` package. Use ``--nnunet-root`` to target a source checkout, for
@@ -8,10 +8,16 @@ example on Windows::
     python install_onlinecp_custom_trainers.py apply \
       --nnunet-root C:\\path\\to\\nnunetv2
 
-The two source modules must be in the same directory as this installer:
+All source modules and curriculum helpers must be beside this installer:
 
 - nnUNetTrainer_OnlinePairedCP.py
 - nnUNetTrainer_OnlinePairedCPArgmaxV3.py
+- nnUNetTrainer_OnlineCPCurriculum.py
+- onlinecp_curriculum_policy.py
+- onlinecp_curriculum_contract.py
+- nnUNetTrainer_OnlineCPFeedback.py
+- onlinecp_feedback_policy.py
+- onlinecp_feedback_metrics.py
 """
 from __future__ import annotations
 
@@ -27,11 +33,29 @@ import time
 from pathlib import Path
 
 MODULES = {
+    "onlinecp_curriculum_policy.py": (
+        "bde202bc0060b47350724a219dfa573d946e58410d46453698bd07bb87ab6b1b"
+    ),
+    "onlinecp_curriculum_contract.py": (
+        "feb7afacb037811212df06516d3b80b701e492b55e0d06fc5fe4d6cfe2768346"
+    ),
+    "nnUNetTrainer_OnlineCPCurriculum.py": (
+        "593e35473ae3752029870360960894b091a91ca93559b18251a5e47f409d0192"
+    ),
     "nnUNetTrainer_OnlinePairedCP.py": (
         "75ed5fbb8230f9f4da241905759be0ca7613ab3b45db76396cd6f5c560c50154"
     ),
     "nnUNetTrainer_OnlinePairedCPArgmaxV3.py": (
         "0fb1b1f5e7f602fcc6be57bcf205b673d2749190ca686aa919ebd66bea8a00b2"
+    ),
+    "onlinecp_feedback_policy.py": (
+        "566357115d84fcdfc46b03706bdaa86a00c9ff9d3510cd8490268e8bc219a37c"
+    ),
+    "onlinecp_feedback_metrics.py": (
+        "fe0d94b5d98fe376c41b8bf6eb60d8c922b9b1d6f629fe88d5fa1f1ad108982c"
+    ),
+    "nnUNetTrainer_OnlineCPFeedback.py": (
+        "5cee6242284ea421d473f2174ead7464662304919c42c47e86d3c558448391c5"
     ),
 }
 TARGET_RELATIVE = Path("training") / "nnUNetTrainer"
@@ -131,6 +155,23 @@ from nnunetv2.training.nnUNetTrainer.nnUNetTrainer_OnlinePairedCPArgmaxV3 import
     _smoke_policy as smoke_v3,
     _smoke_paste as paste_v3,
 )
+from nnunetv2.training.nnUNetTrainer.nnUNetTrainer_OnlineCPCurriculum import (
+    nnUNetTrainer_250epochs_OnlineBasicCPCurriculumControl,
+    nnUNetTrainer_250epochs_OnlineHierCPCurriculum,
+    nnUNetTrainer_250epochs_OnlineHierCPNoPatientCurriculum,
+    nnUNetTrainer_250epochs_OnlineHierCPNoPopulationCurriculum,
+)
+from nnunetv2.training.nnUNetTrainer.nnUNetTrainer_OnlineCPFeedback import (
+    nnUNetTrainer_250epochs_OnlineBasicCPFeedbackControl,
+    nnUNetTrainer_250epochs_OnlineHierCPFeedback,
+)
+assert nnUNetTrainer_250epochs_OnlineBasicCPFeedbackControl.basic_control
+assert not nnUNetTrainer_250epochs_OnlineHierCPFeedback.basic_control
+assert nnUNetTrainer_250epochs_OnlineHierCPFeedback.bank_contract_filename == 'feedback_contract.json'
+assert nnUNetTrainer_250epochs_OnlineBasicCPCurriculumControl.basic_control
+assert not nnUNetTrainer_250epochs_OnlineHierCPCurriculum.basic_control
+assert nnUNetTrainer_250epochs_OnlineHierCPNoPatientCurriculum.expected_ablation_mode == 'no_patient'
+assert nnUNetTrainer_250epochs_OnlineHierCPNoPopulationCurriculum.expected_ablation_mode == 'no_population'
 assert nnUNetTrainer_250epochs_OnlineBasicCP.online_policy == "basic"
 assert nnUNetTrainer_250epochs_OnlineHierCPExactArgmax.online_policy == "hier_argmax"
 assert nnUNetTrainer_250epochs_OnlineHierCPNoPatientExactArgmax.expected_ablation_mode == "no_patient"
@@ -236,7 +277,7 @@ def apply(nnunet_root: Path, *, overwrite: bool = False) -> int:
         print("[ROLLBACK] Trainer installation rolled back", file=sys.stderr)
         raise
 
-    print("[OK] Both OnlineCP custom trainer modules installed and imported")
+    print("[OK] Legacy, rank-curriculum and difficulty-feedback trainer modules installed and imported")
     return 0
 
 
