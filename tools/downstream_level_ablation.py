@@ -10,8 +10,8 @@ missing downstream tests:
    - no_population (M3 without Level 2)
 2. rescore the *existing identical OnlineCP candidate bank* with those GNNs;
 3. train two new exact-argmax nnU-Net models on Dataset730/fold 0;
-4. verify that Basic, Full, w/o-L1 and w/o-L2 consumed identical online event,
-   source, intensity and augmentation schedules;
+4. audit recorded online event/source/intensity/augmentation schedule counts
+   and fingerprints for Basic, Full, w/o-L1 and w/o-L2;
 5. evaluate Full M3 against each one-level ablation using the quality-aware,
    patient-cluster evaluator and produce one combined report.
 
@@ -65,7 +65,10 @@ MODE_LABELS = {
 }
 BANK_FORMAT = "hiercp_online_bank_v2"
 DERIVED_BANK_VERSION = "hiercp_online_bank_level_ablation_exact_argmax_v1"
-TOOL_VERSION = "hiercp_downstream_level_ablation_v2"
+TOOL_VERSION = "hiercp_downstream_level_ablation_v3"
+SCHEDULE_AUDIT_FORMAT = "hiercp_downstream_ablation_schedule_audit_v3"
+SCHEDULE_DUPLICATE_POLICIES = ("error", "coalesce-identical")
+SCHEDULE_COUNT_SEMANTICS = "unique_epoch_schedules_not_optimizer_steps"
 
 
 class DownstreamAblationError(RuntimeError):
@@ -169,7 +172,8 @@ def _publish_report_json(path: Path, payload: Any) -> None:
     _publish_report_text(path, json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n")
 
 
-def _reserve_evaluation_output(run: RuntimeLayout) -> None:
+def _reserve_evaluation_output(run: RuntimeLayout, *, duplicate_policy: str = "error") -> None:
+    _validate_schedule_duplicate_policy(duplicate_policy)
     try:
         run.report_root.mkdir(parents=True, exist_ok=False)
     except FileExistsError as exc:
@@ -181,6 +185,7 @@ def _reserve_evaluation_output(run: RuntimeLayout) -> None:
         "format": TOOL_VERSION, "complete": False, "outer_fold": run.outer_fold,
         "dataset_id": run.dataset_id, "purpose": "reevaluation_of_existing_predictions",
         "existing_training_and_predictions_modified": False,
+        "schedule_duplicate_policy": duplicate_policy,
     })
 
 
@@ -1082,7 +1087,7 @@ def _train_nnunet_ablations(run: RuntimeLayout, args: argparse.Namespace) -> Non
 
 
 def _schedule_log_contract(result: Path) -> list[dict[str, str]]:
-    return [{"path": str(path.resolve()), "sha256": _sha256(path)}
+    return [{"path": str(path.absolute()), "sha256": _sha256(path)}
             for path in sorted(result.glob("training_log_*.txt"))]
 
 
@@ -1091,15 +1096,25 @@ def _verify_schedule_log_contract(result: Path, contract: Sequence[Mapping[str, 
         raise DownstreamAblationError(f"Training logs changed during schedule audit: {result}. Preserve the logs and evaluate only completed, idle runs.")
 
 
-def _schedule_records_from_result(
+def _validate_schedule_duplicate_policy(duplicate_policy: str) -> None:
+    if duplicate_policy not in SCHEDULE_DUPLICATE_POLICIES:
+        raise DownstreamAblationError(f"Unsupported schedule duplicate policy: {duplicate_policy!r}; choose {SCHEDULE_DUPLICATE_POLICIES}.")
+
+
+def _schedule_observations_from_result(
     result: Path, *, log_contract: Sequence[Mapping[str, str]] | None = None,
-) -> dict[int, tuple[int, int, str]]:
+    duplicate_policy: str = "error",
+) -> dict[str, Any]:
+    """Audit every log occurrence; canonical rows never assert resume continuity."""
+    _validate_schedule_duplicate_policy(duplicate_policy)
     pattern = re.compile(
         r"\[OnlineCP\] epoch=(-?\d+) applied=(-?\d+)/(-?\d+) "
         r"rate=[0-9.]+ schedule=([0-9a-fA-F]{16})(?=$|\s)"
     )
     records: dict[int, tuple[int, int, str]] = {}
     locations: dict[int, str] = {}
+    occurrences: list[dict[str, Any]] = []
+    duplicate_epochs: set[int] = set()
     contract = _schedule_log_contract(result) if log_contract is None else list(log_contract)
     for item in contract:
         path = Path(item["path"])
@@ -1112,22 +1127,58 @@ def _schedule_records_from_result(
                 continue
             raw_epoch, raw_applied, raw_samples, schedule = match.groups()
             epoch, applied, samples = int(raw_epoch), int(raw_applied), int(raw_samples)
-            if epoch in records:
-                raise DownstreamAblationError(
-                    f"Duplicate OnlineCP epoch {epoch}: first at {locations[epoch]}, again at {location}. "
-                    "No duplicate (including an identical resume record) is silently overwritten."
-                )
             if epoch not in range(250):
                 raise DownstreamAblationError(f"Unexpected OnlineCP epoch {epoch} at {location}; required epochs are 0..249.")
             if samples <= 0 or not 0 <= applied <= samples:
                 raise DownstreamAblationError(f"Invalid OnlineCP counts at {location}: applied={applied}, samples={samples}; require samples>0 and 0<=applied<=samples.")
-            records[epoch] = (applied, samples, schedule.lower())
-            locations[epoch] = location
+            value = (applied, samples, schedule.lower())
+            if epoch in records:
+                if duplicate_policy == "error":
+                    raise DownstreamAblationError(
+                        f"Duplicate OnlineCP epoch {epoch}: first at {locations[epoch]}, again at {location}. "
+                        "No duplicate (including an identical resume record) is silently overwritten. "
+                        "Only explicitly selecting --schedule-duplicate-policy coalesce-identical permits identical recorded values; "
+                        "it does not verify training resume continuity."
+                    )
+                if records[epoch] != value:
+                    raise DownstreamAblationError(
+                        f"Conflicting OnlineCP epoch {epoch}: first at {locations[epoch]} with {records[epoch]}, "
+                        f"again at {location} with {value}. Conflicting duplicates cannot be coalesced."
+                    )
+                duplicate_epochs.add(epoch)
+            else:
+                records[epoch] = value
+                locations[epoch] = location
+            occurrences.append({
+                "path": str(path), "line_number": line_number, "text": line,
+                "epoch": epoch, "applied": applied, "samples": samples, "schedule": value[2],
+            })
     _verify_schedule_log_contract(result, contract)
-    return records
+    return {"records": records, "audit": {
+        "status": "identical_duplicates_coalesced" if duplicate_epochs else "no_duplicates",
+        "duplicate_epochs": sorted(duplicate_epochs),
+        "duplicate_occurrences": len(occurrences) - len(records),
+        "occurrences": occurrences,
+        "raw_logged_occurrences": len(occurrences),
+        "raw_total_samples": sum(item["samples"] for item in occurrences),
+        "raw_total_cp_events": sum(item["applied"] for item in occurrences),
+        "unique_epochs": len(records),
+        "unique_total_samples": sum(item[1] for item in records.values()),
+        "unique_total_cp_events": sum(item[0] for item in records.values()),
+    }}
 
 
-def _audit_schedules(run: RuntimeLayout) -> None:
+def _schedule_records_from_result(
+    result: Path, *, log_contract: Sequence[Mapping[str, str]] | None = None,
+    duplicate_policy: str = "error",
+) -> dict[int, tuple[int, int, str]]:
+    return _schedule_observations_from_result(
+        result, log_contract=log_contract, duplicate_policy=duplicate_policy,
+    )["records"]
+
+
+def _audit_schedules(run: RuntimeLayout, *, duplicate_policy: str = "error") -> None:
+    _validate_schedule_duplicate_policy(duplicate_policy)
     trainers = {
         "basic": BASIC_TRAINER,
         "full": FULL_TRAINER,
@@ -1136,11 +1187,14 @@ def _audit_schedules(run: RuntimeLayout) -> None:
     }
     log_inputs = {}
     records = {}
+    duplicate_audit = {}
     for name, trainer in trainers.items():
         result = _model_dir(run, trainer)
         contract = _schedule_log_contract(result)
-        records[name] = _schedule_records_from_result(result, log_contract=contract)
-        log_inputs[name] = {"result": str(result.resolve()), "files": contract}
+        observations = _schedule_observations_from_result(result, log_contract=contract, duplicate_policy=duplicate_policy)
+        records[name] = observations["records"]
+        duplicate_audit[name] = observations["audit"]
+        log_inputs[name] = {"result": str(result.absolute()), "files": contract}
     expected = set(range(250))
     incomplete = {
         name: sorted(expected - set(values))
@@ -1166,11 +1220,16 @@ def _audit_schedules(run: RuntimeLayout) -> None:
             f"Online CP schedules differ from Basic: {mismatch}"
         )
     payload = {
-        "format": "hiercp_downstream_ablation_schedule_audit_v2",
+        "format": SCHEDULE_AUDIT_FORMAT,
         "outer_fold": run.outer_fold,
         "dataset_id": run.dataset_id,
         "matched": True,
         "epochs": 250,
+        "epochs_kind": "unique_recorded_epoch_indices",
+        "count_semantics": SCHEDULE_COUNT_SEMANTICS,
+        "duplicate_policy": duplicate_policy,
+        "duplicate_audit": duplicate_audit,
+        "training_resume_status": "unverified",
         "methods": trainers,
         "total_samples": sum(value[1] for value in reference.values()),
         "total_cp_events": sum(value[0] for value in reference.values()),
@@ -1178,23 +1237,40 @@ def _audit_schedules(run: RuntimeLayout) -> None:
         "epoch_records": {name: [{"epoch": epoch, "applied": item[0], "samples": item[1], "schedule": item[2]}
                                   for epoch, item in sorted(values.items())] for name, values in records.items()},
     }
-    _verify_schedule_audit(payload)
+    _verify_schedule_audit(payload, duplicate_policy=duplicate_policy)
     _publish_report_json(run.report_root / "schedule_audit.json", payload)
     print(
-        f"[OK] online schedule audit: Basic/Full/w-o-L1/w-o-L2 matched 250/250 epochs; "
-        f"events={payload['total_cp_events']}/{payload['total_samples']}"
+        f"[OK] online schedule audit: Basic/Full/w-o-L1/w-o-L2 matched 250/250 unique epoch indices; "
+        f"unique recorded events={payload['total_cp_events']}/{payload['total_samples']}; "
+        f"duplicate_policy={duplicate_policy}; training_resume_status=unverified"
     )
+    for name, item in duplicate_audit.items():
+        print(f"[AUDIT] {name}: logged_records={item['raw_logged_occurrences']}, "
+              f"extra_identical_records={item['duplicate_occurrences']}; source lines retained in schedule_audit.json")
 
 
-def _verify_schedule_audit(payload: Mapping[str, Any]) -> None:
+def _verify_schedule_audit(payload: Mapping[str, Any], *, duplicate_policy: str = "error") -> None:
+    _validate_schedule_duplicate_policy(duplicate_policy)
+    if payload.get("duplicate_policy") != duplicate_policy:
+        raise DownstreamAblationError("Schedule audit duplicate policy mismatch; use the explicitly intended policy and a new output directory.")
     names = {"basic", "full", "no_patient", "no_population"}
-    if (payload.get("format") != "hiercp_downstream_ablation_schedule_audit_v2"
+    if (payload.get("format") != SCHEDULE_AUDIT_FORMAT
             or payload.get("matched") is not True or payload.get("epochs") != 250
+            or payload.get("epochs_kind") != "unique_recorded_epoch_indices"
+            or payload.get("count_semantics") != SCHEDULE_COUNT_SEMANTICS
+            or payload.get("training_resume_status") != "unverified"
+            or set(payload.get("duplicate_audit", {})) != names
+            or set(payload.get("epoch_records", {})) != names
             or set(payload.get("log_inputs", {})) != names):
         raise DownstreamAblationError("Missing or unsupported SHA-bound 250-epoch schedule audit; rerun evaluation in a new directory.")
     reference = None
     for name, item in payload["log_inputs"].items():
-        records = _schedule_records_from_result(Path(item["result"]), log_contract=item["files"])
+        observations = _schedule_observations_from_result(
+            Path(item["result"]), log_contract=item["files"], duplicate_policy=duplicate_policy,
+        )
+        records = observations["records"]
+        if payload["duplicate_audit"][name] != observations["audit"]:
+            raise DownstreamAblationError(f"Schedule audit duplicate occurrence/count provenance mismatch for {name}.")
         expected_rows = [{"epoch": epoch, "applied": value[0], "samples": value[1], "schedule": value[2]}
                          for epoch, value in sorted(records.items())]
         if (set(records) != set(range(250)) or sum(value[0] for value in records.values()) <= 0
@@ -1328,7 +1404,9 @@ def _format_number(value: Any, digits: int = 4, *, signed: bool = False) -> str:
     return format(number, ("+" if signed else "") + f".{digits}f")
 
 
-def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[str, Any]]) -> None:
+def _aggregate_evaluation(
+    run: RuntimeLayout, summaries: Mapping[str, Mapping[str, Any]], *, duplicate_policy: str = "error",
+) -> None:
     full_identity = _validate_pairwise_provenance(summaries)
     case_ids = _validation_ids(run)
     if (len(case_ids) != len(set(case_ids)) or len(case_ids) != len(full_identity["cohort"])
@@ -1344,7 +1422,8 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
     schedule_path = run.report_root / "schedule_audit.json"
     schedule_sha256 = _sha256(schedule_path)
     schedule_audit = _load_json(schedule_path)
-    _verify_schedule_audit(schedule_audit)
+    _verify_schedule_audit(schedule_audit, duplicate_policy=duplicate_policy)
+    coalesced_occurrences = sum(item["duplicate_occurrences"] for item in schedule_audit["duplicate_audit"].values())
     basic_vs_full = summaries["basic_vs_full"]
     no_patient_vs_full = summaries["no_patient_vs_full"]
     no_population_vs_full = summaries["no_population_vs_full"]
@@ -1393,6 +1472,12 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         "direct_downstream_effects": direct,
         "schedule_audit": str((run.report_root / "schedule_audit.json").resolve()),
         "schedule_audit_sha256": schedule_sha256,
+        "schedule_duplicate_policy": duplicate_policy,
+        "schedule_duplicate_summary": {
+            name: {key: value for key, value in item.items() if key != "occurrences"}
+            for name, item in schedule_audit["duplicate_audit"].items()
+        },
+        "training_resume_status": "unverified",
         "full_input_identity": full_identity,
         "pair_evaluation_contract_sha256": {name: summary["evaluation_contract"]["contract_sha256"] for name, summary in summaries.items()},
         "interpretation": {"scope": "exploratory_single_outer_fold", "multiplicity_adjusted": False,
@@ -1409,7 +1494,8 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         f"- Dataset: {_dataset_name(run.dataset_id, run.outer_fold)}",
         "- Basic-CP and Full-M3 exact-argmax results are reused; they are not retrained.",
         "- The experimental design holds source entries and candidate centers fixed and changes only the ablation GNN scores. This reevaluation does not independently re-audit bank creation or the original training run.",
-        "- SHA-bound logs report matching CP counts and schedule fingerprints for all 250 epochs in all four runs; this checks recorded schedules, not unlogged execution.",
+        "- SHA-bound logs report matching CP counts and schedule fingerprints for all 250 unique epoch indices in all four runs; this checks recorded schedules, not unlogged execution.",
+        f"- Schedule duplicate policy: `{duplicate_policy}`; {coalesced_occurrences} extra identical log occurrences coalesced, with all source lines retained. Training resume continuity, optimizer steps and checkpoint lineage remain unverified.",
         "- Exact patient IDs, ground-truth files, Full prediction files and evaluation definitions match across all three pairwise evaluations (SHA-256 verified).",
         "- This is an exploratory single-fold report. Pairwise confidence intervals and p-values are not adjusted for multiple comparisons.",
         "",
@@ -1435,6 +1521,18 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
             f"{_format_number(c25['recall'])} | {_format_number(c25['le_10mm_recall'])} |"
         )
 
+    lines.extend([
+        "", "## Recorded schedule occurrence audit", "",
+        "Unique totals count each recorded epoch index once. Logged totals count every occurrence, including repeats. Neither proves the number of executed optimizer steps. Original paths, line numbers, text and file hashes are retained in schedule_audit.json.",
+        "",
+        "| Model | Unique epochs | Logged records | Extra identical records | CP events (unique / logged) | Samples (unique / logged) |",
+        "|---|---:|---:|---:|---:|---:|",
+    ])
+    for name, label in labels.items():
+        item = schedule_audit["duplicate_audit"][name]
+        lines.append(f"| {label} | {item['unique_epochs']} | {item['raw_logged_occurrences']} | "
+                     f"{item['duplicate_occurrences']} | {item['unique_total_cp_events']} / {item['raw_total_cp_events']} | "
+                     f"{item['unique_total_samples']} / {item['raw_total_samples']} |")
     lines.extend(
         [
             "",
@@ -1484,13 +1582,16 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
     for name, summary in summaries.items():
         if _verified_pair_summary(run.evaluation_for(name)) != summary:
             raise DownstreamAblationError(f"Pair summary changed before aggregate publication: {name}")
-    _verify_schedule_audit(schedule_audit)
+    _verify_schedule_audit(schedule_audit, duplicate_policy=duplicate_policy)
     if _sha256(schedule_path) != schedule_sha256:
         raise DownstreamAblationError("Schedule audit changed before aggregate publication.")
     _publish_report_text(run.report_root / "comparison.md", "\n".join(lines) + "\n")
     _publish_report_json(run.report_root / "summary.json", payload)
     _publish_report_json(run.report_root / "completion.json", {
         "format": TOOL_VERSION, "complete": True,
+        "schedule_duplicate_policy": duplicate_policy,
+        "coalesced_schedule_occurrences": coalesced_occurrences,
+        "training_resume_status": "unverified",
         "summary_sha256": _sha256(run.report_root / "summary.json"),
         "comparison_sha256": _sha256(run.report_root / "comparison.md"),
         "schedule_audit_sha256": schedule_sha256,
@@ -1501,8 +1602,8 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
 
 def _evaluate(run: RuntimeLayout, args: argparse.Namespace) -> None:
     if not args.dry_run:
-        _reserve_evaluation_output(run)
-        _audit_schedules(run)
+        _reserve_evaluation_output(run, duplicate_policy=args.schedule_duplicate_policy)
+        _audit_schedules(run, duplicate_policy=args.schedule_duplicate_policy)
     summaries = {
         "basic_vs_full": _run_quality_evaluation(
             run,
@@ -1527,7 +1628,7 @@ def _evaluate(run: RuntimeLayout, args: argparse.Namespace) -> None:
         ),
     }
     if not args.dry_run:
-        _aggregate_evaluation(run, summaries)
+        _aggregate_evaluation(run, summaries, duplicate_policy=args.schedule_duplicate_policy)
 
 
 def _check_trainer_import() -> None:
@@ -1602,6 +1703,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bootstrap-iterations", type=int, default=20000)
     parser.add_argument("--permutation-iterations", type=int, default=50000)
     parser.add_argument("--evaluation-output", help="NEW directory for audit, pairwise reevaluation and combined report; existing outputs are never replaced.")
+    parser.add_argument(
+        "--schedule-duplicate-policy", choices=SCHEDULE_DUPLICATE_POLICIES, default="error",
+        help="Default: reject every repeated epoch. coalesce-identical explicitly combines only identical applied/sample/schedule tuples, retains every source line, and does not certify training resume continuity.",
+    )
     parser.add_argument("--overwrite-banks", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser
