@@ -22,8 +22,9 @@ def trainer_source_identity(module_name: str, class_names: Sequence[str]) -> dic
     except ImportError as exc:
         raise RuntimeError(
             f"Required OnlineCP trainer or dependency is unavailable: {module_name}. "
-            "The original code snapshot does not include the custom trainer files. "
-            "Install the original server-side implementation and its dependencies "
+            "The original trainer sources are bundled under custom_trainers/. "
+            "Activate the target nnU-Net environment and run "
+            "python custom_trainers/install_onlinecp_custom_trainers.py apply "
             "before running or reusing the online experiment."
         ) from exc
 

@@ -9,18 +9,27 @@ The core HierCP implementation and configuration are present in this repository.
 images, graph caches, checkpoints, generated volumes, and nnU-Net results are
 not included.
 
-The optional OnlineCP experiments also require the original custom trainer
-sources on the target host. They are referenced by `code.txt` but their
-implementations are not included in that snapshot:
+The optional OnlineCP experiments require the original custom trainers in the
+active nnU-Net environment. The user-provided originals are now included in
+[`custom_trainers/`](custom_trainers/), with SHA-256 checks for both modules:
 
 - `nnunetv2/training/nnUNetTrainer/nnUNetTrainer_OnlinePairedCP.py`
 - `nnunetv2/training/nnUNetTrainer/nnUNetTrainer_OnlinePairedCPArgmaxV3.py`
 
-Copying this repository alone therefore does not reproduce the complete
-OnlineCP training environment. Training contracts fingerprint the installed
-trainer and base-class source files; missing sources fail explicitly and
-changed sources invalidate completed-run reuse. No replacement experimental
-trainer has been invented.
+After cloning, activate the target nnU-Net environment and run from this
+repository root:
+
+```bash
+python custom_trainers/install_onlinecp_custom_trainers.py check
+python custom_trainers/install_onlinecp_custom_trainers.py apply
+```
+
+The installer verifies the original source hashes and runs policy/paste/import
+smoke checks after installation. Different existing trainers require explicit
+`--overwrite` and are backed up before replacement. Training contracts
+fingerprint the installed trainer and base-class source files; missing sources
+fail explicitly and changed sources invalidate completed-run reuse. The bundled
+trainer implementations have not been altered.
 
 The standard bank (`hiercp_online_bank_v2`, Dataset730) and multi-pool argmax
 bank (`hiercp_online_bank_argmax_v3`, Dataset740) are different contracts.
