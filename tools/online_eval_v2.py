@@ -11,14 +11,26 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
+
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.online_eval_provenance import (
+    EvaluationProvenanceError,
+    build_evaluation_contract,
+    contract_comparability,
+    prepare_new_output,
+    verify_evaluation_contract,
+)
 
 try:
     import nibabel as nib
@@ -29,7 +41,7 @@ from scipy import ndimage as ndi
 from scipy.optimize import linear_sum_assignment
 from scipy.stats import wilcoxon
 
-VERSION = "online_basic_hiercp_evaluation_v3"
+VERSION = "online_basic_hiercp_evaluation_v4"
 DEFAULT_DATASET_ID = 730
 DEFAULT_PAIRED_ROOT = "paired_basic_vs_hiercp"
 DEFAULT_ONLINE_ROOT = "online_basic_vs_hiercp"
@@ -127,6 +139,8 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def _json_safe(value: Any) -> Any:
+    if isinstance(value, bool):
+        return value
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
@@ -143,29 +157,58 @@ def _json_safe(value: Any) -> Any:
 
 def atomic_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + f".tmp.{os.getpid()}")
-    with temporary.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
-        handle.flush()
-        os.fsync(handle.fileno())
-    temporary.replace(path)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        # Atomic create, never replace an existing file (including a symlink).
+        os.link(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def atomic_json(path: Path, payload: Any) -> None:
     atomic_text(path, json.dumps(_json_safe(payload), indent=2, sort_keys=True) + "\n")
 
 
-def atomic_csv(path: Path, rows: Sequence[Mapping[str, Any]], fields: Sequence[str]) -> None:
+def atomic_csv(path: Path, rows: Iterable[Mapping[str, Any]], fields: Sequence[str]) -> None:
+    # Stream full-cohort rows without making an extra whole-CSV copy in RAM.
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + f".tmp.{os.getpid()}")
-    with temporary.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(fields), extrasaction="ignore")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: row.get(field, "") for field in fields})
-        handle.flush()
-        os.fsync(handle.fileno())
-    temporary.replace(path)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(fields), extrasaction="ignore")
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({field: row.get(field, "") for field in fields})
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def verify_prediction_inventory(folder: Path, case_ids: Sequence[str]) -> None:
+    expected = {f"{case_id}.nii.gz" for case_id in case_ids}
+    actual = {path.name for path in folder.iterdir()
+              if path.name.endswith((".nii", ".nii.gz"))}
+    if actual != expected:
+        raise EvaluationError(
+            f"Prediction cohort mismatch in {folder}: "
+            f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}"
+        )
 
 
 def outer_split(path: Path, fold: int) -> dict[str, list[str]]:
@@ -180,6 +223,10 @@ def outer_split(path: Path, fold: int) -> dict[str, list[str]]:
     val = split.get("val")
     if not isinstance(train, list) or not isinstance(val, list):
         raise EvaluationError(f"Malformed train/val lists for outer fold {fold}")
+    if any(not isinstance(x, str) or not x for x in train + val):
+        raise EvaluationError("Outer split patient IDs must be nonempty strings")
+    if len(set(train)) != len(train) or len(set(val)) != len(val):
+        raise EvaluationError("Duplicate patient IDs in outer split")
     if set(train) & set(val):
         raise EvaluationError("Outer train/validation patient leakage detected")
     return {"train": [str(x) for x in train], "val": [str(x) for x in val]}
@@ -437,6 +484,33 @@ def _finite_summary(values: np.ndarray) -> tuple[float | None, float | None, flo
     )
 
 
+def _validated_count_resampling_inputs(
+    basic: np.ndarray, hier: np.ndarray, iterations: int
+) -> tuple[np.ndarray, np.ndarray]:
+    basic = np.asarray(basic, dtype=np.float64)
+    hier = np.asarray(hier, dtype=np.float64)
+    if basic.shape != hier.shape or basic.ndim != 2 or basic.shape[1] != 3:
+        raise EvaluationError("Count arrays must have shape [patients, 3]")
+    if not np.all(np.isfinite(basic)) or not np.all(np.isfinite(hier)):
+        raise EvaluationError("Count arrays must contain finite values")
+    if np.any(basic < 0) or np.any(hier < 0):
+        raise EvaluationError("Count arrays must contain nonnegative values")
+    if not isinstance(iterations, (int, np.integer)) or iterations <= 0:
+        raise EvaluationError("Resampling iterations must be a positive integer")
+    return basic, hier
+
+
+def _count_resampling_diagnostics(iterations: int) -> dict[str, Any]:
+    return {
+        "status": "unavailable",
+        "reason": None,
+        "requested_resamples": int(iterations),
+        "completed_resamples": 0,
+        "valid_resamples": 0,
+        "invalid_resamples": 0,
+    }
+
+
 def cluster_bootstrap_count_difference(
     basic: np.ndarray,
     hier: np.ndarray,
@@ -445,13 +519,18 @@ def cluster_bootstrap_count_difference(
     iterations: int,
 ) -> dict[str, Any]:
     # Columns are tp, fp, fn per patient.
-    basic = np.asarray(basic, dtype=np.float64)
-    hier = np.asarray(hier, dtype=np.float64)
-    if basic.shape != hier.shape or basic.ndim != 2 or basic.shape[1] != 3:
-        raise EvaluationError("Count arrays must have shape [patients, 3]")
+    basic, hier = _validated_count_resampling_inputs(basic, hier, iterations)
+    diagnostics = _count_resampling_diagnostics(iterations)
+    result = {
+        "difference": None,
+        "ci_low": None,
+        "ci_high": None,
+        "bootstrap_diagnostics": diagnostics,
+    }
     n = int(basic.shape[0])
     if n == 0:
-        return {"difference": None, "ci_low": None, "ci_high": None}
+        diagnostics["reason"] = "no_patients"
+        return result
     observed_basic = metric_from_counts(
         np.array([basic[:, 0].sum()]),
         np.array([basic[:, 1].sum()]),
@@ -467,6 +546,10 @@ def cluster_bootstrap_count_difference(
         np.array([n]),
     )[0]
     observed = float(observed_hier - observed_basic)
+    if not math.isfinite(observed):
+        diagnostics["reason"] = "observed_metric_undefined"
+        return result
+    result["difference"] = observed
     rng = np.random.default_rng(seed)
     indices = rng.integers(0, n, size=(int(iterations), n))
     b = basic[indices].sum(axis=1)
@@ -474,8 +557,21 @@ def cluster_bootstrap_count_difference(
     b_metric = metric_from_counts(b[:, 0], b[:, 1], b[:, 2], metric, n)
     h_metric = metric_from_counts(h[:, 0], h[:, 1], h[:, 2], metric, n)
     differences = h_metric - b_metric
-    _, low, high = _finite_summary(differences)
-    return {"difference": observed, "ci_low": low, "ci_high": high}
+    valid = int(np.count_nonzero(np.isfinite(differences)))
+    diagnostics.update(
+        completed_resamples=int(iterations),
+        valid_resamples=valid,
+        invalid_resamples=int(iterations) - valid,
+    )
+    if valid != int(iterations):
+        # Dropping undefined draws would report a conditional bootstrap
+        # distribution, not the requested whole-patient resampling distribution.
+        diagnostics["reason"] = "undefined_metric_in_resamples"
+        return result
+    diagnostics["status"] = "available"
+    result["ci_low"] = float(np.quantile(differences, 0.025))
+    result["ci_high"] = float(np.quantile(differences, 0.975))
+    return result
 
 
 def cluster_permutation_count_difference(
@@ -485,11 +581,26 @@ def cluster_permutation_count_difference(
     seed: int,
     iterations: int,
 ) -> float | None:
-    basic = np.asarray(basic, dtype=np.float64)
-    hier = np.asarray(hier, dtype=np.float64)
+    """Compatibility wrapper; use the inference result for availability diagnostics."""
+    return cluster_permutation_count_inference(
+        basic, hier, metric, seed, iterations
+    )["permutation_p"]
+
+
+def cluster_permutation_count_inference(
+    basic: np.ndarray,
+    hier: np.ndarray,
+    metric: str,
+    seed: int,
+    iterations: int,
+) -> dict[str, Any]:
+    basic, hier = _validated_count_resampling_inputs(basic, hier, iterations)
+    diagnostics = _count_resampling_diagnostics(iterations)
+    result = {"permutation_p": None, "permutation_diagnostics": diagnostics}
     n = int(basic.shape[0])
     if n == 0:
-        return None
+        diagnostics["reason"] = "no_patients"
+        return result
     observed_b = metric_from_counts(
         np.array([basic[:, 0].sum()]),
         np.array([basic[:, 1].sum()]),
@@ -506,10 +617,12 @@ def cluster_permutation_count_difference(
     )[0]
     observed = float(observed_h - observed_b)
     if not math.isfinite(observed):
-        return None
+        diagnostics["reason"] = "observed_metric_undefined"
+        return result
     rng = np.random.default_rng(seed)
     extreme = 0
     completed = 0
+    valid = 0
     chunk = 4096
     while completed < int(iterations):
         current = min(chunk, int(iterations) - completed)
@@ -524,9 +637,22 @@ def cluster_permutation_count_difference(
         )
         null = h_metric - b_metric
         finite = np.isfinite(null)
+        valid += int(np.count_nonzero(finite))
         extreme += int(np.sum(np.abs(null[finite]) >= abs(observed) - 1e-15))
         completed += current
-    return float((extreme + 1) / (int(iterations) + 1))
+    diagnostics.update(
+        completed_resamples=completed,
+        valid_resamples=valid,
+        invalid_resamples=completed - valid,
+    )
+    if valid != completed:
+        # Undefined precision (for example, no predicted lesions after a swap)
+        # is not a non-extreme draw, nor may it be silently discarded/replaced.
+        diagnostics["reason"] = "undefined_metric_in_resamples"
+        return result
+    diagnostics["status"] = "available"
+    result["permutation_p"] = float((extreme + 1) / (completed + 1))
+    return result
 
 
 def paired_cluster_bootstrap_mean(
@@ -598,18 +724,45 @@ def cluster_bootstrap_lesion_mean(
     basic_sum = np.asarray(basic_sum, dtype=np.float64)
     hier_sum = np.asarray(hier_sum, dtype=np.float64)
     counts = np.asarray(counts, dtype=np.float64)
+    if basic_sum.ndim != 1 or basic_sum.shape != hier_sum.shape or basic_sum.shape != counts.shape:
+        raise EvaluationError("Lesion quality sums and counts must be aligned 1-D arrays")
+    if not all(np.all(np.isfinite(values)) and np.all(values >= 0) for values in (basic_sum, hier_sum, counts)):
+        raise EvaluationError("Lesion quality sums and counts must be finite and nonnegative")
+    if not isinstance(iterations, (int, np.integer)) or iterations <= 0:
+        raise EvaluationError("Resampling iterations must be a positive integer")
+    diagnostics = _count_resampling_diagnostics(iterations)
+    result = {
+        "difference": None,
+        "ci_low": None,
+        "ci_high": None,
+        "bootstrap_diagnostics": diagnostics,
+    }
     total = counts.sum()
     if total <= 0:
-        return {"difference": None, "ci_low": None, "ci_high": None}
+        diagnostics["reason"] = "no_lesions"
+        return result
     observed = float(hier_sum.sum() / total - basic_sum.sum() / total)
+    result["difference"] = observed
     n = int(counts.size)
     rng = np.random.default_rng(seed)
     indices = rng.integers(0, n, size=(int(iterations), n))
     count_sample = counts[indices].sum(axis=1)
     b = _safe_ratio(basic_sum[indices].sum(axis=1), count_sample)
     h = _safe_ratio(hier_sum[indices].sum(axis=1), count_sample)
-    _, low, high = _finite_summary(h - b)
-    return {"difference": observed, "ci_low": low, "ci_high": high}
+    differences = h - b
+    valid = int(np.count_nonzero(np.isfinite(differences)))
+    diagnostics.update(
+        completed_resamples=int(iterations),
+        valid_resamples=valid,
+        invalid_resamples=int(iterations) - valid,
+    )
+    if valid != int(iterations):
+        diagnostics["reason"] = "undefined_metric_in_resamples"
+        return result
+    diagnostics["status"] = "available"
+    result["ci_low"] = float(np.quantile(differences, 0.025))
+    result["ci_high"] = float(np.quantile(differences, 0.975))
+    return result
 
 
 def cluster_permutation_lesion_mean(
@@ -722,40 +875,68 @@ def _regression_check(
     old_summary_path: Path,
     tolerance: float,
     allow_mismatch: bool,
+    *,
+    evaluation_contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if not math.isfinite(tolerance) or tolerance < 0:
+        raise EvaluationError("Regression tolerance must be finite and nonnegative")
     if not old_summary_path.is_file():
         return {"status": "not_available", "path": str(old_summary_path)}
+    reference_sha256 = file_sha256(old_summary_path)
     old = load_json(old_summary_path)
+    if file_sha256(old_summary_path) != reference_sha256:
+        raise EvaluationError(f"Regression reference changed while reading: {old_summary_path}")
+    comparison = contract_comparability(old.get("evaluation_contract"), evaluation_contract)
+    if allow_mismatch:
+        print("[Audit] --allow-regression-mismatch is deprecated and cannot bypass same-input failures")
+    old_metrics = old.get("legacy_metrics")
+    if old_metrics is None and "basic_cp" in old and "hiercp" in old:
+        old_metrics = {"basic": old["basic_cp"], "hier": old["hiercp"]}
+    result = {
+        **comparison, "path": str(old_summary_path), "reference_sha256": reference_sha256,
+        "tolerance": tolerance, "mismatches": [], "regression_verified": False,
+    }
+    if old_metrics is None:
+        if comparison["status"] == "matched_inputs":
+            raise EvaluationError("Same-input regression reference has no legacy metrics")
+        result["metric_comparison"] = "unavailable: reference lacks comparable metric fields"
+        return result
     checks: list[tuple[str, float, float]] = []
-    for method, old_key in (("basic", "basic_cp"), ("hier", "hiercp")):
+    for method in ("basic", "hier"):
         new_value = legacy_summary[method]
-        old_value = old[old_key]
+        if not isinstance(old_metrics, Mapping) or not isinstance(old_metrics.get(method), Mapping):
+            raise EvaluationError(f"Malformed regression metrics for {method}")
+        old_value = old_metrics[method]
         for key in (
             "mean_case_tumor_dice",
             "gt_lesions",
             "detected",
             "false_positive_lesions",
         ):
-            checks.append((f"{method}.{key}", float(new_value[key]), float(old_value[key])))
+            if key not in old_value or old_value[key] is None:
+                raise EvaluationError(f"Missing regression metric: {method}.{key}")
+            new_number, old_number = float(new_value[key]), float(old_value[key])
+            if not math.isfinite(new_number) or not math.isfinite(old_number):
+                raise EvaluationError(f"Nonfinite regression metric: {method}.{key}")
+            checks.append((f"{method}.{key}", new_number, old_number))
     mismatches = [
         {"field": name, "new": new, "old": old_value, "difference": new - old_value}
         for name, new, old_value in checks
         if abs(new - old_value) > tolerance
     ]
-    result = {
-        "status": "pass" if not mismatches else "mismatch",
-        "path": str(old_summary_path),
-        "tolerance": tolerance,
-        "mismatches": mismatches,
-    }
-    if mismatches and not allow_mismatch:
+    result["mismatches"] = mismatches
+    if comparison["status"] != "matched_inputs":
+        result["metric_comparison"] = "diagnostic_only: input identity is not verified equal"
+        return result
+    if mismatches:
         preview = "; ".join(
             f"{item['field']}: new={item['new']} old={item['old']}"
             for item in mismatches
         )
         raise EvaluationError(
-            "Legacy regression check failed; no V2 result was finalized. " + preview
+            "Same-input regression check failed; no evaluation completion was published. " + preview
         )
+    result.update(status="pass", regression_verified=True, metric_comparison="same_verified_inputs")
     return result
 
 
@@ -782,6 +963,11 @@ def evaluate(args: argparse.Namespace) -> Path:
     )
     if not paths.project.is_dir():
         raise EvaluationError(f"Project missing: {paths.project}")
+    source_paths = (
+        paths.nnunet_config, paths.outer_splits, Path(__file__).resolve(),
+        Path(__file__).resolve().with_name("online_eval_provenance.py"),
+    )
+    source_hashes = {str(path): file_sha256(path) for path in source_paths}
     nn_cfg = load_json(paths.nnunet_config)
     split = outer_split(paths.outer_splits, args.outer_fold)
     val_ids = list(split["val"])
@@ -806,6 +992,52 @@ def evaluate(args: argparse.Namespace) -> Path:
     for folder in (basic_validation, hier_validation):
         if not folder.is_dir():
             raise EvaluationError(f"Validation prediction folder missing: {folder}")
+
+    output = (
+        Path(args.output).expanduser().absolute() if args.output
+        else online / "folds" / f"fold_{args.outer_fold}" / "evaluation_v2"
+    )
+    if output.exists() or output.is_symlink():
+        raise EvaluationError(f"Refusing existing evaluation output: {output}. Choose a NEW --output path.")
+    for input_folder in (paths.data / "labels", basic_validation, hier_validation):
+        if output.resolve().is_relative_to(input_folder.resolve()):
+            raise EvaluationError(f"Evaluation output must not be inside input folder: {input_folder}")
+    if nib is None:
+        raise EvaluationError("nibabel is required for actual NIfTI evaluation")
+    if len(bins) != 2 or any(not math.isfinite(x) for x in bins) or not 0 < bins[0] < bins[1]:
+        raise EvaluationError("Size bins must be two increasing positive finite diameters")
+    for folder in (basic_validation, hier_validation):
+        verify_prediction_inventory(folder, val_ids)
+    evaluation_contract = build_evaluation_contract(
+        cohort=val_ids,
+        ground_truth_files={case_id: paths.data / "labels" / f"{case_id}.nii.gz" for case_id in val_ids},
+        prediction_files={
+            side: {case_id: folder / f"{case_id}.nii.gz" for case_id in val_ids}
+            for side, folder in (("basic", basic_validation), ("hier", hier_validation))
+        },
+        trainers={"basic": args.basic_trainer, "hier": args.hier_trainer},
+        evaluation_definition={
+            "version": VERSION, "outer_fold": args.outer_fold, "dataset_id": args.dataset_id,
+            "plans": nn_cfg["dataset"]["plans"], "configuration": nn_cfg["dataset"]["configuration"],
+            "tumor_label": tumor_label, "size_bins_mm": bins, "connectivity": 26,
+            "matching": "one-to-one threshold-valid Hungarian; lesion quality maximizes Dice",
+            "criteria": [{"name": c.name, "metric": c.metric, "threshold": c.threshold,
+                          "legacy": c.legacy} for c in CRITERIA],
+            "bootstrap_iterations": args.bootstrap_iterations,
+            "permutation_iterations": args.permutation_iterations,
+            "cluster_unit": "validation patient", "p_values": "unadjusted",
+            "source_sha256": {path.name: source_hashes[str(path)] for path in source_paths},
+            "numpy_version": np.__version__, "nibabel_version": nib.__version__,
+            "scipy_version": sys.modules["scipy"].__version__, "python_version": sys.version.split()[0],
+        },
+    )
+    prepare_new_output(output)
+    atomic_json(output / "evaluation_started.json", {
+        "version": VERSION, "complete": False, "evaluation_contract": evaluation_contract,
+        "source_files": source_hashes, "training_executed": False,
+        "note": "Only completion.json certifies successful publication; partial outputs are not final.",
+    })
+    print(f"[Contract] full validation cohort={len(val_ids)}; output={output}; no training or overwrite")
 
     case_rows: list[dict[str, Any]] = []
     case_detection_rows: list[dict[str, Any]] = []
@@ -948,13 +1180,6 @@ def evaluate(args: argparse.Namespace) -> Path:
                         }
                     )
     print()
-
-    output = (
-        Path(args.output).expanduser().resolve()
-        if args.output
-        else online / "folds" / f"fold_{args.outer_fold}" / "evaluation_v2"
-    )
-    output.mkdir(parents=True, exist_ok=True)
 
     # Long-form files are intentionally auditable and criterion-specific.
     atomic_csv(
@@ -1113,7 +1338,7 @@ def evaluate(args: argparse.Namespace) -> Path:
                     seed_base,
                     args.bootstrap_iterations,
                 ),
-                "permutation_p": cluster_permutation_count_difference(
+                **cluster_permutation_count_inference(
                     basic_counts,
                     hier_counts,
                     metric,
@@ -1162,7 +1387,7 @@ def evaluate(args: argparse.Namespace) -> Path:
                     seed_base,
                     args.bootstrap_iterations,
                 ),
-                "permutation_p": cluster_permutation_count_difference(
+                **cluster_permutation_count_inference(
                     basic_size,
                     hier_size,
                     "recall",
@@ -1298,13 +1523,20 @@ def evaluate(args: argparse.Namespace) -> Path:
     }
     regression = _regression_check(
         legacy_for_regression,
-        online / "folds" / f"fold_{args.outer_fold}" / "evaluation" / "summary.json",
+        (Path(args.regression_reference).expanduser().absolute()
+         if args.regression_reference else
+         online / "folds" / f"fold_{args.outer_fold}" / "evaluation" / "summary.json"),
         args.regression_tolerance,
         args.allow_regression_mismatch,
+        evaluation_contract=evaluation_contract,
     )
 
     summary = {
         "version": VERSION,
+        "evaluation_contract": evaluation_contract,
+        "source_files": source_hashes,
+        "legacy_metrics": legacy_for_regression,
+        "prediction_origin_status": "existing_prediction_bytes_verified; original_training_checkpoint_link_unverified",
         "outer_fold": args.outer_fold,
         "dataset_id": args.dataset_id,
         "dataset": dataset_name(args.dataset_id, args.outer_fold),
@@ -1344,9 +1576,12 @@ def evaluate(args: argparse.Namespace) -> Path:
         "",
         f"- Validation patients: {len(case_rows)}",
         "- Existing predictions only; no retraining and no prediction modification",
-        "- Legacy any-overlap result is regression-checked against the original evaluator",
+        f"- Legacy any-overlap reference audit: {regression['status']}; regression is verified only when input provenance matches",
         "- Quality-aware criteria are a fixed sensitivity suite; no post-hoc primary threshold is selected",
         "- Confidence intervals and permutation tests resample/swap whole patients, not individual lesions",
+        "- Reported p-values are unadjusted; this sensitivity suite does not establish a post-hoc primary endpoint",
+        "- Undefined count-metric or lesion-mean bootstrap resamples, or undefined count-metric swap resamples, make the corresponding inference NA; invalid draws are not silently discarded or replaced with zero",
+        "- Resampling availability, reasons, and valid/invalid draw counts are recorded with the affected statistics in summary.json",
         "",
         "## Whole-volume tumor Dice",
         "",
@@ -1421,13 +1656,33 @@ def evaluate(args: argparse.Namespace) -> Path:
             "## Audit",
             "",
             f"- Legacy regression: {regression['status']}",
+            "- A report alone is not a completion certificate; verify completion.json and its hashes.",
+            "- Existing prediction bytes are verified; their original training-checkpoint linkage remains unverified.",
             f"- Output: `{output}`",
         ]
     )
     atomic_text(output / "comparison.md", "\n".join(lines) + "\n")
 
+    # Recheck the exact inputs before publishing the only completion certificate.
+    verify_evaluation_contract(evaluation_contract)
+    for folder in (basic_validation, hier_validation):
+        verify_prediction_inventory(folder, val_ids)
+    for name, expected_sha256 in source_hashes.items():
+        if file_sha256(Path(name)) != expected_sha256:
+            raise EvaluationError(f"Evaluation source/config/split changed during execution: {name}")
+    if "reference_sha256" in regression:
+        if file_sha256(Path(regression["path"])) != regression["reference_sha256"]:
+            raise EvaluationError("Regression reference changed during evaluation")
+    report_hashes = {path.name: file_sha256(path) for path in output.iterdir() if path.is_file()}
+    atomic_json(output / "completion.json", {
+        "format": "online_eval_completion_v1", "complete": True,
+        "summary_sha256": report_hashes["summary.json"], "outputs": report_hashes,
+        "evaluation_contract_sha256": evaluation_contract["contract_sha256"],
+        "actual_data_evaluation": True, "training_executed": False,
+    })
+
     print(f"[OK] quality-aware evaluation: {output / 'comparison.md'}")
-    print(f"[OK] legacy regression: {regression['status']}")
+    print(f"[Audit] legacy regression: {regression['status']}")
     return output
 
 
@@ -1474,7 +1729,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--bootstrap-iterations", type=int, default=20000)
     value.add_argument("--permutation-iterations", type=int, default=50000)
     value.add_argument("--regression-tolerance", type=float, default=1e-9)
-    value.add_argument("--allow-regression-mismatch", action="store_true")
+    value.add_argument("--allow-regression-mismatch", action="store_true",
+                       help="Deprecated; never bypasses a same-input regression failure")
+    value.add_argument("--regression-reference", help="Optional previous evaluation summary with input provenance")
     value.add_argument("--output")
     value.add_argument("--self-test", action="store_true")
     return value
@@ -1482,6 +1739,8 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = parser().parse_args()
+    if not math.isfinite(args.regression_tolerance) or args.regression_tolerance < 0:
+        raise EvaluationError("regression-tolerance must be finite and nonnegative")
     if args.bootstrap_iterations < 1000:
         raise EvaluationError("bootstrap-iterations must be >= 1000")
     if args.permutation_iterations < 1000:
@@ -1495,6 +1754,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except EvaluationError as exc:
+    except (EvaluationError, EvaluationProvenanceError, OSError) as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
+        print("[Recovery] Preserve existing inputs/results. A new output without completion.json is incomplete; correct the error and use a new output path.", file=sys.stderr)
         raise SystemExit(1)

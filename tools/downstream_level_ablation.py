@@ -31,12 +31,19 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from tools.online_eval_provenance import full_method_identity, verify_evaluation_contract
 
 PROJECT_DEFAULT = Path("/home/aicompetition06/Medical/HierCP")
 BASIC_TRAINER = "nnUNetTrainer_250epochs_OnlineBasicCP"
@@ -58,7 +65,7 @@ MODE_LABELS = {
 }
 BANK_FORMAT = "hiercp_online_bank_v2"
 DERIVED_BANK_VERSION = "hiercp_online_bank_level_ablation_exact_argmax_v1"
-TOOL_VERSION = "hiercp_downstream_level_ablation_v1"
+TOOL_VERSION = "hiercp_downstream_level_ablation_v2"
 
 
 class DownstreamAblationError(RuntimeError):
@@ -101,22 +108,11 @@ class RuntimeLayout:
         )
 
     def evaluation_for(self, name: str) -> Path:
-        return (
-            self.base.online
-            / "folds"
-            / f"fold_{self.outer_fold}"
-            / "downstream_level_ablation"
-            / name
-        )
+        return self.report_root / name
 
     @property
     def report_root(self) -> Path:
-        return (
-            self.base.online
-            / "folds"
-            / f"fold_{self.outer_fold}"
-            / "downstream_level_ablation"
-        )
+        return self.base.output
 
 
 def _natural_key(text: str) -> list[object]:
@@ -150,6 +146,42 @@ def _atomic_text(path: Path, text: str) -> None:
 
 def _atomic_json(path: Path, payload: Any) -> None:
     _atomic_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def _publish_report_text(path: Path, content: str) -> None:
+    """Publish one report without replacing an existing result, even in a race."""
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary, path)
+        except FileExistsError as exc:
+            raise DownstreamAblationError(f"Refusing to replace existing report: {path}. Use a new --evaluation-output directory.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _publish_report_json(path: Path, payload: Any) -> None:
+    _publish_report_text(path, json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n")
+
+
+def _reserve_evaluation_output(run: RuntimeLayout) -> None:
+    try:
+        run.report_root.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        raise DownstreamAblationError(
+            f"Evaluation output already exists: {run.report_root}. Existing results are preserved; "
+            "choose a NEW --evaluation-output directory, including after an interrupted evaluation."
+        ) from exc
+    _publish_report_json(run.report_root / "evaluation_started.json", {
+        "format": TOOL_VERSION, "complete": False, "outer_fold": run.outer_fold,
+        "dataset_id": run.dataset_id, "purpose": "reevaluation_of_existing_predictions",
+        "existing_training_and_predictions_modified": False,
+    })
 
 
 def _atomic_csv(path: Path, rows: Sequence[Mapping[str, Any]], fields: Sequence[str]) -> None:
@@ -316,7 +348,8 @@ def _make_layout(args: argparse.Namespace) -> RuntimeLayout:
         preprocessed=nnroot / "nnUNet_preprocessed",
         results=nnroot / "nnUNet_results",
         logs=online / "logs",
-        output=online / "folds" / f"fold_{args.outer_fold}" / "downstream_level_ablation",
+        output=(Path(args.evaluation_output).expanduser().resolve() if args.evaluation_output else
+                online / "folds" / f"fold_{args.outer_fold}" / "downstream_level_ablation"),
         train_config=project / "config" / "train.json",
         nnunet_config=project / "config" / "nnunet.json",
         outer_splits=paired / "outer_splits.json",
@@ -380,8 +413,8 @@ def _print_status(run: RuntimeLayout) -> None:
     print(f"  dataset:          {_dataset_name(run.dataset_id, run.outer_fold)}")
     print(f"  Fold GNN work:    {run.base.gnn}")
     print(f"  source bank:      {run.base.source_bank}")
-    print(f"  Basic result:     {'complete' if (_model_dir(run, BASIC_TRAINER) / 'checkpoint_final.pth').is_file() else 'missing'}")
-    print(f"  Full result:      {'complete' if (_model_dir(run, FULL_TRAINER) / 'checkpoint_final.pth').is_file() else 'missing'}")
+    print(f"  Basic result:     {'checkpoint_present_unverified' if (_model_dir(run, BASIC_TRAINER) / 'checkpoint_final.pth').is_file() else 'missing'}")
+    print(f"  Full result:      {'checkpoint_present_unverified' if (_model_dir(run, FULL_TRAINER) / 'checkpoint_final.pth').is_file() else 'missing'}")
     for mode in MODES:
         gnn_checkpoint = (
             run.base.gnn / "ablation_independent" / mode / "model.pt"
@@ -391,12 +424,12 @@ def _print_status(run: RuntimeLayout) -> None:
         result = _model_dir(run, trainer)
         print(
             f"  {mode:<14} "
-            f"gnn={'complete' if _checkpoint_complete(gnn_checkpoint, mode) else 'missing'} "
-            f"bank={'ready' if bank.is_file() else 'missing'} "
-            f"nnunet={'complete' if (result / 'checkpoint_final.pth').is_file() else 'missing'}"
+            f"gnn={'completion_marker_present_unverified' if _checkpoint_complete(gnn_checkpoint, mode) else 'missing_or_incomplete_marker'} "
+            f"bank={'index_present_unverified' if bank.is_file() else 'missing'} "
+            f"nnunet={'checkpoint_present_unverified' if (result / 'checkpoint_final.pth').is_file() else 'missing'}"
         )
     print(
-        f"  report:           {'ready' if (run.report_root / 'comparison.md').is_file() else 'missing'}"
+        f"  report:           {'report_present_unverified' if (run.report_root / 'comparison.md').is_file() else 'missing'}"
     )
 
 
@@ -1048,19 +1081,49 @@ def _train_nnunet_ablations(run: RuntimeLayout, args: argparse.Namespace) -> Non
             )
 
 
-def _schedule_records_from_result(result: Path) -> dict[int, tuple[int, int, str]]:
+def _schedule_log_contract(result: Path) -> list[dict[str, str]]:
+    return [{"path": str(path.resolve()), "sha256": _sha256(path)}
+            for path in sorted(result.glob("training_log_*.txt"))]
+
+
+def _verify_schedule_log_contract(result: Path, contract: Sequence[Mapping[str, str]]) -> None:
+    if _schedule_log_contract(result) != list(contract):
+        raise DownstreamAblationError(f"Training logs changed during schedule audit: {result}. Preserve the logs and evaluate only completed, idle runs.")
+
+
+def _schedule_records_from_result(
+    result: Path, *, log_contract: Sequence[Mapping[str, str]] | None = None,
+) -> dict[int, tuple[int, int, str]]:
     pattern = re.compile(
-        r"\[OnlineCP\] epoch=(\d+) applied=(\d+)/(\d+) "
-        r"rate=[0-9.]+ schedule=([0-9a-fA-F]{16})"
+        r"\[OnlineCP\] epoch=(-?\d+) applied=(-?\d+)/(-?\d+) "
+        r"rate=[0-9.]+ schedule=([0-9a-fA-F]{16})(?=$|\s)"
     )
     records: dict[int, tuple[int, int, str]] = {}
-    candidates = sorted(result.glob("training_log_*.txt"))
-    for path in candidates:
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    locations: dict[int, str] = {}
+    contract = _schedule_log_contract(result) if log_contract is None else list(log_contract)
+    for item in contract:
+        path = Path(item["path"])
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             match = pattern.search(line)
-            if match:
-                epoch, applied, samples, schedule = match.groups()
-                records[int(epoch)] = (int(applied), int(samples), schedule.lower())
+            location = f"{path}:{line_number}"
+            if not match:
+                if "[OnlineCP] epoch=" in line:
+                    raise DownstreamAblationError(f"Malformed OnlineCP epoch record at {location}: {line}")
+                continue
+            raw_epoch, raw_applied, raw_samples, schedule = match.groups()
+            epoch, applied, samples = int(raw_epoch), int(raw_applied), int(raw_samples)
+            if epoch in records:
+                raise DownstreamAblationError(
+                    f"Duplicate OnlineCP epoch {epoch}: first at {locations[epoch]}, again at {location}. "
+                    "No duplicate (including an identical resume record) is silently overwritten."
+                )
+            if epoch not in range(250):
+                raise DownstreamAblationError(f"Unexpected OnlineCP epoch {epoch} at {location}; required epochs are 0..249.")
+            if samples <= 0 or not 0 <= applied <= samples:
+                raise DownstreamAblationError(f"Invalid OnlineCP counts at {location}: applied={applied}, samples={samples}; require samples>0 and 0<=applied<=samples.")
+            records[epoch] = (applied, samples, schedule.lower())
+            locations[epoch] = location
+    _verify_schedule_log_contract(result, contract)
     return records
 
 
@@ -1071,10 +1134,13 @@ def _audit_schedules(run: RuntimeLayout) -> None:
         "no_patient": NO_PATIENT_TRAINER,
         "no_population": NO_POPULATION_TRAINER,
     }
-    records = {
-        name: _schedule_records_from_result(_model_dir(run, trainer))
-        for name, trainer in trainers.items()
-    }
+    log_inputs = {}
+    records = {}
+    for name, trainer in trainers.items():
+        result = _model_dir(run, trainer)
+        contract = _schedule_log_contract(result)
+        records[name] = _schedule_records_from_result(result, log_contract=contract)
+        log_inputs[name] = {"result": str(result.resolve()), "files": contract}
     expected = set(range(250))
     incomplete = {
         name: sorted(expected - set(values))
@@ -1083,8 +1149,10 @@ def _audit_schedules(run: RuntimeLayout) -> None:
     }
     if incomplete:
         raise DownstreamAblationError(
-            f"Online schedule logs are incomplete: {incomplete}"
+            f"Online schedule logs must contain exactly epochs 0..249; missing: {incomplete}"
         )
+    if any(sum(value[0] for value in values.values()) <= 0 for values in records.values()):
+        raise DownstreamAblationError("Online CP schedule has zero total applied events; refusing a CP experiment completion claim.")
     reference = records["basic"]
     mismatch: dict[str, list[int]] = {}
     for name, values in records.items():
@@ -1098,7 +1166,7 @@ def _audit_schedules(run: RuntimeLayout) -> None:
             f"Online CP schedules differ from Basic: {mismatch}"
         )
     payload = {
-        "format": "hiercp_downstream_ablation_schedule_audit_v1",
+        "format": "hiercp_downstream_ablation_schedule_audit_v2",
         "outer_fold": run.outer_fold,
         "dataset_id": run.dataset_id,
         "matched": True,
@@ -1106,12 +1174,65 @@ def _audit_schedules(run: RuntimeLayout) -> None:
         "methods": trainers,
         "total_samples": sum(value[1] for value in reference.values()),
         "total_cp_events": sum(value[0] for value in reference.values()),
+        "log_inputs": log_inputs,
+        "epoch_records": {name: [{"epoch": epoch, "applied": item[0], "samples": item[1], "schedule": item[2]}
+                                  for epoch, item in sorted(values.items())] for name, values in records.items()},
     }
-    _atomic_json(run.report_root / "schedule_audit.json", payload)
+    _verify_schedule_audit(payload)
+    _publish_report_json(run.report_root / "schedule_audit.json", payload)
     print(
         f"[OK] online schedule audit: Basic/Full/w-o-L1/w-o-L2 matched 250/250 epochs; "
         f"events={payload['total_cp_events']}/{payload['total_samples']}"
     )
+
+
+def _verify_schedule_audit(payload: Mapping[str, Any]) -> None:
+    names = {"basic", "full", "no_patient", "no_population"}
+    if (payload.get("format") != "hiercp_downstream_ablation_schedule_audit_v2"
+            or payload.get("matched") is not True or payload.get("epochs") != 250
+            or set(payload.get("log_inputs", {})) != names):
+        raise DownstreamAblationError("Missing or unsupported SHA-bound 250-epoch schedule audit; rerun evaluation in a new directory.")
+    reference = None
+    for name, item in payload["log_inputs"].items():
+        records = _schedule_records_from_result(Path(item["result"]), log_contract=item["files"])
+        expected_rows = [{"epoch": epoch, "applied": value[0], "samples": value[1], "schedule": value[2]}
+                         for epoch, value in sorted(records.items())]
+        if (set(records) != set(range(250)) or sum(value[0] for value in records.values()) <= 0
+                or payload.get("epoch_records", {}).get(name) != expected_rows):
+            raise DownstreamAblationError(f"Schedule audit record/count provenance mismatch for {name}.")
+        if reference is None:
+            reference = records
+        elif records != reference:
+            raise DownstreamAblationError(f"Schedule audit recorded nonmatching schedules for {name}.")
+    assert reference is not None
+    if (payload.get("total_samples") != sum(value[1] for value in reference.values())
+            or payload.get("total_cp_events") != sum(value[0] for value in reference.values())):
+        raise DownstreamAblationError("Schedule audit total-count mismatch.")
+
+
+def _verified_pair_summary(output: Path) -> dict[str, Any]:
+    summary_path = output / "summary.json"
+    digest = _sha256(summary_path)
+    summary = _load_json(summary_path)
+    completion = _load_json(output / "completion.json")
+    contract = summary.get("evaluation_contract")
+    if (completion.get("format") != "online_eval_completion_v1" or completion.get("complete") is not True
+            or completion.get("summary_sha256") != digest or not isinstance(contract, dict)
+            or completion.get("evaluation_contract_sha256") != contract.get("contract_sha256")):
+        raise DownstreamAblationError(f"Missing, incomplete or changed pairwise evaluation: {output}. Use a new evaluation output directory.")
+    outputs = completion.get("outputs")
+    if not isinstance(outputs, dict) or outputs.get("summary.json") != digest:
+        raise DownstreamAblationError(f"Missing pairwise output manifest: {output}")
+    for relative, expected_digest in outputs.items():
+        path = output / relative
+        if Path(relative).is_absolute() or not path.resolve().is_relative_to(output.resolve()):
+            raise DownstreamAblationError(f"Invalid pairwise output manifest path: {relative}")
+        if _sha256(path) != expected_digest:
+            raise DownstreamAblationError(f"Pairwise evaluation artifact changed: {path}")
+    verify_evaluation_contract(contract)
+    if _sha256(summary_path) != digest:
+        raise DownstreamAblationError(f"Pairwise summary changed while verifying: {summary_path}")
+    return summary
 
 
 def _run_quality_evaluation(
@@ -1122,12 +1243,10 @@ def _run_quality_evaluation(
     output: Path,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
-    evaluator = run.base.project / "tools" / "online_eval_v2.py"
-    if not evaluator.is_file():
-        evaluator = run.base.medical / "online_eval_v2.py"
+    evaluator = Path(__file__).resolve().with_name("online_eval_v2.py")
     if not evaluator.is_file():
         raise DownstreamAblationError(
-            "online_eval_v2.py is missing from both project/tools and Medical root"
+            f"Matching evaluator is missing from this checkout: {evaluator}; refusing an older external-script fallback."
         )
     _run(
         [
@@ -1147,7 +1266,6 @@ def _run_quality_evaluation(
             str(int(args.bootstrap_iterations)),
             "--permutation-iterations",
             str(int(args.permutation_iterations)),
-            "--allow-regression-mismatch",
             "--output",
             output,
         ],
@@ -1156,7 +1274,7 @@ def _run_quality_evaluation(
     )
     if args.dry_run:
         return {}
-    return _load_json(output / "summary.json")
+    return _verified_pair_summary(output)
 
 
 def _method_from_pair(summary: Mapping[str, Any], side: str) -> dict[str, Any]:
@@ -1167,19 +1285,66 @@ def _method_from_pair(summary: Mapping[str, Any], side: str) -> dict[str, Any]:
     method_key = "basic_cp" if side == "basic" else "hiercp"
     size_key = "basic_recall" if side == "basic" else "hier_recall"
     output = {
-        "tumor_dice": float(case[f"{side}_mean"]),
-        "lesion_dice_mean": float(summary["lesion_dice_quality"][f"{side}_mean"]),
+        "tumor_dice": case[f"{side}_mean"],
+        "lesion_dice_mean": summary["lesion_dice_quality"][f"{side}_mean"],
         "criteria": {},
     }
     for name, values in criteria.items():
         item = dict(values[method_key])
-        item["le_10mm_recall"] = values["by_size"]["le_10mm"][size_key]
-        item["gt_10_le_20mm_recall"] = values["by_size"]["gt_10_le_20mm"][size_key]
+        item["le_10mm_recall"] = values["by_size"].get("le_10mm", {}).get(size_key)
+        item["gt_10_le_20mm_recall"] = values["by_size"].get("gt_10_le_20mm", {}).get(size_key)
         output["criteria"][name] = item
     return output
 
 
+def _validate_pairwise_provenance(summaries: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+    expected = {"basic_vs_full": BASIC_TRAINER, "no_patient_vs_full": NO_PATIENT_TRAINER,
+                "no_population_vs_full": NO_POPULATION_TRAINER}
+    if set(summaries) != set(expected):
+        raise DownstreamAblationError("Exactly the three prespecified pairwise evaluations are required.")
+    full_identity = None
+    for name, first_trainer in expected.items():
+        contract = summaries[name].get("evaluation_contract")
+        if not isinstance(contract, dict):
+            raise DownstreamAblationError(f"Missing evaluation provenance in {name}; reevaluate existing predictions in a new directory.")
+        verify_evaluation_contract(contract)
+        if contract["methods"]["basic"]["trainer"] != first_trainer or contract["methods"]["hier"]["trainer"] != FULL_TRAINER:
+            raise DownstreamAblationError(f"Unexpected trainer pair in {name}.")
+        candidate = full_method_identity(contract, "hier")
+        if full_identity is None:
+            full_identity = candidate
+        elif candidate != full_identity:
+            raise DownstreamAblationError(f"Full prediction/cohort/ground-truth/evaluation-definition identity mismatch in {name}; equal mean Dice is insufficient.")
+    assert full_identity is not None
+    return full_identity
+
+
+def _format_number(value: Any, digits: int = 4, *, signed: bool = False) -> str:
+    if value is None:
+        return "N/A"
+    number = float(value)
+    if not np.isfinite(number):
+        raise DownstreamAblationError(f"Non-finite report metric: {value!r}")
+    return format(number, ("+" if signed else "") + f".{digits}f")
+
+
 def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[str, Any]]) -> None:
+    full_identity = _validate_pairwise_provenance(summaries)
+    case_ids = _validation_ids(run)
+    if (len(case_ids) != len(set(case_ids)) or len(case_ids) != len(full_identity["cohort"])
+            or set(case_ids) != set(full_identity["cohort"])):
+        raise DownstreamAblationError("Verified evaluation cohort differs from the requested outer split.")
+    for name, summary in summaries.items():
+        if (summary.get("outer_fold") != run.outer_fold or summary.get("dataset_id") != run.dataset_id
+                or summary["evaluation_contract"]["evaluation_definition"].get("outer_fold") != run.outer_fold
+                or summary["evaluation_contract"]["evaluation_definition"].get("dataset_id") != run.dataset_id):
+            raise DownstreamAblationError(f"Verified evaluation fold/dataset mismatch in {name}.")
+        if _verified_pair_summary(run.evaluation_for(name)) != summary:
+            raise DownstreamAblationError(f"Pair summary changed since evaluation: {name}")
+    schedule_path = run.report_root / "schedule_audit.json"
+    schedule_sha256 = _sha256(schedule_path)
+    schedule_audit = _load_json(schedule_path)
+    _verify_schedule_audit(schedule_audit)
     basic_vs_full = summaries["basic_vs_full"]
     no_patient_vs_full = summaries["no_patient_vs_full"]
     no_population_vs_full = summaries["no_population_vs_full"]
@@ -1189,14 +1354,15 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         "no_patient": _method_from_pair(no_patient_vs_full, "basic"),
         "no_population": _method_from_pair(no_population_vs_full, "basic"),
     }
-    # The Full prediction must be identical in all pairwise evaluations.
+    # Input identity was checked above using the exact cohort and all GT/Full
+    # prediction hashes. Retain a separate metric consistency check as well.
     full_reference = methods["full"]
     for key, summary in (
         ("no_patient_vs_full", no_patient_vs_full),
         ("no_population_vs_full", no_population_vs_full),
     ):
         candidate = _method_from_pair(summary, "hier")
-        if abs(candidate["tumor_dice"] - full_reference["tumor_dice"]) > 1e-12:
+        if candidate != full_reference:
             raise DownstreamAblationError(f"Full metric mismatch in {key}")
 
     direct = {
@@ -1226,8 +1392,13 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         "methods": methods,
         "direct_downstream_effects": direct,
         "schedule_audit": str((run.report_root / "schedule_audit.json").resolve()),
+        "schedule_audit_sha256": schedule_sha256,
+        "full_input_identity": full_identity,
+        "pair_evaluation_contract_sha256": {name: summary["evaluation_contract"]["contract_sha256"] for name, summary in summaries.items()},
+        "interpretation": {"scope": "exploratory_single_outer_fold", "multiplicity_adjusted": False,
+                           "primary_endpoint_selected_by_this_report": False,
+                           "automatic_architecture_removal_supported": False},
     }
-    _atomic_json(run.report_root / "summary.json", payload)
 
     criterion = "dice_ge_0p10"
     criterion25 = "dice_ge_0p25"
@@ -1237,8 +1408,10 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         f"- Outer fold: {run.outer_fold}",
         f"- Dataset: {_dataset_name(run.dataset_id, run.outer_fold)}",
         "- Basic-CP and Full-M3 exact-argmax results are reused; they are not retrained.",
-        "- M3 w/o Level 1 and M3 w/o Level 2 use the exact same source entries and candidate centers as Full M3; only the Fold-specific ablation GNN scores differ.",
-        "- All four nnU-Net runs use the same online CP event/source/appearance/augmentation schedule.",
+        "- The experimental design holds source entries and candidate centers fixed and changes only the ablation GNN scores. This reevaluation does not independently re-audit bank creation or the original training run.",
+        "- SHA-bound logs report matching CP counts and schedule fingerprints for all 250 epochs in all four runs; this checks recorded schedules, not unlogged execution.",
+        "- Exact patient IDs, ground-truth files, Full prediction files and evaluation definitions match across all three pairwise evaluations (SHA-256 verified).",
+        "- This is an exploratory single-fold report. Pairwise confidence intervals and p-values are not adjusted for multiple comparisons.",
         "",
         "## Downstream performance",
         "",
@@ -1256,18 +1429,18 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         c10 = value["criteria"][criterion]
         c25 = value["criteria"][criterion25]
         lines.append(
-            f"| {labels[mode]} | {value['tumor_dice']:.4f} | {value['lesion_dice_mean']:.4f} | "
-            f"{c10['recall']:.4f} | {c10['precision']:.4f} | {c10['f1']:.4f} | "
-            f"{c10['fp_per_case']:.3f} | {c10['le_10mm_recall']:.4f} | "
-            f"{c25['recall']:.4f} | {c25['le_10mm_recall']:.4f} |"
+            f"| {labels[mode]} | {_format_number(value['tumor_dice'])} | {_format_number(value['lesion_dice_mean'])} | "
+            f"{_format_number(c10['recall'])} | {_format_number(c10['precision'])} | {_format_number(c10['f1'])} | "
+            f"{_format_number(c10['fp_per_case'], 3)} | {_format_number(c10['le_10mm_recall'])} | "
+            f"{_format_number(c25['recall'])} | {_format_number(c25['le_10mm_recall'])} |"
         )
 
     lines.extend(
         [
             "",
-            "## Direct downstream effect of each retained level",
+            "## Exploratory paired differences for each retained level",
             "",
-            "Positive values mean Full M3 performed better than the model with that level removed. For FP/case, a positive reduction means Full M3 produced fewer false positives.",
+            "Positive differences favor Full M3 on that metric in this fold; they do not establish a generalizable level effect. For FP/case, positive reduction means fewer false positives with Full M3.",
             "",
             "| Level | Delta tumor Dice | 95% CI | p | Delta recall D>=0.10 | 95% CI | p | Delta F1 D>=0.10 | Delta FP reduction/case |",
             "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -1284,34 +1457,51 @@ def _aggregate_evaluation(run: RuntimeLayout, summaries: Mapping[str, Mapping[st
         f1 = stats["f1"]
         fp = stats["fp_per_case"]
         # Evaluator difference is second (Full) - first (ablation).
-        fp_reduction = -float(fp["difference"])
+        fp_reduction = None if fp["difference"] is None else -float(fp["difference"])
         lines.append(
-            f"| {label} | {float(dice_stats['difference']):+.4f} | "
-            f"[{float(dice_stats['ci_low']):+.4f}, {float(dice_stats['ci_high']):+.4f}] | "
-            f"{float(dice_stats['permutation_p']):.4f} | "
-            f"{float(recall['difference']):+.4f} | "
-            f"[{float(recall['ci_low']):+.4f}, {float(recall['ci_high']):+.4f}] | "
-            f"{float(recall['permutation_p']):.4f} | "
-            f"{float(f1['difference']):+.4f} | {fp_reduction:+.3f} |"
+            f"| {label} | {_format_number(dice_stats['difference'], signed=True)} | "
+            f"[{_format_number(dice_stats['ci_low'], signed=True)}, {_format_number(dice_stats['ci_high'], signed=True)}] | "
+            f"{_format_number(dice_stats['permutation_p'])} | "
+            f"{_format_number(recall['difference'], signed=True)} | "
+            f"[{_format_number(recall['ci_low'], signed=True)}, {_format_number(recall['ci_high'], signed=True)}] | "
+            f"{_format_number(recall['permutation_p'])} | "
+            f"{_format_number(f1['difference'], signed=True)} | {_format_number(fp_reduction, 3, signed=True)} |"
         )
     lines.extend(
         [
             "",
-            "## Interpretation rule",
+            "## Interpretation limits and next comparison",
             "",
-            "- Full > w/o Level 1: Patient Graph reranking improves actual downstream segmentation.",
-            "- Full ~= or < w/o Level 2: the current Population Prototype branch is unnecessary or needs redesign.",
-            "- Full > w/o Level 2: population alignment contributes despite weak positive-ranking gains in the 128-candidate audit.",
+            "- A favorable point estimate alone does not establish benefit. Read the paired confidence interval and p-value for each prespecified endpoint; an interval crossing zero leaves the direction uncertain.",
+            "- A non-significant difference does not demonstrate equivalence or that a branch is unnecessary. Mixed Dice/recall/false-positive changes describe a trade-off, not an automatic architecture decision.",
+            "- Do not select a primary endpoint or remove/redesign Patient or Population levels from this single-fold table. Preserve the full design and complete the originally planned outer-fold/repeat comparisons.",
+            "- N/A denotes an undefined metric or an absent lesion-size group, never a substituted zero. This report evaluates existing predictions and does not certify training/checkpoint provenance that was not recorded.",
             "",
             f"- Pairwise quality-aware outputs: `{run.report_root}`",
         ]
     )
-    _atomic_text(run.report_root / "comparison.md", "\n".join(lines) + "\n")
+    _validate_pairwise_provenance(summaries)
+    for name, summary in summaries.items():
+        if _verified_pair_summary(run.evaluation_for(name)) != summary:
+            raise DownstreamAblationError(f"Pair summary changed before aggregate publication: {name}")
+    _verify_schedule_audit(schedule_audit)
+    if _sha256(schedule_path) != schedule_sha256:
+        raise DownstreamAblationError("Schedule audit changed before aggregate publication.")
+    _publish_report_text(run.report_root / "comparison.md", "\n".join(lines) + "\n")
+    _publish_report_json(run.report_root / "summary.json", payload)
+    _publish_report_json(run.report_root / "completion.json", {
+        "format": TOOL_VERSION, "complete": True,
+        "summary_sha256": _sha256(run.report_root / "summary.json"),
+        "comparison_sha256": _sha256(run.report_root / "comparison.md"),
+        "schedule_audit_sha256": schedule_sha256,
+        "pair_summary_sha256": {name: _sha256(run.evaluation_for(name) / "summary.json") for name in summaries},
+    })
     print(f"[OK] downstream ablation report: {run.report_root / 'comparison.md'}")
 
 
 def _evaluate(run: RuntimeLayout, args: argparse.Namespace) -> None:
     if not args.dry_run:
+        _reserve_evaluation_output(run)
         _audit_schedules(run)
     summaries = {
         "basic_vs_full": _run_quality_evaluation(
@@ -1368,9 +1558,9 @@ def command_check(run: RuntimeLayout, args: argparse.Namespace) -> None:
     _check_trainer_import()
     for command in ("nnUNetv2_train",):
         _require_command(command)
-    evaluator = run.base.project / "tools" / "online_eval_v2.py"
-    if not evaluator.is_file() and not (run.base.medical / "online_eval_v2.py").is_file():
-        raise DownstreamAblationError("online_eval_v2.py is missing")
+    evaluator = Path(__file__).resolve().with_name("online_eval_v2.py")
+    if not evaluator.is_file():
+        raise DownstreamAblationError(f"Matching online_eval_v2.py is missing: {evaluator}")
     print("[OK] Fold-specific GNN, shared OnlineCP bank, Basic and Full exact-argmax assets")
     _print_status(run)
 
@@ -1387,6 +1577,8 @@ def command_train(run: RuntimeLayout, args: argparse.Namespace) -> None:
 
 
 def command_all(run: RuntimeLayout, args: argparse.Namespace) -> None:
+    if not args.dry_run and run.report_root.exists():
+        raise DownstreamAblationError(f"Evaluation output already exists: {run.report_root}. Choose a NEW --evaluation-output before starting any training work.")
     command_check(run, args)
     command_prepare(run, args)
     command_train(run, args)
@@ -1409,6 +1601,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--score-rtol", type=float, default=0.005)
     parser.add_argument("--bootstrap-iterations", type=int, default=20000)
     parser.add_argument("--permutation-iterations", type=int, default=50000)
+    parser.add_argument("--evaluation-output", help="NEW directory for audit, pairwise reevaluation and combined report; existing outputs are never replaced.")
     parser.add_argument("--overwrite-banks", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser
