@@ -1,0 +1,56 @@
+# Repository-local runtime products
+/work/
+/output/
+/outputs/
+/dataset/
+/datasets/
+/runs/
+/cache/
+/caches/
+/checkpoints/
+
+# External medical data and generated volume/array artifacts
+/Data/
+/Data_aug/
+/Task03_Liver/
+/data/
+*.nii
+*.nii.gz
+*.npy
+*.npz
+
+# Model, optimizer, and cache payloads
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.pickle
+
+# Python bytecode, test/tool caches, and packaging output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+/build/
+/dist/
+*.egg-info/
+
+# Local virtual environments
+/.venv/
+/venv/
+/env/
+/.conda/
+
+# Runtime logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Source, experiment contracts, and the reconstructed snapshot stay trackable.
+!/config/
+!/config/**
+!/code.txt

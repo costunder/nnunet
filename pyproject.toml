@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hiercp"
+version = "0.21.0"
+description = "Adaptive heterogeneous PyG placement model for 3D liver tumor copy-paste"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.23",
+  "scipy>=1.9",
+  "nibabel>=5.0",
+]
+
+[project.optional-dependencies]
+pyg = ["torch-geometric>=2.6"]
+
+[tool.setuptools.packages.find]
+include = ["hiercp*", "tools*"]

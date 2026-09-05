@@ -1,0 +1,41 @@
+{
+  "dataset": {
+    "id": 711,
+    "name": "LiverTumorHierCPSmallStudy",
+    "configuration": "3d_fullres",
+    "planner": "nnUNetPlannerResEncM",
+    "plans": "nnUNetResEncUNetMPlans",
+    "trainer": "nnUNetTrainer_250epochs"
+  },
+  "small_tumor": {
+    "tumor_label": 2,
+    "augmentation_min_equivalent_diameter_mm": 0.0,
+    "augmentation_max_equivalent_diameter_mm": 20.0,
+    "evaluation_bins_mm": [
+      10.0,
+      20.0
+    ]
+  },
+  "preprocess": {
+    "verify_dataset_integrity": true,
+    "no_progress_bar": true,
+    "processes": 4
+  },
+  "training": {
+    "num_folds": 5,
+    "folds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "split_seed": 42,
+    "nnunet_n_proc_DA": 8,
+    "save_npz": false
+  },
+  "runtime": {
+    "nnunet_root": "nnunetv2",
+    "minimum_free_gb_before_preprocess": 80.0
+  }
+}
