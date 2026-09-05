@@ -84,6 +84,24 @@ bound to the actual bank/raw/checkpoint identity.
 
 ## Publication and launch
 
+For a new isolated experiment, run from a fresh checkout:
+
+```bash
+python tools/run_feedback_experiment.py --medical-root /home/aicompetition06/Medical
+```
+
+This runs the complete configured quality-GNN training, bank publication, then
+Full and Basic feedback training for outer fold 0. It creates only
+`work/feedback_experiment` in that checkout and installs trainers in a private
+nnU-Net package copy. Original site-packages and prior results are not replaced.
+It preserves the existing allocated GPU visibility and requires one visible GPU.
+`--dry-run` prints commands without launching children or creating outputs.
+An existing experiment directory is refused; this convenience command is not a
+resume command. Failed-stage outputs and `launch_plan.json` remain for inspection.
+It does not run downstream comparison/statistics. `--outer-fold`, `--dataset-id`
+and the nnU-Net `--seed` are explicit options; GNN/bank seeds still follow their
+checked-in fold-specific configuration.
+
 Run from this repository in the intended nnU-Net environment, with the `hiercp`
 package importable. First inspect `python custom_trainers/install_onlinecp_custom_trainers.py check`;
 the installer audits all eight trainer/helper hashes. `apply` installs the audited
