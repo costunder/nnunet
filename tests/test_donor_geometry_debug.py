@@ -46,7 +46,7 @@ class DonorGeometryDebugTests(unittest.TestCase):
         image, label = user_headers()
         originals = [nii.header.binaryblock for nii in (image, label)]
         report = self.check(image, label)
-        self.assertEqual(report["accepted_as"], "roundoff")
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
         self.assertFalse(report["legacy_strict_pass"])
         self.assertAlmostEqual(report["max_corner_displacement_mm"], 5.721992347138872e-5, places=14)
         self.assertAlmostEqual(report["max_corner_displacement_image_voxels"], 8.582337313998776e-5, places=14)
@@ -75,7 +75,7 @@ class DonorGeometryDebugTests(unittest.TestCase):
 
     def test_roundoff_selected_sform_code_two_is_also_supported(self):
         report = self.check(*user_headers(sform_code=2))
-        self.assertEqual(report["accepted_as"], "roundoff")
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
 
     def test_selected_sform_not_alternate_qform_determines_grid(self):
         image, label = user_headers()
@@ -84,7 +84,7 @@ class DonorGeometryDebugTests(unittest.TestCase):
         label.header.set_qform(alternate, code=2)
         label.affine = label.header.get_best_affine()
         report = self.check(image, label)
-        self.assertEqual(report["accepted_as"], "roundoff")
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
         self.assertEqual(report["label_forms"]["selected_form"], "sform")
         self.assertNotEqual(report["label_forms"]["qform_affine"], report["label_selected_affine"])
 
@@ -164,20 +164,22 @@ class DonorGeometryDebugTests(unittest.TestCase):
         self.reject(header_fixture(unit="meter"), header_fixture(changed, unit="meter"), "max_cell_corner")
 
     def test_unknown_units_do_not_gain_roundoff_path(self):
-        self.reject(*user_headers(unit="unknown"), reason="not eligible")
+        self.reject(*user_headers(unit="unknown"), reason="matching mm units")
 
-    def test_nifti2_does_not_gain_float32_roundoff_path(self):
-        self.reject(*user_headers(nifti2=True), reason="not eligible")
+    def test_nifti2_uses_same_physical_grid_bounds(self):
+        self.assertEqual(self.check(*user_headers(nifti2=True))["accepted_as"], "extent_equivalent")
 
-    def test_nonselected_sform_cannot_enable_roundoff_path(self):
-        self.reject(*user_headers(sform_code=0), reason="not eligible")
+    def test_matching_selected_qforms_use_same_physical_grid_bounds(self):
+        report = self.check(*user_headers(sform_code=0))
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
+        self.assertEqual(report["label_forms"]["selected_form"], "qform")
 
     def test_different_selected_sform_codes_reject_additional_path(self):
         image, label = user_headers()
         label.header["sform_code"] = 2
-        self.reject(image, label, "not eligible")
+        self.reject(image, label, "coordinate frames")
 
-    def test_more_than_two_affine_ulps_rejected_within_corner_tolerance(self):
+    def test_affine_ulps_are_diagnostic_within_grid_tolerance(self):
         a = np.eye(4)
         a[0, 3] = np.float32(-163.35547)
         b = a.copy()
@@ -185,15 +187,45 @@ class DonorGeometryDebugTests(unittest.TestCase):
         for _ in range(3):
             value = np.nextafter(value, np.float32(-np.inf))
         b[0, 3] = value
-        self.reject(header_fixture(a), header_fixture(b), "not eligible")
+        report = self.check(header_fixture(a), header_fixture(b))
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
+        self.assertEqual(report["max_affine_float32_ulps"], 3)
+        self.assertFalse(report["float32_ulps_used_for_acceptance"])
 
-    def test_more_than_two_pixdim_ulps_rejects_additional_path(self):
+    def test_pixdim_ulps_do_not_change_the_selected_grid_decision(self):
         image, label = user_headers()
         value = label.header["pixdim"][1]
         for _ in range(3):
             value = np.nextafter(value, np.float32(np.inf))
         label.header["pixdim"][1] = value
-        self.reject(image, label, "not eligible")
+        report = self.check(image, label)
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
+        self.assertGreater(report["max_pixdim_float32_ulps"], 2)
+
+    def test_same_small_shift_is_independent_of_origin_ulp_magnitude(self):
+        # Synthetic liver_97-like precision regression, NOT reconstructed raw
+        # liver_97 headers: only aggregate displacement was supplied by user.
+        ulps = []
+        for origin in (1.0, 8.0, 128.0):
+            a = np.diag([0.72265625, 0.72265625, 0.7, 1.0])
+            a[:3, 3] = [origin, 128.0, 0.0]
+            b = a.copy()
+            b[:2, 3] += 3.0517578125e-5
+            report = self.check(header_fixture(a), header_fixture(b))
+            self.assertEqual(report["accepted_as"], "extent_equivalent")
+            self.assertLess(report["max_corner_displacement_mm"], 1e-4)
+            self.assertLess(report["max_corner_displacement_image_voxels"], 1e-4)
+            ulps.append(report["max_affine_float32_ulps"])
+        self.assertEqual(ulps, [256, 32, 2])
+
+    def test_qform_and_sform_names_can_differ_with_same_effective_code(self):
+        image, label = user_headers()
+        label.header.set_qform(label.affine, code=1)
+        label.header["sform_code"] = 0
+        label.affine = label.header.get_best_affine()
+        report = self.check(image, label)
+        self.assertEqual(report["effective_coordinate_frame_codes"], [1, 1])
+        self.assertEqual(report["accepted_as"], "extent_equivalent")
 
     def test_singleton_fourth_dimension_matches_three_dimensional_grid(self):
         image, label = user_headers(shape=(512, 512, 630, 1))

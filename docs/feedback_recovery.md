@@ -42,7 +42,7 @@ image/label hashes remain bound to the experiment. Labels are checked before an
 integer conversion for finite, integral values from the configured label set;
 image/label geometry is checked as well.
 
-### Numerical header equivalence (liver_85 follow-up)
+### Numerical header equivalence and complete-cohort preflight
 
 An elementwise affine tolerance alone is not an adequate grid comparison: it
 can reject harmless float32 header roundoff yet admit small linear errors that
@@ -52,22 +52,43 @@ float32 srows gives approximately 0.0000572 mm / 0.0000858 voxel maximum
 voxel-center-corner displacement. This reconstruction is header evidence, not
 an inspection of the actual medical voxels or proof of anatomical alignment.
 
-The donor check keeps its original strict affine comparison but additionally
-bounds displacement over the **whole voxel-cell box**, including its outer
-half-voxel boundaries. Both reciprocal voxel-grid errors must stay within
-0.0001 voxel, and known spatial units must also stay within 0.0001 mm. The
-additional roundoff acceptance path is deliberately restricted to matching
-active float32 NIfTI-1 sforms with mm units: affine coefficients and header
-spacings may differ by at most two float32 ULPs, and both whole-box bounds must
-still pass. This is a numerical compatibility policy, not a clinical tolerance
-or an unbounded relative tolerance tied to a large coordinate origin.
+The previous two-float32-ULP restriction was not a suitable physical criterion.
+The supplied `liver_97` diagnostic failed it at 32 ULP despite only 0.0000432 mm /
+0.0000598 voxel maximum displacement, less than the `liver_85` displacement.
+ULP size depends on coordinate magnitude. Version `donor_grid_physical_extent_v2`
+therefore records ULP counts for diagnosis only, without increasing an ULP cap.
 
-Unknown-unit mismatches, different sform codes, nonfinite/singular geometry,
-flips, and larger or accumulated coordinate changes are not admitted by that
-roundoff path. Selected affines are never replaced by an alternate qform;
-neither headers nor voxel arrays are rewritten, reoriented or resampled.
-Accepted roundoff is printed explicitly and its geometry evidence is stored in
-the SHA-bound donor contract. Existing strict donor contracts remain readable.
+The numerical limits remain unchanged: over the **whole voxel-cell box**, both
+reciprocal voxel-grid displacements must be at most 0.0001 voxel and physical
+displacement at most 0.0001 mm. Known equal spatial units are converted for that
+comparison, not rewritten in the data. Additional acceptance beyond the old
+elementwise test requires matching mm units and compatible nonzero effective
+coordinate-frame codes. Storage format (NIfTI-1 versus NIfTI-2) and whether the
+selected transform is named qform or sform do not change this physical test.
+Unknown units retain the old strict requirement plus both voxel bounds, and
+are explicitly not reported as a verified mm displacement.
+
+Nonfinite/singular transforms, unit/frame incompatibility, flips and changes
+exceeding either whole-box limit are rejected. Selected affines are never
+replaced by alternate transforms; headers and voxel arrays are not rewritten,
+reoriented or resampled. Numerical equivalence is printed explicitly and its
+evidence stored in the SHA-bound donor contract. This tests pairwise grid
+agreement, not anatomy, pixdim-versus-own-affine consistency, or the separate
+spacing-only graph assumption about shear. It is not a clinical tolerance.
+
+For an unfinished recovery, `header_geometry.<unique-id>.json` now collects all
+selected cases before full source hashing, cache copies, raw-label scans or
+resource pilots. Expected invalid/corrupt headers are recorded for every case,
+then the whole phase fails if any case is invalid. No failed case is dropped or
+treated as eligible. Unexpected execution errors still propagate. Direct donor
+preparation also performs this complete-cohort header phase before reading any
+label voxels. Subsequent SHA checks and a repeated geometry check bind the actual
+loaded source to the audited header; header-only reports do not claim full-file
+SHA verification. Each report has a new name so previous evidence is retained.
+
+Existing donor contracts and completed receipts remain readable using their
+recorded policy and source hashes; a legacy receipt is not relabeled as a new
+policy run. New or interrupted recovery attempts perform the new header phase.
 After this pre-eligibility failure, update the same checkout and repeat the
 recovery command with `--resume-preparation`; retain the original run root,
 fold, dataset ID and seed so the preparation journal can be reverified.

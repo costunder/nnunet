@@ -84,7 +84,11 @@ class DonorEligibilityDebugTests(unittest.TestCase):
             self.collect([self.case("shifted", values, label_affine=affine)])
         paths = self.case("changed", values)
         sources = cache._source_contract([paths], [paths.case_id])
-        paths.label_path.write_bytes(b"DEBUG changed input")
+        # Keep the header valid so this independently tests the later SHA guard.
+        label = nib.load(paths.label_path)
+        changed = np.asanyarray(label.dataobj).copy()
+        changed[1, 1, 1] = 2
+        nib.save(nib.Nifti1Image(changed, label.affine, label.header), paths.label_path)
         with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
             cache.build_donor_eligibility(case_paths=[paths], selected_case_ids=[paths.case_id], source_cases=sources,
                                          liver_label=1, tumor_label=2, workers=2,
@@ -105,7 +109,7 @@ class DonorEligibilityDebugTests(unittest.TestCase):
             nib.save(nii, path)
         original = {path: path.read_bytes() for path in (paths.image_path, paths.label_path)}
         contract, sources = self.collect([paths])
-        self.assertEqual(contract["cases"][0]["geometry_audit"]["accepted_as"], "roundoff")
+        self.assertEqual(contract["cases"][0]["geometry_audit"]["accepted_as"], "extent_equivalent")
         self.assertEqual(contract["eligible_case_ids"], [paths.case_id])
         self.assertEqual(original, {path: path.read_bytes() for path in original})
         altered = copy.deepcopy(contract)

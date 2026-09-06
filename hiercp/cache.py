@@ -349,6 +349,7 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
     import nibabel as nib
     from scipy import ndimage as ndi
     from hiercp.preparation_runtime import run_case_jobs
+    from hiercp.donor_preflight import audit_donor_headers
 
     labels = {"liver": int(liver_label), "tumor": int(tumor_label)}
     if len({0, *labels.values()}) != 3:
@@ -359,6 +360,11 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
     sources = {row["case_id"]: row for row in source_cases}
     if list(sources) != list(selected_case_ids) or len(sources) != len(source_cases):
         raise ValueError("Donor eligibility source cohort is not exact")
+    if report_path is None:
+        report_path = Path(tempfile.mkdtemp(prefix="hiercp-donor-audit-")) / "runtime.json"
+    report_path = Path(report_path)
+    header_audits = audit_donor_headers(case_paths=case_paths, selected_case_ids=selected_case_ids,
+        workers=workers, report_path=report_path.with_name(report_path.stem + ".headers.json"))
 
     def classify(paths):
         source = sources[paths.case_id]
@@ -366,8 +372,10 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
             _assert_file_sha256(Path(getattr(paths, f"{name}_path")), source[f"{name}_sha256"], context="Donor preflight")
         image, label = nib.load(paths.image_path), nib.load(paths.label_path)
         geometry_audit = validate_donor_geometry(image, label, case_id=paths.case_id)
-        if geometry_audit["accepted_as"] == "roundoff":
-            print("[DonorGeometryRoundoff] " + json.dumps(
+        if geometry_audit != header_audits[paths.case_id]:
+            raise ValueError(f"Donor geometry changed after whole-cohort header preflight: {paths.case_id}")
+        if geometry_audit["accepted_as"] == "extent_equivalent":
+            print("[DonorGeometryEquivalent] " + json.dumps(
                 {"case_id": paths.case_id, **geometry_audit}, allow_nan=False), flush=True)
         raw = np.asanyarray(label.dataobj)
         if raw.ndim == 4 and raw.shape[3] == 1:
@@ -397,8 +405,6 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
         return result
 
     rows = {}
-    if report_path is None:
-        report_path = Path(tempfile.mkdtemp(prefix="hiercp-donor-audit-")) / "runtime.json"
     run_case_jobs(tasks=[paths_by_id[value] for value in selected_case_ids], function=classify,
                   commit=lambda row: rows.__setitem__(row["case_id"], row), workers=workers,
                   report_path=report_path)

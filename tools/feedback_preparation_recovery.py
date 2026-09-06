@@ -293,6 +293,7 @@ def prepare_recovery(plan, source_root, *, runner, env):
                               validate_donor_eligibility, validate_cache_migration,
                               _source_contract, validate_cache_publication)
     from hiercp.common import discover_cases
+    from hiercp.donor_preflight import audit_donor_headers
     from hiercp.preparation_runtime import snapshot
     source, target = Path(source_root).resolve(), Path(plan["run_root"]).resolve()
     identity = validate_recovery_source(plan, source)
@@ -329,10 +330,15 @@ def prepare_recovery(plan, source_root, *, runner, env):
         raise ValueError("Original fold-specific quality-GNN seed changed")
     selected = split["train"] + split["val"]
     paths = discover_cases(Path(plan["medical_root"]) / "Data", case_ids=selected, run_mode="benchmark")
+    receipt_path = folder / "complete.json"
+    if not receipt_path.exists():
+        # Discover every geometry failure before full source hashing, cache
+        # copying, raw-label classification or full-size resource pilots.
+        audit_donor_headers(case_paths=paths, selected_case_ids=selected, workers="auto",
+                            report_path=folder / "header_geometry.json")
     sources = _source_contract(paths, selected)
     if sources != old_cache["source_cases"]:
         raise ValueError("Actual source images/labels differ from original cache contract")
-    receipt_path = folder / "complete.json"
     if receipt_path.exists():
         receipt = read_json(receipt_path)
         verify_identity(identity)

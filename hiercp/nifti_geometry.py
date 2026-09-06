@@ -1,23 +1,21 @@
 """Header-only, extent-aware donor grid validation; never resample input data.
 
-The additional NIfTI-1 sform path permits at most two stored float32 steps,
-and only when the displacement over the entire voxel-cell extent remains
-below both 0.1 micrometre and 0.0001 voxel. This is numerical equivalence,
-not registration, and does not establish anatomical alignment of arrays.
+Numerical equivalence is defined by displacement over the entire voxel-cell
+extent: at most 0.1 micrometre and 0.0001 voxel in both grids. Float storage
+step counts are diagnostic only: their physical size changes with coordinate
+magnitude. This is not registration or proof of anatomical array alignment.
 """
 from __future__ import annotations
 
 import itertools
 
-import nibabel as nib
 import numpy as np
 
 
-GEOMETRY_POLICY_VERSION = "donor_grid_extent_float32_v1"
+GEOMETRY_POLICY_VERSION = "donor_grid_physical_extent_v2"
 LEGACY_AFFINE_ATOL = 1e-5
 MAX_CORNER_MM = 1e-4
 MAX_CORNER_VOXELS = 1e-4
-MAX_FLOAT32_ULPS = 2
 
 
 def _float32_ulp_distance(first, second):
@@ -133,22 +131,22 @@ def validate_donor_geometry(image_nii, label_nii, *, case_id):
     pixdim_ulps = _float32_ulp_distance(pixdims[0], pixdims[1])
     max_affine_ulps = None if affine_ulps is None else int(affine_ulps.max())
     max_pixdim_ulps = None if pixdim_ulps is None else int(pixdim_ulps.max())
-    nifti1 = all(isinstance(nii.header, nib.Nifti1Header) and not isinstance(nii.header, nib.Nifti2Header)
-                 for nii in (image_nii, label_nii))
-    roundoff = (nifti1 and units == ["mm", "mm"]
-                and forms[0]["sform_code"] > 0
-                and forms[0]["sform_code"] == forms[1]["sform_code"]
-                and all(row["selected_form"] == "sform" for row in forms)
-                and all(np.array_equal(affine, nii.header.get_sform())
-                        for affine, nii in zip(affines, (image_nii, label_nii)))
-                and max_affine_ulps is not None and max_affine_ulps <= MAX_FLOAT32_ULPS
-                and max_pixdim_ulps is not None and max_pixdim_ulps <= MAX_FLOAT32_ULPS)
-    if not strict and not roundoff:
-        fail(f"not eligible for bounded NIfTI-1 float32 sform roundoff; {bound_details}; "
-             f"max_affine_float32_ulps={max_affine_ulps}, max_pixdim_float32_ulps={max_pixdim_ulps}")
+    effective_codes = [row.get(row["selected_form"] + "_code", 0) for row in forms]
+    # Storage format, form name and ULP counts do not determine grid error.
+    # For the additional numerical path, establish comparable coded mm frames
+    # as well as both bounds. Unknown units keep the historical strict path.
+    if not strict:
+        if units != ["mm", "mm"]:
+            fail(f"additional numerical equivalence requires matching mm units; {bound_details}")
+        if effective_codes[0] <= 0 or effective_codes[0] != effective_codes[1]:
+            fail(f"additional numerical equivalence requires compatible coded coordinate frames: {effective_codes}; {bound_details}")
     return {
         "policy_version": GEOMETRY_POLICY_VERSION,
-        "accepted_as": "strict" if strict else "roundoff",
+        "accepted_as": "strict" if strict else "extent_equivalent",
+        "acceptance_basis": "whole_cell_physical_and_reciprocal_voxel_bounds" if physical_max is not None
+                            else "unknown_units_legacy_strict_and_reciprocal_voxel_bounds",
+        "float32_ulps_used_for_acceptance": False,
+        "effective_coordinate_frame_codes": effective_codes,
         "legacy_strict_pass": strict,
         "spatial_shape": list(image_shape),
         "image_selected_affine": affines[0].tolist(),
@@ -164,7 +162,6 @@ def validate_donor_geometry(image_nii, label_nii, *, case_id):
         "max_affine_float32_ulps": max_affine_ulps,
         "max_pixdim_float32_ulps": max_pixdim_ulps,
         "thresholds": {"legacy_affine_atol": LEGACY_AFFINE_ATOL, "legacy_affine_rtol": 0,
-                       "max_corner_mm": MAX_CORNER_MM, "max_corner_voxels": MAX_CORNER_VOXELS,
-                       "max_float32_ulps": MAX_FLOAT32_ULPS},
+                       "max_corner_mm": MAX_CORNER_MM, "max_corner_voxels": MAX_CORNER_VOXELS},
         "data_resampled": False,
     }

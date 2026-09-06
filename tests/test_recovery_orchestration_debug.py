@@ -17,7 +17,7 @@ from types import SimpleNamespace
 import unittest
 from unittest import mock
 
-from hiercp import cache, common, preparation_runtime
+from hiercp import cache, common, preparation_runtime, donor_preflight
 from tools import feedback_preparation_recovery as recovery
 
 
@@ -99,6 +99,7 @@ class RecoveryOrchestrationDebugTests(unittest.TestCase):
         self.addCleanup(stack.close)
         for module, name, callback in (
             (common, "discover_cases", self._discover_debug),
+            (donor_preflight, "audit_donor_headers", self._headers_debug),
             (cache, "build_donor_eligibility", self._eligibility_debug),
             (cache, "migrate_failed_hierarchical_cache", self._migrate_debug),
             (cache, "validate_cache_migration", self._validate_migration_debug),
@@ -151,6 +152,13 @@ class RecoveryOrchestrationDebugTests(unittest.TestCase):
         cache.validate_donor_eligibility(result, selected_case_ids=self.selected,
                                         source_cases=self.sources, labels=self.config["labels"])
         return result
+
+    def _headers_debug(self, **kwargs):
+        self.events.append("header_preflight")
+        self.assertEqual(kwargs["case_paths"], self.paths)
+        self.assertEqual(kwargs["selected_case_ids"], self.selected)
+        self.assertEqual(kwargs["workers"], "auto")
+        return {}  # Explicit header-decoder double; real header tests are separate.
 
     def _snapshot_debug(self):
         self.events.append("resource_probe")
@@ -231,7 +239,7 @@ class RecoveryOrchestrationDebugTests(unittest.TestCase):
 
     def test_complete_real_file_flow_preserves_full_configuration_and_originals(self):
         receipt = self._run()
-        self.assertEqual(self.events, ["source_scan", "eligibility", "resource_probe", "profile", "profile",
+        self.assertEqual(self.events, ["source_scan", "header_preflight", "eligibility", "resource_probe", "profile", "profile",
                                        "resource_probe", "migration", "prepare", "verify_publication"])
         self.assertEqual([r["case_id"] for r in self.requests], ["DEBUG_DONOR_TRAIN", "DEBUG_DONOR_VAL"])
         proposed = recovery.read_json(self.plan["train_config"])
@@ -264,6 +272,23 @@ class RecoveryOrchestrationDebugTests(unittest.TestCase):
         self.assertEqual(self.events, ["source_scan", "verify_migration", "verify_publication"])
         self.assertEqual(self.commands, [])
         self.assertEqual(self._tree(self.target), before)
+
+    def test_header_failures_stop_before_raw_hash_copy_or_voxel_classification(self):
+        with mock.patch.object(donor_preflight, "audit_donor_headers",
+                               side_effect=ValueError("DEBUG header failures")), \
+                mock.patch.object(cache, "_source_contract") as source_hash, \
+                mock.patch.object(recovery, "_copy_verified") as copy_files, \
+                mock.patch.object(cache, "build_donor_eligibility") as classify:
+            with self.assertRaisesRegex(ValueError, "DEBUG header failures"):
+                self._run()
+            source_hash.assert_not_called()
+            copy_files.assert_not_called()
+            classify.assert_not_called()
+        self.assertEqual(self.commands, [])
+        self.assertFalse(Path(self.plan["train_config"]).exists())
+        self.assertFalse((self.target / "recovery/donor_eligibility.json").exists())
+        self.assertEqual(self.before_source, self._tree(self.source))
+        self.assertEqual(self.before_medical, self._tree(self.medical))
 
     def test_complete_reuse_rejects_changed_raw_source_before_relaunch(self):
         self._run()
@@ -301,7 +326,7 @@ class RecoveryOrchestrationDebugTests(unittest.TestCase):
         self.events.clear()
         self.commands.clear()
         receipt = self._run()
-        self.assertEqual(self.events, ["source_scan", "resource_probe", "resource_probe",
+        self.assertEqual(self.events, ["source_scan", "header_preflight", "resource_probe", "resource_probe",
                                        "verify_migration", "prepare", "verify_publication"])
         self.assertEqual(len(self.commands), 1)
         self.assertFalse(receipt["training_performed"])
