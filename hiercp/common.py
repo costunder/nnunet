@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import math
 import os
 import re
@@ -27,6 +28,23 @@ from scipy import ndimage as ndi
 
 
 DEFAULT_CT_CLIP = (-200.0, 250.0)
+CANDIDATE_SEARCH_VERSION = "hiercp_candidate_search_v2_failure_exhaustive"
+CANDIDATE_DIAGNOSTICS_FORMAT = "hiercp_candidate_diagnostics_v1"
+
+
+class CandidatePreparationError(RuntimeError):
+    """An unavailable candidate curriculum with explicit, serializable evidence."""
+
+    def __init__(self, reason: str, diagnostics: dict, *, message: str | None = None):
+        if not isinstance(reason, str) or not reason:
+            raise ValueError("Candidate failure reason must be a non-empty stable string")
+        payload = {"format": CANDIDATE_DIAGNOSTICS_FORMAT,
+                   "search_version": CANDIDATE_SEARCH_VERSION, **diagnostics}
+        # Snapshot the evidence; reject NaN/opaque objects instead of hiding them.
+        serialized = json.dumps(payload, sort_keys=True, allow_nan=False)
+        self.reason = reason
+        self.diagnostics = json.loads(serialized)
+        super().__init__(f"{reason}: {message or 'Candidate preparation is unavailable'}. {serialized}")
 
 
 @dataclass(frozen=True)
@@ -678,8 +696,13 @@ def sample_candidate_centers(
     rng: np.random.Generator,
     requested: int,
     max_draws: int,
+    diagnostics: dict | None = None,
 ) -> Iterator[tuple[int, int, int]]:
     """Random-rejection sampling without constructing/permuting every liver voxel."""
+    counts = diagnostics if diagnostics is not None else {}
+    counts.update(random_draws=0, random_coordinates_examined=0,
+                  random_duplicate_centers=0, random_center_mask_rejections=0,
+                  random_centers_yielded=0)
     if requested <= 0 or not np.any(center_mask):
         return
     patch = np.asarray(patch_shape, dtype=np.int64)
@@ -702,14 +725,19 @@ def sample_candidate_centers(
         random_values = rng.random((batch, 3), dtype=np.float64)
         coords = np.floor(low + random_values * (high - low)).astype(np.int64)
         draws += batch
+        counts["random_draws"] = draws
         for row in coords:
+            counts["random_coordinates_examined"] += 1
             center = tuple(int(v) for v in row)
             if center in seen:
+                counts["random_duplicate_centers"] += 1
                 continue
             seen.add(center)
             if not center_mask[center]:
+                counts["random_center_mask_rejections"] += 1
                 continue
             yielded += 1
+            counts["random_centers_yielded"] = yielded
             yield center
             if yielded >= requested:
                 break
@@ -730,8 +758,45 @@ def build_candidate_pool(
     occupied_clearance_vox: int,
     min_center_separation_mm: float,
     candidate_oversample_factor: int = 20,
+    required_candidates: int | None = None,
+    force_exhaustive: bool = False,
+    excluded_centers: Iterable[Sequence[int]] = (),
+    diagnostics: dict | None = None,
+    exhaustive_working_memory_bytes: int = 64 * 1024 * 1024,
 ) -> tuple[list[CandidateInfo], np.ndarray]:
-    """Generate candidates satisfying all hard anatomical constraints."""
+    """Keep successful legacy proposals; exhaustively extend only shortfalls.
+
+    ``required_candidates`` controls whether extension is necessary, not the
+    target pool size. Cache ranking needs seven negatives, whereas an online
+    bank needs its complete 128-center pool. Extension still targets the full
+    ``num_candidates`` and never changes the source, constraints or resolution.
+    The scratch-byte setting tiles computation, not the searched domain.
+    """
+    target = int(num_candidates)
+    required = target if required_candidates is None else int(required_candidates)
+    if not 1 <= required <= target:
+        raise ValueError("Require 1 <= required_candidates <= num_candidates")
+    if int(exhaustive_working_memory_bytes) < 1024:
+        raise ValueError("Exhaustive search scratch budget must be at least 1024 bytes")
+    excluded = {tuple(int(value) for value in center) for center in excluded_centers}
+    if any(len(center) != 3 for center in excluded):
+        raise ValueError("Excluded candidate centers must have three coordinates")
+    stats = diagnostics if diagnostics is not None else {}
+    stats.clear()
+    stats.update(format=CANDIDATE_DIAGNOSTICS_FORMAT, search_version=CANDIDATE_SEARCH_VERSION,
+                 target_candidates=target, required_candidates=required,
+                 source_component=int(source.component_id),
+                 source_anchor=[int(value) for value in source.anchor_center],
+                 source_patch_shape=[int(value) for value in source.patch_mask.shape],
+                 source_voxels=int(source.voxel_count), max_draws=int(max_draws),
+                 min_liver_coverage=float(min_liver_coverage),
+                 occupied_clearance_vox=int(occupied_clearance_vox),
+                 min_center_separation_mm=float(min_center_separation_mm),
+                 excluded_center_count=len(excluded), exhaustive_used=False,
+                 fullsearch_exhausted=False, accepted=0)
+    random_rejections = {name: 0 for name in
+                         ("bounds", "excluded", "forbidden_overlap", "liver_coverage", "center_separation")}
+    stats["random_rejections"] = random_rejections
     if occupied_clearance_vox > 0:
         structure = ndi.generate_binary_structure(3, 1)
         forbidden = ndi.binary_dilation(
@@ -746,29 +811,13 @@ def build_candidate_pool(
     desired_raw = max(num_candidates * int(candidate_oversample_factor), num_candidates)
     accepted: list[CandidateInfo] = []
     source_ring = context_ring_mask(source.patch_mask, width=3)
+    tested_flat: set[int] = set()
+    stats["requested_raw_centers"] = int(desired_raw)
 
-    for center in sample_candidate_centers(
-        placement_mask,
-        source.patch_mask.shape,
-        rng=rng,
-        requested=desired_raw,
-        max_draws=max_draws,
-    ):
+    def append_candidate(center, coverage, occupied_distance_mm):
         slc = slices_for_center(center, source.patch_mask.shape, case.shape)
         if slc is None:
-            continue
-        roi_liver = placement_mask[slc]
-        roi_forbidden = forbidden[slc]
-        if np.any(source.patch_mask & roi_forbidden):
-            continue
-
-        coverage = float(np.sum(source.patch_mask & roi_liver) / max(1, source.voxel_count))
-        if coverage < float(min_liver_coverage):
-            continue
-        occupied_distance_mm = float(occupied_distance[center])
-        if occupied_distance_mm < float(min_center_separation_mm):
-            continue
-
+            raise RuntimeError("Verified candidate unexpectedly falls outside the volume")
         roi_image = case.image[slc]
         roi_organ = full_organ_mask[slc]
         stats_mask = source_ring & roi_organ
@@ -777,22 +826,144 @@ def build_candidate_pool(
             values = roi_image[roi_organ & ~source.patch_mask]
         if values.size == 0:
             values = roi_image.reshape(-1)
+        accepted.append(CandidateInfo(
+            center=tuple(int(value) for value in center), slices=slc,
+            liver_coverage=float(coverage), border_distance_mm=float(organ_distance[center]),
+            occupied_distance_mm=float(occupied_distance_mm),
+            context_mean_hu=float(np.mean(values)), context_std_hu=float(np.std(values))))
 
-        accepted.append(
-            CandidateInfo(
-                center=center,
-                slices=slc,
-                liver_coverage=coverage,
-                border_distance_mm=float(organ_distance[center]),
-                occupied_distance_mm=occupied_distance_mm,
-                context_mean_hu=float(np.mean(values)),
-                context_std_hu=float(np.std(values)),
-            )
-        )
+    for center in sample_candidate_centers(
+        placement_mask,
+        source.patch_mask.shape,
+        rng=rng,
+        requested=desired_raw,
+        max_draws=max_draws,
+        diagnostics=stats,
+    ):
+        tested_flat.add(int(np.ravel_multi_index(center, case.shape)))
+        if center in excluded:
+            random_rejections["excluded"] += 1
+            continue
+        slc = slices_for_center(center, source.patch_mask.shape, case.shape)
+        if slc is None:
+            random_rejections["bounds"] += 1
+            continue
+        roi_liver = placement_mask[slc]
+        roi_forbidden = forbidden[slc]
+        if np.any(source.patch_mask & roi_forbidden):
+            random_rejections["forbidden_overlap"] += 1
+            continue
+
+        coverage = float(np.sum(source.patch_mask & roi_liver) / max(1, source.voxel_count))
+        if coverage < float(min_liver_coverage):
+            random_rejections["liver_coverage"] += 1
+            continue
+        occupied_distance_mm = float(occupied_distance[center])
+        if occupied_distance_mm < float(min_center_separation_mm):
+            random_rejections["center_separation"] += 1
+            continue
+        append_candidate(center, coverage, occupied_distance_mm)
         if len(accepted) >= num_candidates:
             break
-
+    stats["legacy_accepted"] = len(accepted)
+    if len(accepted) < target and (len(accepted) < required or force_exhaustive):
+        stats["exhaustive_used"] = True
+        stats["fullsearch_exhausted"] = _extend_candidates_exhaustively(
+            case, source, placement_mask, forbidden, occupied_distance,
+            min_liver_coverage=float(min_liver_coverage),
+            min_center_separation_mm=float(min_center_separation_mm),
+            tested_flat=tested_flat, excluded=excluded, target=target,
+            accepted=accepted, append_candidate=append_candidate, diagnostics=stats,
+            working_memory_bytes=int(exhaustive_working_memory_bytes))
+    stats["accepted"] = len(accepted)
+    stats["required_candidates_met"] = len(accepted) >= required
+    stats["target_candidates_met"] = len(accepted) >= target
     return accepted, occupied_distance
+
+
+def _extend_candidates_exhaustively(
+    case, source, placement_mask, forbidden, occupied_distance, *,
+    min_liver_coverage, min_center_separation_mm, tested_flat, excluded,
+    target, accepted, append_candidate, diagnostics, working_memory_bytes,
+) -> bool:
+    """Lexicographic full-domain search with batched, tiled exact mask tests.
+
+    No complete-volume coordinate array or center-by-footprint tensor is kept.
+    Scratch tiles contain at most the configured bytes of index/mask matrices.
+    Source offsets and one 2-D plane of center indices are additional storage.
+    True means every legal placement center was checked (including legacy).
+    """
+    rejected = {name: 0 for name in
+                ("already_tested_or_excluded", "center_separation", "forbidden_overlap", "liver_coverage")}
+    diagnostics.update(exhaustive_rejections=rejected, exhaustive_centers_evaluated=0,
+                       exhaustive_valid_centers_evaluated=0,
+                       exhaustive_working_memory_bytes=working_memory_bytes,
+                       exhaustive_max_matrix_elements=0,
+                       exhaustive_filter_order=["center_separation", "forbidden_overlap", "liver_coverage"])
+    shape = np.asarray(case.shape, dtype=np.int64)
+    patch = np.asarray(source.patch_mask.shape, dtype=np.int64)
+    half = patch // 2
+    low, high = half, shape - (patch - half) + 1
+    # +1 includes the last center accepted by slices_for_center. The legacy
+    # sampler is intentionally unchanged, including its historical RNG bounds.
+    if np.any(high <= low) or not np.any(placement_mask):
+        return True
+    footprint_indices = np.flatnonzero(source.patch_mask)
+    if not footprint_indices.size:
+        raise CandidatePreparationError("empty_source_footprint", diagnostics)
+    plane_stride = int(shape[1] * shape[2])
+    offsets = ((footprint_indices // int(patch[1] * patch[2]) - half[0]) * plane_stride
+               + ((footprint_indices // int(patch[2])) % patch[1] - half[1]) * int(shape[2])
+               + (footprint_indices % patch[2] - half[2])).astype(np.int64)
+    skip = np.asarray(sorted(tested_flat | {
+        int(np.ravel_multi_index(center, case.shape)) for center in excluded
+        if all(0 <= value < size for value, size in zip(center, case.shape))}), dtype=np.int64)
+    forbidden_flat, placement_flat = forbidden.reshape(-1), placement_mask.reshape(-1)
+    distance_flat = occupied_distance.reshape(-1)
+    # int64 index + gathered bool + reduction working allowance per element.
+    matrix_elements = max(1, working_memory_bytes // 16)
+    # Do not evaluate thousands of large footprints when only (at most) the
+    # remaining pool entries are needed. Repeated batches still cover the full
+    # legal domain when anatomy rejects them; this is not a candidate cap.
+    center_batch = min(max(1, int(math.sqrt(matrix_elements))), target - len(accepted))
+    width = int(high[2] - low[2])
+    for x in range(int(low[0]), int(high[0])):
+        plane_indices = np.flatnonzero(placement_mask[x, low[1]:high[1], low[2]:high[2]])
+        for start in range(0, len(plane_indices), center_batch):
+            plane = plane_indices[start:start + center_batch]
+            centers = np.column_stack((np.full(len(plane), x, dtype=np.int64),
+                                       plane // width + low[1], plane % width + low[2]))
+            flat = centers[:, 0] * plane_stride + centers[:, 1] * shape[2] + centers[:, 2]
+            old = np.isin(flat, skip, assume_unique=True, kind="sort")
+            rejected["already_tested_or_excluded"] += int(old.sum())
+            centers, flat = centers[~old], flat[~old]
+            diagnostics["exhaustive_centers_evaluated"] += len(flat)
+            separated = distance_flat[flat] >= min_center_separation_mm
+            rejected["center_separation"] += int((~separated).sum())
+            centers, flat = centers[separated], flat[separated]
+            if not len(flat):
+                continue
+            blocked = np.zeros(len(flat), dtype=bool)
+            covered = np.zeros(len(flat), dtype=np.int64)
+            offset_batch = max(1, matrix_elements // len(flat))
+            for offset_start in range(0, len(offsets), offset_batch):
+                indices = flat[:, None] + offsets[None, offset_start:offset_start + offset_batch]
+                diagnostics["exhaustive_max_matrix_elements"] = max(
+                    diagnostics["exhaustive_max_matrix_elements"], int(indices.size))
+                blocked |= np.any(forbidden_flat[indices], axis=1)
+                covered += np.sum(placement_flat[indices], axis=1, dtype=np.int64)
+            coverage = covered / max(1, source.voxel_count)
+            rejected["forbidden_overlap"] += int(blocked.sum())
+            liver_ok = coverage >= min_liver_coverage
+            rejected["liver_coverage"] += int((~blocked & ~liver_ok).sum())
+            valid = np.flatnonzero(~blocked & liver_ok)
+            diagnostics["exhaustive_valid_centers_evaluated"] += len(valid)
+            for index in valid:
+                center = tuple(int(value) for value in centers[index])
+                append_candidate(center, float(coverage[index]), float(distance_flat[flat[index]]))
+                if len(accepted) >= target:
+                    return False
+    return True
 
 
 def feather_alpha(mask: np.ndarray, border: int) -> np.ndarray:

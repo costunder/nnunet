@@ -9,12 +9,13 @@ just to validate metadata or recover the train/validation split.
 from __future__ import annotations
 
 import csv
+import copy
 import hashlib
 import json
 import os
 import re
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
@@ -23,6 +24,8 @@ import numpy as np
 import torch
 
 from hiercp.common import (
+    CandidatePreparationError,
+    CANDIDATE_SEARCH_VERSION,
     LoadedCase,
     build_candidate_pool,
     choose_source_tumor,
@@ -40,6 +43,8 @@ from hiercp.region import (
     REGION_CACHE_SEED_SALT,
     PatientRegionData,
     load_or_build_patient_regions,
+    graph_config_budget_compatible,
+    load_patient_regions,
 )
 from hiercp.schema import GraphBuildConfig
 from hiercp.spatial import (
@@ -75,6 +80,7 @@ CACHE_PROGRESS_COLUMNS = (
 )
 
 CACHE_RUN_MODES = ("production", "ablation", "benchmark", "debug")
+DONOR_ELIGIBILITY_FORMAT = "hiercp_donor_eligibility_v1"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -282,6 +288,146 @@ def _assert_metadata_equal(actual: dict, expected: dict, *, context: str) -> Non
         )
 
 
+def _runtime_report_path(root: Path, stage: str) -> Path:
+    return root / f"{stage}_runtime_{uuid.uuid4().hex}.json"
+
+
+def validate_donor_eligibility(contract: object, *, selected_case_ids: Sequence[str],
+                               source_cases: Sequence[dict], labels: dict) -> list[str]:
+    """Validate evidence for donor suitability, not clinical negative status."""
+    if not isinstance(contract, dict) or contract.get("format") != DONOR_ELIGIBILITY_FORMAT:
+        raise ValueError("Cache requires an explicit SHA-bound donor eligibility contract")
+    body = {key: value for key, value in contract.items() if key != "contract_sha256"}
+    if contract.get("contract_sha256") != _cache_config_fingerprint(body):
+        raise ValueError("Donor eligibility checksum mismatch")
+    if contract.get("selected_case_ids") != list(selected_case_ids) or contract.get("labels") != labels:
+        raise ValueError("Donor eligibility cohort/label contract mismatch")
+    rows = contract.get("cases")
+    if not isinstance(rows, list) or [row.get("case_id") for row in rows if isinstance(row, dict)] != list(selected_case_ids):
+        raise ValueError("Donor eligibility requires every selected case exactly once, in order")
+    sources = {row["case_id"]: row for row in source_cases}
+    if list(sources) != list(selected_case_ids):
+        raise ValueError("Donor source cohort mismatch")
+    eligible, ineligible = [], []
+    for row in rows:
+        case_id = row["case_id"]
+        for key in ("image_sha256", "label_sha256"):
+            if row.get(key) != sources[case_id][key] or _SHA256_RE.fullmatch(str(row.get(key))) is None:
+                raise ValueError(f"Donor source SHA mismatch: {case_id}/{key}")
+        histogram = row.get("label_histogram")
+        expected_labels = {str(0), str(labels["liver"]), str(labels["tumor"])}
+        if not isinstance(histogram, dict) or set(histogram) != expected_labels or any(type(v) is not int or v < 0 for v in histogram.values()):
+            raise ValueError(f"Invalid donor label histogram: {case_id}")
+        shape, spacing = row.get("shape"), row.get("spacing_mm")
+        if not isinstance(shape, list) or len(shape) != 3 or any(type(v) is not int or v <= 0 for v in shape) or sum(histogram.values()) != int(np.prod(shape, dtype=np.int64)):
+            raise ValueError(f"Invalid donor shape/histogram total: {case_id}")
+        if not isinstance(spacing, list) or len(spacing) != 3 or not np.all(np.isfinite(spacing)) or min(spacing) <= 0:
+            raise ValueError(f"Invalid donor spacing: {case_id}")
+        has_tumor = histogram[str(labels["tumor"])] > 0
+        reason = "configured_tumor_label_present" if has_tumor else "configured_tumor_label_absent"
+        boxes = row.get("component_bbox_shapes")
+        if not isinstance(boxes, list) or bool(boxes) != has_tumor or any(not isinstance(box, list) or len(box) != 3 or any(type(v) is not int or v <= 0 or v > shape[i] for i, v in enumerate(box)) for box in boxes):
+            raise ValueError(f"Invalid donor component geometry: {case_id}")
+        if row.get("eligible") is not has_tumor or row.get("reason") != reason:
+            raise ValueError(f"Donor eligibility disagrees with label evidence: {case_id}")
+        (eligible if has_tumor else ineligible).append(case_id)
+    if contract.get("eligible_case_ids") != eligible or contract.get("ineligible_case_ids") != ineligible:
+        raise ValueError("Donor eligibility partition mismatch")
+    return eligible
+
+
+def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
+                            liver_label: int, tumor_label: int, workers="auto",
+                            report_path: Path | None = None) -> dict:
+    """Read raw labels before integer casting; preserve the entire patient cohort.
+
+    Bounding boxes use the same 6-connectivity as source component selection.
+    Absence of the configured tumor label is only donor ineligibility, never a
+    clinical assertion that the patient has no disease.
+    """
+    import nibabel as nib
+    from scipy import ndimage as ndi
+    from hiercp.preparation_runtime import run_case_jobs
+
+    labels = {"liver": int(liver_label), "tumor": int(tumor_label)}
+    if len({0, *labels.values()}) != 3:
+        raise ValueError("Donor labels must be distinct background/liver/tumor values")
+    paths_by_id = {path.case_id: path for path in case_paths}
+    if len(paths_by_id) != len(case_paths) or set(paths_by_id) != set(selected_case_ids):
+        raise ValueError("Donor eligibility input case cohort is not exact")
+    sources = {row["case_id"]: row for row in source_cases}
+    if list(sources) != list(selected_case_ids) or len(sources) != len(source_cases):
+        raise ValueError("Donor eligibility source cohort is not exact")
+
+    def classify(paths):
+        source = sources[paths.case_id]
+        for name in ("image", "label"):
+            _assert_file_sha256(Path(getattr(paths, f"{name}_path")), source[f"{name}_sha256"], context="Donor preflight")
+        image, label = nib.load(paths.image_path), nib.load(paths.label_path)
+        raw = np.asanyarray(label.dataobj)
+        if raw.ndim == 4 and raw.shape[3] == 1:
+            raw = raw[..., 0]
+        image_shape = tuple(image.shape)
+        if len(image_shape) == 4 and image_shape[3] == 1:
+            image_shape = image_shape[:3]
+        if raw.ndim != 3 or tuple(raw.shape) != image_shape or any(size <= 0 for size in raw.shape):
+            raise ValueError(f"Donor image/label dimensions mismatch: {paths.case_id}")
+        if not np.all(np.isfinite(label.affine)) or not np.all(np.isfinite(image.affine)) or not np.allclose(label.affine, image.affine, rtol=0, atol=1e-5):
+            raise ValueError(f"Donor image/label affine mismatch: {paths.case_id}")
+        if not np.all(np.isfinite(raw)) or not np.all(raw == np.rint(raw)):
+            raise ValueError(f"Donor labels contain nonfinite/noninteger values: {paths.case_id}")
+        values, counts = np.unique(raw, return_counts=True)
+        if not set(values.tolist()).issubset({0, *labels.values()}):
+            raise ValueError(f"Donor labels contain unsupported values: {paths.case_id}: {values.tolist()}")
+        histogram = {str(value): 0 for value in (0, *labels.values())}
+        histogram.update({str(int(value)): int(count) for value, count in zip(values, counts)})
+        components, _ = ndi.label(raw == tumor_label, structure=ndi.generate_binary_structure(3, 1))
+        boxes = [[part.stop - part.start for part in bbox] for bbox in ndi.find_objects(components)]
+        eligible = histogram[str(tumor_label)] > 0
+        result = {**source, "label_histogram": histogram, "shape": list(raw.shape),
+                  "spacing_mm": [float(v) for v in image.header.get_zooms()[:3]],
+                  "component_bbox_shapes": boxes, "eligible": eligible,
+                  "reason": "configured_tumor_label_present" if eligible else "configured_tumor_label_absent"}
+        for name in ("image", "label"):
+            _assert_file_sha256(Path(getattr(paths, f"{name}_path")), source[f"{name}_sha256"], context="Donor postflight")
+        return result
+
+    rows = {}
+    if report_path is None:
+        report_path = Path(tempfile.mkdtemp(prefix="hiercp-donor-audit-")) / "runtime.json"
+    run_case_jobs(tasks=[paths_by_id[value] for value in selected_case_ids], function=classify,
+                  commit=lambda row: rows.__setitem__(row["case_id"], row), workers=workers,
+                  report_path=report_path)
+    ordered = [rows[value] for value in selected_case_ids]
+    body = {"format": DONOR_ELIGIBILITY_FORMAT, "selected_case_ids": list(selected_case_ids),
+            "eligible_case_ids": [row["case_id"] for row in ordered if row["eligible"]],
+            "ineligible_case_ids": [row["case_id"] for row in ordered if not row["eligible"]],
+            "labels": labels, "cases": ordered}
+    contract = {**body, "contract_sha256": _cache_config_fingerprint(body)}
+    validate_donor_eligibility(contract, selected_case_ids=selected_case_ids, source_cases=source_cases, labels=labels)
+    return contract
+
+
+def _cache_expected_metadata(request: dict, *, bank, sources, selected_case_ids, donor_eligibility) -> dict:
+    """One canonical config producer shared by preparation and explicit migration."""
+    int_keys = ("samples_per_case", "total_candidates", "candidate_pool_size", "source_pad", "max_draws", "occupied_clearance_vox", "seed")
+    float_keys = ("min_liver_coverage", "min_center_separation_mm")
+    return {
+        "format": CACHE_FORMAT, "integrity_format": "sha256_v1", "index_format": CACHE_INDEX_FORMAT,
+        "region_cache_format": REGION_CACHE_FORMAT, "prototype_fingerprint": bank.fingerprint(),
+        "prototype_artifact_sha256": _sha256_file(Path(request["bank_path"])),
+        "source_cases": sources, "train_case_ids": list(request["train_case_ids"]),
+        "val_case_ids": list(request["val_case_ids"]), "selected_case_ids": list(selected_case_ids),
+        "run_mode": str(request["run_mode"]).strip().lower(), "subset_active": request["max_cases"] is not None,
+        **{key: int(request[key]) for key in int_keys}, **{key: float(request[key]) for key in float_keys},
+        "difficulty_fractions": {"easy": float(request["easy_fraction"]), "inter": float(request["inter_fraction"]), "intra_corrupted": float(request["intra_fraction"])},
+        "source_selection": str(request["source_selection"]),
+        "labels": {"liver": int(request["liver_label"]), "tumor": int(request["tumor_label"])},
+        "graph_config": request["graph_config"].to_dict(), "ct_clip": [float(value) for value in request["ct_clip"]],
+        "donor_eligibility": donor_eligibility, "donor_contract_sha256": donor_eligibility["contract_sha256"],
+    }
+
+
 
 def _torch_load_cpu(path: Path) -> object:
     """Load one cache payload on CPU across supported PyTorch versions."""
@@ -416,7 +562,7 @@ def _validate_recoverable_partial_cache(
         if local:
             problems.append(f"{path.name}: " + "; ".join(local))
 
-        del payload
+        del payload, source_local, target_locals
 
     if problems:
         preview = "\n  - ".join(problems[:10])
@@ -439,7 +585,7 @@ def prepare_prototype_bank(
     ct_clip: tuple[float, float],
     seed: int,
     overwrite: bool,
-    workers: int,
+    workers: int | str,
 ) -> PrototypeBank:
     """Build population prototypes from training cases only.
 
@@ -474,7 +620,10 @@ def prepare_prototype_bank(
         raise FileExistsError(f"Prototype output is not a regular file: {output}")
     if output.is_file() and not overwrite:
         metadata = _load_json_object(metadata_path)
-        _assert_metadata_equal(metadata, expected_metadata, context="Prototype bank")
+        compatible_metadata = dict(metadata)
+        if graph_config_budget_compatible(metadata.get("graph_config"), expected_metadata["graph_config"]):
+            compatible_metadata["graph_config"] = expected_metadata["graph_config"]
+        _assert_metadata_equal(compatible_metadata, expected_metadata, context="Prototype bank")
         if metadata.get("state") != "ready":
             raise ValueError(
                 "Prototype metadata is not in a published ready state; use "
@@ -567,30 +716,20 @@ def prepare_prototype_bank(
                 str(exc),
             )
 
-    worker_count = int(workers)
-    if worker_count < 1:
-        raise ValueError(f"Prototype preparation workers must be positive, got {workers}")
-    if worker_count > 1:
-        with ThreadPoolExecutor(
-            max_workers=worker_count, thread_name_prefix="hiercp-prototype"
-        ) as executor:
-            results = executor.map(prepare_case, case_paths)
-            for case_id, features, row, message in results:
-                rows.append(row)
-                if features is not None:
-                    groups.append((case_id, features))
-                    print(f"[OK] prototype descriptors {case_id} regions={features.shape[0]}")
-                else:
-                    print(f"[Error] prototype descriptors {case_id}: {message}")
-    else:
-        for paths in case_paths:
-            case_id, features, row, message = prepare_case(paths)
-            rows.append(row)
-            if features is not None:
-                groups.append((case_id, features))
-                print(f"[OK] prototype descriptors {case_id} regions={features.shape[0]}")
-            else:
-                print(f"[Error] prototype descriptors {case_id}: {message}")
+    def commit_prototype(result):
+        case_id, features, row, message = result
+        rows.append(row)
+        if features is not None:
+            groups.append((case_id, features))
+            print(f"[OK] prototype descriptors {case_id} regions={features.shape[0]}")
+        else:
+            print(f"[Error] prototype descriptors {case_id}: {message}")
+
+    from hiercp.preparation_runtime import run_case_jobs
+    run_case_jobs(tasks=case_paths, function=prepare_case, commit=commit_prototype,
+                  workers=workers, report_path=_runtime_report_path(output.parent, "prototype"))
+    # Completion order must not change population clustering initialization.
+    groups.sort(key=lambda item: requested.index(item[0]))
 
     successful = {case_id for case_id, _ in groups}
     missing = sorted(set(requested) - successful)
@@ -654,7 +793,7 @@ def build_training_sample(
     min_center_separation_mm: float,
     ct_clip: tuple[float, float],
     seed: int,
-) -> dict | None:
+) -> dict:
     rng = np.random.default_rng(
         stable_case_seed(seed, case.paths.case_id, f"sample_{sample_index}")
     )
@@ -668,19 +807,21 @@ def build_training_sample(
     )
     placement_mask = case.label == int(liver_label)
     occupied = case.label == int(tumor_label)
+    pool_rng_state = copy.deepcopy(rng.bit_generator.state)
+    pool_diagnostics = {}
+    pool_kwargs = dict(
+        placement_mask=placement_mask, full_organ_mask=regions.full_organ_mask,
+        occupied_mask=occupied, organ_distance=regions.organ_depth,
+        num_candidates=max(int(candidate_pool_size), int(total_candidates) - 1),
+        max_draws=max_draws, min_liver_coverage=min_liver_coverage,
+        occupied_clearance_vox=occupied_clearance_vox,
+        min_center_separation_mm=min_center_separation_mm,
+        required_candidates=int(total_candidates) - 1)
     candidates, _ = build_candidate_pool(
         case,
         source,
-        placement_mask=placement_mask,
-        full_organ_mask=regions.full_organ_mask,
-        occupied_mask=occupied,
-        organ_distance=regions.organ_depth,
         rng=rng,
-        num_candidates=max(int(candidate_pool_size), int(total_candidates) - 1),
-        max_draws=max_draws,
-        min_liver_coverage=min_liver_coverage,
-        occupied_clearance_vox=occupied_clearance_vox,
-        min_center_separation_mm=min_center_separation_mm,
+        diagnostics=pool_diagnostics, **pool_kwargs,
     )
     source_rng = np.random.default_rng(
         stable_case_seed(seed, case.paths.case_id, f"local_{sample_index}")
@@ -704,8 +845,38 @@ def build_training_sample(
     rejected_centers: set[tuple[int, int, int]] = set()
     specs = None
     built_local = None
-    while len(viable_candidates) >= int(total_candidates) - 1:
-        specs = build_training_specs(
+    searched_pools = set()
+    geometry_rejections = []
+    last_curriculum_error = None
+
+    def failure(reason):
+        return CandidatePreparationError(reason, {
+            "candidate_search_version": CANDIDATE_SEARCH_VERSION,
+            "case_id": case.paths.case_id, "sample_index": int(sample_index),
+            "source_component": int(source.component_id), "pool": pool_diagnostics,
+            "rejected_centers": sorted(rejected_centers), "geometry_rejections": geometry_rejections,
+            "curriculum_failure": last_curriculum_error,
+            "scope": "placement centers and attempted curriculum specs; not every possible corruption combination"})
+
+    def extend_pool():
+        retry_rng = np.random.default_rng()
+        retry_rng.bit_generator.state = copy.deepcopy(pool_rng_state)
+        expanded, _ = build_candidate_pool(case, source, rng=retry_rng,
+            force_exhaustive=True, excluded_centers=rejected_centers,
+            diagnostics=pool_diagnostics, **pool_kwargs)
+        identity = tuple(tuple(int(v) for v in candidate.center) for candidate in expanded)
+        if identity in searched_pools:
+            raise failure("curriculum_or_negative_geometry_search_exhausted")
+        searched_pools.add(identity)
+        return list(expanded)
+
+    while True:
+        if len(viable_candidates) < int(total_candidates) - 1:
+            viable_candidates = extend_pool()
+            if len(viable_candidates) < int(total_candidates) - 1:
+                raise failure("insufficient_valid_candidate_pool")
+        try:
+            specs = build_training_specs(
             case,
             source,
             viable_candidates,
@@ -718,9 +889,11 @@ def build_training_sample(
             tumor_label=tumor_label,
             config=graph_config,
             rng=rng,
-        )
-        if specs is None:
-            return None
+            )
+        except CandidatePreparationError as exc:
+            last_curriculum_error = {"reason": exc.reason, "diagnostics": exc.diagnostics}
+            viable_candidates = extend_pool()
+            continue
 
         current_locals = []
         failed_center: tuple[int, int, int] | None = None
@@ -739,11 +912,15 @@ def build_training_sample(
                         prepared_source=prepared_source,
                     )
                 )
-            except EmptyCanonicalNodeError:
+            except EmptyCanonicalNodeError as exc:
+                geometry_rejections.append({"spec_index": spec_index,
+                    "center": [int(v) for v in spec.center],
+                    "difficulty": int(spec.difficulty), "corruption": int(spec.corruption),
+                    "node_type": str(getattr(exc, "node_type", "")), "message": str(exc)})
                 # Index zero is the real positive location.  If that semantic
                 # graph is impossible, the complete sample is unusable.
                 if spec_index == 0:
-                    return None
+                    raise failure("positive_canonical_geometry_unavailable") from exc
                 failed_center = tuple(int(value) for value in spec.center)
                 break
         if failed_center is None:
@@ -756,8 +933,6 @@ def build_training_sample(
             if tuple(int(value) for value in candidate.center) not in rejected_centers
         ]
 
-    if specs is None or built_local is None:
-        return None
     patient_graph = build_patient_graph(
         case,
         source,
@@ -776,6 +951,8 @@ def build_training_sample(
     )
     return {
         "format": CACHE_FORMAT,
+        "candidate_search_version": CANDIDATE_SEARCH_VERSION,
+        "candidate_search_diagnostics": {"pool": pool_diagnostics, "geometry_rejections": geometry_rejections},
         "prototype_fingerprint": bank.fingerprint(),
         "case_id": case.paths.case_id,
         "sample_index": int(sample_index),
@@ -1102,15 +1279,21 @@ def _progress_is_complete(
     selected_case_ids: Sequence[str],
     samples_per_case: int,
     fingerprint: str,
+    donor_case_ids: Sequence[str] | None = None,
 ) -> bool:
+    donors = set(selected_case_ids if donor_case_ids is None else donor_case_ids)
     for case_id in selected_case_ids:
         case_row = records.get(_progress_key(str(case_id), None))
         if (
             case_row is None
             or not _row_matches_current_config(case_row, fingerprint)
-            or str(case_row.get("status", "")) != "ok"
+            or str(case_row.get("status", "")) != ("ok" if case_id in donors else "donor_ineligible")
         ):
             return False
+        if case_id not in donors:
+            if any(key[0] == case_id and key[1] is not None for key in records):
+                return False
+            continue
         for sample_index in range(int(samples_per_case)):
             output = root / f"{case_id}__{sample_index:03d}.pt"
             if not _sample_row_is_complete(
@@ -1134,6 +1317,11 @@ def validate_cache_publication(
     index_path = root / "index.json"
     complete_path = root / "complete.json"
     config = _load_json_object(config_path)
+    operational_keys = {"data_dir", "prototype_bank", "region_cache_dir", "progress_format",
+                        "config_fingerprint", "state", "failure_message"}
+    declared_contract = {key: value for key, value in config.items() if key not in operational_keys}
+    if _cache_config_fingerprint(declared_contract) != config.get("config_fingerprint"):
+        raise ValueError("Published cache config fingerprint does not match its contract")
     index = _load_json_object(index_path)
     complete = _load_json_object(complete_path)
     if config.get("format") != CACHE_FORMAT:
@@ -1264,7 +1452,17 @@ def validate_cache_publication(
             raise ValueError(f"Published cache source SHA is invalid for {case_id}")
         source_by_id[case_id] = source
 
+    donor_ids = validate_donor_eligibility(config.get("donor_eligibility"),
+        selected_case_ids=selected_ids, source_cases=raw_sources, labels=config.get("labels", {}))
+    donor_sha = config["donor_eligibility"]["contract_sha256"]
+    if config.get("donor_contract_sha256") != donor_sha:
+        raise ValueError("Published cache donor checksum mismatch")
+    for sidecar in (index, complete):
+        if sidecar.get("donor_contract_sha256") != donor_sha or sidecar.get("donor_case_ids") != donor_ids:
+            raise ValueError("Published cache donor sidecar mismatch")
     records = _load_progress_manifest(manifest_path)
+    if any(case_id not in donor_ids and sample_index is not None for case_id, sample_index in records):
+        raise ValueError("Ineligible donor has unexpected sample progress rows")
     _validate_progress_contract(
         records,
         selected_case_ids=selected_ids,
@@ -1278,7 +1476,7 @@ def validate_cache_publication(
         if (
             case_row is None
             or not _row_matches_current_config(case_row, fingerprint)
-            or str(case_row.get("status", "")) != "ok"
+            or str(case_row.get("status", "")) != ("ok" if case_id in donor_ids else "donor_ineligible")
         ):
             status = None if case_row is None else case_row.get("status")
             raise ValueError(
@@ -1290,7 +1488,7 @@ def validate_cache_publication(
         raise ValueError(f"Cache index has no entries list: {index_path}")
     expected_keys = {
         (case_id, sample_index)
-        for case_id in selected_ids
+        for case_id in donor_ids
         for sample_index in range(samples_per_case)
     }
     actual_keys: set[tuple[str, int]] = set()
@@ -1392,6 +1590,18 @@ def validate_cache_publication(
     return index
 
 
+def migrate_failed_hierarchical_cache(*, source_cache_dir, destination_cache_dir, prepare_kwargs):
+    from hiercp.cache_migration import migrate_failed_hierarchical_cache as migrate
+    return migrate(source_cache_dir=source_cache_dir, destination_cache_dir=destination_cache_dir,
+                   prepare_kwargs=prepare_kwargs)
+
+
+def validate_cache_migration(*, source_cache_dir, destination_cache_dir, prepare_kwargs):
+    from hiercp.cache_migration import validate_cache_migration as validate
+    return validate(source_cache_dir=source_cache_dir, destination_cache_dir=destination_cache_dir,
+                    prepare_kwargs=prepare_kwargs)
+
+
 def prepare_hierarchical_cache(
     *,
     data_dir: str | os.PathLike[str],
@@ -1419,9 +1629,11 @@ def prepare_hierarchical_cache(
     seed: int,
     max_cases: int | None,
     overwrite: bool,
-    workers: int,
+    workers: int | str,
     run_mode: str = "production",
+    donor_eligibility: dict | None = None,
 ) -> list[dict[str, object]]:
+    request = dict(locals())
     graph_config.validate()
     mode = str(run_mode).strip().lower()
     if mode not in CACHE_RUN_MODES:
@@ -1477,38 +1689,26 @@ def prepare_hierarchical_cache(
 
     root = Path(cache_dir)
     root.mkdir(parents=True, exist_ok=True)
-    expected_cache_config = {
-        "format": CACHE_FORMAT,
-        "integrity_format": "sha256_v1",
-        "index_format": CACHE_INDEX_FORMAT,
-        "region_cache_format": REGION_CACHE_FORMAT,
-        "prototype_fingerprint": bank.fingerprint(),
-        "prototype_artifact_sha256": _sha256_file(bank_file),
-        "source_cases": sources,
-        "train_case_ids": train_ids,
-        "val_case_ids": val_ids,
-        "selected_case_ids": list(all_case_ids),
-        "run_mode": mode,
-        "subset_active": max_cases is not None,
-        "samples_per_case": int(samples_per_case),
-        "total_candidates": int(total_candidates),
-        "candidate_pool_size": int(candidate_pool_size),
-        "difficulty_fractions": {
-            "easy": float(easy_fraction),
-            "inter": float(inter_fraction),
-            "intra_corrupted": float(intra_fraction),
-        },
-        "source_selection": str(source_selection),
-        "source_pad": int(source_pad),
-        "max_draws": int(max_draws),
-        "min_liver_coverage": float(min_liver_coverage),
-        "occupied_clearance_vox": int(occupied_clearance_vox),
-        "min_center_separation_mm": float(min_center_separation_mm),
-        "labels": {"liver": int(liver_label), "tumor": int(tumor_label)},
-        "graph_config": graph_config.to_dict(),
-        "ct_clip": [float(value) for value in ct_clip],
-        "seed": int(seed),
-    }
+    if donor_eligibility is None:
+        donor_eligibility = build_donor_eligibility(
+            case_paths=case_paths, selected_case_ids=all_case_ids, source_cases=sources,
+            liver_label=liver_label, tumor_label=tumor_label, workers=workers,
+            report_path=_runtime_report_path(root, "donor_eligibility"))
+    donor_case_ids = validate_donor_eligibility(
+        donor_eligibility, selected_case_ids=all_case_ids, source_cases=sources,
+        labels={"liver": int(liver_label), "tumor": int(tumor_label)})
+    if not donor_case_ids:
+        raise ValueError("No eligible self-donor cases; cannot train a donor-graph ranking model")
+    if not set(train_ids) & set(donor_case_ids) or (val_ids and not set(val_ids) & set(donor_case_ids)):
+        raise ValueError("The declared GNN train/validation split has no eligible self-donors in one arm")
+    expected_cache_config = _cache_expected_metadata(
+        request, bank=bank, sources=sources, selected_case_ids=all_case_ids,
+        donor_eligibility=donor_eligibility)
+    migration_path = root / "migration.json"
+    if migration_path.exists():
+        migration = _load_json_object(migration_path)
+        validate_cache_migration(source_cache_dir=migration.get("source_cache_dir", ""),
+                                 destination_cache_dir=root, prepare_kwargs=request)
     fingerprint = _cache_config_fingerprint(expected_cache_config)
     config_path = root / "config.json"
     manifest_path = root / "manifest.csv"
@@ -1600,7 +1800,7 @@ def prepare_hierarchical_cache(
     if adopted:
         print(f"[Recover] Registered existing cache files in CSV: {adopted}")
 
-    expected_entry_count = len(all_case_ids) * int(samples_per_case)
+    expected_entry_count = len(donor_case_ids) * int(samples_per_case)
 
     def complete_entries() -> list[dict[str, object]] | None:
         if not _progress_is_complete(
@@ -1609,12 +1809,13 @@ def prepare_hierarchical_cache(
             selected_case_ids=all_case_ids,
             samples_per_case=samples_per_case,
             fingerprint=fingerprint,
+            donor_case_ids=donor_case_ids,
         ):
             return None
         entries = _progress_entries(
             root=root,
             records=records,
-            selected_case_ids=all_case_ids,
+            selected_case_ids=donor_case_ids,
             split_lookup=split_lookup,
             samples_per_case=samples_per_case,
             fingerprint=fingerprint,
@@ -1666,6 +1867,8 @@ def prepare_hierarchical_cache(
             "config_fingerprint": fingerprint,
             "run_mode": mode,
             "expected_entries": expected_entry_count,
+            "donor_case_ids": list(donor_case_ids),
+            "donor_contract_sha256": donor_eligibility["contract_sha256"],
             "entries": entries,
         }
 
@@ -1687,6 +1890,8 @@ def prepare_hierarchical_cache(
                 "config_fingerprint": fingerprint,
                 "run_mode": mode,
                 "selected_case_ids": list(all_case_ids),
+                "donor_case_ids": list(donor_case_ids),
+                "donor_contract_sha256": donor_eligibility["contract_sha256"],
                 "samples_per_case": int(samples_per_case),
                 "expected_entries": expected_entry_count,
                 "entries": len(entries),
@@ -1753,7 +1958,7 @@ def prepare_hierarchical_cache(
     for case_id in all_case_ids:
         case_id = str(case_id)
         pending: list[int] = []
-        for sample_index in range(int(samples_per_case)):
+        for sample_index in range(int(samples_per_case) if case_id in donor_case_ids else 0):
             output = root / f"{case_id}__{sample_index:03d}.pt"
             if not _sample_row_is_complete(
                 records.get(_progress_key(case_id, sample_index)),
@@ -1766,7 +1971,7 @@ def prepare_hierarchical_cache(
         case_terminal_ok = (
             case_row is not None
             and _row_matches_current_config(case_row, fingerprint)
-            and str(case_row.get("status", "")) == "ok"
+            and str(case_row.get("status", "")) == ("ok" if case_id in donor_case_ids else "donor_ineligible")
         )
         if pending or not case_terminal_ok:
             pending_by_case[case_id] = pending
@@ -1792,19 +1997,17 @@ def prepare_hierarchical_cache(
             )
 
         try:
+            if paths.case_id not in donor_case_ids:
+                for name in ("image", "label"):
+                    _assert_file_sha256(Path(getattr(paths, f"{name}_path")), source_record[f"{name}_sha256"], context="Ineligible donor source")
+                return [case_progress_row(case_id=paths.case_id, sample_index=None,
+                    split_name=split_name, status="donor_ineligible", config_fingerprint=fingerprint,
+                    message="configured_tumor_label_absent; retained in full patient/source split")]
             case = load_case(paths)
+            if case.image_source_signature.get("sha256") != source_record["image_sha256"] or case.label_source_signature.get("sha256") != source_record["label_sha256"]:
+                raise ValueError("Loaded case source SHA changed after donor preflight")
             if not np.any(case.label == int(tumor_label)):
-                local_rows.append(
-                    case_progress_row(
-                        case_id=paths.case_id,
-                        sample_index=None,
-                        split_name=split_name,
-                        status="no_tumor",
-                        config_fingerprint=fingerprint,
-                        message="tumor label is absent",
-                    )
-                )
-                return local_rows
+                raise ValueError("Loaded donor label disagrees with validated eligibility")
             region_seed = stable_case_seed(seed, paths.case_id, REGION_CACHE_SEED_SALT)
             regions = load_or_build_patient_regions(
                 case,
@@ -1882,18 +2085,6 @@ def prepare_hierarchical_cache(
                     ct_clip=ct_clip,
                     seed=seed,
                 )
-                if sample is None:
-                    local_rows.append(
-                        case_progress_row(
-                            case_id=paths.case_id,
-                            sample_index=sample_index,
-                            split_name=split_name,
-                            status="insufficient_curriculum_candidates",
-                            config_fingerprint=fingerprint,
-                            message="deterministic candidate curriculum could not be formed",
-                        )
-                    )
-                    continue
                 sample["config_fingerprint"] = fingerprint
                 sample["source_image_sha256"] = source_record["image_sha256"]
                 sample["source_label_sha256"] = source_record["label_sha256"]
@@ -1916,6 +2107,12 @@ def prepare_hierarchical_cache(
                         file_size=output.stat().st_size,
                     )
                 )
+                # Release this full graph before constructing the next sample.
+                del sample
+            except CandidatePreparationError as exc:
+                local_rows.append(case_progress_row(case_id=paths.case_id,
+                    sample_index=sample_index, split_name=split_name, status=exc.reason,
+                    config_fingerprint=fingerprint, message=str(exc)))
             except AdaptiveRoiBudgetError as exc:
                 local_rows.append(
                     case_progress_row(
@@ -2006,8 +2203,8 @@ def prepare_hierarchical_cache(
             sample_index = row.get("sample_index") or None
             if status == "ok":
                 print(f"[OK] cache {case_id} sample={sample_index}")
-            elif status == "no_tumor":
-                print(f"[Invalid] {case_id}: configured case has no tumor label")
+            elif status == "donor_ineligible":
+                print(f"[DonorIneligible] {case_id}: tumor label absent; full patient cohort retained")
             elif status == "insufficient_curriculum_candidates":
                 print(f"[Invalid] {case_id} sample={sample_index}: insufficient candidates")
             elif status == "unrepresentable_local_geometry":
@@ -2025,40 +2222,9 @@ def prepare_hierarchical_cache(
             else:
                 print(f"[Error] cache {case_id} sample={sample_index}: {row.get('message', status)}")
 
-    worker_count = int(workers)
-    if worker_count < 1:
-        raise ValueError(f"Cache preparation workers must be positive, got {workers}")
-    if worker_count > 1:
-        with ThreadPoolExecutor(
-            max_workers=worker_count, thread_name_prefix="hiercp-cache"
-        ) as executor:
-            future_to_case = {
-                executor.submit(prepare_case, paths): paths.case_id
-                for paths in pending_case_paths
-            }
-            for future in as_completed(future_to_case):
-                case_id = future_to_case[future]
-                try:
-                    local_rows = future.result()
-                except Exception as exc:
-                    row = _progress_row(
-                        case_id=case_id,
-                        sample_index=None,
-                        split_name=split_lookup[case_id],
-                        status="load_error",
-                        config_fingerprint=fingerprint,
-                        source_image_sha256=source_by_id[case_id]["image_sha256"],
-                        source_label_sha256=source_by_id[case_id]["label_sha256"],
-                        message=f"worker failure: {exc}",
-                    )
-                    commit_rows([row])
-                else:
-                    # Keep manifest persistence outside the worker-result catch;
-                    # a failed atomic commit must propagate, not be relabelled.
-                    commit_rows(local_rows)
-    else:
-        for paths in pending_case_paths:
-            commit_rows(prepare_case(paths))
+    from hiercp.preparation_runtime import run_case_jobs
+    run_case_jobs(tasks=pending_case_paths, function=prepare_case, commit=commit_rows,
+                  workers=workers, report_path=_runtime_report_path(root, "cache"))
 
     try:
         verified_entries = complete_entries()
@@ -2073,12 +2239,12 @@ def prepare_hierarchical_cache(
             case_row = records.get(_progress_key(case_id, None))
             if case_row is not None and _row_matches_current_config(case_row, fingerprint):
                 status = str(case_row.get("status", "case_error"))
-                if status != "ok":
+                if status != ("ok" if case_id in donor_case_ids else "donor_ineligible"):
                     message = " ".join(str(case_row.get("message", "")).split())
                     status_counts[status] = status_counts.get(status, 0) + 1
                     resource_failure = resource_failure or status == "resource_budget_error"
                     failure_details.append(f"{case_id}[*]={status}: {message}")
-            for sample_index in range(int(samples_per_case)):
+            for sample_index in range(int(samples_per_case) if case_id in donor_case_ids else 0):
                 output = root / f"{case_id}__{sample_index:03d}.pt"
                 row = records.get(_progress_key(case_id, sample_index))
                 if _sample_row_is_complete(
@@ -2102,7 +2268,7 @@ def prepare_hierarchical_cache(
         valid_entries = _progress_entries(
             root=root,
             records=records,
-            selected_case_ids=all_case_ids,
+            selected_case_ids=donor_case_ids,
             split_lookup=split_lookup,
             samples_per_case=samples_per_case,
             fingerprint=fingerprint,

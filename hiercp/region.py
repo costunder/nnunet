@@ -376,7 +376,29 @@ def _region_cache_metadata(
 
 
 def _metadata_equal(actual: dict, expected: dict) -> bool:
-    return all(actual.get(key) == value for key, value in expected.items())
+    return all(
+        graph_config_budget_compatible(actual.get(key), value)
+        if key == "graph_config" else actual.get(key) == value
+        for key, value in expected.items()
+    )
+
+
+def graph_config_budget_compatible(actual: object, expected: object) -> bool:
+    """Read-only reuse when only the non-semantic ROI allocation ceiling grows.
+
+    Region partitions and prototype fitting do not consume this ceiling. All
+    geometry, graph, sampling and population settings remain exact; metadata is
+    never rewritten to pretend that the old artifact used the new ceiling.
+    """
+    if not isinstance(actual, dict) or not isinstance(expected, dict):
+        return False
+    key = "adaptive_roi_max_voxels"
+    if set(actual) != set(expected):
+        return False
+    old, new = actual.get(key), expected.get(key)
+    if type(old) is not int or type(new) is not int or old <= 0 or new < old:
+        return False
+    return all(actual[name] == expected[name] for name in actual if name != key)
 
 
 def _save_array(path: Path, array: np.ndarray, *, overwrite: bool = False) -> None:

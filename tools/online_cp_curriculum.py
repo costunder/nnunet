@@ -118,6 +118,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-root")
     parser.add_argument("--medical-root")
+    parser.add_argument("--train-config")
     parser.add_argument("--paired-root", required=True)
     parser.add_argument("--online-root", required=True)
     parser.add_argument("--outer-fold", type=int, required=True)

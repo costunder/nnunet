@@ -108,12 +108,17 @@ experiment contract. Node, relation-edge, and adaptive-ROI limits do not
 silently truncate a graph. Exceeding a configured resource ceiling fails with
 diagnostics so the limit can be reconsidered from measured hardware evidence.
 
-Cache readiness is exact. For the selected split, every configured
-`case_id × sample_index` must have a schema-valid artifact before the index and
-ready marker are published. `failed`, `no_tumor`, insufficient-candidate,
-unrepresentable-geometry, and resource-budget rows remain diagnostic failures
-and never count as complete. Resource-budget failures retain their distinct
-error type after the diagnostic manifest is saved.
+Cache readiness is exact. The full selected patient split is preserved. New
+caches bind a source-SHA-verified donor-eligibility contract: every eligible
+`case_id × sample_index` requires a schema-valid artifact, while each ineligible
+source requires its verified raw-label evidence and explicit terminal reason.
+Ineligible donors are not removed from the patient split, prototype support or
+downstream nnU-Net cohort. They are not fabricated graph samples. Legacy caches
+without this contract retain their old strict all-case requirement; failed rows
+cannot be silently relabeled or adopted. Insufficient candidates, unavailable
+geometry and resource errors still prevent publication. See
+[preserving and recovering a failed preparation](feedback_recovery.md) for the
+explicit, non-destructive migration and measured resource policy.
 
 ## Run-mode separation
 

@@ -294,6 +294,11 @@ def summarize_cache_usage(
     configured_selected_ids = {
         str(value) for value in config.get("selected_case_ids", requested_case_ids)
     }
+    donor = config.get("donor_eligibility")
+    donor_ids = (set(donor["eligible_case_ids"]) if donor is not None else configured_selected_ids)
+    ineligible_ids = (set(donor["ineligible_case_ids"]) if donor is not None else set())
+    if donor_ids & ineligible_ids or donor_ids | ineligible_ids != configured_selected_ids:
+        raise ValueError("Donor eligibility does not partition the complete configured patient cohort")
     indexed_case_ids = {str(entry.get("case_id", "")) for entry in entries}
     indexed_case_ids.discard("")
     actually_selected_entries = [
@@ -307,7 +312,7 @@ def summarize_cache_usage(
     expected_samples: int | str = "unavailable (samples_per_case absent)"
     materialized_ratio: float | str = "unavailable (expected sample count absent)"
     if isinstance(samples_per_case, int) and samples_per_case > 0:
-        expected_samples = len(configured_selected_ids) * samples_per_case
+        expected_samples = len(donor_ids) * samples_per_case
         materialized_ratio = (
             len(entries) / expected_samples if expected_samples > 0 else 0.0
         )
@@ -316,6 +321,13 @@ def summarize_cache_usage(
     return {
         "requested_case_count": requested_count,
         "configured_selected_case_count": configured_count,
+        "eligible_source_case_count": len(donor_ids),
+        "ineligible_source_case_count": len(ineligible_ids),
+        "eligible_source_case_ids": sorted(donor_ids),
+        "ineligible_source_case_ids": sorted(ineligible_ids),
+        "source_patient_case_ids": sorted(configured_selected_ids),
+        "donor_contract_sha256": config.get("donor_contract_sha256"),
+        "eligibility_is_not_patient_subset": donor is not None,
         "indexed_case_count": len(indexed_case_ids),
         "actually_used_case_count": len(actually_selected_case_ids),
         "indexed_sample_count": len(entries),

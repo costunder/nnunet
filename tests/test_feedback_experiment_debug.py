@@ -305,5 +305,284 @@ class FeedbackExperimentDebugTests(unittest.TestCase):
             self.assertIn("[FAILED] Further stages were not launched", error_output.getvalue())
 
 
+class FeedbackRecoveryLauncherDebugTests(unittest.TestCase):
+    """DEBUG runner/helper doubles only; no graph preparation or training."""
+
+    fixture = FeedbackExperimentDebugTests.fixture
+    option = staticmethod(FeedbackExperimentDebugTests.option)
+
+    def recovery_fixture(self, directory):
+        project, medical, package, original = self.fixture(directory)
+        source = original["run_root"]
+        source.mkdir(parents=True)
+        (source / "launch_plan.json").write_text(json.dumps(original, default=str), encoding="utf-8")
+        (source / "DEBUG_existing_preparation").write_bytes(b"DEBUG preserved original; not medical data")
+        plan = launcher.build_plan(project, medical, recover_from=source,
+                                   python_executable="DEBUG_PYTHON_NOT_EXECUTED")
+        plan["minimum_free_bytes"] = 0
+        identity = {"format": "debug_source_identity", "root": str(source),
+                    "launch_plan_sha256": launcher._file_sha256(source / "launch_plan.json")}
+        return project, medical, package, source, plan, identity
+
+    def runner(self, plan, events, fail=None):
+        by_argv = {tuple(item["argv"]): item["name"] for item in plan["commands"]}
+        def run(argv, **kwargs):
+            self.assertIs(kwargs["check"], True)
+            name = "gpu" if argv[1] == "-c" else by_argv[tuple(argv)]
+            events.append(name)
+            if name == fail:
+                raise subprocess.CalledProcessError(9, argv)
+            if name == "install_private_trainers":
+                destination = plan["package_destination"] / "training/nnUNetTrainer"
+                # Copy real source bytes for integrity checks, but never import
+                # this DEBUG package or execute the mocked installer command.
+                for filename in launcher.MODULES:
+                    (destination / filename).write_bytes((ROOT / "custom_trainers" / filename).read_bytes())
+            return subprocess.CompletedProcess(argv, 0)
+        return run
+
+    @staticmethod
+    def helper(events):
+        def prepare(plan, source_root, *, runner, env):
+            events.append("recover_preparation")
+            assert source_root == plan["recovery_source_root"]
+            config = plan["train_config"]
+            config.parent.mkdir(parents=True, exist_ok=True)
+            payload = b'{"format":"DEBUG_NOT_A_TRAINING_CONFIG"}'
+            if config.exists():
+                assert config.read_bytes() == payload
+            else:
+                config.write_bytes(payload)
+            return {"format": "debug_preparation_receipt", "train_config": str(config),
+                    "train_config_sha256": launcher._file_sha256(config)}
+        return prepare
+
+    def test_recovery_plan_derives_all_nested_paths_and_config_without_original_prepare_commands(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_plan_") as tmp:
+            project, medical, _, source, default, _ = self.recovery_fixture(Path(tmp))
+            self.assertEqual(default["run_root"], project / "work/feedback_experiment_recovered")
+            plan = launcher.build_plan(project, medical, outer_fold=2, dataset_id=807, seed=19,
+                recover_from=source, experiment_name="nested/recovered_case")
+            root = project / "work/nested/recovered_case"
+            self.assertEqual(plan["run_root"], root)
+            self.assertEqual(plan["train_config"], root / "recovery/train_config.json")
+            self.assertEqual((plan["outer_fold"], plan["dataset_id"], plan["seed"]), (2, 807, 19))
+            commands = {item["name"]: item["argv"] for item in plan["commands"]}
+            self.assertNotIn("split", commands)
+            self.assertNotIn("gnn-prepare", commands)
+            for stage in ("gnn-train", "plan", "bank", "feedback_contract"):
+                self.assertEqual(self.option(commands[stage], "--train-config"), str(plan["train_config"]))
+            for stage in ("plan", "bank", "feedback_contract"):
+                self.assertEqual(self.option(commands[stage], "--paired-root"), "nested/recovered_case/paired")
+                self.assertEqual(self.option(commands[stage], "--online-root"), "nested/recovered_case/online")
+            self.assertEqual(self.option(commands["train_full"], "--bank"), str(root / "online/folds/fold_2/bank/index.json"))
+            self.assertTrue(all("--resume" not in command for command in commands.values()))
+
+    def test_explicit_roots_and_config_support_fresh_launch_without_path_hardcoding(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_explicit_root_") as tmp:
+            project, medical, _, _ = self.fixture(Path(tmp))
+            config = project / "config/DEBUG_explicit_train.json"
+            plan = launcher.build_plan(project, medical, run_root="work/nested/fresh", train_config=config)
+            self.assertEqual(plan["run_root"], project / "work/nested/fresh")
+            for item in plan["commands"]:
+                if item["name"] in {"split", "gnn-prepare", "gnn-train", "plan", "bank", "feedback_contract"}:
+                    self.assertEqual(self.option(item["argv"], "--train-config"), str(config))
+            for kwargs in ({"run_root": project}, {"run_root": project.parent / "outside"},
+                           {"experiment_name": "../outside"},
+                           {"run_root": "work/one", "experiment_name": "two"}):
+                with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                    launcher.build_plan(project, medical, **kwargs)
+
+    def test_recovery_rejects_source_overlap_and_source_outside_checkout(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_overlap_") as tmp:
+            project, medical, _, source, _, _ = self.recovery_fixture(Path(tmp))
+            for target in (source, source / "nested", source.parent):
+                with self.subTest(target=target), self.assertRaises(ValueError):
+                    launcher.build_plan(project, medical, recover_from=source, run_root=target)
+            with self.assertRaises(ValueError):
+                launcher.build_plan(project, medical, recover_from=project.parent / "other_checkout")
+            with self.assertRaises(ValueError):
+                launcher.build_plan(project, medical, recover_from=source, train_config=source / "train.json")
+
+    def test_recovery_success_uses_private_runtime_and_helper_before_training_preserves_sources(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_execute_") as tmp:
+            _, _, package, source, plan, identity = self.recovery_fixture(Path(tmp))
+            original_bytes, package_bytes = file_bytes(source), file_bytes(package)
+            events = []
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity) as validate, \
+                 mock.patch.object(launcher, "prepare_recovery", side_effect=self.helper(events)), \
+                 mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                launcher.execute_plan(plan, runner=self.runner(plan, events), package_root=package)
+            self.assertEqual(events, ["gpu", "install_private_trainers", "environment", "recover_preparation",
+                "gnn-train", "plan", "bank", "feedback_contract", "check_full", "check_basic", "train_full", "train_basic"])
+            validate.assert_called_once_with(plan, source)
+            self.assertEqual(file_bytes(source), original_bytes)
+            self.assertEqual(file_bytes(package), package_bytes)
+            journal = json.loads((plan["run_root"] / "execution_journal.json").read_text())
+            self.assertTrue(journal["complete"])
+            self.assertTrue(journal["training_started"])
+            self.assertEqual(journal["runtime_inventory"], launcher._runtime_inventory(plan["package_destination"]))
+            self.assertEqual(journal["preparation_receipt"]["train_config"], str(plan["train_config"]))
+            self.assertTrue(all(row["status"] == "completed" for row in journal["stages"]))
+            self.assertFalse((plan["run_root"] / "recovery_execution.lock").exists())
+            self.assertFalse(list(plan["run_root"].glob(".execution_journal.*.tmp")))
+
+    def test_invalid_source_identity_stops_before_gpu_copy_or_output_creation(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_identity_") as tmp:
+            _, _, package, source, plan, _ = self.recovery_fixture(Path(tmp))
+            before = file_bytes(source)
+            runner = mock.Mock()
+            with mock.patch.object(launcher, "validate_recovery_source", side_effect=ValueError("DEBUG fold/dataset/seed/medical identity changed")), \
+                 mock.patch.object(launcher, "prepare_recovery") as prepare:
+                with self.assertRaisesRegex(ValueError, "identity changed"):
+                    launcher.execute_plan(plan, runner=runner, package_root=package)
+            self.assertEqual((runner.call_count, prepare.call_count), (0, 0))
+            self.assertFalse(plan["run_root"].exists())
+            self.assertEqual(file_bytes(source), before)
+
+    def interrupted_preparation(self, plan, identity, package):
+        events = []
+        with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+             mock.patch.object(launcher, "prepare_recovery", side_effect=RuntimeError("DEBUG interrupted graph preparation")), \
+             mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(RuntimeError, "interrupted graph"):
+                launcher.execute_plan(plan, runner=self.runner(plan, events), package_root=package)
+        self.assertEqual(events, ["gpu", "install_private_trainers", "environment"])
+        return json.loads((plan["run_root"] / "execution_journal.json").read_text())
+
+    def test_explicit_preparation_resume_reverifies_runtime_and_calls_helper_not_blind_skip(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_preparation_retry_") as tmp:
+            _, _, package, source, plan, identity = self.recovery_fixture(Path(tmp))
+            original = file_bytes(source)
+            first = self.interrupted_preparation(plan, identity, package)
+            self.assertFalse(first["training_started"])
+            self.assertEqual(first["stages"][-1]["status"], "failed")
+            events = []
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch.object(launcher, "prepare_recovery", side_effect=self.helper(events)) as prepare, \
+                 mock.patch.object(launcher, "copy_nnunet_package") as copy_package, \
+                 mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                launcher.execute_plan(plan, runner=self.runner(plan, events), package_root=package, resume_preparation=True)
+            self.assertEqual(copy_package.call_count, 0)
+            self.assertEqual(prepare.call_count, 1)
+            self.assertEqual(events[:3], ["gpu", "environment", "recover_preparation"])
+            self.assertNotIn("install_private_trainers", events)
+            self.assertEqual(file_bytes(source), original)
+            journal = json.loads((plan["run_root"] / "execution_journal.json").read_text())
+            self.assertEqual(sum(row["name"] == "recover_preparation" for row in journal["stages"]), 2)
+
+    def test_preparation_resume_rejects_changed_runtime_plan_source_or_journal_before_child(self):
+        for changed in ("runtime", "plan", "source", "journal"):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_tamper_") as tmp:
+                _, _, package, _, plan, identity = self.recovery_fixture(Path(tmp))
+                self.interrupted_preparation(plan, identity, package)
+                if changed == "runtime":
+                    (plan["package_destination"] / "__init__.py").write_bytes(b"DEBUG mutation")
+                elif changed == "plan":
+                    plan["seed"] = 123
+                elif changed == "source":
+                    identity = {**identity, "launch_plan_sha256": "0" * 64}
+                else:
+                    path = plan["run_root"] / "execution_journal.json"
+                    payload = json.loads(path.read_text()); payload["complete"] = True
+                    path.write_text(json.dumps(payload), encoding="utf-8")
+                runner = mock.Mock()
+                with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                     mock.patch.object(launcher, "prepare_recovery") as prepare:
+                    with self.assertRaises(ValueError):
+                        launcher.execute_plan(plan, runner=runner, package_root=package, resume_preparation=True)
+                self.assertEqual((runner.call_count, prepare.call_count), (0, 0))
+
+    def test_training_failure_never_becomes_an_automatic_checkpoint_resume(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_training_boundary_") as tmp:
+            _, _, package, _, plan, identity = self.recovery_fixture(Path(tmp))
+            events = []
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch.object(launcher, "prepare_recovery", side_effect=self.helper(events)), \
+                 mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    launcher.execute_plan(plan, runner=self.runner(plan, events, fail="gnn-train"), package_root=package)
+            retry = mock.Mock()
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch.object(launcher, "prepare_recovery") as prepare:
+                with self.assertRaisesRegex(ValueError, "Training already started"):
+                    launcher.execute_plan(plan, runner=retry, package_root=package, resume_preparation=True)
+            self.assertEqual((retry.call_count, prepare.call_count), (0, 0))
+
+    def test_resume_rechecks_journal_after_exclusive_lock_before_any_stage_reuse(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_lock_race_") as tmp:
+            _, _, package, _, plan, identity = self.recovery_fixture(Path(tmp))
+            self.interrupted_preparation(plan, identity, package)
+            journal = launcher._load_preparation_journal(plan, identity)
+            events = []
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch.object(launcher, "_load_preparation_journal", side_effect=[journal, ValueError("DEBUG another launcher started training")]) as load, \
+                 mock.patch.object(launcher, "prepare_recovery") as prepare, \
+                 mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError, "another launcher"):
+                    launcher.execute_plan(plan, runner=self.runner(plan, events), package_root=package, resume_preparation=True)
+            self.assertEqual(load.call_count, 2)
+            self.assertEqual(prepare.call_count, 0)
+            self.assertEqual(events, ["gpu"])
+            self.assertFalse((plan["run_root"] / "recovery_execution.lock").exists())
+
+    def test_resume_option_cannot_be_used_as_generic_training_resume(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_resume_option_") as tmp:
+            project, medical, package, plan = self.fixture(Path(tmp))
+            runner = mock.Mock()
+            with self.assertRaisesRegex(ValueError, "requires --recover-from"):
+                launcher.execute_plan(plan, runner=runner, package_root=package, resume_preparation=True)
+            self.assertEqual(runner.call_count, 0)
+            with mock.patch.object(launcher, "PROJECT_ROOT", project), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError, "requires --recover-from"):
+                    launcher.main(["--medical-root", str(medical), "--resume-preparation", "--dry-run"])
+            self.assertFalse(plan["run_root"].exists())
+
+    def test_incomplete_runtime_is_preserved_and_cannot_be_reused_by_existence(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_runtime_failure_") as tmp:
+            _, _, package, _, plan, identity = self.recovery_fixture(Path(tmp))
+            events = []
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    launcher.execute_plan(plan, runner=self.runner(plan, events, fail="install_private_trainers"), package_root=package)
+            before = file_bytes(plan["run_root"])
+            runner = mock.Mock()
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity):
+                with self.assertRaisesRegex(ValueError, "Runtime setup was interrupted"):
+                    launcher.execute_plan(plan, runner=runner, package_root=package, resume_preparation=True)
+            self.assertEqual(runner.call_count, 0)
+            self.assertEqual(file_bytes(plan["run_root"]), before)
+
+    def test_wrong_helper_config_receipt_stops_before_training(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_receipt_guard_") as tmp:
+            _, _, package, source, plan, identity = self.recovery_fixture(Path(tmp))
+            events = []
+            with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch.object(launcher, "prepare_recovery", return_value={"train_config": str(source / "launch_plan.json")}), \
+                 mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError, "train_config does not match"):
+                    launcher.execute_plan(plan, runner=self.runner(plan, events), package_root=package)
+            self.assertNotIn("gnn-train", events)
+
+    def test_recovery_dry_run_reads_source_validation_without_helpers_children_or_writes(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_recovery_dryrun_") as tmp:
+            project, medical, _, source, plan, identity = self.recovery_fixture(Path(tmp))
+            before = file_bytes(Path(tmp))
+            output = io.StringIO()
+            with mock.patch.object(launcher, "PROJECT_ROOT", project), \
+                 mock.patch.object(launcher, "validate_recovery_source", return_value=identity) as validate, \
+                 mock.patch.object(launcher, "prepare_recovery") as helper, \
+                 mock.patch.object(launcher, "execute_plan") as execute, \
+                 mock.patch.object(launcher.subprocess, "run") as child, contextlib.redirect_stdout(output):
+                launcher.main(["--medical-root", str(medical), "--recover-from", str(source), "--dry-run"])
+            self.assertEqual(validate.call_count, 1)
+            self.assertEqual((helper.call_count, execute.call_count, child.call_count), (0, 0, 0))
+            self.assertIn("[recover_preparation]", output.getvalue())
+            self.assertNotIn("[gnn-prepare]", output.getvalue())
+            self.assertFalse(plan["run_root"].exists())
+            self.assertEqual(file_bytes(Path(tmp)), before)
+
+
 if __name__ == "__main__":
     unittest.main()

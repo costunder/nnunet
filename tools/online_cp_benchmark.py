@@ -1032,14 +1032,36 @@ def bind_nnunet_device(
     )
 
 
-def ensure_outer_split(layout: Layout, outer_fold: int, dry_run: bool) -> bool:
+def _paired_stage_argv(
+    layout: Layout, stage: str, outer_fold: int, device: str | None = None
+) -> list[str]:
+    """Keep support generation in the requested checkout/work/config contract."""
+    import sys
+
+    argv = [
+        sys.executable, "-m", "tools.paired_benchmark", stage,
+        "--project-root", str(layout.project),
+        "--medical-root", str(layout.medical),
+        "--work", str(layout.paired),
+        "--train-config", str(layout.train_config),
+        "--nnunet-config", str(layout.nnunet_config),
+        "--outer-fold", str(outer_fold),
+    ]
+    if device is not None:
+        argv.extend(["--device", device])
+    return argv
+
+
+def ensure_outer_split(
+    layout: Layout, outer_fold: int, dry_run: bool, *, device: str | None = None
+) -> bool:
     if layout.outer_splits.is_file():
         outer_split(layout, outer_fold)
         return True
-    pairedcp = layout.medical / "pairedcp"
-    if not pairedcp.is_file():
-        raise OnlineBenchmarkError(f"pairedcp wrapper is missing: {pairedcp}")
-    run_command([pairedcp, "split"], cwd=layout.medical, dry_run=dry_run)
+    run_command(
+        _paired_stage_argv(layout, "split", outer_fold, device),
+        cwd=layout.project, dry_run=dry_run,
+    )
     if dry_run:
         print(
             "[Dry-run] dependent stages cannot verify the outer split until the "
@@ -1057,7 +1079,7 @@ def ensure_outer_split(layout: Layout, outer_fold: int, dry_run: bool) -> bool:
 def ensure_support_assets(
     layout: Layout, outer_fold: int, device: str, dry_run: bool
 ) -> bool:
-    if not ensure_outer_split(layout, outer_fold, dry_run):
+    if not ensure_outer_split(layout, outer_fold, dry_run, device=device):
         print("[Dry-run] fold-specific GNN preparation depends on the scheduled outer split")
         return False
     gnn = layout.gnn(outer_fold)
@@ -1078,17 +1100,14 @@ def ensure_support_assets(
             "position-blocked=true clearance-blocked=true"
         )
         return True
-    pairedcp = layout.medical / "pairedcp"
-    if not pairedcp.is_file():
-        raise OnlineBenchmarkError(f"pairedcp wrapper is missing: {pairedcp}")
     run_command(
-        [pairedcp, "gnn-prepare", "--outer-fold", str(outer_fold)],
-        cwd=layout.medical,
+        _paired_stage_argv(layout, "gnn-prepare", outer_fold, device),
+        cwd=layout.project,
         dry_run=dry_run,
     )
     run_command(
-        [pairedcp, "gnn-train", "--outer-fold", str(outer_fold), "--device", device],
-        cwd=layout.medical,
+        _paired_stage_argv(layout, "gnn-train", outer_fold, device),
+        cwd=layout.project,
         env={**os.environ, "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"},
         dry_run=dry_run,
     )
@@ -3479,7 +3498,9 @@ def make_layout(args: argparse.Namespace) -> Layout:
         paired=paired,
         online=online,
         source_work=project / "work" / "full",
-        train_config=project / "config" / "train.json",
+        train_config=(Path(args.train_config).expanduser().resolve()
+                      if getattr(args, "train_config", None)
+                      else project / "config" / "train.json"),
         nnunet_config=project / "config" / "nnunet.json",
         outer_splits=paired / "outer_splits.json",
         nnroot=nnroot,
@@ -3533,6 +3554,7 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--project-root")
     value.add_argument("--medical-root")
+    value.add_argument("--train-config", help="Exact quality-GNN/cache configuration, including measured ROI budget")
     value.add_argument("--paired-root", default=DEFAULT_PAIRED_ROOT)
     value.add_argument("--online-root", default=DEFAULT_ONLINE_ROOT)
     value.add_argument("--outer-fold", type=int, default=0)

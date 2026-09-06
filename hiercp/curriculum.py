@@ -9,6 +9,7 @@ import numpy as np
 
 from hiercp.common import (
     CandidateInfo,
+    CandidatePreparationError,
     LoadedCase,
     SourceTumor,
     context_stats_for_local_mask,
@@ -178,7 +179,7 @@ def build_training_specs(
     tumor_label: int,
     config: GraphBuildConfig,
     rng: np.random.Generator,
-) -> list[CandidateSpec] | None:
+) -> list[CandidateSpec]:
     """Build positive + easy + inter-region + relation-corrupted negatives.
 
     A candidate in the source region or source prototype is never used as a
@@ -188,7 +189,11 @@ def build_training_specs(
     if total_candidates < 4:
         raise ValueError("total_candidates must be at least four")
     if len(candidates) < total_candidates - 1:
-        return None
+        raise CandidatePreparationError(
+            "insufficient_valid_candidate_pool",
+            {"available_candidates": len(candidates),
+             "required_negative_candidates": int(total_candidates) - 1},
+            message="The complete ranking sample cannot be formed from the available pool")
 
     source_region = regions.region_at(source.anchor_center)
     assignments, _ = bank.assign(
@@ -319,7 +324,16 @@ def build_training_specs(
             labeled.append((DIFFICULTY_INTER_REGION, record, False))
 
     if len(labeled) < negative_count:
-        return None
+        raise CandidatePreparationError(
+            "insufficient_distinct_curriculum_candidates",
+            {"available_candidates": len(candidates), "distinct_centers": len(used),
+             "required_negative_candidates": int(negative_count),
+             "formed_negative_candidates": len(labeled),
+             "category_targets": {"easy": int(easy_target), "inter": int(inter_target),
+                                  "intra_corrupted": int(intra_target)},
+             "formed_categories": {"easy": len(easy), "inter": len(inter),
+                                   "intra_corrupted": len(intra)}},
+            message="Distinct candidate centers are insufficient after curriculum assignment")
 
     specs: list[CandidateSpec] = [positive]
     corruption_index = 0

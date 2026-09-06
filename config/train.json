@@ -170,7 +170,7 @@
     "case_batch_size": 2
   },
   "runtime": {
-    "prepare_workers": 2,
+    "prepare_workers": "auto",
     "deterministic": true,
     "allow_tf32": false,
     "cudnn_benchmark": false

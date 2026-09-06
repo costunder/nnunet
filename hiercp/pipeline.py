@@ -204,9 +204,9 @@ def run_prepare_prototypes(args: argparse.Namespace) -> None:
     graph = graph_config_from_dict(config["graph"])
     seed = int(args.seed if args.seed is not None else config["seed"])
     training_case_ids = tuple(str(value) for value in split["train"])
-    workers = int(config.get("runtime", {}).get("prepare_workers", 2))
-    if workers < 1:
-        raise ValueError("runtime.prepare_workers must be positive")
+    workers = config["runtime"]["prepare_workers"]
+    if workers != "auto" and (type(workers) is not int or workers < 1):
+        raise ValueError("runtime.prepare_workers must be 'auto' or a positive integer")
     output_preexisting = Path(args.output).is_file() and not args.overwrite
     resources_before = collect_runtime_resources(
         storage_path=Path(args.output).parent
@@ -226,8 +226,8 @@ def run_prepare_prototypes(args: argparse.Namespace) -> None:
             "parallelism": {
                 "configured_workers": workers,
                 "selection_basis": (
-                    "explicit runtime.prepare_workers; not throughput-calibrated by "
-                    "the preparation pipeline"
+                    "measured full-size case waves; automatic CPU/RAM-constrained "
+                    "selection when prepare_workers=auto"
                 ),
             },
             "device_resources": resources_before,
@@ -286,7 +286,7 @@ def run_prepare_prototypes(args: argparse.Namespace) -> None:
             ),
             "peak_vram": f"{UNAVAILABLE} (no GPU preparation kernels instrumented)",
             "configured_workers": workers,
-            "worker_selection_measured": False,
+            "worker_selection_measured": workers == "auto" and not output_preexisting,
         },
     )
 
@@ -301,9 +301,9 @@ def run_prepare(args: argparse.Namespace) -> None:
     cache = config["cache"]
     graph = graph_config_from_dict(config["graph"])
     seed = int(args.seed if args.seed is not None else config["seed"])
-    workers = int(config.get("runtime", {}).get("prepare_workers", 2))
-    if workers < 1:
-        raise ValueError("runtime.prepare_workers must be positive")
+    workers = config["runtime"]["prepare_workers"]
+    if workers != "auto" and (type(workers) is not int or workers < 1):
+        raise ValueError("runtime.prepare_workers must be 'auto' or a positive integer")
     configured_case_count = len(split["train"]) + len(split["val"])
     selected_case_count = (
         configured_case_count
@@ -339,8 +339,8 @@ def run_prepare(args: argparse.Namespace) -> None:
             "parallelism": {
                 "configured_workers": workers,
                 "selection_basis": (
-                    "explicit runtime.prepare_workers; not throughput-calibrated by "
-                    "the preparation pipeline"
+                    "measured full-size case waves; automatic CPU/RAM-constrained "
+                    "selection when prepare_workers=auto"
                 ),
             },
             "device_resources": resources_before,
@@ -433,7 +433,7 @@ def run_prepare(args: argparse.Namespace) -> None:
             ),
             "peak_vram": f"{UNAVAILABLE} (no GPU preparation kernels instrumented)",
             "configured_workers": workers,
-            "worker_selection_measured": False,
+            "worker_selection_measured": workers == "auto" and processed_case_count > 0,
         },
     )
 
@@ -1573,6 +1573,12 @@ def run_train(args: argparse.Namespace) -> None:
         "prototype_training_cases": list(bank.training_case_ids),
         "prototype_fingerprint": expected_fingerprint,
     }
+    if cache_usage.get("donor_contract_sha256") is not None:
+        static_checkpoint_metadata.update(
+            donor_contract_sha256=cache_usage["donor_contract_sha256"],
+            donor_case_ids=cache_usage["eligible_source_case_ids"],
+            source_patient_case_ids=cache_usage["source_patient_case_ids"],
+        )
 
     parameter_count = sum(int(parameter.numel()) for parameter in model.parameters())
     trainable_parameter_count = sum(
