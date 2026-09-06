@@ -53,6 +53,7 @@ from hiercp.spatial import (
     EmptyCanonicalNodeError,
 )
 from hiercp.hierarchy import build_patient_graph, build_prototype_graph
+from hiercp.nifti_geometry import validate_donor_geometry
 
 
 CACHE_FORMAT = "full-cache"
@@ -364,6 +365,10 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
         for name in ("image", "label"):
             _assert_file_sha256(Path(getattr(paths, f"{name}_path")), source[f"{name}_sha256"], context="Donor preflight")
         image, label = nib.load(paths.image_path), nib.load(paths.label_path)
+        geometry_audit = validate_donor_geometry(image, label, case_id=paths.case_id)
+        if geometry_audit["accepted_as"] == "roundoff":
+            print("[DonorGeometryRoundoff] " + json.dumps(
+                {"case_id": paths.case_id, **geometry_audit}, allow_nan=False), flush=True)
         raw = np.asanyarray(label.dataobj)
         if raw.ndim == 4 and raw.shape[3] == 1:
             raw = raw[..., 0]
@@ -372,8 +377,6 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
             image_shape = image_shape[:3]
         if raw.ndim != 3 or tuple(raw.shape) != image_shape or any(size <= 0 for size in raw.shape):
             raise ValueError(f"Donor image/label dimensions mismatch: {paths.case_id}")
-        if not np.all(np.isfinite(label.affine)) or not np.all(np.isfinite(image.affine)) or not np.allclose(label.affine, image.affine, rtol=0, atol=1e-5):
-            raise ValueError(f"Donor image/label affine mismatch: {paths.case_id}")
         if not np.all(np.isfinite(raw)) or not np.all(raw == np.rint(raw)):
             raise ValueError(f"Donor labels contain nonfinite/noninteger values: {paths.case_id}")
         values, counts = np.unique(raw, return_counts=True)
@@ -385,6 +388,7 @@ def build_donor_eligibility(*, case_paths, selected_case_ids, source_cases,
         boxes = [[part.stop - part.start for part in bbox] for bbox in ndi.find_objects(components)]
         eligible = histogram[str(tumor_label)] > 0
         result = {**source, "label_histogram": histogram, "shape": list(raw.shape),
+                  "geometry_audit": geometry_audit,
                   "spacing_mm": [float(v) for v in image.header.get_zooms()[:3]],
                   "component_bbox_shapes": boxes, "eligible": eligible,
                   "reason": "configured_tumor_label_present" if eligible else "configured_tumor_label_absent"}

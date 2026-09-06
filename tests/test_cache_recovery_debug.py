@@ -90,6 +90,30 @@ class DonorEligibilityDebugTests(unittest.TestCase):
                                          liver_label=1, tumor_label=2, workers=2,
                                          report_path=self.root / "changed_runtime.json")
 
+    def test_float32_header_roundoff_is_audited_without_modifying_sources(self):
+        values = np.ones((3, 4, 5), dtype=np.uint8)
+        values[1, 1, 1] = 2
+        paths = self.case("roundoff", values)
+        image_affine = np.diag([0.64453125, 0.64453125, 0.70000005, 1.0])
+        image_affine[:3, 3] = [-163.35547, -295.35547, 54.399963]
+        label_affine = np.diag([0.6445313, 0.6445313, 0.7, 1.0])
+        label_affine[:3, 3] = [-163.3555, -295.3555, 54.399963]
+        for path, data, affine in ((paths.image_path, values.astype(np.float32), image_affine),
+                                   (paths.label_path, values, label_affine)):
+            nii = nib.Nifti1Image(data, affine)
+            nii.header.set_xyzt_units("mm")
+            nib.save(nii, path)
+        original = {path: path.read_bytes() for path in (paths.image_path, paths.label_path)}
+        contract, sources = self.collect([paths])
+        self.assertEqual(contract["cases"][0]["geometry_audit"]["accepted_as"], "roundoff")
+        self.assertEqual(contract["eligible_case_ids"], [paths.case_id])
+        self.assertEqual(original, {path: path.read_bytes() for path in original})
+        altered = copy.deepcopy(contract)
+        altered["cases"][0]["geometry_audit"]["accepted_as"] = "unverified"
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            cache.validate_donor_eligibility(altered, selected_case_ids=[paths.case_id],
+                source_cases=sources, labels={"liver": 1, "tumor": 2})
+
     def test_partition_histogram_and_source_tampering_are_rejected(self):
         values = np.ones((3, 3, 3), dtype=np.int16)
         values[1, 1, 1] = 2

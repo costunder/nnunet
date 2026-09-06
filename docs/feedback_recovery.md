@@ -42,6 +42,36 @@ image/label hashes remain bound to the experiment. Labels are checked before an
 integer conversion for finite, integral values from the configured label set;
 image/label geometry is checked as well.
 
+### Numerical header equivalence (liver_85 follow-up)
+
+An elementwise affine tolerance alone is not an adequate grid comparison: it
+can reject harmless float32 header roundoff yet admit small linear errors that
+accumulate across a large image. The reported `liver_85` headers have matching
+512 x 512 x 630 shape, mm units and active sforms. Reconstructing the printed
+float32 srows gives approximately 0.0000572 mm / 0.0000858 voxel maximum
+voxel-center-corner displacement. This reconstruction is header evidence, not
+an inspection of the actual medical voxels or proof of anatomical alignment.
+
+The donor check keeps its original strict affine comparison but additionally
+bounds displacement over the **whole voxel-cell box**, including its outer
+half-voxel boundaries. Both reciprocal voxel-grid errors must stay within
+0.0001 voxel, and known spatial units must also stay within 0.0001 mm. The
+additional roundoff acceptance path is deliberately restricted to matching
+active float32 NIfTI-1 sforms with mm units: affine coefficients and header
+spacings may differ by at most two float32 ULPs, and both whole-box bounds must
+still pass. This is a numerical compatibility policy, not a clinical tolerance
+or an unbounded relative tolerance tied to a large coordinate origin.
+
+Unknown-unit mismatches, different sform codes, nonfinite/singular geometry,
+flips, and larger or accumulated coordinate changes are not admitted by that
+roundoff path. Selected affines are never replaced by an alternate qform;
+neither headers nor voxel arrays are rewritten, reoriented or resampled.
+Accepted roundoff is printed explicitly and its geometry evidence is stored in
+the SHA-bound donor contract. Existing strict donor contracts remain readable.
+After this pre-eligibility failure, update the same checkout and repeat the
+recovery command with `--resume-preparation`; retain the original run root,
+fold, dataset ID and seed so the preparation journal can be reverified.
+
 Cases without the configured tumor label cannot supply a tumor source. This is
 recorded in a checksummed `donor_eligibility` contract, with label histograms,
 source hashes and explicit reasons. It is **not** a claim that those patients
