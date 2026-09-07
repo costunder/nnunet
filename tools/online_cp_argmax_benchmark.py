@@ -1949,6 +1949,7 @@ def build_online_bank(
                             min_liver_coverage=float(generation["min_liver_coverage"]),
                             occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
                             min_center_separation_mm=float(generation["min_center_separation_mm"]),
+                            min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
                         )
                         specs = build_generation_specs(
                             proposal, regions, population_bank, config=graph_config

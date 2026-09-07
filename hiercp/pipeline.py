@@ -371,6 +371,8 @@ def run_prepare(args: argparse.Namespace) -> None:
         min_liver_coverage=float(cache["min_liver_coverage"]),
         occupied_clearance_vox=int(cache["occupied_clearance_vox"]),
         min_center_separation_mm=float(cache["min_center_separation_mm"]),
+        min_center_separation_vox=float(cache.get("min_center_separation_vox", 0.0)),
+        no_placement_policy=str(cache.get("no_placement_policy", "error")),
         ct_clip=tuple(float(value) for value in config["ct_clip"]),
         seed=seed,
         max_cases=args.max_cases,
@@ -444,8 +446,16 @@ def _validate_cache_metadata(
     prototype_fingerprint: str,
     graph_config: dict,
     ct_clip: tuple[float, float],
+    cache_config: dict,
+    labels: dict,
 ) -> None:
-    """Validate one lightweight metadata file instead of every graph payload."""
+    """Bind training to the published graph-generation contract, not a config hash.
+
+    These fields use the same normalization and flat metadata layout as prepare,
+    including older publications. Optimizer/model/runtime settings do not change
+    the prepared CP samples. In particular, the training RNG seed is independent
+    of the preparation seed already recorded in the cache publication.
+    """
 
     from hiercp.cache import CACHE_FORMAT
     from hiercp.data import load_cache_config, load_cache_index
@@ -456,8 +466,35 @@ def _validate_cache_metadata(
         "prototype_fingerprint": prototype_fingerprint,
         "graph_config": graph_config,
         "ct_clip": [float(value) for value in ct_clip],
+        "source_selection": str(cache_config["source_selection"]),
+        **{
+            key: int(cache_config[key])
+            for key in (
+                "source_pad", "samples_per_case", "total_candidates",
+                "candidate_pool_size", "max_draws", "occupied_clearance_vox",
+            )
+        },
+        **{
+            key: float(cache_config[key])
+            for key in ("min_liver_coverage", "min_center_separation_mm")
+        },
+        "difficulty_fractions": {
+            "easy": float(cache_config["easy_fraction"]),
+            "inter": float(cache_config["inter_fraction"]),
+            "intra_corrupted": float(cache_config["intra_fraction"]),
+        },
+        "labels": {key: int(labels[key]) for key in ("liver", "tumor")},
     }
-    mismatches = [key for key, value in expected.items() if metadata.get(key) != value]
+    expected.update(
+        min_center_separation_vox=float(cache_config.get("min_center_separation_vox", 0.0)),
+        no_placement_policy=str(cache_config.get("no_placement_policy", "error")),
+    )
+    metadata = {"min_center_separation_vox": 0.0, "no_placement_policy": "error", **metadata}
+    mismatches = [
+        f"{key} (cached={metadata.get(key, '<missing>')!r}, requested={value!r})"
+        for key, value in expected.items()
+        if metadata.get(key) != value
+    ]
     if mismatches:
         raise ValueError(
             "Hierarchical cache metadata is incompatible with the current request: "
@@ -1091,11 +1128,6 @@ def run_train(args: argparse.Namespace) -> None:
 
     checkpoint_path = Path(args.checkpoint)
     resume_path = training_state_path(checkpoint_path)
-    if args.overwrite:
-        for path in (checkpoint_path, resume_path):
-            if path.exists():
-                path.unlink()
-
     files = list_cache_files(args.cache_dir)
     bank = PrototypeBank.load(args.prototype_bank)
     expected_fingerprint = bank.fingerprint()
@@ -1106,19 +1138,29 @@ def run_train(args: argparse.Namespace) -> None:
         prototype_fingerprint=expected_fingerprint,
         graph_config=expected_graph_config,
         ct_clip=expected_ct_clip,
+        cache_config=config["cache"],
+        labels=config["labels"],
     )
     train_files, val_files = split_files_from_cache(files)
     cache_usage = summarize_cache_usage(args.cache_dir, selected_files=files)
     materialized_ratio = cache_usage["materialized_sample_ratio"]
+    resolved_ratio = (
+        cache_usage.get("resolved_sample_ratio")
+        if config["cache"].get("no_placement_policy", "error") == "retain_original"
+        else materialized_ratio
+    )
     if run_mode == "production" and (
         cache_usage["subset_active"]
-        or not isinstance(materialized_ratio, float)
-        or not math.isclose(materialized_ratio, 1.0, rel_tol=0.0, abs_tol=0.0)
+        or not isinstance(resolved_ratio, float)
+        or not math.isclose(resolved_ratio, 1.0, rel_tol=0.0, abs_tol=0.0)
+        or cache_usage.get("actual_index_usage_ratio", 1.0) != 1.0
     ):
         raise RuntimeError(
             "Production training requires the complete configured cache cohort and all "
-            f"expected samples; cache_usage={cache_usage}"
+            f"expected attempts (materialized or audited no-placement); cache_usage={cache_usage}"
         )
+    if run_mode == "production" and not train_files:
+        raise RuntimeError("Production training requires a non-empty training graph split")
     if run_mode == "production" and not val_files:
         raise RuntimeError(
             "Production training requires a non-empty fixed validation split; refusing "
@@ -1135,6 +1177,12 @@ def run_train(args: argparse.Namespace) -> None:
     device = resolve_device(args.device)
     if run_mode == "production":
         enforce_single_device_execution(device, context="hiercp.pipeline train")
+    # An explicit overwrite is permitted only after the cache/cohort and device
+    # preflight passes. A rejected production request must preserve old results.
+    if args.overwrite:
+        for path in (checkpoint_path, resume_path):
+            if path.exists():
+                path.unlink()
     use_amp = bool(training["amp"] and device.type == "cuda")
     model_kwargs = {
         "hidden_dim": int(model_config["hidden_dim"]),
@@ -2263,6 +2311,7 @@ class _PreparedGenerationCase:
     sample: dict[str, Any] | None = None
     regions: PatientRegionData | None = None
     rng: np.random.Generator | None = None
+    candidate_search: dict[str, Any] | None = None
 
 
 @dataclass
@@ -2281,6 +2330,48 @@ class _GenerationState:
     coverages: list[str]
     active: bool = True
     error_message: str = ""
+
+
+def _is_retained_generation_row(row: dict, generation: dict) -> bool:
+    """Recognize an explicit, conclusive zero-placement output; not an error skip."""
+    from hiercp.common import CANDIDATE_DIAGNOSTICS_FORMAT, CANDIDATE_SEARCH_VERSION
+
+    if generation.get("no_placement_policy", "error") != "retain_original":
+        return False
+    if row.get("status") != "retained_original":
+        return False
+    try:
+        search = json.loads(row.get("candidate_search_json", ""))
+        integer_fields = ("accepted", "source_component", "source_voxels",
+                          "excluded_center_count", "required_candidates",
+                          "target_candidates", "max_draws", "occupied_clearance_vox")
+        if (not isinstance(search, dict) or
+                any(type(search.get(key)) is not int for key in integer_fields) or
+                any(type(row.get(key)) not in (str, int)
+                    for key in ("requested", "pasted", "source_component"))):
+            return False
+        return (
+            isinstance(search, dict) and int(row["requested"]) >= 1
+            and int(row["pasted"]) == 0
+            and search.get("format") == CANDIDATE_DIAGNOSTICS_FORMAT
+            and search.get("search_version") == CANDIDATE_SEARCH_VERSION
+            and search.get("accepted") == 0
+            and search.get("exhaustive_used") is True
+            and search.get("fullsearch_exhausted") is True
+            and search.get("excluded_center_count") == 0
+            and search.get("source_component") == int(row["source_component"])
+            and int(row["source_component"]) > 0
+            and search.get("source_voxels", 0) > 0
+            and search.get("target_candidates") == int(generation["num_candidates"])
+            and search.get("required_candidates") == int(generation["num_candidates"])
+            and search.get("max_draws") == int(generation["max_draws"])
+            and search.get("min_liver_coverage") == float(generation["min_liver_coverage"])
+            and search.get("occupied_clearance_vox") == int(generation["occupied_clearance_vox"])
+            and search.get("min_center_separation_mm") == float(generation["min_center_separation_mm"])
+            and search.get("min_center_separation_vox", 0.0) == float(generation.get("min_center_separation_vox", 0.0))
+        )
+    except (ValueError, TypeError, KeyError):
+        return False
 
 
 def run_generate(args: argparse.Namespace) -> None:
@@ -2456,6 +2547,7 @@ def run_generate(args: argparse.Namespace) -> None:
                 overwrite=False,
                 mmap=True,
             )
+            candidate_search: dict[str, Any] = {}
             candidates, _ = build_candidate_pool(
                 case,
                 source,
@@ -2469,11 +2561,14 @@ def run_generate(args: argparse.Namespace) -> None:
                 min_liver_coverage=float(generation["min_liver_coverage"]),
                 occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
                 min_center_separation_mm=float(generation["min_center_separation_mm"]),
+                min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
+                diagnostics=candidate_search,
             )
             if not candidates:
                 return _PreparedGenerationCase(
                     paths.case_id,
                     "no_candidate",
+                    candidate_search=candidate_search,
                     case=case,
                     source=source,
                     regions=regions,
@@ -2546,6 +2641,7 @@ def run_generate(args: argparse.Namespace) -> None:
             min_liver_coverage=float(generation["min_liver_coverage"]),
             occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
             min_center_separation_mm=float(generation["min_center_separation_mm"]),
+            min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
         )
         if not candidates:
             return None
@@ -2746,11 +2842,13 @@ def run_generate(args: argparse.Namespace) -> None:
             ]
             try:
                 requested_matches = int(existing.get("requested", "-1")) == requested_copies
-                pasted_matches = int(existing.get("pasted", "-1")) == requested_copies
+                pasted_matches = (int(existing.get("pasted", "-1")) == requested_copies
+                                  or _is_retained_generation_row(existing, generation))
             except (TypeError, ValueError):
                 requested_matches = False
                 pasted_matches = False
-            if existing.get("status") not in {"ok", "exists_verified"}:
+            if (existing.get("status") not in {"ok", "exists_verified"}
+                    and not _is_retained_generation_row(existing, generation)):
                 mismatches.append("status")
             if not requested_matches:
                 mismatches.append("requested")
@@ -2763,7 +2861,8 @@ def run_generate(args: argparse.Namespace) -> None:
                     "a new output directory."
                 )
             verified_row: dict[str, object] = dict(existing)
-            verified_row["status"] = "exists_verified"
+            if not _is_retained_generation_row(existing, generation):
+                verified_row["status"] = "exists_verified"
             verified_row["reused_verified"] = True
             rows.append(verified_row)
             print(f"[Skip] Verified existing output: {paths.case_id}")
@@ -2907,6 +3006,30 @@ def run_generate(args: argparse.Namespace) -> None:
                     )
 
                 prepared = prepared_future.result()
+                if (prepared.status == "no_candidate" and
+                        generation.get("no_placement_policy", "error") == "retain_original"):
+                    if prepared.case is None or prepared.source is None:
+                        raise RuntimeError("No-placement generation lost its original case/source")
+                    retained = {
+                        "case_id": prepared.case_id, "status": "retained_original",
+                        "method": "retained_original_no_cp", "requested": requested_copies,
+                        "pasted": 0, "source_component": prepared.source.component_id,
+                        "candidate_search_json": json.dumps(prepared.candidate_search, sort_keys=True),
+                        "generation_identity_sha256": generation_identity_sha256,
+                        "checkpoint_sha256": checkpoint_sha256,
+                        "config_sha256": config_sha256,
+                        "prototype_fingerprint": bank.fingerprint(),
+                        "source_image_sha256": _sha256_file(prepared.case.paths.image_path),
+                        "source_label_sha256": _sha256_file(prepared.case.paths.label_path),
+                    }
+                    if not _is_retained_generation_row(retained, generation):
+                        raise RuntimeError("No-placement generation lacks conclusive zero-search evidence")
+                    pending_saves.append((prepared.case_id, save_pool.submit(
+                        save_payload, prepared.case, prepared.case.image, prepared.case.label, retained)))
+                    print(f"[NoCP] {prepared.case_id}: keeping original CT/label; pasted=0")
+                    if len(pending_saves) >= save_queue_depth:
+                        flush_one_save()
+                    continue
                 if prepared.status != "ready":
                     status = prepared.status
                     rows.append(
@@ -3146,11 +3269,11 @@ def run_generate(args: argparse.Namespace) -> None:
     failed_rows = [
         row
         for row in rows
-        if row.get("status") in {"error", "save_error", "no_candidate", "incomplete"}
-        or (
+        if not _is_retained_generation_row(row, generation) and (
+            row.get("status") in {"error", "save_error", "no_candidate", "incomplete"} or (
             "requested" in row
             and int(row.get("pasted", 0)) < int(row.get("requested", 0))
-        )
+        ))
     ]
     generation_elapsed = time.perf_counter() - generation_started
     generation_cpu_elapsed = time.process_time() - generation_cpu_started
@@ -3194,7 +3317,11 @@ def run_generate(args: argparse.Namespace) -> None:
             else {"cuda_memory": f"{UNAVAILABLE} (CPU run)"}
         ),
         "gpu_utilization_percent": f"{UNAVAILABLE} (external profiler not attached)",
-        "actual_data_used": bool(score_calls),
+        "actual_data_used": bool(score_calls or any(
+            row.get("status") == "retained_original" and not row.get("reused_verified")
+            for row in rows
+        )),
+        "model_inference_executed": bool(score_calls),
         "full_generation_complete": not failed_rows,
         "full_training_executed": False,
         "full_evaluation_executed": False,

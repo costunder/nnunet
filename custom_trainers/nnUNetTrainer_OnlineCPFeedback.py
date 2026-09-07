@@ -74,20 +74,21 @@ class nnUNetDataLoaderOnlineCPFeedback(nnUNetDataLoaderOnlineCP):
 
     def _sample_paste_plan(self, case_id):
         self._crop_pasted_mask = None
-        names = self.online_bank.entry_names(case_id)
+        names = self._source_entry_names(case_id)
         rng = self._rng()
         apply_cp = float(rng.random()) < self.online_bank.cp_probability
         source_u, candidate_u, scale_u, shift_u = [float(rng.random()) for _ in range(4)]
+        entry_index = min(len(names) - 1, int(np.floor(source_u * len(names)))) if names else -1
+        selected_entry = names[entry_index] if names else ""
         original = _stable_u64(TRAINER_FORMAT, self.online_epoch, str(case_id),
-                               int(apply_cp and bool(names)), source_u.hex(),
+                               int(apply_cp and bool(selected_entry)), source_u.hex(),
                                candidate_u.hex(), scale_u.hex(), shift_u.hex())
         event = schedule_token("event", self.curriculum_sha256, int(original))
         plan = None
         entry_id, candidate_index = "", -1
-        if apply_cp and names:
-            entry_index = min(len(names) - 1, int(np.floor(source_u * len(names))))
-            entry_id = names[entry_index]
-            entry = self.online_bank.load_for_case(case_id, entry_index)
+        if apply_cp and selected_entry:
+            entry_id = selected_entry
+            entry = self._load_selected_source(case_id, entry_index)
             candidate_index = self.feedback_state.select(
                 entry_id, entry["scores"], int(self.online_epoch), candidate_u,
                 basic_control=self.basic_control,

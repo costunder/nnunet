@@ -56,7 +56,7 @@ class FeedbackTrainerIntegrationDebugTests(unittest.TestCase):
         cls.missing = object()
         root = Path(__file__).resolve().parents[1] / "custom_trainers"
         prefix = "nnunetv2.training.nnUNetTrainer."
-        names = ["onlinecp_curriculum_policy", "onlinecp_curriculum_contract",
+        names = ["nnUNetTrainer_OnlinePairedCP", "onlinecp_curriculum_policy", "onlinecp_curriculum_contract",
                  "onlinecp_feedback_metrics", "onlinecp_feedback_policy",
                  "nnUNetTrainer_OnlineCPCurriculum", "nnUNetTrainer_OnlineCPFeedback"]
         try:

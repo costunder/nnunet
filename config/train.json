@@ -65,7 +65,7 @@
   },
   "cache": {
     "source_selection": "random",
-    "source_pad": 4,
+    "source_pad": 2,
     "samples_per_case": 2,
     "total_candidates": 8,
     "candidate_pool_size": 128,
@@ -75,7 +75,9 @@
     "max_draws": 50000,
     "min_liver_coverage": 0.85,
     "occupied_clearance_vox": 2,
-    "min_center_separation_mm": 12.0
+    "min_center_separation_mm": 0.0,
+    "min_center_separation_vox": 12.0,
+    "no_placement_policy": "retain_original"
   },
   "training": {
     "val_fraction": 0.2,
@@ -133,7 +135,7 @@
   },
   "generation": {
     "source_selection": "random",
-    "source_pad": 4,
+    "source_pad": 2,
     "num_copies": 1,
     "num_candidates": 128,
     "scoring_batch_size": "auto",
@@ -149,7 +151,9 @@
     "max_draws": 50000,
     "min_liver_coverage": 0.85,
     "occupied_clearance_vox": 2,
-    "min_center_separation_mm": 12.0,
+    "min_center_separation_mm": 0.0,
+    "min_center_separation_vox": 12.0,
+    "no_placement_policy": "retain_original",
     "top_k": 1,
     "temperature": 0.0,
     "intensity_scale_range": [

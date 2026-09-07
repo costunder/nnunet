@@ -27,6 +27,12 @@ def training_command(args):
         expected_candidate_count=128, dataset_name=index["dataset_name"], nnunet_fold=0,
         contract_filename="feedback_contract.json",
     )
+    # The installed trainer verifier stays byte-compatible with existing private
+    # runtimes. Enforce the repaired donor identity at this new-run entry point,
+    # after verification binds both index and config to their recorded hashes.
+    from tools.online_cp_benchmark import _require_source_mapping_policy
+    bank_config = json.loads(Path(identity["files"]["config"]["path"]).read_text(encoding="utf-8"))
+    _require_source_mapping_policy(index, bank_config)
     if args.configuration != identity["verified_configuration"]:
         raise ValueError("Requested configuration is not the verified preprocessing configuration")
     results = os.environ.get("nnUNet_results")

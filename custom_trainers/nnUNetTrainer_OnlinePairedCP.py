@@ -146,6 +146,9 @@ class OnlineCPBank:
         }
         if not self.entries_by_case:
             raise OnlineCPError(f"OnlineCP bank contains no case entries: {self.index_path}")
+        self.source_slots_by_case: dict[str, tuple[str, ...]] | None = None
+        self.no_placement_sources = 0
+        self._validate_source_slots()
         self.candidate_count = int(metadata["candidate_count"])
         self.hier_top_k = int(metadata.get("hier_top_k", 8))
         self.tumor_label = int(metadata["tumor_label"])
@@ -173,6 +176,50 @@ class OnlineCPBank:
 
     def entry_names(self, case_id: str) -> tuple[str, ...]:
         return self.entries_by_case.get(str(case_id), ())
+
+    def _validate_source_slots(self) -> None:
+        policy = self.metadata.get("no_placement_policy", "error")
+        if policy not in {"error", "retain_original"}:
+            raise OnlineCPError(f"Unknown no-placement policy: {policy!r}")
+        raw_slots = self.metadata.get("source_slots_by_case")
+        if policy == "error":
+            if raw_slots is not None:
+                raise OnlineCPError("Source slots require explicit retain_original policy")
+            return
+        inventory = self.metadata.get("eligible_sources_by_case")
+        if (self.metadata.get("source_schedule_format") != "onlinecp_all_source_slots_v1"
+                or not isinstance(raw_slots, dict) or not isinstance(inventory, dict)
+                or set(raw_slots) != set(inventory)):
+            raise OnlineCPError("Complete eligible-source slot inventory is required")
+        slots_by_case = {}
+        no_placement = 0
+        for case_id, slots in raw_slots.items():
+            components = inventory[case_id]
+            if (not isinstance(components, list) or len(components) != len(set(components))
+                    or any(type(value) is not int or value < 1 for value in components)
+                    or not isinstance(slots, list) or len(slots) != len(components)):
+                raise OnlineCPError(f"Malformed source slots for {case_id}")
+            names = []
+            for component, slot in zip(components, slots):
+                if not isinstance(slot, dict) or slot.get("source_component") != component:
+                    raise OnlineCPError(f"Source slot changes original component order for {case_id}")
+                entry, status = slot.get("entry"), slot.get("status")
+                if status == "no_placement" and entry == "":
+                    no_placement += 1
+                elif status != "ok" or not isinstance(entry, str) or not entry:
+                    raise OnlineCPError(f"Invalid source slot for {case_id}/{component}")
+                names.append(entry)
+            usable = [name for name in names if name]
+            if (len(usable) != len(set(usable))
+                    or sorted(usable) != sorted(self.entry_names(case_id))):
+                raise OnlineCPError(f"Usable NPZ entries differ from source slots for {case_id}")
+            slots_by_case[case_id] = tuple(names)
+        if (set(self.entries_by_case) - set(inventory)
+                or self.metadata.get("eligible_source_slots") != sum(map(len, slots_by_case.values()))
+                or self.metadata.get("no_placement_sources") != no_placement):
+            raise OnlineCPError("Source-slot counts or patient inventory differ")
+        self.source_slots_by_case = slots_by_case
+        self.no_placement_sources = no_placement
 
     def _load(self, relative_path: str) -> dict[str, np.ndarray]:
         cached = self._cache.get(relative_path)
@@ -325,10 +372,26 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
             self.online_policy, scores, u, hier_top_k=self.online_bank.hier_top_k
         )
 
+    def _source_entry_names(self, case_id: str) -> tuple[str, ...]:
+        slots = getattr(self.online_bank, "source_slots_by_case", None)
+        if slots is None:
+            return self.online_bank.entry_names(case_id)
+        # Empty names are explicit, publisher-proven non-CP source slots, not
+        # missing files. They remain in the uniform source-draw denominator.
+        return slots.get(str(case_id), ())
+
+    def _load_selected_source(self, case_id: str, source_index: int):
+        if getattr(self.online_bank, "source_slots_by_case", None) is None:
+            return self.online_bank.load_for_case(case_id, source_index)
+        name = self._source_entry_names(case_id)[source_index]
+        if not name:
+            raise OnlineCPError("A no-placement slot may not be loaded as a fake CP entry")
+        return self.online_bank._load(name)
+
     def _sample_paste_plan(
         self, case_id: str
     ) -> tuple[dict[str, Any] | None, int]:
-        entry_names = self.online_bank.entry_names(case_id)
+        entry_names = self._source_entry_names(case_id)
         rng = self._rng()
         apply_cp = float(rng.random()) < self.online_bank.cp_probability
         # Fixed draw schedule shared by all policies. Exact-argmax consumes but
@@ -337,23 +400,22 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
         candidate_u = float(rng.random())
         scale_u = float(rng.random())
         shift_u = float(rng.random())
+        entry_index = (min(len(entry_names) - 1, int(np.floor(source_u * len(entry_names))))
+                       if entry_names else -1)
+        selected_entry = entry_names[entry_index] if entry_names else ""
         schedule_token = _stable_u64(
             TRAINER_FORMAT,
             self.online_epoch,
             str(case_id),
-            int(apply_cp and bool(entry_names)),
+            int(apply_cp and bool(selected_entry)),
             source_u.hex(),
             candidate_u.hex(),
             scale_u.hex(),
             shift_u.hex(),
         )
-        if not apply_cp or not entry_names:
+        if not apply_cp or not selected_entry:
             return None, schedule_token
-
-        entry_index = min(
-            len(entry_names) - 1, int(np.floor(source_u * len(entry_names)))
-        )
-        entry = self.online_bank.load_for_case(case_id, entry_index)
+        entry = self._load_selected_source(case_id, entry_index)
         centers = entry["candidate_centers"].astype(np.int64, copy=False)
         scores = entry["scores"].astype(np.float32, copy=False)
         candidate_index = self._select_candidate(scores, candidate_u)
@@ -744,6 +806,7 @@ class _nnUNetTrainer_250epochs_OnlineCP(nnUNetTrainer):
             f"policy={self.online_policy} bank={self.online_bank_path} "
             f"p={bank.cp_probability:.3f} candidates={bank.candidate_count} "
             f"hier_top_k={bank.hier_top_k} "
+            f"no_placement_sources={bank.no_placement_sources} "
             f"selection={self._selection_name()} "
             f"deterministic_workers={process_count}",
             also_print_to_console=True,

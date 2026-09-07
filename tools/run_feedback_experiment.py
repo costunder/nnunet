@@ -301,6 +301,13 @@ def _execute_recovery(plan, source, source_identity, *, runner, env, journal=Non
 
 
 def copy_nnunet_package(source, destination):
+    """Copy native nnU-Net into a new runtime, preserving an older CP install.
+
+    Source CP helpers may belong to the old experiment and need not match the
+    current MODULES hashes. Exclude those exact helper names only; the installer
+    writes the current helpers exclusively inside this new destination. Resume
+    of an existing runtime still requires its original verified inventory.
+    """
     source, destination = Path(source).resolve(), Path(destination)
     if destination.exists() or destination.is_symlink():
         raise FileExistsError(f"Existing package copy preserved: {destination}")
@@ -423,7 +430,7 @@ def main(argv=None):
         print(f"[FAILED] Further stages were not launched. Existing files and partial outputs are preserved: {plan['run_root']}",
               file=sys.stderr, flush=True)
         if plan["recovery_source_root"] is not None:
-            print("Preparation-only retry: repeat with --resume-preparation after inspecting execution_journal.json. If training started or runtime setup was incomplete, automatic retry is refused; no checkpoints are restarted.", file=sys.stderr, flush=True)
+            print("Preparation-only retry: --resume-preparation requires an unchanged CP policy and verified private runtime. After a CP-policy/trainer update, preserve this directory and choose a new --experiment-name with --recover-from pointing to the failed preparation. If training started or runtime setup was incomplete, automatic retry is refused; no checkpoints are restarted.", file=sys.stderr, flush=True)
         raise
 
 

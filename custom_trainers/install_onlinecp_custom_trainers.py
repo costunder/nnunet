@@ -43,7 +43,7 @@ MODULES = {
         "593e35473ae3752029870360960894b091a91ca93559b18251a5e47f409d0192"
     ),
     "nnUNetTrainer_OnlinePairedCP.py": (
-        "75ed5fbb8230f9f4da241905759be0ca7613ab3b45db76396cd6f5c560c50154"
+        "5a0dd160597458a839e2856456676c6e65611918efea83052850d7db1f20d2ab"
     ),
     "nnUNetTrainer_OnlinePairedCPArgmaxV3.py": (
         "0fb1b1f5e7f602fcc6be57bcf205b673d2749190ca686aa919ebd66bea8a00b2"
@@ -55,7 +55,7 @@ MODULES = {
         "fe0d94b5d98fe376c41b8bf6eb60d8c922b9b1d6f629fe88d5fa1f1ad108982c"
     ),
     "nnUNetTrainer_OnlineCPFeedback.py": (
-        "5cee6242284ea421d473f2174ead7464662304919c42c47e86d3c558448391c5"
+        "7d60a634e1d4ff86466dc5ae824a072d294fa721c2d3fbda891333c11d9c9553"
     ),
 }
 TARGET_RELATIVE = Path("training") / "nnUNetTrainer"

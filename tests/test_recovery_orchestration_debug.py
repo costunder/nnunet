@@ -346,6 +346,61 @@ class RecoveryOrchestrationDebugTests(unittest.TestCase):
         self.assertEqual(self.commands, [])
         self.assertFalse((self.target / "recovery/complete.json").exists())
 
+    def test_medical_aug_restoration_rebuilds_graphs_without_rebuilding_shared_features(self):
+        old_config = recovery.read_json(self.old_gnn / "graphs/config.json")
+        old_config.update(source_pad=4, min_center_separation_mm=12.0)
+        old_config.pop("min_center_separation_vox", None)
+        old_config.pop("no_placement_policy", None)
+        (self.old_gnn / "graphs/config.json").write_text(json.dumps(old_config), encoding="utf-8")
+        self._bytes(self.old_gnn / "graphs/DEBUG_old_cp_graph.pt", b"DEBUG old-contract graph; must not migrate")
+        self.config["cache"].update(source_pad=2, min_center_separation_mm=0.0,
+            min_center_separation_vox=12.0, no_placement_policy="retain_original")
+        (self.project / "config/train.json").write_text(json.dumps(self.config), encoding="utf-8")
+        self.before_source = self._tree(self.source)
+        receipt = self._run()
+        self.assertNotIn("migration", self.events)
+        self.assertNotIn("verify_migration", self.events)
+        self.assertFalse((self.gnn / "graphs/DEBUG_old_cp_graph.pt").exists())
+        self.assertFalse((self.gnn / "graphs/migration.json").exists())
+        self.assertEqual(self.before_source, self._tree(self.source))
+        self.assertEqual(self.before_medical, self._tree(self.medical))
+        for name in ("prototype.pt", "metadata.json", "manifest.csv", "regions/DEBUG_region.bytes"):
+            self.assertEqual((self.gnn / name).read_bytes(), (self.old_gnn / name).read_bytes())
+        policy = recovery.read_json(self.target / "recovery/cp_policy.json")
+        self.assertFalse(policy["graph_cache_reuse"])
+        self.assertTrue(policy["shared_regions_and_prototype_reuse"])
+        self.assertIn("recovery/cp_policy.json", {name.replace("\\", "/") for name in receipt["files"]})
+        before_target = self._tree(self.target)
+        self.events.clear()
+        self.commands.clear()
+        self.assertEqual(self._run(), receipt)
+        self.assertNotIn("verify_migration", self.events)
+        self.assertEqual(self.commands, [])
+        self.assertEqual(before_target, self._tree(self.target))
+
+    def test_changed_cp_policy_cannot_rewrite_an_existing_recovery(self):
+        self.config["cache"].update(source_pad=4, min_center_separation_mm=12.0)
+        self.config["cache"].pop("min_center_separation_vox", None)
+        self.config["cache"].pop("no_placement_policy", None)
+        (self.project / "config/train.json").write_text(json.dumps(self.config), encoding="utf-8")
+        old_config = recovery.read_json(self.old_gnn / "graphs/config.json")
+        old_config.update(source_pad=4, min_center_separation_mm=12.0)
+        old_config.pop("min_center_separation_vox", None)
+        old_config.pop("no_placement_policy", None)
+        (self.old_gnn / "graphs/config.json").write_text(json.dumps(old_config), encoding="utf-8")
+        self.fail_prepare = True
+        with self.assertRaisesRegex(RuntimeError, "DEBUG preparation interruption"):
+            self._run()
+        before_target = self._tree(self.target)
+        self.config["cache"].update(source_pad=2, min_center_separation_mm=0.0,
+            min_center_separation_vox=12.0, no_placement_policy="retain_original")
+        (self.project / "config/train.json").write_text(json.dumps(self.config), encoding="utf-8")
+        self.commands.clear()
+        with self.assertRaisesRegex(ValueError, "Existing recovery CP policy differs"):
+            self._run()
+        self.assertEqual(self.commands, [])
+        self.assertEqual(before_target, self._tree(self.target))
+
 
 if __name__ == "__main__":
     unittest.main()

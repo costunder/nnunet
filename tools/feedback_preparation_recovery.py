@@ -77,10 +77,41 @@ def validate_pilot(result, request):
     required = {"format": "hiercp_full_size_resource_pilot_v1", "calibration_only": True,
                 "training_performed": False, "case_id": request["case_id"],
                 "sample_index": request["sample_index"], "request_sha256": value_sha(request),
-                "roi_budget": request["config"]["graph"]["adaptive_roi_max_voxels"],
-                "candidate_count": request["config"]["cache"]["total_candidates"]}
+                "roi_budget": request["config"]["graph"]["adaptive_roi_max_voxels"]}
     if any(result.get(key) != expected for key, expected in required.items()):
         raise ValueError("Resource pilot does not bind the entire current request/sample/code")
+    expected_candidates = int(request["config"]["cache"]["total_candidates"])
+    if result.get("sample_outcome", "materialized") == "retain_original":
+        from hiercp.cache import no_placement_evidence
+        from hiercp.common import CandidatePreparationError
+        evidence = result.get("no_placement_evidence")
+        if (request["config"]["cache"].get("no_placement_policy", "error") != "retain_original"
+                or type(result.get("candidate_count")) is not int or result["candidate_count"] != 0
+                or type(result.get("required_candidate_count")) is not int
+                or result["required_candidate_count"] != expected_candidates
+                or not isinstance(evidence, dict)
+                or not isinstance(evidence.get("reason"), str)
+                or not isinstance(evidence.get("diagnostics"), dict)):
+            raise ValueError("Resource pilot no-placement outcome is not authorized/bound")
+        verified = no_placement_evidence(
+            CandidatePreparationError(evidence.get("reason"), evidence.get("diagnostics")),
+            case_id=request["case_id"], sample_index=int(request["sample_index"]),
+            required_candidates=expected_candidates - 1)
+        if verified is None or verified != evidence:
+            raise ValueError("Resource pilot no-placement evidence is invalid")
+        cache = request["config"]["cache"]
+        pool = evidence["diagnostics"]["pool"]
+        expected_pool = {name: cache[name] for name in ("max_draws", "min_liver_coverage",
+                         "occupied_clearance_vox", "min_center_separation_mm")}
+        expected_pool["min_center_separation_vox"] = cache.get("min_center_separation_vox", 0.0)
+        expected_pool["target_candidates"] = max(int(cache["candidate_pool_size"]), expected_candidates - 1)
+        if any(pool.get(name, 0.0 if name == "min_center_separation_vox" else None) != value
+               for name, value in expected_pool.items()):
+            raise ValueError("Resource pilot no-placement evidence uses a different placement contract")
+    elif (result.get("sample_outcome", "materialized") != "materialized"
+          or result.get("candidate_count") != expected_candidates
+          or "no_placement_evidence" in result):
+        raise ValueError("Resource pilot does not bind the entire current request candidate count")
     measurement = result.get("measurement", {})
     if measurement.get("status") != "complete" or measurement.get("sampling_error") is not None:
         raise ValueError("Resource pilot did not successfully measure the full sample")
@@ -116,7 +147,8 @@ def validate_recovery_source(plan, source_root):
     if len(names) != len(set(names)):
         raise ValueError("Original launch contains duplicate stage names")
     by_name = {item["name"]: item["argv"] for item in commands}
-    bindings = (("gnn-prepare", "--outer-fold", plan["outer_fold"]),
+    gnn_stage = "gnn-prepare" if "gnn-prepare" in by_name else "gnn-train"
+    bindings = ((gnn_stage, "--outer-fold", plan["outer_fold"]),
                 ("plan", "--dataset-id", plan["dataset_id"]),
                 ("train_full", "--seed", plan["seed"]))
     for stage, flag, expected in bindings:
@@ -158,6 +190,47 @@ def verify_identity(identity):
     for name, expected in identity["files"].items():
         if digest(source / name) != expected:
             raise ValueError(f"Recovery source changed: {source / name}")
+
+
+def recovery_cache_contract(current, old_cache, *, fold):
+    """Authorize only the user-requested Medical Data Aug CP-policy restoration.
+
+    Shared region/prototype features do not depend on these four placement
+    fields. CP graphs do: a policy change forces an independent rebuild, never
+    relabels old graph tensors as belonging to the new policy.
+    """
+    from hiercp.region import graph_config_budget_compatible
+    if not graph_config_budget_compatible(old_cache["graph_config"], current["graph"]):
+        raise ValueError("Checked-in graph geometry differs from original experiment")
+    for name in ("labels", "ct_clip"):
+        if current[name] != old_cache[name]:
+            raise ValueError(f"Checked-in {name} differs from original experiment")
+    cache = current["cache"]
+    for name in ("source_selection", "samples_per_case", "total_candidates", "candidate_pool_size",
+                 "max_draws", "min_liver_coverage", "occupied_clearance_vox"):
+        if cache[name] != old_cache[name]:
+            raise ValueError(f"Original cache setting changed: {name}")
+    for name, old_name in (("easy_fraction", "easy"), ("inter_fraction", "inter"),
+                           ("intra_fraction", "intra_corrupted")):
+        if cache[name] != old_cache["difficulty_fractions"][old_name]:
+            raise ValueError("Original curriculum fractions changed")
+    if int(current["seed"]) + int(fold) != int(old_cache["seed"]):
+        raise ValueError("Original fold-specific quality-GNN seed changed")
+    defaults = {"min_center_separation_vox": 0.0, "no_placement_policy": "error"}
+    fields = ("source_pad", "min_center_separation_mm", "min_center_separation_vox", "no_placement_policy")
+    old_policy = {name: old_cache.get(name, defaults.get(name)) for name in fields}
+    new_policy = {name: cache.get(name, defaults.get(name)) for name in fields}
+    legacy = dict(source_pad=4, min_center_separation_mm=12.0,
+                  min_center_separation_vox=0.0, no_placement_policy="error")
+    restored = dict(source_pad=2, min_center_separation_mm=0.0,
+                    min_center_separation_vox=12.0, no_placement_policy="retain_original")
+    changed = old_policy != new_policy
+    if changed and (old_policy != legacy or new_policy != restored):
+        raise ValueError("Unsupported CP-policy migration; only the explicit Medical Data Aug restoration is authorized")
+    return {"format": "hiercp_preparation_cp_policy_v1", "old_policy": old_policy,
+            "new_policy": new_policy, "graph_cache_reuse": not changed,
+            "shared_regions_and_prototype_reuse": True,
+            "reason": "medical_data_aug_restoration" if changed else "unchanged_cp_policy"}
 
 
 def geometry_envelope(eligibility, config):
@@ -214,6 +287,8 @@ def prepare_kwargs(config, split, root, medical):
                 "total_candidates", "candidate_pool_size", "easy_fraction", "inter_fraction",
                 "intra_fraction", "max_draws", "min_liver_coverage", "occupied_clearance_vox",
                 "min_center_separation_mm")},
+            "min_center_separation_vox": cache.get("min_center_separation_vox", 0.0),
+            "no_placement_policy": cache.get("no_placement_policy", "error"),
             "ct_clip": tuple(config["ct_clip"]), "seed": int(config["seed"]),
             "max_cases": None, "overwrite": False, "workers": config["runtime"]["prepare_workers"],
             "run_mode": "benchmark"}
@@ -245,8 +320,8 @@ def _copy_verified(source, destination):
 
 def _profile(request, output):
     """One actual full-size sample per isolated process for clean RSS evidence."""
-    from hiercp.cache import build_training_sample
-    from hiercp.common import discover_cases, load_case, stable_case_seed
+    from hiercp.cache import build_training_sample, no_placement_evidence
+    from hiercp.common import CandidatePreparationError, discover_cases, load_case, stable_case_seed
     from hiercp.prototype import PrototypeBank
     from hiercp.region import load_or_build_patient_regions, REGION_CACHE_SEED_SALT
     from hiercp.preparation_runtime import Measurement
@@ -274,13 +349,23 @@ def _profile(request, output):
             bank = PrototypeBank.load(kwargs["bank_path"])
             fields = ("graph_config", "liver_label", "tumor_label", "source_selection", "source_pad",
                 "total_candidates", "candidate_pool_size", "easy_fraction", "inter_fraction", "intra_fraction",
-                "max_draws", "min_liver_coverage", "occupied_clearance_vox", "min_center_separation_mm", "ct_clip", "seed")
-            sample = build_training_sample(case, bank, regions, sample_index=index,
-                split_name="train" if case_id in request["split"]["train"] else "val",
-                **{key: kwargs[key] for key in fields})
-            if sample is None:
-                raise RuntimeError("Full-size pilot returned no sample; no fabricated output is accepted")
-            report["candidate_count"] = len(sample["target_locals"])
+                "max_draws", "min_liver_coverage", "occupied_clearance_vox", "min_center_separation_mm",
+                "min_center_separation_vox", "ct_clip", "seed")
+            try:
+                sample = build_training_sample(case, bank, regions, sample_index=index,
+                    split_name="train" if case_id in request["split"]["train"] else "val",
+                    **{key: kwargs[key] for key in fields})
+            except CandidatePreparationError as exc:
+                evidence = no_placement_evidence(exc, case_id=case_id, sample_index=index,
+                    required_candidates=int(kwargs["total_candidates"]) - 1)
+                if kwargs["no_placement_policy"] != "retain_original" or evidence is None:
+                    raise
+                report.update(sample_outcome="retain_original", candidate_count=0,
+                    required_candidate_count=int(kwargs["total_candidates"]), no_placement_evidence=evidence)
+            else:
+                if sample is None:
+                    raise RuntimeError("Full-size pilot returned no sample; no fabricated output is accepted")
+                report.update(sample_outcome="materialized", candidate_count=len(sample["target_locals"]))
     finally:
         report["measurement"] = getattr(measurement, "report", {
             "status": "failed", "error": "Resource measurement did not initialize; no peak RSS available"})
@@ -311,23 +396,19 @@ def prepare_recovery(plan, source_root, *, runner, env):
     split = read_json(old_gnn / "split.json")
     old_cache = read_json(old_gnn / "graphs/config.json")
     current = read_json(Path(plan["project_root"]) / "config/train.json")
-    # Only orchestration/eligibility/resource policy changes are authorized.
-    # Compare the original graph/cache contract before doing any expensive work.
-    expected = {"graph": old_cache["graph_config"], "labels": old_cache["labels"],
-                "ct_clip": old_cache["ct_clip"]}
-    for name, value in expected.items():
-        if current[name] != value:
-            raise ValueError(f"Checked-in {name} differs from original experiment; not a budget-only recovery")
-    cache = current["cache"]
-    for name in ("source_selection", "source_pad", "samples_per_case", "total_candidates", "candidate_pool_size",
-                 "max_draws", "min_liver_coverage", "occupied_clearance_vox", "min_center_separation_mm"):
-        if cache[name] != old_cache[name]:
-            raise ValueError(f"Original cache setting changed: {name}")
-    for current_name, old_name in (("easy_fraction", "easy"), ("inter_fraction", "inter"), ("intra_fraction", "intra_corrupted")):
-        if cache[current_name] != old_cache["difficulty_fractions"][old_name]:
-            raise ValueError("Original curriculum fractions changed")
-    if int(current["seed"]) + fold != int(old_cache["seed"]):
-        raise ValueError("Original fold-specific quality-GNN seed changed")
+    # An already recovered source may have a larger allocation ceiling. Keep
+    # that ceiling; it does not change region/prototype geometry or crop data.
+    current["graph"]["adaptive_roi_max_voxels"] = max(
+        int(current["graph"]["adaptive_roi_max_voxels"]),
+        int(old_cache["graph_config"]["adaptive_roi_max_voxels"]))
+    contract = recovery_cache_contract(current, old_cache, fold=fold)
+    policy_transition_path = folder / "cp_policy.json"
+    if policy_transition_path.exists():
+        if read_json(policy_transition_path) != contract:
+            raise ValueError("Existing recovery CP policy differs; preserve this root and choose a new experiment")
+    else:
+        write_new(policy_transition_path, contract)
+    rebuild_graphs = not contract["graph_cache_reuse"]
     selected = split["train"] + split["val"]
     paths = discover_cases(Path(plan["medical_root"]) / "Data", case_ids=selected, run_mode="benchmark")
     receipt_path = folder / "complete.json"
@@ -349,12 +430,14 @@ def prepare_recovery(plan, source_root, *, runner, env):
         restored_config["seed"] = int(restored_config["seed"]) + fold
         restored_kwargs = prepare_kwargs(restored_config, split, gnn, plan["medical_root"])
         restored_kwargs["donor_eligibility"] = read_json(folder / "donor_eligibility.json")
-        validate_cache_migration(source_cache_dir=old_gnn / "graphs",
-                                 destination_cache_dir=gnn / "graphs", prepare_kwargs=restored_kwargs)
+        if not rebuild_graphs:
+            validate_cache_migration(source_cache_dir=old_gnn / "graphs",
+                                     destination_cache_dir=gnn / "graphs", prepare_kwargs=restored_kwargs)
         validate_cache_publication(gnn / "graphs")
         return receipt
     copy_sources = [path for path in (old_gnn / "regions").rglob("*") if path.is_file()]
-    copy_sources.extend((old_gnn / "graphs").glob("*.pt"))
+    if not rebuild_graphs:
+        copy_sources.extend((old_gnn / "graphs").glob("*.pt"))
     required_disk = sum(path.stat().st_size for path in copy_sources) + int(plan["minimum_free_bytes"])
     if shutil.disk_usage(target).free < required_disk:
         raise OSError("Insufficient free storage for independent cache copies plus the configured preprocessing reserve")
@@ -438,12 +521,16 @@ def prepare_recovery(plan, source_root, *, runner, env):
         validate_pilot(result, request)
         pilot_reports.append(result)
         pilot_files.extend((request_path, output))
+    materialized_pilots = [item for item in pilot_reports
+                           if item.get("sample_outcome", "materialized") == "materialized"]
     resource_report = {"format": "hiercp_measured_roi_policy_v1", "envelope": envelope,
         "pilot_memory_estimate_bytes": estimate, "estimate_is_measurement": False,
         "resources_before": resources, "pilots": pilot_reports,
         "maximum_measured_peak_rss_bytes": max(item["measurement"]["sampled_peak_rss_bytes"] for item in pilot_reports),
+        "materialized_graph_pilots": len(materialized_pilots),
+        "no_placement_pilots": len(pilot_reports) - len(materialized_pilots),
         "graph_geometry_changed": False, "dataset_reduced": False,
-        "limitation": "full-size failed samples measured, not every future online placement; analytic ROI bound is not a measured worst-case RSS guarantee"}
+        "limitation": "full-size failed sources measured, not every future placement; no-placement pilots measure source/search only, not a materialized graph; analytic ROI bound is not a measured worst-case RSS guarantee"}
     if resource_report["maximum_measured_peak_rss_bytes"] > 0.8 * snapshot()["available_memory_bytes"]:
         raise MemoryError("Measured full-size peak RSS does not leave safe preparation headroom")
     policy_path = folder / f"resource_policy.{value_sha(resource_report)[:16]}.json"
@@ -460,7 +547,11 @@ def prepare_recovery(plan, source_root, *, runner, env):
         write_new(config_path, proposed)
     kwargs = prepare_kwargs(profile_config, split, gnn, plan["medical_root"])
     kwargs["donor_eligibility"] = eligibility
-    if not (gnn / "graphs").exists():
+    if rebuild_graphs:
+        # Native preparation binds/revalidates any partial graph cache in this
+        # new destination. Old CP .pt files and their progress are never copied.
+        print("[CP POLICY] Medical Data Aug restored; shared regions/prototype retained, CP graphs rebuilt in the new experiment", flush=True)
+    elif not (gnn / "graphs").exists():
         migrate_failed_hierarchical_cache(source_cache_dir=old_gnn / "graphs",
                                          destination_cache_dir=gnn / "graphs", prepare_kwargs=kwargs)
     else:
@@ -469,7 +560,12 @@ def prepare_recovery(plan, source_root, *, runner, env):
             raise ValueError("Interrupted migration preserved; use another --experiment-name, never --overwrite")
         validate_cache_migration(source_cache_dir=old_gnn / "graphs", destination_cache_dir=gnn / "graphs",
                                  prepare_kwargs=kwargs)
-    preparation_env = {**env, "HIERCP_PREPARE_MEASURED_CASE_RSS_BYTES": str(resource_report["maximum_measured_peak_rss_bytes"])}
+    preparation_env = dict(env)
+    if materialized_pilots:
+        preparation_env["HIERCP_PREPARE_MEASURED_CASE_RSS_BYTES"] = str(resource_report["maximum_measured_peak_rss_bytes"])
+    else:
+        # Do not advertise a source-only peak as measured graph memory.
+        preparation_env.pop("HIERCP_PREPARE_MEASURED_CASE_RSS_BYTES", None)
     runner([plan["python_executable"], "-B", "-m", "tools.paired_benchmark", "gnn-prepare",
             "--project-root", str(plan["project_root"]), "--medical-root", str(plan["medical_root"]),
             "--work", str(target / "paired"), "--outer-fold", str(fold),
@@ -477,11 +573,13 @@ def prepare_recovery(plan, source_root, *, runner, env):
            cwd=Path(plan["project_root"]), env=preparation_env, check=True)
     validate_cache_publication(gnn / "graphs")
     verify_identity(identity)
-    files = [config_path, policy_path, eligibility_path, identity_path,
+    files = [config_path, policy_path, eligibility_path, identity_path, policy_transition_path,
              target / "paired/outer_splits.json", target / "paired/case_profiles.csv",
              gnn / "split.json", gnn / "prototype.pt", gnn / "metadata.json", gnn / "manifest.csv",
-             gnn / "graphs/migration.json", gnn / "graphs/config.json",
+             gnn / "graphs/config.json",
              gnn / "graphs/manifest.csv", gnn / "graphs/index.json", gnn / "graphs/complete.json", *pilot_files]
+    if not rebuild_graphs:
+        files.append(gnn / "graphs/migration.json")
     receipt = {"format": "hiercp_preparation_recovery_complete_v1", "train_config": str(config_path),
                "source_identity": identity, "files": {str(path.relative_to(target)): digest(path) for path in files},
                "original_results_preserved": True, "training_performed": False}

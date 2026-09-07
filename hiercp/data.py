@@ -277,6 +277,7 @@ def summarize_cache_usage(
     config = load_cache_config(cache_dir)
     index = load_cache_index(cache_dir)
     entries = list(index["entries"])
+    no_placement = list(index.get("no_placement_entries", []))
     indexed_names = {str(entry["path"]) for entry in entries}
     if selected_files is None:
         selected_names = set(indexed_names)
@@ -311,11 +312,14 @@ def summarize_cache_usage(
     samples_per_case = config.get("samples_per_case")
     expected_samples: int | str = "unavailable (samples_per_case absent)"
     materialized_ratio: float | str = "unavailable (expected sample count absent)"
+    resolved_ratio: float | str = "unavailable (expected sample count absent)"
     if isinstance(samples_per_case, int) and samples_per_case > 0:
         expected_samples = len(donor_ids) * samples_per_case
         materialized_ratio = (
             len(entries) / expected_samples if expected_samples > 0 else 0.0
         )
+        resolved_ratio = ((len(entries) + len(no_placement)) / expected_samples
+                          if expected_samples > 0 else 0.0)
     requested_count = len(requested_case_ids)
     configured_count = len(configured_selected_ids)
     return {
@@ -334,6 +338,12 @@ def summarize_cache_usage(
         "actually_used_sample_count": len(actually_selected_entries),
         "expected_selected_sample_count": expected_samples,
         "materialized_sample_ratio": materialized_ratio,
+        "resolved_sample_ratio": resolved_ratio,
+        "resolved_sample_count": len(entries) + len(no_placement),
+        "no_placement_sample_count": len(no_placement),
+        "no_placement_entries": no_placement,
+        "no_placement_policy": config.get("no_placement_policy", "error"),
+        "no_placement_is_not_materialized_training_data": True,
         "actual_index_usage_ratio": (
             len(actually_selected_entries) / len(entries) if entries else 0.0
         ),

@@ -877,6 +877,7 @@ def generate_pairs(
                 min_liver_coverage=float(generation["min_liver_coverage"]),
                 occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
                 min_center_separation_mm=float(generation["min_center_separation_mm"]),
+                min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
             )
             if not candidates:
                 row.update(status="no_candidate", reason="shared valid candidate pool is empty")

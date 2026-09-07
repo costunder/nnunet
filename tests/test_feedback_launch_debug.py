@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from custom_trainers.onlinecp_curriculum_contract import verify_curriculum_bank_contract
 from tools.train_online_feedback import training_command, TRAINERS
+from tools.online_cp_benchmark import SOURCE_MAPPING_FORMAT, OnlineBenchmarkError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,10 +27,14 @@ class FeedbackLaunchDebugTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="debug_feedback_launch_") as tmp:
             root = Path(tmp)
             bank = root / "index.json"
-            bank.write_text(json.dumps({"dataset_name": "Dataset900_Debug", "dataset_id": 900}))
+            bank.write_text(json.dumps({"dataset_name": "Dataset900_Debug", "dataset_id": 900,
+                                        "source_mapping_format": SOURCE_MAPPING_FORMAT}))
+            bank_config = root / "config.json"
+            bank_config.write_text(json.dumps({"source_mapping_format": SOURCE_MAPPING_FORMAT}))
             plans = root / "DebugPlans.json"
             plans.write_text(json.dumps({"configurations": {"3d_fullres": {}}}))
-            identity = {"files": {"plans": {"path": str(plans)}}, "verified_configuration": "3d_fullres"}
+            identity = {"files": {"plans": {"path": str(plans)}, "config": {"path": str(bank_config)}},
+                        "verified_configuration": "3d_fullres"}
             args = SimpleNamespace(bank=str(bank), feedback_config=str(ROOT / "config/online_cp_feedback.json"),
                 arm="basic", configuration="3d_fullres", device="cpu", seed=42, resume=True,
                 feedback_gnn_config=None, feedback_raw_root=None)
@@ -58,16 +63,48 @@ class FeedbackLaunchDebugTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="debug_feedback_no_gnn_") as tmp:
             root = Path(tmp)
             bank = root / "index.json"
-            bank.write_text(json.dumps({"dataset_name": "Dataset901_Debug", "dataset_id": 901}))
+            bank.write_text(json.dumps({"dataset_name": "Dataset901_Debug", "dataset_id": 901,
+                                        "source_mapping_format": SOURCE_MAPPING_FORMAT}))
+            bank_config = root / "config.json"
+            bank_config.write_text(json.dumps({"source_mapping_format": SOURCE_MAPPING_FORMAT}))
             args = SimpleNamespace(bank=str(bank), feedback_config=str(ROOT / "config/online_cp_feedback.json"),
                 arm="full", configuration="3d_fullres", device="cpu", seed=42, resume=False,
                 feedback_gnn_config=None, feedback_raw_root=None)
-            identity = {"files": {"plans": {"path": str(root / "DebugPlans.json")}},
+            identity = {"files": {"plans": {"path": str(root / "DebugPlans.json")},
+                                   "config": {"path": str(bank_config)}},
                         "verified_configuration": "3d_fullres"}
             with patch.dict(os.environ, {"nnUNet_results": str(root / "results")}), patch(
                     "tools.train_online_feedback.verify_curriculum_bank_contract", return_value=identity):
                 with self.assertRaisesRegex(ValueError, "Full feedback requires"):
                     training_command(args)
+
+    def test_both_arms_reject_missing_or_stale_donor_mapping_before_creating_results(self):
+        # The generic verifier is deliberately a test double here: these tests
+        # isolate the additional native-launcher check, not hash verification.
+        for arm in TRAINERS:
+            for bad_file in ("index", "config"):
+                for stale in (None, "legacy_nearest_component"):
+                    with self.subTest(arm=arm, bad_file=bad_file, stale=stale), tempfile.TemporaryDirectory(
+                            prefix="debug_feedback_source_mapping_") as tmp:
+                        root = Path(tmp)
+                        payloads = {"index": {"dataset_name": "Dataset900_Debug", "dataset_id": 900,
+                                               "source_mapping_format": SOURCE_MAPPING_FORMAT},
+                                    "config": {"source_mapping_format": SOURCE_MAPPING_FORMAT}}
+                        if stale is None:
+                            del payloads[bad_file]["source_mapping_format"]
+                        else:
+                            payloads[bad_file]["source_mapping_format"] = stale
+                        for name, payload in payloads.items():
+                            (root / f"{name}.json").write_text(json.dumps(payload), encoding="utf-8")
+                        identity = {"files": {"config": {"path": str(root / "config.json")}}}
+                        args = SimpleNamespace(bank=str(root / "index.json"), arm=arm,
+                            feedback_config=str(ROOT / "config/online_cp_feedback.json"))
+                        before = {p.name: p.read_bytes() for p in root.iterdir()}
+                        with patch.dict(os.environ, {"nnUNet_results": str(root / "results")}), patch(
+                                "tools.train_online_feedback.verify_curriculum_bank_contract", return_value=identity):
+                            with self.assertRaisesRegex(OnlineBenchmarkError, f"Bank {bad_file} source_mapping_format"):
+                                training_command(args)
+                        self.assertEqual({p.name: p.read_bytes() for p in root.iterdir()}, before)
 
 
 if __name__ == "__main__":

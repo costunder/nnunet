@@ -82,6 +82,7 @@ CACHE_PROGRESS_COLUMNS = (
 
 CACHE_RUN_MODES = ("production", "ablation", "benchmark", "debug")
 DONOR_ELIGIBILITY_FORMAT = "hiercp_donor_eligibility_v1"
+NO_PLACEMENT_FORMAT = "hiercp_no_placement_v1"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -432,6 +433,10 @@ def _cache_expected_metadata(request: dict, *, bank, sources, selected_case_ids,
         **{key: int(request[key]) for key in int_keys}, **{key: float(request[key]) for key in float_keys},
         "difficulty_fractions": {"easy": float(request["easy_fraction"]), "inter": float(request["inter_fraction"]), "intra_corrupted": float(request["intra_fraction"])},
         "source_selection": str(request["source_selection"]),
+        **({"min_center_separation_vox": float(request.get("min_center_separation_vox", 0.0))}
+           if float(request.get("min_center_separation_vox", 0.0)) != 0.0 else {}),
+        **({"no_placement_policy": request["no_placement_policy"]}
+           if request.get("no_placement_policy", "error") != "error" else {}),
         "labels": {"liver": int(request["liver_label"]), "tumor": int(request["tumor_label"])},
         "graph_config": request["graph_config"].to_dict(), "ct_clip": [float(value) for value in request["ct_clip"]],
         "donor_eligibility": donor_eligibility, "donor_contract_sha256": donor_eligibility["contract_sha256"],
@@ -803,6 +808,7 @@ def build_training_sample(
     min_center_separation_mm: float,
     ct_clip: tuple[float, float],
     seed: int,
+    min_center_separation_vox: float = 0.0,
 ) -> dict:
     rng = np.random.default_rng(
         stable_case_seed(seed, case.paths.case_id, f"sample_{sample_index}")
@@ -826,6 +832,7 @@ def build_training_sample(
         max_draws=max_draws, min_liver_coverage=min_liver_coverage,
         occupied_clearance_vox=occupied_clearance_vox,
         min_center_separation_mm=min_center_separation_mm,
+        min_center_separation_vox=min_center_separation_vox,
         required_candidates=int(total_candidates) - 1)
     candidates, _ = build_candidate_pool(
         case,
@@ -836,15 +843,7 @@ def build_training_sample(
     source_rng = np.random.default_rng(
         stable_case_seed(seed, case.paths.case_id, f"local_{sample_index}")
     )
-    prepared_source = prepare_local_source(
-        case,
-        source,
-        full_organ_mask=regions.full_organ_mask,
-        organ_depth=regions.organ_depth,
-        config=graph_config,
-        rng=source_rng,
-        ct_clip=ct_clip,
-    )
+    prepared_source = None
 
     # Candidate-pool constraints are cheaper than canonical graph construction,
     # so one anatomically valid center can still lack a required deep-parenchyma
@@ -858,22 +857,42 @@ def build_training_sample(
     searched_pools = set()
     geometry_rejections = []
     last_curriculum_error = None
+    # Source, masks, constraints and the replayed pool RNG state are fixed for
+    # this sample. Only exclusions change between searches. Retain just the
+    # latest completed search, not every historical pool/graph in memory.
+    completed_pool_exclusions = (frozenset() if
+        pool_diagnostics.get("fullsearch_exhausted") is True or
+        pool_diagnostics.get("target_candidates_met") is True else None)
+    completed_pool_candidates = tuple(candidates)
+    pool_search_reuses = 0
 
     def failure(reason):
         return CandidatePreparationError(reason, {
             "candidate_search_version": CANDIDATE_SEARCH_VERSION,
             "case_id": case.paths.case_id, "sample_index": int(sample_index),
             "source_component": int(source.component_id), "pool": pool_diagnostics,
+            "pool_search_reuses": pool_search_reuses,
             "rejected_centers": sorted(rejected_centers), "geometry_rejections": geometry_rejections,
             "curriculum_failure": last_curriculum_error,
             "scope": "placement centers and attempted curriculum specs; not every possible corruption combination"})
 
     def extend_pool():
-        retry_rng = np.random.default_rng()
-        retry_rng.bit_generator.state = copy.deepcopy(pool_rng_state)
-        expanded, _ = build_candidate_pool(case, source, rng=retry_rng,
-            force_exhaustive=True, excluded_centers=rejected_centers,
-            diagnostics=pool_diagnostics, **pool_kwargs)
+        nonlocal completed_pool_exclusions, completed_pool_candidates, pool_search_reuses
+        exclusions = frozenset(rejected_centers)
+        if exclusions == completed_pool_exclusions:
+            # A completed full-domain/target search cannot find additional
+            # candidates with an identical request. Preserve its diagnostics
+            # and the existing curriculum-retry/insufficiency failure rules.
+            expanded = completed_pool_candidates
+            pool_search_reuses += 1
+        else:
+            retry_rng = np.random.default_rng()
+            retry_rng.bit_generator.state = copy.deepcopy(pool_rng_state)
+            expanded, _ = build_candidate_pool(case, source, rng=retry_rng,
+                force_exhaustive=True, excluded_centers=exclusions,
+                diagnostics=pool_diagnostics, **pool_kwargs)
+            completed_pool_exclusions = exclusions
+            completed_pool_candidates = tuple(expanded)
         identity = tuple(tuple(int(v) for v in candidate.center) for candidate in expanded)
         if identity in searched_pools:
             raise failure("curriculum_or_negative_geometry_search_exhausted")
@@ -885,6 +904,11 @@ def build_training_sample(
             viable_candidates = extend_pool()
             if len(viable_candidates) < int(total_candidates) - 1:
                 raise failure("insufficient_valid_candidate_pool")
+        if prepared_source is None:
+            prepared_source = prepare_local_source(
+                case, source, full_organ_mask=regions.full_organ_mask,
+                organ_depth=regions.organ_depth, config=graph_config,
+                rng=source_rng, ct_clip=ct_clip)
         try:
             specs = build_training_specs(
             case,
@@ -962,7 +986,8 @@ def build_training_sample(
     return {
         "format": CACHE_FORMAT,
         "candidate_search_version": CANDIDATE_SEARCH_VERSION,
-        "candidate_search_diagnostics": {"pool": pool_diagnostics, "geometry_rejections": geometry_rejections},
+        "candidate_search_diagnostics": {"pool": pool_diagnostics, "geometry_rejections": geometry_rejections,
+                                         "pool_search_reuses": pool_search_reuses},
         "prototype_fingerprint": bank.fingerprint(),
         "case_id": case.paths.case_id,
         "sample_index": int(sample_index),
@@ -993,6 +1018,120 @@ def build_training_sample(
 def _cache_config_fingerprint(payload: dict) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def no_placement_evidence(error: Exception, *, case_id: str, sample_index: int,
+                          required_candidates: int) -> dict | None:
+    """Recognize only an exhaustively proved zero-placement source attempt.
+
+    Insufficient ranking diversity (one to six locations), rejected canonical
+    geometry, and resource/I/O failures are deliberately NOT this outcome.
+    The selected source is never replaced and no zero-loss graph is fabricated.
+    """
+    if not isinstance(error, CandidatePreparationError) or error.reason != "insufficient_valid_candidate_pool":
+        return None
+    details = error.diagnostics
+    pool = details.get("pool") if isinstance(details, dict) else None
+    if not isinstance(pool, dict):
+        return None
+    component = details.get("source_component")
+    if (details.get("candidate_search_version") != CANDIDATE_SEARCH_VERSION
+            or details.get("case_id") != str(case_id)
+            or type(details.get("sample_index")) is not int
+            or details["sample_index"] != int(sample_index)
+            or type(component) is not int or component < 1
+            or pool.get("source_component") != component
+            or pool.get("search_version") != CANDIDATE_SEARCH_VERSION
+            or pool.get("fullsearch_exhausted") is not True
+            or pool.get("exhaustive_used") is not True
+            or type(pool.get("accepted")) is not int or pool["accepted"] != 0
+            or pool.get("required_candidates") != int(required_candidates)
+            or pool.get("required_candidates_met") is not False
+            or pool.get("excluded_center_count") != 0
+            or details.get("rejected_centers") != []
+            or details.get("geometry_rejections") != []
+            or details.get("curriculum_failure") is not None):
+        return None
+    body = {"format": NO_PLACEMENT_FORMAT, "reason": error.reason,
+            "diagnostics": copy.deepcopy(details)}
+    return {**body, "evidence_sha256": _cache_config_fingerprint(body)}
+
+
+def _no_placement_row_evidence(row, *, root, fingerprint, required_candidates):
+    if row is None or row.get("status") != "no_placement":
+        return None
+    if not _row_matches_current_config(row, fingerprint):
+        raise ValueError("No-placement manifest has a stale configuration")
+    try:
+        evidence = json.loads(row["message"])
+        sample_index = int(row["sample_index"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("No-placement manifest lacks structured evidence") from error
+    if not isinstance(evidence, dict):
+        raise ValueError("No-placement evidence must be an object")
+    checked = no_placement_evidence(
+        CandidatePreparationError(evidence.get("reason", ""), evidence.get("diagnostics", {})),
+        case_id=str(row["case_id"]), sample_index=sample_index,
+        required_candidates=required_candidates)
+    if checked is None or checked != evidence:
+        raise ValueError("No-placement evidence is not an exact zero-placement proof")
+    if any(str(row.get(key, "")) for key in ("path", "artifact_sha256", "file_size", "easy", "inter", "intra_corrupted")):
+        raise ValueError("No-placement result must not claim a materialized graph artifact")
+    if str(row.get("candidates", "")) != "0":
+        raise ValueError("No-placement manifest must explicitly record zero candidates")
+    output = Path(root) / f"{row['case_id']}__{sample_index:03d}.pt"
+    if output.exists() or output.is_symlink():
+        raise ValueError("No-placement result conflicts with an existing graph artifact")
+    return checked
+
+
+def _no_placement_entries(*, root, records, selected_case_ids, samples_per_case,
+                         fingerprint, no_placement_policy, required_candidates,
+                         placement_contract):
+    entries = []
+    for case_id in selected_case_ids:
+        for sample_index in range(int(samples_per_case)):
+            row = records.get((str(case_id), sample_index))
+            if row is None or row.get("status") != "no_placement":
+                continue
+            if no_placement_policy != "retain_original":
+                raise ValueError("No-placement results require explicit retain_original policy")
+            evidence = _no_placement_row_evidence(row, root=root, fingerprint=fingerprint,
+                                                  required_candidates=required_candidates)
+            pool = evidence["diagnostics"]["pool"]
+            expected = {key: placement_contract.get(key, 0.0 if key == "min_center_separation_vox" else None)
+                       for key in ("max_draws", "min_liver_coverage", "occupied_clearance_vox",
+                                   "min_center_separation_mm", "min_center_separation_vox")}
+            expected["target_candidates"] = max(int(placement_contract["candidate_pool_size"]),
+                                                 int(required_candidates))
+            if any(pool.get(key, 0.0 if key == "min_center_separation_vox" else None) != value
+                   for key, value in expected.items()):
+                raise ValueError("No-placement search conditions differ from the published CP contract")
+            entries.append({"case_id": str(case_id), "sample_index": sample_index,
+                "split": row["split"], "source_image_sha256": row["source_image_sha256"],
+                "source_label_sha256": row["source_label_sha256"], **evidence})
+    return entries
+
+
+def _terminal_case_status(case_id, records, donor_case_ids, no_placement_policy):
+    if case_id not in donor_case_ids:
+        return "donor_ineligible"
+    if no_placement_policy == "retain_original" and any(
+            key[0] == case_id and key[1] is not None and row.get("status") == "no_placement"
+            for key, row in records.items()):
+        return "resolved_with_no_placement"
+    return "ok"
+
+
+def _sample_row_is_resolved(row, *, root, expected_output, fingerprint,
+                            no_placement_policy, required_candidates):
+    if row is not None and row.get("status") == "no_placement":
+        if no_placement_policy != "retain_original":
+            return False
+        return _no_placement_row_evidence(row, root=root, fingerprint=fingerprint,
+            required_candidates=required_candidates) is not None
+    return _sample_row_is_complete(row, root=root, expected_output=expected_output,
+                                   fingerprint=fingerprint)
 
 
 def _progress_key(case_id: str, sample_index: int | None) -> tuple[str, int | None]:
@@ -1290,6 +1429,8 @@ def _progress_is_complete(
     samples_per_case: int,
     fingerprint: str,
     donor_case_ids: Sequence[str] | None = None,
+    no_placement_policy: str = "error",
+    required_candidates: int = 7,
 ) -> bool:
     donors = set(selected_case_ids if donor_case_ids is None else donor_case_ids)
     for case_id in selected_case_ids:
@@ -1297,7 +1438,8 @@ def _progress_is_complete(
         if (
             case_row is None
             or not _row_matches_current_config(case_row, fingerprint)
-            or str(case_row.get("status", "")) != ("ok" if case_id in donors else "donor_ineligible")
+            or str(case_row.get("status", "")) != _terminal_case_status(
+                case_id, records, donors, no_placement_policy)
         ):
             return False
         if case_id not in donors:
@@ -1306,11 +1448,13 @@ def _progress_is_complete(
             continue
         for sample_index in range(int(samples_per_case)):
             output = root / f"{case_id}__{sample_index:03d}.pt"
-            if not _sample_row_is_complete(
+            if not _sample_row_is_resolved(
                 records.get(_progress_key(case_id, sample_index)),
                 root=root,
                 expected_output=output,
                 fingerprint=fingerprint,
+                no_placement_policy=no_placement_policy,
+                required_candidates=required_candidates,
             ):
                 return False
     return True
@@ -1327,6 +1471,9 @@ def validate_cache_publication(
     index_path = root / "index.json"
     complete_path = root / "complete.json"
     config = _load_json_object(config_path)
+    no_placement_policy = config.get("no_placement_policy", "error")
+    if no_placement_policy not in {"error", "retain_original"}:
+        raise ValueError("Unknown cache no_placement_policy")
     operational_keys = {"data_dir", "prototype_bank", "region_cache_dir", "progress_format",
                         "config_fingerprint", "state", "failure_message"}
     declared_contract = {key: value for key, value in config.items() if key not in operational_keys}
@@ -1486,7 +1633,8 @@ def validate_cache_publication(
         if (
             case_row is None
             or not _row_matches_current_config(case_row, fingerprint)
-            or str(case_row.get("status", "")) != ("ok" if case_id in donor_ids else "donor_ineligible")
+            or str(case_row.get("status", "")) != _terminal_case_status(
+                case_id, records, donor_ids, no_placement_policy)
         ):
             status = None if case_row is None else case_row.get("status")
             raise ValueError(
@@ -1568,11 +1716,21 @@ def validate_cache_publication(
             raise ValueError(
                 f"Cache index/manifest mismatch for {key!r}: {mismatches}"
             )
-    if actual_keys != expected_keys:
+    no_placement = _no_placement_entries(root=root, records=records,
+        selected_case_ids=donor_ids, samples_per_case=samples_per_case,
+        fingerprint=fingerprint, no_placement_policy=no_placement_policy,
+        required_candidates=int(config["total_candidates"]) - 1, placement_contract=config)
+    if index.get("no_placement_entries", []) != no_placement:
+        raise ValueError("Cache index no-placement entries differ from the exact manifest evidence")
+    no_placement_keys = {(entry["case_id"], entry["sample_index"]) for entry in no_placement}
+    if actual_keys & no_placement_keys:
+        raise ValueError("A source attempt cannot be both materialized and no-placement")
+    resolved_keys = actual_keys | no_placement_keys
+    if resolved_keys != expected_keys:
         raise ValueError(
             "Cache index entry cohort is not exact: "
-            f"missing={sorted(expected_keys - actual_keys)}, "
-            f"extra={sorted(actual_keys - expected_keys)}"
+            f"missing={sorted(expected_keys - resolved_keys)}, "
+            f"extra={sorted(resolved_keys - expected_keys)}"
         )
     disk_names = {path.name for path in root.glob("*.pt")}
     if disk_names != actual_names:
@@ -1588,7 +1746,9 @@ def validate_cache_publication(
         "selected_case_ids": list(selected_ids),
         "samples_per_case": samples_per_case,
         "expected_entries": expected_count,
-        "entries": expected_count,
+        "entries": len(entries),
+        **({"no_placement_entries": len(no_placement), "resolved_entries": expected_count}
+           if no_placement_policy == "retain_original" else {}),
     }
     marker_mismatches = [
         key for key, value in marker_expected.items() if complete.get(key) != value
@@ -1642,8 +1802,12 @@ def prepare_hierarchical_cache(
     workers: int | str,
     run_mode: str = "production",
     donor_eligibility: dict | None = None,
+    min_center_separation_vox: float = 0.0,
+    no_placement_policy: str = "error",
 ) -> list[dict[str, object]]:
     request = dict(locals())
+    if no_placement_policy not in {"error", "retain_original"}:
+        raise ValueError("no_placement_policy must be error or retain_original")
     graph_config.validate()
     mode = str(run_mode).strip().lower()
     if mode not in CACHE_RUN_MODES:
@@ -1812,6 +1976,12 @@ def prepare_hierarchical_cache(
 
     expected_entry_count = len(donor_case_ids) * int(samples_per_case)
 
+    def no_placement_entries():
+        return _no_placement_entries(root=root, records=records,
+            selected_case_ids=donor_case_ids, samples_per_case=samples_per_case,
+            fingerprint=fingerprint, no_placement_policy=no_placement_policy,
+            required_candidates=int(total_candidates) - 1, placement_contract=expected_cache_config)
+
     def complete_entries() -> list[dict[str, object]] | None:
         if not _progress_is_complete(
             root=root,
@@ -1820,6 +1990,8 @@ def prepare_hierarchical_cache(
             samples_per_case=samples_per_case,
             fingerprint=fingerprint,
             donor_case_ids=donor_case_ids,
+            no_placement_policy=no_placement_policy,
+            required_candidates=int(total_candidates) - 1,
         ):
             return None
         entries = _progress_entries(
@@ -1830,7 +2002,7 @@ def prepare_hierarchical_cache(
             samples_per_case=samples_per_case,
             fingerprint=fingerprint,
         )
-        if len(entries) != expected_entry_count:
+        if len(entries) + len(no_placement_entries()) != expected_entry_count:
             raise RuntimeError(
                 "Cache progress claimed completion with an inexact artifact cohort: "
                 f"expected={expected_entry_count}, actual={len(entries)}"
@@ -1880,10 +2052,12 @@ def prepare_hierarchical_cache(
             "donor_case_ids": list(donor_case_ids),
             "donor_contract_sha256": donor_eligibility["contract_sha256"],
             "entries": entries,
+            **({"no_placement_entries": no_placement_entries()}
+               if no_placement_policy == "retain_original" else {}),
         }
 
     def publish_complete(entries: list[dict[str, object]]) -> None:
-        if len(entries) != expected_entry_count:
+        if len(entries) + len(no_placement_entries()) != expected_entry_count:
             raise RuntimeError(
                 f"Refusing to publish partial cache index: expected={expected_entry_count}, "
                 f"actual={len(entries)}"
@@ -1905,6 +2079,9 @@ def prepare_hierarchical_cache(
                 "samples_per_case": int(samples_per_case),
                 "expected_entries": expected_entry_count,
                 "entries": len(entries),
+                **({"no_placement_entries": len(no_placement_entries()),
+                    "resolved_entries": len(entries) + len(no_placement_entries())}
+                   if no_placement_policy == "retain_original" else {}),
                 "index_sha256": _sha256_file(index_path),
                 "manifest_sha256": _sha256_file(manifest_path),
                 "config_sha256": _sha256_file(config_path),
@@ -1970,18 +2147,21 @@ def prepare_hierarchical_cache(
         pending: list[int] = []
         for sample_index in range(int(samples_per_case) if case_id in donor_case_ids else 0):
             output = root / f"{case_id}__{sample_index:03d}.pt"
-            if not _sample_row_is_complete(
+            if not _sample_row_is_resolved(
                 records.get(_progress_key(case_id, sample_index)),
                 root=root,
                 expected_output=output,
                 fingerprint=fingerprint,
+                no_placement_policy=no_placement_policy,
+                required_candidates=int(total_candidates) - 1,
             ):
                 pending.append(sample_index)
         case_row = records.get(_progress_key(case_id, None))
         case_terminal_ok = (
             case_row is not None
             and _row_matches_current_config(case_row, fingerprint)
-            and str(case_row.get("status", "")) == ("ok" if case_id in donor_case_ids else "donor_ineligible")
+            and str(case_row.get("status", "")) == _terminal_case_status(
+                case_id, records, donor_case_ids, no_placement_policy)
         )
         if pending or not case_terminal_ok:
             pending_by_case[case_id] = pending
@@ -2092,6 +2272,7 @@ def prepare_hierarchical_cache(
                     min_liver_coverage=min_liver_coverage,
                     occupied_clearance_vox=occupied_clearance_vox,
                     min_center_separation_mm=min_center_separation_mm,
+                    min_center_separation_vox=min_center_separation_vox,
                     ct_clip=ct_clip,
                     seed=seed,
                 )
@@ -2120,6 +2301,18 @@ def prepare_hierarchical_cache(
                 # Release this full graph before constructing the next sample.
                 del sample
             except CandidatePreparationError as exc:
+                evidence = (no_placement_evidence(exc, case_id=paths.case_id,
+                    sample_index=sample_index, required_candidates=int(total_candidates) - 1)
+                    if no_placement_policy == "retain_original" else None)
+                if evidence is not None:
+                    # An unchanged segmentation example is retained downstream;
+                    # there is deliberately no ranking graph/zero-loss sample.
+                    verify_loaded_case_source_signatures(case)
+                    local_rows.append(case_progress_row(case_id=paths.case_id,
+                        sample_index=sample_index, split_name=split_name,
+                        status="no_placement", candidates=0, config_fingerprint=fingerprint,
+                        message=json.dumps(evidence, sort_keys=True, separators=(",", ":"))))
+                    continue
                 local_rows.append(case_progress_row(case_id=paths.case_id,
                     sample_index=sample_index, split_name=split_name, status=exc.reason,
                     config_fingerprint=fingerprint, message=str(exc)))
@@ -2163,7 +2356,8 @@ def prepare_hierarchical_cache(
         }
         missing_rows = sorted(set(pending_indices) - set(sample_rows))
         failed_rows = [
-            row for row in sample_rows.values() if str(row.get("status", "")) != "ok"
+            row for row in sample_rows.values() if str(row.get("status", "")) not in (
+                {"ok", "no_placement"} if no_placement_policy == "retain_original" else {"ok"})
         ]
         if missing_rows or failed_rows:
             failures = ", ".join(
@@ -2180,9 +2374,13 @@ def prepare_hierarchical_cache(
             case_status = "sample_failure"
             case_message = "; ".join(message_parts)
         else:
-            case_status = "ok"
+            combined_records = {**records, **{_progress_row_key(row): row for row in local_rows}}
+            case_status = _terminal_case_status(paths.case_id, combined_records,
+                                                donor_case_ids, no_placement_policy)
             case_message = (
-                f"all {len(pending_indices)} pending cache samples completed"
+                f"all {len(pending_indices)} pending source attempts resolved; "
+                f"materialized={sum(row['status'] == 'ok' for row in sample_rows.values())}, "
+                f"no_placement={sum(row['status'] == 'no_placement' for row in sample_rows.values())}"
             )
         local_rows.append(
             case_progress_row(
@@ -2215,6 +2413,9 @@ def prepare_hierarchical_cache(
                 print(f"[OK] cache {case_id} sample={sample_index}")
             elif status == "donor_ineligible":
                 print(f"[DonorIneligible] {case_id}: tumor label absent; full patient cohort retained")
+            elif status in {"no_placement", "resolved_with_no_placement"}:
+                print(f"[RetainOriginal] cache {case_id} sample={sample_index}: "
+                      "source attempt resolved without a placement; no graph fabricated")
             elif status == "insufficient_curriculum_candidates":
                 print(f"[Invalid] {case_id} sample={sample_index}: insufficient candidates")
             elif status == "unrepresentable_local_geometry":
@@ -2249,7 +2450,7 @@ def prepare_hierarchical_cache(
             case_row = records.get(_progress_key(case_id, None))
             if case_row is not None and _row_matches_current_config(case_row, fingerprint):
                 status = str(case_row.get("status", "case_error"))
-                if status != ("ok" if case_id in donor_case_ids else "donor_ineligible"):
+                if status != _terminal_case_status(case_id, records, donor_case_ids, no_placement_policy):
                     message = " ".join(str(case_row.get("message", "")).split())
                     status_counts[status] = status_counts.get(status, 0) + 1
                     resource_failure = resource_failure or status == "resource_budget_error"
@@ -2257,11 +2458,13 @@ def prepare_hierarchical_cache(
             for sample_index in range(int(samples_per_case) if case_id in donor_case_ids else 0):
                 output = root / f"{case_id}__{sample_index:03d}.pt"
                 row = records.get(_progress_key(case_id, sample_index))
-                if _sample_row_is_complete(
+                if _sample_row_is_resolved(
                     row,
                     root=root,
                     expected_output=output,
                     fingerprint=fingerprint,
+                    no_placement_policy=no_placement_policy,
+                    required_candidates=int(total_candidates) - 1,
                 ):
                     continue
                 if row is None or not _row_matches_current_config(row, fingerprint):
@@ -2301,7 +2504,8 @@ def prepare_hierarchical_cache(
     publish_complete(verified_entries)
     print(
         f"[OK] Hierarchical cache complete: {complete_path} "
-        f"entries={len(verified_entries)}/{expected_entry_count} run_mode={mode}"
+        f"materialized={len(verified_entries)}/{expected_entry_count} "
+        f"no_placement={len(no_placement_entries())} resolved={expected_entry_count}/{expected_entry_count} run_mode={mode}"
     )
     return emitted_rows
 

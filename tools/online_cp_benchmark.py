@@ -53,10 +53,31 @@ TRAIN_COMPLETE_NAME = "training_complete.json"
 EVALUATION_COMPLETE_NAME = "complete.json"
 GNN_SPLIT_FORMAT = "hiercp_case_split_v1"
 OUTER_SPLIT_FORMAT = "paired_cp_outer_split_v1"
+SOURCE_MAPPING_FORMAT = "online_cp_raw_component_resampling_v1"
 
 
 class OnlineBenchmarkError(RuntimeError):
     pass
+
+
+class SourceMappingError(OnlineBenchmarkError):
+    """A selected raw donor cannot be reproduced; never substitute another lesion."""
+    def __init__(self, reason: str, diagnostics: Mapping[str, Any]):
+        self.reason = reason
+        self.diagnostics = json.loads(json.dumps(
+            {"format": SOURCE_MAPPING_FORMAT, "reason": reason, **diagnostics},
+            sort_keys=True, allow_nan=False))
+        super().__init__(json.dumps(self.diagnostics, sort_keys=True, allow_nan=False))
+
+
+def _require_source_mapping_policy(index: Mapping[str, Any], config: Mapping[str, Any]) -> None:
+    """Legacy nearest-component banks are not evidence of exact donor identity."""
+    for name, payload in (("index", index), ("config", config)):
+        if payload.get("source_mapping_format") != SOURCE_MAPPING_FORMAT:
+            raise OnlineBenchmarkError(
+                f"Bank {name} source_mapping_format is missing or stale; expected {SOURCE_MAPPING_FORMAT}. "
+                "Existing bank/results are preserved; build a separately verified source bank before new training."
+            )
 
 
 @dataclass(frozen=True)
@@ -1429,24 +1450,130 @@ def _preprocessed_source(
     plans: Mapping[str, Any],
     source: Any,
     tumor_label: int,
+    *,
+    configuration_name: str,
+    raw_spacing: Sequence[float],
+    raw_spatial_unit: str,
+    diagnostics: dict[str, Any] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    pre_shape = data.shape[1:]
-    transpose_forward = plans["transpose_forward"]
-    mapped_centroid = _map_raw_point(source.centroid, transpose_forward, properties, pre_shape)
-    tumor = seg[0] == int(tumor_label)
-    components, count = ndi.label(tumor, structure=ndi.generate_binary_structure(3, 1))
-    if count < 1:
-        raise OnlineBenchmarkError("Preprocessed case contains no tumor component")
-    chosen = 0
-    if np.all((mapped_centroid >= 0) & (mapped_centroid < np.asarray(pre_shape))):
-        chosen = int(components[tuple(mapped_centroid)])
-    if chosen == 0:
-        centroids = []
-        for component_id in range(1, count + 1):
-            centroid = np.asarray(ndi.center_of_mass(components == component_id), dtype=np.float64)
-            centroids.append((float(np.linalg.norm(centroid - mapped_centroid)), component_id))
-        chosen = min(centroids)[1]
-    source_component = components == int(chosen)
+    """Replay the configured segmentation transform on this raw component only.
+
+    The global preprocessed component may have merged or split. Neither event
+    changes donor identity: only the transformed selected raw mask is copied.
+    Missing or contradictory support fails, without a nearest-lesion fallback.
+    """
+    from nnunetv2.preprocessing.resampling.default_resampling import compute_new_shape
+    from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
+    from hiercp.nifti_geometry import MAX_CORNER_MM, MAX_CORNER_VOXELS
+
+    report = {"format": SOURCE_MAPPING_FORMAT, "source_component": int(source.component_id),
+              "configuration": str(configuration_name), "raw_spatial_unit": str(raw_spatial_unit)}
+
+    def fail(reason, **details):
+        raise SourceMappingError(reason, {**report, **details})
+
+    if data.ndim != 4 or seg.ndim != 4 or seg.shape[0] != 1 or data.shape[1:] != seg.shape[1:]:
+        fail("preprocessed_grid_mismatch", data_shape=list(data.shape), seg_shape=list(seg.shape))
+    pre_shape = tuple(int(value) for value in data.shape[1:])
+    if min(pre_shape) <= 0:
+        fail("empty_preprocessed_grid")
+    transpose_forward = list(plans.get("transpose_forward", []))
+    if any(type(v) is not int for v in transpose_forward) or sorted(transpose_forward) != [0, 1, 2]:
+        fail("invalid_transpose_forward")
+    reader = plans.get("image_reader_writer")
+    if reader not in {"SimpleITKIO", "NibabelIO"}:
+        fail("unsupported_raw_axis_contract", image_reader_writer=str(reader))
+    if raw_spatial_unit != "mm":
+        fail("unverified_raw_spacing_unit")
+    spacing = np.asarray(raw_spacing, dtype=np.float64)
+    original_reader_spacing = np.asarray(properties.get("spacing", []), dtype=np.float64)
+    if (spacing.shape != (3,) or original_reader_spacing.shape != (3,)
+            or not np.all(np.isfinite(spacing)) or not np.all(np.isfinite(original_reader_spacing))
+            or np.any(spacing <= 0) or np.any(original_reader_spacing <= 0)):
+        fail("invalid_spacing")
+    raw_mask = np.asarray(source.full_mask)
+    if raw_mask.ndim != 3 or (raw_mask.dtype != np.dtype(bool) and not np.all((raw_mask == 0) | (raw_mask == 1))):
+        fail("invalid_raw_component_mask")
+    # The NIfTI sform-derived reader spacing and pixdim can differ by bounded
+    # roundoff. Reuse the donor-grid physical and reciprocal voxel extent
+    # limits, not an exact float32 comparison or an origin-relative tolerance.
+    with np.errstate(over="ignore", invalid="ignore"):
+        far_corner_delta = ((np.asarray(raw_mask.shape[::-1], dtype=np.float64) - 0.5)
+                            * (original_reader_spacing - spacing[::-1]))
+        spacing_mm = float(np.linalg.norm(far_corner_delta))
+        spacing_raw_voxels = float(np.linalg.norm(far_corner_delta / spacing[::-1]))
+        spacing_reader_voxels = float(np.linalg.norm(far_corner_delta / original_reader_spacing))
+    if not np.all(np.isfinite([spacing_mm, spacing_raw_voxels, spacing_reader_voxels])):
+        fail("invalid_spacing_extent")
+    report.update(raw_spacing=spacing.tolist(), reader_spacing=original_reader_spacing.tolist(),
+                  reader_spacing_max_corner_mm=spacing_mm,
+                  reader_spacing_max_corner_raw_voxels=spacing_raw_voxels,
+                  reader_spacing_max_corner_reader_voxels=spacing_reader_voxels,
+                  spacing_extent_limits={"mm": MAX_CORNER_MM, "voxels": MAX_CORNER_VOXELS})
+    if spacing_mm > MAX_CORNER_MM or max(spacing_raw_voxels, spacing_reader_voxels) > MAX_CORNER_VOXELS:
+        fail("raw_reader_spacing_mismatch")
+    raw_voxels = int(np.count_nonzero(raw_mask))
+    if raw_voxels <= 0 or raw_voxels != int(source.voxel_count):
+        fail("raw_component_count_mismatch", raw_voxels=raw_voxels)
+    transposed_mask = raw_mask.transpose(2, 1, 0).transpose(transpose_forward)
+    if tuple(properties.get("shape_before_cropping", ())) != transposed_mask.shape:
+        fail("raw_shape_before_cropping_mismatch", raw_transposed_shape=list(transposed_mask.shape))
+    bbox_raw = np.asarray(properties.get("bbox_used_for_cropping", []))
+    if (bbox_raw.shape != (3, 2) or not np.issubdtype(bbox_raw.dtype, np.number)
+            or not np.all(np.isfinite(bbox_raw)) or not np.all(bbox_raw == np.rint(bbox_raw))):
+        fail("invalid_crop_bounds")
+    bbox = bbox_raw.astype(np.int64)
+    if np.any(bbox[:, 0] < 0) or np.any(bbox[:, 1] > transposed_mask.shape) or np.any(bbox[:, 1] <= bbox[:, 0]):
+        fail("invalid_crop_bounds")
+    crop_slices = tuple(slice(int(lo), int(hi)) for lo, hi in bbox)
+    cropped_mask = transposed_mask[crop_slices]
+    if tuple(properties.get("shape_after_cropping_and_before_resampling", ())) != cropped_mask.shape:
+        fail("cropped_shape_mismatch")
+    if int(np.count_nonzero(cropped_mask)) != raw_voxels:
+        fail("selected_source_lost_during_cropping", raw_voxels=raw_voxels,
+             cropped_voxels=int(np.count_nonzero(cropped_mask)))
+    manager = PlansManager(dict(plans)).get_configuration(configuration_name)
+    if manager.configuration.get("preprocessor_name") != "DefaultPreprocessor":
+        fail("unsupported_preprocessor_contract", preprocessor=str(manager.configuration.get("preprocessor_name")))
+    original_spacing = original_reader_spacing[np.asarray(transpose_forward)]
+    target_spacing = np.asarray(manager.spacing, dtype=np.float64)
+    if target_spacing.shape == (2,):
+        target_spacing = np.r_[original_spacing[0], target_spacing]
+    if target_spacing.shape != (3,) or not np.all(np.isfinite(target_spacing)) or np.any(target_spacing <= 0):
+        fail("invalid_target_spacing")
+    expected_shape = compute_new_shape(cropped_mask.shape, original_spacing, target_spacing)
+    if not np.array_equal(expected_shape, pre_shape):
+        fail("resampled_shape_mismatch", expected_shape=expected_shape.tolist(), preprocessed_shape=list(pre_shape))
+    resampling_kwargs = manager.configuration.get("resampling_fn_seg_kwargs", {})
+    if resampling_kwargs.get("is_seg") is not True:
+        fail("resampler_is_not_segmentation", resampling_kwargs=resampling_kwargs)
+    report.update(raw_shape=list(raw_mask.shape), raw_voxels=raw_voxels,
+                  transpose_forward=transpose_forward, crop_bbox=bbox.tolist(),
+                  cropped_shape=list(cropped_mask.shape), preprocessed_shape=list(pre_shape),
+                  original_spacing=original_spacing.tolist(), target_spacing=target_spacing.tolist(),
+                  resampling_fn_seg=manager.configuration["resampling_fn_seg"],
+                  resampling_fn_seg_kwargs=resampling_kwargs,
+                  raw_component_sha256=hashlib.sha256(memoryview(np.ascontiguousarray(raw_mask, dtype=np.uint8))).hexdigest())
+    # No cropped-ROI interpolation shortcut: interpolation uses the same full
+    # cropped grid, shape, axis handling and configured kernel as nnU-Net.
+    selected_labels = cropped_mask.astype(np.int16)[None] * int(tumor_label)
+    mapped = manager.resampling_fn_seg(selected_labels, pre_shape, original_spacing, target_spacing)
+    if hasattr(mapped, "detach"):
+        if mapped.device.type != "cpu":
+            fail("unexpected_resampler_device", device=str(mapped.device))
+        mapped = mapped.detach().numpy()
+    mapped = np.asarray(mapped)
+    if mapped.shape != (1, *pre_shape) or not np.all((mapped == 0) | (mapped == int(tumor_label))):
+        fail("invalid_resampled_component_labels", mapped_shape=list(mapped.shape))
+    source_component = mapped[0] == int(tumor_label)
+    del mapped, selected_labels
+    mapped_voxels = int(np.count_nonzero(source_component))
+    report["mapped_voxels"] = mapped_voxels
+    if mapped_voxels == 0:
+        fail("selected_source_disappeared_after_resampling")
+    unsupported = source_component & (seg[0] != int(tumor_label))
+    if np.any(unsupported):
+        fail("mapped_source_conflicts_with_preprocessed_tumor", unsupported_voxels=int(np.count_nonzero(unsupported)))
     mapped_lower, mapped_upper = _map_raw_bbox(
         source.patch_slices, transpose_forward, properties, pre_shape
     )
@@ -1456,17 +1583,22 @@ def _preprocessed_source(
     if np.any(upper <= lower):
         raise OnlineBenchmarkError("Mapped source patch is empty")
     slices = tuple(slice(int(a), int(b)) for a, b in zip(lower, upper))
-    source_data = data[(slice(None), *slices)].astype(np.float16, copy=True)
+    source_data = data[(slice(None), *slices)].astype(np.float32, copy=True)
     source_mask = source_component[slices].astype(np.uint8, copy=True)
     mapped_anchor = _map_raw_point(source.anchor_center, transpose_forward, properties, pre_shape)
     anchor_offset = mapped_anchor - lower
     if np.any(anchor_offset < 0) or np.any(anchor_offset >= np.asarray(source_mask.shape)):
-        # Mapping can be off by one because source.anchor_center is a voxel
-        # center while the patch bounds are voxel edges. Clamp only this
-        # discretization offset; the complete component remains in source_mask.
-        anchor_offset = np.clip(anchor_offset, 0, np.asarray(source_mask.shape) - 1)
+        fail("mapped_anchor_outside_source_patch", mapped_anchor=mapped_anchor.tolist(),
+             patch_lower=lower.tolist(), patch_upper=upper.tolist(), anchor_offset=anchor_offset.tolist())
     if not np.any(source_mask):
         raise OnlineBenchmarkError("Mapped source tumor mask is empty")
+    report.update(patch_lower=lower.tolist(), patch_upper=upper.tolist(),
+                  anchor_offset=anchor_offset.tolist(),
+                  mapped_component_sha256=hashlib.sha256(memoryview(np.ascontiguousarray(source_component, dtype=np.uint8))).hexdigest(),
+                  source_data_dtype=str(source_data.dtype), other_lesions_substituted=False)
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics.update(json.loads(json.dumps(report, sort_keys=True, allow_nan=False)))
     return source_data, source_mask, anchor_offset.astype(np.int16)
 
 
@@ -1667,6 +1799,10 @@ def build_online_bank(
     complete_path = bank_root / "complete.json"
     metadata_contract = {
         "format": BANK_FORMAT,
+        "source_mapping_format": SOURCE_MAPPING_FORMAT,
+        "no_placement_policy": str(generation.get("no_placement_policy", "error")),
+        "minimum_center_separation_mm": float(generation["min_center_separation_mm"]),
+        "minimum_center_separation_vox": float(generation.get("min_center_separation_vox", 0.0)),
         "scoring_execution_format": SCORING_FORMAT,
         "version": VERSION,
         "outer_fold": int(outer_fold),
@@ -1775,6 +1911,8 @@ def build_online_bank(
             (
                 "case_id",
                 "source_component",
+                "source_mapping_json",
+                "candidate_search_json",
                 "diameter_mm",
                 "status",
                 "reason",
@@ -1882,6 +2020,10 @@ def build_online_bank(
                 }:
                     print(f"[Reuse] {case_id} component={component_id} status={status}")
                     continue
+                if status == "no_placement" and metadata_contract["no_placement_policy"] == "retain_original":
+                    _validate_no_placement_row(existing_row, candidate_count)
+                    print(f"[ReuseNoCP] {case_id} component={component_id}: original case retained")
+                    continue
                 raise OnlineBenchmarkError(
                     f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
                     f"status={status!r}; use --overwrite"
@@ -1890,9 +2032,44 @@ def build_online_bank(
                 source = _source_from_component(
                     raw_case, components, component_id, int(generation["source_pad"])
                 )
+                def search_raw_pool(attempt):
+                    diagnostics: dict[str, Any] = {}
+                    pool, _ = build_candidate_pool(
+                        raw_case, source, placement_mask=raw_case.label == liver_label,
+                        full_organ_mask=regions.full_organ_mask, occupied_mask=tumor,
+                        organ_distance=regions.organ_depth,
+                        rng=np.random.default_rng(stable_seed(global_seed, case_id, component_id, "online_pool", attempt)),
+                        num_candidates=draw_count,
+                        max_draws=max(int(generation["max_draws"]), draw_count * 500),
+                        min_liver_coverage=float(generation["min_liver_coverage"]),
+                        occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
+                        min_center_separation_mm=float(generation["min_center_separation_mm"]),
+                        min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
+                        diagnostics=diagnostics,
+                    )
+                    return pool, diagnostics
+
+                first_pool = None
+                if metadata_contract["no_placement_policy"] == "retain_original":
+                    # Prove the original augmentation non-event before constructing
+                    # unused resampled patches/local graphs. No caught mapping or
+                    # geometry error is relabelled as a placement impossibility.
+                    first_pool = search_raw_pool(0)
+                    if not first_pool[0] and first_pool[1].get("fullsearch_exhausted") is True:
+                        row.update(status="no_placement", reason="Exhaustive raw-space search proved zero legal placements; original case retained",
+                                   candidate_search_json=json.dumps(first_pool[1], sort_keys=True, allow_nan=False))
+                        _validate_no_placement_row(row, candidate_count)
+                        commit_row(row)
+                        print(f"[NoCP] {case_id} component={component_id}: zero legal placements; source slot and original patient retained")
+                        continue
+                source_mapping_diagnostics = {}
                 source_data, source_mask, anchor_offset = _preprocessed_source(
-                    pre_data, pre_seg, properties, plans, source, tumor_label
+                    pre_data, pre_seg, properties, plans, source, tumor_label,
+                    configuration_name=configuration, raw_spacing=raw_case.spacing,
+                    raw_spatial_unit=raw_case.image_header.get_xyzt_units()[0],
+                    diagnostics=source_mapping_diagnostics,
                 )
+                row["source_mapping_json"] = json.dumps(source_mapping_diagnostics, sort_keys=True, allow_nan=False)
                 if np.any(np.asarray(source_mask.shape, dtype=np.int64) > network_patch_size):
                     row.update(
                         status="source_patch_too_large",
@@ -1923,23 +2100,7 @@ def build_online_bank(
                 rejected_geometry = 0
                 rejected_preprocessed = 0
                 for attempt in range(attempts):
-                    pool_rng = np.random.default_rng(
-                        stable_seed(global_seed, case_id, component_id, "online_pool", attempt)
-                    )
-                    pool, _ = build_candidate_pool(
-                        raw_case,
-                        source,
-                        placement_mask=raw_case.label == liver_label,
-                        full_organ_mask=regions.full_organ_mask,
-                        occupied_mask=tumor,
-                        organ_distance=regions.organ_depth,
-                        rng=pool_rng,
-                        num_candidates=draw_count,
-                        max_draws=max(int(generation["max_draws"]), draw_count * 500),
-                        min_liver_coverage=float(generation["min_liver_coverage"]),
-                        occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
-                        min_center_separation_mm=float(generation["min_center_separation_mm"]),
-                    )
+                    pool, pool_diagnostics = first_pool if attempt == 0 and first_pool is not None else search_raw_pool(attempt)
                     specs = build_generation_specs(pool, regions, bank, config=graph_config)
                     for candidate, spec in zip(pool, specs):
                         raw_center = tuple(int(value) for value in candidate.center)
@@ -2061,6 +2222,10 @@ def build_online_bank(
                     print(f"[OK] {case_id} component={component_id} diameter={diameter:.2f}mm candidates={candidate_count}")
 
                 scorer.submit([sample], publish_scores)
+            except SourceMappingError as exc:
+                row.update(status="error", reason=f"SourceMappingError: {exc}")
+                commit_row(row)
+                raise
             except AdaptiveRoiBudgetError:
                 raise
             except Exception as exc:
@@ -2083,7 +2248,7 @@ def build_online_bank(
     incomplete_rows = [
         row
         for row in rows
-        if row.get("status") not in {"ok", "no_eligible_source", "error"}
+        if row.get("status") not in {"ok", "no_eligible_source", "error", "no_placement"}
     ]
     ok_rows = [row for row in rows if row.get("status") == "ok"]
     if error_rows:
@@ -2124,11 +2289,12 @@ def build_online_bank(
             key=natural_key,
         ),
         "eligible_cases": sum(bool(values) for values in source_inventory.values()),
-        "source_entries": sum(len(values) for values in source_inventory.values()),
-        "total_candidates": sum(len(values) for values in source_inventory.values())
-        * candidate_count,
+        "source_entries": len(ok_rows),
+        "total_candidates": len(ok_rows) * candidate_count,
         "manifest": str(manifest_path.resolve()),
     }
+    if metadata_contract["no_placement_policy"] == "retain_original":
+        index.update(_source_slot_metadata(rows, source_inventory, candidate_count))
     _audit_completed_bank(
         bank_root,
         index,
@@ -2291,6 +2457,66 @@ def _eligible_source_inventory(
     return inventory
 
 
+def _validate_no_placement_row(row: Mapping[str, Any], candidate_count: int) -> dict[str, Any]:
+    """Only a complete, unfiltered raw-space zero is a normal CP non-event.
+
+    Geometry budgets, resampling loss and a short nonempty candidate pool remain
+    errors. This is not a license to discard a difficult donor or smaller lesion.
+    """
+    from hiercp.common import CANDIDATE_DIAGNOSTICS_FORMAT, CANDIDATE_SEARCH_VERSION
+
+    try:
+        proof = json.loads(str(row.get("candidate_search_json", "")))
+        component = int(row["source_component"])
+        valid = (
+            isinstance(proof, dict)
+            and row.get("status") == "no_placement"
+            and not row.get("entry")
+            and int(row.get("candidate_count", -1)) == 0
+            and int(row.get("rejected_geometry", 0)) == 0
+            and int(row.get("rejected_preprocessed", 0)) == 0
+            and proof.get("format") == CANDIDATE_DIAGNOSTICS_FORMAT
+            and proof.get("search_version") == CANDIDATE_SEARCH_VERSION
+            and proof.get("source_component") == component
+            and proof.get("fullsearch_exhausted") is True
+            and proof.get("accepted") == 0
+            and proof.get("excluded_center_count") == 0
+            and int(proof.get("required_candidates", 0)) >= int(candidate_count)
+            and int(proof.get("source_voxels", 0)) > 0
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise OnlineBenchmarkError("Malformed exhaustive no-placement proof") from exc
+    if not valid:
+        raise OnlineBenchmarkError(f"No-placement source lacks complete zero-placement proof: {dict(row)}")
+    return proof
+
+
+def _source_slot_metadata(rows, source_inventory, candidate_count):
+    """Keep every eligible source in its original per-patient draw denominator."""
+    row_map = {_manifest_key(row): row for row in rows}
+    if len(row_map) != len(rows):
+        raise OnlineBenchmarkError("Duplicate rows cannot define a source schedule")
+    slots = {}
+    no_placement = 0
+    for case_id, components in source_inventory.items():
+        slots[case_id] = []
+        for component in components:
+            row = row_map.get((case_id, int(component)))
+            if row is None:
+                raise OnlineBenchmarkError(f"Missing scheduled source: {case_id}/{component}")
+            status, entry = str(row.get("status", "")), str(row.get("entry", ""))
+            if status == "no_placement":
+                _validate_no_placement_row(row, candidate_count)
+                no_placement += 1
+            elif status != "ok" or not entry or int(row.get("candidate_count", 0)) != int(candidate_count):
+                raise OnlineBenchmarkError(f"Incomplete source cannot become a no-CP slot: {case_id}/{component}")
+            slots[case_id].append({"source_component": int(component), "status": status, "entry": entry})
+    return {"source_schedule_format": "onlinecp_all_source_slots_v1",
+            "source_slots_by_case": slots,
+            "eligible_source_slots": sum(map(len, slots.values())),
+            "no_placement_sources": no_placement}
+
+
 def _audit_completed_bank(
     bank_root: Path,
     index: Mapping[str, Any],
@@ -2328,6 +2554,9 @@ def _audit_completed_bank(
                 raise OnlineBenchmarkError(
                     f"Invalid no-eligible-source sentinel for {case_id}: {dict(row)}"
                 )
+            continue
+        if status == "no_placement" and index.get("no_placement_policy", "error") == "retain_original":
+            _validate_no_placement_row(row, candidate_count)
             continue
         if status != "ok" or not relative or stored_count != int(candidate_count):
             raise OnlineBenchmarkError(
@@ -2384,7 +2613,13 @@ def _audit_completed_bank(
     if index.get("no_eligible_cases") != no_eligible:
         raise OnlineBenchmarkError("Bank no-eligible case inventory is stale")
     expected_cases = sum(bool(values) for values in expected_inventory.values())
-    expected_sources = sum(len(values) for values in expected_inventory.values())
+    expected_sources = len(manifest_entries)
+    if index.get("no_placement_policy", "error") == "retain_original":
+        expected_slots = _source_slot_metadata(rows, source_inventory, candidate_count)
+        if any(index.get(key) != value for key, value in expected_slots.items()):
+            raise OnlineBenchmarkError("Bank source slots omit or change an eligible source/non-CP event")
+    elif "source_slots_by_case" in index:
+        raise OnlineBenchmarkError("Source-slot scheduling requires explicit retain_original policy")
     if (
         index.get("eligible_cases") != expected_cases
         or index.get("source_entries") != expected_sources
@@ -2418,6 +2653,7 @@ def _verified_bank_identity(
     index = load_json(index_path)
     config = load_json(config_path)
     complete = load_json(complete_path)
+    _require_source_mapping_policy(index, config)
     try:
         validate_scoring_report(index.get("scoring_execution"), train_cfg["generation"])
     except (KeyError, TypeError, ValueError) as exc:
@@ -2427,6 +2663,10 @@ def _verified_bank_identity(
     gnn_root = layout.gnn(outer_fold)
     current_links = {
         "format": BANK_FORMAT,
+        "source_mapping_format": SOURCE_MAPPING_FORMAT,
+        "no_placement_policy": str(train_cfg["generation"].get("no_placement_policy", "error")),
+        "minimum_center_separation_mm": float(train_cfg["generation"]["min_center_separation_mm"]),
+        "minimum_center_separation_vox": float(train_cfg["generation"].get("min_center_separation_vox", 0.0)),
         "scoring_execution_format": SCORING_FORMAT,
         "version": VERSION,
         "outer_fold": int(outer_fold),

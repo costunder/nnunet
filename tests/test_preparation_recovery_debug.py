@@ -3,6 +3,7 @@ import copy
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -167,6 +168,130 @@ class RecoveryDebugTests(unittest.TestCase):
                 path.write_text(text, encoding="utf-8")
                 with self.assertRaises(ValueError):
                     recovery.read_json(path)
+
+    @staticmethod
+    def policy_fixture():
+        current = recovery.read_json(Path(__file__).resolve().parents[1] / "config/train.json")
+        current["cache"].update(source_pad=2, min_center_separation_mm=0.0,
+            min_center_separation_vox=12.0, no_placement_policy="retain_original")
+        old = {"graph_config": copy.deepcopy(current["graph"]), "labels": current["labels"],
+               "ct_clip": current["ct_clip"], "seed": current["seed"] + 2,
+               **current["cache"], "difficulty_fractions": {
+                   "easy": current["cache"]["easy_fraction"], "inter": current["cache"]["inter_fraction"],
+                   "intra_corrupted": current["cache"]["intra_fraction"]}}
+        old.update(source_pad=4, min_center_separation_mm=12.0)
+        old.pop("min_center_separation_vox")
+        old.pop("no_placement_policy")
+        return current, old
+
+    def test_medical_aug_policy_restoration_rebuilds_cp_graphs_but_reuses_shared_features(self):
+        current, old = self.policy_fixture()
+        original = copy.deepcopy(old)
+        contract = recovery.recovery_cache_contract(current, old, fold=2)
+        self.assertFalse(contract["graph_cache_reuse"])
+        self.assertTrue(contract["shared_regions_and_prototype_reuse"])
+        self.assertEqual(contract["old_policy"]["no_placement_policy"], "error")
+        self.assertEqual(contract["old_policy"]["min_center_separation_vox"], 0)
+        self.assertEqual(old, original)
+        unchanged = copy.deepcopy(old)
+        unchanged.update(current["cache"])
+        self.assertTrue(recovery.recovery_cache_contract(current, unchanged, fold=2)["graph_cache_reuse"])
+
+    def test_policy_restoration_does_not_authorize_graph_cohort_or_curriculum_reduction(self):
+        current, old = self.policy_fixture()
+        for group, name, value in (("cache", "total_candidates", 4), ("cache", "samples_per_case", 1),
+                                   ("cache", "candidate_pool_size", 16), ("graph", "num_regions", 2),
+                                   ("cache", "min_liver_coverage", 0.5),
+                                   ("cache", "no_placement_policy", "ignore_any_error")):
+            changed = copy.deepcopy(current)
+            changed[group][name] = value
+            with self.subTest(group=group, name=name), self.assertRaises(ValueError):
+                recovery.recovery_cache_contract(changed, old, fold=2)
+        with self.assertRaisesRegex(ValueError, "seed"):
+            recovery.recovery_cache_contract(current, old, fold=0)
+
+    @staticmethod
+    def no_placement_error():
+        from hiercp.common import CandidatePreparationError, CANDIDATE_SEARCH_VERSION
+        return CandidatePreparationError("insufficient_valid_candidate_pool", {
+            "case_id": "DEBUG", "sample_index": 0, "source_component": 1,
+            "candidate_search_version": CANDIDATE_SEARCH_VERSION,
+            "pool": {"source_component": 1, "search_version": CANDIDATE_SEARCH_VERSION,
+                     "fullsearch_exhausted": True, "exhaustive_used": True, "accepted": 0,
+                     "required_candidates": 7, "required_candidates_met": False, "excluded_center_count": 0,
+                     "max_draws": 50000, "min_liver_coverage": 0.85, "occupied_clearance_vox": 2,
+                     "min_center_separation_mm": 0.0, "min_center_separation_vox": 12.0,
+                     "target_candidates": 128},
+            "rejected_centers": [], "geometry_rejections": [], "curriculum_failure": None})
+
+    def test_no_placement_pilot_requires_exhaustive_evidence_and_explicit_policy(self):
+        from hiercp.cache import no_placement_evidence
+        current, _ = self.policy_fixture()
+        request = {"config": current, "case_id": "DEBUG", "sample_index": 0}
+        evidence = no_placement_evidence(self.no_placement_error(), case_id="DEBUG", sample_index=0,
+                                         required_candidates=7)
+        self.assertIsNotNone(evidence)
+        result = {"format": "hiercp_full_size_resource_pilot_v1", "calibration_only": True,
+                  "training_performed": False, "case_id": "DEBUG", "sample_index": 0,
+                  "request_sha256": recovery.value_sha(request),
+                  "roi_budget": current["graph"]["adaptive_roi_max_voxels"],
+                  "sample_outcome": "retain_original", "candidate_count": 0, "required_candidate_count": 8,
+                  "no_placement_evidence": evidence,
+                  "measurement": {"status": "complete", "sampled_peak_rss_bytes": 4096, "elapsed_seconds": 0.1}}
+        recovery.validate_pilot(result, request)
+        for field, value in (("accepted", 1), ("fullsearch_exhausted", False), ("required_candidates", 6),
+                             ("min_center_separation_mm", 12.0)):
+            changed = copy.deepcopy(result)
+            changed["no_placement_evidence"]["diagnostics"]["pool"][field] = value
+            body = {k: v for k, v in changed["no_placement_evidence"].items() if k != "evidence_sha256"}
+            changed["no_placement_evidence"]["evidence_sha256"] = recovery.value_sha(body)
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                recovery.validate_pilot(changed, request)
+        legacy = copy.deepcopy(request)
+        legacy["config"]["cache"]["no_placement_policy"] = "error"
+        with self.assertRaisesRegex(ValueError, "not authorized"):
+            recovery.validate_pilot({**result, "request_sha256": recovery.value_sha(legacy)}, legacy)
+
+    def test_profile_records_zero_placement_without_fabricating_a_graph(self):
+        from hiercp import cache, common, preparation_runtime, prototype, region
+        current, _ = self.policy_fixture()
+
+        class DebugMeasurement:
+            """DEBUG context-status double, never claimed as a resource measurement."""
+            def __enter__(self):
+                return self
+
+            def __exit__(self, error_type, error, traceback):
+                self.report = {"status": "complete" if error_type is None else "failed",
+                               "sampled_peak_rss_bytes": 4096, "elapsed_seconds": 0.1,
+                               "debug_double": True}
+
+        with tempfile.TemporaryDirectory(prefix="DEBUG_no_placement_pilot_") as directory:
+            root = Path(directory)
+            request = {"config": current, "split": {"train": ["DEBUG"], "val": []},
+                       "gnn_root": str(root / "gnn"), "medical_root": str(root / "medical"),
+                       "case_id": "DEBUG", "sample_index": 0, "code_sha256": {"DEBUG": "hash"},
+                       "source": {"image_sha256": "DEBUG-sha", "label_sha256": "DEBUG-sha"},
+                       "prototype_sha256": "DEBUG-sha"}
+            output = root / "pilot.json"
+            case = SimpleNamespace(paths=SimpleNamespace(image_path="DEBUG-image", label_path="DEBUG-label"))
+            with mock.patch.object(recovery, "preparation_code_identity", return_value=request["code_sha256"]), \
+                    mock.patch.object(recovery, "digest", return_value="DEBUG-sha"), \
+                    mock.patch.object(common, "discover_cases", return_value=["DEBUG-path"]), \
+                    mock.patch.object(common, "load_case", return_value=case), \
+                    mock.patch.object(region, "load_or_build_patient_regions", return_value=object()), \
+                    mock.patch.object(prototype.PrototypeBank, "load", return_value=object()), \
+                    mock.patch.object(preparation_runtime, "Measurement", DebugMeasurement), \
+                    mock.patch.object(cache, "build_training_sample", side_effect=self.no_placement_error()) as build:
+                recovery._profile(request, output)
+            build.assert_called_once()
+            result = recovery.read_json(output)
+            self.assertEqual(result["sample_outcome"], "retain_original")
+            self.assertEqual(result["candidate_count"], 0)
+            self.assertEqual(result["measurement"]["status"], "complete")
+            self.assertFalse(result["training_performed"])
+            recovery.validate_pilot(result, request)
+            self.assertEqual(list(root.rglob("*.pt")), [])
 
 
 if __name__ == "__main__":

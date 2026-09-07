@@ -1,8 +1,9 @@
 """Shared NIfTI, geometry, candidate-sampling, and copy-paste utilities.
 
-These routines preserve the existing project’s I/O conventions and hard
-anatomical constraints while the isolated experiment changes only the
-hierarchical PyTorch Geometric placement model.
+The checked-in HierCP placement contract uses physical millimetres. It is
+not numerically identical to the earlier Medical Data Aug batch script
+(voxel-distance setting, uint8 inversion bug, different padding/proposals).
+Keep these distinctions explicit when comparing or migrating experiments.
 """
 
 from __future__ import annotations
@@ -624,6 +625,9 @@ def ct_denormalize(array: np.ndarray, clip: tuple[float, float] = DEFAULT_CT_CLI
 
 
 def context_ring_mask(mask: np.ndarray, width: int = 3) -> np.ndarray:
+    # Bitwise inversion of uint8 produces 254/255, not a background mask.
+    # This also keeps callers with binary integer masks consistent with bool.
+    mask = np.asarray(mask, dtype=bool)
     if width <= 0:
         return ~mask
     structure = ndi.generate_binary_structure(3, 1)
@@ -637,6 +641,7 @@ def context_stats_for_local_mask(
     *,
     ring_width: int = 3,
 ) -> tuple[float, float]:
+    target_mask_patch = np.asarray(target_mask_patch, dtype=bool)
     ring = context_ring_mask(target_mask_patch, width=ring_width) & organ_patch.astype(bool)
     values = image_patch[ring]
     if values.size < 8:
@@ -757,6 +762,7 @@ def build_candidate_pool(
     min_liver_coverage: float,
     occupied_clearance_vox: int,
     min_center_separation_mm: float,
+    min_center_separation_vox: float = 0.0,
     candidate_oversample_factor: int = 20,
     required_candidates: int | None = None,
     force_exhaustive: bool = False,
@@ -772,6 +778,14 @@ def build_candidate_pool(
     ``num_candidates`` and never changes the source, constraints or resolution.
     The scratch-byte setting tiles computation, not the searched domain.
     """
+    # Medical Data Aug uses native-voxel distances, while GNN features remain mm.
+    min_center_separation_mm = float(min_center_separation_mm)
+    min_center_separation_vox = float(min_center_separation_vox)
+    if any(not math.isfinite(value) or value < 0 for value in
+           (min_center_separation_mm, min_center_separation_vox)):
+        raise ValueError("Center separation must be finite and non-negative")
+    if min_center_separation_mm > 0 and min_center_separation_vox > 0:
+        raise ValueError("Choose one center separation unit: mm or native voxel")
     target = int(num_candidates)
     required = target if required_candidates is None else int(required_candidates)
     if not 1 <= required <= target:
@@ -794,6 +808,9 @@ def build_candidate_pool(
                  min_center_separation_mm=float(min_center_separation_mm),
                  excluded_center_count=len(excluded), exhaustive_used=False,
                  fullsearch_exhausted=False, accepted=0)
+    if min_center_separation_vox > 0:
+        stats.update(min_center_separation_vox=min_center_separation_vox,
+                     center_separation_unit="native_voxel")
     random_rejections = {name: 0 for name in
                          ("bounds", "excluded", "forbidden_overlap", "liver_coverage", "center_separation")}
     stats["random_rejections"] = random_rejections
@@ -808,6 +825,10 @@ def build_candidate_pool(
         forbidden = occupied_mask.astype(bool, copy=False)
 
     occupied_distance = distance_to_mask_mm(occupied_mask, case.spacing)
+    occupied_distance_vox = (
+        distance_to_mask_mm(occupied_mask, (1.0, 1.0, 1.0))
+        if min_center_separation_vox > 0 else None
+    )
     desired_raw = max(num_candidates * int(candidate_oversample_factor), num_candidates)
     accepted: list[CandidateInfo] = []
     source_ring = context_ring_mask(source.patch_mask, width=3)
@@ -859,7 +880,9 @@ def build_candidate_pool(
             random_rejections["liver_coverage"] += 1
             continue
         occupied_distance_mm = float(occupied_distance[center])
-        if occupied_distance_mm < float(min_center_separation_mm):
+        if (occupied_distance_mm < min_center_separation_mm or
+                (occupied_distance_vox is not None and
+                 occupied_distance_vox[center] < min_center_separation_vox)):
             random_rejections["center_separation"] += 1
             continue
         append_candidate(center, coverage, occupied_distance_mm)
@@ -872,6 +895,8 @@ def build_candidate_pool(
             case, source, placement_mask, forbidden, occupied_distance,
             min_liver_coverage=float(min_liver_coverage),
             min_center_separation_mm=float(min_center_separation_mm),
+            occupied_distance_vox=occupied_distance_vox,
+            min_center_separation_vox=min_center_separation_vox,
             tested_flat=tested_flat, excluded=excluded, target=target,
             accepted=accepted, append_candidate=append_candidate, diagnostics=stats,
             working_memory_bytes=int(exhaustive_working_memory_bytes))
@@ -881,10 +906,57 @@ def build_candidate_pool(
     return accepted, occupied_distance
 
 
+def _exact_footprint_counts(
+    flat_centers, offsets, forbidden_flat, placement_flat, *,
+    matrix_elements, diagnostics,
+):
+    """Exact full-mask predicates, retiring only proven-overlapping centers.
+
+    A single forbidden source voxel is a complete rejection certificate.
+    Coverage is therefore needed only for centers with no forbidden voxel.
+    No source voxel, legal center or accepted-candidate order is subsampled.
+    The offset tile controls scratch memory and rejection latency, not scope.
+    """
+    blocked = np.zeros(len(flat_centers), dtype=bool)
+    covered = np.zeros(len(flat_centers), dtype=np.int64)
+    active = np.arange(len(flat_centers), dtype=np.int64)
+    if not len(active):
+        return blocked, covered
+    diagnostics["exhaustive_naive_mask_elements"] += (
+        2 * int(len(flat_centers)) * int(len(offsets))
+    )
+    # Balance SIMD work with retiring rejected centers between tiles. Unlike
+    # one giant footprint tile this does not finish every voxel of a source
+    # after its overlap is already known. Both dimensions obey the byte budget.
+    offset_batch = max(1, min(math.isqrt(matrix_elements),
+                              matrix_elements // len(active)))
+    for start in range(0, len(offsets), offset_batch):
+        if not len(active):
+            break  # All centers in THIS tile have an exact overlap witness.
+        indices = flat_centers[active, None] + offsets[None, start:start + offset_batch]
+        diagnostics["exhaustive_max_matrix_elements"] = max(
+            diagnostics["exhaustive_max_matrix_elements"], int(indices.size))
+        diagnostics["exhaustive_forbidden_mask_elements"] += int(indices.size)
+        hit = np.any(forbidden_flat[indices], axis=1)
+        blocked[active[hit]] = True
+        active = active[~hit]
+    diagnostics["exhaustive_retired_overlap_centers"] += int(blocked.sum())
+    if len(active):
+        offset_batch = max(1, matrix_elements // len(active))
+        for start in range(0, len(offsets), offset_batch):
+            indices = flat_centers[active, None] + offsets[None, start:start + offset_batch]
+            diagnostics["exhaustive_max_matrix_elements"] = max(
+                diagnostics["exhaustive_max_matrix_elements"], int(indices.size))
+            diagnostics["exhaustive_coverage_mask_elements"] += int(indices.size)
+            covered[active] += np.sum(placement_flat[indices], axis=1, dtype=np.int64)
+    return blocked, covered
+
+
 def _extend_candidates_exhaustively(
     case, source, placement_mask, forbidden, occupied_distance, *,
     min_liver_coverage, min_center_separation_mm, tested_flat, excluded,
     target, accepted, append_candidate, diagnostics, working_memory_bytes,
+    occupied_distance_vox=None, min_center_separation_vox=0.0,
 ) -> bool:
     """Lexicographic full-domain search with batched, tiled exact mask tests.
 
@@ -899,6 +971,11 @@ def _extend_candidates_exhaustively(
                        exhaustive_valid_centers_evaluated=0,
                        exhaustive_working_memory_bytes=working_memory_bytes,
                        exhaustive_max_matrix_elements=0,
+                       exhaustive_backend="exact_full_mask_shortcircuit_v1",
+                       exhaustive_naive_mask_elements=0,
+                       exhaustive_forbidden_mask_elements=0,
+                       exhaustive_coverage_mask_elements=0,
+                       exhaustive_retired_overlap_centers=0,
                        exhaustive_filter_order=["center_separation", "forbidden_overlap", "liver_coverage"])
     shape = np.asarray(case.shape, dtype=np.int64)
     patch = np.asarray(source.patch_mask.shape, dtype=np.int64)
@@ -939,19 +1016,15 @@ def _extend_candidates_exhaustively(
             centers, flat = centers[~old], flat[~old]
             diagnostics["exhaustive_centers_evaluated"] += len(flat)
             separated = distance_flat[flat] >= min_center_separation_mm
+            if occupied_distance_vox is not None:
+                separated &= occupied_distance_vox.reshape(-1)[flat] >= min_center_separation_vox
             rejected["center_separation"] += int((~separated).sum())
             centers, flat = centers[separated], flat[separated]
             if not len(flat):
                 continue
-            blocked = np.zeros(len(flat), dtype=bool)
-            covered = np.zeros(len(flat), dtype=np.int64)
-            offset_batch = max(1, matrix_elements // len(flat))
-            for offset_start in range(0, len(offsets), offset_batch):
-                indices = flat[:, None] + offsets[None, offset_start:offset_start + offset_batch]
-                diagnostics["exhaustive_max_matrix_elements"] = max(
-                    diagnostics["exhaustive_max_matrix_elements"], int(indices.size))
-                blocked |= np.any(forbidden_flat[indices], axis=1)
-                covered += np.sum(placement_flat[indices], axis=1, dtype=np.int64)
+            blocked, covered = _exact_footprint_counts(
+                flat, offsets, forbidden_flat, placement_flat,
+                matrix_elements=matrix_elements, diagnostics=diagnostics)
             coverage = covered / max(1, source.voxel_count)
             rejected["forbidden_overlap"] += int(blocked.sum())
             liver_ok = coverage >= min_liver_coverage
@@ -1076,5 +1149,6 @@ def common_generation_kwargs(args: object) -> dict[str, object]:
         "min_liver_coverage": float(getattr(args, "min_liver_coverage")),
         "occupied_clearance_vox": int(getattr(args, "occupied_clearance_vox")),
         "min_center_separation_mm": float(getattr(args, "min_center_separation_mm")),
+        "min_center_separation_vox": float(getattr(args, "min_center_separation_vox", 0.0)),
         "max_draws": int(getattr(args, "max_draws")),
     }
