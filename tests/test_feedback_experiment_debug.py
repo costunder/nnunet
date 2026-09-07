@@ -313,6 +313,14 @@ class FeedbackRecoveryLauncherDebugTests(unittest.TestCase):
 
     def recovery_fixture(self, directory):
         project, medical, package, original = self.fixture(directory)
+        for name in ("online_cp_feedback.json", "online_cp_feedback_gnn.json"):
+            (project / "config" / name).write_bytes((ROOT / "config" / name).read_bytes())
+        # DEBUG child commands never train/publish real checkpoints. Only their
+        # output certification is mocked; real journal hashes remain exercised.
+        evidence = mock.patch.object(launcher, "_stage_evidence", side_effect=lambda plan, name:
+            {"format": "DEBUG mocked child completion, not model validation", "stage": name})
+        evidence.start()
+        self.addCleanup(evidence.stop)
         source = original["run_root"]
         source.mkdir(parents=True)
         (source / "launch_plan.json").write_text(json.dumps(original, default=str), encoding="utf-8")
@@ -582,6 +590,250 @@ class FeedbackRecoveryLauncherDebugTests(unittest.TestCase):
             self.assertNotIn("[gnn-prepare]", output.getvalue())
             self.assertFalse(plan["run_root"].exists())
             self.assertEqual(file_bytes(Path(tmp)), before)
+
+
+class FeedbackExperimentResumeDebugTests(unittest.TestCase):
+    """DEBUG orchestration fixtures: no medical data, GPU, or training is executed."""
+
+    fixture = FeedbackExperimentDebugTests.fixture
+    option = staticmethod(FeedbackExperimentDebugTests.option)
+    recovery_fixture = FeedbackRecoveryLauncherDebugTests.recovery_fixture
+    runner = FeedbackRecoveryLauncherDebugTests.runner
+
+    def failed_calibration(self, folder, fail="gnn-train"):
+        project, medical, package, source, plan, identity = self.recovery_fixture(folder)
+        for name in ("online_cp_feedback.json", "online_cp_feedback_gnn.json"):
+            (project / "config" / name).write_bytes((ROOT / "config" / name).read_bytes())
+        nnpath = project / "config/nnunet.json"
+        nnconfig = json.loads(nnpath.read_text())
+        nnconfig["runtime"]["minimum_free_gb_before_preprocess"] = 0  # DEBUG filesystem fixture only
+        nnpath.write_text(json.dumps(nnconfig), encoding="utf-8")
+        plan = launcher.build_plan(project, medical, recover_from=source,
+            experiment_name="feedback_medical_aug", python_executable="DEBUG_PYTHON_NOT_EXECUTED")
+        events = []
+
+        def prepare(plan, source_root, **kwargs):
+            events.append("recover_preparation")
+            config = plan["train_config"]
+            config.parent.mkdir(parents=True)
+            config.write_bytes((ROOT / "config/train.json").read_bytes())
+            graphs = plan["run_root"] / "paired/folds/fold_0/gnn/graphs"
+            graphs.mkdir(parents=True)
+            for name in ("config.json", "manifest.csv", "index.json", "complete.json"):
+                (graphs / name).write_bytes(b'{"DEBUG":"not a production publication"}')
+            for number in range(187):
+                (graphs / f"DEBUG_cache_{number}.pt").write_bytes(f"DEBUG opaque graph {number}".encode())
+            files = [config, *graphs.iterdir()]
+            receipt = {"format": "hiercp_preparation_recovery_complete_v1", "train_config": str(config),
+                "source_identity": identity, "files": launcher._bound_files(plan["run_root"], files),
+                "original_results_preserved": True, "training_performed": False}
+            (config.parent / "complete.json").write_text(json.dumps(receipt), encoding="utf-8")
+            return receipt
+
+        native_runner = self.runner(plan, events, fail=fail)
+        names = {tuple(row["argv"]): row["name"] for row in plan["commands"]}
+        def run(argv, **kwargs):
+            result = native_runner(argv, **kwargs)
+            name = names.get(tuple(argv))
+            if name not in {None, "install_private_trainers", "environment"}:
+                (plan["run_root"] / f"DEBUG_completed_{name}.json").write_text(
+                    json.dumps({"DEBUG": name}), encoding="utf-8")
+            return result
+
+        with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+             mock.patch.object(launcher, "prepare_recovery", side_effect=prepare), \
+             mock.patch.object(launcher, "_stage_evidence", side_effect=self.evidence), \
+             mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(subprocess.CalledProcessError):
+                launcher.execute_plan(plan, runner=run, package_root=package)
+        self.assertEqual(events[-1], fail)
+        return project, medical, package, source, plan, identity
+
+    @staticmethod
+    def evidence(plan, name):
+        return {"format": "DEBUG stage evidence, not model validation",
+                "files": launcher._bound_files(plan["run_root"], [f"DEBUG_completed_{name}.json"])}
+
+    def continuing_runner(self, plan, events, fail=None):
+        by_argv = {tuple(row["argv"]): row["name"] for row in plan["commands"]}
+        def run(argv, **kwargs):
+            self.assertTrue(kwargs["check"])
+            name = "gpu" if argv[1] == "-c" else by_argv[tuple(argv)]
+            events.append(name)
+            if name == fail:
+                raise subprocess.CalledProcessError(7, argv)
+            if name != "gpu":
+                (plan["run_root"] / f"DEBUG_completed_{name}.json").write_text(
+                    json.dumps({"DEBUG": name}), encoding="utf-8")
+            return subprocess.CompletedProcess(argv, 0)
+        return run
+
+    def resume(self, plan, identity, events, fail=None):
+        with mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+             mock.patch.object(launcher, "audit_sources", return_value={}), \
+             mock.patch("hiercp.cache.validate_cache_publication", return_value={}) as publication, \
+             mock.patch.object(launcher, "_stage_evidence", side_effect=self.evidence), \
+             mock.patch.object(launcher, "prepare_recovery") as prepare, \
+             mock.patch.object(launcher, "copy_nnunet_package") as copy_package, \
+             contextlib.redirect_stdout(io.StringIO()):
+            launcher.execute_plan(plan, runner=self.continuing_runner(plan, events, fail), resume_experiment=True)
+        self.assertEqual((prepare.call_count, copy_package.call_count), (0, 0))
+        self.assertGreaterEqual(publication.call_count, 2)
+
+    def test_calibration_failure_resumes_all_remaining_stages_and_preserves_187_caches_and_failed_journal(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_resume_") as tmp:
+            _, _, package, source, plan, identity = self.failed_calibration(Path(tmp))
+            root = plan["run_root"]
+            graphs = root / "paired/folds/fold_0/gnn/graphs"
+            protected = {path: file_bytes(path) for path in (graphs, source, package, plan["package_destination"])}
+            original = (root / "execution_journal.json").read_bytes()
+            launch_plan = (root / "launch_plan.json").read_bytes()
+            events = []
+            self.resume(plan, identity, events)
+            self.assertEqual(events, ["gpu", "gnn-train", "plan", "bank", "feedback_contract",
+                                      "check_full", "check_basic", "train_full", "train_basic"])
+            for path, before in protected.items():
+                self.assertEqual(file_bytes(path), before)
+            self.assertEqual(len(list(graphs.glob("*.pt"))), 187)
+            self.assertEqual((root / "launch_plan.json").read_bytes(), launch_plan)
+            archives = list((root / "recovery/journal_history").glob("*.json"))
+            self.assertEqual([path.read_bytes() for path in archives], [original])
+            journal = json.loads((root / "execution_journal.json").read_text())
+            self.assertTrue(journal["complete"])
+            self.assertEqual([row["status"] for row in journal["stages"] if row["name"] == "gnn-train"],
+                             ["failed", "completed"])
+            second = []
+            self.resume(plan, identity, second)
+            self.assertEqual(second, ["gpu"])
+            self.assertEqual(len(json.loads((root / "execution_journal.json").read_text())["stages"]),
+                             len(journal["stages"]))
+            self.assertFalse((root / "recovery_execution.lock").exists())
+
+    def test_later_failure_skips_verified_gnn_and_keeps_both_failed_attempts(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_resume_later_") as tmp:
+            _, _, _, _, plan, identity = self.failed_calibration(Path(tmp))
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.resume(plan, identity, [], fail="plan")
+            events = []
+            self.resume(plan, identity, events)
+            self.assertEqual(events[:3], ["gpu", "plan", "bank"])
+            self.assertNotIn("gnn-train", events)
+            journal = json.loads((plan["run_root"] / "execution_journal.json").read_text())
+            self.assertEqual(sum(row["status"] == "failed" for row in journal["stages"]), 2)
+
+    def test_initial_recovery_writer_can_resume_after_gnn_success_then_plan_failure(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_initial_writer_") as tmp:
+            _, _, _, _, plan, identity = self.failed_calibration(Path(tmp), fail="plan")
+            root = plan["run_root"]
+            first = json.loads((root / "execution_journal.json").read_text())
+            gnn = next(row for row in first["stages"] if row["name"] == "gnn-train")
+            self.assertEqual(gnn["status"], "completed")
+            self.assertEqual(gnn["input_files"], launcher._resume_inputs(plan))
+            self.assertEqual(gnn["completion_evidence"], self.evidence(plan, "gnn-train"))
+            before = file_bytes(root / "paired/folds/fold_0/gnn/graphs")
+            events = []
+            self.resume(plan, identity, events)
+            self.assertEqual(events, ["gpu", "plan", "bank", "feedback_contract", "check_full", "check_basic",
+                                      "train_full", "train_basic"])
+            self.assertEqual(file_bytes(root / "paired/folds/fold_0/gnn/graphs"), before)
+
+    def test_invalid_identity_receipt_cache_config_runtime_and_active_attempt_stop_before_children(self):
+        for change in ("plan", "source", "checksum", "receipt", "config", "cache", "runtime", "partial_setup", "running", "lock", "order"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory(prefix="debug_feedback_resume_invalid_") as tmp:
+                _, _, _, _, plan, identity = self.failed_calibration(Path(tmp))
+                root = plan["run_root"]
+                path = root / "execution_journal.json"
+                journal = json.loads(path.read_text()); journal.pop("journal_sha256")
+                if change == "plan":
+                    plan["seed"] += 1
+                elif change == "source":
+                    identity = {**identity, "DEBUG_changed": True}
+                elif change == "checksum":
+                    path.write_text("{}")
+                elif change == "receipt":
+                    (root / "recovery/complete.json").write_text("{}")
+                elif change == "config":
+                    plan["train_config"].write_text('{"DEBUG":"changed saved training contract"}')
+                elif change == "cache":
+                    (root / "paired/folds/fold_0/gnn/graphs/DEBUG_cache_186.pt").write_bytes(b"DEBUG changed")
+                elif change == "runtime":
+                    (plan["package_destination"] / "__init__.py").write_bytes(b"DEBUG changed")
+                elif change == "partial_setup":
+                    journal["runtime_inventory"] = None
+                    launcher._save_journal(root, journal)
+                elif change == "running":
+                    journal["stages"][-1]["status"] = "running"
+                    launcher._save_journal(root, journal)
+                elif change == "lock":
+                    (root / "recovery_execution.lock").write_text('{"DEBUG":"ambiguous owner"}')
+                else:
+                    journal["stages"][-1]["name"] = "train_basic"
+                    launcher._save_journal(root, journal)
+                events = []
+                with self.assertRaises((ValueError, FileExistsError)):
+                    self.resume(plan, identity, events)
+                self.assertEqual(events, [])
+
+    def test_gnn_preflight_without_checkpoint_is_preserved_and_refused(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_resume_boundary_") as tmp:
+            _, _, _, _, plan, identity = self.failed_calibration(Path(tmp))
+            path = plan["run_root"] / "paired/folds/fold_0/gnn/model.pt.preflight.json"
+            path.write_text('{"DEBUG":"calibration completed, no epoch checkpoint"}')
+            before = path.read_bytes()
+            events = []
+            with self.assertRaisesRegex(ValueError, "no resumable model.last"):
+                self.resume(plan, identity, events)
+            self.assertEqual(events, ["gpu"])
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_nnunet_partial_training_requires_checkpoint_and_never_overwrite(self):
+        with tempfile.TemporaryDirectory(prefix="d_") as tmp:
+            _, _, _, _, plan, _ = self.failed_calibration(Path(tmp))
+            # DEBUG I/O fixture only: keep Windows paths under MAX_PATH while
+            # exercising the real trainer/fold directory derivation and guards.
+            plan["env_updates"]["nnUNet_results"] = str(plan["run_root"] / "r")
+            command = next(row for row in plan["commands"] if row["name"] == "train_full")
+            with self.assertRaisesRegex(ValueError, "no checkpoint"):
+                launcher._resume_command(plan, command, previously_attempted=True)
+            folder = launcher._training_folder(plan, "full")
+            folder.mkdir(parents=True)
+            (folder / "training_log_DEBUG.txt").write_text("DEBUG partial epoch")
+            with self.assertRaisesRegex(ValueError, "no checkpoint"):
+                launcher._resume_command(plan, command, previously_attempted=True)
+            checkpoint = folder / "checkpoint_latest.pth"
+            checkpoint.write_bytes(b"DEBUG opaque checkpoint, decoder mocked")
+            extension = {key: {} for key in ("next_epoch", "config", "config_sha256", "bank_identity",
+                "runtime_identity", "last_epoch", "python_rng", "numpy_rng", "cpu_rng", "cuda_rng",
+                "lr_scheduler_state", "extension")}
+            extension["format"] = "onlinecp_segmentation_feedback_resume_v1"
+            state = {key: {} for key in ("network_weights", "optimizer_state", "grad_scaler_state", "current_epoch")}
+            state["onlinecp_curriculum_resume"] = extension
+            with mock.patch.object(launcher, "_checkpoint_payload", return_value=state):
+                argv = launcher._resume_command(plan, command, previously_attempted=True)
+            self.assertEqual(argv, [*command["argv"], "--resume"])
+            self.assertNotIn("--overwrite", argv)
+            with mock.patch.object(launcher, "_checkpoint_payload", return_value={}):
+                with self.assertRaisesRegex(ValueError, "lacks complete"):
+                    launcher._resume_command(plan, command, previously_attempted=True)
+
+    def test_existing_root_cli_dry_run_uses_actual_build_plan_and_does_not_write(self):
+        with tempfile.TemporaryDirectory(prefix="debug_feedback_resume_cli_") as tmp:
+            project, medical, _, source, plan, identity = self.failed_calibration(Path(tmp))
+            before = file_bytes(Path(tmp))
+            output = io.StringIO()
+            with mock.patch.object(launcher, "PROJECT_ROOT", project), \
+                 mock.patch.object(launcher.sys, "executable", "DEBUG_PYTHON_NOT_EXECUTED"), \
+                 mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
+                 mock.patch("hiercp.cache.validate_cache_publication", return_value={}), \
+                 mock.patch.object(launcher, "execute_plan") as execute, contextlib.redirect_stdout(output):
+                launcher.main(["--medical-root", str(medical), "--recover-from", str(source),
+                    "--experiment-name", "feedback_medical_aug", "--outer-fold", "0", "--dataset-id", "760",
+                    "--seed", "42", "--resume-experiment", "--dry-run"])
+            execute.assert_not_called()
+            self.assertEqual(file_bytes(Path(tmp)), before)
+            self.assertIn("[gnn-train]", output.getvalue())
+            self.assertNotIn("[install_private_trainers]", output.getvalue())
+            self.assertNotIn("[gnn-prepare]", output.getvalue())
 
 
 if __name__ == "__main__":

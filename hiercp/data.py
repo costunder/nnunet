@@ -368,7 +368,19 @@ def _graph_collection_statistics(graph_batch: Any) -> dict[str, object]:
     edge_counts: list[int] = []
     node_type_totals: dict[str, int] = {}
     edge_type_totals: dict[str, int] = {}
+    execution_contracts: set[str] = set()
+    legacy_exceeded_graphs = 0
+    edges_dropped_by_limit = 0
     for graph in graphs:
+        contract = getattr(graph, "edge_execution_contract", None)
+        if contract is not None:
+            execution_contracts.add(str(contract))
+        exceeded = getattr(graph, "relation_exceeds_legacy_limit", None)
+        if torch.is_tensor(exceeded):
+            legacy_exceeded_graphs += int(bool(exceeded.any()))
+        dropped = getattr(graph, "relation_edges_dropped_by_limit", None)
+        if torch.is_tensor(dropped):
+            edges_dropped_by_limit += int(dropped.sum())
         graph_nodes = 0
         for node_type in getattr(graph, "node_types", ()):
             store = graph[node_type]
@@ -408,6 +420,9 @@ def _graph_collection_statistics(graph_batch: Any) -> dict[str, object]:
         "edges_per_graph": distribution(edge_counts),
         "node_type_totals": node_type_totals,
         "edge_type_totals": edge_type_totals,
+        "edge_execution_contracts": sorted(execution_contracts),
+        "graphs_exceeding_legacy_sample_relation_edge_limit": legacy_exceeded_graphs,
+        "edges_dropped_by_limit": edges_dropped_by_limit,
     }
 
 

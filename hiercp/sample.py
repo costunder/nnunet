@@ -35,6 +35,13 @@ from hiercp.schema import (
 from hiercp.spatial import LEVEL0_GEOMETRY_CONTRACT
 
 
+FULL_INDUCED_EDGE_CONTRACT = "hiercp_all_induced_edges_v1"
+# A transient CPU work tile, never a limit on a relation, view or minibatch.
+# 65,536 rows bound index-remapping scratch and ten-dimensional attribute
+# intermediates to a few MiB while preserving the complete canonical order.
+EDGE_MATERIALIZATION_CHUNK_EDGES = 65_536
+
+
 def sample_dense_features_variable(
     feature_map: Tensor,
     grid: Tensor,
@@ -315,7 +322,7 @@ def _edge_radius(edge_type: tuple[str, str, str], config: GraphBuildConfig) -> f
     return float(config.cross_edge_radius_mm)
 
 
-def _edge_attributes(
+def _edge_attributes_block(
     source_features: np.ndarray,
     destination_features: np.ndarray,
     source_positions: np.ndarray,
@@ -355,6 +362,35 @@ def _edge_attributes(
     return attributes
 
 
+def _edge_attributes(
+    source_features: np.ndarray,
+    destination_features: np.ndarray,
+    source_positions: np.ndarray,
+    destination_positions: np.ndarray,
+    edge_index: np.ndarray,
+    *,
+    source_position_override: np.ndarray | None = None,
+    source_normal_override: np.ndarray | None = None,
+    chunk_edges: int = EDGE_MATERIALIZATION_CHUNK_EDGES,
+) -> np.ndarray:
+    """Materialize every 10-D attribute, bounding only temporary edge rows."""
+    if isinstance(chunk_edges, bool) or int(chunk_edges) != chunk_edges or chunk_edges < 1:
+        raise ValueError("Edge attribute work chunk must be a positive integer")
+    if edge_index.ndim != 2 or edge_index.shape[0] != 2:
+        raise ValueError(f"Edge index must be [2,E], got {edge_index.shape}")
+    count = int(edge_index.shape[1])
+    attributes = np.empty((count, LOCAL_EDGE_DIM), dtype=np.float32)
+    for start in range(0, count, int(chunk_edges)):
+        stop = min(count, start + int(chunk_edges))
+        attributes[start:stop] = _edge_attributes_block(
+            source_features, destination_features, source_positions,
+            destination_positions, edge_index[:, start:stop],
+            source_position_override=source_position_override,
+            source_normal_override=source_normal_override,
+        )
+    return attributes
+
+
 def _subset_node(node: Mapping[str, Tensor], ids: np.ndarray) -> dict[str, Tensor]:
     index = torch.from_numpy(np.asarray(ids, dtype=np.int64))
     output: dict[str, Tensor] = {}
@@ -375,11 +411,29 @@ def _induced_edge_index(
     *,
     source_count: int,
     destination_count: int,
+    chunk_edges: int = EDGE_MATERIALIZATION_CHUNK_EDGES,
 ) -> np.ndarray:
-    """Retain every cached full-graph edge whose endpoints are in the view."""
-    edge = _numpy(full_edge_index, dtype=np.int64)
+    """Stream endpoint remapping, retaining every induced edge in cache order.
+
+    Canonical caches remain compact int32 and unchanged. Only the final PyG
+    index is int64; neither a whole-canonical int64 copy nor full-length mapped
+    endpoint/mask intermediates are required. A two-pass count/fill is used for
+    proper subsets, and complete node views use a single bounded-copy pass.
+    """
+    if isinstance(chunk_edges, bool) or int(chunk_edges) != chunk_edges or chunk_edges < 1:
+        raise ValueError("Edge extraction work chunk must be a positive integer")
+    edge = _numpy(full_edge_index)
     if edge.ndim != 2 or edge.shape[0] != 2:
         raise ValueError(f"Canonical edge_index must be [2,E], got {edge.shape}")
+    if edge.dtype.kind not in "iu":
+        raise ValueError("Canonical edge_index must contain integer node ids")
+    source_ids = np.asarray(source_ids, dtype=np.int64)
+    destination_ids = np.asarray(destination_ids, dtype=np.int64)
+    for name, ids, count in (("source", source_ids, source_count),
+                             ("destination", destination_ids, destination_count)):
+        if (ids.ndim != 1 or int(count) < 0 or np.any(ids < 0)
+                or np.any(ids >= int(count)) or np.unique(ids).size != ids.size):
+            raise ValueError(f"Invalid or duplicate selected {name} node ids")
     if edge.shape[1] == 0:
         return np.empty((2, 0), dtype=np.int64)
     if (
@@ -389,18 +443,38 @@ def _induced_edge_index(
         or int(edge[1].max()) >= int(destination_count)
     ):
         raise ValueError("Canonical edge_index references an invalid full node id")
+    complete = (np.array_equal(source_ids, np.arange(int(source_count), dtype=np.int64))
+                and np.array_equal(destination_ids, np.arange(int(destination_count), dtype=np.int64)))
+    if complete:
+        induced = np.empty(edge.shape, dtype=np.int64)
+        for start in range(0, edge.shape[1], int(chunk_edges)):
+            stop = min(edge.shape[1], start + int(chunk_edges))
+            induced[:, start:stop] = edge[:, start:stop]
+        return induced
     source_map = np.full(int(source_count), -1, dtype=np.int64)
     destination_map = np.full(int(destination_count), -1, dtype=np.int64)
-    source_ids = np.asarray(source_ids, dtype=np.int64)
-    destination_ids = np.asarray(destination_ids, dtype=np.int64)
     source_map[source_ids] = np.arange(source_ids.size, dtype=np.int64)
     destination_map[destination_ids] = np.arange(destination_ids.size, dtype=np.int64)
-    local_source = source_map[edge[0]]
-    local_destination = destination_map[edge[1]]
-    keep = (local_source >= 0) & (local_destination >= 0)
-    if not np.any(keep):
-        return np.empty((2, 0), dtype=np.int64)
-    return np.stack([local_source[keep], local_destination[keep]], axis=0)
+    retained_count = 0
+    for start in range(0, edge.shape[1], int(chunk_edges)):
+        stop = min(edge.shape[1], start + int(chunk_edges))
+        retained_count += int(np.count_nonzero(
+            (source_map[edge[0, start:stop]] >= 0)
+            & (destination_map[edge[1, start:stop]] >= 0)))
+    induced = np.empty((2, retained_count), dtype=np.int64)
+    written = 0
+    for start in range(0, edge.shape[1], int(chunk_edges)):
+        stop = min(edge.shape[1], start + int(chunk_edges))
+        local_source = source_map[edge[0, start:stop]]
+        local_destination = destination_map[edge[1, start:stop]]
+        keep = (local_source >= 0) & (local_destination >= 0)
+        count = int(np.count_nonzero(keep))
+        induced[0, written:written + count] = local_source[keep]
+        induced[1, written:written + count] = local_destination[keep]
+        written += count
+    if written != retained_count:
+        raise RuntimeError("Canonical edge topology changed during induced-edge materialization")
+    return induced
 
 
 def build_local_view(
@@ -501,12 +575,6 @@ def build_local_view(
             destination_count=int(all_nodes[destination_type]["x"].shape[0]),
         )
         edge_count = int(edge_index.shape[1])
-        edge_limit = int(config.sample_relation_edge_limit)
-        if edge_limit > 0 and edge_count > edge_limit:
-            raise RuntimeError(
-                "V22 induced relation exceeds sample_relation_edge_limit without truncation: "
-                f"edge_type={edge_type}, edges={edge_count}, limit={edge_limit}"
-            )
         edge_counts.append(edge_count)
         source_override_position = None
         source_override_normal = None
@@ -550,6 +618,15 @@ def build_local_view(
         [canonical_edge_counts], dtype=torch.int64
     )
     graph.relation_edge_counts = torch.tensor([edge_counts], dtype=torch.int64)
+    # Historical cache/config identities keep their original numeric field.
+    # It is now an audited legacy diagnostic threshold, not an edge selector.
+    legacy_limit = int(config.sample_relation_edge_limit)
+    graph.edge_execution_contract = FULL_INDUCED_EDGE_CONTRACT
+    graph.legacy_sample_relation_edge_limit = torch.tensor([legacy_limit], dtype=torch.int64)
+    graph.relation_exceeds_legacy_limit = torch.tensor(
+        [[legacy_limit > 0 and count > legacy_limit for count in edge_counts]], dtype=torch.bool)
+    graph.relation_edges_dropped_by_limit = torch.zeros((1, len(LOCAL_EDGE_TYPES)), dtype=torch.int64)
+    graph.edge_materialization_chunk_edges = torch.tensor([EDGE_MATERIALIZATION_CHUNK_EDGES], dtype=torch.int64)
     return graph
 
 

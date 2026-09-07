@@ -7,13 +7,14 @@ It uses the existing Git checkout and writes a separate experiment, by default
 
 ## Server command
 
-Run in the existing `(nnunet)` environment. GPU 3 below is the visibility used in
-the supplied diagnostic log; use it only while that GPU remains assigned to you.
+Run in the existing `(nnunet)` environment with the scheduler/user-assigned single
+GPU visibility already set. The command preserves `CUDA_VISIBLE_DEVICES`; it does
+not guess an available GPU from another experiment's example.
 
 ```bash
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
-env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES=3 \
+env -u PYTORCH_NVML_BASED_CUDA_CHECK \
 python -B tools/run_feedback_experiment.py \
   --recover-from work/feedback_experiment \
   --medical-root /home/aicompetition06/Medical \
@@ -28,12 +29,56 @@ For an interrupted **preparation** attempt, use the same command with
 `--resume-preparation`. The launcher verifies its private runtime and recovery
 evidence; it does not trust a stage name in a journal as proof of completion.
 Once quality-GNN training or a later stage has started, this option refuses to
-automatically restart it. Training-checkpoint resume is a separate operation.
+automatically restart it. The explicit continuation below is a separate operation.
 An interrupted, incompletely certified cache migration requires a new explicit
 `--experiment-name`; the incomplete destination is preserved for diagnosis.
 
 Do not use `--overwrite` to recover the old cache. In the legacy preparation
 command that flag removes the old graph artifacts and their metadata.
+
+## Continue the existing Medical Data Aug experiment
+
+For `work/feedback_medical_aug` whose preparation completed before the GNN's
+physical-batch calibration failed, retain the original launch arguments and add
+`--resume-experiment`:
+
+```bash
+cd /home/aicompetition06/Medical/HierCP-git &&
+git pull --ff-only &&
+env -u PYTORCH_NVML_BASED_CUDA_CHECK \
+python -B tools/run_feedback_experiment.py \
+  --recover-from work/feedback_experiment \
+  --experiment-name feedback_medical_aug \
+  --medical-root /home/aicompetition06/Medical \
+  --outer-fold 0 \
+  --dataset-id 760 \
+  --seed 42 \
+  --resume-experiment
+```
+
+This verifies the saved launch plan, unchanged source identity, preparation
+receipt, full SHA-bound graph publication and private runtime. It does **not**
+rerun the 187-cache preparation, copy nnU-Net again, change the saved training
+configuration, or overwrite the previous experiments. It continues GNN training,
+shared nnU-Net preprocessing and bank creation, then Full and Basic training in
+the original order. Downstream statistical evaluation remains a separate task.
+
+The previous journal is archived byte-for-byte in `recovery/journal_history`.
+Failed rows remain in the current journal and each new attempt is appended.
+Completed continuation stages are skipped only after their recorded artifact
+hashes and input configurations are checked. Older completed training-stage rows
+without this completion evidence are refused, not retroactively certified.
+
+A failed automatic GNN calibration may retry only when neither the published
+preflight nor a training checkpoint exists. Otherwise a full native
+`model.last.pt` is required, and the training loader must accept its exact
+configuration, execution version, calibration, optimizer and RNG identity.
+Older incompatible checkpoints are not silently migrated. Interrupted Full or
+Basic training uses the trainer's strict `--resume` path and requires complete
+feedback/optimizer/RNG state; an output folder without a checkpoint is preserved
+and refused. Existing locks and still-running journal rows are ambiguous and are
+not automatically cleared. Do not manually edit journals or delete preflight
+files to bypass these checks. `--dry-run` validates and prints without writes.
 
 ## Patient cohort versus source eligibility
 

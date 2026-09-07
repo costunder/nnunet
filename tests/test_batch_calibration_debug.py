@@ -1,6 +1,7 @@
 """DEBUG numerical calibration checks; not graph throughput or final training."""
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -17,6 +18,9 @@ class DebugBatch:
     def to(self, *args, **kwargs):
         return self
 
+    def pin_memory(self):
+        return self
+
     def difficulty_list(self):
         return tuple(torch.tensor([0, 1, 2, 3]) for _ in range(self.count))
 
@@ -27,6 +31,9 @@ class DebugDataset:
 
     def __getitem__(self, index):
         return index
+
+    def set_epoch(self, epoch):
+        self.epoch = epoch
 
 
 class DebugNumericalModel(torch.nn.Module):
@@ -63,11 +70,42 @@ class PhysicalCalibrationDebugTests(unittest.TestCase):
                 device=torch.device("cpu"), use_amp=False, seed=42,
                 optimizer_kwargs={"lr": 0.01, "weight_decay": 0.01},
                 fused_optimizer=False, trainable_parameters=list(model.parameters()),
-                curriculum_config=CurriculumConfig(), consistency_weight=0.1)
+                curriculum_config=CurriculumConfig(), consistency_weight=0.1, epochs=40)
             self.assertIn(selected, (1, 2))
             self.assertTrue(all(row["status"] == "accepted" for row in trials))
             self.assertTrue(torch.equal(model.weight, original))
             self.assertTrue(torch.equal(torch.random.get_rng_state(), rng))
+            self.assertTrue(all(row["measured_view_epochs"] == [1, 40] for row in trials))
+            self.assertTrue(all(row["optimizer_buffers_retained_between_steps"] for row in trials))
+            self.assertTrue(all(row["materialization_and_transfer_seconds"] >= 0 for row in trials))
+
+    def test_peak_headroom_uses_worst_repeat_not_only_last(self):
+        class DebugTorchProxy:
+            cuda = SimpleNamespace(empty_cache=lambda: None, reset_peak_memory_stats=lambda device: None,
+                                   synchronize=lambda device: None)
+
+            def __getattr__(self, name):
+                return getattr(torch, name)
+
+        snapshots = [{"cuda_peak_allocated_bytes": peak, "cuda_total_bytes": 1000}
+                     for peak in (200, 100, 50, 60)]
+        with tempfile.TemporaryDirectory(prefix="debug_calibration_peak_") as tmp:
+            paths = [Path(tmp) / str(i) for i in range(2)]
+            for path in paths:
+                path.write_bytes(b"DEBUG nonmedical inventory")
+            model = DebugNumericalModel()
+            with patch("hiercp.tensor.cuda_memory_snapshot", side_effect=snapshots):
+                selected, trials = _measure_batch_candidates(
+                    torch_module=DebugTorchProxy(), model=model, dataset_type=DebugDataset,
+                    collate_fn=lambda samples: DebugBatch(len(samples)), train_files=paths,
+                    candidates=[1, 2], repeats=2, max_vram_fraction=0.15,
+                    device=torch.device("cuda"), use_amp=False, seed=42,
+                    optimizer_kwargs={"lr": 0.01, "weight_decay": 0.01},
+                    fused_optimizer=False, trainable_parameters=list(model.parameters()),
+                    curriculum_config=CurriculumConfig(), consistency_weight=0.1)
+        self.assertEqual(selected, 2)
+        self.assertEqual(trials[0]["peak_vram_bytes"], 200)
+        self.assertEqual(trials[0]["status"], "rejected_vram_headroom")
 
 
 if __name__ == "__main__":

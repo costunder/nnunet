@@ -776,6 +776,8 @@ def _measure_batch_candidates(
     trainable_parameters: list[Any],
     curriculum_config,
     consistency_weight: float,
+    input_inventory: dict[str, Any] | None = None,
+    epochs: int = 1,
 ) -> tuple[int, list[dict[str, Any]]]:
     from hiercp.loss import curriculum_ranking_loss
     from hiercp.tensor import (
@@ -784,6 +786,8 @@ def _measure_batch_candidates(
         is_cuda_out_of_memory,
         restore_rng_state,
     )
+    from hiercp.preparation_runtime import Measurement
+    from hiercp.training_resources import host_input_budget, worst_input_bytes
 
     if repeats < 1:
         raise ValueError("training.batch_calibration_repeats must be positive")
@@ -791,9 +795,10 @@ def _measure_batch_candidates(
         raise ValueError("training.batch_calibration_max_vram_fraction must be in (0,1)")
     if not train_files:
         raise RuntimeError("Batch calibration requires at least one training cache file")
-    largest_first = sorted(
-        train_files, key=lambda path: path.stat().st_size, reverse=True
-    )
+    sizes = ({row["cache_file"]: row["input_bytes_upper_bound"]
+              for row in input_inventory["rows"]} if input_inventory else None)
+    largest_first = sorted(train_files, key=lambda path: (
+        sizes[path.name] if sizes is not None else path.stat().st_size), reverse=True)
     rng_state = capture_rng_state()
     prior_training = bool(model.training)
     trials: list[dict[str, Any]] = []
@@ -821,29 +826,68 @@ def _measure_batch_candidates(
                 )
                 continue
             elapsed = 0.0
+            compute_elapsed = 0.0
+            loading_elapsed = 0.0
             processed = 0
             trial_error: BaseException | None = None
             trial_diagnostics: dict[str, Any] | None = None
-            for _ in range(repeats):
+            peak_bytes: int | str = UNAVAILABLE
+            total_bytes: int | str = UNAVAILABLE
+            vram_fraction: float | str = UNAVAILABLE
+            memory_safe = True
+            host_budget = None
+            if input_inventory is not None:
+                host_budget = host_input_budget(
+                    worst_input_bytes(input_inventory, [Path(row["cache_file"]) for row in input_inventory["rows"]], candidate),
+                    workers=0, prefetch_factor=1, pin_memory=device.type == "cuda")
+                if not host_budget["accepted"]:
+                    trials.append({"batch_size": candidate, "status": "rejected_host_input_budget",
+                                   "host_input_budget": host_budget,
+                                   "automatic_model_graph_data_reduction": False})
+                    continue
+            calibration_optimizer_kwargs = dict(optimizer_kwargs)
+            calibration_optimizer_kwargs["lr"] = 0.0
+            calibration_optimizer, calibration_fused = _create_adamw(
+                torch_module=torch_module, parameters=trainable_parameters,
+                optimizer_kwargs=calibration_optimizer_kwargs,
+                request_fused=fused_optimizer, context="physical-batch preflight calibration")
+            if calibration_fused != fused_optimizer:
+                raise RuntimeError("Calibration optimizer capability changed after training optimizer selection")
+            # Retain Adam buffers between measured steps, just like real training.
+            # Views change across the configured epoch range; these are resource
+            # trials, not shortened training or a proof for every future view.
+            measured_epochs = []
+            ram_measurements = []
+            probe = dataset_type(largest_first[:candidate], mmap=True, training=True, seed=seed)
+            for repeat in range(repeats):
                 restore_rng_state(rng_state)
                 batch = None
                 output = None
                 loss = None
-                calibration_optimizer = None
+                measured_epoch = 1 + round(repeat * (max(1, epochs) - 1) / max(1, repeats - 1))
+                measured_epochs.append(measured_epoch)
+                _print_report("BatchCalibrationStep", {
+                    "physical_batch_size": candidate, "repeat": repeat + 1,
+                    "repeats": repeats, "view_epoch": measured_epoch,
+                    "all_induced_edges_retained": True,
+                })
+                if hasattr(probe, "set_epoch"):
+                    probe.set_epoch(measured_epoch)
+                measurement = Measurement()
                 try:
-                    probe = dataset_type(
-                        largest_first[:candidate], mmap=True, training=True, seed=seed
-                    )
+                    measurement.__enter__()
+                    step_started = time.perf_counter()
+                    if device.type == "cuda":
+                        torch_module.cuda.reset_peak_memory_stats(device)
                     batch = collate_fn([probe[index] for index in range(candidate)])
                     if device.type == "cuda":
                         batch.pin_memory()
                     batch.to(device, non_blocking=device.type == "cuda")
                     model.zero_grad(set_to_none=True)
                     if device.type == "cuda":
-                        torch_module.cuda.empty_cache()
-                        torch_module.cuda.reset_peak_memory_stats(device)
                         torch_module.cuda.synchronize(device)
                     started = time.perf_counter()
+                    loading_elapsed += started - step_started
                     with torch_module.autocast(
                         device_type=device.type, enabled=use_amp
                     ):
@@ -862,24 +906,21 @@ def _measure_batch_candidates(
                               if p.grad is not None]
                     if not finite or not bool(torch_module.stack(finite).all()):
                         raise FloatingPointError("Non-finite or absent gradients during batch calibration")
-                    calibration_optimizer_kwargs = dict(optimizer_kwargs)
-                    calibration_optimizer_kwargs["lr"] = 0.0
-                    calibration_optimizer, calibration_fused = _create_adamw(
-                        torch_module=torch_module,
-                        parameters=trainable_parameters,
-                        optimizer_kwargs=calibration_optimizer_kwargs,
-                        request_fused=fused_optimizer,
-                        context="physical-batch preflight calibration",
-                    )
-                    if calibration_fused != fused_optimizer:
-                        raise RuntimeError(
-                            "Calibration optimizer capability changed after the training "
-                            "optimizer was selected"
-                        )
                     calibration_optimizer.step()
                     if device.type == "cuda":
                         torch_module.cuda.synchronize(device)
-                    elapsed += time.perf_counter() - started
+                        snapshot = cuda_memory_snapshot(device)
+                        current_peak = int(snapshot["cuda_peak_allocated_bytes"])
+                        peak_bytes = max(peak_bytes if isinstance(peak_bytes, int) else 0, current_peak)
+                        total_value = snapshot.get("cuda_total_bytes")
+                        if isinstance(total_value, int) and total_value > 0:
+                            total_bytes = total_value
+                            vram_fraction = peak_bytes / total_bytes
+                            memory_safe = memory_safe and vram_fraction <= max_vram_fraction
+                        else:
+                            memory_safe = False
+                    compute_elapsed += time.perf_counter() - started
+                    elapsed += time.perf_counter() - step_started
                     processed += candidate
                 except Exception as exc:
                     if not is_cuda_out_of_memory(exc):
@@ -890,12 +931,16 @@ def _measure_batch_candidates(
                     break
                 finally:
                     model.zero_grad(set_to_none=True)
-                    del calibration_optimizer, loss, output, batch
+                    if measurement.report.get("status") != "failed" and hasattr(measurement, "thread"):
+                        measurement.__exit__(None, None, None)
+                        ram_measurements.append(measurement.report)
+                    del loss, output, batch
                     if "ranking" in locals():
                         del ranking
                     gc.collect()
                     if device.type == "cuda":
                         torch_module.cuda.empty_cache()
+            del calibration_optimizer, probe
             if trial_error is not None:
                 after_cleanup = cuda_memory_snapshot(device)
                 trial = {
@@ -909,26 +954,21 @@ def _measure_batch_candidates(
                 trials.append(trial)
                 _print_report("CalibrationCUDAOutOfMemory", trial)
                 continue
-            peak_bytes: int | str = UNAVAILABLE
-            total_bytes: int | str = UNAVAILABLE
-            vram_fraction: float | str = UNAVAILABLE
-            memory_safe = True
-            if device.type == "cuda":
-                snapshot = cuda_memory_snapshot(device)
-                peak_bytes = int(snapshot["cuda_peak_allocated_bytes"])
-                total_value = snapshot.get("cuda_total_bytes")
-                if isinstance(total_value, int) and total_value > 0:
-                    total_bytes = total_value
-                    vram_fraction = peak_bytes / total_value
-                    memory_safe = vram_fraction <= max_vram_fraction
-                else:
-                    memory_safe = False
             throughput = processed / elapsed if elapsed > 0.0 else 0.0
             trial = {
                 "batch_size": candidate,
                 "status": "accepted" if memory_safe else "rejected_vram_headroom",
                 "samples": processed,
                 "elapsed_seconds": elapsed,
+                "compute_seconds": compute_elapsed,
+                "materialization_and_transfer_seconds": loading_elapsed,
+                "measured_view_epochs": measured_epochs,
+                "optimizer_buffers_retained_between_steps": True,
+                "host_input_budget": host_budget,
+                "ram_measurements": ram_measurements,
+                "probe_order": "canonical_input_upper_bound" if sizes is not None else "serialized_file_bytes",
+                "probe_files": [path.name for path in largest_first[:candidate]],
+                "measurement_scope": "training probes, not every cohort/epoch view; no final data reduction",
                 "samples_per_second": throughput,
                 "peak_vram_bytes": peak_bytes,
                 "total_vram_bytes": total_bytes,
@@ -968,11 +1008,22 @@ def _measure_worker_candidates(
     pin_memory: bool,
     prefetch_factor: int,
     seed: int,
+    input_inventory: dict[str, Any] | None = None,
 ) -> tuple[int, list[dict[str, Any]]]:
+    from hiercp.training_resources import host_input_budget, worst_input_bytes
     if measurement_batches < 1:
         raise ValueError("training.loader_calibration_batches must be positive")
     trials: list[dict[str, Any]] = []
     for workers in candidates:
+        host_budget = None
+        if input_inventory is not None:
+            host_budget = host_input_budget(
+                worst_input_bytes(input_inventory, [Path(row["cache_file"]) for row in input_inventory["rows"]], batch_size),
+                workers=workers, prefetch_factor=prefetch_factor, pin_memory=pin_memory)
+            if not host_budget["accepted"]:
+                trials.append({"num_workers": workers, "status": "rejected_host_input_budget",
+                               "host_input_budget": host_budget})
+                continue
         dataset = dataset_type(train_files, mmap=True, training=False, seed=seed)
         loader = data_loader_type(
             dataset,
@@ -993,6 +1044,7 @@ def _measure_worker_candidates(
             for batch in loader:
                 samples += int(batch.sample_count)
                 batches += 1
+                del batch
                 if batches >= measurement_batches:
                     break
         except Exception as exc:
@@ -1017,6 +1069,7 @@ def _measure_worker_candidates(
                 "elapsed_seconds": elapsed,
                 "samples_per_second": samples / elapsed if elapsed > 0.0 else 0.0,
                 "persistent_workers_during_measurement": False,
+                "host_input_budget": host_budget,
             }
         )
     accepted = [trial for trial in trials if trial["status"] == "accepted"]
@@ -1047,7 +1100,13 @@ def run_train(args: argparse.Namespace) -> None:
         curriculum_ranking_loss,
         ranking_metric_sums,
     )
-    from hiercp.model import HierarchicalPyGPlacementModel
+    from hiercp.model import (
+        HierarchicalPyGPlacementModel, EDGE_ATTENTION_EXECUTION_VERSION,
+        EDGE_ATTENTION_WORKSPACE_BYTES,
+    )
+    from hiercp.training_resources import (
+        INPUT_ACCOUNTING_VERSION, cache_input_inventory, host_input_budget, worst_input_bytes,
+    )
     from hiercp.tensor import (
         capture_rng_state,
         collect_runtime_resources,
@@ -1259,11 +1318,17 @@ def run_train(args: argparse.Namespace) -> None:
     curriculum.validate()
 
     resource_report = collect_runtime_resources(device, storage_path=args.cache_dir)
+    _print_report("TrainingResources", resource_report)
+    input_inventory = cache_input_inventory(files)
+    _print_report("FullGraphInputInventory", input_inventory)
     resource_fingerprint = _calibration_resource_fingerprint(
         resource_report,
         device=device,
     )
     calibration_identity = {
+        "edge_attention_execution": EDGE_ATTENTION_EXECUTION_VERSION,
+        "edge_attention_workspace_bytes": EDGE_ATTENTION_WORKSPACE_BYTES,
+        "input_accounting": INPUT_ACCOUNTING_VERSION,
         "checkpoint_path": str(checkpoint_path.resolve()),
         "cache_dir": str(Path(args.cache_dir).resolve()),
         "run_mode": run_mode,
@@ -1395,6 +1460,8 @@ def run_train(args: argparse.Namespace) -> None:
                 trainable_parameters=trainable_parameters,
                 curriculum_config=curriculum,
                 consistency_weight=float(training["consistency_weight"]),
+                input_inventory=input_inventory,
+                epochs=epochs,
             )
             preflight_calibration["batch_trials"] = trials
             preflight_calibration["selected_batch_size"] = batch_size
@@ -1453,11 +1520,21 @@ def run_train(args: argparse.Namespace) -> None:
                 pin_memory=pin_memory,
                 prefetch_factor=prefetch_factor,
                 seed=seed,
+                input_inventory=input_inventory,
             )
             preflight_calibration["worker_trials"] = trials
             preflight_calibration["selected_num_workers"] = workers
     if workers is None:
         raise RuntimeError("DataLoader worker calibration produced no value")
+    final_host_budget = host_input_budget(
+        worst_input_bytes(input_inventory, files, batch_size), workers=workers,
+        prefetch_factor=prefetch_factor, pin_memory=pin_memory)
+    _print_report("FullCohortLoaderInputBudget", final_host_budget)
+    if not final_host_budget["accepted"]:
+        raise RuntimeError(
+            "Configured loader concurrency exceeds the measured allocation input budget; "
+            "no graphs, samples or batch settings were silently reduced. "
+            f"Budget: {final_host_budget}")
     if batch_auto or workers_auto:
         preflight_calibration["selected_batch_size"] = batch_size
         preflight_calibration["selected_num_workers"] = workers
@@ -1566,6 +1643,7 @@ def run_train(args: argparse.Namespace) -> None:
         "gradient_accumulation_steps": int(accumulation_steps),
         "target_effective_batch_size": target_effective_batch_size,
         "resolved_effective_batch_size": resolved_effective_batch_size,
+        "edge_attention_execution": EDGE_ATTENTION_EXECUTION_VERSION,
         "calibration_resource_fingerprint": resource_fingerprint,
         "consistency_weight": float(consistency_weight),
         "optimizer": {
@@ -1632,13 +1710,14 @@ def run_train(args: argparse.Namespace) -> None:
     trainable_parameter_count = sum(
         int(parameter.numel()) for parameter in trainable_parameters
     )
-    probe_path = max(train_files, key=lambda path: path.stat().st_size)
+    probe_sizes = {row["cache_file"]: row["input_bytes_upper_bound"] for row in input_inventory["rows"]}
+    probe_path = max(train_files, key=lambda path: probe_sizes[path.name])
     probe_dataset = HierarchicalCacheDataset(
         [probe_path], mmap=True, training=False, seed=seed
     )
     probe_batch = collate_samples([probe_dataset[0]])
     graph_statistics = summarize_hierarchical_batch(probe_batch)
-    graph_statistics["scope"] = "largest_training_cache_file_by_bytes"
+    graph_statistics["scope"] = "largest_training_canonical_input_upper_bound"
     graph_statistics["cache_file"] = probe_path.name
     del probe_batch, probe_dataset
     gc.collect()
@@ -1661,6 +1740,13 @@ def run_train(args: argparse.Namespace) -> None:
         },
         "graph_and_input": {
             "representative_statistics": graph_statistics,
+            "full_cohort_input_inventory": input_inventory,
+            "edge_execution": {
+                "attention": EDGE_ATTENTION_EXECUTION_VERSION,
+                "workspace_bytes": EDGE_ATTENTION_WORKSPACE_BYTES,
+                "all_induced_edges_retained": True,
+                "legacy_sample_relation_edge_limit_is_diagnostic": True,
+            },
             "input_resolution": [graph_config.patch_size] * 3,
             "sample_hops": graph_config.sample_hops,
             "sampling_ratio": f"{UNAVAILABLE} (not defined by cached graph contract)",
@@ -1995,14 +2081,19 @@ def run_train(args: argparse.Namespace) -> None:
             totals[7] += accuracy_sum.to(torch.float64)
             totals[8] += reciprocal_rank_sum.to(torch.float64)
             totals[9] += batch_count
-            positive_scores = torch.stack([score[0] for score in output.scores])
+            positive_scores = torch.stack([score[0].detach() for score in output.scores])
             hardest_negative_scores = torch.stack(
-                [score[1:].max() for score in output.scores]
+                [score[1:].detach().max() for score in output.scores]
             )
             margins = positive_scores - hardest_negative_scores
             totals[10] += positive_scores.detach().to(torch.float64).sum()
             totals[11] += hardest_negative_scores.detach().to(torch.float64).sum()
             totals[12] += margins.detach().to(torch.float64).sum()
+            # HierarchicalOutput owns both local graph batches. Release it and
+            # autograd roots before fetching/transferring the next batch, not
+            # after the next model.forward has already allocated its workspace.
+            del output, loss, ranking_loss, parts, batch
+            del positive_scores, hardest_negative_scores, margins, part_vector
 
         if device.type == "cuda":
             torch.cuda.synchronize(device)

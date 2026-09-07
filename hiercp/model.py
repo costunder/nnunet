@@ -2,8 +2,8 @@
 
 Regular-grid CT encoding uses a compact 3D CNN. Every graph message-passing
 operation uses PyTorch Geometric ``HeteroConv`` with relation-specific
-compatibility-gated ``GATv2Conv`` layers. PyG still owns propagation and
-neighbor softmax; there is no hand-written scatter/index-add GNN path.
+compatibility-gated ``GATv2Conv`` layers. PyG owns relation composition and
+neighbor softmax; exact message summation is streamed into one accumulator.
 
 The high-throughput path consumes a :class:`hiercp.data.HierarchicalBatch`
 that is assembled in DataLoader workers. This avoids rebuilding and copying
@@ -25,7 +25,9 @@ from torch.utils.checkpoint import checkpoint
 try:
     from torch_geometric.data import Batch
     from torch_geometric.nn import AttentionalAggregation, GATv2Conv, HeteroConv
-    from torch_geometric.utils import softmax as pyg_softmax
+    from torch_geometric.utils import (
+        add_self_loops, remove_self_loops, softmax as pyg_softmax,
+    )
 except ModuleNotFoundError as exc:  # pragma: no cover
     raise ModuleNotFoundError(
         "PyTorch Geometric is required. Run: python -m tools.install"
@@ -73,6 +75,63 @@ ABLATION_MODES: tuple[str, ...] = (
 )
 
 MODEL_ARCHITECTURE_VERSION = "hiercp_conditioned_readout_v3"
+
+# Execution workspace, not a graph/sample limit. Every edge is processed.
+# Budget eight simultaneous FP32 edge-hidden temporaries (gathers, projection,
+# joint activation and backward work) within 64 MiB. Node tensors and the
+# complete [edges, heads] scalar attention remain outside this scratch budget.
+# The allocator's true peak is measured by the training preflight separately.
+EDGE_ATTENTION_EXECUTION_VERSION = "hiercp_exact_edge_streaming_v1"
+EDGE_ATTENTION_WORKSPACE_BYTES = 64 * 1024 * 1024
+_EDGE_HIDDEN_WORKSPACE_TENSORS = 8
+
+
+class _StreamedEdgeAggregation(torch.autograd.Function):
+    """Exact GAT message sum without per-chunk full-node outputs or saved messages.
+
+    Only the complete node features, COO indices and scalar attention are saved.
+    Both passes allocate edge-hidden work for one chunk at a time. In-place
+    accumulation happens inside this custom operator, never on a tensor whose
+    old value another autograd node needs. Backward is the exact sum/product
+    derivative, not a detached or surrogate gradient.
+    """
+
+    @staticmethod
+    def forward(ctx, features, edges, attention, destination_count, chunk_size):
+        dtype = torch.float64 if features.dtype == torch.float64 else torch.float32
+        output = torch.zeros(
+            (destination_count, *features.shape[1:]), dtype=dtype, device=features.device,
+        )
+        for start in range(0, int(edges.shape[1]), chunk_size):
+            stop = start + chunk_size
+            messages = (features[edges[0, start:stop]].to(dtype)
+                        * attention[start:stop].to(dtype).unsqueeze(-1))
+            output.index_add_(0, edges[1, start:stop], messages)
+        ctx.save_for_backward(features, edges, attention)
+        ctx.chunk_size = chunk_size
+        return output.to(features.dtype)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        features, edges, attention = ctx.saved_tensors
+        dtype = torch.float64 if features.dtype == torch.float64 else torch.float32
+        grad_features = (torch.zeros(features.shape, dtype=dtype, device=features.device)
+                         if ctx.needs_input_grad[0] else None)
+        grad_attention = torch.empty_like(attention) if ctx.needs_input_grad[2] else None
+        for start in range(0, int(edges.shape[1]), ctx.chunk_size):
+            stop = start + ctx.chunk_size
+            source, destination = edges[:, start:stop]
+            selected_gradient = grad_output[destination].to(dtype)
+            if grad_features is not None:
+                grad_features.index_add_(
+                    0, source, selected_gradient * attention[start:stop].to(dtype).unsqueeze(-1),
+                )
+            if grad_attention is not None:
+                grad_attention[start:stop] = (
+                    selected_gradient * features[source].to(dtype)
+                ).sum(-1).to(attention.dtype)
+        return (grad_features.to(features.dtype) if grad_features is not None else None,
+                None, grad_attention, None, None)
 
 _LOCAL_EMBEDDING_KEYS: tuple[str, ...] = (
     "tumor",
@@ -203,22 +262,114 @@ class CompatibilityGatedGATv2Conv(GATv2Conv):
     is compatible. No edges, relations, heads, or propagation layers are removed.
     This is an explicit v3 operator change, not stock GATv2 checkpoint behavior.
 
-    The hook follows PyG's GATv2 ``edge_update`` interface; projections and
-    message propagation remain inherited from GATv2Conv.
+    All relation logits participate in one destination-normalized softmax.
+    Only edge-hidden work is chunked; PyG still owns relation composition and
+    softmax. Logit checkpointing plus exact streamed aggregation backward avoid
+    retaining relation-sized [edges, heads, channels] intermediates.
+    Parameter names, projection modules and graph/physical batch sizes match
+    the dense implementation exactly.
     """
 
-    def edge_update(
-        self, x_j: Tensor, x_i: Tensor, edge_attr: Tensor | None,
-        index: Tensor, ptr: Tensor | None, dim_size: int | None,
-    ) -> Tensor:
-        joint = x_i.float() + x_j.float()
+    def _edge_chunk_size(self, dtype: torch.dtype) -> int:
+        # Float64 is supported for numerical derivative DEBUG tests; production
+        # attention logits are accumulated in FP32, including under autocast.
+        scalar_bytes = 8 if dtype == torch.float64 else 4
+        per_edge = _EDGE_HIDDEN_WORKSPACE_TENSORS * self.heads * self.out_channels * scalar_bytes
+        if type(EDGE_ATTENTION_WORKSPACE_BYTES) is not int or EDGE_ATTENTION_WORKSPACE_BYTES < per_edge:
+            raise ValueError("Edge attention workspace must fit at least one complete edge-hidden calculation")
+        return EDGE_ATTENTION_WORKSPACE_BYTES // per_edge
+
+    def _edge_logits(self, x_j: Tensor, x_i: Tensor, edge_attr: Tensor | None) -> Tensor:
+        dtype = torch.float64 if x_j.dtype == torch.float64 else torch.float32
+        joint = x_i.to(dtype) + x_j.to(dtype)
         if edge_attr is not None:
             if self.lin_edge is None:
                 raise ValueError("Edge attributes supplied to a relation without edge_dim")
             edge_features = edge_attr[:, None] if edge_attr.ndim == 1 else edge_attr
             projected = self.lin_edge(edge_features)
-            joint = joint + projected.reshape(-1, self.heads, self.out_channels).float()
-        logits = (F.leaky_relu(joint, self.negative_slope) * self.att.float()).sum(-1)
+            joint = joint + projected.reshape(-1, self.heads, self.out_channels).to(dtype)
+        return (F.leaky_relu(joint, self.negative_slope) * self.att.to(dtype)).sum(-1)
+
+    def _logit_chunk(
+        self, left: Tensor, right: Tensor, edges: Tensor, attributes: Tensor | None,
+    ) -> Tensor:
+        return self._edge_logits(left[edges[0]], right[edges[1]], attributes)
+
+    @staticmethod
+    def _recompute_edge_chunk(function, *inputs):
+        if torch.is_grad_enabled():
+            return checkpoint(function, *inputs, use_reentrant=False, preserve_rng_state=True)
+        return function(*inputs)
+
+    def forward(
+        self, x: Tensor | tuple[Tensor, Tensor], edge_index: Tensor,
+        edge_attr: Tensor | None = None, return_attention_weights: bool | None = None,
+    ):
+        """Exact full-relation attention with bounded edge-hidden intermediates.
+
+        The [E,H] logits/attention are intentionally global: applying a softmax
+        independently inside chunks would change the GAT operator. Dropout is
+        applied once to that complete attention tensor, preserving the dense
+        operator's edge order and random-mask contract across chunk boundaries.
+        """
+        if not isinstance(edge_index, Tensor) or edge_index.layout != torch.strided:
+            raise TypeError("HierCP edge streaming requires its complete COO edge_index tensor")
+        if edge_index.ndim != 2 or int(edge_index.shape[0]) != 2:
+            raise ValueError("edge_index must have shape [2,E]")
+        if self.flow != "source_to_target":
+            raise ValueError("HierCP relations require source_to_target propagation")
+        source, destination = (x, x) if isinstance(x, Tensor) else x
+        if source.ndim != 2 or destination is None or destination.ndim != 2:
+            raise ValueError("GATv2 requires two-dimensional source and destination features")
+        residual = getattr(self, "res", None)
+        residual_value = residual(destination) if residual is not None else None
+        left = self.lin_l(source).view(-1, self.heads, self.out_channels)
+        if isinstance(x, Tensor) and self.share_weights:
+            right = left
+        else:
+            right = self.lin_r(destination).view(-1, self.heads, self.out_channels)
+        if self.add_self_loops:
+            edge_index, edge_attr = remove_self_loops(edge_index, edge_attr)
+            edge_index, edge_attr = add_self_loops(
+                edge_index, edge_attr, fill_value=self.fill_value,
+                num_nodes=min(int(left.shape[0]), int(right.shape[0])),
+            )
+        edge_count = int(edge_index.shape[1])
+        if edge_attr is not None and int(edge_attr.shape[0]) != edge_count:
+            raise ValueError("Edge attributes and complete COO topology have different lengths")
+        chunk_size = self._edge_chunk_size(left.dtype)
+        # The empty slice deliberately runs the real operator, keeping exact
+        # zero gradients/parameter connectivity for legitimately empty relations.
+        spans = range(0, max(1, edge_count), chunk_size)
+        logits = torch.cat([
+            self._recompute_edge_chunk(
+                self._logit_chunk, left, right, edge_index[:, start:start + chunk_size],
+                edge_attr[start:start + chunk_size] if edge_attr is not None else None,
+            )
+            for start in spans
+        ], dim=0)
+        normalized = pyg_softmax(logits, edge_index[1], num_nodes=int(right.shape[0]))
+        attention = F.dropout(
+            normalized * torch.sigmoid(logits), p=self.dropout, training=self.training,
+        ).to(left.dtype)
+        output = _StreamedEdgeAggregation.apply(
+            left, edge_index, attention, int(right.shape[0]), chunk_size,
+        )
+        output = output.reshape(-1, self.heads * self.out_channels) if self.concat else output.mean(dim=1)
+        if residual_value is not None:
+            output = output + residual_value
+        if self.bias is not None:
+            output = output + self.bias
+        if isinstance(return_attention_weights, bool):
+            return output, (edge_index, attention)
+        return output
+
+    def edge_update(
+        self, x_j: Tensor, x_i: Tensor, edge_attr: Tensor | None,
+        index: Tensor, ptr: Tensor | None, dim_size: int | None,
+    ) -> Tensor:
+        # Retained for dense-reference compatibility and PyG's public hook.
+        logits = self._edge_logits(x_j, x_i, edge_attr)
         neighbor_attention = pyg_softmax(logits, index, ptr, dim_size)
         compatibility = torch.sigmoid(logits)
         attention = neighbor_attention * compatibility
@@ -226,7 +377,7 @@ class CompatibilityGatedGATv2Conv(GATv2Conv):
 
 
 class HeteroGATv2Block(nn.Module):
-    """Residual heterogeneous message passing implemented entirely by PyG."""
+    """PyG heterogeneous relation composition with exact streamed message sums."""
 
     def __init__(
         self,
