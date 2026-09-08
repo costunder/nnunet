@@ -1013,7 +1013,9 @@ def _noise_columns(value: Tensor, columns: tuple[int, ...], seed: int) -> Tensor
     count = int(value.shape[0]) * len(columns)
     base = torch.arange(count, device=value.device, dtype=torch.float32)
     noise = torch.sin(base + float(int(seed) % 10_007)) * 1.75
-    output[:, list(columns)] = noise.reshape(int(value.shape[0]), -1).to(value.dtype)
+    # Empty relations are valid. Explicit dimensions preserve (0, K) without
+    # inferring an ambiguous -1 axis; populated relations keep identical noise.
+    output[:, list(columns)] = noise.reshape(int(value.shape[0]), len(columns)).to(value.dtype)
     return output
 
 
