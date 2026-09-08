@@ -570,6 +570,27 @@ def _cache_entries_for_split(
     return [cache_dir / str(entry["path"]) for entry in selected_entries], selected_entries
 
 
+def _ct_clip_bounds(value: Any, *, context: str) -> tuple[float, float]:
+    """Validate the same numeric interval across torch tuples and JSON lists.
+
+    Normalize only the container, not the bounds: no coercion, rounding, or
+    tolerance may hide a real preprocessing difference between artifacts.
+    """
+    if not isinstance(value, (tuple, list)) or len(value) != 2:
+        raise ValueError(f"{context} ct_clip must contain exactly two numeric bounds: {value!r}")
+    for bound in value:
+        if (
+            isinstance(bound, bool)
+            or not isinstance(bound, (int, float))
+            or (isinstance(bound, float) and not math.isfinite(bound))
+        ):
+            raise ValueError(f"{context} ct_clip bounds must be finite numbers: {value!r}")
+    lower, upper = value
+    if lower >= upper:
+        raise ValueError(f"{context} ct_clip bounds must be strictly increasing: {value!r}")
+    return lower, upper
+
+
 def _validate_checkpoint_contract(
     checkpoint: dict[str, Any],
     *,
@@ -623,8 +644,13 @@ def _validate_checkpoint_contract(
         raise ValueError("Checkpoint validation cache cohort differs from publication")
     if checkpoint.get("graph_config") != cache_config.get("graph_config"):
         raise ValueError("Checkpoint graph_config differs from cache publication")
-    if checkpoint.get("ct_clip") != cache_config.get("ct_clip"):
-        raise ValueError("Checkpoint ct_clip differs from cache publication")
+    checkpoint_clip = _ct_clip_bounds(checkpoint.get("ct_clip"), context="Checkpoint")
+    cache_clip = _ct_clip_bounds(cache_config.get("ct_clip"), context="Cache publication")
+    if checkpoint_clip != cache_clip:
+        raise ValueError(
+            "Checkpoint ct_clip differs from cache publication: "
+            f"checkpoint={checkpoint_clip!r}, cache={cache_clip!r}"
+        )
     configured_prototype = Path(
         str(cache_config.get("prototype_bank", ""))
     ).expanduser().resolve()
