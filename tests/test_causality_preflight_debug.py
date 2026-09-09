@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -35,6 +37,103 @@ def budget(*args, accepted=True, phase="full", **kwargs):
 
 
 class CausalityPreflightDebugTests(unittest.TestCase):
+    @staticmethod
+    def identity_inputs():
+        # DEBUG shape-accounting metadata only; no cache/data file is loaded.
+        selected = [Path(f"DEBUG_identity_{index}.pt").resolve() for index in range(3)]
+        inventory = {
+            "format": resources.INPUT_ACCOUNTING_VERSION,
+            "audit_format": resources.AUDIT_INPUT_ACCOUNTING_VERSION,
+            "selected_files": [str(path) for path in selected],
+            "sample_count": len(selected),
+            "rows": [{"cache_file": path.name, "input_bytes_upper_bound": size}
+                     for path, size in zip(selected, (10, 30, 70))],
+        }
+        artifact = {"format": "DEBUG_artifact_contract", "audit": {"split": "val", "seed": 42}}
+        measurement = {
+            "format": "hiercp_causality_measurement_plan_v2_host_bounded",
+            "batch_candidates": [1, 2, 4, 8], "worker_candidates": [0, 2],
+            "maximum_vram_fraction": 0.9, "loader_measurement_batches": 2,
+            "prefetch_factor": 1, "pin_memory": True,
+            "training_preflight_sha256": "a" * 64,
+            "training_candidate_statuses": {
+                "batch": [{"batch_size": size, "status": "accepted"} for size in (1, 2, 4, 8)],
+                "worker": [{"num_workers": size, "status": "accepted"} for size in (0, 2)],
+            },
+            "candidate_policy": "remeasure_inference_only_after_fresh_host_budget; no cohort-oversize batches",
+            "calibration_order": "descending_canonical_input_upper_bound",
+        }
+        return artifact, measurement, inventory
+
+    def test_shared_identity_matches_76bc3ee_v2_golden_dict_and_hash_without_mutation(self):
+        artifact, measurement, inventory = self.identity_inputs()
+        kwargs = {"device": torch.device("cuda:0"), "repeats": 3, "inventory": inventory}
+        before = copy.deepcopy((artifact, measurement, kwargs))
+
+        def old_canonical_sha(value):
+            return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+
+        # Literal schema from 76bc3ee _execute_audit, not the new builder or its
+        # format constant. Bounds are independently calculated from 10/30/70.
+        golden = {
+            "format": "hiercp_causality_preflight_identity_v2_host_bounded",
+            "artifact_contract_sha256": old_canonical_sha(artifact),
+            "measurement_plan": copy.deepcopy(measurement),
+            "device": "cuda:0",
+            "repeats": 3,
+            "input_inventory_sha256": old_canonical_sha(inventory),
+            "input_inventory_sample_count": 3,
+            "batch_input_upper_bounds": {"1": 70, "2": 100, "4": 180, "8": 320},
+        }
+        actual = causality._build_preflight_identity(artifact, measurement, **kwargs)
+        self.assertEqual(actual, golden)
+        self.assertEqual(causality._value_sha256(actual), old_canonical_sha(golden))
+        self.assertEqual((artifact, measurement, kwargs), before)
+
+    def test_shared_identity_rejects_invalid_repeats_device_and_incomplete_inventory(self):
+        artifact, measurement, inventory = self.identity_inputs()
+        for repeats in (0, 2, True, 3.0, None):
+            with self.subTest(repeats=repeats), self.assertRaises(ValueError):
+                causality._build_preflight_identity(artifact, measurement, device="cpu",
+                                                   repeats=repeats, inventory=inventory)
+        for device in (None, 123, {}, "not-a-device", "cuda:-1"):
+            with self.subTest(device=device), self.assertRaises((ValueError, RuntimeError)):
+                causality._build_preflight_identity(artifact, measurement, device=device,
+                                                   repeats=3, inventory=inventory)
+        for mutate in (
+            lambda value: value.pop("rows"),
+            lambda value: value.pop("audit_format"),
+            lambda value: value.update(sample_count=4),
+            lambda value: value.update(selected_files=[]),
+            lambda value: value["rows"].pop(),
+        ):
+            incomplete = copy.deepcopy(inventory)
+            mutate(incomplete)
+            before = copy.deepcopy(incomplete)
+            with self.assertRaises(ValueError):
+                causality._build_preflight_identity(artifact, measurement, device="cpu",
+                                                   repeats=3, inventory=incomplete)
+            self.assertEqual(incomplete, before)
+
+    def test_cpu_verifier_preserves_recorded_cuda_identity_without_cuda_initialization(self):
+        artifact, measurement, inventory = self.identity_inputs()
+        before = copy.deepcopy((artifact, measurement, inventory))
+        with mock.patch.object(torch.cuda, "is_available", return_value=False), \
+             mock.patch.object(torch.cuda, "_lazy_init", side_effect=AssertionError("DEBUG must not initialize CUDA")) as initialize:
+            self.assertFalse(torch.cuda.is_available())
+            recorded = causality._build_preflight_identity(
+                artifact, measurement, device="cuda:0", repeats=3, inventory=inventory)
+            local_cpu = causality._build_preflight_identity(
+                artifact, measurement, device=torch.device("cpu"), repeats=3, inventory=inventory)
+        initialize.assert_not_called()
+        self.assertEqual(recorded["device"], "cuda:0")
+        self.assertEqual(local_cpu["device"], "cpu")
+        self.assertNotEqual(causality._value_sha256(recorded), causality._value_sha256(local_cpu))
+        self.assertEqual({key: value for key, value in recorded.items() if key != "device"},
+                         {key: value for key, value in local_cpu.items() if key != "device"})
+        self.assertEqual((artifact, measurement, inventory), before)
+
     def test_host_rejected_and_oversize_batches_never_load(self):
         selected = [Path(f"DEBUG_{i}.pt") for i in range(4)]
         events, fetched, previous = [], [], []

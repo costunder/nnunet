@@ -527,6 +527,7 @@ def _verified_gnn_causality(layout: Layout, outer_fold: int) -> dict[str, Any]:
         from tools.causality import (
             REPORT_FORMAT,
             _artifact_contract,
+            _build_preflight_identity,
             _cache_entries_for_split,
             _input_contract,
             _strict_failures,
@@ -536,6 +537,7 @@ def _verified_gnn_causality(layout: Layout, outer_fold: int) -> dict[str, Any]:
             _validate_reusable_report,
             _value_sha256,
         )
+        from tools.causality_resources import build_audit_inventory
     except ImportError as exc:
         raise OnlineBenchmarkError(
             f"Cannot load the strict causality verifier: {exc}"
@@ -613,19 +615,17 @@ def _verified_gnn_causality(layout: Layout, outer_fold: int) -> dict[str, Any]:
             cache_dir=graph_root.resolve(),
             run_mode="benchmark",
         )
-        repeats = identity.get("repeats")
-        if (
-            identity.get("format") != "hiercp_causality_preflight_identity_v1"
-            or identity.get("artifact_contract_sha256")
-            != _value_sha256(artifact_contract)
-            or identity.get("measurement_plan") != measurement_plan
-            or not isinstance(repeats, int)
-            or isinstance(repeats, bool)
-            or repeats < 3
-        ):
+        current_inventory = build_audit_inventory(selected)
+        expected_identity = _build_preflight_identity(
+            artifact_contract, measurement_plan, device=identity.get("device"),
+            repeats=identity.get("repeats"), inventory=current_inventory,
+        )
+        if identity != expected_identity:
             raise ValueError("Causality preflight identity is stale or incomplete")
+        if resources.get("selected_device") != expected_identity["device"]:
+            raise ValueError("Causality preflight resource device differs from its recorded audit")
         batch_size, num_workers = _validate_preflight_record(
-            preflight, identity=identity, resource_fingerprint=resources
+            preflight, identity=expected_identity, resource_fingerprint=resources
         )
         current_input = _input_contract(
             artifact_contract,
@@ -669,6 +669,7 @@ def _verified_gnn_causality(layout: Layout, outer_fold: int) -> dict[str, Any]:
             or resource_report.get("num_workers") != num_workers
             or resource_report.get("batch_trials") != preflight.get("batch_trials")
             or resource_report.get("worker_trials") != preflight.get("worker_trials")
+            or resource_report.get("input_inventory") != current_inventory
         ):
             raise ValueError("Causality resource/preflight report is inconsistent")
         if validate_cache_publication(graph_root) != graph_index:

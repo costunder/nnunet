@@ -100,6 +100,7 @@ EMBEDDING_KEYS = (
 REPORT_FORMAT = "hiercp_causality_v3_hash_bound"
 INPUT_FORMAT = "hiercp_causality_input_v3"
 PREFLIGHT_FORMAT = "hiercp_causality_preflight_v2_host_bounded"
+PREFLIGHT_IDENTITY_FORMAT = "hiercp_causality_preflight_identity_v2_host_bounded"
 TRAINING_PREFLIGHT_FORMAT = "hiercp_preflight_calibration_v2"
 
 
@@ -289,6 +290,46 @@ def _training_measurement_plan(
         },
         "candidate_policy": "remeasure_inference_only_after_fresh_host_budget; no cohort-oversize batches",
         "calibration_order": "descending_canonical_input_upper_bound",
+    }
+
+
+def _build_preflight_identity(
+    artifact_contract: dict[str, Any],
+    measurement_plan: dict[str, Any],
+    *,
+    device: str | torch.device,
+    repeats: int,
+    inventory: dict[str, Any],
+) -> dict[str, Any]:
+    """One identity contract for audit publication, reuse and both bank readers.
+
+    Reconstruct bounds from the complete current cache inventory, not from a
+    saved preflight's claims. This retains the exact v2 identity already written
+    by the memory-bounded audit; no report/checkpoint migration is necessary.
+    Device describes the recorded audit, not the bank verifier's current device.
+    """
+    repeats = _exact_positive_int(repeats, context="causality preflight repeats")
+    if repeats < 3:
+        raise ValueError("Causality preflight repeats must be at least 3")
+    if not isinstance(device, (str, torch.device)):
+        raise ValueError("Causality preflight has no valid recorded device")
+    recorded_device = str(torch.device(device))
+    if not isinstance(inventory, dict) or not isinstance(inventory.get("selected_files"), list) or not inventory["selected_files"]:
+        raise ValueError("Causality preflight requires the complete input inventory")
+    selected = [Path(path) for path in inventory["selected_files"]]
+    bounds = {
+        str(batch): audit_batch_input_bytes(inventory, selected, batch)
+        for batch in measurement_plan["batch_candidates"]
+    }
+    return {
+        "format": PREFLIGHT_IDENTITY_FORMAT,
+        "artifact_contract_sha256": _value_sha256(artifact_contract),
+        "measurement_plan": measurement_plan,
+        "device": recorded_device,
+        "repeats": repeats,
+        "input_inventory_sha256": _value_sha256(inventory),
+        "input_inventory_sample_count": len(selected),
+        "batch_input_upper_bounds": bounds,
     }
 
 
@@ -1682,19 +1723,10 @@ def _execute_audit(args: argparse.Namespace, progress: Any) -> None:
     resources = collect_runtime_resources(device, storage_path=cache_dir)
     resource_fingerprint = _stable_resource_fingerprint(resources, device=device)
     resource_fingerprint["audit_allocation"] = audit_allocation_fingerprint()
-    preflight_identity = {
-        "format": "hiercp_causality_preflight_identity_v2_host_bounded",
-        "artifact_contract_sha256": _value_sha256(artifact_contract),
-        "measurement_plan": measurement_plan,
-        "device": str(device),
-        "repeats": int(args.preflight_repeats),
-        "input_inventory_sha256": _value_sha256(inventory),
-        "input_inventory_sample_count": len(selected),
-        "batch_input_upper_bounds": {
-            str(batch): audit_batch_input_bytes(inventory, selected, batch)
-            for batch in measurement_plan["batch_candidates"]
-        },
-    }
+    preflight_identity = _build_preflight_identity(
+        artifact_contract, measurement_plan, device=device,
+        repeats=int(args.preflight_repeats), inventory=inventory,
+    )
     preflight, batch_size, num_workers = _resolve_preflight(
         path=preflight_path,
         identity=preflight_identity,
