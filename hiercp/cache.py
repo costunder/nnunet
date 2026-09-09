@@ -18,7 +18,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 import torch
@@ -36,7 +36,7 @@ from hiercp.common import (
     write_manifest,
 )
 from hiercp.curriculum import build_generation_specs, build_training_specs
-from hiercp.local import build_local_graph, prepare_local_source
+from hiercp.local import BuiltLocalGraph, PreparedLocalSource, build_local_graph, prepare_local_source
 from hiercp.prototype import PrototypeBank, build_prototype_bank
 from hiercp.region import (
     REGION_CACHE_FORMAT,
@@ -2521,6 +2521,8 @@ def build_inference_sample(
     ct_clip: tuple[float, float],
     seed: int,
     regions: PatientRegionData | None = None,
+    prepared_source: PreparedLocalSource | None = None,
+    local_graph_map: Callable[..., Sequence[BuiltLocalGraph]] | None = None,
 ) -> tuple[dict, list]:
     """Build an uncached hierarchy for candidate scoring during generation."""
 
@@ -2554,17 +2556,23 @@ def build_inference_sample(
     source_rng = np.random.default_rng(
         stable_case_seed(seed, case.paths.case_id, "infer_local")
     )
-    prepared_source = prepare_local_source(
-        case,
-        source,
-        full_organ_mask=regions.full_organ_mask,
-        organ_depth=regions.organ_depth,
-        config=graph_config,
-        rng=source_rng,
-        ct_clip=ct_clip,
-    )
-    built_local = [
-        build_local_graph(
+    if prepared_source is None:
+        prepared_source = prepare_local_source(
+            case,
+            source,
+            full_organ_mask=regions.full_organ_mask,
+            organ_depth=regions.organ_depth,
+            config=graph_config,
+            rng=source_rng,
+            ct_clip=ct_clip,
+        )
+    elif not isinstance(prepared_source, PreparedLocalSource):
+        raise TypeError("prepared_source must be PreparedLocalSource")
+
+    def build_one(spec):
+        # Canonical v22 construction does not consume rng. Each target owns its
+        # tensors; the prepared source tensors are read-only and shared.
+        return build_local_graph(
             case,
             source,
             spec,
@@ -2575,8 +2583,17 @@ def build_inference_sample(
             ct_clip=ct_clip,
             prepared_source=prepared_source,
         )
-        for spec in specs
-    ]
+
+    built_local = (
+        [build_one(spec) for spec in specs]
+        if local_graph_map is None
+        else list(local_graph_map(
+            build_one, specs, case_id=case.paths.case_id,
+            source_component=int(source.component_id),
+        ))
+    )
+    if len(built_local) != len(specs) or not all(isinstance(item, BuiltLocalGraph) for item in built_local):
+        raise ValueError("local_graph_map must return every BuiltLocalGraph in original candidate order")
     patient_graph = build_patient_graph(
         case,
         source,

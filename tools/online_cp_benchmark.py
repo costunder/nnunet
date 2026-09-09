@@ -1668,7 +1668,10 @@ def build_online_bank(
     from hiercp.common import CasePaths, build_candidate_pool, load_case
     from hiercp.curriculum import build_generation_specs
     from tools.online_scoring import PendingBankScorer, SCORING_FORMAT, validate_scoring_report
-    from hiercp.local import build_local_graph, prepare_local_source
+    from hiercp.local import prepare_local_source, validate_local_geometry
+    from contextlib import closing
+    from tools.online_bank_preparation import BankLocalGraphMapper
+    from tools.online_bank_progress import BankProgress
     from hiercp.model import HierarchicalPyGPlacementModel
     from hiercp.prototype import PrototypeBank
     from hiercp.region import REGION_CACHE_SEED_SALT, load_or_build_patient_regions
@@ -1777,7 +1780,7 @@ def build_online_bank(
         cudnn_benchmark=False,
     )
     device = resolve_device(device_name)
-    checkpoint = load_checkpoint(checkpoint_path, device)
+    checkpoint = load_checkpoint(checkpoint_path, torch.device("cpu"))
     model = HierarchicalPyGPlacementModel(**checkpoint["model_kwargs"]).to(device)
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
@@ -1789,6 +1792,7 @@ def build_online_bank(
     _verify_gnn_training_cohort(
         gnn_split, checkpoint, bank.training_case_ids
     )
+    del checkpoint  # Model weights/config are copied; bank scoring needs no optimizer state.
     use_amp = bool(generation.get("amp", True) and device.type == "cuda")
     chunk_size = max(1, int(generation.get("local_candidate_chunk_size", 8)))
 
@@ -1929,322 +1933,341 @@ def build_online_bank(
             ),
         )
 
-    scorer = PendingBankScorer(model, device, generation, candidate_count)
-    source_inventory: dict[str, list[int]] = {}
-    for case_index, case_id in enumerate(train_ids, start=1):
-        source_case = case_map[case_id]
-        print(f"[Bank] case {case_index}/{len(train_ids)} {case_id}", flush=True)
-        raw_case = load_case(
-            CasePaths(case_id=case_id, image_path=source_case.image, label_path=source_case.label)
-        )
-        pre_data, pre_seg, _, properties = pre_dataset.load_case(case_id)
-        if pre_seg is None:
-            raise OnlineBenchmarkError(f"Preprocessed segmentation missing for {case_id}")
-        tumor = raw_case.label == tumor_label
-        components, component_count = ndi.label(
-            tumor, structure=ndi.generate_binary_structure(3, 1)
-        )
-        sizes = np.bincount(components.ravel(), minlength=component_count + 1)
-        voxel_volume = float(np.prod(raw_case.spacing))
-        eligible: list[tuple[int, float]] = []
-        for component_id in range(1, component_count + 1):
-            diameter = equivalent_diameter(float(sizes[component_id]) * voxel_volume)
-            if min_diameter < diameter <= max_diameter:
-                eligible.append((component_id, diameter))
-        source_inventory[case_id] = [int(component_id) for component_id, _ in eligible]
-        if not eligible:
-            commit_row({
-                "case_id": case_id,
-                "source_component": -1,
-                "status": "no_eligible_source",
-                "reason": f"no source in ({min_diameter}, {max_diameter}] mm",
-                "diameter_mm": "",
-                "candidate_count": 0,
-                "rejected_geometry": 0,
-                "rejected_preprocessed": 0,
-                "entry": "",
-            })
-            print(f"[Skip] {case_id}: no eligible <= {max_diameter:g} mm source")
-            continue
+    local_graph_map = BankLocalGraphMapper(bank_root, workers="auto")
+    with BankProgress(bank_root) as progress, closing(PendingBankScorer(
+        model, device, generation, candidate_count, spool_directory=bank_root
+    )) as scorer:
+        source_inventory: dict[str, list[int]] = {}
+        for case_index, case_id in enumerate(train_ids, start=1):
+            # Release the previous full-volume inputs before loading the next CT.
+            # Pending publishers own compact copied patches, not patient volumes.
+            raw_case = pre_data = pre_seg = regions = components = tumor = None
+            source = prepared_source = None
+            progress.update("load_case", case_id=case_id, case_index=case_index, cases=len(train_ids))
+            source_case = case_map[case_id]
+            print(f"[Bank] case {case_index}/{len(train_ids)} {case_id}", flush=True)
+            raw_case = load_case(
+                CasePaths(case_id=case_id, image_path=source_case.image, label_path=source_case.label)
+            )
+            pre_data, pre_seg, _, properties = pre_dataset.load_case(case_id)
+            if pre_seg is None:
+                raise OnlineBenchmarkError(f"Preprocessed segmentation missing for {case_id}")
+            tumor = raw_case.label == tumor_label
+            components, component_count = ndi.label(
+                tumor, structure=ndi.generate_binary_structure(3, 1)
+            )
+            sizes = np.bincount(components.ravel(), minlength=component_count + 1)
+            voxel_volume = float(np.prod(raw_case.spacing))
+            eligible: list[tuple[int, float]] = []
+            for component_id in range(1, component_count + 1):
+                diameter = equivalent_diameter(float(sizes[component_id]) * voxel_volume)
+                if min_diameter < diameter <= max_diameter:
+                    eligible.append((component_id, diameter))
+            source_inventory[case_id] = [int(component_id) for component_id, _ in eligible]
+            if not eligible:
+                commit_row({
+                    "case_id": case_id,
+                    "source_component": -1,
+                    "status": "no_eligible_source",
+                    "reason": f"no source in ({min_diameter}, {max_diameter}] mm",
+                    "diameter_mm": "",
+                    "candidate_count": 0,
+                    "rejected_geometry": 0,
+                    "rejected_preprocessed": 0,
+                    "entry": "",
+                })
+                print(f"[Skip] {case_id}: no eligible <= {max_diameter:g} mm source")
+                continue
 
-        region_seed = stable_seed(global_seed, case_id, REGION_CACHE_SEED_SALT)
-        regions = load_or_build_patient_regions(
-            raw_case,
-            cache_dir=region_cache,
-            liver_label=liver_label,
-            tumor_label=tumor_label,
-            config=graph_config,
-            seed=region_seed,
-            ct_clip=ct_clip,
-            overwrite=False,
-            mmap=True,
-        )
-        case_entry_names: list[str] = []
-        for component_id, diameter in eligible:
-            row: dict[str, Any] = {
-                "case_id": case_id,
-                "source_component": component_id,
-                "diameter_mm": f"{diameter:.6f}",
-                "status": "error",
-                "reason": "",
-                "candidate_count": 0,
-                "rejected_geometry": 0,
-                "rejected_preprocessed": 0,
-                "entry": "",
-            }
-            existing_row = existing_by_source.get((case_id, int(component_id)))
-            if existing_row is not None and not overwrite:
-                status = str(existing_row.get("status", ""))
-                relative = str(existing_row.get("entry", ""))
-                if status == "ok":
-                    if int(existing_row.get("candidate_count", 0)) != candidate_count:
-                        raise OnlineBenchmarkError(
-                            f"Cached entry count changed for {case_id}/{component_id}; "
-                            "use --overwrite"
-                        )
-                    _audit_bank_entries(
-                        bank_root,
-                        {case_id: [relative]},
-                        candidate_count,
-                        {relative: existing_row},
-                    )
-                    case_entry_names.append(relative)
-                    print(
-                        f"[Reuse] {case_id} component={component_id} "
-                        f"candidates={candidate_count}"
-                    )
-                    continue
-                if status in {
-                    "insufficient_candidates",
-                    "unrepresentable_source",
-                    "source_patch_too_large",
-                }:
-                    print(f"[Reuse] {case_id} component={component_id} status={status}")
-                    continue
-                if status == "no_placement" and metadata_contract["no_placement_policy"] == "retain_original":
-                    _validate_no_placement_row(existing_row, candidate_count)
-                    print(f"[ReuseNoCP] {case_id} component={component_id}: original case retained")
-                    continue
-                raise OnlineBenchmarkError(
-                    f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
-                    f"status={status!r}; use --overwrite"
-                )
-            try:
-                source = _source_from_component(
-                    raw_case, components, component_id, int(generation["source_pad"])
-                )
-                def search_raw_pool(attempt):
-                    diagnostics: dict[str, Any] = {}
-                    pool, _ = build_candidate_pool(
-                        raw_case, source, placement_mask=raw_case.label == liver_label,
-                        full_organ_mask=regions.full_organ_mask, occupied_mask=tumor,
-                        organ_distance=regions.organ_depth,
-                        rng=np.random.default_rng(stable_seed(global_seed, case_id, component_id, "online_pool", attempt)),
-                        num_candidates=draw_count,
-                        max_draws=max(int(generation["max_draws"]), draw_count * 500),
-                        min_liver_coverage=float(generation["min_liver_coverage"]),
-                        occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
-                        min_center_separation_mm=float(generation["min_center_separation_mm"]),
-                        min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
-                        diagnostics=diagnostics,
-                    )
-                    return pool, diagnostics
-
-                first_pool = None
-                if metadata_contract["no_placement_policy"] == "retain_original":
-                    # Prove the original augmentation non-event before constructing
-                    # unused resampled patches/local graphs. No caught mapping or
-                    # geometry error is relabelled as a placement impossibility.
-                    first_pool = search_raw_pool(0)
-                    if not first_pool[0] and first_pool[1].get("fullsearch_exhausted") is True:
-                        row.update(status="no_placement", reason="Exhaustive raw-space search proved zero legal placements; original case retained",
-                                   candidate_search_json=json.dumps(first_pool[1], sort_keys=True, allow_nan=False))
-                        _validate_no_placement_row(row, candidate_count)
-                        commit_row(row)
-                        print(f"[NoCP] {case_id} component={component_id}: zero legal placements; source slot and original patient retained")
-                        continue
-                source_mapping_diagnostics = {}
-                source_data, source_mask, anchor_offset = _preprocessed_source(
-                    pre_data, pre_seg, properties, plans, source, tumor_label,
-                    configuration_name=configuration, raw_spacing=raw_case.spacing,
-                    raw_spatial_unit=raw_case.image_header.get_xyzt_units()[0],
-                    diagnostics=source_mapping_diagnostics,
-                )
-                row["source_mapping_json"] = json.dumps(source_mapping_diagnostics, sort_keys=True, allow_nan=False)
-                if np.any(np.asarray(source_mask.shape, dtype=np.int64) > network_patch_size):
-                    row.update(
-                        status="source_patch_too_large",
-                        reason=(
-                            f"preprocessed source patch={source_mask.shape} exceeds "
-                            f"network patch={tuple(int(v) for v in network_patch_size)}"
-                        ),
-                    )
-                    commit_row(row)
-                    print(
-                        f"[Skip] {case_id} component={component_id}: "
-                        f"source patch {source_mask.shape} exceeds network patch"
-                    )
-                    continue
-                prepared_source = prepare_local_source(
-                    raw_case,
-                    source,
-                    full_organ_mask=regions.full_organ_mask,
-                    organ_depth=regions.organ_depth,
-                    config=graph_config,
-                    rng=np.random.default_rng(stable_seed(global_seed, case_id, component_id, "source")),
-                    ct_clip=ct_clip,
-                )
-                selected_candidates: list[Any] = []
-                selected_pre_centers: list[np.ndarray] = []
-                seen: set[tuple[int, int, int]] = set()
-                seen_preprocessed: set[tuple[int, int, int]] = set()
-                rejected_geometry = 0
-                rejected_preprocessed = 0
-                for attempt in range(attempts):
-                    pool, pool_diagnostics = first_pool if attempt == 0 and first_pool is not None else search_raw_pool(attempt)
-                    specs = build_generation_specs(pool, regions, bank, config=graph_config)
-                    for candidate, spec in zip(pool, specs):
-                        raw_center = tuple(int(value) for value in candidate.center)
-                        if raw_center in seen:
-                            continue
-                        seen.add(raw_center)
-                        mapped = _map_raw_point(
-                            raw_center,
-                            plans["transpose_forward"],
-                            properties,
-                            pre_data.shape[1:],
-                        )
-                        mapped_key = tuple(int(value) for value in mapped)
-                        if mapped_key in seen_preprocessed:
-                            rejected_preprocessed += 1
-                            continue
-                        if not _preprocessed_candidate_valid(
-                            mapped,
-                            source_mask,
-                            anchor_offset,
-                            pre_seg,
-                            liver_label,
-                            tumor_label,
-                            float(generation["min_liver_coverage"]),
-                        ):
-                            rejected_preprocessed += 1
-                            continue
-                        try:
-                            build_local_graph(
-                                raw_case,
-                                source,
-                                spec,
-                                full_organ_mask=regions.full_organ_mask,
-                                organ_depth=regions.organ_depth,
-                                config=graph_config,
-                                rng=np.random.default_rng(
-                                    stable_seed(global_seed, case_id, component_id, raw_center, "local")
-                                ),
-                                ct_clip=ct_clip,
-                                prepared_source=prepared_source,
+            progress.update("patient_regions", case_id=case_id, sources=len(eligible))
+            region_seed = stable_seed(global_seed, case_id, REGION_CACHE_SEED_SALT)
+            regions = load_or_build_patient_regions(
+                raw_case,
+                cache_dir=region_cache,
+                liver_label=liver_label,
+                tumor_label=tumor_label,
+                config=graph_config,
+                seed=region_seed,
+                ct_clip=ct_clip,
+                overwrite=False,
+                mmap=True,
+            )
+            case_entry_names: list[str] = []
+            for component_id, diameter in eligible:
+                row: dict[str, Any] = {
+                    "case_id": case_id,
+                    "source_component": component_id,
+                    "diameter_mm": f"{diameter:.6f}",
+                    "status": "error",
+                    "reason": "",
+                    "candidate_count": 0,
+                    "rejected_geometry": 0,
+                    "rejected_preprocessed": 0,
+                    "entry": "",
+                }
+                existing_row = existing_by_source.get((case_id, int(component_id)))
+                if existing_row is not None and not overwrite:
+                    status = str(existing_row.get("status", ""))
+                    relative = str(existing_row.get("entry", ""))
+                    if status == "ok":
+                        if int(existing_row.get("candidate_count", 0)) != candidate_count:
+                            raise OnlineBenchmarkError(
+                                f"Cached entry count changed for {case_id}/{component_id}; "
+                                "use --overwrite"
                             )
-                        except Exception as exc:
-                            if is_unrepresentable_geometry(exc):
-                                rejected_geometry += 1
+                        _audit_bank_entries(
+                            bank_root,
+                            {case_id: [relative]},
+                            candidate_count,
+                            {relative: existing_row},
+                        )
+                        case_entry_names.append(relative)
+                        print(
+                            f"[Reuse] {case_id} component={component_id} "
+                            f"candidates={candidate_count}"
+                        )
+                        continue
+                    if status in {
+                        "insufficient_candidates",
+                        "unrepresentable_source",
+                        "source_patch_too_large",
+                    }:
+                        print(f"[Reuse] {case_id} component={component_id} status={status}")
+                        continue
+                    if status == "no_placement" and metadata_contract["no_placement_policy"] == "retain_original":
+                        _validate_no_placement_row(existing_row, candidate_count)
+                        print(f"[ReuseNoCP] {case_id} component={component_id}: original case retained")
+                        continue
+                    raise OnlineBenchmarkError(
+                        f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
+                        f"status={status!r}; use --overwrite"
+                    )
+                try:
+                    progress.update("source_prepare", case_id=case_id, component=component_id)
+                    source = _source_from_component(
+                        raw_case, components, component_id, int(generation["source_pad"])
+                    )
+                    def search_raw_pool(attempt):
+                        progress.update("candidate_search", case_id=case_id, component=component_id, attempt=attempt)
+                        diagnostics: dict[str, Any] = {}
+                        pool, _ = build_candidate_pool(
+                            raw_case, source, placement_mask=raw_case.label == liver_label,
+                            full_organ_mask=regions.full_organ_mask, occupied_mask=tumor,
+                            organ_distance=regions.organ_depth,
+                            rng=np.random.default_rng(stable_seed(global_seed, case_id, component_id, "online_pool", attempt)),
+                            num_candidates=draw_count,
+                            max_draws=max(int(generation["max_draws"]), draw_count * 500),
+                            min_liver_coverage=float(generation["min_liver_coverage"]),
+                            occupied_clearance_vox=int(generation["occupied_clearance_vox"]),
+                            min_center_separation_mm=float(generation["min_center_separation_mm"]),
+                            min_center_separation_vox=float(generation.get("min_center_separation_vox", 0.0)),
+                            diagnostics=diagnostics,
+                        )
+                        return pool, diagnostics
+
+                    first_pool = None
+                    if metadata_contract["no_placement_policy"] == "retain_original":
+                        # Prove the original augmentation non-event before constructing
+                        # unused resampled patches/local graphs. No caught mapping or
+                        # geometry error is relabelled as a placement impossibility.
+                        first_pool = search_raw_pool(0)
+                        if not first_pool[0] and first_pool[1].get("fullsearch_exhausted") is True:
+                            row.update(status="no_placement", reason="Exhaustive raw-space search proved zero legal placements; original case retained",
+                                       candidate_search_json=json.dumps(first_pool[1], sort_keys=True, allow_nan=False))
+                            _validate_no_placement_row(row, candidate_count)
+                            commit_row(row)
+                            print(f"[NoCP] {case_id} component={component_id}: zero legal placements; source slot and original patient retained")
+                            continue
+                    source_mapping_diagnostics = {}
+                    source_data, source_mask, anchor_offset = _preprocessed_source(
+                        pre_data, pre_seg, properties, plans, source, tumor_label,
+                        configuration_name=configuration, raw_spacing=raw_case.spacing,
+                        raw_spatial_unit=raw_case.image_header.get_xyzt_units()[0],
+                        diagnostics=source_mapping_diagnostics,
+                    )
+                    row["source_mapping_json"] = json.dumps(source_mapping_diagnostics, sort_keys=True, allow_nan=False)
+                    if np.any(np.asarray(source_mask.shape, dtype=np.int64) > network_patch_size):
+                        row.update(
+                            status="source_patch_too_large",
+                            reason=(
+                                f"preprocessed source patch={source_mask.shape} exceeds "
+                                f"network patch={tuple(int(v) for v in network_patch_size)}"
+                            ),
+                        )
+                        commit_row(row)
+                        print(
+                            f"[Skip] {case_id} component={component_id}: "
+                            f"source patch {source_mask.shape} exceeds network patch"
+                        )
+                        continue
+                    prepared_source = prepare_local_source(
+                        raw_case,
+                        source,
+                        full_organ_mask=regions.full_organ_mask,
+                        organ_depth=regions.organ_depth,
+                        config=graph_config,
+                        rng=np.random.default_rng(stable_seed(global_seed, case_id, component_id, "source")),
+                        ct_clip=ct_clip,
+                    )
+                    selected_candidates: list[Any] = []
+                    selected_pre_centers: list[np.ndarray] = []
+                    seen: set[tuple[int, int, int]] = set()
+                    seen_preprocessed: set[tuple[int, int, int]] = set()
+                    rejected_geometry = 0
+                    rejected_preprocessed = 0
+                    for attempt in range(attempts):
+                        pool, pool_diagnostics = first_pool if attempt == 0 and first_pool is not None else search_raw_pool(attempt)
+                        specs = build_generation_specs(pool, regions, bank, config=graph_config)
+                        progress.update("candidate_validation", case_id=case_id, component=component_id,
+                                        selected=len(selected_candidates), required=candidate_count)
+                        for candidate, spec in zip(pool, specs):
+                            raw_center = tuple(int(value) for value in candidate.center)
+                            if raw_center in seen:
                                 continue
-                            raise
-                        seen_preprocessed.add(mapped_key)
-                        selected_candidates.append(candidate)
-                        selected_pre_centers.append(mapped.astype(np.int32))
+                            seen.add(raw_center)
+                            mapped = _map_raw_point(
+                                raw_center,
+                                plans["transpose_forward"],
+                                properties,
+                                pre_data.shape[1:],
+                            )
+                            mapped_key = tuple(int(value) for value in mapped)
+                            if mapped_key in seen_preprocessed:
+                                rejected_preprocessed += 1
+                                continue
+                            if not _preprocessed_candidate_valid(
+                                mapped,
+                                source_mask,
+                                anchor_offset,
+                                pre_seg,
+                                liver_label,
+                                tumor_label,
+                                float(generation["min_liver_coverage"]),
+                            ):
+                                rejected_preprocessed += 1
+                                continue
+                            try:
+                                validate_local_geometry(
+                                    raw_case,
+                                    source,
+                                    spec,
+                                    full_organ_mask=regions.full_organ_mask,
+                                    organ_depth=regions.organ_depth,
+                                    config=graph_config,
+                                    ct_clip=ct_clip,
+                                    prepared_source=prepared_source,
+                                )
+                            except Exception as exc:
+                                if is_unrepresentable_geometry(exc):
+                                    rejected_geometry += 1
+                                    continue
+                                raise
+                            seen_preprocessed.add(mapped_key)
+                            selected_candidates.append(candidate)
+                            progress.counters(selected=len(selected_candidates))
+                            selected_pre_centers.append(mapped.astype(np.int32))
+                            if len(selected_candidates) >= candidate_count:
+                                break
                         if len(selected_candidates) >= candidate_count:
                             break
-                    if len(selected_candidates) >= candidate_count:
-                        break
-                if len(selected_candidates) != candidate_count:
-                    row.update(
-                        status="insufficient_candidates",
-                        reason=f"jointly valid={len(selected_candidates)} expected={candidate_count}",
-                        candidate_count=len(selected_candidates),
-                        rejected_geometry=rejected_geometry,
-                        rejected_preprocessed=rejected_preprocessed,
-                    )
-                    commit_row(row)
-                    print(
-                        f"[Skip] {case_id} component={component_id}: "
-                        f"jointly valid={len(selected_candidates)}/{candidate_count}"
-                    )
-                    continue
+                    if len(selected_candidates) != candidate_count:
+                        row.update(
+                            status="insufficient_candidates",
+                            reason=f"jointly valid={len(selected_candidates)} expected={candidate_count}",
+                            candidate_count=len(selected_candidates),
+                            rejected_geometry=rejected_geometry,
+                            rejected_preprocessed=rejected_preprocessed,
+                        )
+                        commit_row(row)
+                        print(
+                            f"[Skip] {case_id} component={component_id}: "
+                            f"jointly valid={len(selected_candidates)}/{candidate_count}"
+                        )
+                        continue
 
-                sample, _ = build_inference_sample(
-                    raw_case,
-                    source,
-                    selected_candidates,
-                    bank,
-                    graph_config=graph_config,
-                    liver_label=liver_label,
-                    tumor_label=tumor_label,
-                    ct_clip=ct_clip,
-                    seed=stable_seed(global_seed, case_id, component_id, "score"),
-                    regions=regions,
-                )
-                raw_centers = np.asarray(
-                    [candidate.center for candidate in selected_candidates], dtype=np.int32
-                )
-                pre_centers = np.stack(selected_pre_centers).astype(np.int32)
-
-                def publish_scores(
-                    values: list[np.ndarray], *, case_id=case_id, component_id=component_id,
-                    diameter=diameter, row=row, source_data=source_data, source_mask=source_mask,
-                    anchor_offset=anchor_offset, raw_centers=raw_centers, pre_centers=pre_centers,
-                    rejected_geometry=rejected_geometry, rejected_preprocessed=rejected_preprocessed,
-                ) -> None:
-                    if len(values) != 1:
-                        raise OnlineBenchmarkError("Bank source received an incorrect scoring group")
-                    scores = values[0]
-                    entry_path = entries_root / f"{case_id}__component_{component_id:03d}.npz"
-                    if entry_path.exists() or entry_path.is_symlink():
-                        raise OnlineBenchmarkError(f"Untracked bank entry already exists: {entry_path}; use --overwrite")
-                    temporary = entry_path.with_suffix(entry_path.suffix + ".tmp")
-                    if temporary.exists() or temporary.is_symlink():
-                        raise OnlineBenchmarkError(f"Stale temporary bank entry exists: {temporary}; use --overwrite")
-                    with temporary.open("xb") as handle:
-                        np.savez(handle, source_data=source_data.astype(np.float32),
-                                 source_mask=source_mask.astype(np.uint8), anchor_offset=anchor_offset.astype(np.int16),
-                                 candidate_centers=pre_centers, candidate_raw_centers=raw_centers, scores=scores,
-                                 source_component=np.asarray([component_id], dtype=np.int16),
-                                 source_diameter_mm=np.asarray([diameter], dtype=np.float32))
-                        handle.flush()
-                        os.fsync(handle.fileno())
-                    temporary.replace(entry_path)
-                    relative = str(entry_path.relative_to(bank_root))
-                    row.update(status="ok", reason="", candidate_count=candidate_count,
-                               rejected_geometry=rejected_geometry, rejected_preprocessed=rejected_preprocessed,
-                               entry=relative, entry_sha256=file_sha256(entry_path),
-                               candidate_pool_sha256=candidate_pool_hash(raw_centers, pre_centers, scores),
-                               score_min=f"{float(scores.min()):.8f}", score_max=f"{float(scores.max()):.8f}",
-                               score_std=f"{float(scores.std()):.8f}")
-                    commit_row(row)
-                    entries_by_case.setdefault(case_id, []).append(relative)
-                    print(f"[OK] {case_id} component={component_id} diameter={diameter:.2f}mm candidates={candidate_count}")
-
-                scorer.submit([sample], publish_scores)
-            except SourceMappingError as exc:
-                row.update(status="error", reason=f"SourceMappingError: {exc}")
-                commit_row(row)
-                raise
-            except AdaptiveRoiBudgetError:
-                raise
-            except Exception as exc:
-                if is_unrepresentable_geometry(exc):
-                    row.update(status="unrepresentable_source", reason=str(exc))
-                    commit_row(row)
-                    print(
-                        f"[Skip] {case_id} component={component_id}: "
-                        f"source graph unavailable ({exc})"
+                    progress.update("local_graphs", case_id=case_id, component=component_id, candidates=candidate_count)
+                    sample, _ = build_inference_sample(
+                        raw_case,
+                        source,
+                        selected_candidates,
+                        bank,
+                        graph_config=graph_config,
+                        liver_label=liver_label,
+                        tumor_label=tumor_label,
+                        ct_clip=ct_clip,
+                        seed=stable_seed(global_seed, case_id, component_id, "score"),
+                        regions=regions,
+                        prepared_source=prepared_source,
+                        local_graph_map=local_graph_map,
                     )
-                else:
-                    row.update(status="error", reason=f"{type(exc).__name__}: {exc}")
+                    raw_centers = np.asarray(
+                        [candidate.center for candidate in selected_candidates], dtype=np.int32
+                    )
+                    pre_centers = np.stack(selected_pre_centers).astype(np.int32)
+
+                    def publish_scores(
+                        values: list[np.ndarray], *, case_id=case_id, component_id=component_id,
+                        diameter=diameter, row=row, source_data=source_data, source_mask=source_mask,
+                        anchor_offset=anchor_offset, raw_centers=raw_centers, pre_centers=pre_centers,
+                        rejected_geometry=rejected_geometry, rejected_preprocessed=rejected_preprocessed,
+                    ) -> None:
+                        if len(values) != 1:
+                            raise OnlineBenchmarkError("Bank source received an incorrect scoring group")
+                        scores = values[0]
+                        entry_path = entries_root / f"{case_id}__component_{component_id:03d}.npz"
+                        if entry_path.exists() or entry_path.is_symlink():
+                            raise OnlineBenchmarkError(f"Untracked bank entry already exists: {entry_path}; use --overwrite")
+                        temporary = entry_path.with_suffix(entry_path.suffix + ".tmp")
+                        if temporary.exists() or temporary.is_symlink():
+                            raise OnlineBenchmarkError(f"Stale temporary bank entry exists: {temporary}; use --overwrite")
+                        with temporary.open("xb") as handle:
+                            np.savez(handle, source_data=source_data.astype(np.float32),
+                                     source_mask=source_mask.astype(np.uint8), anchor_offset=anchor_offset.astype(np.int16),
+                                     candidate_centers=pre_centers, candidate_raw_centers=raw_centers, scores=scores,
+                                     source_component=np.asarray([component_id], dtype=np.int16),
+                                     source_diameter_mm=np.asarray([diameter], dtype=np.float32))
+                            handle.flush()
+                            os.fsync(handle.fileno())
+                        temporary.replace(entry_path)
+                        relative = str(entry_path.relative_to(bank_root))
+                        row.update(status="ok", reason="", candidate_count=candidate_count,
+                                   rejected_geometry=rejected_geometry, rejected_preprocessed=rejected_preprocessed,
+                                   entry=relative, entry_sha256=file_sha256(entry_path),
+                                   candidate_pool_sha256=candidate_pool_hash(raw_centers, pre_centers, scores),
+                                   score_min=f"{float(scores.min()):.8f}", score_max=f"{float(scores.max()):.8f}",
+                                   score_std=f"{float(scores.std()):.8f}")
+                        commit_row(row)
+                        entries_by_case.setdefault(case_id, []).append(relative)
+                        print(f"[OK] {case_id} component={component_id} diameter={diameter:.2f}mm candidates={candidate_count}")
+
+                    progress.update("score_queue", case_id=case_id, component=component_id)
+                    scorer.submit([sample], publish_scores)
+                    del sample  # queued canonical input now lives in the owned disk spool
+                    prepared_source = None
+                except SourceMappingError as exc:
+                    row.update(status="error", reason=f"SourceMappingError: {exc}")
                     commit_row(row)
-                    print(f"[Error] {case_id} component={component_id}: {exc}")
-            scorer.flush_ready()
-        if case_entry_names:
-            entries_by_case.setdefault(case_id, []).extend(case_entry_names)
-    scorer.flush()
+                    raise
+                except AdaptiveRoiBudgetError:
+                    raise
+                except Exception as exc:
+                    if is_unrepresentable_geometry(exc):
+                        row.update(status="unrepresentable_source", reason=str(exc))
+                        commit_row(row)
+                        print(
+                            f"[Skip] {case_id} component={component_id}: "
+                            f"source graph unavailable ({exc})"
+                        )
+                    else:
+                        row.update(status="error", reason=f"{type(exc).__name__}: {exc}")
+                        commit_row(row)
+                        print(f"[Error] {case_id} component={component_id}: {exc}")
+                scorer.flush_ready()
+            if case_entry_names:
+                entries_by_case.setdefault(case_id, []).extend(case_entry_names)
+        progress.update("score_remaining")
+        scorer.flush()
+        scoring_execution = scorer.report()
     error_rows = [row for row in rows if row.get("status") == "error"]
     incomplete_rows = [
         row
@@ -2272,7 +2295,6 @@ def build_online_bank(
         )
     if not ok_rows or not entries_by_case:
         raise OnlineBenchmarkError("Online bank produced no usable small-tumor source entries")
-    scoring_execution = scorer.report()
     validate_scoring_report(scoring_execution, generation)
     index = {
         **metadata_contract,

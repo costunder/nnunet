@@ -256,7 +256,7 @@ class OnlineNoPlacementDebugTests(unittest.TestCase):
         path = Path(online.__file__)
         tree = ast.parse(path.read_text(encoding="utf-8"))
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "build_online_bank")
-        loop = next(node for node in function.body if isinstance(node, ast.For)
+        loop = next(node for node in ast.walk(function) if isinstance(node, ast.For)
                     and isinstance(node.target, ast.Tuple)
                     and [part.id for part in node.target.elts] == ["case_index", "case_id"])
         cases = {}
@@ -300,7 +300,10 @@ class OnlineNoPlacementDebugTests(unittest.TestCase):
                            network_patch_size=np.array([32, 32, 32]), prepare_local_source=lambda *args, **kwargs: object(),
                            build_generation_specs=lambda pool, *args, **kwargs: [object() for _ in pool], bank=object(),
                            _map_raw_point=lambda point, *args: np.asarray(point, dtype=np.int32),
-                           build_local_graph=lambda *args, **kwargs: object(),
+                           validate_local_geometry=lambda *args, **kwargs: None,
+                           local_graph_map=object(),
+                           progress=SimpleNamespace(update=lambda *args, **kwargs: None,
+                                                    counters=lambda *args, **kwargs: None),
                            build_inference_sample=lambda *args, **kwargs: (object(), {}),
                            scorer=DebugScorer(), AdaptiveRoiBudgetError=AdaptiveRoiBudgetError,
                            is_unrepresentable_geometry=lambda exc: False)

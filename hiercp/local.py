@@ -88,6 +88,15 @@ class PatchFields:
     outside_tumor_mm: np.ndarray
 
 
+@dataclass
+class _PreparedLocalTarget:
+    """Full native target geometry before node features and radius edges."""
+
+    fields: PatchFields
+    coordinates: dict[str, np.ndarray]
+    transform: np.ndarray
+
+
 def _require_full_graph(config: GraphBuildConfig) -> None:
     config.validate()
     if (
@@ -376,6 +385,73 @@ def prepare_local_source(
     )
 
 
+def _prepare_local_target(
+    case: LoadedCase,
+    spec: CandidateSpec,
+    *,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    config: GraphBuildConfig,
+    ct_clip: tuple[float, float],
+    prepared_source: PreparedLocalSource,
+) -> _PreparedLocalTarget:
+    """Keep geometry admission identical for validation and materialisation.
+
+    Coordinate construction is intentional: checking only ROI extents would
+    miss required empty semantic node sets. No node or edge is sampled here.
+    """
+    virtual_footprint, transform = _transform_footprint(
+        prepared_source.source_footprint, spec, spacing=case.spacing, config=config
+    )
+    fields = _patch_fields(
+        case,
+        spec.center,
+        virtual_footprint,
+        full_organ_mask,
+        organ_depth,
+        config=config,
+        erase_target=True,
+        ct_clip=ct_clip,
+    )
+    coordinates = canonical_coordinate_sets(fields, config, case.spacing)
+    return _PreparedLocalTarget(fields, coordinates, transform)
+
+
+def validate_local_geometry(
+    case: LoadedCase,
+    source: SourceTumor,
+    spec: CandidateSpec,
+    *,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    config: GraphBuildConfig,
+    ct_clip: tuple[float, float],
+    prepared_source: PreparedLocalSource,
+) -> None:
+    """Validate full target geometry without constructing a disposable graph.
+
+    The source must already have passed ``prepare_local_source``. As in
+    ``build_local_graph`` with a prepared source, its canonical footprint is
+    authoritative. The same physical transform, native ROI, liver-surface
+    search and complete coordinate checks run here; their exceptions are not
+    suppressed. Feature packing and complete radius edges are constructed
+    once, during actual inference, where allocation/topology errors still
+    propagate normally. Canonical construction does not consume RNG state.
+    """
+    _require_full_graph(config)
+    if not isinstance(prepared_source, PreparedLocalSource):
+        raise TypeError("validate_local_geometry requires a PreparedLocalSource")
+    _prepare_local_target(
+        case,
+        spec,
+        full_organ_mask=full_organ_mask,
+        organ_depth=organ_depth,
+        config=config,
+        ct_clip=ct_clip,
+        prepared_source=prepared_source,
+    )
+
+
 def build_local_graph(
     case: LoadedCase,
     source: SourceTumor,
@@ -400,22 +476,18 @@ def build_local_graph(
         rng=rng,
         ct_clip=ct_clip,
     )
-    virtual_footprint, transform = _transform_footprint(
-        prepared.source_footprint, spec, spacing=case.spacing, config=config
-    )
-    target_fields = _patch_fields(
+    target = _prepare_local_target(
         case,
-        spec.center,
-        virtual_footprint,
-        full_organ_mask,
-        organ_depth,
+        spec,
+        full_organ_mask=full_organ_mask,
+        organ_depth=organ_depth,
         config=config,
-        erase_target=True,
         ct_clip=ct_clip,
+        prepared_source=prepared,
     )
-    target_coordinates = canonical_coordinate_sets(
-        target_fields, config, case.spacing
-    )
+    target_fields = target.fields
+    target_coordinates = target.coordinates
+    transform = target.transform
     target_nodes = _pack_nodes(
         target_fields,
         target_node_specifications(target_coordinates),
