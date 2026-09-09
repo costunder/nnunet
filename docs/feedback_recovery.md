@@ -7,6 +7,12 @@ It uses the existing Git checkout and writes a separate experiment, by default
 
 ## Server command
 
+Before either update/launch command in this document, confirm that no bank,
+GNN or nnU-Net process is still using this checkout or the same experiment.
+Do not run `git pull`, replace trainers, or launch a second continuation while
+that work is active. Updating source files does not update code already loaded
+by a running Python process and can mix versions in later child stages.
+
 Run in the existing `(nnunet)` environment with the scheduler/user-assigned single
 GPU visibility already set. The command preserves `CUDA_VISIBLE_DEVICES`; it does
 not guess an available GPU from another experiment's example.
@@ -38,15 +44,22 @@ command that flag removes the old graph artifacts and their metadata.
 
 ## Continue the existing Medical Data Aug experiment
 
-For `work/feedback_medical_aug` whose preparation completed before the GNN's
-physical-batch calibration failed, retain the original launch arguments and add
-`--resume-experiment`:
+For the stopped `work/feedback_medical_aug` experiment whose preparation has
+completed, retain the original launch arguments and add `--resume-experiment`.
+The launcher still checks whether the failed stage is eligible to continue;
+this is not a blanket restart of an arbitrary interrupted process.
+
+The saved plan includes the Python executable. For this experiment it is
+`/home/aicompetition06/.conda/envs/nnunet/bin/python`, not the `(base)` Python.
+Changing it causes a plan-identity mismatch even when the journal checksum and
+source identity are correct. Do not edit the saved plan/journal to disguise it.
 
 ```bash
+conda activate /home/aicompetition06/.conda/envs/nnunet &&
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
 env -u PYTORCH_NVML_BASED_CUDA_CHECK \
-python -B tools/run_feedback_experiment.py \
+/home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
   --recover-from work/feedback_experiment \
   --experiment-name feedback_medical_aug \
   --medical-root /home/aicompetition06/Medical \
@@ -59,9 +72,27 @@ python -B tools/run_feedback_experiment.py \
 This verifies the saved launch plan, unchanged source identity, preparation
 receipt, full SHA-bound graph publication and private runtime. It does **not**
 rerun the 187-cache preparation, copy nnU-Net again, change the saved training
-configuration, or overwrite the previous experiments. It continues GNN training,
-shared nnU-Net preprocessing and bank creation, then Full and Basic training in
-the original order. Downstream statistical evaluation remains a separate task.
+configuration, or overwrite the previous experiments. It verifies completion
+evidence for stages already finished, skips accepted completed stages, and
+continues eligible pending/failed stages in the original order: quality GNN,
+shared nnU-Net preprocessing, bank publication, then Full and Basic training.
+Downstream statistical evaluation remains a separate task.
+
+Reaching `[Bank] case 1/...` does not mean the original GNN/cache or nnU-Net
+preprocessing has been erased or retrained. It is the separate online-bank
+stage, which inspects source entries and reuses verified compatible entries.
+The `ebe58ff` bank optimization keeps the existing data/configuration contracts;
+do not delete a compatible bank to obtain the new implementation. New work uses
+the new graph/scoring path after a safe update and an accepted continuation.
+See [bank progress, resources and reuse](online_bank_performance.md) for the
+actual logs and completion checks. A `running` journal row or existing lock
+still requires diagnosis, not a forced retry or manual deletion.
+
+A failed bank stage is not automatically reusable just because the launcher
+accepts the retry. An existing `error` manifest row is refused by the bank;
+unresolved `insufficient_candidates`, `unrepresentable_source` or
+`source_patch_too_large` rows prevent final publication. Diagnose the recorded
+failure without rewriting the manifest or removing its evidence.
 
 The previous journal is archived byte-for-byte in `recovery/journal_history`.
 Failed rows remain in the current journal and each new attempt is appended.

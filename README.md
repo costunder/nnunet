@@ -54,6 +54,12 @@ regression checks below on the target server before the full experiment.
   validation.
 - [`tools/assemble.py`](tools/assemble.py): preflighted dataset assembly.
 - [`docs/design.md`](docs/design.md): design and safety details.
+- [`docs/online_cp_feedback.md`](docs/online_cp_feedback.md): train-only
+  nnU-Net difficulty-feedback experiment and launch boundaries.
+- [`docs/feedback_recovery.md`](docs/feedback_recovery.md): verified continuation
+  of the existing Medical Data Aug experiment.
+- [`docs/online_bank_performance.md`](docs/online_bank_performance.md): current
+  online-bank preparation, scoring, progress reports and reuse limits.
 
 `run.py` expects a medical root containing this external layout:
 
@@ -175,6 +181,26 @@ data-parallel worker count is 1. For production CUDA training and generation,
 the process fails if more than one CUDA device is visible. Request one GPU from
 the scheduler and expose it as logical `cuda:0`; there is no validated DDP
 fallback that silently leaves extra assigned GPUs idle.
+
+## Online bank preparation and scoring
+
+The bank optimization in `ebe58ff` preserves the model, full graph topology,
+candidate pools, CP rules and training settings. The standard bank no longer
+builds complete target features/edges just to discard them during geometry
+validation. Both bank builders share the prepared source and use measured,
+ordered CPU candidate-graph preparation. Pending scoring inputs use an owned
+disk spool and physical-batch mmap loading rather than accumulating complete
+graphs from many sources in RAM. This adds storage I/O; it is not a measured
+server-wide speedup claim.
+
+Bank builds now emit phase/heartbeat logs, CPU preparation resource reports and
+scoring calibration/I/O reports. Their locations, first-calibration delay,
+remaining memory requirements and verification scope are documented in
+[`docs/online_bank_performance.md`](docs/online_bank_performance.md).
+Do not update a checkout or trainer installation used by a running experiment.
+An existing compatible bank is verified and reused; this optimization does not
+require deleting it or restarting the GNN. Follow the
+[recovery guide](docs/feedback_recovery.md) for a stopped, eligible continuation.
 
 ## Exact validation and assembly
 

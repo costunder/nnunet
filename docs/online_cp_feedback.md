@@ -82,6 +82,21 @@ feedback is free. GNN randomness is isolated from segmentation augmentation and
 network RNG. Graph caches live in the new trainer's own result directory and are
 bound to the actual bank/raw/checkpoint identity.
 
+## Initial online bank preparation
+
+The initial immutable quality bank is distinct from the difficulty-GNN graph
+cache used during nnU-Net epochs. Its standard builder removes duplicate full
+target-graph construction; both standard and multi-pool argmax builders use
+ordered, measured CPU graph preparation and disk-backed pending scoring inputs.
+The 128 candidate centers, compatibility model, graph scale and CP rules are
+unchanged. This does not retrain or modify the stored quality model.
+
+See [online bank preparation and scoring](online_bank_performance.md) for phase
+logs, resource-report paths, calibration and storage costs, and the distinction
+between progress and a verified completed bank. The update is not a claim that
+feedback-GNN training during nnU-Net epochs has become free or has been separately
+optimized. Do not update the checkout used by an active experiment.
+
 ## Publication and launch
 
 For a new isolated experiment, run from a fresh checkout:
@@ -96,8 +111,14 @@ Full and Basic feedback training for outer fold 0. It creates only
 nnU-Net package copy. Original site-packages and prior results are not replaced.
 It preserves the existing allocated GPU visibility and requires one visible GPU.
 `--dry-run` prints commands without launching children or creating outputs.
-An existing experiment directory is refused; this convenience command is not a
-resume command. Failed-stage outputs and `launch_plan.json` remain for inspection.
+Without an explicit resume option, an existing experiment directory is refused.
+Failed-stage outputs and `launch_plan.json` remain for inspection. For an existing
+recovery experiment, use the [verified continuation guide](feedback_recovery.md):
+`--resume-preparation` and `--resume-experiment` have different eligibility checks
+and must retain the original launch arguments and Python environment. Neither
+option authorizes a second process on a running experiment.
+Both options require an experiment originally created with `--recover-from`;
+adding them does not make an ordinary fresh, non-recovery launch resumable.
 It does not run downstream comparison/statistics. `--outer-fold`, `--dataset-id`
 and the nnU-Net `--seed` are explicit options; GNN/bank seeds still follow their
 checked-in fold-specific configuration.
