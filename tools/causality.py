@@ -55,6 +55,16 @@ from hiercp.data import (
 from hiercp.cache import validate_cache_publication
 from hiercp.model import HierarchicalPyGPlacementModel
 from hiercp.prototype import PrototypeBank
+from hiercp.causality_overlap import local_edge_jaccard as exact_local_edge_jaccard
+from hiercp.preparation_runtime import Measurement
+from tools.causality_resources import (
+    audit_allocation_fingerprint,
+    audit_batch_input_bytes,
+    audit_host_budget,
+    build_audit_inventory,
+    create_progress_log,
+    validate_audit_host_budget,
+)
 from hiercp.schema import (
     LOCAL_EDGE_TYPES,
     LOCAL_NODE_TYPES,
@@ -89,7 +99,7 @@ EMBEDDING_KEYS = (
 )
 REPORT_FORMAT = "hiercp_causality_v3_hash_bound"
 INPUT_FORMAT = "hiercp_causality_input_v3"
-PREFLIGHT_FORMAT = "hiercp_causality_preflight_v1"
+PREFLIGHT_FORMAT = "hiercp_causality_preflight_v2_host_bounded"
 TRAINING_PREFLIGHT_FORMAT = "hiercp_preflight_calibration_v2"
 
 
@@ -259,7 +269,7 @@ def _training_measurement_plan(
     if not isinstance(prefetch_factor, int) or isinstance(prefetch_factor, bool) or prefetch_factor < 1:
         raise ValueError("Training preflight has no valid prefetch_factor")
     return {
-        "format": "hiercp_causality_measurement_plan_v1",
+        "format": "hiercp_causality_measurement_plan_v2_host_bounded",
         "batch_candidates": _candidate_values(
             calibration.get("batch_trials"), key="batch_size", minimum=1
         ),
@@ -271,6 +281,14 @@ def _training_measurement_plan(
         "prefetch_factor": int(prefetch_factor),
         "pin_memory": bool(identity.get("pin_memory", True)),
         "training_preflight_sha256": _value_sha256(calibration),
+        "training_candidate_statuses": {
+            "batch": [{"batch_size": row["batch_size"], "status": row.get("status")}
+                      for row in calibration["batch_trials"]],
+            "worker": [{"num_workers": row["num_workers"], "status": row.get("status")}
+                       for row in calibration["worker_trials"]],
+        },
+        "candidate_policy": "remeasure_inference_only_after_fresh_host_budget; no cohort-oversize batches",
+        "calibration_order": "descending_canonical_input_upper_bound",
     }
 
 
@@ -280,13 +298,30 @@ def _run_preflight_workload(
     *,
     device: torch.device,
     seed: int,
+    progress: Callable[..., None] | None = None,
 ) -> None:
-    _evaluate(model, copy.deepcopy(cpu_batch), device=device, amp=False)
-    for condition_index, transform in enumerate(CONDITIONS.values()):
-        changed = transform(
-            copy.deepcopy(cpu_batch), int(seed) + condition_index * 10_007
-        )
-        _evaluate(model, changed, device=device, amp=False)
+    if progress is not None:
+        progress(event="baseline_start", condition="baseline")
+    baseline = _fork_batch_for_audit(cpu_batch)
+    try:
+        _evaluate(model, baseline, device=device, amp=False)
+    finally:
+        del baseline
+    if progress is not None:
+        progress(event="baseline_end", condition="baseline")
+    for condition_index, (name, transform) in enumerate(CONDITIONS.items()):
+        if progress is not None:
+            progress(event="condition_start", condition=name)
+        changed = _fork_batch_for_audit(cpu_batch)
+        try:
+            changed = transform(changed, int(seed) + condition_index * 10_007)
+            _evaluate(model, changed, device=device, amp=False)
+        finally:
+            # model.forward transfers this container to CUDA in place. Do not
+            # retain its device tensors during the next full-size intervention.
+            del changed
+        if progress is not None:
+            progress(event="condition_end", condition=name)
 
 
 def _measure_batch_candidates(
@@ -298,6 +333,8 @@ def _measure_batch_candidates(
     maximum_vram_fraction: float,
     device: torch.device,
     seed: int,
+    inventory: dict[str, Any],
+    progress: Callable[..., None],
 ) -> tuple[int, list[dict[str, Any]]]:
     dataset = HierarchicalCacheDataset(selected, mmap=True, training=False, seed=seed)
     if len(dataset) < 1:
@@ -305,28 +342,52 @@ def _measure_batch_candidates(
     trials: list[dict[str, Any]] = []
     for batch_size in candidates:
         gc.collect()
+        progress(event="batch_trial_start", batch_size=batch_size)
+        budget = None
+        if batch_size > len(selected):
+            status = "not_measured_cohort"
+        else:
+            budget = audit_host_budget(inventory, selected, batch_size, 0, 1, False)
+            status = "accepted" if budget["accepted"] else "rejected_host_input_budget"
+        progress(event="batch_trial_budget", batch_size=batch_size, status=status, host_budget=budget)
         if device.type == "cuda":
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats(device)
         started = time.perf_counter()
-        status = "accepted"
         completed = 0
+        measurement = None
         try:
-            for repeat in range(repeats):
-                samples = [
-                    dataset[(repeat * batch_size + offset) % len(dataset)]
-                    for offset in range(batch_size)
-                ]
-                batch = collate_samples(samples)
-                _run_preflight_workload(
-                    model,
-                    batch,
-                    device=device,
-                    seed=seed + repeat * 100_003,
-                )
-                completed += batch_size
-            if device.type == "cuda":
-                torch.cuda.synchronize(device)
+            if status == "accepted":
+                with Measurement() as measurement:
+                    for repeat in range(repeats):
+                        progress(event="batch_repeat_start", batch_size=batch_size, repeat=repeat)
+                        samples, batch = [], None
+                        try:
+                            samples = [
+                                dataset[(repeat * batch_size + offset) % len(dataset)]
+                                for offset in range(batch_size)
+                            ]
+                            batch = collate_samples(samples)
+                            samples.clear()
+
+                            def workload_progress(**fields):
+                                if fields.get("event") in {"baseline_start", "condition_start"}:
+                                    _require_host_budget(
+                                        inventory, selected, batch_size, 0, 1, False,
+                                        progress=progress, phase="resident_transform",
+                                    )
+                                progress(batch_size=batch_size, repeat=repeat, **fields)
+
+                            _run_preflight_workload(
+                                model, batch, device=device,
+                                seed=seed + repeat * 100_003, progress=workload_progress,
+                            )
+                            completed += batch_size
+                        finally:
+                            samples.clear()
+                            batch = None
+                    if device.type == "cuda":
+                        torch.cuda.synchronize(device)
         except torch.cuda.OutOfMemoryError:
             status = "rejected_cuda_oom"
             if device.type == "cuda":
@@ -347,6 +408,9 @@ def _measure_batch_candidates(
             {
                 "batch_size": int(batch_size),
                 "status": status,
+                "host_budget": budget,
+                "host_measurement": None if measurement is None else measurement.report,
+                "cohort_size": len(selected),
                 "repeats": int(repeats),
                 "completed_samples": int(completed),
                 "elapsed_seconds": float(elapsed),
@@ -361,6 +425,7 @@ def _measure_batch_candidates(
                 ),
             }
         )
+        progress(event="batch_trial_end", **trials[-1])
     accepted = [trial for trial in trials if trial["status"] == "accepted"]
     if not accepted:
         raise RuntimeError(f"No causality physical-batch candidate passed preflight: {trials}")
@@ -383,11 +448,26 @@ def _measure_worker_candidates(
     pin_memory: bool,
     prefetch_factor: int,
     seed: int,
+    inventory: dict[str, Any],
+    progress: Callable[..., None],
 ) -> tuple[int, list[dict[str, Any]]]:
     required_files = max(1, batch_size * measurement_batches)
     repeated = [selected[index % len(selected)] for index in range(required_files)]
     trials: list[dict[str, Any]] = []
     for workers in candidates:
+        gc.collect()
+        progress(event="worker_trial_start", num_workers=workers, batch_size=batch_size)
+        budget = audit_host_budget(
+            inventory, selected, batch_size, workers, prefetch_factor, pin_memory,
+        )
+        progress(event="worker_trial_budget", num_workers=workers, host_budget=budget)
+        if not budget["accepted"]:
+            trials.append({"num_workers": workers, "status": "rejected_host_input_budget",
+                           "host_budget": budget, "host_measurement": None,
+                           "measurement_batches": 0, "samples": 0,
+                           "elapsed_seconds": 0.0, "samples_per_second": None})
+            progress(event="worker_trial_end", **trials[-1])
+            continue
         loader_kwargs: dict[str, Any] = {
             "batch_size": batch_size,
             "shuffle": False,
@@ -408,11 +488,22 @@ def _measure_worker_candidates(
         started = time.perf_counter()
         samples = 0
         batches = 0
-        for cpu_batch in loader:
-            samples += batch_size
-            batches += 1
-            if batches >= measurement_batches:
-                break
+        iterator = None
+        try:
+            with Measurement() as measurement:
+                iterator = iter(loader)
+                for cpu_batch in iterator:
+                    try:
+                        samples += len(cpu_batch.counts)
+                        batches += 1
+                        progress(event="worker_batch_end", num_workers=workers, batch_index=batches)
+                    finally:
+                        del cpu_batch
+        finally:
+            # Release consumers before destroying the iterator/worker pool.
+            # No old batch survives while the next candidate is allocated.
+            del iterator, loader
+            gc.collect()
         elapsed = time.perf_counter() - started
         if batches != measurement_batches or samples <= 0 or elapsed <= 0.0:
             raise RuntimeError(
@@ -423,22 +514,44 @@ def _measure_worker_candidates(
             {
                 "num_workers": int(workers),
                 "status": "accepted",
+                "host_budget": budget,
+                "host_measurement": measurement.report,
                 "measurement_batches": int(batches),
                 "samples": int(samples),
                 "elapsed_seconds": float(elapsed),
                 "samples_per_second": float(samples / elapsed),
             }
         )
-        del loader
-        gc.collect()
+        progress(event="worker_trial_end", **trials[-1])
+    accepted = [row for row in trials if row["status"] == "accepted"]
+    if not accepted:
+        raise RuntimeError(f"No causality worker candidate fits the current allocation: {trials}")
     winner = max(
-        trials,
+        accepted,
         key=lambda trial: (
             float(trial["samples_per_second"]),
             int(trial["num_workers"]),
         ),
     )
     return int(winner["num_workers"]), trials
+
+
+def _require_host_budget(inventory, selected, batch_size, workers, prefetch_factor,
+                         pin_memory, *, progress, phase="full"):
+    budget = audit_host_budget(
+        inventory, selected, batch_size, workers, prefetch_factor, pin_memory, phase=phase,
+    )
+    progress(event="host_budget_check", host_budget=budget)
+    if not budget["accepted"]:
+        raise RuntimeError(
+            "Causality host allocation is insufficient before allocation: "
+            f"phase={phase}, batch_size={batch_size}, workers={workers}, "
+            f"required={budget['estimated_input_bytes']} bytes, "
+            f"available={budget['available_allocation_bytes']} bytes (headroom reserved). "
+            "No graph/data/model reduction or checkpoint restart was performed. "
+            "See the causality progress JSONL allocation evidence."
+        )
+    return budget
 
 
 def _validate_preflight_record(
@@ -463,10 +576,14 @@ def _validate_preflight_record(
     worker_trials = record.get("worker_trials")
     expected_batches = identity["measurement_plan"]["batch_candidates"]
     expected_workers = identity["measurement_plan"]["worker_candidates"]
-    if not isinstance(batch_trials, list) or [row.get("batch_size") for row in batch_trials] != expected_batches:
+    if not isinstance(batch_trials, list) or any(not isinstance(row, dict) for row in batch_trials) or [row.get("batch_size") for row in batch_trials] != expected_batches:
         raise ValueError("Causality preflight batch trial cohort is not exact")
-    if not isinstance(worker_trials, list) or [row.get("num_workers") for row in worker_trials] != expected_workers:
+    if not isinstance(worker_trials, list) or any(not isinstance(row, dict) for row in worker_trials) or [row.get("num_workers") for row in worker_trials] != expected_workers:
         raise ValueError("Causality preflight worker trial cohort is not exact")
+    for row in batch_trials:
+        _validate_resource_trial(row, kind="batch", identity=identity)
+    for row in worker_trials:
+        _validate_resource_trial(row, kind="worker", identity=identity, batch_size=batch)
     accepted_batches = [row for row in batch_trials if row.get("status") == "accepted"]
     if not accepted_batches or any(row.get("repeats") != identity["repeats"] for row in batch_trials):
         raise ValueError("Causality preflight batch trials are incomplete")
@@ -476,15 +593,80 @@ def _validate_preflight_record(
     )
     if int(winner_batch["batch_size"]) != batch:
         raise ValueError("Causality selected batch is not the measured winner")
-    if not worker_trials or any(row.get("status") != "accepted" for row in worker_trials):
+    accepted_workers = [row for row in worker_trials if row.get("status") == "accepted"]
+    if not accepted_workers:
         raise ValueError("Causality preflight worker trials are incomplete")
     winner_workers = max(
-        worker_trials,
+        accepted_workers,
         key=lambda row: (float(row["samples_per_second"]), int(row["num_workers"])),
     )
     if int(winner_workers["num_workers"]) != workers:
         raise ValueError("Causality selected workers are not the measured winner")
     return batch, int(workers)
+
+
+def _validate_resource_trial(row, *, kind, identity, batch_size=None):
+    """Reject missing/contradictory allocation evidence, not just bad winners."""
+    status = row.get("status")
+    allowed = {"accepted", "rejected_host_input_budget"}
+    if kind == "batch":
+        allowed.update({"not_measured_cohort", "rejected_cuda_oom", "rejected_vram_headroom"})
+        batch_size = _exact_positive_int(row.get("batch_size"), context="trial batch size")
+        if row.get("repeats") != identity["repeats"]:
+            raise ValueError("Causality batch repeat contract changed")
+        cohort_size = identity["input_inventory_sample_count"]
+        if row.get("cohort_size") != cohort_size:
+            raise ValueError("Causality trial cohort size changed")
+        if status == "not_measured_cohort":
+            if batch_size <= cohort_size or row.get("completed_samples") != 0 or row.get("host_budget") is not None:
+                raise ValueError("Causality unmeasured cohort trial is inconsistent")
+            return
+    if status not in allowed:
+        raise ValueError(f"Causality resource trial has unsupported status: {status}")
+    budget = row.get("host_budget")
+    if not isinstance(budget, dict) or budget.get("phase") != "full":
+        raise ValueError("Causality trial lacks full host allocation evidence")
+    plan = identity["measurement_plan"]
+    workers = 0 if kind == "batch" else row["num_workers"]
+    validate_audit_host_budget(
+        budget, batch_size=batch_size, workers=workers,
+        prefetch_factor=1 if kind == "batch" else plan["prefetch_factor"],
+        pin_memory=False if kind == "batch" else bool(
+            torch.device(identity["device"]).type == "cuda" and plan["pin_memory"]),
+        batch_input_bytes_upper_bound=identity["batch_input_upper_bounds"][str(batch_size)],
+    )
+    required = budget.get("estimated_input_bytes")
+    available = budget.get("available_allocation_bytes")
+    for value in (required, available):
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError("Causality trial host byte estimate is invalid")
+    if budget.get("reserved_headroom_fraction") != 0.2:
+        raise ValueError("Causality host allocation headroom changed")
+    feasible = required <= available * 4 // 5
+    if budget.get("accepted") is not feasible or (status == "rejected_host_input_budget") == feasible:
+        raise ValueError("Causality trial host rejection contradicts its byte budget")
+    if status == "rejected_host_input_budget":
+        count = row.get("completed_samples") if kind == "batch" else row.get("samples")
+        if count != 0 or row.get("host_measurement") is not None:
+            raise ValueError("Host-rejected trial unexpectedly allocated inputs")
+        return
+    if status == "accepted":
+        count = row.get("completed_samples") if kind == "batch" else row.get("samples")
+        repetitions = identity["repeats"] if kind == "batch" else identity["measurement_plan"]["loader_measurement_batches"]
+        if count != batch_size * repetitions:
+            raise ValueError("Accepted causality trial did not finish all measurements")
+        if kind == "worker" and row.get("measurement_batches") != repetitions:
+            raise ValueError("Accepted causality worker trial is incomplete")
+        elapsed, rate = row.get("elapsed_seconds"), row.get("samples_per_second")
+        if any(not isinstance(x, (int, float)) or isinstance(x, bool) or not math.isfinite(x) or x <= 0
+               for x in (elapsed, rate)) or not math.isclose(rate, count / elapsed, rel_tol=1e-9):
+            raise ValueError("Causality trial throughput is invalid")
+        if not isinstance(row.get("host_measurement"), dict) or row["host_measurement"].get("status") != "complete":
+            raise ValueError("Accepted causality trial lacks resource measurements")
+        if kind == "batch":
+            fraction = row.get("peak_vram_fraction")
+            if fraction is not None and (not math.isfinite(fraction) or not 0 <= fraction <= identity["measurement_plan"]["maximum_vram_fraction"]):
+                raise ValueError("Accepted causality batch exceeds measured VRAM headroom")
 
 
 def _resolve_preflight(
@@ -498,6 +680,8 @@ def _resolve_preflight(
     seed: int,
     repeats: int,
     overwrite: bool,
+    inventory: dict[str, Any],
+    progress: Callable[..., None],
 ) -> tuple[dict[str, Any], int, int]:
     if path.exists() or path.is_symlink():
         if not path.is_file():
@@ -516,6 +700,7 @@ def _resolve_preflight(
                     f"pass --overwrite for this exact file: {path}"
                 ) from exc
             print(f"[Reuse] verified measured causality preflight: {path}")
+            progress(event="preflight_reused", path=str(path), batch_size=batch, num_workers=workers)
             return current, batch, workers
     plan = identity["measurement_plan"]
     batch, batch_trials = _measure_batch_candidates(
@@ -526,6 +711,8 @@ def _resolve_preflight(
         maximum_vram_fraction=plan["maximum_vram_fraction"],
         device=device,
         seed=seed,
+        inventory=inventory,
+        progress=progress,
     )
     workers, worker_trials = _measure_worker_candidates(
         selected,
@@ -535,6 +722,8 @@ def _resolve_preflight(
         pin_memory=bool(device.type == "cuda" and plan["pin_memory"]),
         prefetch_factor=plan["prefetch_factor"],
         seed=seed,
+        inventory=inventory,
+        progress=progress,
     )
     record = {
         "format": PREFLIGHT_FORMAT,
@@ -550,6 +739,7 @@ def _resolve_preflight(
         record, identity=identity, resource_fingerprint=resource_fingerprint
     )
     _atomic_json(path, record)
+    progress(event="preflight_complete", path=str(path), batch_size=batch, num_workers=workers)
     print(f"[OK] measured causality preflight: {path}")
     return record, batch, workers
 
@@ -901,6 +1091,20 @@ def _evaluate(model, batch: HierarchicalBatch, *, device: torch.device, amp: boo
     return _detach_output(output)
 
 
+def _fork_batch_for_audit(batch: HierarchicalBatch) -> HierarchicalBatch:
+    """Isolate mutable containers while sharing read-only input tensors.
+
+    Every intervention replaces its changed tensors out of place. PyG .to()
+    does mutate store mappings, so independently copy every graph container as
+    well as the outer batch; sharing only tensor storage is intentional.
+    """
+    result = copy.copy(batch)
+    for name in ("local_batch", "local_batch_view2", "patient_batch", "prototype_batch"):
+        graph = getattr(batch, name)
+        setattr(result, name, None if graph is None else copy.copy(graph))
+    return result
+
+
 def _seeded_perm(count: int, seed: int) -> Tensor:
     if count <= 1:
         return torch.arange(count, dtype=torch.long)
@@ -913,7 +1117,7 @@ def _seeded_perm(count: int, seed: int) -> Tensor:
 
 
 def _permute_graph_nodes(graph: HeteroData, seed: int) -> HeteroData:
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
     inverse: dict[str, Tensor] = {}
     for type_index, node_type in enumerate(graph.node_types):
         count = int(graph[node_type].num_nodes)
@@ -943,7 +1147,7 @@ def _rotate_context_features(
     node_types: tuple[str, ...],
     seed: int,
 ) -> HeteroData:
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
     for type_index, node_type in enumerate(node_types):
         if node_type not in graph.node_types:
             continue
@@ -957,7 +1161,7 @@ def _rotate_context_features(
 
 
 def _zero_edge_attributes(graph: HeteroData) -> HeteroData:
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
     for edge_type in graph.edge_types:
         edge_attr = graph[edge_type].get("edge_attr")
         if torch.is_tensor(edge_attr):
@@ -966,7 +1170,7 @@ def _zero_edge_attributes(graph: HeteroData) -> HeteroData:
 
 
 def _shuffle_topology(graph: HeteroData, seed: int) -> HeteroData:
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
     for relation_index, edge_type in enumerate(graph.edge_types):
         edge_index = graph[edge_type].edge_index
         edge_count = int(edge_index.shape[1])
@@ -988,6 +1192,10 @@ def _map_local_batch(
 ) -> Batch | None:
     if batch is None:
         return None
+    # PyG separates x/grid/edge_attr as views into the complete batch storage.
+    # Deep-copying each such graph would copy that complete backing storage
+    # once per candidate. Helpers use independent stores and replace only the
+    # affected tensors, preserving untouched views until linear-size collation.
     graphs = batch.to_data_list()
     return Batch.from_data_list(
         [transform(graph, index) for index, graph in enumerate(graphs)]
@@ -1154,23 +1362,7 @@ CONDITIONS: dict[str, Callable[[HierarchicalBatch, int], HierarchicalBatch]] = {
 }
 
 
-def _full_edge_set(graph: HeteroData) -> set[tuple[int, int, int]]:
-    values: set[tuple[int, int, int]] = set()
-    for relation_index, edge_type in enumerate(LOCAL_EDGE_TYPES):
-        if edge_type not in graph.edge_types:
-            continue
-        source_type, _, destination_type = edge_type
-        edge_index = graph[edge_type].edge_index
-        source_full = graph[source_type].full_id[edge_index[0]].tolist()
-        destination_full = graph[destination_type].full_id[edge_index[1]].tolist()
-        values.update(
-            (relation_index, int(source), int(destination))
-            for source, destination in zip(source_full, destination_full)
-        )
-    return values
-
-
-def _view_overlap(batch: HierarchicalBatch) -> dict[str, list[float]]:
+def _view_overlap(batch: HierarchicalBatch, *, work_dir: Path | None = None) -> dict[str, list[float]]:
     result = {
         "source_context_jaccard": [],
         "target_context_jaccard": [],
@@ -1194,7 +1386,7 @@ def _view_overlap(batch: HierarchicalBatch) -> dict[str, list[float]]:
         result["source_context_jaccard"].append(_jaccard(source1, source2))
         result["target_context_jaccard"].append(_jaccard(target1, target2))
         result["edge_jaccard"].append(
-            _jaccard(_full_edge_set(graph1), _full_edge_set(graph2))
+            exact_local_edge_jaccard(graph1, graph2, temporary_directory=work_dir)
         )
         canonical = graph1.canonical_counts.reshape(-1).to(torch.float64)
         sampled = graph1.sampled_counts.reshape(-1).to(torch.float64)
@@ -1306,8 +1498,72 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _audit_loader(model, loader, *, device, amp, seed, max_batches, work_dir, progress):
+    """Evaluate every selected batch with independent, copy-on-write inputs."""
+    clean_rows = []
+    condition_rows = {name: [] for name in CONDITIONS}
+    delta_rows = {name: [] for name in CONDITIONS}
+    overlap_rows = {name: [] for name in (
+        "source_context_jaccard", "target_context_jaccard", "edge_jaccard",
+        "source_context_fraction", "target_context_fraction",
+    )}
+    # enumerate retains its last result tuple while fetching the next input.
+    # Keep the index separately so a multi-GB old batch cannot overlap the fetch.
+    batch_index = 0
+    for cpu_batch in loader:
+        if max_batches and batch_index >= max_batches:
+            del cpu_batch
+            break
+        clean = None
+        try:
+            progress(event="audit_batch_start", batch_index=batch_index)
+            progress(event="audit_overlap_start", batch_index=batch_index)
+            overlap = _view_overlap(cpu_batch, work_dir=work_dir)
+            for key, values in overlap.items():
+                overlap_rows[key].extend(values)
+            del overlap
+            progress(event="audit_overlap_end", batch_index=batch_index)
+            progress(event="baseline_start", batch_index=batch_index, condition="baseline")
+            baseline = _fork_batch_for_audit(cpu_batch)
+            try:
+                clean = _evaluate(model, baseline, device=device, amp=amp)
+            finally:
+                del baseline
+            clean_rows.append(_score_metrics(clean["scores"]))
+            progress(event="baseline_end", batch_index=batch_index, condition="baseline")
+            for condition_index, (name, transform) in enumerate(CONDITIONS.items()):
+                progress(event="condition_start", batch_index=batch_index, condition=name)
+                changed_batch = _fork_batch_for_audit(cpu_batch)
+                changed = None
+                try:
+                    changed_batch = transform(
+                        changed_batch, int(seed) + batch_index * 100_003 + condition_index * 10_007,
+                    )
+                    changed = _evaluate(model, changed_batch, device=device, amp=amp)
+                    condition_rows[name].append(_score_metrics(changed["scores"]))
+                    delta_rows[name].append(_condition_delta(clean, changed))
+                finally:
+                    del changed, changed_batch
+                progress(event="condition_end", batch_index=batch_index, condition=name)
+            progress(event="audit_batch_end", batch_index=batch_index)
+        finally:
+            del clean, cpu_batch
+        batch_index += 1
+    return clean_rows, condition_rows, delta_rows, overlap_rows
+
+
 def main() -> None:
     args = build_parser().parse_args()
+    output = Path(args.output).expanduser().resolve()
+    with create_progress_log(output) as progress:
+        print(f"[CausalityProgressFile] {progress.path}", flush=True)
+        progress(event="invocation_start", output=str(output), device=args.device)
+        _execute_audit(args, progress)
+        progress(event="invocation_complete")
+
+
+def _execute_audit(args: argparse.Namespace, progress: Any) -> None:
+    progress_path = str(progress.path)
     if args.batch_size is not None and args.batch_size < 1:
         raise ValueError("batch-size assertion must be positive")
     if args.num_workers is not None and args.num_workers < 0:
@@ -1347,7 +1603,9 @@ def main() -> None:
         print(f"  - {output}")
     cache_index = validate_cache_publication(cache_dir)
     cache_config = _load_json_object(cache_dir / "config.json")
-    payload = torch_load_compat(checkpoint_path, map_location=device)
+    # Loading optimizer/training metadata onto the GPU creates an unnecessary
+    # second resident checkpoint. Only model parameters are copied to device.
+    payload = torch_load_compat(checkpoint_path, map_location="cpu")
     if not isinstance(payload, dict) or "state_dict" not in payload:
         raise ValueError(f"Invalid HierCP checkpoint/state: {checkpoint_path}")
     if payload.get("upper_feature_policy") != UPPER_FEATURE_POLICY:
@@ -1413,25 +1671,42 @@ def main() -> None:
         cache_dir=cache_dir,
         run_mode=args.run_mode,
     )
+    progress(event="input_inventory_start", selected_samples=len(selected))
+    inventory = build_audit_inventory(selected)
+    progress(event="input_inventory_complete", inventory=inventory,
+             model_kwargs=model_kwargs,
+             total_parameters=sum(p.numel() for p in model.parameters()),
+             trainable_parameters=sum(p.numel() for p in model.parameters()))
+    input_sizes = {row["cache_file"]: row["input_bytes_upper_bound"] for row in inventory["rows"]}
+    calibration_selected = sorted(selected, key=lambda path: (-input_sizes[path.name], path.name))
     resources = collect_runtime_resources(device, storage_path=cache_dir)
     resource_fingerprint = _stable_resource_fingerprint(resources, device=device)
+    resource_fingerprint["audit_allocation"] = audit_allocation_fingerprint()
     preflight_identity = {
-        "format": "hiercp_causality_preflight_identity_v1",
+        "format": "hiercp_causality_preflight_identity_v2_host_bounded",
         "artifact_contract_sha256": _value_sha256(artifact_contract),
         "measurement_plan": measurement_plan,
         "device": str(device),
         "repeats": int(args.preflight_repeats),
+        "input_inventory_sha256": _value_sha256(inventory),
+        "input_inventory_sample_count": len(selected),
+        "batch_input_upper_bounds": {
+            str(batch): audit_batch_input_bytes(inventory, selected, batch)
+            for batch in measurement_plan["batch_candidates"]
+        },
     }
     preflight, batch_size, num_workers = _resolve_preflight(
         path=preflight_path,
         identity=preflight_identity,
         resource_fingerprint=resource_fingerprint,
         model=model,
-        selected=selected,
+        selected=calibration_selected,
         device=device,
         seed=int(args.seed),
         repeats=int(args.preflight_repeats),
         overwrite=bool(args.overwrite),
+        inventory=inventory,
+        progress=progress,
     )
     if args.batch_size is not None and args.batch_size != batch_size:
         raise ValueError(
@@ -1475,6 +1750,24 @@ def main() -> None:
             raise SystemExit("[FAIL] causality gate: " + ", ".join(failures))
         return
 
+    _require_host_budget(
+        inventory, selected, batch_size, num_workers, measurement_plan["prefetch_factor"],
+        bool(device.type == "cuda" and measurement_plan["pin_memory"]), progress=progress,
+    )
+    progress(event="audit_loader_start", batch_size=batch_size, num_workers=num_workers,
+             prefetch_factor=measurement_plan["prefetch_factor"], selected_samples=len(selected))
+    base_progress = progress
+
+    def runtime_progress(**fields):
+        if fields.get("event") in {"baseline_start", "condition_start", "audit_overlap_start"}:
+            _require_host_budget(
+                inventory, selected, batch_size, num_workers, measurement_plan["prefetch_factor"],
+                bool(device.type == "cuda" and measurement_plan["pin_memory"]),
+                progress=base_progress, phase="resident_transform",
+            )
+        base_progress(**fields)
+
+    progress = runtime_progress
     loader_kwargs: dict[str, Any] = {
         "batch_size": batch_size,
         "shuffle": False,
@@ -1501,49 +1794,10 @@ def main() -> None:
         **loader_kwargs,
     )
 
-    clean_rows: list[dict[str, float]] = []
-    condition_rows: dict[str, list[dict[str, float]]] = {
-        name: [] for name in CONDITIONS
-    }
-    delta_rows: dict[str, list[dict[str, Any]]] = {
-        name: [] for name in CONDITIONS
-    }
-    overlap_rows: dict[str, list[float]] = {
-        "source_context_jaccard": [],
-        "target_context_jaccard": [],
-        "edge_jaccard": [],
-        "source_context_fraction": [],
-        "target_context_fraction": [],
-    }
-
-    for batch_index, cpu_batch in enumerate(loader):
-        if args.max_batches and batch_index >= int(args.max_batches):
-            break
-        overlap = _view_overlap(cpu_batch)
-        for key, values in overlap.items():
-            overlap_rows[key].extend(values)
-
-        clean = _evaluate(
-            model,
-            copy.deepcopy(cpu_batch),
-            device=device,
-            amp=amp,
-        )
-        clean_rows.append(_score_metrics(clean["scores"]))
-
-        for condition_index, (name, transform) in enumerate(CONDITIONS.items()):
-            changed_batch = transform(
-                copy.deepcopy(cpu_batch),
-                int(args.seed) + batch_index * 100_003 + condition_index * 10_007,
-            )
-            changed = _evaluate(
-                model,
-                changed_batch,
-                device=device,
-                amp=amp,
-            )
-            condition_rows[name].append(_score_metrics(changed["scores"]))
-            delta_rows[name].append(_condition_delta(clean, changed))
+    clean_rows, condition_rows, delta_rows, overlap_rows = _audit_loader(
+        model, loader, device=device, amp=amp, seed=int(args.seed),
+        max_batches=int(args.max_batches), work_dir=output.parent, progress=progress,
+    )
 
     if not clean_rows:
         raise RuntimeError("No audit batches were evaluated")
@@ -1632,6 +1886,8 @@ def main() -> None:
         "evaluated_batches": len(clean_rows),
         "device": str(device),
         "resource_preflight": {
+            "progress_path": progress_path,
+            "input_inventory": inventory,
             "path": str(preflight_path),
             "artifact_sha256": _file_sha256(preflight_path),
             "contract_sha256": _value_sha256(preflight),
@@ -1684,6 +1940,7 @@ def main() -> None:
             "Causality input artifacts changed during the audit; refusing publication"
         )
     _atomic_json(output, report)
+    progress(event="report_published", path=str(output), strict_pass=not strict_failures)
 
     print("[OK] HierCP context-causality audit complete")
     print("checkpoint:", checkpoint_path)
