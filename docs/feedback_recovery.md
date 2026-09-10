@@ -255,6 +255,28 @@ unrepresentable positive remains an error; no fake context is substituted.
 
 ## Integrity and remaining verification boundaries
 
+### Historical failed attempts during bank upgrade
+
+The recovery writer before `301482c` stored failed attempts as only
+`name/status/error`, without `input_files`. The bank-upgrade reader formerly
+misreported these missing hashes as changed configuration. It now accepts only
+that exact legacy failed-row shape, before any hash-bound attempt, and only if
+a later completion of the **same stage** passes the existing input SHA and native
+completion checks. The preparation receipt, runtime inventory and source files
+must still verify. Failed-attempt outputs are not adopted and the source journal
+is never rewritten to invent historical hashes.
+
+Missing hashes on a completed or later modern row, malformed mappings, actual
+hash differences, running attempts and missing completion evidence still fail.
+Real differences report the stage, file path and recorded/current SHA instead
+of a generic configuration error. Accepted legacy failures are printed as
+`[SOURCE LEGACY HISTORY]` only after source validation succeeds.
+
+This source check runs before creating the new upgrade root or launching any
+GPU, bank or training work. For a failure at this check, rerun the original
+upgrade command after updating the code, without `--resume-experiment`; do not
+delete an existing root if another invocation has since created it.
+
 Migration validates the original split, prototype, source data, manifest,
 actual graph payloads and byte hashes. The allowed changes are explicit donor
 eligibility and an increased resource-only ROI ceiling; incompatible geometry

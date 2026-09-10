@@ -177,10 +177,11 @@ def _check_source_history(old, journal):
     if len(sequence) != len(set(sequence)):
         raise ValueError("Source launch has duplicated stages")
     completed, entered = set(), False
+    legacy_failures, bound_history_started = [], False
     inputs = launch._resume_inputs(old)
     if not isinstance(journal["stages"], list):
         raise ValueError("Source stage history is malformed")
-    for row in journal["stages"]:
+    for stage_index, row in enumerate(journal["stages"], start=1):
         if not isinstance(row, dict) or row.get("status") not in {"completed", "failed"}:
             raise ValueError("Source has a running or ambiguous stage; no upgrade is launched")
         name = row.get("name")
@@ -194,8 +195,34 @@ def _check_source_history(old, journal):
             position = len(completed - preparation)
             if not preparation.issubset(completed) or position >= len(sequence) or name != sequence[position]:
                 raise ValueError("Source stage order is invalid")
-            if row.get("input_files") != inputs:
-                raise ValueError("Source experiment configurations changed since its recorded attempt")
+            location = f"source stage #{stage_index} {name} ({row['status']})"
+            if "input_files" not in row:
+                # Before 301482c, the recovery writer recorded only these three
+                # fields on failure. No output from that failed attempt is
+                # adopted: a later hash-bound completion of this SAME stage is
+                # mandatory, including all existing native output checks below.
+                if (bound_history_started or row["status"] != "failed"
+                        or set(row) != {"name", "status", "error"}
+                        or not isinstance(row["error"], str) or not row["error"].strip()):
+                    raise ValueError(f"Missing input_files at {location}; not a supported legacy failed "
+                                     "attempt. This is missing provenance, not evidence of changed configuration.")
+                legacy_failures.append({"stage_index": stage_index, "name": name})
+            else:
+                bound_history_started = True
+                recorded = row["input_files"]
+                if (not isinstance(recorded, dict) or not recorded
+                        or any(not isinstance(key, str) or not isinstance(value, str)
+                               or len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
+                               for key, value in recorded.items())):
+                    raise ValueError(f"Malformed input_files at {location}; expected path-to-SHA256 mapping")
+                if recorded != inputs:
+                    differences = [{"path": key, "recorded_sha256": recorded.get(key),
+                                    "current_sha256": inputs.get(key)}
+                                   for key in sorted(set(recorded) | set(inputs))
+                                   if recorded.get(key) != inputs.get(key)]
+                    raise ValueError(f"Source experiment configurations changed at {location}: "
+                                     + json.dumps(differences, sort_keys=True)
+                                     + ". Source journal and files were not modified.")
             if row["status"] == "completed":
                 evidence = row.get("completion_evidence")
                 if not isinstance(evidence, dict) or evidence.get("format") != "feedback_stage_completion_v1":
@@ -206,6 +233,9 @@ def _check_source_history(old, journal):
                     raise ValueError(f"Source stage fails native verification: {name}")
         if row["status"] == "completed":
             completed.add(name)
+    if any(row["name"] not in completed for row in legacy_failures):
+        raise ValueError("Legacy failed source stage has no later hash-bound verified completion: "
+                         + json.dumps(legacy_failures, sort_keys=True))
     if not preparation.union({"gnn-train", "plan"}).issubset(completed) or not journal["training_started"]:
         raise ValueError("Upgrade requires completed quality-GNN/causality and native preprocessing")
     results = Path(old["env_updates"]["nnUNet_results"])
@@ -224,6 +254,7 @@ def _check_source_history(old, journal):
         raise ValueError("Source preparation identity files changed")
     from tools.feedback_preparation_recovery import verify_identity
     verify_identity(identity)
+    return legacy_failures
 
 
 def _layout(plan, *, source=False):
@@ -245,7 +276,7 @@ def validate_source(plan):
     old = _source_plan(plan)
     source = old["run_root"]
     journal = launch._read_json(source / "execution_journal.json")
-    _check_source_history(old, journal)
+    legacy_failures = _check_source_history(old, journal)
     original = launch._read_json(old["train_config"])
     current = launch._read_json(plan["project_root"] / "config/train.json")
     differences = source_config_differences(original, current)
@@ -258,6 +289,11 @@ def validate_source(plan):
     for row in journal["stages"]:
         if row.get("name") in {"gnn-train", "plan"} and row["status"] == "completed":
             required.extend(source / name for name in row["completion_evidence"]["files"])
+    if legacy_failures:
+        print("[SOURCE LEGACY HISTORY] Preserved pre-301482c failed attempts without input hashes; "
+              "later same-stage completions, input hashes, native outputs and preparation receipt verified. "
+              "No failed-attempt outputs adopted or source files rewritten: "
+              + json.dumps(legacy_failures, sort_keys=True), flush=True)
     return {"format": "feedback_bank_upgrade_source_v1", "source_root": str(source),
             "files": launch._bound_files(source, required),
             "runtime_inventory": journal["runtime_inventory"],

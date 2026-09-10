@@ -101,6 +101,16 @@ class BankUpgradeDebugTests(unittest.TestCase):
         return SimpleNamespace(project=project, medical=medical, source=source, old=old, plan=plan,
                                journal=journal, evidence=evidence, pre=pre, raw=raw)
 
+    def legacy_prefix_failure(self, fixture):
+        """Exact pre-301482c failed-row schema, before modern verified completion."""
+        index = next(index for index, row in enumerate(fixture.journal["stages"])
+                     if row["name"] == "gnn-train")
+        row = {"name": "gnn-train", "status": "failed",
+               "error": "DEBUG historical pre-301482c failure; preserve verbatim"}
+        fixture.journal["stages"].insert(index, row)
+        launch._save_journal(fixture.source, fixture.journal)
+        return row
+
     @contextlib.contextmanager
     def native_boundaries(self, fixture):
         def evidence(plan, name):
@@ -148,6 +158,155 @@ class BankUpgradeDebugTests(unittest.TestCase):
             self.assertNotIn("--resume", command["argv"])
         self.assertEqual(plan["minimum_free_bytes"], 80 * 1024**3)
         self.assertNotIn("upgrade_source_root", launch.build_plan(ROOT, ROOT / "DEBUG_medical"))
+
+    def test_legacy_failed_prefix_then_verified_completion_upgrades_without_retraining(self):
+        with tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_legacy_prefix_") as folder:
+            f = self.fixture(Path(folder))
+            legacy = self.legacy_prefix_failure(f)
+            self.assertEqual(set(legacy), {"name", "status", "error"})
+            before, calls = inventory(f.source), []
+            original_journal = (f.source / "execution_journal.json").read_bytes()
+            with self.native_boundaries(f), mock.patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "DEBUG_ASSIGNED_GPU"}):
+                identity = upgrade.validate_source(f.plan)
+                self.assertEqual(identity["runtime_inventory"], f.journal["runtime_inventory"])
+                launch.execute_plan(f.plan, runner=self.runner(f, calls))
+                completed = upgrade.load_upgrade_journal(f.plan, upgrade.validate_source(f.plan))
+                self.assertTrue(completed["complete"])
+            self.assertTrue(any("bank" in argv for argv, _ in calls))
+            for argv, _ in calls:
+                self.assertNotIn("tools.paired_benchmark", argv)
+                for prohibited in ("gnn-prepare", "gnn-train", "split", "plan", "nnUNetv2_plan_and_preprocess"):
+                    self.assertNotIn(prohibited, argv)
+            self.assertEqual((f.source / "execution_journal.json").read_bytes(), original_journal)
+            self.assertEqual(inventory(f.source), before)
+
+    def test_legacy_compatibility_does_not_accept_unhashed_completed_stages(self):
+        for stage in ("gnn-train", "plan"):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_unhashed_complete_") as folder:
+                f = self.fixture(Path(folder))
+                self.legacy_prefix_failure(f)
+                row = next(row for row in f.journal["stages"]
+                           if row["name"] == stage and row["status"] == "completed")
+                row.pop("input_files")
+                launch._save_journal(f.source, f.journal)
+                before = inventory(f.source)
+                with self.native_boundaries(f), self.assertRaisesRegex(ValueError, "Missing input_files"):
+                    upgrade.validate_source(f.plan)
+                self.assertEqual(inventory(f.source), before)
+                self.assertFalse(f.plan["run_root"].exists())
+
+    def test_unhashed_failure_after_any_modern_row_is_not_a_legacy_prefix(self):
+        for modern_status in ("failed", "completed"):
+            with self.subTest(modern_status=modern_status), tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_late_unhashed_") as folder:
+                f = self.fixture(Path(folder))
+                if modern_status == "failed":
+                    index = next(index for index, row in enumerate(f.journal["stages"])
+                                 if row["name"] == "gnn-train")
+                    modern = {"name": "gnn-train", "status": "failed", "error": "DEBUG modern attempt",
+                              "input_files": launch._resume_inputs(f.old)}
+                    legacy = {"name": "gnn-train", "status": "failed", "error": "DEBUG impermissibly late legacy row"}
+                    f.journal["stages"][index:index] = [modern, legacy]
+                else:
+                    index = next(index for index, row in enumerate(f.journal["stages"])
+                                 if row["name"] == "plan")
+                    f.journal["stages"].insert(index, {"name": "plan", "status": "failed",
+                                                     "error": "DEBUG unhash after completed modern GNN"})
+                launch._save_journal(f.source, f.journal)
+                with self.native_boundaries(f), self.assertRaisesRegex(ValueError, "Missing input_files"):
+                    upgrade.validate_source(f.plan)
+                self.assertFalse(f.plan["run_root"].exists())
+
+    def test_present_null_or_malformed_input_files_never_becomes_legacy(self):
+        malformed = (None, [], "DEBUG not a hash mapping", {}, {"DEBUG_path": None}, {"DEBUG_path": "not-a-sha256"})
+        for value in malformed:
+            with self.subTest(input_files=value), tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_bad_hash_schema_") as folder:
+                f = self.fixture(Path(folder))
+                self.legacy_prefix_failure(f)
+                row = next(row for row in f.journal["stages"]
+                           if row["name"] == "gnn-train" and row["status"] == "completed")
+                row["input_files"] = value
+                launch._save_journal(f.source, f.journal)
+                with self.native_boundaries(f), self.assertRaisesRegex(ValueError, "Malformed input_files"):
+                    upgrade.validate_source(f.plan)
+                self.assertFalse(f.plan["run_root"].exists())
+
+    def test_changed_input_hash_identifies_exact_stage_and_file(self):
+        for mutation in ("actual_bytes", "recorded_hash"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_changed_hash_") as folder:
+                f = self.fixture(Path(folder))
+                self.legacy_prefix_failure(f)
+                input_path = f.old["train_config"]
+                relative = input_path.relative_to(f.project).as_posix()
+                if mutation == "actual_bytes":
+                    # Valid identical JSON semantics, different real file bytes.
+                    put(input_path, input_path.read_bytes() + b"\n")
+                else:
+                    row = next(row for row in f.journal["stages"]
+                               if row["name"] == "gnn-train" and row["status"] == "completed")
+                    row["input_files"] = dict(row["input_files"])
+                    row["input_files"][relative] = "0" * 64
+                    launch._save_journal(f.source, f.journal)
+                with self.native_boundaries(f), self.assertRaises(ValueError) as caught:
+                    upgrade.validate_source(f.plan)
+                message = str(caught.exception).replace("\\", "/")
+                self.assertIn("gnn-train", message)
+                self.assertIn(relative, message)
+                self.assertIn("recorded_sha256", message)
+                self.assertIn("current_sha256", message)
+                self.assertFalse(f.plan["run_root"].exists())
+
+    def test_legacy_failure_without_later_same_stage_verified_completion_is_rejected(self):
+        with tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_unresolved_legacy_") as folder:
+            f = self.fixture(Path(folder))
+            legacy = self.legacy_prefix_failure(f)
+            f.journal["stages"] = f.journal["stages"][:f.journal["stages"].index(legacy) + 1]
+            launch._save_journal(f.source, f.journal)
+            with self.native_boundaries(f), self.assertRaises(ValueError):
+                upgrade.validate_source(f.plan)
+            self.assertFalse(f.plan["run_root"].exists())
+
+    def test_legacy_prefix_does_not_bypass_corrupt_native_completion_proof(self):
+        for corruption in ("bound_proof_bytes", "native_causality_verifier"):
+            with self.subTest(corruption=corruption), tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_native_proof_") as folder:
+                f = self.fixture(Path(folder))
+                self.legacy_prefix_failure(f)
+                if corruption == "bound_proof_bytes":
+                    put(f.source / "paired/DEBUG_gnn_evidence", b"DEBUG corrupted completed-GNN proof")
+                with self.native_boundaries(f), contextlib.ExitStack() as stack:
+                    if corruption == "native_causality_verifier":
+                        stack.enter_context(mock.patch.object(online, "_verified_gnn_causality",
+                            side_effect=ValueError("DEBUG invalid native causality proof")))
+                    with self.assertRaises(ValueError):
+                        upgrade.validate_source(f.plan)
+                self.assertFalse(f.plan["run_root"].exists())
+
+    def test_legacy_prefix_keeps_real_preparation_receipt_validation(self):
+        actual_verifier = launch._verify_preparation_receipt
+        with tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_bad_receipt_") as folder:
+            f = self.fixture(Path(folder))
+            self.legacy_prefix_failure(f)
+            f.journal["preparation_receipt"] = {"format": "DEBUG corrupt preparation receipt"}
+            launch._save_journal(f.source, f.journal)
+            with self.native_boundaries(f), mock.patch.object(launch, "_verify_preparation_receipt", side_effect=actual_verifier), \
+                 self.assertRaisesRegex(ValueError, "preparation receipt"):
+                upgrade.validate_source(f.plan)
+            self.assertFalse(f.plan["run_root"].exists())
+
+    def test_unhashed_prefix_requires_the_exact_historical_failed_row_schema(self):
+        for corruption in ("missing_error", "extra_key", "nonstring_error"):
+            with self.subTest(corruption=corruption), tempfile.TemporaryDirectory(prefix="DEBUG_upgrade_legacy_schema_") as folder:
+                f = self.fixture(Path(folder))
+                legacy = self.legacy_prefix_failure(f)
+                if corruption == "missing_error":
+                    legacy.pop("error")
+                elif corruption == "extra_key":
+                    legacy["DEBUG_unknown_field"] = True
+                else:
+                    legacy["error"] = None
+                launch._save_journal(f.source, f.journal)
+                with self.native_boundaries(f), self.assertRaises(ValueError):
+                    upgrade.validate_source(f.plan)
+                self.assertFalse(f.plan["run_root"].exists())
 
     def test_overlap_recovery_and_external_config_are_rejected(self):
         for kwargs in ({"experiment_name": "DEBUG_old"}, {"run_root": "work/DEBUG_old/nested"},

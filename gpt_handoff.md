@@ -1,8 +1,8 @@
 # HierCP GPT handoff
 
 작성일: 2026-09-10 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
-`source_commit` 및 `Tree`를 따른다. 이번 작업은 문서만 바꾸는 작업이 아니라
-raw CP → nnU-Net 전처리의 후보 위치별 표현과 trainer 연결을 수정하는 작업이다.
+`source_commit` 및 `Tree`를 따른다. raw CP → nnU-Net 전처리의 후보 위치별 표현과
+trainer 연결 수정에 이어, 최신 변경은 bank-upgrade의 과거 실패 로그 호환성 수정이다.
 
 ## 1. 전달물과 읽는 방법
 
@@ -45,7 +45,18 @@ nnU-Net이 실제로 어려워하는 붙여넣기 사례를 관측하여 online 
 | outer fold / dataset ID | `0` / `760` |
 | 저장된 Python | `/home/aicompetition06/.conda/envs/nnunet/bin/python` |
 | nnU-Net seed | `42`; quality GNN/bank는 별도 fold-specific 설정을 따른다 |
-| 마지막 사용자 제공 bank 실패 | `liver_101`, component `3`, raw source 1 voxel → 원래 위치에서 독립 resampling한 mask 0 voxel |
+| 직전 bank 실패 | `liver_101`, component `3`, raw source 1 voxel → 원래 위치에서 독립 resampling한 mask 0 voxel |
+| 최신 사용자 제공 오류 | 새 `feedback_rawcp` 시작 전 source history 검증: `Source experiment configurations changed since its recorded attempt` |
+
+최신 오류는 `validate_source` 안에서 발생했다. 이 invocation은 새 root 생성,
+GPU 검사, bank 생성 및 학습 전에 멈췄다. 구 writer(`301482c` 이전)는 실패 행에
+`name/status/error`만 저장했지만 새 upgrade reader가 `input_files` 누락도 설정 변경으로
+오인하는 호환성 결함을 코드 이력에서 확인했다. 원격 journal 행 자체는 아직 제공되지
+않았으므로 해당 서버 행이 누락인지 실제 SHA 차이인지까지 확정한 것은 아니다.
+현재 수정은 구형 실패 행에 한해 **뒤의 동일 단계 완료 기록의 입력 SHA·native 완료
+증거·원본 receipt를 모두 검증**한 후 허용한다. 완료 행 누락, 현대 기록 뒤 누락,
+잘못된 형식·실제 SHA 변경은 계속 거절하며 단계·파일·양쪽 SHA를 출력한다.
+source journal은 수정하지 않고 실패한 시도의 산출물을 승인하지 않는다.
 
 첨부 로그 `4410ca46-0410-4935-aeb9-28d8216e42cc/pasted-text.txt`의 실패 이유는
 `selected_source_disappeared_after_resampling`이고 해당 invocation은 약 2459.997초 후
@@ -233,7 +244,16 @@ zero-support 수와 measured CPU 준비 자원을 구분해 기록한다.
 
 ## 7. 검증된 범위와 과거 성능 결과
 
-- 최종 로컬 전체 회귀: `python -B -m unittest discover -s tests -p 'test*.py' -v`
+- 최신 source-history 수정: upgrade DEBUG 26개 중 25개 통과·Windows symlink 권한
+  1개 skip(8.640초), 기존 실행·재개 DEBUG 32개 모두 통과(39.098초).
+  합계 **58개 중 57개 통과, 1개 skip, 실패 0**. 새 회귀 테스트 9개는 모두 통과했다.
+  동일한 DEBUG legacy 기록을 이전 `a406574` reader에 넣으면 사용자와 같은 오류가
+  발생하고, 수정 reader는 후속 동일 단계 증거 검증 후 통과함을 별도 대조했다.
+  원본 journal·파일 내용/목록 보존 및 GNN·전처리 재실행 없는 stage driver를 검사했다.
+  무거운 native 성공 검증에는 명시적 경계 double을 사용하며 실제 서버 journal이나
+  환자 데이터 검증을 대신하지 않는다. 이번에는 아래 전체 662개 suite나 전체 학습·평가를
+  재실행하지 않았다. 아래 전체 suite 수치는 직전 raw-target 구현의 결과다.
+- raw-target 구현(`945f7a2`)의 로컬 전체 회귀: `python -B -m unittest discover -s tests -p 'test*.py' -v`
   **662개 중 659개 통과, 3개 건너뜀, 실패 0**, 267.604초, 종료 코드 0.
   건너뛴 것은 Windows symlink 권한 관련 2개와 명시적 opt-in이 필요한
   production-sized DEBUG optimizer-step smoke 1개다. 그 전체 규모 smoke를 실행한 것으로
@@ -310,6 +330,9 @@ env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
 ```
 
 새 upgrade 실험의 안전 재개는 위와 같은 원래 인수에 `--resume-experiment`를 추가한다.
+단, 최신 사용자 오류처럼 source history 검증에서 멈춘 invocation은 새 root를 만들기
+전이므로 코드 업데이트 후 위의 최초 실행 인수를 그대로 쓴다. 다른 invocation이
+이미 root를 만들었으면 삭제하지 말고 그 기록에 맞는 재개 여부를 확인한다.
 원본 `feedback_medical_aug` journal은 수정하지 않는다. 기존 `--recover-from` 기반
 실험의 `--resume-preparation`/`--resume-experiment` 경로도 남아 있지만 새 bank 표현으로
 구버전 runtime을 바꾸는 수단이 아니다. `--overwrite`나 journal 수작업 삭제로 우회하지 않는다.
