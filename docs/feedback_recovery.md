@@ -1,5 +1,37 @@
 # Full-size feedback preparation recovery
 
+## Current failed-bank upgrade
+
+For the `liver_101` donor-only resampling failure in `work/feedback_medical_aug`,
+the current action is **not** to rerun the historical continuation command below.
+Use `tools/run_feedback_experiment.py --upgrade-bank-from work/feedback_medical_aug
+--experiment-name feedback_rawcp` with the original medical root, fold, dataset ID,
+seed and nnU-Net Python environment. The complete copyable command is in
+[README](../README.md).
+
+The upgrade verifies original launch/journal checksums, GNN/checkpoint/prototype
+and shared preprocessing identities. It preserves the original root and creates
+a separate raw-target bank, private runtime, preprocessing directory view and
+Full/Basic result directories. Immutable dataset files may be linked; mutable
+metadata and later native unpack outputs belong to the new view. It does not
+retrain the completed quality GNN, rewrite an old bank, or resume an old
+segmentation checkpoint under different CP semantics.
+
+The source experiment must be stopped and must not have started segmentation
+training. Failed/incomplete or ambiguous provenance is refused, not repaired by
+editing checksums. Only validated resource-policy differences may be recorded;
+the saved training configuration is retained byte-for-byte, and model/graph/data
+contracts remain strict. Storage preflight includes native baseline payload and
+new-view unpack lower bounds; it is not a peak-memory guarantee.
+
+For an eligible interruption of this **new upgrade experiment**, use the same
+original upgrade arguments plus `--resume-experiment`. Existing bank error rows,
+incompatible payloads, ambiguous running stages, partial runtime setup or missing
+training checkpoints can still prevent continuation. `--resume-preparation` is
+not an upgrade option. Do not delete journals/manifests or use `--overwrite`.
+
+## Historical preparation-recovery workflow
+
 This workflow addresses the failed `work/feedback_experiment` preparation without
 replacing any original cache, nnU-Net installation, model or experiment result.
 It uses the existing Git checkout and writes a separate experiment, by default
@@ -42,7 +74,11 @@ An interrupted, incompletely certified cache migration requires a new explicit
 Do not use `--overwrite` to recover the old cache. In the legacy preparation
 command that flag removes the old graph artifacts and their metadata.
 
-## Continue the existing Medical Data Aug experiment
+## Historical same-contract continuation of Medical Data Aug
+
+This section documents the older, unchanged-CP-contract continuation. It does not
+upgrade donor-only banks to raw-target transport; use the current workflow above
+for that change.
 
 For the stopped `work/feedback_medical_aug` experiment whose preparation has
 completed, retain the original launch arguments and add `--resume-experiment`.

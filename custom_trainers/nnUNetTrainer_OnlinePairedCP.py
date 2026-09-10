@@ -1,9 +1,10 @@
 """Deterministic online Basic-CP and HierCP trainers for nnU-Net v2.
 
-The trainers consume a fold-specific, single-pool OnlineCP bank generated from
-preprocessed training cases. The complete CT is never copied: one crop is loaded,
-a source lesion is pasted in RAM, normal nnU-Net augmentation is applied, and the
-transient crop is discarded after the optimizer step. Validation never uses CP.
+The trainers consume a fold-specific, single-pool OnlineCP bank. Legacy banks
+retain their preprocessed paste path. New feedback banks transport the raw-target
+paste through the verified native preprocessing operator into a single crop,
+then use ordinary nnU-Net augmentation. No per-event full-volume resampling or
+source-position mask translation is used in that path. Validation never uses CP.
 
 Available policies:
 - nnUNetTrainer_250epochs_OnlineBasicCP: uniform random over all valid candidates.
@@ -140,6 +141,10 @@ class OnlineCPBank:
             )
         self.metadata = metadata
         self.root = self.index_path.parent
+        self.paste_contract = metadata.get("paste_contract")
+        if self.paste_contract not in {None, "onlinecp_raw_target_paste_v1"}:
+            raise OnlineCPError(f"Unsupported paste contract: {self.paste_contract!r}")
+        self._raw_store = None
         self.entries_by_case: dict[str, tuple[str, ...]] = {
             str(case_id): tuple(str(value) for value in values)
             for case_id, values in metadata.get("entries_by_case", {}).items()
@@ -234,6 +239,15 @@ class OnlineCPBank:
                 entry = {key: np.asarray(payload[key]) for key in payload.files}
         except FileNotFoundError as exc:
             raise OnlineCPError(f"Missing OnlineCP bank entry: {path}") from exc
+        if self.paste_contract == "onlinecp_raw_target_paste_v1":
+            self._validate_raw_entry(entry, path)
+            self._cache[relative_path] = entry
+            self._cache.move_to_end(relative_path)
+            while len(self._cache) > self._cache_limit:
+                self._cache.popitem(last=False)
+            return entry
+        if "paste_contract" in entry:
+            raise OnlineCPError(f"Entry declares a paste contract absent from its bank index: {path}")
         required = {
             "source_data",
             "source_mask",
@@ -281,6 +295,108 @@ class OnlineCPBank:
             self._cache.popitem(last=False)
         return entry
 
+    def _validate_raw_entry(self, entry, path):
+        required = {"paste_contract", "case_id", "candidate_centers", "candidate_raw_centers", "scores",
+                    "source_component", "source_diameter_mm", "candidate_payloads",
+                    "candidate_payload_sha256", "raw_case_reference", "raw_case_reference_sha256"}
+        if not required.issubset(entry) or {"source_data", "source_mask", "anchor_offset"} & set(entry):
+            raise OnlineCPError(f"Raw-target entry fields conflict with its contract: {path}")
+        contract = np.asarray(entry["paste_contract"])
+        if contract.size != 1 or contract.dtype.kind != "U" or str(contract.reshape(-1)[0]) != self.paste_contract:
+            raise OnlineCPError(f"Raw-target entry/index paste contracts differ: {path}")
+        for name in ("candidate_centers", "candidate_raw_centers"):
+            centers = entry[name]
+            if centers.shape != (self.candidate_count, 3) or centers.dtype.kind not in "iu":
+                raise OnlineCPError(f"Invalid {name} in raw-target entry: {path}")
+        # Native resampling may map distinct raw candidates to the same voxel.
+        # Candidate identity/order is the raw-space pool, never deduplicated here.
+        if np.unique(entry["candidate_raw_centers"], axis=0).shape[0] != self.candidate_count:
+            raise OnlineCPError(f"Duplicate raw candidate centers in {path}")
+        scores = entry["scores"]
+        if scores.shape != (self.candidate_count,) or not np.all(np.isfinite(scores)):
+            raise OnlineCPError(f"Invalid candidate scores in {path}")
+        component = np.asarray(entry["source_component"])
+        diameter = np.asarray(entry["source_diameter_mm"])
+        if component.size != 1 or component.dtype.kind not in "iu" or int(component.reshape(-1)[0]) < 1:
+            raise OnlineCPError(f"Invalid raw source component in {path}")
+        if diameter.size != 1 or not np.all(np.isfinite(diameter)) or float(diameter.reshape(-1)[0]) <= 0:
+            raise OnlineCPError(f"Invalid raw source diameter in {path}")
+        for name, count in (("candidate_payloads", self.candidate_count),
+                            ("candidate_payload_sha256", self.candidate_count),
+                            ("raw_case_reference", 1), ("raw_case_reference_sha256", 1), ("case_id", 1)):
+            values = entry[name]
+            if values.shape != (count,) or values.dtype.kind != "U" or any(not str(value) for value in values):
+                raise OnlineCPError(f"Invalid raw payload references in {path}: {name}")
+            if name.endswith("sha256") and any(len(str(value)) != 64 or any(c not in "0123456789abcdef" for c in str(value)) for value in values):
+                raise OnlineCPError(f"Invalid raw payload SHA-256 in {path}: {name}")
+
+    def _get_raw_store(self):
+        if self._raw_store is None:
+            try:
+                from nnunetv2.training.nnUNetTrainer.onlinecp_raw_bank import RawBankStore
+            except ModuleNotFoundError as error:
+                if error.name not in {"nnunetv2", "nnunetv2.training", "nnunetv2.training.nnUNetTrainer",
+                                      "nnunetv2.training.nnUNetTrainer.onlinecp_raw_bank"}:
+                    raise
+                from custom_trainers.onlinecp_raw_bank import RawBankStore
+            self._raw_store = RawBankStore(self.root)
+        return self._raw_store
+
+    def adopt_raw_verification(self, receipt):
+        """Transfer only startup SHA/stat witnesses before worker spawning.
+
+        The caller creates this in-memory receipt after a complete source audit.
+        It is never loaded from an untrusted bank JSON or checkpoint. Runtime
+        loads still re-stat every file and reject a changed verification witness.
+        """
+        if (self.paste_contract != "onlinecp_raw_target_paste_v1"
+                or not isinstance(receipt, dict) or set(receipt) != {"root", "index_sha256", "witnesses"}
+                or receipt["root"] != str(self.root.resolve())
+                or receipt["index_sha256"] != hashlib.sha256(self.index_path.read_bytes()).hexdigest()
+                or not isinstance(receipt["witnesses"], dict)
+                or (not receipt["witnesses"] and any(self.entries_by_case.values()))):
+            raise OnlineCPError("Raw verification receipt does not bind this exact bank root/index")
+        store = self._get_raw_store()
+        if getattr(store, "_cases", {}) or getattr(store, "_sources", {}):
+            raise OnlineCPError("Raw verification must be transferred before runtime payload loading")
+        # Copy the small metadata map, not case/source arrays. RawBankStore's
+        # __getstate__ preserves witnesses while excluding mmap descriptors.
+        store._witnesses = dict(receipt["witnesses"])
+
+    @staticmethod
+    def raw_apply_function():
+        try:
+            from nnunetv2.training.nnUNetTrainer.onlinecp_raw_resampling import apply_candidate
+        except ModuleNotFoundError as error:
+            if error.name not in {"nnunetv2", "nnunetv2.training", "nnunetv2.training.nnUNetTrainer",
+                                  "nnunetv2.training.nnUNetTrainer.onlinecp_raw_resampling"}:
+                raise
+            from custom_trainers.onlinecp_raw_resampling import apply_candidate
+        return apply_candidate
+
+    def load_raw_candidate(self, entry, candidate_index):
+        if self.paste_contract != "onlinecp_raw_target_paste_v1":
+            raise OnlineCPError("Raw candidate loading requires its explicit bank contract")
+        if (isinstance(candidate_index, (bool, np.bool_))
+                or not isinstance(candidate_index, (int, np.integer))
+                or not 0 <= int(candidate_index) < self.candidate_count):
+            raise OnlineCPError("Raw candidate index is outside the original pool")
+        store = self._get_raw_store()
+        candidate = store.load_candidate(str(entry["candidate_payloads"][candidate_index]),
+                                         str(entry["candidate_payload_sha256"][candidate_index]))
+        case = store.load_case(str(entry["raw_case_reference"][0]),
+                               str(entry["raw_case_reference_sha256"][0]))
+        case_id = str(entry["case_id"][0])
+        raw_center = np.asarray(candidate.get("raw_target_center", []))
+        component = candidate.get("source_component")
+        if (case["metadata"].get("case_id") != case_id or candidate.get("case_id") != case_id
+                or type(component) is not int or component != int(entry["source_component"].reshape(-1)[0])
+                or candidate.get("case_reference_sha256") != str(entry["raw_case_reference_sha256"][0])
+                or raw_center.shape != (3,) or raw_center.dtype.kind not in "iu"
+                or not np.array_equal(raw_center, entry["candidate_raw_centers"][candidate_index])):
+            raise OnlineCPError("Selected raw candidate changes source, destination or case identity")
+        return case, candidate
+
     def load_for_case(self, case_id: str, entry_index: int) -> dict[str, np.ndarray]:
         names = self.entry_names(case_id)
         if not names:
@@ -317,7 +433,7 @@ def _select_candidate_index(
 
 
 class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
-    """nnU-Net loader that pastes one preprocessed small tumor online."""
+    """nnU-Net loader with explicit legacy/native raw-target paste dispatch."""
 
     def __init__(
         self,
@@ -424,16 +540,124 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
         shift_low, shift_high = self.online_bank.intensity_shift_hu
         scale = scale_low + scale_u * (scale_high - scale_low)
         shift_hu = shift_low + shift_u * (shift_high - shift_low)
-        normalized_offset = (
-            (scale - 1.0) * self.online_bank.ct_mean + shift_hu
-        ) / self.online_bank.ct_std
-        return {
+        return self._make_paste_plan(entry, candidate_index, scale, shift_hu, case_id), schedule_token
+
+    def _make_paste_plan(self, entry, candidate_index, scale, shift_hu, case_id):
+        center = tuple(int(value) for value in entry["candidate_centers"][candidate_index])
+        plan = {
             "entry": entry,
             "candidate_index": int(candidate_index),
             "center": center,
             "scale": float(scale),
-            "normalized_offset": float(normalized_offset),
-        }, schedule_token
+        }
+        if getattr(self.online_bank, "paste_contract", None) == "onlinecp_raw_target_paste_v1":
+            if str(entry["case_id"][0]) != str(case_id):
+                raise OnlineCPError("Selected raw source entry belongs to another recipient case")
+            raw_case, candidate = self.online_bank.load_raw_candidate(entry, candidate_index)
+            bbox = np.asarray(candidate["output_bbox"])
+            shape = np.asarray(raw_case["metadata"]["preprocessed_shape"])
+            if (bbox.shape != (3, 2) or bbox.dtype.kind not in "iu" or shape.shape != (3,)
+                    or shape.dtype.kind not in "iu" or np.any(shape <= 0)
+                    or np.any(bbox[:, 0] < 0) or np.any(bbox[:, 1] > shape)
+                    or np.any(bbox[:, 1] <= bbox[:, 0])):
+                raise OnlineCPError(f"Invalid native candidate/case geometry for {case_id}")
+            plan.update(paste_contract="onlinecp_raw_target_paste_v1", raw_case=raw_case,
+                        raw_candidate=candidate, shift_hu=float(shift_hu),
+                        crop_source_shape=tuple(int(v) for v in bbox[:, 1] - bbox[:, 0]),
+                        crop_anchor_offset=tuple(int(v) for v in np.asarray(center) - bbox[:, 0]))
+        else:
+            plan["normalized_offset"] = float(((scale - 1.0) * self.online_bank.ct_mean + shift_hu) / self.online_bank.ct_std)
+        return plan
+
+    def _paste_crop_geometry(self, plan, shape, case_id):
+        if plan.get("paste_contract") == "onlinecp_raw_target_paste_v1":
+            if tuple(plan["raw_case"]["metadata"]["preprocessed_shape"]) != tuple(shape):
+                raise OnlineCPError(f"Raw reference and actual nnU-Net case shape differ: {case_id}")
+            return plan["crop_source_shape"], plan["crop_anchor_offset"]
+        return plan["entry"]["source_mask"].shape, plan["entry"]["anchor_offset"]
+
+    def _raw_candidate_crop_bbox(self, plan, shape, case_id):
+        """Choose a legal fixed-size native crop without trimming the raw source.
+
+        A small native bbox remains fully visible when possible. A larger lesion
+        uses ordinary partial nnU-Net cropping: its complete raw paste still
+        exists, and the engine evaluates exactly the requested native crop.
+        Candidate coordinates, candidate pool, source mask and RNG stay intact.
+        """
+        self._paste_crop_geometry(plan, shape, case_id)
+        shape = np.asarray(shape, dtype=np.int64)
+        patch = np.asarray(self.patch_size, dtype=np.int64)
+        need_to_pad = np.asarray(self.need_to_pad, dtype=np.int64)
+        if (shape.shape != (3,) or patch.shape != (3,) or need_to_pad.shape != (3,)
+                or np.any(shape <= 0) or np.any(patch <= 0)):
+            raise OnlineCPError("Raw CP requires the unchanged three-dimensional nnU-Net patch geometry")
+        need_to_pad = np.maximum(need_to_pad, patch - shape)
+        legal_lower = -need_to_pad // 2
+        legal_upper = shape + need_to_pad // 2 + need_to_pad % 2 - patch
+        bbox = np.asarray(plan["raw_candidate"]["output_bbox"], dtype=np.int64)
+        fits = bbox[:, 1] - bbox[:, 0] <= patch
+        lower_bound = np.where(fits, np.maximum(legal_lower, bbox[:, 1] - patch), legal_lower)
+        upper_bound = np.where(fits, np.minimum(legal_upper, bbox[:, 0]), legal_upper)
+        if np.any(lower_bound > upper_bound):
+            raise OnlineCPError(f"No legal native crop intersects the selected raw candidate: {case_id}")
+        # An anchor may lie in inactive raw padding. Focus the crop on the real
+        # output bbox while leaving the stored raw/native anchor unchanged.
+        focus = np.clip(np.asarray(plan["center"], dtype=np.int64), bbox[:, 0], bbox[:, 1] - 1)
+        lower = np.clip(focus - patch // 2, lower_bound, upper_bound)
+        upper = lower + patch
+        if np.any(upper <= bbox[:, 0]) or np.any(lower >= bbox[:, 1]):
+            raise OnlineCPError(f"Legal native crop missed the selected raw candidate bbox: {case_id}")
+        return lower.astype(int).tolist(), upper.astype(int).tolist()
+
+    def _apply_raw_paste_to_crop(self, data_cropped, seg_cropped, bbox_lbs, plan, case_id):
+        shape = np.asarray(plan["raw_case"]["metadata"]["preprocessed_shape"], dtype=np.int64)
+        lower = np.asarray(bbox_lbs, dtype=np.int64)
+        upper = lower + np.asarray(data_cropped.shape[1:])
+        valid_lower, valid_upper = np.maximum(lower, 0), np.minimum(upper, shape)
+        if np.any(valid_upper <= valid_lower) or data_cropped.shape[0] != 1 or seg_cropped.shape[0] != 1:
+            raise OnlineCPError(f"Raw CP requires one-channel nonempty native crop: {case_id}")
+        crop_bbox = [[int(lo), int(hi)] for lo, hi in zip(valid_lower, valid_upper)]
+        slices = tuple(slice(int(lo - origin), int(hi - origin)) for lo, hi, origin in zip(valid_lower, valid_upper, lower))
+        reference = plan["raw_case"].get("baseline_seg")
+        if (not isinstance(reference, np.ndarray) or reference.shape != (1, *tuple(shape))
+                or reference.dtype.kind not in "iu"):
+            raise OnlineCPError("Raw reference is missing its complete native baseline segmentation")
+        reference_slices = tuple(slice(int(lo), int(hi)) for lo, hi in zip(valid_lower, valid_upper))
+        if not np.array_equal(seg_cropped[(0, *slices)], reference[(0, *reference_slices)]):
+            raise OnlineCPError(f"Actual nnU-Net segmentation differs from the bound native baseline: {case_id}")
+        result = self.online_bank.raw_apply_function()(
+            plan["raw_case"], plan["raw_candidate"], crop_bbox,
+            scale=float(plan["scale"]), shift_hu=float(plan["shift_hu"]),
+        )
+        if not isinstance(result, dict) or not {"data", "seg", "pasted_support", "audit"}.issubset(result):
+            raise OnlineCPError("Raw CP engine did not return the complete crop and attribution")
+        new_data, new_seg, support = result["data"], result["seg"], result["pasted_support"]
+        expected = tuple(int(v) for v in valid_upper - valid_lower)
+        if (not isinstance(new_data, np.ndarray) or new_data.shape != (1, *expected) or new_data.dtype != np.float32
+                or not isinstance(new_seg, np.ndarray) or new_seg.shape != (1, *expected) or new_seg.dtype != np.int16
+                or not isinstance(support, np.ndarray) or support.shape != expected or support.dtype != np.bool_
+                or not np.all(np.isfinite(new_data)) or not np.all(np.isin(new_seg, [-1, 0, 1, 2]))
+                or not isinstance(result["audit"], dict)):
+            raise OnlineCPError("Raw CP engine returned invalid crop shapes, types, labels or audit")
+        baseline = seg_cropped[(0, *slices)]
+        if not np.array_equal(support, (new_seg[0] == 2) & (baseline != 2)):
+            raise OnlineCPError("Raw CP attribution differs from the actual recipient/native label difference")
+        raw_voxels = int(np.count_nonzero(plan["raw_candidate"]["source_mask"]))
+        native_voxels = int(np.count_nonzero(plan["raw_candidate"]["pasted_support"]))
+        crop_voxels = int(np.count_nonzero(support))
+        if raw_voxels < 1 or crop_voxels > native_voxels:
+            raise OnlineCPError("Raw CP source is empty or cropped support exceeds the complete native candidate")
+        # Cubic CT changes extend beyond the label support: replace the complete
+        # native valid crop, preserving the original external 0/-1 padding.
+        data_cropped[(slice(None), *slices)] = new_data
+        seg_cropped[(slice(None), *slices)] = new_seg
+        self._last_raw_pasted_support = np.zeros(data_cropped.shape[1:], dtype=bool)
+        self._last_raw_pasted_support[slices] = support
+        self._last_raw_paste_audit = {"raw_source_voxels": raw_voxels,
+                                      "native_support_voxels": native_voxels,
+                                      "crop_support_voxels": crop_voxels,
+                                      "native_zero_support": int(native_voxels == 0),
+                                      "crop_zero_support": int(crop_voxels == 0)}
 
     def _apply_paste_to_crop(
         self,
@@ -443,6 +667,9 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
         plan: Mapping[str, Any],
         case_id: str,
     ) -> None:
+        if plan.get("paste_contract") == "onlinecp_raw_target_paste_v1":
+            self._apply_raw_paste_to_crop(data_cropped, seg_cropped, bbox_lbs, plan, case_id)
+            return
         entry = plan["entry"]
         source_mask = entry["source_mask"].astype(bool, copy=False)
         anchor_offset = entry["anchor_offset"].astype(np.int64, copy=False)
@@ -476,11 +703,15 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
         seg_all = None
         cp_flags = np.zeros(self.batch_size, dtype=np.uint8)
         schedule_tokens = np.zeros(self.batch_size, dtype=np.uint64)
+        native_audits = {name: np.zeros(self.batch_size, dtype=np.int64) for name in
+                         ("raw_source_voxels", "native_support_voxels", "crop_support_voxels",
+                          "native_zero_support", "crop_zero_support")}
         with torch.no_grad():
             with threadpool_limits(limits=1, user_api=None):
                 for j, case_id in enumerate(selected_keys):
                     force_fg = self.get_do_oversample(j)
                     data, seg, seg_prev, properties = self._data.load_case(case_id)
+                    self._last_raw_paste_audit = None
                     paste_plan, schedule_token = self._sample_paste_plan(
                         str(case_id)
                     )
@@ -491,16 +722,14 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
                             shape, force_fg, properties["class_locations"]
                         )
                     else:
-                        # Always expose the newly pasted lesion to the network.
-                        # Otherwise a random crop could erase most online CP events.
-                        paste_entry = paste_plan["entry"]
-                        bbox_lbs, bbox_ubs = _bbox_around_paste(
-                            self,
-                            shape,
-                            paste_plan["center"],
-                            paste_entry["source_mask"].shape,
-                            paste_entry["anchor_offset"],
-                        )
+                        if paste_plan.get("paste_contract") == "onlinecp_raw_target_paste_v1":
+                            bbox_lbs, bbox_ubs = self._raw_candidate_crop_bbox(paste_plan, shape, str(case_id))
+                        else:
+                            # Preserve the historical translated-patch contract.
+                            source_shape, anchor_offset = self._paste_crop_geometry(paste_plan, shape, str(case_id))
+                            bbox_lbs, bbox_ubs = _bbox_around_paste(
+                                self, shape, paste_plan["center"], source_shape, anchor_offset,
+                            )
                         cp_flags[j] = 1
                     bbox = [[lower, upper] for lower, upper in zip(bbox_lbs, bbox_ubs)]
                     # Crop directly from nnU-Net's mmap/blosc2 case. Only this
@@ -521,6 +750,9 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
                             paste_plan,
                             str(case_id),
                         )
+                        if self._last_raw_paste_audit is not None:
+                            for name, values in native_audits.items():
+                                values[j] = self._last_raw_paste_audit[name]
                     data_cropped = torch.from_numpy(data_cropped_np).float()
                     seg_cropped = torch.from_numpy(seg_cropped_np).to(torch.int16)
                     if seg_prev is not None:
@@ -565,6 +797,7 @@ class nnUNetDataLoaderOnlineCP(nnUNetDataLoader):
             "keys": selected_keys,
             "online_cp_applied": cp_flags,
             "online_cp_schedule_token": schedule_tokens,
+            **{"online_cp_" + name: values for name, values in native_audits.items()},
         }
 
 
@@ -589,9 +822,16 @@ class _nnUNetTrainer_250epochs_OnlineCP(nnUNetTrainer):
                 "ONLINE_CP_BANK must point to the fold-specific bank index.json"
             )
         self.online_bank_path = str(Path(bank).resolve())
+        self._online_paste_contract = OnlineCPBank(self.online_bank_path, cache_entries=1).paste_contract
+        if (self._online_paste_contract == "onlinecp_raw_target_paste_v1"
+                and getattr(self, "required_paste_contract", None) != self._online_paste_contract):
+            raise OnlineCPError("Raw-target banks require the Full/Basic OnlineCPFeedback trainers; this legacy trainer requires its legacy bank")
         self.online_seed = int(os.environ.get("ONLINE_CP_SEED", "42"))
         self._online_cp_events = 0
         self._online_cp_samples = 0
+        self._online_native_transport = dict(raw_events=0, raw_source_voxels=0,
+                                            native_support_voxels=0, crop_support_voxels=0,
+                                            native_zero_support_events=0, crop_zero_support_events=0)
         self._online_schedule_hash = 0xCBF29CE484222325
         self._online_train_loader = None
         self._online_train_augmenter = None
@@ -646,11 +886,67 @@ class _nnUNetTrainer_250epochs_OnlineCP(nnUNetTrainer):
         self._online_cp_events = 0
         self._online_cp_samples = 0
         self._online_schedule_hash = 0xCBF29CE484222325
+        self._online_native_transport = dict(raw_events=0, raw_source_voxels=0,
+                                            native_support_voxels=0, crop_support_voxels=0,
+                                            native_zero_support_events=0, crop_zero_support_events=0)
         return super().on_train_epoch_start()
+
+    def _consume_native_transport_audit(self, batch, flags):
+        fields = ("raw_source_voxels", "native_support_voxels", "crop_support_voxels",
+                  "native_zero_support", "crop_zero_support")
+        records = [batch.pop("online_cp_" + field, None) for field in fields]
+        contract = getattr(self, "_online_paste_contract", None)
+        if contract is None:
+            bank = getattr(getattr(self, "_online_train_loader", None), "online_bank", None)
+            contract = getattr(bank, "paste_contract", None)
+        if all(record is None for record in records):
+            if contract == "onlinecp_raw_target_paste_v1":
+                raise OnlineCPError("Raw-target training batch is missing native transport audit")
+            return  # Legacy test/checkpoint paths retain their previous batch API.
+        if any(record is None for record in records) or flags is None:
+            raise OnlineCPError("Incomplete native transport/event audit")
+
+        def as_array(value):
+            return value.detach().cpu().numpy() if torch.is_tensor(value) else np.asarray(value)
+
+        applied = as_array(flags)
+        arrays = [as_array(record) for record in records]
+        if (applied.ndim != 1 or applied.dtype.kind not in "iu" or not np.all(np.isin(applied, [0, 1]))
+                or any(array.shape != applied.shape or array.dtype.kind not in "iu" or np.any(array < 0)
+                       for array in arrays)):
+            raise OnlineCPError("Native transport counts require nonnegative integer vectors matching CP events")
+        source, native, crop, zero, crop_zero = arrays
+        active = source > 0
+        if (np.any(active & (applied != 1)) or np.any((native > 0) & ~active) or np.any(crop > native)
+                or not np.array_equal(zero, (active & (native == 0)).astype(np.int64))
+                or not np.array_equal(crop_zero, (active & (crop == 0)).astype(np.int64))
+                or (contract == "onlinecp_raw_target_paste_v1" and not np.array_equal(active, applied == 1))):
+            raise OnlineCPError("Native transport/source counts contradict the preserved CP event schedule")
+        totals = getattr(self, "_online_native_transport", None)
+        if totals is None:
+            totals = self._online_native_transport = dict(raw_events=0, raw_source_voxels=0,
+                                                        native_support_voxels=0, crop_support_voxels=0,
+                                                        native_zero_support_events=0, crop_zero_support_events=0)
+        totals["raw_events"] += int(active.sum())
+        totals["raw_source_voxels"] += int(source.sum())
+        totals["native_support_voxels"] += int(native.sum())
+        totals["crop_support_voxels"] += int(crop.sum())
+        totals["native_zero_support_events"] += int(zero.sum())
+        totals["crop_zero_support_events"] += int(crop_zero.sum())
+
+    def _log_native_transport_audit(self):
+        totals = getattr(self, "_online_native_transport", {})
+        if getattr(self, "_online_paste_contract", None) != "onlinecp_raw_target_paste_v1" and not totals.get("raw_events", 0):
+            return
+        self.print_to_log_file("[OnlineCPNativeTransport] " + json.dumps({
+            "format": "onlinecp_native_transport_audit_v1", "epoch": int(self.current_epoch),
+            "measurement_stage": "before_standard_augmentation", **totals,
+        }, sort_keys=True), also_print_to_console=True)
 
     def train_step(self, batch: dict) -> dict:
         flags = batch.pop("online_cp_applied", None)
         tokens = batch.pop("online_cp_schedule_token", None)
+        self._consume_native_transport_audit(batch, flags)
         if flags is not None:
             if torch.is_tensor(flags):
                 values = flags.detach().cpu().numpy().astype(np.int64, copy=False)
@@ -675,6 +971,7 @@ class _nnUNetTrainer_250epochs_OnlineCP(nnUNetTrainer):
 
     def on_train_epoch_end(self, train_outputs: list[dict[str, object]]):
         result = super().on_train_epoch_end(train_outputs)
+        self._log_native_transport_audit()
         rate = (
             self._online_cp_events / self._online_cp_samples
             if self._online_cp_samples > 0

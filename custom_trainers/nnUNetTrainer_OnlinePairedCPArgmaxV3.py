@@ -128,6 +128,10 @@ class OnlineCPBank:
             raise OnlineCPError(f"ONLINE_CP_BANK does not exist: {self.index_path}") from exc
         except json.JSONDecodeError as exc:
             raise OnlineCPError(f"Invalid OnlineCP bank JSON: {self.index_path}: {exc}") from exc
+        if isinstance(metadata, dict) and metadata.get("paste_contract") is not None:
+            raise OnlineCPError(
+                "ArgmaxV3 requires its historical multi-pool source-anchored bank; "
+                "a raw-target bank requires the Full/Basic feedback trainers")
         if not isinstance(metadata, dict) or metadata.get("format") != BANK_FORMAT:
             raise OnlineCPError(
                 f"Unsupported OnlineCP bank format in {self.index_path}: {metadata.get('format')!r}"

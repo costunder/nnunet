@@ -66,6 +66,8 @@ class nnUNetDataLoaderOnlineCPFeedback(nnUNetDataLoaderOnlineCP):
         self.snapshot_sha256 = None
         self._crop_pasted_mask = None
         super().__init__(*args, **kwargs)
+        if getattr(self.online_bank, "paste_contract", None) != "onlinecp_raw_target_paste_v1":
+            raise CurriculumError("New feedback training requires the verified raw-target native-resampling paste contract")
         if self.patch_size_was_2d or self.online_bank.tumor_label != 2:
             raise CurriculumError("Feedback requires the verified 3-D, 0/1/2 liver label contract")
         if self.transforms is None:
@@ -98,9 +100,7 @@ class nnUNetDataLoaderOnlineCPFeedback(nnUNetDataLoaderOnlineCP):
             shift_lo, shift_hi = self.online_bank.intensity_shift_hu
             scale = lo + scale_u * (hi - lo)
             shift = shift_lo + shift_u * (shift_hi - shift_lo)
-            plan = dict(entry=entry, candidate_index=candidate_index, center=center,
-                        scale=scale, normalized_offset=((scale - 1.0) * self.online_bank.ct_mean
-                                                       + shift) / self.online_bank.ct_std)
+            plan = self._make_paste_plan(entry, candidate_index, scale, shift, case_id)
         self._entry_ids.append(entry_id)
         self._candidate_indices.append(candidate_index)
         choice = None if plan is None else [candidate_index, list(plan["center"])]
@@ -108,6 +108,10 @@ class nnUNetDataLoaderOnlineCPFeedback(nnUNetDataLoaderOnlineCP):
         return plan, event
 
     def _apply_paste_to_crop(self, data_cropped, seg_cropped, bbox_lbs, plan, case_id):
+        if plan.get("paste_contract") == "onlinecp_raw_target_paste_v1":
+            super()._apply_paste_to_crop(data_cropped, seg_cropped, bbox_lbs, plan, case_id)
+            self._crop_pasted_mask = self._last_raw_pasted_support
+            return
         entry = plan["entry"]
         center = np.asarray(plan["center"]) - np.asarray(bbox_lbs)
         slices = _anchored_slices(center, entry["source_mask"].shape,
@@ -169,6 +173,7 @@ class _nnUNetTrainer_250epochs_OnlineFeedback(_nnUNetTrainer_250epochs_OnlineCur
     epoch_stage = staticmethod(stage_for_epoch)
     online_loader_class = nnUNetDataLoaderOnlineCPFeedback
     bank_contract_filename = "feedback_contract.json"
+    required_paste_contract = "onlinecp_raw_target_paste_v1"
 
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device("cuda")):

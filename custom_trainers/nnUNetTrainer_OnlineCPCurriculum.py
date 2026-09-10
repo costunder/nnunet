@@ -1,4 +1,4 @@
-"""New opt-in curriculum experiment; the two original trainer modules are untouched.
+"""Opt-in curriculum and feedback over explicit legacy/raw bank contracts.
 
 This module is installed beside the original v2 trainer and its two new contract
 helpers. No global monkeypatch changes a legacy trainer or loader.
@@ -163,12 +163,46 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
         if set(identity["train_case_ids"]) & set(identity["validation_case_ids"]):
             raise CurriculumError("Training and validation patients overlap")
         metadata = json.loads(Path(self.online_bank_path).read_text(encoding="utf-8"))
+        required_paste = getattr(self, "required_paste_contract", None)
+        if required_paste is not None and metadata.get("paste_contract") != required_paste:
+            raise CurriculumError("Feedback bank does not implement its required raw-target native-resampling paste contract")
         if metadata.get("ablation_mode", "full") != self.expected_ablation_mode:
             raise CurriculumError("Bank scores come from the wrong model ablation")
         bank = OnlineCPBank(self.online_bank_path, cache_entries=1)
         if (bank.candidate_count != 128 or bank.cp_probability != 0.5):
             raise CurriculumError("The new selection policy must retain 128 candidates and CP probability 0.5")
-        canonical_sha256(identity)
+        self._online_paste_contract = bank.paste_contract
+        bank_identity = canonical_sha256(identity)
+        index_sha256 = hashlib.sha256(Path(self.online_bank_path).read_bytes()).hexdigest()
+        previous_receipt = getattr(self, "_raw_bank_verification_receipt", None)
+        if (bank.paste_contract == "onlinecp_raw_target_paste_v1"
+                and (getattr(self, "_raw_bank_audit_identity", None) != bank_identity
+                     or previous_receipt is None
+                     or previous_receipt["index_sha256"] != index_sha256)):
+            self._raw_bank_verification_receipt = None
+            store = bank._get_raw_store()
+            module = inspect.getmodule(type(store))
+            audit = getattr(module, "audit_source_entry", None)
+            if not callable(audit):
+                raise CurriculumError("The installed raw bank lacks its complete source-payload auditor")
+            try:
+                for case_id, names in sorted(bank.entries_by_case.items()):
+                    for name in names:
+                        case = audit(bank.root, bank._load(name), bank.candidate_count, store=store)
+                        if case["metadata"].get("case_id") != case_id:
+                            raise CurriculumError("Raw source/case identity differs from the bank patient mapping")
+                if hashlib.sha256(Path(self.online_bank_path).read_bytes()).hexdigest() != index_sha256:
+                    raise CurriculumError("Raw bank index changed during its complete payload audit")
+                # Only hash/stat witnesses cross into workers. Case/source mmap
+                # arrays stay out of the receipt and out of spawn serialization.
+                self._raw_bank_verification_receipt = {
+                    "root": str(bank.root.resolve()), "index_sha256": index_sha256,
+                    "witnesses": dict(store._witnesses),
+                }
+            finally:
+                store.close()
+                bank._raw_store = None
+            self._raw_bank_audit_identity = bank_identity
         return identity
 
     def _code_identity(self) -> dict:
@@ -177,6 +211,10 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
                    "bank_verifier": verify_curriculum_bank_contract,
                    "legacy_trainer": _nnUNetTrainer_250epochs_OnlineCP,
                    "base_trainer": nnUNetTrainer}
+        bank = OnlineCPBank(self.online_bank_path, cache_entries=1)
+        if bank.paste_contract == "onlinecp_raw_target_paste_v1":
+            sources.update(raw_bank=type(bank._get_raw_store()),
+                           raw_resampling=bank.raw_apply_function())
         result = {}
         for name, symbol in sources.items():
             source = inspect.getsourcefile(symbol)
@@ -227,6 +265,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
     def on_train_epoch_end(self, train_outputs):
         # Deliberately do not emit the legacy [OnlineCP] schedule format.
         result = nnUNetTrainer.on_train_epoch_end(self, train_outputs)
+        self._log_native_transport_audit()
         stage, _ = self.epoch_stage(self.curriculum_config, int(self.current_epoch))
         self._last_epoch_record = {
             "epoch": int(self.current_epoch), "stage": stage,
@@ -305,6 +344,8 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
             policy=self.online_policy, online_seed=self.online_seed,
             **self._loader_policy_kwargs(), **common,
         )
+        if dl_tr.online_bank.paste_contract == "onlinecp_raw_target_paste_v1":
+            dl_tr.online_bank.adopt_raw_verification(self._raw_bank_verification_receipt)
         dl_val = _EpochValidationLoader(dataset_val, self.batch_size, patch, patch,
                                        self.label_manager, transforms=val_transforms, **common)
         count = int(get_allowed_n_proc_DA())

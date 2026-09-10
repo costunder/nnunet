@@ -1,7 +1,8 @@
 # HierCP GPT handoff
 
-작성일: 2026-09-10 KST. 실행 소스 기준: `8e362280e971e5075474cbca82031dd963ecd4a0`.
-이 인계 파일 추가와 동반 `code.txt` 재생성은 문서 변경이며 모델·설정 변경이 아니다.
+작성일: 2026-09-10 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+`source_commit` 및 `Tree`를 따른다. 이번 작업은 문서만 바꾸는 작업이 아니라
+raw CP → nnU-Net 전처리의 후보 위치별 표현과 trainer 연결을 수정하는 작업이다.
 
 ## 1. 전달물과 읽는 방법
 
@@ -44,11 +45,19 @@ nnU-Net이 실제로 어려워하는 붙여넣기 사례를 관측하여 online 
 | outer fold / dataset ID | `0` / `760` |
 | 저장된 Python | `/home/aicompetition06/.conda/envs/nnunet/bin/python` |
 | nnU-Net seed | `42`; quality GNN/bank는 별도 fold-specific 설정을 따른다 |
-| 마지막 사용자 제공 bank 로그 | `[Bank] case 1/105 liver_1` |
+| 마지막 사용자 제공 bank 실패 | `liver_101`, component `3`, raw source 1 voxel → 원래 위치에서 독립 resampling한 mask 0 voxel |
 
-위 로그는 해당 시점에 online bank 단계에 도달했다는 증거일 뿐이다.
-현재 프로세스가 실행 중인지, 중단됐는지, bank·Full·Basic이 완료됐는지는
-최신 서버 로그·journal·완료 증거를 받지 않아 **미확인**이다.
+첨부 로그 `4410ca46-0410-4935-aeb9-28d8216e42cc/pasted-text.txt`의 실패 이유는
+`selected_source_disappeared_after_resampling`이고 해당 invocation은 약 2459.997초 후
+bank에서 중단됐다. raw XYZ `[512,512,683]`, target `[478,476,476]`, spacing은
+raw XYZ `[0.705078125,0.705078125,0.699999988079071]`, target reader-grid
+`[1.0,0.7578125,0.7578125]`이며 seg order 1 / order_z 0이었다.
+이 로그는 OOM이나 affine 불일치가 아니다. 원래 위치의 독립 source mask가 0이라는
+사실은 전체 segmentation에서 그 병변 정보가 없거나 모든 CP 위치에서 불가능하다는
+증거가 아니다. CT/정답을 붙인 뒤 전처리하는 순서와 source를 먼저 전처리해 옮기는
+순서는 일반적으로 교환되지 않는다.
+이 invocation이 이후 Full/Basic을 시작한 증거는 없다. 이후 다른 프로세스의 실행 여부와
+전체 bank·학습 완료 상태는 최신 journal/서버 증거 없이는 여전히 **미확인**이다.
 여러 GPU 서버 이름이 과거 대화에 등장했으므로 현재 호스트와 할당 GPU를 추정하지 않는다.
 과거의 `/Medical/HierCP`는 Git 저장소가 아니었으며 현재 checkout과 다르다.
 로컬 push 완료는 서버 pull/설치/실행 완료가 아니다.
@@ -124,9 +133,36 @@ region feature와 population prototype까지 CP 조건 변경만으로 전부 �
 반면 후보 mask/target이 바뀐 CP-dependent GNN graph와 source-mapping이 바뀐 bank는
 이전 계약 그대로 재사용할 수 없다. 무엇이 공유 가능하고 무엇이 재생성 대상인지
 artifact의 실제 의존성과 provenance로 판단한다. 모델 코드 전체가 무효라는 뜻도 아니다.
-선택한 raw donor mask는 실제 nnU-Net axis/crop/resampling 계약으로 매핑한다.
-다른 가까운 병변이나 합쳐진 전체 component로 대신하지 않으며 preprocessed CT는
-float16 왕복 변환 없이 float32를 유지한다.
+원본 script는 raw grid에 CT/HU jitter와 정답을 붙이고 원래 affine/header로 저장한다.
+새 bank는 source를 원래 위치에서 한 번 resample해서 정수 이동시키지 않는다.
+각 raw 후보 위치에서 붙여넣은 CT와 **전체 label mixture**가 native nnU-Net 전처리를
+거친 결과를 표현한다. 다른 가까운 병변이나 전체 연결 성분을 donor로 대신하지 않는다.
+HU jitter → CTNormalization의 percentile clip/mean/std → native interpolation 순서를
+유지한다. native float32 출력은 유지하되 cubic 보간의 전역 spline tail과 clip을
+보존하기 위한 내부 baseline/operator는 float64다.
+
+새 계약은 `onlinecp_raw_target_paste_v1` /
+`online_cp_raw_target_resampling_v2` /
+`npz_candidate_refs_raw_target_v1`으로 기존 source-anchored bank와 구분한다.
+서로 다른 raw 후보가 같은 preprocessed center로 반올림되어도 삭제하지 않는다.
+원래 raw CP 조건과 전체 128개 후보/eligible-source slot을 유지한다.
+실제 raw CP 후에도 native 신규 tumor support가 0일 수 있다. 이 경우에도 raw CP와
+source/candidate draw는 유지하고, segmentation 학습을 수행하며 해당 feedback
+관측만 불가로 기록한다. donor 제외나 실패 시 가짜 zero mask 반환이 아니다.
+신규 support의 정의는 `(붙인 뒤 전체 native seg == 2) & (원래 native seg != 2)`다.
+
+case baseline/operator는 NPY mmap, 선택 후보의 작은 payload는 pickle 없는 NPZ/JSON으로
+저장한다. training crop에는 CT·전체 seg·support를 함께 적용한다. training event마다
+전체 volume을 다시 전처리하지 않으며 cubic tail을 임의 ROI 경계에서 자르지 않는다.
+공통 raw source CT/mask는 content-addressed NPY로 한 번 저장하며 128번 복제하지 않는다.
+시작 시 전수 SHA 검증한 파일 witness는 bank/index identity에 묶어 worker에 전달한다.
+각 worker가 모든 대용량 baseline을 다시 해시하지 않지만 파일 stat 변경 검사는 유지한다.
+큰 병변이 기존 nnU-Net 학습 patch보다 커도 source/candidate를 버리거나 patch를 줄이지 않는다.
+전체 후보 native support와 실제 crop에서 관측된 support를 따로 기록한다.
+`[OnlineCPNativeTransport]` 로그와 feedback unavailable 상태를 함께 확인한다.
+원래 crop 및 filled-nonzero mask를 보존하는 geometry 증명과 native baseline 대조가 필요하다.
+지원되지 않는 crop 변경을 raw CP 불가능/no-placement로 재분류하거나 후보 삭제로 숨기지 않는다.
+원본의 liver coverage 0.85를 1.0으로 강화하지 않는다.
 
 `retain_original`은 **완전한 raw search에서 후보가 0임이 입증된 경우**에만 적용한다.
 GNN에는 가짜 ranking sample을 만들지 않고 별도 no-placement 기록을 남긴다.
@@ -155,6 +191,16 @@ verified preparation + private nnU-Net runtime
 이 runner는 downstream prediction·평가·통계 분석까지 수행하지 않는다.
 bank 단계 시작은 기존 GNN이나 전처리를 처음부터 지웠다는 뜻이 아니다.
 
+새 `--upgrade-bank-from` 경로는 위의 기존 recovery 재학습 경로와 별개다.
+검증된 기존 paired GNN/cache/prototype/causality는 원래 경로로 참조하고,
+공통 raw/preprocessed 결과는 원본을 보존하는 새 data view로 재사용한다.
+native unpack이 원본 preprocessed 폴더에 새 파일을 쓰지 않도록 새 root에서 수행한다.
+새 private runtime, 새 raw-target bank, 새 Full/Basic 결과를 만들며 기존 nnU-Net
+체크포인트를 새 CP 방식의 학습으로 재표기하지 않는다. source에서 segmentation 학습이
+이미 시작됐거나 provenance가 맞지 않으면 이를 임의로 계속하지 않는다.
+새 bank baseline은 대략 native voxel당 10 bytes에 operator/후보 저장 공간이 추가된다.
+디스크 예산과 기존 reserve를 확인하며, 이는 RAM peak 또는 실제 처리시간 측정값이 아니다.
+
 최근 Git 변경의 의미:
 
 - `c8edb72`: paired GNN의 causality 호출에 실제 CLI가 요구하는 prototype bank/run mode 전달.
@@ -176,16 +222,54 @@ Bank 진행 증거는 실제 bank root 아래
 동반 summary 및 완료된 `index.json.scoring_execution`에서 확인한다.
 첫 calibration은 충분한 source sample이 모일 때까지 시간이 들 수 있다.
 heartbeat/`preparation_finished` 이벤트는 최종 bank acceptance 증거를 대체하지 않는다.
+새 raw-target 단계는 `[RawTargetCase]`, `[RawTargetSource]`, `[RawTargetResources]` 및
+`preparation_resources/raw_targets.*.json`에 baseline 일치, 전체 후보 support 수,
+zero-support 수와 measured CPU 준비 자원을 구분해 기록한다.
+
+표준 bank envelope만으로 legacy reader 호환성을 판단하지 않는다.
+`paste_contract`, `source_mapping_format`, `entry_storage`와 엔진/파일 SHA를 함께 검증한다.
+기존 exact-argmax/ArgmaxV3/rank-only curriculum/downstream ablation은 이 새 typed bank를
+학습/재채점 전에 거절한다. 새 실행은 Full/Basic feedback runner를 사용한다.
 
 ## 7. 검증된 범위와 과거 성능 결과
+
+- 최종 로컬 전체 회귀: `python -B -m unittest discover -s tests -p 'test*.py' -v`
+  **662개 중 659개 통과, 3개 건너뜀, 실패 0**, 267.604초, 종료 코드 0.
+  건너뛴 것은 Windows symlink 권한 관련 2개와 명시적 opt-in이 필요한
+  production-sized DEBUG optimizer-step smoke 1개다. 그 전체 규모 smoke를 실행한 것으로
+  주장하지 않는다. 아래 범위별 수치는 이 suite의 부분집합이므로 합산하지 않는다.
+- 이번 raw 엔진 CPU DEBUG 14개 통과. native nnU-Net CT normalization/crop/resampling
+  대조 16건에서 CT 최대 절대 오차 0, 전체 label/support 정확 일치.
+  원래 위치에서 native 소실되는 raw 1-voxel donor가 다른 target 위치에서는 생존하는
+  경우, 전역 cubic tail/clip, transpose/crop, separate-z 3축, 0.85 coverage를 포함한다.
+- storage/준비 helper CPU DEBUG 10개 통과. 실제 native baseline 대조, 후보별 0/양성 support,
+  128개 후보 유지·공통 donor 2개 NPY만 저장, 변조 거절, mmap/spawn 상태를 확인했다.
+  작은 인공 DEBUG 입력이며 `liver_101` 원본 영상이나 전체 의료 cohort를 실행한 결과가 아니다.
+- trainer CPU DEBUG 16개 통과(경계 검사 13개, native 통합 3개).
+  실제 128개 payload 저장/전수 감사, lazy loader, 같은 5개 RNG draw, native crop,
+  feedback 변환과 segmentation CE backward까지 연결했다. 원본 위치에서 소실되는 작은
+  donor의 target-phase 생존 차이, 큰 source의 고정 patch 부분 crop, 검증 witness 전달 후
+  대용량 파일 재해시 0회와 stat 변조 거절도 검사했다. 최종 nnU-Net 전체 학습을 뜻하지 않는다.
+- 구형/신형 bank 소비 경계 DEBUG 7개 통과. legacy pair/all/ArgmaxV3/ablation/rank-only
+  경로가 새 bank를 기존 결과 변경 전에 거절하고, feedback은 실제 검증 경로를 유지한다.
+- bank typed-schema/wiring/no-placement/준비 helper 범위 17개 통과.
+  index의 raw/legacy 선언과 엔트리 형식의 혼합을 양방향 거절하며, 실제 raw helper로
+  만든 128개 후보와 zero-placement 환자 다음 환자의 정상 처리를 확인했다.
+- upgrade/기존 runner DEBUG 49개 중 48개 통과, Windows 심볼릭 링크 권한 제한으로
+  디렉터리-link 검사 1개 건너뜀. native 경로의 원본 GNN 절대경로, 새 raw/preprocessed
+  view의 marker/cohort/content SHA 계약도 소스로 대조했다. 서버 실자료 검증을 대체하지 않는다.
+- 10개 trainer/helper SHA 검사 및 별도 임시 native nnU-Net 복사본의 실제 설치/import와
+  legacy policy/paste smoke 통과. 기존 site-packages/실험 runtime은 수정하지 않았다.
+  Python 파일 134개의 Python 3.10 AST 검사와 Git staged 원본 bytes 기준 10개 모듈 SHA
+  일치도 확인했다. 로컬 GPU는 없으며 서버 GPU 성능은 측정하지 않았다.
 
 - `ebe58ff`의 로컬 보고: Python 3.10 문법 검사 및 594 tests 중
   592 passed, 2 skipped. 환자 전체 학습이 아니라 DEBUG/단위 회귀 검사다.
 - 작은 CPU DEBUG 비교: 동일 후보 graph 3개, 3회 반복에서 standard 경로의
   full-target edge 생성 호출이 6회에서 3회로 줄고 tensor/edge/patch가 일치했다.
   서버 GPU 속도 향상률이나 전체 bank OOM 해결을 입증한 측정은 아니다.
-- 직전 `code.txt` 갱신: 145개 경로와 본문을 실제 파일과 LF 정규화 후 정확 대조했다.
-  이번 인계문서 추가 후 포함 파일 수와 기준 commit은 새 snapshot 머리말을 따른다.
+- 직전 `d861233`의 `code.txt`는 `13649142` 기준 텍스트 146개를 담았다.
+  이번 갱신의 포함 파일 수와 기준 commit은 새 snapshot 머리말을 따른다.
 - 현재 수정 경로의 real-data bank 완료, 전체 40/250-epoch 학습,
   full downstream 평가, multi-fold 효능은 이 로컬 검증으로 확인되지 않았다.
 
@@ -205,8 +289,9 @@ L2가 무효라는 결론이나 자동 제거 승인은 아니다.
 검증된 bank/GNN/preprocessing은 보존한다. 오류가 있으면 해당 실패 경로를 고치고
 명시적인 검증 후 이어가며, journal/lock/manifest를 지워 통과시키지 않는다.
 
-아래는 **동일 실험이 중단되어 있고, preparation 완료 및 재개 적합성이 확인된 경우**의
-기존 명령이다. 실행 중인 프로세스를 중단하라는 지시가 아니다.
+아래는 **원본 실험이 중단되어 있고, GNN/공통 전처리가 완료되어 검증 가능한 경우**
+새 raw-target 실험을 만드는 명령이다. 실행 중인 프로세스를 중단하라는 지시가 아니다.
+변경 전 `feedback_medical_aug`에 새 trainer를 덮어씌워 resume하는 명령이 아니다.
 현재 할당 GPU 번호만 입력한다. 예전 GPU 번호를 재사용한다고 가정하지 않는다.
 
 ```bash
@@ -216,18 +301,18 @@ git pull --ff-only &&
 read -r -p "현재 할당받은 GPU 번호: " CP_GPU &&
 env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
-  --recover-from work/feedback_experiment \
-  --experiment-name feedback_medical_aug \
+  --upgrade-bank-from work/feedback_medical_aug \
+  --experiment-name feedback_rawcp \
   --medical-root /home/aicompetition06/Medical \
   --outer-fold 0 \
   --dataset-id 760 \
-  --seed 42 \
-  --resume-experiment
+  --seed 42
 ```
 
-`--resume-preparation`은 적합한 미완 preparation용이고, 위 `--resume-experiment`는
-preparation 완료 후 별도의 검증된 continuation이다. 둘 다 원래 `--recover-from`으로
-생성한 실험에 한정된다. fresh run에 임의로 적용하지 않는다.
+새 upgrade 실험의 안전 재개는 위와 같은 원래 인수에 `--resume-experiment`를 추가한다.
+원본 `feedback_medical_aug` journal은 수정하지 않는다. 기존 `--recover-from` 기반
+실험의 `--resume-preparation`/`--resume-experiment` 경로도 남아 있지만 새 bank 표현으로
+구버전 runtime을 바꾸는 수단이 아니다. `--overwrite`나 journal 수작업 삭제로 우회하지 않는다.
 저장된 Python 경로도 plan identity에 포함된다. 과거 `(base)` Python으로 검사했을 때는
 checksum/source가 맞아도 Python 경로만 달라 plan mismatch가 발생했다.
 이것을 journal checksum 완화로 고치지 않는다.

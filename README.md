@@ -9,12 +9,11 @@ The core HierCP implementation and configuration are present in this repository.
 images, graph caches, checkpoints, generated volumes, and nnU-Net results are
 not included.
 
-The optional OnlineCP experiments require the original custom trainers in the
-active nnU-Net environment. The user-provided originals are now included in
-[`custom_trainers/`](custom_trainers/), with SHA-256 checks for both modules:
-
-- `nnunetv2/training/nnUNetTrainer/nnUNetTrainer_OnlinePairedCP.py`
-- `nnunetv2/training/nnUNetTrainer/nnUNetTrainer_OnlinePairedCPArgmaxV3.py`
+OnlineCP requires the versioned trainer bundle in
+[`custom_trainers/`](custom_trainers/). It contains historical paired/argmax
+trainers and the current Full/Basic Feedback trainers, including their policy,
+contract and raw-target resampling/storage helpers. Every installed module is
+bound by the installer's SHA-256 inventory.
 
 After cloning, activate the target nnU-Net environment and run from this
 repository root:
@@ -24,17 +23,26 @@ python custom_trainers/install_onlinecp_custom_trainers.py check
 python custom_trainers/install_onlinecp_custom_trainers.py apply
 ```
 
-The installer verifies the original source hashes and runs policy/paste/import
+The installer verifies the checked-in source hashes and runs policy/paste/import
 smoke checks after installation. Different existing trainers require explicit
 `--overwrite` and are backed up before replacement. Training contracts
 fingerprint the installed trainer and base-class source files; missing sources
-fail explicitly and changed sources invalidate completed-run reuse. The bundled
-trainer implementations have not been altered.
+fail explicitly and changed sources invalidate completed-run reuse. The current
+Feedback runner installs into a new private runtime; do not apply an updated
+bundle over a running or preserved experiment's installation.
 
-The standard bank (`hiercp_online_bank_v2`, Dataset730) and multi-pool argmax
-bank (`hiercp_online_bank_argmax_v3`, Dataset740) are different contracts.
-`tools/downstream_level_ablation.py` retains its existing single-pool v2
-contract; changing only its dataset number does not migrate it to v3.
+The historical source-anchored single-pool bank, current raw-target bank and
+multi-pool argmax-v3 bank are different contracts. The first two share the old
+`hiercp_online_bank_v2` envelope, so the envelope or dataset number alone is not
+a compatibility check. Current raw banks additionally require
+`paste_contract=onlinecp_raw_target_paste_v1`,
+source-mapping format `online_cp_raw_target_resampling_v2` and
+`entry_storage=npz_candidate_refs_raw_target_v1`.
+Only Full/Basic Feedback trainers consume the new contract. Historical
+train/evaluate and downstream exact-argmax ablation workflows remain available
+for their original banks; they do not become raw-feedback experiments by
+changing a dataset ID. The obsolete `online_cp_benchmark all` route is rejected
+before preparation because it would join the new builder to legacy trainers.
 
 Local verification covers Python/JSON syntax and isolated regression fixtures
 for cache integrity, validation publication/rollback, causality contracts and
@@ -45,6 +53,11 @@ regression checks below on the target server before the full experiment.
 ## Active repository layout
 
 - [`run.py`](run.py): supported top-level runner.
+- [`tools/run_feedback_experiment.py`](tools/run_feedback_experiment.py): current
+  paired online Full/Basic Feedback runner with private runtimes and verified
+  reuse/upgrade boundaries.
+- [`gpt_handoff.md`](gpt_handoff.md) and [`code.txt`](code.txt): current project
+  handoff and complete tracked-text source export; no patient images are included.
 - [`config/train.json`](config/train.json): graph, model, cache, training, and
   generation contract.
 - [`config/nnunet.json`](config/nnunet.json): downstream nnU-Net contract.
@@ -102,9 +115,43 @@ python run.py case --medical-root /home/aicompetition06/Medical \
   --components 3
 ```
 
-## Production workflow
+## Current online raw-CP Feedback workflow
 
-`production` is the default run mode. The individual stages are:
+Raw donor CT/HU jitter and its mask are pasted at each selected raw location
+before the native CTNormalization/resampling transform. The donor's mask is not
+resampled once at its original position and translated afterward. All 128 raw
+candidates are retained even when native centers coincide or a tiny donor has
+zero new native label support. A real zero-support CP still trains segmentation;
+only its difficulty-feedback observation is unavailable. Full and Basic share
+the same original preprocessing and event/source/appearance schedule.
+
+For the stopped `feedback_medical_aug` experiment with verified completed GNN
+and preprocessing, start a NEW bank/runtime/results directory:
+
+```bash
+conda activate /home/aicompetition06/.conda/envs/nnunet &&
+cd /home/aicompetition06/Medical/HierCP-git &&
+git pull --ff-only &&
+read -r -p "Allocated GPU: " CP_GPU &&
+env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
+/home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
+  --upgrade-bank-from work/feedback_medical_aug \
+  --experiment-name feedback_rawcp \
+  --medical-root /home/aicompetition06/Medical \
+  --outer-fold 0 --dataset-id 760 --seed 42
+```
+
+The old GNN stays at its verified path, immutable preprocessing payloads get a
+new directory view, and native unpacking writes only to the new view. Old bank,
+runtime, journals and results are not overwritten. This launch trains Full then
+Basic; downstream prediction/evaluation is a separate task. See
+[`gpt_handoff.md`](gpt_handoff.md) for scope, test evidence and safe retry limits.
+
+## Standalone/offline production workflow
+
+This separate `run.py` workflow generates offline augmented volumes; it is not
+the online Feedback runner above. `production` is its default run mode. The
+individual stages are:
 
 ```bash
 python run.py prepare --run-mode production \
@@ -127,7 +174,7 @@ python run.py full --run-mode production \
 `all` performs preparation, HierCP training, generation, exact validation, and
 dataset assembly. `full` performs those stages and then runs the configured
 nnU-Net preparation, five-fold training, and evaluation. Only a successfully
-completed `full` run is the complete production experiment.
+completed `full` run is the complete standalone/offline production experiment.
 
 Production rejects `--max-cases`, `--case-id`, `--epochs`, `--batch-size`, and
 `--num-workers` command-line overrides. It also rejects skipped validation or
@@ -184,6 +231,18 @@ fallback that silently leaves extra assigned GPUs idle.
 
 ## Online bank preparation and scoring
 
+Current raw-target preparation stores one full-grid unclipped baseline per case,
+shared content-addressed donor arrays, and candidate-specific label/CT inputs.
+Training computes the exact native output within the unchanged nnU-Net crop;
+larger lesions may be intersected by that crop without deleting their remaining
+support from the bank. Full native support and observed crop support are audited
+separately. No full-volume resampling is performed for every training event.
+Preparation measures RSS/CPU/time and checks disk reserve. The baseline costs
+approximately 10 bytes per native voxel plus operators/candidates; this is not
+a total peak-RAM estimate. Only the verified standard CT/native kernels are
+supported; an unproved crop/nonzero-mask change is reported, not hidden by
+discarding a donor or tightening the original 0.85 liver-coverage condition.
+
 The bank optimization in `ebe58ff` preserves the model, full graph topology,
 candidate pools, CP rules and training settings. The standard bank no longer
 builds complete target features/edges just to discard them during geometry
@@ -198,8 +257,10 @@ scoring calibration/I/O reports. Their locations, first-calibration delay,
 remaining memory requirements and verification scope are documented in
 [`docs/online_bank_performance.md`](docs/online_bank_performance.md).
 Do not update a checkout or trainer installation used by a running experiment.
-An existing compatible bank is verified and reused; this optimization does not
-require deleting it or restarting the GNN. Follow the
+An existing compatible bank is verified and reused; the performance-only change
+in `ebe58ff` does not require deleting it or restarting the GNN. The new raw
+transport contract DOES require a separate bank/runtime as described above,
+while verified GNN/shared preprocessing remain reusable. Follow the
 [recovery guide](docs/feedback_recovery.md) for a stopped, eligible continuation.
 
 ## Exact validation and assembly

@@ -714,6 +714,12 @@ def _make_layout(args: argparse.Namespace) -> RuntimeLayout:
 
 
 def _check_required_assets(run: RuntimeLayout) -> None:
+    index_path = run.base.source_bank / "index.json"
+    if index_path.is_file() and _load_json(index_path).get("paste_contract") is not None:
+        raise DownstreamAblationError(
+            "Raw-target feedback banks are not inputs to this historical exact-argmax "
+            "ablation workflow. Its checkpoint/schedule contract differs; no ablation "
+            "GNN training, derived bank or segmentation training was launched.")
     required = [
         run.base.train_config,
         run.base.nnunet_config,
@@ -1050,8 +1056,13 @@ def _rescore_banks(run: RuntimeLayout, args: argparse.Namespace) -> None:
     if args.dry_run:
         print("[Dry-run] rescore existing Fold candidate bank with no_patient/no_population")
         return
-    _reference_training_contract(run)
     source_index = _load_json(run.base.source_bank / "index.json")
+    if source_index.get("paste_contract") is not None:
+        raise DownstreamAblationError(
+            "This historical exact-argmax ablation command cannot rescore a raw-target "
+            "feedback bank: its trainer schedule and candidate payload contract differ. "
+            "No derived banks were created; original results are preserved.")
+    _reference_training_contract(run)
     contracts = {mode: _bank_input_contract(run, mode, source_index, args) for mode in MODES}
     if _preflight_derived_outputs(run, source_index, contracts, overwrite=bool(args.overwrite_banks)):
         print("[Reuse] both exact derived banks verified against current inputs, GNNs and output hashes", flush=True)

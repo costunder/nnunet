@@ -6,6 +6,21 @@ rank-band results/checkpoints retain their original meaning and are not upgraded
 
 ## Connected training path
 
+The current production bank uses `onlinecp_raw_target_paste_v1`: paste the raw CT
+and source mask at the selected raw target, then apply the native nnU-Net CT
+normalization and resampling. It is not the historical donor-only resample followed
+by translation. The bank stores full native baselines and exact separable operators
+once per case, shared raw donor arrays once per source, and all candidate-specific
+label/support changes. Selected-candidate crop evaluation preserves global cubic
+spline tails and native clipping; it is not a finite-halo approximation.
+
+All 128 raw candidates remain distinct even when mapped native centers coincide.
+A target with zero native pasted support still performs the raw CP event and
+ordinary segmentation update; its lesion difficulty is unavailable, not zero.
+Large lesions may be partially intersected by the unchanged native training crop.
+Full-candidate and observed-crop support counts are recorded separately in
+`[OnlineCPNativeTransport]`; the paired event/source/appearance schedule is unchanged.
+
 1. The immutable bank retains its full 128 geometry-valid candidate centers and
    original GNN compatibility scores. A fixed, explicit score gate restricts the
    Full arm's support. This learned-score gate is not a calibrated anatomical
@@ -117,15 +132,17 @@ recovery experiment, use the [verified continuation guide](feedback_recovery.md)
 `--resume-preparation` and `--resume-experiment` have different eligibility checks
 and must retain the original launch arguments and Python environment. Neither
 option authorizes a second process on a running experiment.
-Both options require an experiment originally created with `--recover-from`;
-adding them does not make an ordinary fresh, non-recovery launch resumable.
+Preparation recovery requires an experiment originally created with `--recover-from`.
+The separate `--upgrade-bank-from` workflow also supports its own verified
+`--resume-experiment` continuation, not `--resume-preparation`. These flags do not
+make an ordinary fresh, non-recovery launch resumable.
 It does not run downstream comparison/statistics. `--outer-fold`, `--dataset-id`
 and the nnU-Net `--seed` are explicit options; GNN/bank seeds still follow their
 checked-in fold-specific configuration.
 
 Run from this repository in the intended nnU-Net environment, with the `hiercp`
 package importable. First inspect `python custom_trainers/install_onlinecp_custom_trainers.py check`;
-the installer audits all eight trainer/helper hashes. `apply` installs the audited
+the installer audits all ten trainer/helper hashes. `apply` installs the audited
 modules and runs import/paste checks. It refuses replacement of differing existing
 files unless `--overwrite` is explicitly authorized; that option creates unique
 backups. Do not update a trainer installation being used by a running experiment.
@@ -144,6 +161,14 @@ verified nnU-Net raw `Dataset...` directory containing `imagesTr`, `labelsTr` an
 is explicitly placed in this new trainer's `feedback_graph_cache` subdirectory.
 Run `--help`/`--dry-run` to inspect paths before launching. All 250 nnU-Net epochs,
 CP probability 0.5, and 128 candidate centers are retained.
+
+For the failed historical `work/feedback_medical_aug` donor-resampling bank, use
+the current `--upgrade-bank-from` command in [README](../README.md), not a forced
+same-directory continuation. It verifies and retains the completed quality GNN
+and shared preprocessing while creating a new bank, private trainer runtime and
+Full/Basic result directories. Historical exact-argmax, rank-only curriculum and
+legacy downstream-ablation launchers reject this typed bank before starting work;
+their old checkpoints are not converted to the new CP semantics.
 
 Fresh launches refuse nonempty result folders. `--resume` requires a feedback
 checkpoint; legacy checkpoints and missing-checkpoint fresh-start fallbacks are

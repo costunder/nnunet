@@ -266,8 +266,12 @@ class OnlineNoPlacementDebugTests(unittest.TestCase):
                 label[2:7, 2:7, 2:7] = 2
             else:
                 label[5, 5, 5] = 2
-            cases[case_id] = SimpleNamespace(image=np.zeros(shape, np.float32), label=label, shape=shape,
-                                           spacing=np.ones(3, np.float32), image_header=SimpleNamespace(get_xyzt_units=lambda: ("mm", "sec")))
+            cases[case_id] = SimpleNamespace(image=np.full(shape, 100., np.float32), label=label, shape=shape,
+                                            spacing=np.ones(3, np.float32), image_header=SimpleNamespace(get_xyzt_units=lambda: ("mm", "sec")))
+        from tests.test_online_bank_wiring_debug import debug_native_identity_inputs, debug_prepare_raw_candidates
+        from tools.online_raw_bank_preparation import prepare_raw_case
+        native_inputs = {case_id: debug_native_identity_inputs(case.image, case.label)
+                         for case_id, case in cases.items()}
         class DebugScorer:
             def submit(self, samples, callback):
                 callback([np.linspace(0, 1, 128, dtype=np.float32)])
@@ -276,16 +280,20 @@ class OnlineNoPlacementDebugTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="debug_online_bank_loop_") as directory:
             root = Path(directory)
             (root / "entries").mkdir()
+            for case_id in cases:
+                # The region reader remains a DEBUG boundary around existing
+                # cache state; production must not silently construct it here.
+                (root / "regions" / case_id).mkdir(parents=True)
             rows, mapping_calls = [], []
-            def mapped_source(*args, **kwargs):
-                mapping_calls.append(args[4].component_id)
-                return np.ones((1, 1, 1, 1), np.float32), np.ones((1, 1, 1), bool), np.zeros(3, np.int64)
+            def prepare_actual_raw_case(*args, **kwargs):
+                mapping_calls.append(args[1])
+                return prepare_raw_case(*args, **kwargs)
             context = dict(vars(online))
             context.update(np=np, ndi=ndi, os=os, build_candidate_pool=build_candidate_pool,
                            CasePaths=CasePaths, stable_seed=stable_seed,
                            train_ids=list(cases), case_map={case: SimpleNamespace(image=case, label=case) for case in cases},
                            load_case=lambda paths: cases[paths.case_id],
-                           pre_dataset=SimpleNamespace(load_case=lambda case: (cases[case].image[None], cases[case].label[None], None, {})),
+                            pre_dataset=SimpleNamespace(load_case=lambda case: (native_inputs[case][2], native_inputs[case][3], None, native_inputs[case][0])),
                            tumor_label=2, liver_label=1, min_diameter=0., max_diameter=100., global_seed=42,
                            source_inventory={}, entries_by_case={}, existing_by_source={}, overwrite=False,
                            REGION_CACHE_SEED_SALT="DEBUG", region_cache=root / "regions", graph_config=object(), ct_clip=(-160, 240),
@@ -296,7 +304,9 @@ class OnlineNoPlacementDebugTests(unittest.TestCase):
                            metadata_contract={"no_placement_policy": "retain_original"},
                            candidate_count=128, draw_count=128, attempts=3, bank_root=root, entries_root=root / "entries",
                            commit_row=lambda row: rows.append(dict(row)),
-                           _preprocessed_source=mapped_source, plans={"transpose_forward": [0, 1, 2]}, configuration="3d_fullres",
+                            plans=native_inputs["DEBUG_NEXT"][1], configuration="3d_fullres",
+                            nn_cfg={"runtime": {"minimum_free_gb_before_preprocess": 0}},
+                            prepare_raw_case=prepare_actual_raw_case, prepare_source_candidates=debug_prepare_raw_candidates,
                            network_patch_size=np.array([32, 32, 32]), prepare_local_source=lambda *args, **kwargs: object(),
                            build_generation_specs=lambda pool, *args, **kwargs: [object() for _ in pool], bank=object(),
                            _map_raw_point=lambda point, *args: np.asarray(point, dtype=np.int32),
@@ -310,7 +320,7 @@ class OnlineNoPlacementDebugTests(unittest.TestCase):
             exec(compile(ast.fix_missing_locations(ast.Module(body=[loop], type_ignores=[])), str(path), "exec"), context)
             self.assertEqual([(row["case_id"], row["status"]) for row in rows],
                              [("DEBUG_ZERO", "no_placement"), ("DEBUG_NEXT", "ok")])
-            self.assertEqual(mapping_calls, [1], "The proven-zero source must not need mapping or a graph")
+            self.assertEqual(mapping_calls, ["DEBUG_NEXT"], "The proven-zero source must not need native mapping or a graph")
             self.assertEqual(context["source_inventory"], {"DEBUG_ZERO": [1], "DEBUG_NEXT": [1]})
             self.assertEqual(len(context["entries_by_case"]["DEBUG_NEXT"]), 1)
             with np.load(root / rows[1]["entry"], allow_pickle=False) as entry:

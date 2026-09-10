@@ -1,5 +1,40 @@
 # Online bank preparation and scoring
 
+## Current raw-target transport
+
+The standard production bank now uses `paste_contract=onlinecp_raw_target_paste_v1`,
+`source_mapping_format=online_cp_raw_target_resampling_v2` and
+`entry_storage=npz_candidate_refs_raw_target_v1`. The envelope remains
+`hiercp_online_bank_v2`; that envelope alone does not imply compatibility with a
+historical standard bank. The multi-pool ArgmaxV3 bank remains a separate legacy
+contract and is not silently converted.
+
+Raw source CT/mask are pasted at each raw target before native normalization and
+resampling. Original-position donor disappearance is no longer a source-wide
+rejection. All 128 raw targets are retained, including coincident mapped centers
+and legitimate zero-native-support results. Shared source arrays are content
+addressed, not written 128 times. Full native case arrays are mmap-backed; workers
+adopt the verified startup file witnesses and continue checking file identity,
+without independently rehashing every baseline. Runtime evaluates the selected
+candidate and current crop, preserving native global spline/clipping behavior.
+
+This adds real storage, CPU and I/O costs. Baseline float64 CT plus int16 labels
+alone require at least 10 bytes per native voxel; this is a disk lower bound, not
+a claim about peak RAM or total bank size. Operators, candidate payloads, raw
+inputs, scratch arrays and nnU-Net unpacking require additional resources. Case
+and candidate preparation record actual resource measurements, and GPU graph
+scoring retains its existing full-size calibration. No server speedup is claimed
+from small CPU DEBUG tests.
+
+Inspect `[RawTargetCase]`, `[RawTargetCaseResources]` and the raw-target resource
+reports under `preparation_resources`, alongside the graph/scoring reports below.
+An old failed donor-only bank must use the verified `--upgrade-bank-from` workflow
+in [README](../README.md): reuse the completed GNN/shared preprocessing, but create
+a new bank/runtime/results. Existing error rows and incompatible partial payloads
+are not cleared by a retry. Do not delete manifests, journals or old results.
+
+## Earlier graph/scoring optimization
+
 This guide describes the implementation introduced by
 [`ebe58ff`](https://github.com/costunder/nnunet/commit/ebe58ff5b2227e10480f5c066076e5f766059fa3).
 It covers the standard bank in [online_cp_benchmark.py](../tools/online_cp_benchmark.py)

@@ -39,6 +39,11 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from custom_trainers.onlinecp_raw_bank import (
+    PASTE_CONTRACT, ENTRY_STORAGE, RawBankStore, audit_source_entry,
+    SOURCE_MAPPING_FORMAT as RAW_TARGET_MAPPING_FORMAT,
+)
+
 VERSION = "online_basic_hiercp_v2"
 BANK_FORMAT = "hiercp_online_bank_v2"
 DEFAULT_DATASET_ID = 730
@@ -71,13 +76,20 @@ class SourceMappingError(OnlineBenchmarkError):
 
 
 def _require_source_mapping_policy(index: Mapping[str, Any], config: Mapping[str, Any]) -> None:
-    """Legacy nearest-component banks are not evidence of exact donor identity."""
+    """Preserve historical readers without mislabelling their paste semantics."""
+    mapping = index.get("source_mapping_format")
     for name, payload in (("index", index), ("config", config)):
-        if payload.get("source_mapping_format") != SOURCE_MAPPING_FORMAT:
+        if (mapping not in {SOURCE_MAPPING_FORMAT, RAW_TARGET_MAPPING_FORMAT}
+                or payload.get("source_mapping_format") != mapping):
             raise OnlineBenchmarkError(
-                f"Bank {name} source_mapping_format is missing or stale; expected {SOURCE_MAPPING_FORMAT}. "
+                f"Bank {name} source_mapping_format is missing, stale or inconsistent. "
                 "Existing bank/results are preserved; build a separately verified source bank before new training."
             )
+        if mapping == RAW_TARGET_MAPPING_FORMAT:
+            if payload.get("paste_contract") != PASTE_CONTRACT or payload.get("entry_storage") != ENTRY_STORAGE:
+                raise OnlineBenchmarkError(f"Bank {name} has an incomplete raw-target paste contract")
+        elif "paste_contract" in payload:
+            raise OnlineBenchmarkError("Historical source-anchored bank cannot claim raw-target paste semantics")
 
 
 @dataclass(frozen=True)
@@ -1672,6 +1684,7 @@ def build_online_bank(
     from contextlib import closing
     from tools.online_bank_preparation import BankLocalGraphMapper
     from tools.online_bank_progress import BankProgress
+    from tools.online_raw_bank_preparation import prepare_raw_case, prepare_source_candidates
     from hiercp.model import HierarchicalPyGPlacementModel
     from hiercp.prototype import PrototypeBank
     from hiercp.region import REGION_CACHE_SEED_SALT, load_or_build_patient_regions
@@ -1755,8 +1768,10 @@ def build_online_bank(
     pre_dataset = dataset_class(str(pre_data_root), train_ids)
 
     normalization = plans.get("foreground_intensity_properties_per_channel", {}).get("0", {})
-    ct_mean = float(normalization.get("mean", 0.0))
-    ct_std = float(normalization.get("std", 1.0))
+    if not {"mean", "std", "percentile_00_5", "percentile_99_5"}.issubset(normalization):
+        raise OnlineBenchmarkError("Raw-target CP requires complete native CT normalization properties")
+    ct_mean = float(normalization["mean"])
+    ct_std = float(normalization["std"])
     if not np.isfinite(ct_std) or ct_std <= 0:
         raise OnlineBenchmarkError(f"Invalid CT normalization std in plans: {ct_std}")
 
@@ -1804,7 +1819,9 @@ def build_online_bank(
     complete_path = bank_root / "complete.json"
     metadata_contract = {
         "format": BANK_FORMAT,
-        "source_mapping_format": SOURCE_MAPPING_FORMAT,
+        "source_mapping_format": RAW_TARGET_MAPPING_FORMAT,
+        "paste_contract": PASTE_CONTRACT,
+        "raw_resampling_sha256": file_sha256(_PROJECT_ROOT / "custom_trainers/onlinecp_raw_resampling.py"),
         "no_placement_policy": str(generation.get("no_placement_policy", "error")),
         "minimum_center_separation_mm": float(generation["min_center_separation_mm"]),
         "minimum_center_separation_vox": float(generation.get("min_center_separation_vox", 0.0)),
@@ -1847,7 +1864,7 @@ def build_online_bank(
         "blend_border": blend_border,
         "normalization": {"mean": ct_mean, "std": ct_std},
         "network_patch_size": [int(value) for value in network_patch_size],
-        "entry_storage": "npz_uncompressed_float32",
+        "entry_storage": ENTRY_STORAGE,
     }
     if index_path.is_file() and complete_path.is_file() and not overwrite:
         current = load_json(index_path)
@@ -1863,7 +1880,7 @@ def build_online_bank(
             )
             return
         raise OnlineBenchmarkError(
-            f"Existing online bank has a different contract: {index_path}; use --overwrite"
+            f"Existing online bank has a different contract: {index_path}; preserve it and use a NEW experiment bank"
         )
     if overwrite and bank_root.exists():
         shutil.rmtree(bank_root)
@@ -1872,7 +1889,7 @@ def build_online_bank(
         current_config = load_json(config_path)
         if current_config != metadata_contract:
             raise OnlineBenchmarkError(
-                f"Partial online bank has a different contract: {config_path}; use --overwrite"
+                f"Partial online bank has a different contract: {config_path}; preserve it and use a NEW experiment bank"
             )
     else:
         atomic_json(config_path, metadata_contract)
@@ -1934,6 +1951,7 @@ def build_online_bank(
         )
 
     local_graph_map = BankLocalGraphMapper(bank_root, workers="auto")
+    reused_raw_store = RawBankStore(bank_root)
     with BankProgress(bank_root) as progress, closing(PendingBankScorer(
         model, device, generation, candidate_count, spool_directory=bank_root
     )) as scorer:
@@ -1943,6 +1961,8 @@ def build_online_bank(
             # Pending publishers own compact copied patches, not patient volumes.
             raw_case = pre_data = pre_seg = regions = components = tumor = None
             source = prepared_source = None
+            raw_target_case = None
+            raw_case_reference = raw_case_digest = None
             progress.update("load_case", case_id=case_id, case_index=case_index, cases=len(train_ids))
             source_case = case_map[case_id]
             print(f"[Bank] case {case_index}/{len(train_ids)} {case_id}", flush=True)
@@ -1981,6 +2001,10 @@ def build_online_bank(
 
             progress.update("patient_regions", case_id=case_id, sources=len(eligible))
             region_seed = stable_seed(global_seed, case_id, REGION_CACHE_SEED_SALT)
+            if not (region_cache / case_id).is_dir():
+                raise OnlineBenchmarkError(
+                    f"Verified GNN patient-region cache is missing: {region_cache / case_id}; "
+                    "bank preparation will not regenerate files inside a shared GNN source")
             regions = load_or_build_patient_regions(
                 raw_case,
                 cache_dir=region_cache,
@@ -2020,6 +2044,8 @@ def build_online_bank(
                             {case_id: [relative]},
                             candidate_count,
                             {relative: existing_row},
+                            raw_store=reused_raw_store,
+                            expected_paste_contract=PASTE_CONTRACT,
                         )
                         case_entry_names.append(relative)
                         print(
@@ -2078,28 +2104,16 @@ def build_online_bank(
                             commit_row(row)
                             print(f"[NoCP] {case_id} component={component_id}: zero legal placements; source slot and original patient retained")
                             continue
-                    source_mapping_diagnostics = {}
-                    source_data, source_mask, anchor_offset = _preprocessed_source(
-                        pre_data, pre_seg, properties, plans, source, tumor_label,
-                        configuration_name=configuration, raw_spacing=raw_case.spacing,
-                        raw_spatial_unit=raw_case.image_header.get_xyzt_units()[0],
-                        diagnostics=source_mapping_diagnostics,
-                    )
-                    row["source_mapping_json"] = json.dumps(source_mapping_diagnostics, sort_keys=True, allow_nan=False)
-                    if np.any(np.asarray(source_mask.shape, dtype=np.int64) > network_patch_size):
-                        row.update(
-                            status="source_patch_too_large",
-                            reason=(
-                                f"preprocessed source patch={source_mask.shape} exceeds "
-                                f"network patch={tuple(int(v) for v in network_patch_size)}"
-                            ),
-                        )
-                        commit_row(row)
-                        print(
-                            f"[Skip] {case_id} component={component_id}: "
-                            f"source patch {source_mask.shape} exceeds network patch"
-                        )
-                        continue
+                    # A source's native footprint is target-phase dependent. Never
+                    # resample it at its original location and reuse that mask.
+                    if raw_target_case is None:
+                        progress.update("raw_target_case", case_id=case_id, component=component_id)
+                        raw_target_case, raw_case_reference, raw_case_digest = prepare_raw_case(
+                            bank_root, case_id, raw_case.image, raw_case.label, properties, plans,
+                            pre_data, pre_seg, configuration_name=configuration,
+                            raw_spacing=raw_case.spacing,
+                            raw_spatial_unit=raw_case.image_header.get_xyzt_units()[0],
+                            minimum_free_bytes=int(nn_cfg["runtime"]["minimum_free_gb_before_preprocess"] * 1024**3))
                     prepared_source = prepare_local_source(
                         raw_case,
                         source,
@@ -2112,7 +2126,6 @@ def build_online_bank(
                     selected_candidates: list[Any] = []
                     selected_pre_centers: list[np.ndarray] = []
                     seen: set[tuple[int, int, int]] = set()
-                    seen_preprocessed: set[tuple[int, int, int]] = set()
                     rejected_geometry = 0
                     rejected_preprocessed = 0
                     for attempt in range(attempts):
@@ -2131,21 +2144,9 @@ def build_online_bank(
                                 properties,
                                 pre_data.shape[1:],
                             )
-                            mapped_key = tuple(int(value) for value in mapped)
-                            if mapped_key in seen_preprocessed:
-                                rejected_preprocessed += 1
-                                continue
-                            if not _preprocessed_candidate_valid(
-                                mapped,
-                                source_mask,
-                                anchor_offset,
-                                pre_seg,
-                                liver_label,
-                                tumor_label,
-                                float(generation["min_liver_coverage"]),
-                            ):
-                                rejected_preprocessed += 1
-                                continue
+                            # Distinct raw centers can round to the same native
+                            # voxel while having different interpolation phases.
+                            # Raw CP predicates above are the placement contract.
                             try:
                                 validate_local_geometry(
                                     raw_case,
@@ -2162,7 +2163,6 @@ def build_online_bank(
                                     rejected_geometry += 1
                                     continue
                                 raise
-                            seen_preprocessed.add(mapped_key)
                             selected_candidates.append(candidate)
                             progress.counters(selected=len(selected_candidates))
                             selected_pre_centers.append(mapped.astype(np.int32))
@@ -2185,6 +2185,18 @@ def build_online_bank(
                         )
                         continue
 
+                    raw_centers = np.asarray(
+                        [candidate.center for candidate in selected_candidates], dtype=np.int32)
+                    pre_centers = np.stack(selected_pre_centers).astype(np.int32)
+                    progress.update("raw_target_candidates", case_id=case_id, component=component_id,
+                                    candidates=candidate_count)
+                    source_anchor = np.asarray(source.anchor_center) - np.asarray(
+                        [part.start for part in source.patch_slices])
+                    candidate_payloads, candidate_payload_hashes, mapping_audit = prepare_source_candidates(
+                        bank_root, case_id, component_id, raw_target_case, raw_case_digest,
+                        source.patch_image, source.patch_mask, source_anchor, raw_centers, network_patch_size)
+                    row["source_mapping_json"] = json.dumps(mapping_audit, sort_keys=True, allow_nan=False)
+
                     progress.update("local_graphs", case_id=case_id, component=component_id, candidates=candidate_count)
                     sample, _ = build_inference_sample(
                         raw_case,
@@ -2200,15 +2212,11 @@ def build_online_bank(
                         prepared_source=prepared_source,
                         local_graph_map=local_graph_map,
                     )
-                    raw_centers = np.asarray(
-                        [candidate.center for candidate in selected_candidates], dtype=np.int32
-                    )
-                    pre_centers = np.stack(selected_pre_centers).astype(np.int32)
-
                     def publish_scores(
                         values: list[np.ndarray], *, case_id=case_id, component_id=component_id,
-                        diameter=diameter, row=row, source_data=source_data, source_mask=source_mask,
-                        anchor_offset=anchor_offset, raw_centers=raw_centers, pre_centers=pre_centers,
+                        diameter=diameter, row=row, raw_centers=raw_centers, pre_centers=pre_centers,
+                        candidate_payloads=candidate_payloads, candidate_payload_hashes=candidate_payload_hashes,
+                        raw_case_reference=raw_case_reference, raw_case_digest=raw_case_digest,
                         rejected_geometry=rejected_geometry, rejected_preprocessed=rejected_preprocessed,
                     ) -> None:
                         if len(values) != 1:
@@ -2221,15 +2229,18 @@ def build_online_bank(
                         if temporary.exists() or temporary.is_symlink():
                             raise OnlineBenchmarkError(f"Stale temporary bank entry exists: {temporary}; use --overwrite")
                         with temporary.open("xb") as handle:
-                            np.savez(handle, source_data=source_data.astype(np.float32),
-                                     source_mask=source_mask.astype(np.uint8), anchor_offset=anchor_offset.astype(np.int16),
+                            np.savez(handle, paste_contract=np.asarray([PASTE_CONTRACT]),
+                                     case_id=np.asarray([case_id]), candidate_payloads=candidate_payloads,
+                                     candidate_payload_sha256=candidate_payload_hashes,
+                                     raw_case_reference=np.asarray([raw_case_reference]),
+                                     raw_case_reference_sha256=np.asarray([raw_case_digest]),
                                      candidate_centers=pre_centers, candidate_raw_centers=raw_centers, scores=scores,
-                                     source_component=np.asarray([component_id], dtype=np.int16),
+                                     source_component=np.asarray([component_id], dtype=np.int64),
                                      source_diameter_mm=np.asarray([diameter], dtype=np.float32))
                             handle.flush()
                             os.fsync(handle.fileno())
                         temporary.replace(entry_path)
-                        relative = str(entry_path.relative_to(bank_root))
+                        relative = entry_path.relative_to(bank_root).as_posix()
                         row.update(status="ok", reason="", candidate_count=candidate_count,
                                    rejected_geometry=rejected_geometry, rejected_preprocessed=rejected_preprocessed,
                                    entry=relative, entry_sha256=file_sha256(entry_path),
@@ -2262,6 +2273,7 @@ def build_online_bank(
                         row.update(status="error", reason=f"{type(exc).__name__}: {exc}")
                         commit_row(row)
                         print(f"[Error] {case_id} component={component_id}: {exc}")
+                        raise
                 scorer.flush_ready()
             if case_entry_names:
                 entries_by_case.setdefault(case_id, []).extend(case_entry_names)
@@ -2352,9 +2364,13 @@ def _audit_bank_entries(
     entries_by_case: Mapping[str, Sequence[str]],
     candidate_count: int,
     manifest_entries: Mapping[str, Mapping[str, Any]],
+    *, raw_store=None, expected_paste_contract: str | None = None,
 ) -> None:
+    if expected_paste_contract not in (None, PASTE_CONTRACT):
+        raise OnlineBenchmarkError(f"Unknown declared bank paste contract: {expected_paste_contract!r}")
     seen_files: set[str] = set()
     resolved_root = bank_root.resolve()
+    raw_store = RawBankStore(bank_root) if raw_store is None else raw_store
     for case_id, relative_paths in entries_by_case.items():
         if not relative_paths:
             raise OnlineBenchmarkError(f"Empty bank entry list for {case_id}")
@@ -2384,6 +2400,37 @@ def _audit_bank_entries(
             if row.get("entry_sha256") != file_sha256(resolved_path):
                 raise OnlineBenchmarkError(f"Bank entry content hash mismatch: {path}")
             with np.load(resolved_path, allow_pickle=False) as payload:
+                has_paste_contract = "paste_contract" in payload.files
+                if expected_paste_contract is None:
+                    if has_paste_contract:
+                        raise OnlineBenchmarkError(
+                            f"Legacy bank declaration cannot contain a typed raw-target entry: {path}"
+                        )
+                elif not has_paste_contract:
+                    raise OnlineBenchmarkError(
+                        f"Raw-target bank declaration requires a typed raw-target entry: {path}"
+                    )
+                else:
+                    declared = np.asarray(payload["paste_contract"])
+                    if declared.shape != (1,) or str(declared[0]) != expected_paste_contract:
+                        raise OnlineBenchmarkError(
+                            f"Bank entry paste contract differs from its bank declaration: {path}"
+                        )
+                if "paste_contract" in payload.files:
+                    try:
+                        contents = {name: payload[name] for name in payload.files}
+                        audit_source_entry(bank_root, contents, int(candidate_count), store=raw_store)
+                    except (ValueError, KeyError, TypeError) as exc:
+                        raise OnlineBenchmarkError(f"Invalid raw-target bank entry {path}: {exc}") from exc
+                    if str(contents["case_id"][0]) != str(case_id):
+                        raise OnlineBenchmarkError(f"Raw-target entry belongs to another patient: {path}")
+                    if int(contents["source_component"][0]) != int(row["source_component"]):
+                        raise OnlineBenchmarkError(f"Raw-target entry names a different source component: {path}")
+                    expected_pool_hash = candidate_pool_hash(contents["candidate_raw_centers"],
+                                                             contents["candidate_centers"], contents["scores"])
+                    if row.get("candidate_pool_sha256") != expected_pool_hash:
+                        raise OnlineBenchmarkError(f"Candidate pool hash mismatch in bank manifest: {path}")
+                    continue
                 required = {
                     "source_data",
                     "source_mask",
@@ -2650,7 +2697,8 @@ def _audit_completed_bank(
     ):
         raise OnlineBenchmarkError("Bank aggregate source counts are inconsistent")
     _audit_bank_entries(
-        bank_root, grouped, int(candidate_count), manifest_entries
+        bank_root, grouped, int(candidate_count), manifest_entries,
+        expected_paste_contract=index.get("paste_contract"),
     )
 
 
@@ -2686,7 +2734,7 @@ def _verified_bank_identity(
     gnn_root = layout.gnn(outer_fold)
     current_links = {
         "format": BANK_FORMAT,
-        "source_mapping_format": SOURCE_MAPPING_FORMAT,
+        "source_mapping_format": index["source_mapping_format"],
         "no_placement_policy": str(train_cfg["generation"].get("no_placement_policy", "error")),
         "minimum_center_separation_mm": float(train_cfg["generation"]["min_center_separation_mm"]),
         "minimum_center_separation_vox": float(train_cfg["generation"].get("min_center_separation_vox", 0.0)),
@@ -2721,6 +2769,10 @@ def _verified_bank_identity(
             gnn_root / "graphs" / "complete.json"
         ),
     }
+    if index["source_mapping_format"] == RAW_TARGET_MAPPING_FORMAT:
+        current_links.update(paste_contract=PASTE_CONTRACT, entry_storage=ENTRY_STORAGE,
+                             raw_resampling_sha256=file_sha256(
+                                 _PROJECT_ROOT / "custom_trainers/onlinecp_raw_resampling.py"))
     mismatches = [
         key for key, expected in current_links.items() if index.get(key) != expected
     ]
@@ -3041,6 +3093,12 @@ def train_online_pair(
     overwrite: bool,
 ) -> None:
     bank = layout.bank(outer_fold) / "index.json"
+    if bank.is_file() and load_json(bank).get("paste_contract") is not None:
+        raise OnlineBenchmarkError(
+            "train_online_pair is the historical source-anchored Basic/ExactArgmax workflow. "
+            "Raw-target banks require tools/run_feedback_experiment.py or "
+            "tools.train_online_feedback with its verified feedback contract. "
+            "No training outputs or launch contracts were changed.")
     if dry_run and not layout.outer_splits.is_file():
         print(
             "[Dry-run] online training commands depend on the outer split that would "
@@ -3836,6 +3894,12 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = parser().parse_args()
+    if args.command == "all":
+        raise OnlineBenchmarkError(
+            "The historical online_cp_benchmark all route would connect the new raw-target "
+            "bank to incompatible legacy trainers. Use tools/run_feedback_experiment.py "
+            "for new Full/Basic feedback experiments. Existing legacy train/evaluate/status "
+            "commands remain available; no preparation or training was launched.")
     layout = make_layout(args)
     train_cfg = load_json(layout.train_config)
     nn_cfg = load_json(layout.nnunet_config)

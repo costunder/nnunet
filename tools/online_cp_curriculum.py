@@ -44,6 +44,11 @@ def publish(layout, outer_fold, dataset_id, curriculum_path):
     output = bank / contract_filename
     if output.exists():
         raise FileExistsError(f"Contract already exists; no artifacts changed: {output}")
+    bank_index = online.load_json(bank / "index.json")
+    if bank_index.get("paste_contract") is not None and not feedback:
+        raise ValueError(
+            "Raw-target banks require the Full/Basic segmentation-feedback policy; "
+            "a legacy rank-only curriculum contract was not written")
     online._verified_bank_identity(layout, outer_fold, train_cfg, nn_cfg, dataset_id)
     split = online.outer_split(layout, outer_fold)
     gnn = layout.gnn(outer_fold)

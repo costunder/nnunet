@@ -30,7 +30,15 @@ from custom_trainers.install_onlinecp_custom_trainers import (
 
 def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
                seed=42, python_executable=None, run_root=None, experiment_name=None,
-               train_config=None, recover_from=None):
+               train_config=None, recover_from=None, upgrade_bank_from=None):
+    if upgrade_bank_from is not None:
+        if recover_from is not None:
+            raise ValueError("Choose preparation recovery or bank upgrade, not both")
+        from tools.feedback_bank_upgrade import build_upgrade_plan
+        return build_upgrade_plan(project_root, medical_root, outer_fold=outer_fold,
+            dataset_id=dataset_id, seed=seed, python_executable=python_executable,
+            run_root=run_root, experiment_name=experiment_name, train_config=train_config,
+            upgrade_bank_from=upgrade_bank_from)
     if type(outer_fold) is not int or not 0 <= outer_fold < 5:
         raise ValueError("outer_fold must be one of 0, 1, 2, 3, 4")
     if type(dataset_id) is not int or not 1 <= dataset_id <= 999:
@@ -475,7 +483,9 @@ def _verify_online_artifacts(plan, name):
     relative = plan["run_root"].relative_to(plan["project_root"] / "work")
     layout = online.make_layout(argparse.Namespace(
         project_root=str(plan["project_root"]), medical_root=str(plan["medical_root"]),
-        paired_root=(relative / "paired").as_posix(), online_root=(relative / "online").as_posix(),
+        paired_root=(Path(plan["reuse_paired_root"]).relative_to(plan["project_root"] / "work").as_posix()
+                     if plan.get("reuse_paired_root") else (relative / "paired").as_posix()),
+        online_root=(relative / "online").as_posix(),
         train_config=str(plan["train_config"])))
     train_cfg = _read_json(plan["train_config"])
     nn_cfg = _read_json(plan["project_root"] / "config/nnunet.json")
@@ -664,6 +674,11 @@ def copy_nnunet_package(source, destination):
 
 
 def execute_plan(plan, *, runner=None, package_root=None, resume_preparation=False, resume_experiment=False):
+    if plan.get("upgrade_source_root") is not None:
+        if resume_preparation:
+            raise ValueError("Bank upgrade is not preparation recovery; use its --resume-experiment only after setup")
+        from tools.feedback_bank_upgrade import execute_upgrade
+        return execute_upgrade(plan, runner=runner, package_root=package_root, resume=resume_experiment)
     runner = subprocess.run if runner is None else runner
     root, medical, project = (plan[key] for key in ("run_root", "medical_root", "project_root"))
     recovering = plan.get("recovery_source_root") is not None
@@ -745,6 +760,7 @@ def main(argv=None):
     parser.add_argument("--dataset-id", type=int, default=760)
     parser.add_argument("--seed", type=int, default=42, help="nnU-Net seed; quality model uses its configured fold-specific seed")
     parser.add_argument("--recover-from", help="Preserve this existing preparation and recover into a new work directory in the same checkout")
+    parser.add_argument("--upgrade-bank-from", help="Preserve a stopped, pre-segmentation experiment; reuse verified quality GNN/preprocessing in a NEW bank/runtime/results root")
     outputs = parser.add_mutually_exclusive_group()
     outputs.add_argument("--run-root", help="Output path inside this checkout's work directory; relative paths start at the checkout")
     outputs.add_argument("--experiment-name", help="Relative experiment name below work (nested names supported)")
@@ -757,15 +773,21 @@ def main(argv=None):
     plan = build_plan(PROJECT_ROOT, args.medical_root, outer_fold=args.outer_fold,
                       dataset_id=args.dataset_id, seed=args.seed, run_root=args.run_root,
                       experiment_name=args.experiment_name, train_config=args.train_config,
-                      recover_from=args.recover_from)
+                      recover_from=args.recover_from, upgrade_bank_from=args.upgrade_bank_from)
     if args.resume_preparation and args.recover_from is None:
         raise ValueError("--resume-preparation requires --recover-from")
-    if args.resume_experiment and args.recover_from is None:
+    if args.resume_experiment and args.recover_from is None and args.upgrade_bank_from is None:
         raise ValueError("--resume-experiment requires the original --recover-from")
-    scope = ("Continue this verified experiment: preserve completed preparation, quality GNN then Full/Basic; no overwrite or fresh training fallback."
+    scope = ("Continue this bank upgrade's verified journal; no GNN/preprocessing recomputation or old-checkpoint import."
+             if args.resume_experiment and args.upgrade_bank_from is not None else
+             "Continue this verified experiment: preserve completed preparation, quality GNN then Full/Basic; no overwrite or fresh training fallback."
              if args.resume_experiment else plan["scope"])
     print(f"[SCOPE] {scope}\n[SEEDS] {plan['seed_note']}", flush=True)
     if args.dry_run:
+        if args.upgrade_bank_from is not None:
+            from tools.feedback_bank_upgrade import dry_run_upgrade
+            dry_run_upgrade(plan, resume=args.resume_experiment)
+            return
         if plan["recovery_source_root"] is not None:
             identity = validate_recovery_source(plan, plan["recovery_source_root"])
             if args.resume_preparation:
@@ -799,6 +821,8 @@ def main(argv=None):
               file=sys.stderr, flush=True)
         if plan["recovery_source_root"] is not None:
             print("Retry options: --resume-preparation is only for incomplete preparation. Once preparation completed, use the SAME original arguments plus --resume-experiment; it verifies cache/receipt/runtime and refuses ambiguous attempts or missing/incompatible training checkpoints. Do not edit the journal, delete preflight files, or use --overwrite. Partial runtime setup still requires a separate new experiment.", file=sys.stderr, flush=True)
+        if plan.get("upgrade_source_root") is not None:
+            print("Bank upgrade preserved its source and new partial outputs. After complete setup, the SAME upgrade arguments plus --resume-experiment reverify this new root; native bank/checkpoint guards still apply. Error/incomplete bank rows are not erased or forced reusable. Incomplete setup or running/ambiguous attempts are refused. Never delete an old bank, journal or checkpoint to pass a guard.", file=sys.stderr, flush=True)
         raise
 
 

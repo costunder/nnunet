@@ -18,6 +18,8 @@ All source modules and curriculum helpers must be beside this installer:
 - nnUNetTrainer_OnlineCPFeedback.py
 - onlinecp_feedback_policy.py
 - onlinecp_feedback_metrics.py
+- onlinecp_raw_resampling.py
+- onlinecp_raw_bank.py
 """
 from __future__ import annotations
 
@@ -40,13 +42,13 @@ MODULES = {
         "feb7afacb037811212df06516d3b80b701e492b55e0d06fc5fe4d6cfe2768346"
     ),
     "nnUNetTrainer_OnlineCPCurriculum.py": (
-        "593e35473ae3752029870360960894b091a91ca93559b18251a5e47f409d0192"
+        "e2df88b73261ae538c2f5210402150c676485df367c20f88f085dd9093b64c51"
     ),
     "nnUNetTrainer_OnlinePairedCP.py": (
-        "5a0dd160597458a839e2856456676c6e65611918efea83052850d7db1f20d2ab"
+        "ec4b3934a0e05a2810dbab69a8a0f60e06754d4853aea465a3ee735b56008ed1"
     ),
     "nnUNetTrainer_OnlinePairedCPArgmaxV3.py": (
-        "0fb1b1f5e7f602fcc6be57bcf205b673d2749190ca686aa919ebd66bea8a00b2"
+        "055c6c154820c8994bb9d59273ca8515c3db4ff6a4ed4064923fefe2b3f46320"
     ),
     "onlinecp_feedback_policy.py": (
         "566357115d84fcdfc46b03706bdaa86a00c9ff9d3510cd8490268e8bc219a37c"
@@ -55,7 +57,13 @@ MODULES = {
         "fe0d94b5d98fe376c41b8bf6eb60d8c922b9b1d6f629fe88d5fa1f1ad108982c"
     ),
     "nnUNetTrainer_OnlineCPFeedback.py": (
-        "7d60a634e1d4ff86466dc5ae824a072d294fa721c2d3fbda891333c11d9c9553"
+        "47ef130863c97207e5cce8fdfd2e0c2da8446ac66ce1df8728d454b457ce18b9"
+    ),
+    "onlinecp_raw_resampling.py": (
+        "49d1c06eed2d5f9ec535ab587e2789f7af7ef8c9d096c0706cc63a9292c318a2"
+    ),
+    "onlinecp_raw_bank.py": (
+        "0cf1249958de0bebece45501fc689844fb3e8a1ec1bd47f44d62a0cc790a7a6b"
     ),
 }
 TARGET_RELATIVE = Path("training") / "nnUNetTrainer"
@@ -165,6 +173,15 @@ from nnunetv2.training.nnUNetTrainer.nnUNetTrainer_OnlineCPFeedback import (
     nnUNetTrainer_250epochs_OnlineBasicCPFeedbackControl,
     nnUNetTrainer_250epochs_OnlineHierCPFeedback,
 )
+from nnunetv2.training.nnUNetTrainer.onlinecp_raw_bank import (
+    PASTE_CONTRACT, RawBankStore,
+)
+from nnunetv2.training.nnUNetTrainer.onlinecp_raw_resampling import (
+    prepare_case, prepare_candidate, apply_candidate,
+)
+assert PASTE_CONTRACT == 'onlinecp_raw_target_paste_v1'
+assert callable(RawBankStore) and all(callable(value) for value in
+                                    (prepare_case, prepare_candidate, apply_candidate))
 assert nnUNetTrainer_250epochs_OnlineBasicCPFeedbackControl.basic_control
 assert not nnUNetTrainer_250epochs_OnlineHierCPFeedback.basic_control
 assert nnUNetTrainer_250epochs_OnlineHierCPFeedback.bank_contract_filename == 'feedback_contract.json'
