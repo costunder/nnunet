@@ -170,6 +170,20 @@ Full/Basic result directories. Historical exact-argmax, rank-only curriculum and
 legacy downstream-ablation launchers reject this typed bank before starting work;
 their old checkpoints are not converted to the new CP semantics.
 
+For an already-created `work/feedback_rawcp` upgrade stopped at the raw-case
+disk-reserve preflight, repeat its original upgrade arguments with
+`--resume-experiment` after the failed process has stopped. Completed setup,
+GNN/preprocessing and audited successful bank entries are retained. An error row
+is retryable only when its exact native pre-write disk failure, current bank
+contract, unique progress/resource evidence and absence of source/case partial
+artifacts agree. The builder rechecks free space against the case baseline plus
+the unchanged reserve, and archives the original CSV/config/failure evidence in
+`bank/disk_retry_history/<uuid>.json` before normal processing. Generic errors,
+OOM, ENOSPC during writes and ambiguous artifacts are not admitted. Do not erase
+manifest rows, journals, payloads or checkpoints, or use `--overwrite` to resume.
+Shared NFS free space can change; passing this per-case lower-bound check does
+not reserve capacity or guarantee enough storage for the whole remaining bank.
+
 Fresh launches refuse nonempty result folders. `--resume` requires a feedback
 checkpoint; legacy checkpoints and missing-checkpoint fresh-start fallbacks are
 rejected. A complete epoch checkpoint includes nnU-Net, the difficulty GNN and

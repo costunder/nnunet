@@ -43,6 +43,7 @@ from custom_trainers.onlinecp_raw_bank import (
     PASTE_CONTRACT, ENTRY_STORAGE, RawBankStore, audit_source_entry,
     SOURCE_MAPPING_FORMAT as RAW_TARGET_MAPPING_FORMAT,
 )
+from tools.online_bank_disk_retry import admit_disk_preflight_retry
 
 VERSION = "online_basic_hiercp_v2"
 BANK_FORMAT = "hiercp_online_bank_v2"
@@ -2064,10 +2065,20 @@ def build_online_bank(
                         _validate_no_placement_row(existing_row, candidate_count)
                         print(f"[ReuseNoCP] {case_id} component={component_id}: original case retained")
                         continue
-                    raise OnlineBenchmarkError(
-                        f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
-                        f"status={status!r}; use --overwrite"
-                    )
+                    if status == "error":
+                        admit_disk_preflight_retry(
+                            bank_root, existing_row, expected_row=row,
+                            contract=metadata_contract, manifest_path=manifest_path,
+                            baseline_payload_bytes=int(np.prod(pre_data.shape[1:])) * 10,
+                            minimum_free_bytes=int(
+                                nn_cfg["runtime"]["minimum_free_gb_before_preprocess"] * 1024 ** 3),
+                        )
+                    else:
+                        raise OnlineBenchmarkError(
+                            f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
+                            f"status={status!r}; existing files are preserved. Inspect the failure evidence; "
+                            "do not delete manifest rows or use --overwrite."
+                        )
                 try:
                     progress.update("source_prepare", case_id=case_id, component=component_id)
                     source = _source_from_component(

@@ -1,8 +1,9 @@
 # HierCP GPT handoff
 
-작성일: 2026-09-10 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+작성일: 2026-09-12 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
 `source_commit` 및 `Tree`를 따른다. raw CP → nnU-Net 전처리의 후보 위치별 표현과
-trainer 연결 수정에 이어, 최신 변경은 bank-upgrade의 과거 실패 로그 호환성 수정이다.
+trainer 연결 및 과거 실패 로그 호환성 수정에 이어, 최신 변경은 bank의
+**저장 전 디스크 사전검사 실패에 한정한 증거 기반 재시도**다.
 
 ## 1. 전달물과 읽는 방법
 
@@ -40,15 +41,39 @@ nnU-Net이 실제로 어려워하는 붙여넣기 사례를 관측하여 online 
 | 서버 checkout | `/home/aicompetition06/Medical/HierCP-git` |
 | Medical root | `/home/aicompetition06/Medical` |
 | 이미지 / 정답 | `Data/image/<case_id>_0000.nii.gz`, `Data/labels/<case_id>.nii.gz` |
-| 현재 대화의 실험 | `work/feedback_medical_aug` |
+| 현재 대화의 실험 | `work/feedback_rawcp`; 완료 GNN/공통 전처리 원본은 `work/feedback_medical_aug` |
 | recovery 원본 | `work/feedback_experiment` |
 | outer fold / dataset ID | `0` / `760` |
 | 저장된 Python | `/home/aicompetition06/.conda/envs/nnunet/bin/python` |
 | nnU-Net seed | `42`; quality GNN/bank는 별도 fold-specific 설정을 따른다 |
 | 직전 bank 실패 | `liver_101`, component `3`, raw source 1 voxel → 원래 위치에서 독립 resampling한 mask 0 voxel |
-| 최신 사용자 제공 오류 | 새 `feedback_rawcp` 시작 전 source history 검증: `Source experiment configurations changed since its recorded attempt` |
+| 최신 사용자 제공 오류 | `feedback_rawcp` bank의 `liver_15`, component `1`: raw-target case 저장 전 디스크 reserve 검사 실패 |
 
-최신 오류는 `validate_source` 안에서 발생했다. 이 invocation은 새 root 생성,
+최신 첨부 `e1204233-a4a9-4695-a018-846c8ff87284/pasted-text.txt`에서 실패 당시
+free는 77,643,907,072 bytes(약 72.31GiB), reserve는 85,899,345,920 bytes(80GiB),
+해당 baseline 저장 하한은 1,103,806,600 bytes(약 1.03GiB)였다.
+`raw_target_case` 시작 후 0.172초에 사전검사에서 중단됐으며 누적 시간은 약 36시간 13분이다.
+RSS 약 290.6GiB, available RAM 약 694.2GiB였지만 **직접 실패 원인은 디스크 reserve**다.
+사용자 후속 `df/du` 출력은 공유 NFS `/home` 74T 중 341G available, bank 총 36G
+(`raw_cases` 34G, `raw_candidates` 1.8G, `raw_sources` 12M, entries 21M)였다.
+따라서 이 bank가 공유 NFS 74T를 채웠다고 단정할 수 없고, `Use%=100%`만으로
+사용 가능 공간이 0이라고 해석하지 않는다. 두 측정 사이 free 증가 원인은 미확인이다.
+341G는 후속 시점의 공유 여유 공간이며 나머지 전체 bank 완료 용량 보장은 아니다.
+
+기존 재개 경로는 완료 `ok` 행을 검증해 재사용하지만, 디스크 사전검사에서 남긴
+`error` 행도 다른 오류와 똑같이 거절했다. 이제 `tools/online_bank_disk_retry.py`가
+정확한 native 오류 문구·현재 입력 크기/설정·유일한 Measurement/BankProgress 증거·
+해당 case/source의 부분 산출물 부재를 대조한다. 현재 free가 baseline+기존 reserve를
+초과할 때만 CSV/config/실패 로그의 원본 bytes와 SHA를 `disk_retry_history/<uuid>.json`에
+배타적으로 보관한 뒤 정상 생성 경로로 다시 진입한다. 실패 행을 수동 삭제하지 않으며,
+성공/새 실패의 정상 manifest 갱신 전에 이전 실패 증거가 보존된다.
+일반 오류, OOM, 저장 중 ENOSPC, 증거 누락/중복, 부분 산출물은 계속 거절한다.
+새 CLI 우회 플래그나 reserve 축소는 없다. GNN·전처리·기존 완료 entry·private trainer
+runtime·raw resampling 엔진·후보 128개·모델 설정은 바꾸지 않았다.
+서버에서 이 수정의 bank 완료와 Full/Basic 학습이 확인된 것은 아니다.
+
+아래 source-history 오류는 **이전 단계의 기록**이다. 당시 `validate_source` 안에서 발생했고,
+그 invocation은 새 root 생성,
 GPU 검사, bank 생성 및 학습 전에 멈췄다. 구 writer(`301482c` 이전)는 실패 행에
 `name/status/error`만 저장했지만 새 upgrade reader가 `input_files` 누락도 설정 변경으로
 오인하는 호환성 결함을 코드 이력에서 확인했다. 원격 journal 행 자체는 아직 제공되지
@@ -244,15 +269,27 @@ zero-support 수와 measured CPU 준비 자원을 구분해 기록한다.
 
 ## 7. 검증된 범위와 과거 성능 결과
 
-- 최신 source-history 수정: upgrade DEBUG 26개 중 25개 통과·Windows symlink 권한
+- 2026-09-12 디스크 재개 수정: 전체 `python -B -m unittest discover -s tests -p 'test*.py' -q`
+  **680개 중 677개 통과, 3개 건너뜀, 실패 0**, 231.251초, 종료 코드 0.
+  새 helper/기존 wiring 범위 12개도 별도로 모두 통과했다(30.817초; 전체 suite의 부분집합).
+  실제 native 저장 전 disk guard와 BankProgress/Measurement로 만든 작은 CPU DEBUG 실패 기록을
+  사용해 CSV/config/실패 증거 보존, 완료 case 재사용, 실패 case의 128개 payload 생성 및
+  native bank audit까지 검사했다. 잘못된 행/계약/중복·누락 증거/불완전 측정/부분 파일/
+  일반 오류/여전한 공간 부족은 거절한다. GNN scoring/외부 실행의 명시적 DEBUG 경계 대역은
+  서버 실행 검증을 대신하지 않는다. Python 3.10 문법 검사 136개와 `git diff --check` 통과.
+  `hiercp`, `custom_trainers`, `config`의 기존 파일 변경 없음도 검사했다.
+  로컬은 CPU 16 logical cores, RAM 약 17.62GiB/검사 전 available 약 2.25GiB,
+  CUDA 없음이었다. 서버의 실제 CSV/측정 파일에 대한 admission, 전체 bank 완료, 학습·평가는
+  실행하지 않았다. 사용자가 준 서버 로그/df/du와 로컬 DEBUG 검증을 구분해야 한다.
+- 2026-09-10 source-history 수정(과거): upgrade DEBUG 26개 중 25개 통과·Windows symlink 권한
   1개 skip(8.640초), 기존 실행·재개 DEBUG 32개 모두 통과(39.098초).
   합계 **58개 중 57개 통과, 1개 skip, 실패 0**. 새 회귀 테스트 9개는 모두 통과했다.
   동일한 DEBUG legacy 기록을 이전 `a406574` reader에 넣으면 사용자와 같은 오류가
   발생하고, 수정 reader는 후속 동일 단계 증거 검증 후 통과함을 별도 대조했다.
   원본 journal·파일 내용/목록 보존 및 GNN·전처리 재실행 없는 stage driver를 검사했다.
   무거운 native 성공 검증에는 명시적 경계 double을 사용하며 실제 서버 journal이나
-  환자 데이터 검증을 대신하지 않는다. 이번에는 아래 전체 662개 suite나 전체 학습·평가를
-  재실행하지 않았다. 아래 전체 suite 수치는 직전 raw-target 구현의 결과다.
+  환자 데이터 검증을 대신하지 않는다. 당시에는 아래 전체 662개 suite나 전체 학습·평가를
+  재실행하지 않았다. 아래 662개 수치는 직전 raw-target 구현의 과거 결과다.
 - raw-target 구현(`945f7a2`)의 로컬 전체 회귀: `python -B -m unittest discover -s tests -p 'test*.py' -v`
   **662개 중 659개 통과, 3개 건너뜀, 실패 0**, 267.604초, 종료 코드 0.
   건너뛴 것은 Windows symlink 권한 관련 2개와 명시적 opt-in이 필요한
@@ -309,8 +346,9 @@ L2가 무효라는 결론이나 자동 제거 승인은 아니다.
 검증된 bank/GNN/preprocessing은 보존한다. 오류가 있으면 해당 실패 경로를 고치고
 명시적인 검증 후 이어가며, journal/lock/manifest를 지워 통과시키지 않는다.
 
-아래는 **원본 실험이 중단되어 있고, GNN/공통 전처리가 완료되어 검증 가능한 경우**
-새 raw-target 실험을 만드는 명령이다. 실행 중인 프로세스를 중단하라는 지시가 아니다.
+아래는 **`feedback_rawcp`의 실패 프로세스가 종료되어 있고, GNN/공통 전처리와
+새 실험의 setup이 완료되어 검증 가능한 경우**, 기존 raw-target 실험을 재개하는 명령이다.
+실행 중인 프로세스를 중단하라는 지시가 아니다.
 변경 전 `feedback_medical_aug`에 새 trainer를 덮어씌워 resume하는 명령이 아니다.
 현재 할당 GPU 번호만 입력한다. 예전 GPU 번호를 재사용한다고 가정하지 않는다.
 
@@ -319,6 +357,7 @@ conda activate /home/aicompetition06/.conda/envs/nnunet &&
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
 read -r -p "현재 할당받은 GPU 번호: " CP_GPU &&
+test -n "$CP_GPU" &&
 env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
   --upgrade-bank-from work/feedback_medical_aug \
@@ -326,20 +365,20 @@ env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
   --medical-root /home/aicompetition06/Medical \
   --outer-fold 0 \
   --dataset-id 760 \
-  --seed 42
+  --seed 42 \
+  --resume-experiment
 ```
 
-새 upgrade 실험의 안전 재개는 위와 같은 원래 인수에 `--resume-experiment`를 추가한다.
-단, 최신 사용자 오류처럼 source history 검증에서 멈춘 invocation은 새 root를 만들기
-전이므로 코드 업데이트 후 위의 최초 실행 인수를 그대로 쓴다. 다른 invocation이
-이미 root를 만들었으면 삭제하지 말고 그 기록에 맞는 재개 여부를 확인한다.
+현재 `feedback_rawcp`는 bank 파일이 이미 생성된 실험이므로 `--resume-experiment`를 쓴다.
+이전 source-history 검증 실패처럼 root 생성 전 멈춘 상황과 혼동하지 않는다.
+실제로 새 root가 없는 최초 생성에만 이 재개 플래그를 빼며, 기존 root를 삭제해 새로 시작하지 않는다.
 원본 `feedback_medical_aug` journal은 수정하지 않는다. 기존 `--recover-from` 기반
 실험의 `--resume-preparation`/`--resume-experiment` 경로도 남아 있지만 새 bank 표현으로
 구버전 runtime을 바꾸는 수단이 아니다. `--overwrite`나 journal 수작업 삭제로 우회하지 않는다.
 저장된 Python 경로도 plan identity에 포함된다. 과거 `(base)` Python으로 검사했을 때는
 checksum/source가 맞아도 Python 경로만 달라 plan mismatch가 발생했다.
 이것을 journal checksum 완화로 고치지 않는다.
-기존 bank error row, 불충분 pool, 미완 runtime, running row/lock,
+검증된 저장 전 디스크 실패 이외의 bank error row, 불충분 pool, 미완 runtime, running row/lock,
 호환되지 않거나 없는 필수 checkpoint는 자동 재개가 거부될 수 있다.
 최신 오류를 보지 않고 무조건 재실행 명령을 반복해서 주지 않는다.
 

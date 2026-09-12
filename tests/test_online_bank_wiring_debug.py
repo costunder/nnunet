@@ -30,6 +30,7 @@ from tools import online_cp_benchmark as normal
 from tools import online_cp_argmax_benchmark as argmax
 from tools.online_scoring import PendingBankScorer
 from tools.online_raw_bank_preparation import prepare_raw_case, prepare_source_candidates
+from tools.online_bank_progress import BankProgress as ActualBankProgress
 
 
 def debug_native_identity_inputs(image, label):
@@ -180,7 +181,7 @@ class DebugBankBoundary:
             commit(function(task))
         return {"DEBUG_scheduler": True, "completed": len(tasks)}
 
-    def run(self):
+    def run(self, *, case_sequence=None, persist_manifest=False, contract=None):
         boundary = self
         class DebugProgress:
             def __init__(self, root):
@@ -224,18 +225,49 @@ class DebugBankBoundary:
                 return {"DEBUG_score_boundary": True}
 
         def commit(row):
-            self.rows.append(dict(row))
+            if persist_manifest:
+                key = (str(row["case_id"]), int(row["source_component"]))
+                for index, previous in enumerate(self.rows):
+                    if (str(previous["case_id"]), int(previous["source_component"])) == key:
+                        self.rows[index] = dict(row)
+                        break
+                else:
+                    self.rows.append(dict(row))
+                from tests.test_online_bank_disk_retry_debug import write_manifest
+                write_manifest(self.root / "manifest.csv", self.rows)
+            else:
+                self.rows.append(dict(row))
+
+        class ActualRecordedProgress(ActualBankProgress):
+            def __enter__(self):
+                self.closed = False
+                boundary.progress.append(self)
+                return super().__enter__()
+
+            def __exit__(self, *args):
+                try:
+                    return super().__exit__(*args)
+                finally:
+                    self.closed = True
+
         config = GraphBuildConfig(patch_size=16)
         population = SimpleNamespace(fingerprint=lambda: "DEBUG_PROTOTYPE")
         properties, native_plans, native_data, native_seg = debug_native_identity_inputs(
             self.case.image, self.case.label)
+        cases = list(case_sequence) if case_sequence is not None else [self.case]
+        cases_by_id = {case.paths.case_id: case for case in cases}
+        native_by_id = {}
+        for case in cases:
+            case_properties, _, case_data, case_seg = debug_native_identity_inputs(case.image, case.label)
+            native_by_id[case.paths.case_id] = (case_data, case_seg, None, case_properties)
+            (self.root / "regions" / case.paths.case_id).mkdir(parents=True, exist_ok=True)
         context = dict(vars(self.module))
         context.update(
             np=np, torch=torch, CasePaths=CasePaths, CACHE_FORMAT=cache.CACHE_FORMAT,
-            train_ids=[self.case.paths.case_id],
-            case_map={self.case.paths.case_id: SimpleNamespace(image="DEBUG_IMAGE", label="DEBUG_LABEL")},
-            load_case=lambda paths: self.case,
-            pre_dataset=SimpleNamespace(load_case=lambda name: (native_data, native_seg, None, properties)),
+            train_ids=list(cases_by_id),
+            case_map={name: SimpleNamespace(image="DEBUG_IMAGE", label="DEBUG_LABEL") for name in cases_by_id},
+            load_case=lambda paths: cases_by_id[paths.case_id],
+            pre_dataset=SimpleNamespace(load_case=lambda name: native_by_id[name]),
             min_diameter=0.0, max_diameter=100.0, tumor_label=2, liver_label=1, global_seed=42,
             rows=self.rows, source_inventory={}, entries_by_case={}, overwrite=False,
             existing_by_source={(row["case_id"], int(row["source_component"])): row for row in self.rows},
@@ -248,9 +280,10 @@ class DebugBankBoundary:
                 scoring_batch_size="auto", scoring_batch_size_candidates=[1, 2],
                 scoring_batch_calibration_repeats=3, scoring_batch_max_vram_fraction=.8,
                 local_candidate_chunk_size=128, amp=False, pin_memory=False),
-            metadata_contract={"no_placement_policy": "retain_original"},
+            metadata_contract=contract or {"no_placement_policy": "retain_original"},
             candidate_count=128, draw_count=128, attempts=1, pools_per_source=self.pool_count,
-            bank_root=self.root, entries_root=self.root / "entries", manifest_path=self.root / "DEBUG_manifest.csv",
+            bank_root=self.root, entries_root=self.root / "entries",
+            manifest_path=self.root / ("manifest.csv" if persist_manifest else "DEBUG_manifest.csv"),
             commit_row=commit, build_candidate_pool=self.proposal,
             _preprocessed_source=lambda *args, **kwargs: (np.ones((1, 1, 1, 1), np.float32),
                 np.ones((1, 1, 1), bool), np.zeros(3, np.int64)),
@@ -264,7 +297,8 @@ class DebugBankBoundary:
             build_inference_sample=cache.build_inference_sample,
             build_patient_graph=lambda *args, **kwargs: {"DEBUG_patient": torch.ones(1)},
             build_prototype_graph=lambda *args, **kwargs: {"DEBUG_population": torch.ones(1)},
-            closing=closing, BankProgress=DebugProgress, PendingBankScorer=DebugScoreBoundary,
+            closing=closing, BankProgress=ActualRecordedProgress if persist_manifest else DebugProgress,
+            PendingBankScorer=DebugScoreBoundary,
             BankLocalGraphMapper=preparation.BankLocalGraphMapper,
             AdaptiveRoiBudgetError=AdaptiveRoiBudgetError, CanonicalGraphUnavailable=CanonicalGraphUnavailable,
             model=object(), device=torch.device("cpu"),
@@ -371,6 +405,52 @@ class OnlineBankWiringDebugTests(unittest.TestCase):
                     if fault == "all_geometry":
                         self.assertEqual(boundary.rows[0]["status"], "insufficient_candidates")
                         self.assertEqual(sum(event[0] == "graph" for event in boundary.trace), 0)
+
+    def test_debug_disk_error_csv_retries_after_completed_case_without_overwrite(self):
+        import base64
+        from dataclasses import replace
+        import json
+        from tools import online_bank_disk_retry as retry
+        from tests.test_online_bank_disk_retry_debug import disk_failure_fixture, inventory, write_manifest
+
+        with tempfile.TemporaryDirectory(prefix="DEBUG_disk_loop_retry_") as directory:
+            root = Path(directory)
+            first = DebugBankBoundary(normal, root)
+            first.run()
+            self.assert_closed(first)
+            completed_row = dict(first.rows[0])
+            completed_files = inventory(root)
+            contract = {"no_placement_policy": "retain_original"}
+            proof = disk_failure_fixture(root, case_id="DEBUG_RETRY", shape=first.case.shape,
+                                         minimum_free_bytes=0, contract=contract,
+                                         diameter_mm=completed_row["diameter_mm"])
+            write_manifest(proof.manifest, [completed_row, proof.failed])
+            failed_manifest = proof.manifest.read_bytes()
+            config_before = (root / "config.json").read_bytes()
+            resource_before = proof.resource.read_bytes()
+            progress_before = proof.progress.read_bytes()
+            second_case = replace(first.case, paths=CasePaths("DEBUG_RETRY", Path("DEBUG_IMAGE_2"), Path("DEBUG_LABEL_2")))
+            resumed = DebugBankBoundary(normal, root, existing_rows=[completed_row, proof.failed])
+            with patch.object(retry.shutil, "disk_usage", return_value=SimpleNamespace(free=10**12)):
+                resumed.run(case_sequence=[first.case, second_case], persist_manifest=True, contract=contract)
+            self.assert_closed(resumed)
+            self.assertFalse(resumed.context["overwrite"])
+            self.assertEqual(len(resumed.rows), 2)
+            self.assertTrue(all(row["status"] == "ok" and int(row["candidate_count"]) == 128 for row in resumed.rows))
+            self.assertEqual(sum(event[0] == "graph" for event in resumed.trace), 128)
+            self.assertEqual(set(resumed.context["entries_by_case"]), {"DEBUG_WIRING", "DEBUG_RETRY"})
+            for relative, data in completed_files.items():
+                self.assertEqual((root / relative).read_bytes(), data)
+            self.assertEqual((root / "config.json").read_bytes(), config_before)
+            self.assertEqual(proof.resource.read_bytes(), resource_before)
+            self.assertEqual(proof.progress.read_bytes(), progress_before)
+            receipts = list((root / "disk_retry_history").glob("*.json"))
+            self.assertEqual(len(receipts), 1)
+            receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+            self.assertEqual(base64.b64decode(receipt["evidence"]["manifest.csv"]["content_base64"]), failed_manifest)
+            entry_rows = {row["entry"]: row for row in resumed.rows}
+            normal._audit_bank_entries(root, resumed.context["entries_by_case"], 128, entry_rows,
+                                       expected_paste_contract=normal.PASTE_CONTRACT)
 
 
 if __name__ == "__main__":
