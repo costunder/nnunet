@@ -2,9 +2,9 @@
 
 project: /home/aicompetition06/Medical/HierCP-git (server checkout path)
 repository: https://github.com/costunder/nnunet.git
-source_commit: ec2d8388f39c6b03ed32a3677fbdd6eaafed4731
-generated: 2026-09-10T07:03:31Z
-file_count: 159
+source_commit: f04d11bcfa49cf47d0fe78b9fd34ff1590b17be5
+generated: 2026-09-12T05:44:36Z
+file_count: 161
 
 This is the complete current repository text snapshot at source_commit above.
 It includes all tracked source, trainers, configuration, tests, rules and documents,
@@ -128,6 +128,7 @@ active code. The current snapshot does not replace that historical baseline evid
 ./tests/test_level0_geometry.py
 ./tests/test_medical_aug_reference_debug.py
 ./tests/test_no_placement_cache_debug.py
+./tests/test_online_bank_disk_retry_debug.py
 ./tests/test_online_bank_wiring_debug.py
 ./tests/test_online_cp_curriculum.py
 ./tests/test_online_cp_feedback_metrics.py
@@ -167,6 +168,7 @@ active code. The current snapshot does not replace that historical baseline evid
 ./tools/feedback_preparation_recovery.py
 ./tools/install.py
 ./tools/nnunet.py
+./tools/online_bank_disk_retry.py
 ./tools/online_bank_preparation.py
 ./tools/online_bank_progress.py
 ./tools/online_cp_argmax_benchmark.py
@@ -8473,6 +8475,20 @@ Full/Basic result directories. Historical exact-argmax, rank-only curriculum and
 legacy downstream-ablation launchers reject this typed bank before starting work;
 their old checkpoints are not converted to the new CP semantics.
 
+For an already-created `work/feedback_rawcp` upgrade stopped at the raw-case
+disk-reserve preflight, repeat its original upgrade arguments with
+`--resume-experiment` after the failed process has stopped. Completed setup,
+GNN/preprocessing and audited successful bank entries are retained. An error row
+is retryable only when its exact native pre-write disk failure, current bank
+contract, unique progress/resource evidence and absence of source/case partial
+artifacts agree. The builder rechecks free space against the case baseline plus
+the unchanged reserve, and archives the original CSV/config/failure evidence in
+`bank/disk_retry_history/<uuid>.json` before normal processing. Generic errors,
+OOM, ENOSPC during writes and ambiguous artifacts are not admitted. Do not erase
+manifest rows, journals, payloads or checkpoints, or use `--overwrite` to resume.
+Shared NFS free space can change; passing this per-case lower-bound check does
+not reserve capacity or guarantee enough storage for the whole remaining bank.
+
 Fresh launches refuse nonempty result folders. `--resume` requires a feedback
 checkpoint; legacy checkpoints and missing-checkpoint fresh-start fallbacks are
 rejected. A complete epoch checkpoint includes nnU-Net, the difficulty GNN and
@@ -8627,9 +8643,10 @@ downloaded by these unit tests.
 ===== FILE: gpt_handoff.md =====
 # HierCP GPT handoff
 
-작성일: 2026-09-10 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+작성일: 2026-09-12 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
 `source_commit` 및 `Tree`를 따른다. raw CP → nnU-Net 전처리의 후보 위치별 표현과
-trainer 연결 수정에 이어, 최신 변경은 bank-upgrade의 과거 실패 로그 호환성 수정이다.
+trainer 연결 및 과거 실패 로그 호환성 수정에 이어, 최신 변경은 bank의
+**저장 전 디스크 사전검사 실패에 한정한 증거 기반 재시도**다.
 
 ## 1. 전달물과 읽는 방법
 
@@ -8667,15 +8684,39 @@ nnU-Net이 실제로 어려워하는 붙여넣기 사례를 관측하여 online 
 | 서버 checkout | `/home/aicompetition06/Medical/HierCP-git` |
 | Medical root | `/home/aicompetition06/Medical` |
 | 이미지 / 정답 | `Data/image/<case_id>_0000.nii.gz`, `Data/labels/<case_id>.nii.gz` |
-| 현재 대화의 실험 | `work/feedback_medical_aug` |
+| 현재 대화의 실험 | `work/feedback_rawcp`; 완료 GNN/공통 전처리 원본은 `work/feedback_medical_aug` |
 | recovery 원본 | `work/feedback_experiment` |
 | outer fold / dataset ID | `0` / `760` |
 | 저장된 Python | `/home/aicompetition06/.conda/envs/nnunet/bin/python` |
 | nnU-Net seed | `42`; quality GNN/bank는 별도 fold-specific 설정을 따른다 |
 | 직전 bank 실패 | `liver_101`, component `3`, raw source 1 voxel → 원래 위치에서 독립 resampling한 mask 0 voxel |
-| 최신 사용자 제공 오류 | 새 `feedback_rawcp` 시작 전 source history 검증: `Source experiment configurations changed since its recorded attempt` |
+| 최신 사용자 제공 오류 | `feedback_rawcp` bank의 `liver_15`, component `1`: raw-target case 저장 전 디스크 reserve 검사 실패 |
 
-최신 오류는 `validate_source` 안에서 발생했다. 이 invocation은 새 root 생성,
+최신 첨부 `e1204233-a4a9-4695-a018-846c8ff87284/pasted-text.txt`에서 실패 당시
+free는 77,643,907,072 bytes(약 72.31GiB), reserve는 85,899,345,920 bytes(80GiB),
+해당 baseline 저장 하한은 1,103,806,600 bytes(약 1.03GiB)였다.
+`raw_target_case` 시작 후 0.172초에 사전검사에서 중단됐으며 누적 시간은 약 36시간 13분이다.
+RSS 약 290.6GiB, available RAM 약 694.2GiB였지만 **직접 실패 원인은 디스크 reserve**다.
+사용자 후속 `df/du` 출력은 공유 NFS `/home` 74T 중 341G available, bank 총 36G
+(`raw_cases` 34G, `raw_candidates` 1.8G, `raw_sources` 12M, entries 21M)였다.
+따라서 이 bank가 공유 NFS 74T를 채웠다고 단정할 수 없고, `Use%=100%`만으로
+사용 가능 공간이 0이라고 해석하지 않는다. 두 측정 사이 free 증가 원인은 미확인이다.
+341G는 후속 시점의 공유 여유 공간이며 나머지 전체 bank 완료 용량 보장은 아니다.
+
+기존 재개 경로는 완료 `ok` 행을 검증해 재사용하지만, 디스크 사전검사에서 남긴
+`error` 행도 다른 오류와 똑같이 거절했다. 이제 `tools/online_bank_disk_retry.py`가
+정확한 native 오류 문구·현재 입력 크기/설정·유일한 Measurement/BankProgress 증거·
+해당 case/source의 부분 산출물 부재를 대조한다. 현재 free가 baseline+기존 reserve를
+초과할 때만 CSV/config/실패 로그의 원본 bytes와 SHA를 `disk_retry_history/<uuid>.json`에
+배타적으로 보관한 뒤 정상 생성 경로로 다시 진입한다. 실패 행을 수동 삭제하지 않으며,
+성공/새 실패의 정상 manifest 갱신 전에 이전 실패 증거가 보존된다.
+일반 오류, OOM, 저장 중 ENOSPC, 증거 누락/중복, 부분 산출물은 계속 거절한다.
+새 CLI 우회 플래그나 reserve 축소는 없다. GNN·전처리·기존 완료 entry·private trainer
+runtime·raw resampling 엔진·후보 128개·모델 설정은 바꾸지 않았다.
+서버에서 이 수정의 bank 완료와 Full/Basic 학습이 확인된 것은 아니다.
+
+아래 source-history 오류는 **이전 단계의 기록**이다. 당시 `validate_source` 안에서 발생했고,
+그 invocation은 새 root 생성,
 GPU 검사, bank 생성 및 학습 전에 멈췄다. 구 writer(`301482c` 이전)는 실패 행에
 `name/status/error`만 저장했지만 새 upgrade reader가 `input_files` 누락도 설정 변경으로
 오인하는 호환성 결함을 코드 이력에서 확인했다. 원격 journal 행 자체는 아직 제공되지
@@ -8871,15 +8912,27 @@ zero-support 수와 measured CPU 준비 자원을 구분해 기록한다.
 
 ## 7. 검증된 범위와 과거 성능 결과
 
-- 최신 source-history 수정: upgrade DEBUG 26개 중 25개 통과·Windows symlink 권한
+- 2026-09-12 디스크 재개 수정: 전체 `python -B -m unittest discover -s tests -p 'test*.py' -q`
+  **680개 중 677개 통과, 3개 건너뜀, 실패 0**, 231.251초, 종료 코드 0.
+  새 helper/기존 wiring 범위 12개도 별도로 모두 통과했다(30.817초; 전체 suite의 부분집합).
+  실제 native 저장 전 disk guard와 BankProgress/Measurement로 만든 작은 CPU DEBUG 실패 기록을
+  사용해 CSV/config/실패 증거 보존, 완료 case 재사용, 실패 case의 128개 payload 생성 및
+  native bank audit까지 검사했다. 잘못된 행/계약/중복·누락 증거/불완전 측정/부분 파일/
+  일반 오류/여전한 공간 부족은 거절한다. GNN scoring/외부 실행의 명시적 DEBUG 경계 대역은
+  서버 실행 검증을 대신하지 않는다. Python 3.10 문법 검사 136개와 `git diff --check` 통과.
+  `hiercp`, `custom_trainers`, `config`의 기존 파일 변경 없음도 검사했다.
+  로컬은 CPU 16 logical cores, RAM 약 17.62GiB/검사 전 available 약 2.25GiB,
+  CUDA 없음이었다. 서버의 실제 CSV/측정 파일에 대한 admission, 전체 bank 완료, 학습·평가는
+  실행하지 않았다. 사용자가 준 서버 로그/df/du와 로컬 DEBUG 검증을 구분해야 한다.
+- 2026-09-10 source-history 수정(과거): upgrade DEBUG 26개 중 25개 통과·Windows symlink 권한
   1개 skip(8.640초), 기존 실행·재개 DEBUG 32개 모두 통과(39.098초).
   합계 **58개 중 57개 통과, 1개 skip, 실패 0**. 새 회귀 테스트 9개는 모두 통과했다.
   동일한 DEBUG legacy 기록을 이전 `a406574` reader에 넣으면 사용자와 같은 오류가
   발생하고, 수정 reader는 후속 동일 단계 증거 검증 후 통과함을 별도 대조했다.
   원본 journal·파일 내용/목록 보존 및 GNN·전처리 재실행 없는 stage driver를 검사했다.
   무거운 native 성공 검증에는 명시적 경계 double을 사용하며 실제 서버 journal이나
-  환자 데이터 검증을 대신하지 않는다. 이번에는 아래 전체 662개 suite나 전체 학습·평가를
-  재실행하지 않았다. 아래 전체 suite 수치는 직전 raw-target 구현의 결과다.
+  환자 데이터 검증을 대신하지 않는다. 당시에는 아래 전체 662개 suite나 전체 학습·평가를
+  재실행하지 않았다. 아래 662개 수치는 직전 raw-target 구현의 과거 결과다.
 - raw-target 구현(`945f7a2`)의 로컬 전체 회귀: `python -B -m unittest discover -s tests -p 'test*.py' -v`
   **662개 중 659개 통과, 3개 건너뜀, 실패 0**, 267.604초, 종료 코드 0.
   건너뛴 것은 Windows symlink 권한 관련 2개와 명시적 opt-in이 필요한
@@ -8936,8 +8989,9 @@ L2가 무효라는 결론이나 자동 제거 승인은 아니다.
 검증된 bank/GNN/preprocessing은 보존한다. 오류가 있으면 해당 실패 경로를 고치고
 명시적인 검증 후 이어가며, journal/lock/manifest를 지워 통과시키지 않는다.
 
-아래는 **원본 실험이 중단되어 있고, GNN/공통 전처리가 완료되어 검증 가능한 경우**
-새 raw-target 실험을 만드는 명령이다. 실행 중인 프로세스를 중단하라는 지시가 아니다.
+아래는 **`feedback_rawcp`의 실패 프로세스가 종료되어 있고, GNN/공통 전처리와
+새 실험의 setup이 완료되어 검증 가능한 경우**, 기존 raw-target 실험을 재개하는 명령이다.
+실행 중인 프로세스를 중단하라는 지시가 아니다.
 변경 전 `feedback_medical_aug`에 새 trainer를 덮어씌워 resume하는 명령이 아니다.
 현재 할당 GPU 번호만 입력한다. 예전 GPU 번호를 재사용한다고 가정하지 않는다.
 
@@ -8946,6 +9000,7 @@ conda activate /home/aicompetition06/.conda/envs/nnunet &&
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
 read -r -p "현재 할당받은 GPU 번호: " CP_GPU &&
+test -n "$CP_GPU" &&
 env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
   --upgrade-bank-from work/feedback_medical_aug \
@@ -8953,20 +9008,20 @@ env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
   --medical-root /home/aicompetition06/Medical \
   --outer-fold 0 \
   --dataset-id 760 \
-  --seed 42
+  --seed 42 \
+  --resume-experiment
 ```
 
-새 upgrade 실험의 안전 재개는 위와 같은 원래 인수에 `--resume-experiment`를 추가한다.
-단, 최신 사용자 오류처럼 source history 검증에서 멈춘 invocation은 새 root를 만들기
-전이므로 코드 업데이트 후 위의 최초 실행 인수를 그대로 쓴다. 다른 invocation이
-이미 root를 만들었으면 삭제하지 말고 그 기록에 맞는 재개 여부를 확인한다.
+현재 `feedback_rawcp`는 bank 파일이 이미 생성된 실험이므로 `--resume-experiment`를 쓴다.
+이전 source-history 검증 실패처럼 root 생성 전 멈춘 상황과 혼동하지 않는다.
+실제로 새 root가 없는 최초 생성에만 이 재개 플래그를 빼며, 기존 root를 삭제해 새로 시작하지 않는다.
 원본 `feedback_medical_aug` journal은 수정하지 않는다. 기존 `--recover-from` 기반
 실험의 `--resume-preparation`/`--resume-experiment` 경로도 남아 있지만 새 bank 표현으로
 구버전 runtime을 바꾸는 수단이 아니다. `--overwrite`나 journal 수작업 삭제로 우회하지 않는다.
 저장된 Python 경로도 plan identity에 포함된다. 과거 `(base)` Python으로 검사했을 때는
 checksum/source가 맞아도 Python 경로만 달라 plan mismatch가 발생했다.
 이것을 journal checksum 완화로 고치지 않는다.
-기존 bank error row, 불충분 pool, 미완 runtime, running row/lock,
+검증된 저장 전 디스크 실패 이외의 bank error row, 불충분 pool, 미완 runtime, running row/lock,
 호환되지 않거나 없는 필수 checkpoint는 자동 재개가 거부될 수 있다.
 최신 오류를 보지 않고 무조건 재실행 명령을 반복해서 주지 않는다.
 
@@ -37910,6 +37965,259 @@ if __name__ == "__main__":
 
 ===== END FILE: tests/test_no_placement_cache_debug.py =====
 
+===== FILE: tests/test_online_bank_disk_retry_debug.py =====
+"""DEBUG disk-preflight retry proofs; synthetic arrays, no patient or training.
+
+The original failure is emitted by the real case preflight and progress writer.
+Only available disk bytes are mocked. Native resampling is never entered while
+creating the failure evidence; the separate wiring fixture covers real payloads.
+"""
+from __future__ import annotations
+
+import base64
+from contextlib import redirect_stdout
+import csv
+import hashlib
+import io
+import json
+from pathlib import Path
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+import numpy as np
+
+from tools import online_raw_bank_preparation as raw
+from tools import online_bank_disk_retry as retry
+from tools.online_bank_progress import BankProgress
+
+
+FIELDS = ("case_id", "source_component", "source_mapping_json", "candidate_search_json",
+          "diameter_mm", "status", "reason", "candidate_count", "rejected_geometry",
+          "rejected_preprocessed", "entry", "entry_sha256", "candidate_pool_sha256",
+          "score_min", "score_max", "score_std")
+
+
+def write_manifest(path, rows):
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def inventory(root):
+    return {path.relative_to(root).as_posix(): path.read_bytes()
+            for path in root.rglob("*") if path.is_file()}
+
+
+def disk_failure_fixture(root, *, case_id="DEBUG_DISK", shape=(2, 2, 2), contract=None,
+                         minimum_free_bytes=1024, diameter_mm="1.240701"):
+    """Generate the exact historical error/proofs through production writers."""
+    root.mkdir(parents=True, exist_ok=True)
+    contract = dict(contract or {"DEBUG": "disk-retry-only", "candidate_count": 128})
+    (root / "config.json").write_text(json.dumps(contract, sort_keys=True), encoding="utf-8")
+    payload_bytes = int(np.prod(shape)) * 10
+    measured_free = payload_bytes + minimum_free_bytes - 1
+    data = np.zeros((1, *shape), dtype=np.float32)
+    seg = np.zeros((1, *shape), dtype=np.int16)
+    with redirect_stdout(io.StringIO()), \
+         patch.object(raw.shutil, "disk_usage", return_value=SimpleNamespace(free=measured_free)), \
+         patch.object(raw, "prepare_case", side_effect=AssertionError("DEBUG native work before disk check")):
+        try:
+            with BankProgress(root, heartbeat_seconds=3600) as progress:
+                progress.update("raw_target_case", case_id=case_id, component=1)
+                raw.prepare_raw_case(root, case_id, data[0], seg[0], {}, {}, data, seg,
+                                     configuration_name="3d_fullres", raw_spacing=[1., 1., 1.],
+                                     raw_spatial_unit="mm", minimum_free_bytes=minimum_free_bytes)
+        except RuntimeError as exc:
+            reason = f"{type(exc).__name__}: {exc}"
+        else:
+            raise AssertionError("DEBUG preflight unexpectedly succeeded")
+    if not reason.startswith("RuntimeError: Insufficient disk for raw-target case "):
+        raise AssertionError(reason)
+    expected = dict(case_id=case_id, source_component=1, diameter_mm=diameter_mm,
+                    status="error", reason="", candidate_count=0, rejected_geometry=0,
+                    rejected_preprocessed=0, entry="")
+    failed = dict(expected, reason=reason)
+    manifest = root / "manifest.csv"
+    write_manifest(manifest, [failed])
+    with manifest.open(encoding="utf-8", newline="") as handle:
+        failed = next(csv.DictReader(handle))
+    return SimpleNamespace(root=root, failed=failed, expected=expected, contract=contract,
+                           baseline=payload_bytes, reserve=minimum_free_bytes, manifest=manifest,
+                           resource=next((root / "preparation_resources").glob("raw_case.*.json")),
+                           progress=next(root.glob("preparation_progress.*.jsonl")))
+
+
+class OnlineBankDiskRetryDebugTests(unittest.TestCase):
+    def admit(self, fixture, *, free=None):
+        available = fixture.baseline + fixture.reserve + 1 if free is None else free
+        with redirect_stdout(io.StringIO()), patch.object(retry.shutil, "disk_usage", return_value=SimpleNamespace(free=available)):
+            return retry.admit_disk_preflight_retry(
+                fixture.root, fixture.failed, expected_row=fixture.expected,
+                contract=fixture.contract, baseline_payload_bytes=fixture.baseline,
+                minimum_free_bytes=fixture.reserve)
+
+    def assert_rejected_without_mutation(self, fixture, *, free=None):
+        before = inventory(fixture.root)
+        with self.assertRaises((ValueError, RuntimeError, OSError)):
+            self.admit(fixture, free=free)
+        self.assertEqual(inventory(fixture.root), before)
+
+    def mutate_json(self, path, mutate):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        mutate(payload)
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_real_legacy_failure_is_admitted_with_exact_immutable_evidence(self):
+        with tempfile.TemporaryDirectory(prefix="DEBUG_disk_retry_") as directory:
+            f = disk_failure_fixture(Path(directory))
+            completed = f.root / "entries/DEBUG_COMPLETE__component_001.npz"
+            completed.parent.mkdir()
+            completed.write_bytes(b"DEBUG opaque existing completed entry; never loaded")
+            source = f.root / "raw_sources/DEBUG_SHARED.npy"
+            source.parent.mkdir()
+            source.write_bytes(b"DEBUG unrelated shared source; never loaded")
+            before = inventory(f.root)
+            receipt_path = self.admit(f)
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            self.assertEqual(receipt_path.parent, f.root / "disk_retry_history")
+            self.assertEqual(receipt["format"], "hiercp_bank_disk_preflight_retry_v1")
+            self.assertEqual((receipt["case_id"], receipt["source_component"]), ("DEBUG_DISK", 1))
+            self.assertEqual(receipt["failed_row"], f.failed)
+            self.assertEqual(receipt["baseline_payload_bytes"], f.baseline)
+            self.assertEqual(receipt["minimum_free_bytes"], f.reserve)
+            expected_paths = {f.manifest.relative_to(f.root).as_posix(), "config.json",
+                              f.resource.relative_to(f.root).as_posix(), f.progress.name}
+            self.assertEqual(set(receipt["evidence"]), expected_paths)
+            for relative, evidence in receipt["evidence"].items():
+                self.assertEqual(base64.b64decode(evidence["content_base64"], validate=True), before[relative])
+                self.assertEqual(evidence["sha256"], hashlib.sha256(before[relative]).hexdigest())
+            for relative, original in before.items():
+                self.assertEqual((f.root / relative).read_bytes(), original)
+            original_receipt = receipt_path.read_bytes()
+            second = self.admit(f)
+            self.assertNotEqual(second, receipt_path)
+            self.assertEqual(receipt_path.read_bytes(), original_receipt)
+
+    def test_still_insufficient_space_and_exact_boundary_are_rejected(self):
+        for extra in (-1, 0):
+            with self.subTest(extra=extra), tempfile.TemporaryDirectory(prefix="DEBUG_disk_still_full_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                self.assert_rejected_without_mutation(f, free=f.baseline + f.reserve + extra)
+
+    def test_row_identity_publication_and_nonzero_counters_never_become_retryable(self):
+        changes = {"case_id": "DEBUG_OTHER", "source_component": "2", "diameter_mm": "2.000000",
+                   "status": "no_placement", "candidate_count": "1", "rejected_geometry": "1",
+                   "rejected_preprocessed": "1", "entry": "entries/DEBUG.npz",
+                   "entry_sha256": "a" * 64, "candidate_pool_sha256": "b" * 64,
+                   "source_mapping_json": "{}", "candidate_search_json": "{}", "score_min": "0"}
+        for field, value in changes.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory(prefix="DEBUG_disk_row_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                f.failed[field] = value
+                write_manifest(f.manifest, [f.failed])
+                self.assert_rejected_without_mutation(f)
+
+    def test_generic_error_and_reason_parameter_mismatches_are_rejected(self):
+        for problem in ("generic", "case", "baseline", "reserve"):
+            with self.subTest(problem=problem), tempfile.TemporaryDirectory(prefix="DEBUG_disk_reason_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                reason = f.failed["reason"]
+                if problem == "generic":
+                    reason = "RuntimeError: DEBUG unexpected implementation failure"
+                elif problem == "case":
+                    reason = reason.replace("case DEBUG_DISK:", "case DEBUG_OTHER:")
+                elif problem == "baseline":
+                    reason = reason.replace(f"baseline_payload_alone={f.baseline}", "baseline_payload_alone=1")
+                else:
+                    reason = reason.replace(f"reserved_free={f.reserve}", "reserved_free=1")
+                f.failed["reason"] = reason
+                write_manifest(f.manifest, [f.failed])
+                self.assert_rejected_without_mutation(f)
+
+    def test_contract_and_duplicate_or_changed_manifest_are_rejected(self):
+        for problem in ("contract", "duplicate", "changed", "missing"):
+            with self.subTest(problem=problem), tempfile.TemporaryDirectory(prefix="DEBUG_disk_manifest_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                if problem == "contract":
+                    self.mutate_json(f.root / "config.json", lambda value: value.update(candidate_count=127))
+                elif problem == "duplicate":
+                    write_manifest(f.manifest, [f.failed, f.failed])
+                elif problem == "changed":
+                    write_manifest(f.manifest, [dict(f.failed, reason="RuntimeError: DEBUG different failure")])
+                else:
+                    f.manifest.unlink()
+                self.assert_rejected_without_mutation(f)
+
+    def test_resource_proof_is_required_unique_and_free_of_measurement_errors(self):
+        problems = ("missing", "duplicate", "format", "status", "error", "bound",
+                    "sampling_error", "final_snapshot_error", "missing_before", "missing_after",
+                    "missing_elapsed", "missing_sampling_error", "missing_final_snapshot_error",
+                    "elapsed_negative", "elapsed_bool", "elapsed_string", "elapsed_nonfinite")
+        for problem in problems:
+            with self.subTest(problem=problem), tempfile.TemporaryDirectory(prefix="DEBUG_disk_resource_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                if problem == "missing":
+                    f.resource.unlink()
+                elif problem == "duplicate":
+                    f.resource.with_name("raw_case.DEBUG_DISK.DEBUG_DUPLICATE.json").write_bytes(f.resource.read_bytes())
+                elif problem.startswith("missing_"):
+                    key = {"missing_elapsed": "elapsed_seconds"}.get(problem, problem.removeprefix("missing_"))
+                    self.mutate_json(f.resource, lambda value: value.pop(key))
+                elif problem.startswith("elapsed_"):
+                    elapsed = {"elapsed_negative": -1., "elapsed_bool": True,
+                               "elapsed_string": "1", "elapsed_nonfinite": float("inf")}[problem]
+                    self.mutate_json(f.resource, lambda value: value.update(elapsed_seconds=elapsed))
+                else:
+                    change = {"format": ("format", "DEBUG_wrong"), "status": ("status", "completed"),
+                              "error": ("error", "RuntimeError: DEBUG other"),
+                              "bound": ("persistent_array_lower_bound_bytes", f.baseline + 1),
+                              "sampling_error": ("sampling_error", "DEBUG measurement failed"),
+                              "final_snapshot_error": ("final_snapshot_error", "DEBUG measurement failed")}[problem]
+                    self.mutate_json(f.resource, lambda value: value.update({change[0]: change[1]}))
+                self.assert_rejected_without_mutation(f)
+
+    def test_progress_requires_matching_started_phase_and_terminal_failure(self):
+        for problem in ("missing", "duplicate", "no_phase_start", "wrong_phase", "component", "after_failure"):
+            with self.subTest(problem=problem), tempfile.TemporaryDirectory(prefix="DEBUG_disk_progress_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                if problem == "missing":
+                    f.progress.unlink()
+                elif problem == "duplicate":
+                    f.progress.with_name("preparation_progress.DEBUG_DUPLICATE.jsonl").write_bytes(f.progress.read_bytes())
+                else:
+                    rows = [json.loads(line) for line in f.progress.read_text(encoding="utf-8").splitlines()]
+                    if problem == "no_phase_start":
+                        rows = [row for row in rows if row["event"] != "phase_start"]
+                    elif problem == "wrong_phase":
+                        rows[-1]["phase"] = "raw_target_candidates"
+                    elif problem == "component":
+                        rows[-1]["component"] = 2
+                    else:
+                        rows.append(dict(rows[-1], event="heartbeat"))
+                    f.progress.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+                self.assert_rejected_without_mutation(f)
+
+    def test_partial_raw_case_candidate_and_entry_artifacts_are_not_overwritten(self):
+        names = ("raw_cases/DEBUG_DISK.json", "raw_cases/DEBUG_DISK.a0000.npy",
+                 "raw_candidates/DEBUG_DISK__component_001/0000.json",
+                 "entries/DEBUG_DISK__component_001.npz", "entries/DEBUG_DISK__component_001.npz.tmp")
+        for name in names:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(prefix="DEBUG_disk_artifact_") as directory:
+                f = disk_failure_fixture(Path(directory))
+                path = f.root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"DEBUG partial artifact; never loaded or deleted")
+                self.assert_rejected_without_mutation(f)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+===== END FILE: tests/test_online_bank_disk_retry_debug.py =====
+
 ===== FILE: tests/test_online_bank_wiring_debug.py =====
 """DEBUG caller integration, not GNN/medical performance validation.
 
@@ -37943,6 +38251,7 @@ from tools import online_cp_benchmark as normal
 from tools import online_cp_argmax_benchmark as argmax
 from tools.online_scoring import PendingBankScorer
 from tools.online_raw_bank_preparation import prepare_raw_case, prepare_source_candidates
+from tools.online_bank_progress import BankProgress as ActualBankProgress
 
 
 def debug_native_identity_inputs(image, label):
@@ -38093,7 +38402,7 @@ class DebugBankBoundary:
             commit(function(task))
         return {"DEBUG_scheduler": True, "completed": len(tasks)}
 
-    def run(self):
+    def run(self, *, case_sequence=None, persist_manifest=False, contract=None):
         boundary = self
         class DebugProgress:
             def __init__(self, root):
@@ -38137,18 +38446,49 @@ class DebugBankBoundary:
                 return {"DEBUG_score_boundary": True}
 
         def commit(row):
-            self.rows.append(dict(row))
+            if persist_manifest:
+                key = (str(row["case_id"]), int(row["source_component"]))
+                for index, previous in enumerate(self.rows):
+                    if (str(previous["case_id"]), int(previous["source_component"])) == key:
+                        self.rows[index] = dict(row)
+                        break
+                else:
+                    self.rows.append(dict(row))
+                from tests.test_online_bank_disk_retry_debug import write_manifest
+                write_manifest(self.root / "manifest.csv", self.rows)
+            else:
+                self.rows.append(dict(row))
+
+        class ActualRecordedProgress(ActualBankProgress):
+            def __enter__(self):
+                self.closed = False
+                boundary.progress.append(self)
+                return super().__enter__()
+
+            def __exit__(self, *args):
+                try:
+                    return super().__exit__(*args)
+                finally:
+                    self.closed = True
+
         config = GraphBuildConfig(patch_size=16)
         population = SimpleNamespace(fingerprint=lambda: "DEBUG_PROTOTYPE")
         properties, native_plans, native_data, native_seg = debug_native_identity_inputs(
             self.case.image, self.case.label)
+        cases = list(case_sequence) if case_sequence is not None else [self.case]
+        cases_by_id = {case.paths.case_id: case for case in cases}
+        native_by_id = {}
+        for case in cases:
+            case_properties, _, case_data, case_seg = debug_native_identity_inputs(case.image, case.label)
+            native_by_id[case.paths.case_id] = (case_data, case_seg, None, case_properties)
+            (self.root / "regions" / case.paths.case_id).mkdir(parents=True, exist_ok=True)
         context = dict(vars(self.module))
         context.update(
             np=np, torch=torch, CasePaths=CasePaths, CACHE_FORMAT=cache.CACHE_FORMAT,
-            train_ids=[self.case.paths.case_id],
-            case_map={self.case.paths.case_id: SimpleNamespace(image="DEBUG_IMAGE", label="DEBUG_LABEL")},
-            load_case=lambda paths: self.case,
-            pre_dataset=SimpleNamespace(load_case=lambda name: (native_data, native_seg, None, properties)),
+            train_ids=list(cases_by_id),
+            case_map={name: SimpleNamespace(image="DEBUG_IMAGE", label="DEBUG_LABEL") for name in cases_by_id},
+            load_case=lambda paths: cases_by_id[paths.case_id],
+            pre_dataset=SimpleNamespace(load_case=lambda name: native_by_id[name]),
             min_diameter=0.0, max_diameter=100.0, tumor_label=2, liver_label=1, global_seed=42,
             rows=self.rows, source_inventory={}, entries_by_case={}, overwrite=False,
             existing_by_source={(row["case_id"], int(row["source_component"])): row for row in self.rows},
@@ -38161,9 +38501,10 @@ class DebugBankBoundary:
                 scoring_batch_size="auto", scoring_batch_size_candidates=[1, 2],
                 scoring_batch_calibration_repeats=3, scoring_batch_max_vram_fraction=.8,
                 local_candidate_chunk_size=128, amp=False, pin_memory=False),
-            metadata_contract={"no_placement_policy": "retain_original"},
+            metadata_contract=contract or {"no_placement_policy": "retain_original"},
             candidate_count=128, draw_count=128, attempts=1, pools_per_source=self.pool_count,
-            bank_root=self.root, entries_root=self.root / "entries", manifest_path=self.root / "DEBUG_manifest.csv",
+            bank_root=self.root, entries_root=self.root / "entries",
+            manifest_path=self.root / ("manifest.csv" if persist_manifest else "DEBUG_manifest.csv"),
             commit_row=commit, build_candidate_pool=self.proposal,
             _preprocessed_source=lambda *args, **kwargs: (np.ones((1, 1, 1, 1), np.float32),
                 np.ones((1, 1, 1), bool), np.zeros(3, np.int64)),
@@ -38177,7 +38518,8 @@ class DebugBankBoundary:
             build_inference_sample=cache.build_inference_sample,
             build_patient_graph=lambda *args, **kwargs: {"DEBUG_patient": torch.ones(1)},
             build_prototype_graph=lambda *args, **kwargs: {"DEBUG_population": torch.ones(1)},
-            closing=closing, BankProgress=DebugProgress, PendingBankScorer=DebugScoreBoundary,
+            closing=closing, BankProgress=ActualRecordedProgress if persist_manifest else DebugProgress,
+            PendingBankScorer=DebugScoreBoundary,
             BankLocalGraphMapper=preparation.BankLocalGraphMapper,
             AdaptiveRoiBudgetError=AdaptiveRoiBudgetError, CanonicalGraphUnavailable=CanonicalGraphUnavailable,
             model=object(), device=torch.device("cpu"),
@@ -38284,6 +38626,52 @@ class OnlineBankWiringDebugTests(unittest.TestCase):
                     if fault == "all_geometry":
                         self.assertEqual(boundary.rows[0]["status"], "insufficient_candidates")
                         self.assertEqual(sum(event[0] == "graph" for event in boundary.trace), 0)
+
+    def test_debug_disk_error_csv_retries_after_completed_case_without_overwrite(self):
+        import base64
+        from dataclasses import replace
+        import json
+        from tools import online_bank_disk_retry as retry
+        from tests.test_online_bank_disk_retry_debug import disk_failure_fixture, inventory, write_manifest
+
+        with tempfile.TemporaryDirectory(prefix="DEBUG_disk_loop_retry_") as directory:
+            root = Path(directory)
+            first = DebugBankBoundary(normal, root)
+            first.run()
+            self.assert_closed(first)
+            completed_row = dict(first.rows[0])
+            completed_files = inventory(root)
+            contract = {"no_placement_policy": "retain_original"}
+            proof = disk_failure_fixture(root, case_id="DEBUG_RETRY", shape=first.case.shape,
+                                         minimum_free_bytes=0, contract=contract,
+                                         diameter_mm=completed_row["diameter_mm"])
+            write_manifest(proof.manifest, [completed_row, proof.failed])
+            failed_manifest = proof.manifest.read_bytes()
+            config_before = (root / "config.json").read_bytes()
+            resource_before = proof.resource.read_bytes()
+            progress_before = proof.progress.read_bytes()
+            second_case = replace(first.case, paths=CasePaths("DEBUG_RETRY", Path("DEBUG_IMAGE_2"), Path("DEBUG_LABEL_2")))
+            resumed = DebugBankBoundary(normal, root, existing_rows=[completed_row, proof.failed])
+            with patch.object(retry.shutil, "disk_usage", return_value=SimpleNamespace(free=10**12)):
+                resumed.run(case_sequence=[first.case, second_case], persist_manifest=True, contract=contract)
+            self.assert_closed(resumed)
+            self.assertFalse(resumed.context["overwrite"])
+            self.assertEqual(len(resumed.rows), 2)
+            self.assertTrue(all(row["status"] == "ok" and int(row["candidate_count"]) == 128 for row in resumed.rows))
+            self.assertEqual(sum(event[0] == "graph" for event in resumed.trace), 128)
+            self.assertEqual(set(resumed.context["entries_by_case"]), {"DEBUG_WIRING", "DEBUG_RETRY"})
+            for relative, data in completed_files.items():
+                self.assertEqual((root / relative).read_bytes(), data)
+            self.assertEqual((root / "config.json").read_bytes(), config_before)
+            self.assertEqual(proof.resource.read_bytes(), resource_before)
+            self.assertEqual(proof.progress.read_bytes(), progress_before)
+            receipts = list((root / "disk_retry_history").glob("*.json"))
+            self.assertEqual(len(receipts), 1)
+            receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+            self.assertEqual(base64.b64decode(receipt["evidence"]["manifest.csv"]["content_base64"]), failed_manifest)
+            entry_rows = {row["entry"]: row for row in resumed.rows}
+            normal._audit_bank_entries(root, resumed.context["entries_by_case"], 128, entry_rows,
+                                       expected_paste_contract=normal.PASTE_CONTRACT)
 
 
 if __name__ == "__main__":
@@ -51969,6 +52357,206 @@ if __name__=="__main__": main()
 
 ===== END FILE: tools/nnunet.py =====
 
+===== FILE: tools/online_bank_disk_retry.py =====
+"""Admit only a proven, pre-write raw-case disk-reserve failure for retry.
+
+This is not a generic error-row reset. The native preflight runs before
+prepare_case/save_case; legacy progress and resource reports must independently
+identify that failure. They have no common invocation ID, so ambiguous matches
+are refused. Existing successful rows still require the builder's native audit.
+"""
+from __future__ import annotations
+
+import base64
+import csv
+import hashlib
+import io
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import uuid
+
+
+_DISK_FAILURE = re.compile(
+    r"RuntimeError: Insufficient disk for raw-target case ([A-Za-z0-9_-]+): "
+    r"free=([0-9]+), baseline_payload_alone=([0-9]+), reserved_free=([0-9]+); "
+    r"existing bank/preprocessing are preserved"
+)
+
+
+def admit_disk_preflight_retry(bank_root, failed_row, *, expected_row, contract,
+                              baseline_payload_bytes, minimum_free_bytes,
+                              manifest_path=None) -> Path:
+    """Verify and archive failure evidence without changing the active manifest.
+
+    The caller owns the experiment lock and commits a replacement row only as
+    normal processing succeeds/fails. No payload, checkpoint, log or error row
+    is deleted here. The original native disk check remains in the retry path.
+    """
+    root = Path(bank_root).resolve()
+    manifest = Path(manifest_path) if manifest_path is not None else root / "manifest.csv"
+    evidence = {}
+
+    def refuse(reason):
+        raise ValueError(
+            f"Bank disk-preflight retry refused: {reason}. Existing bank and failure "
+            "records are preserved; inspect the evidence, do not delete rows or use --overwrite."
+        )
+
+    def read(path):
+        path = Path(path)
+        relative = path.relative_to(root)
+        if path.is_symlink() or not path.is_file() or path.resolve() != root / relative:
+            refuse(f"missing or unsafe evidence file: {relative}")
+        data = path.read_bytes()
+        evidence[relative.as_posix()] = data
+        return data
+
+    match = _DISK_FAILURE.fullmatch(str(failed_row.get("reason", "")))
+    if failed_row.get("status") != "error" or match is None:
+        refuse("row is not the native pre-write disk-reserve failure")
+    case_id, old_free, old_payload, old_reserve = match.groups()
+    payload, reserve = int(baseline_payload_bytes), int(minimum_free_bytes)
+    if payload <= 0 or reserve < 0 or (int(old_payload), int(old_reserve)) != (payload, reserve):
+        refuse("recorded payload/reserve differs from the current case/configuration")
+    if int(old_free) > payload + reserve:
+        refuse("recorded free space would not have failed the native preflight")
+    component = int(expected_row["source_component"])
+    if component <= 0 or case_id != str(expected_row["case_id"]):
+        refuse("failure case/component identity differs from the current source")
+    for name in ("case_id", "source_component", "diameter_mm"):
+        if str(failed_row.get(name, "")) != str(expected_row[name]):
+            refuse(f"source identity changed: {name}")
+    for name in ("candidate_count", "rejected_geometry", "rejected_preprocessed"):
+        if str(failed_row.get(name, "")) != "0":
+            refuse(f"failure row contains post-preflight state: {name}")
+    for name in ("entry", "entry_sha256", "candidate_pool_sha256", "source_mapping_json",
+                 "candidate_search_json", "score_min", "score_max", "score_std"):
+        if failed_row.get(name, "") != "":
+            refuse(f"failure row contains published/processed state: {name}")
+    if json.loads(read(root / "config.json")) != contract:
+        refuse("bank configuration differs from the verified current contract")
+    for name in ("index.json", "complete.json"):
+        if (root / name).exists() or (root / name).is_symlink():
+            refuse(f"incomplete failure row conflicts with {name}")
+
+    rows = list(csv.DictReader(io.StringIO(read(manifest).decode("utf-8"))))
+    keys = [(row["case_id"], int(row["source_component"])) for row in rows]
+    if len(keys) != len(set(keys)):
+        refuse("manifest contains duplicate source identities")
+    matches = [row for row, key in zip(rows, keys) if key == (case_id, component)]
+    if len(matches) != 1 or any(
+        str(matches[0].get(key, "")) != str(failed_row.get(key, ""))
+        for key in set(matches[0]) | set(failed_row)
+    ):
+        refuse("manifest no longer contains the exact failed row")
+
+    # At this failure boundary no raw case or candidate payload was published.
+    # Shared raw_sources from OTHER completed sources are deliberately allowed.
+    source_name = f"{case_id}__component_{component:03d}"
+    for directory, prefix in (("raw_cases", case_id + "."),
+                              ("raw_candidates", source_name),
+                              ("entries", source_name + ".")):
+        parent = root / directory
+        if parent.is_symlink():
+            refuse(f"unsafe artifact directory: {directory}")
+        if parent.exists():
+            artifacts = [path.name for path in parent.iterdir() if path.name.startswith(prefix)]
+            if artifacts:
+                refuse(f"partial or published artifacts for failed source: {directory}/{artifacts[0]}")
+
+    reason = str(failed_row["reason"])
+    resource_matches = []
+    for path in (root / "preparation_resources").glob(f"raw_case.{case_id}.*.json"):
+        data = path.read_bytes()
+        report = json.loads(data)
+        if report.get("error") != reason:
+            continue
+        if (report.get("format") != "raw_target_case_resources_v1"
+                or report.get("case_id") != case_id or report.get("status") != "failed"
+                or report.get("persistent_array_lower_bound_bytes") != payload
+                or report.get("sampling_error") is not None
+                or report.get("final_snapshot_error") is not None
+                or report.get("measurement_error") is not None):
+            refuse(f"inconsistent native failure measurement: {path.name}")
+        elapsed = report.get("elapsed_seconds")
+        if (not isinstance(report.get("before"), dict)
+                or not isinstance(report.get("after"), dict)
+                or isinstance(elapsed, bool) or not isinstance(elapsed, (int, float))
+                or not math.isfinite(elapsed) or elapsed < 0
+                or "sampling_error" not in report or "final_snapshot_error" not in report):
+            refuse(f"incomplete native failure measurement: {path.name}")
+        resource_matches.append(path)
+    if len(resource_matches) != 1:
+        refuse("native failure measurement is missing or ambiguous")
+    read(resource_matches[0])
+
+    progress_matches = []
+    for path in root.glob("preparation_progress.*.jsonl"):
+        data = path.read_bytes()
+        # The current invocation may still be writing. Only the closed failed
+        # invocation containing this exact error is parsed/bound as evidence.
+        if reason.encode("utf-8") not in data:
+            continue
+        if not data.endswith(b"\n"):
+            refuse(f"incomplete failure progress log: {path.name}")
+        events = [json.loads(line) for line in data.splitlines()]
+        failures = [event for event in events if event.get("event") == "failed"
+                    and event.get("error") == reason]
+        if not failures:
+            continue
+        if len(failures) != 1 or failures[0] != events[-1]:
+            refuse(f"nonterminal or ambiguous failure progress: {path.name}")
+        starts = [event for event in events[:-1] if event.get("event") == "phase_start"]
+        if not starts:
+            refuse(f"missing raw-case phase start: {path.name}")
+        for event in (starts[-1], events[-1]):
+            if (event.get("format") != "hiercp_bank_progress_v1"
+                    or event.get("phase") != "raw_target_case"
+                    or event.get("case_id") != case_id or event.get("component") != component):
+                refuse(f"failure progress does not identify the pre-write phase: {path.name}")
+        progress_matches.append(path)
+    if len(progress_matches) != 1:
+        refuse("native failure progress is missing or ambiguous")
+    read(progress_matches[0])
+
+    free = int(shutil.disk_usage(root).free)
+    if free <= payload + reserve:
+        refuse(f"disk is still insufficient: free={free}, baseline_payload_alone={payload}, "
+               f"reserved_free={reserve}; required_more_than={payload + reserve}")
+    # Refuse a concurrent edit rather than archive a mixture of old and new
+    # evidence. This supplements, but does not replace, the launcher's lock.
+    for name, data in evidence.items():
+        if (root / name).read_bytes() != data:
+            refuse(f"failure evidence changed during admission: {name}")
+    archive = root / "disk_retry_history"
+    if archive.is_symlink():
+        refuse("unsafe disk retry history directory")
+    archive.mkdir(exist_ok=True)
+    receipt = archive / f"{uuid.uuid4().hex}.json"
+    record = {
+        "format": "hiercp_bank_disk_preflight_retry_v1",
+        "case_id": case_id, "source_component": component,
+        "failed_row": dict(failed_row), "baseline_payload_bytes": payload,
+        "minimum_free_bytes": reserve, "current_free_bytes": free,
+        "evidence": {name: {"sha256": hashlib.sha256(data).hexdigest(),
+                            "content_base64": base64.b64encode(data).decode("ascii")}
+                     for name, data in evidence.items()},
+    }
+    with receipt.open("x", encoding="utf-8") as handle:
+        json.dump(record, handle, sort_keys=True, indent=2, allow_nan=False)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    print(f"[BankDiskRetry] {case_id} component={component} free={free} "
+          f"baseline_payload_alone={payload} reserved_free={reserve} evidence={receipt}", flush=True)
+    return receipt
+
+===== END FILE: tools/online_bank_disk_retry.py =====
+
 ===== FILE: tools/online_bank_preparation.py =====
 """Measured, ordered full-candidate CPU graph preparation for online CP banks.
 
@@ -56089,6 +56677,7 @@ from custom_trainers.onlinecp_raw_bank import (
     PASTE_CONTRACT, ENTRY_STORAGE, RawBankStore, audit_source_entry,
     SOURCE_MAPPING_FORMAT as RAW_TARGET_MAPPING_FORMAT,
 )
+from tools.online_bank_disk_retry import admit_disk_preflight_retry
 
 VERSION = "online_basic_hiercp_v2"
 BANK_FORMAT = "hiercp_online_bank_v2"
@@ -58110,10 +58699,20 @@ def build_online_bank(
                         _validate_no_placement_row(existing_row, candidate_count)
                         print(f"[ReuseNoCP] {case_id} component={component_id}: original case retained")
                         continue
-                    raise OnlineBenchmarkError(
-                        f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
-                        f"status={status!r}; use --overwrite"
-                    )
+                    if status == "error":
+                        admit_disk_preflight_retry(
+                            bank_root, existing_row, expected_row=row,
+                            contract=metadata_contract, manifest_path=manifest_path,
+                            baseline_payload_bytes=int(np.prod(pre_data.shape[1:])) * 10,
+                            minimum_free_bytes=int(
+                                nn_cfg["runtime"]["minimum_free_gb_before_preprocess"] * 1024 ** 3),
+                        )
+                    else:
+                        raise OnlineBenchmarkError(
+                            f"Partial bank row is not safely reusable for {case_id}/{component_id}: "
+                            f"status={status!r}; existing files are preserved. Inspect the failure evidence; "
+                            "do not delete manifest rows or use --overwrite."
+                        )
                 try:
                     progress.update("source_prepare", case_id=case_id, component=component_id)
                     source = _source_from_component(
