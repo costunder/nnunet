@@ -2,8 +2,9 @@
 
 Tiny generated NIfTI/NPZ fixtures exercise actual raw/preprocess hash validators,
 hardlinks/copies, ownership, interruption and receipt publication. Split planning
-and the launcher's stage-evidence dispatcher are explicit boundary fixtures; no
-native planner, real dataset, GNN training or GPU execution is claimed here.
+is an explicit boundary fixture; plan evidence uses the real launcher's producer
+and native artifact verifier. No native planner, real dataset, GNN training or
+GPU execution is claimed here.
 """
 from __future__ import annotations
 
@@ -54,6 +55,7 @@ class PreprocessingReuseDebugTests(unittest.TestCase):
         self.old, self.plan = self._plan(self.old_root, original), self._plan(self.new_root, current)
         self.plan["preprocessing_source_root"] = self.old_root
         self.layouts = {self.old_root: self._layout(self.old), self.new_root: self._layout(self.plan)}
+        self.native_stage_evidence = launch._stage_evidence
         self.patches = [mock.patch.object(reuse, "_layout", side_effect=lambda plan: self.layouts[Path(plan["run_root"])]),
                         mock.patch.object(online, "outer_split", side_effect=lambda *_: copy.deepcopy(self.split)),
                         mock.patch.object(launch, "_stage_evidence", side_effect=self._evidence)]
@@ -135,12 +137,12 @@ class PreprocessingReuseDebugTests(unittest.TestCase):
         write_json(pre / online.PREPROCESS_MARKER_NAME, online._preprocess_marker_payload(inputs, outputs))
 
     def _evidence(self, plan, name):
+        if name != "split":
+            return self.native_stage_evidence(plan, name)
         root = Path(plan["run_root"])
         layout = self.layouts[root]
-        paths = ([layout.outer_splits] if name == "split" else
-                 [online.raw_dataset_dir(layout, 901, 0) / online.RAW_MARKER_NAME,
-                  online.preprocessed_dataset_dir(layout, 901, 0) / online.PREPROCESS_MARKER_NAME])
-        return {"format": "feedback_stage_completion_v1", "files": launch._bound_files(root, paths)}
+        return {"format": "feedback_stage_completion_v1",
+                "files": launch._bound_files(root, [layout.outer_splits])}
 
     def _journal(self, plan, *, source):
         root = plan["run_root"]
@@ -155,6 +157,110 @@ class PreprocessingReuseDebugTests(unittest.TestCase):
         journal["journal_sha256"] = launch._json_sha256(journal)
         write_json(root / "launch_plan.json", plan)
         write_json(root / "execution_journal.json", journal)
+
+    def _write_source_journal(self, journal):
+        """Rebind only this test's tiny source journal after an explicit mutation."""
+        document = copy.deepcopy(journal)
+        document.pop("journal_sha256", None)
+        document["journal_sha256"] = launch._json_sha256(document)
+        write_json(self.old_root / "execution_journal.json", document)
+
+    @staticmethod
+    def _plan_row(journal):
+        return next(row for row in journal["stages"] if row["name"] == "plan")
+
+    def test_source_plan_evidence_uses_actual_native_four_file_producer(self):
+        evidence = self.native_stage_evidence(self.old, "plan")
+        stored = self._plan_row(launch._read_json(self.old_root / "execution_journal.json"))
+        self.assertEqual(stored["completion_evidence"], evidence)
+        self.assertEqual(len(evidence["files"]), 4)
+        self.assertEqual(set(evidence["files"]), {
+            "online/nnunetv2/nnUNet_preprocessed/Dataset901_LiverOnlineCP_OF0/" + name
+            for name in ("online_cp_preprocess_complete.json", "splits_final.json",
+                         "dataset.json", "DEBUGPlans.json")})
+        result = reuse.validate_reuse(self.plan, self.plan["package_destination"])
+        self.assertFalse(result["learned_artifacts_reused"])
+
+    def test_legacy_preparation_journal_accepts_actual_native_plan_evidence(self):
+        # d904-era preparation journals used this format and the SAME native
+        # four-file plan producer. This does not approve legacy learned state.
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        journal["format"] = "feedback_preparation_execution_v1"
+        self._write_source_journal(journal)
+        before = (self.old_root / "execution_journal.json").read_bytes()
+        receipt = reuse.execute_reuse(self.plan)
+        self.assertFalse(receipt["learned_artifacts_reused"])
+        self.assertEqual(receipt["source_output_manifest_sha256"], receipt["current_output_manifest_sha256"])
+        reuse.verify_reuse(self.plan)
+        self.assertEqual((self.old_root / "execution_journal.json").read_bytes(), before)
+
+    def test_obsolete_two_marker_evidence_is_rejected_not_reinterpreted(self):
+        layout = self.layouts[self.old_root]
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        self._plan_row(journal)["completion_evidence"]["files"] = launch._bound_files(self.old_root, [
+            online.raw_dataset_dir(layout, 901, 0) / online.RAW_MARKER_NAME,
+            online.preprocessed_dataset_dir(layout, 901, 0) / online.PREPROCESS_MARKER_NAME])
+        self._write_source_journal(journal)
+        before = (self.old_root / "execution_journal.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+            reuse.validate_reuse(self.plan)
+        self.assertEqual((self.old_root / "execution_journal.json").read_bytes(), before)
+
+    def test_each_native_plan_evidence_hash_is_required_and_exact(self):
+        original = launch._read_json(self.old_root / "execution_journal.json")
+        files = self._plan_row(original)["completion_evidence"]["files"]
+        self.assertEqual(len(files), 4)
+        for path in files:
+            for mutation in ("changed_sha256", "missing_entry"):
+                with self.subTest(path=path, mutation=mutation):
+                    journal = copy.deepcopy(original)
+                    recorded = self._plan_row(journal)["completion_evidence"]["files"]
+                    if mutation == "changed_sha256":
+                        recorded[path] = "0" * 64
+                    else:
+                        del recorded[path]
+                    self._write_source_journal(journal)
+                    with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+                        reuse.validate_reuse(self.plan)
+        self._write_source_journal(original)
+
+    def test_each_native_plan_artifact_tamper_or_disappearance_is_rejected(self):
+        original = launch._read_json(self.old_root / "execution_journal.json")
+        files = self._plan_row(original)["completion_evidence"]["files"]
+        self.assertEqual(len(files), 4)
+        for relative in files:
+            path = self.old_root / relative
+            original_bytes = path.read_bytes()
+            for mutation in ("changed_bytes", "missing_file"):
+                with self.subTest(path=relative, mutation=mutation):
+                    try:
+                        if mutation == "changed_bytes":
+                            # JSON semantics remain valid; provenance requires
+                            # the producer's exact bytes, not semantic similarity.
+                            path.write_bytes(original_bytes + b"\n")
+                        else:
+                            path.unlink()  # Only this test's generated metadata.
+                        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof|Missing or unsafe"):
+                            reuse.validate_reuse(self.plan)
+                    finally:
+                        path.write_bytes(original_bytes)
+        self.assertEqual(launch._read_json(self.old_root / "execution_journal.json"), original)
+
+    def test_additional_native_plan_evidence_file_is_rejected(self):
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        raw_marker = online.raw_dataset_dir(self.layouts[self.old_root], 901, 0) / online.RAW_MARKER_NAME
+        self._plan_row(journal)["completion_evidence"]["files"].update(
+            launch._bound_files(self.old_root, [raw_marker]))
+        self._write_source_journal(journal)
+        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+            reuse.validate_reuse(self.plan)
+
+    def test_debug_stage_producer_is_rejected_with_valid_native_evidence(self):
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        self._plan_row(journal)["execution_backend"] = "injected_debug_runner"
+        self._write_source_journal(journal)
+        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+            reuse.validate_reuse(self.plan)
 
     def test_native_complete_derivative_keeps_manifests_and_never_loads_old_gnn(self):
         before = {str(path): launch._file_sha256(path) for path in self.old_root.rglob("*") if path.is_file()}

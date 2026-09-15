@@ -1,6 +1,6 @@
 # HierCP GPT handoff
 
-작성일: 2026-09-13 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+갱신일: 2026-09-15 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
 `Source manifest`를 따른다. 최신 변경은 **source-content / population-metric v5**다.
 이전 v4의 785개 중 780개 통과·5개 skip 기록은 과거 검사이며, v5나 Basic 재사용
 기능의 검증 결과로 인용하면 안 된다. 현재 변경은 아래 별도의 v5 검사 결과를 따른다.
@@ -8,7 +8,35 @@
 배포 명령 갱신: 2026-09-15 KST, 사용자가 현재 할당받았다고 명시한 물리 GPU는 5번이다.
 Git 배포 여부는 실제 원격 `origin/main`으로 확인하며 로컬 검사·문서 생성과 구분한다.
 
-## 현재 working tree 검증 — 2026-09-13
+## 2026-09-15 전처리 재사용 완료 증거 수정
+
+- 서버의 `Source completed preprocessing stage proof/configuration changed`에 대해
+  재사용 검증기의 확정 결함을 재현했다. 기존 d904eeb와 현재 실행기의 `plan` 완료 증거는
+  전처리 디렉터리의 `online_cp_preprocess_complete.json`, `splits_final.json`, `dataset.json`,
+  설정에 지정된 plans JSON의 **정확한 4개 SHA**다. 3acef3c의 검증기는 다른 2개 marker를
+  기대하여 정상 기록도 거절했다. 원본 journal을 재작성해서 맞추는 방식으로 해결하지 않는다.
+- producer와 reader가 `_native_plan_evidence_files()`를 공유하도록 수정했다. 4개 항목·SHA와
+  증거 전체 형식은 정확히 일치해야 한다. raw marker와 전체 원본/전처리 파일 검증은 기존
+  `_verified_preprocess_contract()`에서 계속 수행한다. 두 marker만 있거나 임의의 추가 파일이
+  있는 기록을 승인하는 호환 예외는 추가하지 않았다. 모델·학습·CP 조건은 변경하지 않았다.
+- 아래 9월 13일 테스트에는 plan producer를 잘못된 2파일 fixture로 대체한 검사가 있어
+  이 불일치를 잡지 못했다. 이제 실제 plan producer와 native artifact verifier를 사용하며,
+  producer/helper에서 독립된 4개 전체 상대경로 assertion으로 형식을 고정한다.
+- 수정 전 실제 producer 기반 재현 1개가 같은 오류로 실패했다. 수정 후 관련 모듈은
+  21개 중 20개 통과·Windows symlink 권한 1개 skip, 실패 안내 모듈은 10개 모두 통과했다.
+  SHA/항목/실파일 변경·누락, 추가 항목, 구형 2파일 증거, DEBUG 증거 거절도 포함한다.
+- 수정 후 전체 CPU 회귀: **884개 중 879개 통과·5개 skip·실패/오류 0개**, 417.071초.
+  skip은 Windows symlink 권한 관련 4개와 별도 opt-in production-sized DEBUG 1개다.
+  로그: `work/debug_plan_proof_full_c7633e4360dc456bb43160817267d123/unittest.log`.
+  Python 165개 Python 3.10 AST, JSON 5개, trainer/helper 10개 SHA 대조와 정적 감사도 통과했다.
+  이 검사는 합성 입력/명시적 경계 fixture를 포함한 로컬 CPU 검사이며, 서버 실제 데이터·GPU
+  전체 학습 완료 증거가 아니다. 이번 수정에서 서버 원본 파일을 직접 변경하지 않았다.
+- 이번 서버 실패는 새 root·runtime·stage journal 생성 전이다. 수정 코드를 받은 뒤 같은
+  최초 명령을 **`--resume-experiment` 없이** 실행한다. 첫 실행 전 실패, journal 존재,
+  불완전한 root, 재개 요청인데 root가 사라진 경우의 안내를 분리했다. 재개 대상이 없다고
+  새 학습을 권하지 않으며, 기존 파일을 지우거나 checkpoint 없이 재시작하지 않는다.
+
+## 수정 전 v5 검증 — 2026-09-13 (과거 기록)
 
 - 전체 `unittest discover -s tests -p 'test*.py' -v`: **873개 중 868개 통과,
   5개 skip, 실패/오류 0개**, 454.604초. skip은 Windows 심볼릭 링크 권한 관련 4개와
@@ -488,7 +516,7 @@ bank-upgrade 파생 root인 `feedback_rawcp`는 이 전처리 원본을 대체�
 conda activate /home/aicompetition06/.conda/envs/nnunet &&
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
-env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES=5 \
+env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=5 \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
   --reuse-preprocessing-from work/feedback_medical_aug \
   --experiment-name feedback_population_v5 \

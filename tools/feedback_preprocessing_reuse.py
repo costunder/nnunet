@@ -190,10 +190,21 @@ def _source(plan, native_package=None):
     raw = online.raw_dataset_dir(old_layout, plan["dataset_id"], plan["outer_fold"])
     pre = online.preprocessed_dataset_dir(old_layout, plan["dataset_id"], plan["outer_fold"])
     evidence = {"format": "feedback_stage_completion_v1", "files": launch._bound_files(
-        source, [raw / online.RAW_MARKER_NAME, pre / online.PREPROCESS_MARKER_NAME])}
-    if (row.get("execution_backend") == "injected_debug_runner"
-            or row.get("completion_evidence") != evidence):
-        raise ValueError("Source completed preprocessing stage proof/configuration changed")
+        source, launch._native_plan_evidence_files(old))}
+    if row.get("execution_backend") == "injected_debug_runner":
+        raise ValueError("Source completed preprocessing stage proof/configuration changed: DEBUG runner evidence cannot authorize reuse")
+    recorded = row.get("completion_evidence")
+    if recorded != evidence:
+        recorded_files = recorded.get("files") if isinstance(recorded, dict) else None
+        details = "malformed completion evidence"
+        if isinstance(recorded_files, dict):
+            expected_files = evidence["files"]
+            details = (f"missing={sorted(set(expected_files) - set(recorded_files))}; "
+                       f"unexpected={sorted(set(recorded_files) - set(expected_files))}; "
+                       f"changed={sorted(key for key in set(recorded_files) & set(expected_files) if recorded_files[key] != expected_files[key])}")
+        raise ValueError("Source completed preprocessing stage proof/configuration changed: "
+                         "expected the native producer's exact four-file plan proof; " + details +
+                         ". Original journal and files were not modified.")
     original, current = launch._read_json(old["train_config"]), launch._read_json(plan["train_config"])
     differences = configuration_differences(original, current)
     nn_cfg = launch._read_json(new_layout.nnunet_config)

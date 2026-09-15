@@ -8,6 +8,7 @@ import copy
 import io
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest import mock
@@ -18,6 +19,95 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FeedbackLaunchBridgeDebugTests(unittest.TestCase):
+    def _main_failure(self, state, *, resume=False):
+        """Real CLI/build_plan, one explicit execution-failure boundary only."""
+        with tempfile.TemporaryDirectory(prefix="DEBUG_launch_failure_") as directory:
+            project = Path(directory)
+            shutil.copytree(ROOT / "config", project / "config")
+            original = project / "work/original"
+            original.mkdir(parents=True)
+            (original / "checkpoint.pth").write_bytes(b"DEBUG preserved source; not a checkpoint")
+            target = project / "work/new"
+            if state != "absent":
+                target.mkdir()
+            if state in {"journal", "launch_only", "journal_directory"}:
+                # Deliberately not a valid journal/plan: presence must not be
+                # described as successful verification in an error handler.
+                (target / "launch_plan.json").write_bytes(b"DEBUG unverified original plan")
+            if state in {"journal", "journal_only"}:
+                (target / "execution_journal.json").write_bytes(b"DEBUG unverified original journal")
+            if state == "journal_directory":
+                (target / "execution_journal.json").mkdir()
+            paths_before = {path.relative_to(project).as_posix() for path in project.rglob("*")}
+            files_before = {path.relative_to(project).as_posix(): path.read_bytes()
+                            for path in project.rglob("*") if path.is_file()}
+            argv = ["--medical-root", str(project / "medical"), "--experiment-name", "new",
+                    "--reuse-preprocessing-from", "work/original", "--evaluate"]
+            if resume:
+                argv.append("--resume-experiment")
+            failure = ValueError("DEBUG execution boundary failure; original exception must propagate")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with mock.patch.object(launch, "PROJECT_ROOT", project), \
+                 mock.patch.object(launch, "execute_plan", side_effect=failure) as execute, \
+                 mock.patch.object(launch.subprocess, "run", side_effect=AssertionError("DEBUG evaluation must not launch")) as child, \
+                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                with self.assertRaises(ValueError) as raised:
+                    launch.main(argv)
+            self.assertIs(raised.exception, failure)
+            execute.assert_called_once()
+            self.assertEqual(execute.call_args.kwargs, {"resume_preparation": False, "resume_experiment": resume})
+            self.assertEqual(execute.call_args.args[0]["run_root"], target)
+            child.assert_not_called()
+            self.assertEqual(paths_before, {path.relative_to(project).as_posix() for path in project.rglob("*")})
+            self.assertEqual(files_before, {path.relative_to(project).as_posix(): path.read_bytes()
+                                           for path in project.rglob("*") if path.is_file()})
+            self.assertEqual(target.exists(), state != "absent")
+            self.assertNotIn("[TRAINING COMMANDS COMPLETED]", stdout.getvalue())
+            self.assertIn("[FAILED]", stderr.getvalue())
+            return stderr.getvalue()
+
+    def test_main_prelaunch_failure_never_claims_a_journal_or_recommends_resume(self):
+        message = self._main_failure("absent")
+        self.assertIn("[PRE-LAUNCH]", message)
+        self.assertIn("SAME arguments WITHOUT --resume-experiment", message)
+        self.assertIn("no experiment directory or stage journal was created", message)
+        self.assertNotIn("[JOURNAL PRESENT]", message)
+        self.assertNotIn("[PARTIAL ROOT]", message)
+        self.assertNotIn("[MISSING RESUME ROOT]", message)
+
+    def test_main_missing_resume_root_never_recommends_a_fresh_restart(self):
+        message = self._main_failure("absent", resume=True)
+        self.assertIn("[MISSING RESUME ROOT]", message)
+        self.assertIn("inspect", message)
+        self.assertIn("No automatic fresh restart", message)
+        self.assertNotIn("SAME arguments WITHOUT --resume-experiment", message)
+        self.assertNotIn("[PRE-LAUNCH]", message)
+        self.assertNotIn("[JOURNAL PRESENT]", message)
+        self.assertNotIn("[PARTIAL ROOT]", message)
+
+    def test_main_journal_presence_is_not_a_claim_of_valid_completion(self):
+        for resume in (False, True):
+            with self.subTest(resume=resume):
+                message = self._main_failure("journal", resume=resume)
+                self.assertIn("[JOURNAL PRESENT]", message)
+                self.assertIn("--resume-experiment", message)
+                self.assertIn("reverified", message)
+                self.assertNotIn("has a durable stage journal", message)
+                self.assertNotIn("[PRE-LAUNCH]", message)
+                self.assertNotIn("[PARTIAL ROOT]", message)
+
+    def test_main_partial_root_never_recommends_blind_fresh_or_resume(self):
+        for state in ("empty", "launch_only", "journal_only", "journal_directory"):
+            with self.subTest(state=state):
+                message = self._main_failure(state)
+                self.assertIn("[PARTIAL ROOT]", message)
+                self.assertIn("Preserve", message)
+                self.assertIn("inspect", message)
+                self.assertIn("No automatic retry", message)
+                self.assertNotIn("--resume-experiment", message)
+                self.assertNotIn("[PRE-LAUNCH]", message)
+                self.assertNotIn("[JOURNAL PRESENT]", message)
+
     def test_read_only_lock_never_creates_or_initializes_a_source_file(self):
         from tools.feedback_stage_execution import run_lock
         with tempfile.TemporaryDirectory(prefix="DEBUG_readonly_lock_") as directory:

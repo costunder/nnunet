@@ -478,12 +478,25 @@ def _resume_command(plan, command, *, previously_attempted):
     return argv
 
 
+def _native_plan_evidence_files(plan):
+    """Stable native plan proof shared by its producer and reuse reader.
+
+    This exact four-file contract is also used by the historical recovery
+    producer. The raw marker and complete cohort remain transitively verified
+    by _verified_preprocess_contract, not substituted for these stage records.
+    """
+    dataset = f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{plan['outer_fold']}"
+    pre = Path(plan["env_updates"]["nnUNet_preprocessed"]) / dataset
+    nnconfig = _read_json(Path(plan["project_root"]) / "config/nnunet.json")
+    return [pre / value for value in ("online_cp_preprocess_complete.json", "splits_final.json",
+                                      "dataset.json", f"{nnconfig['dataset']['plans']}.json")]
+
+
 def _stage_evidence(plan, name):
     """Durable output evidence captured only after the native stage succeeds."""
     root, fold = plan["run_root"], plan["outer_fold"]
     gnn = root / f"paired/folds/fold_{fold}/gnn"
     bank = root / f"online/folds/fold_{fold}/bank"
-    dataset = f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{fold}"
     if name == "install_private_trainers":
         inventory = _runtime_inventory(plan["package_destination"])
         files = [Path(plan["package_destination"]) / value for value in inventory]
@@ -536,10 +549,7 @@ def _stage_evidence(plan, name):
             raise ValueError("GNN causality audit did not complete")
     elif name == "plan":
         _verify_online_artifacts(plan, name)
-        pre = Path(plan["env_updates"]["nnUNet_preprocessed"]) / dataset
-        nnconfig = _read_json(plan["project_root"] / "config/nnunet.json")
-        files = [pre / value for value in ("online_cp_preprocess_complete.json", "splits_final.json",
-                                            "dataset.json", f"{nnconfig['dataset']['plans']}.json")]
+        files = _native_plan_evidence_files(plan)
         if plan.get("preprocessing_source_root") is not None:
             from tools.feedback_preprocessing_reuse import verify_reuse
             verify_reuse(plan)
@@ -989,14 +999,26 @@ def main(argv=None):
                 command.append("--resume")
             subprocess.run(command, cwd=PROJECT_ROOT, env=env, check=True)
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError):
-        print(f"[FAILED] Further stages were not launched. Existing files and partial outputs are preserved: {plan['run_root']}",
+        root = Path(plan["run_root"])
+        root_present = root.exists() or root.is_symlink()
+        output_state = ("Existing files and partial outputs are preserved" if root_present
+                        else "No experiment directory was created")
+        print(f"[FAILED] Further stages were not launched. {output_state}: {root}",
               file=sys.stderr, flush=True)
         if plan["recovery_source_root"] is not None:
             print("Retry options: --resume-preparation is only for incomplete preparation. Once preparation completed, use the SAME original arguments plus --resume-experiment; it verifies cache/receipt/runtime and refuses ambiguous attempts or missing/incompatible training checkpoints. Do not edit the journal, delete preflight files, or use --overwrite. Partial runtime setup still requires a separate new experiment.", file=sys.stderr, flush=True)
         if plan.get("upgrade_source_root") is not None:
             print("Bank upgrade preserved its source and new partial outputs. After complete setup, the SAME upgrade arguments plus --resume-experiment reverify this new root; native bank/checkpoint guards still apply. Error/incomplete bank rows are not erased or forced reusable. Incomplete setup or running/ambiguous attempts are refused. Never delete an old bank, journal or checkpoint to pass a guard.", file=sys.stderr, flush=True)
         if plan["recovery_source_root"] is None and plan.get("upgrade_source_root") is None:
-            print("Fresh execution has a durable stage journal. Repeat the SAME arguments plus --resume-experiment; completed artifacts are reverified, native child receipts distinguish completed work from live/ambiguous work, and missing training checkpoints never trigger a fresh restart. Preserve all attempt files.", file=sys.stderr, flush=True)
+            if not root_present and args.resume_experiment:
+                print("[MISSING RESUME ROOT] The requested resume path does not exist. Preserve existing experiments and inspect the requested path and original launch records. No automatic fresh restart is authorized; missing checkpoints must not become new training.", file=sys.stderr, flush=True)
+            elif not root_present:
+                print("[PRE-LAUNCH] Validation failed before experiment creation; no experiment directory or stage journal was created. After resolving the reported cause, repeat the SAME arguments WITHOUT --resume-experiment. No training checkpoint was started.", file=sys.stderr, flush=True)
+            elif (not root.is_symlink() and all(path.is_file() and not path.is_symlink()
+                    for path in (root / "launch_plan.json", root / "execution_journal.json"))):
+                print("[JOURNAL PRESENT] Preserve all attempt files. Repeat the SAME arguments plus --resume-experiment only after inspecting the reported failure; journal validity and completed artifacts are reverified, native child receipts distinguish completed work from live/ambiguous work, and missing training checkpoints never trigger a fresh restart.", file=sys.stderr, flush=True)
+            else:
+                print("[PARTIAL ROOT] Preserve this existing path and inspect its ownership and launch/journal state. No automatic retry is authorized by this message; do not delete files or start fresh over partial outputs.", file=sys.stderr, flush=True)
         if plan.get("basic_source_root") is not None:
             print("Basic reuse failure does not authorize fresh Basic training or source edits. Preserve the original checkpoint and both proof generations; inspect the reported mismatch. Removing --reuse-basic-from changes the experiment plan and requires a separate new root.", file=sys.stderr, flush=True)
         raise

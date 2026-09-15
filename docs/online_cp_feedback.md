@@ -224,7 +224,19 @@ their old checkpoints are not converted to the new CP semantics.
 
 The source must be the original durably completed native preprocessing root
 (`work/feedback_medical_aug` in the recorded experiment), not the later bank-upgrade
-root. Packed preprocessing payloads are hard-linked; metadata and new unpacked
+root. Its plan proof is the native producer's exact four-file record: preprocessing
+completion marker, splits, dataset JSON and configured plans JSON. The producer
+and reuse reader share this file list; two-marker substitutes and arbitrary
+supersets are rejected. The raw marker and complete cohort/output hashes remain
+independently checked through the native preprocessing contract.
+
+A first-launch rejection before the new root/journal exists is not a resumable
+training attempt: resolve the cause and repeat the original launch without
+`--resume-experiment`. Existing journal-backed attempts are reverified on resume;
+partial roots are preserved for inspection. An explicitly requested resume whose
+root is missing must never silently become fresh training.
+
+Packed preprocessing payloads are hard-linked; metadata and new unpacked
 arrays are separate. The supported workflow only reads shared payloads, but they
 are not filesystem-enforced immutable copies. Manual edits to a shared inode
 would affect both roots and are outside the supported workflow.

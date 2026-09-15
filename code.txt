@@ -9,9 +9,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
 
 {
   "format": "hiercp_working_tree_code_export_v1",
-  "base_commit": "d904eeb346da8592ea5f04029e8aaa475ec9126e",
+  "base_commit": "3acef3c60689cc3d9a05c0282a89da8887336bce",
   "snapshot": "current working tree; not a claim that changes were committed or pushed",
-  "generated_utc": "2026-09-15T06:05:14.279752+00:00",
+  "generated_utc": "2026-09-15T08:06:54.543296+00:00",
   "file_count": 190,
   "files": [
     {
@@ -202,9 +202,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "docs/online_cp_feedback.md",
-      "source_sha256": "450b71c0d07544203a33da8ab87ae586e9e45067e939ac32ab9b7d08a5176e3c",
-      "export_sha256": "450b71c0d07544203a33da8ab87ae586e9e45067e939ac32ab9b7d08a5176e3c",
-      "export_bytes": 17896
+      "source_sha256": "eea00065c4c536eaea052ba6a4e741e2b57647f0f9b77ad44c09c73b36c60e3d",
+      "export_sha256": "eea00065c4c536eaea052ba6a4e741e2b57647f0f9b77ad44c09c73b36c60e3d",
+      "export_bytes": 18653
     },
     {
       "path": "docs/online_evaluation_verification.md",
@@ -214,9 +214,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "gpt_handoff.md",
-      "source_sha256": "edce7af23fdd8915a7a9ca4a97c99e0c3068d45bf76bdb9b989a825622daaabd",
-      "export_sha256": "edce7af23fdd8915a7a9ca4a97c99e0c3068d45bf76bdb9b989a825622daaabd",
-      "export_bytes": 44468
+      "source_sha256": "b45eb8c9c31a52d2f26d393b5affe4c567364a6c410763353bd6088064a66562",
+      "export_sha256": "b45eb8c9c31a52d2f26d393b5affe4c567364a6c410763353bd6088064a66562",
+      "export_bytes": 47316
     },
     {
       "path": "hiercp/__init__.py",
@@ -634,9 +634,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tests/test_feedback_launch_bridges_debug.py",
-      "source_sha256": "f82bacb03644a40c43c1cc2a536ed4a9528517ea769f262870c3a15a64da9858",
-      "export_sha256": "f82bacb03644a40c43c1cc2a536ed4a9528517ea769f262870c3a15a64da9858",
-      "export_bytes": 8071
+      "source_sha256": "be90c66aba18304f16b30e263ac26f0d667c002d9cfe9c764a8bdb7e1bab1f01",
+      "export_sha256": "be90c66aba18304f16b30e263ac26f0d667c002d9cfe9c764a8bdb7e1bab1f01",
+      "export_bytes": 13624
     },
     {
       "path": "tests/test_feedback_launch_debug.py",
@@ -646,9 +646,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tests/test_feedback_preprocessing_reuse_debug.py",
-      "source_sha256": "e306eaa80cc06898c634e3fa630c4453a90c0749a489fe871488dd7142220ced",
-      "export_sha256": "e306eaa80cc06898c634e3fa630c4453a90c0749a489fe871488dd7142220ced",
-      "export_bytes": 21768
+      "source_sha256": "2a141ab5cc614649635da82144863672223021b7c76fc0bc3b959e23d375a621",
+      "export_sha256": "2a141ab5cc614649635da82144863672223021b7c76fc0bc3b959e23d375a621",
+      "export_bytes": 27988
     },
     {
       "path": "tests/test_feedback_stage_execution_debug.py",
@@ -1024,9 +1024,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tools/feedback_preprocessing_reuse.py",
-      "source_sha256": "a78b47a102d2e0de4ff397116b77e8bc29d49e4f6b87e6106f5d0ebd502ce375",
-      "export_sha256": "a78b47a102d2e0de4ff397116b77e8bc29d49e4f6b87e6106f5d0ebd502ce375",
-      "export_bytes": 37144
+      "source_sha256": "8f42ebeb17a4affaf1d01dd82f74e58390da5fb6bc23ab62b763ef7ebd123f8e",
+      "export_sha256": "8f42ebeb17a4affaf1d01dd82f74e58390da5fb6bc23ab62b763ef7ebd123f8e",
+      "export_bytes": 38002
     },
     {
       "path": "tools/feedback_stage_execution.py",
@@ -1126,9 +1126,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tools/run_feedback_experiment.py",
-      "source_sha256": "612635f9e6fc79b78ad0aadfb46ccd314c8aa84ea61b51c125bbabc1a56b6709",
-      "export_sha256": "612635f9e6fc79b78ad0aadfb46ccd314c8aa84ea61b51c125bbabc1a56b6709",
-      "export_bytes": 63688
+      "source_sha256": "6185c1c78e600d089a3ce46996608c73e71c4b767e2d0410b7266053c03d47a9",
+      "export_sha256": "6185c1c78e600d089a3ce46996608c73e71c4b767e2d0410b7266053c03d47a9",
+      "export_bytes": 65491
     },
     {
       "path": "tools/smoke.py",
@@ -9674,7 +9674,19 @@ their old checkpoints are not converted to the new CP semantics.
 
 The source must be the original durably completed native preprocessing root
 (`work/feedback_medical_aug` in the recorded experiment), not the later bank-upgrade
-root. Packed preprocessing payloads are hard-linked; metadata and new unpacked
+root. Its plan proof is the native producer's exact four-file record: preprocessing
+completion marker, splits, dataset JSON and configured plans JSON. The producer
+and reuse reader share this file list; two-marker substitutes and arbitrary
+supersets are rejected. The raw marker and complete cohort/output hashes remain
+independently checked through the native preprocessing contract.
+
+A first-launch rejection before the new root/journal exists is not a resumable
+training attempt: resolve the cause and repeat the original launch without
+`--resume-experiment`. Existing journal-backed attempts are reverified on resume;
+partial roots are preserved for inspection. An explicitly requested resume whose
+root is missing must never silently become fresh training.
+
+Packed preprocessing payloads are hard-linked; metadata and new unpacked
 arrays are separate. The supported workflow only reads shared payloads, but they
 are not filesystem-enforced immutable copies. Manual edits to a shared inode
 would affect both roots and are outside the supported workflow.
@@ -9861,7 +9873,7 @@ downloaded by these unit tests.
 ===== FILE: gpt_handoff.md =====
 # HierCP GPT handoff
 
-작성일: 2026-09-13 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+갱신일: 2026-09-15 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
 `Source manifest`를 따른다. 최신 변경은 **source-content / population-metric v5**다.
 이전 v4의 785개 중 780개 통과·5개 skip 기록은 과거 검사이며, v5나 Basic 재사용
 기능의 검증 결과로 인용하면 안 된다. 현재 변경은 아래 별도의 v5 검사 결과를 따른다.
@@ -9869,7 +9881,35 @@ downloaded by these unit tests.
 배포 명령 갱신: 2026-09-15 KST, 사용자가 현재 할당받았다고 명시한 물리 GPU는 5번이다.
 Git 배포 여부는 실제 원격 `origin/main`으로 확인하며 로컬 검사·문서 생성과 구분한다.
 
-## 현재 working tree 검증 — 2026-09-13
+## 2026-09-15 전처리 재사용 완료 증거 수정
+
+- 서버의 `Source completed preprocessing stage proof/configuration changed`에 대해
+  재사용 검증기의 확정 결함을 재현했다. 기존 d904eeb와 현재 실행기의 `plan` 완료 증거는
+  전처리 디렉터리의 `online_cp_preprocess_complete.json`, `splits_final.json`, `dataset.json`,
+  설정에 지정된 plans JSON의 **정확한 4개 SHA**다. 3acef3c의 검증기는 다른 2개 marker를
+  기대하여 정상 기록도 거절했다. 원본 journal을 재작성해서 맞추는 방식으로 해결하지 않는다.
+- producer와 reader가 `_native_plan_evidence_files()`를 공유하도록 수정했다. 4개 항목·SHA와
+  증거 전체 형식은 정확히 일치해야 한다. raw marker와 전체 원본/전처리 파일 검증은 기존
+  `_verified_preprocess_contract()`에서 계속 수행한다. 두 marker만 있거나 임의의 추가 파일이
+  있는 기록을 승인하는 호환 예외는 추가하지 않았다. 모델·학습·CP 조건은 변경하지 않았다.
+- 아래 9월 13일 테스트에는 plan producer를 잘못된 2파일 fixture로 대체한 검사가 있어
+  이 불일치를 잡지 못했다. 이제 실제 plan producer와 native artifact verifier를 사용하며,
+  producer/helper에서 독립된 4개 전체 상대경로 assertion으로 형식을 고정한다.
+- 수정 전 실제 producer 기반 재현 1개가 같은 오류로 실패했다. 수정 후 관련 모듈은
+  21개 중 20개 통과·Windows symlink 권한 1개 skip, 실패 안내 모듈은 10개 모두 통과했다.
+  SHA/항목/실파일 변경·누락, 추가 항목, 구형 2파일 증거, DEBUG 증거 거절도 포함한다.
+- 수정 후 전체 CPU 회귀: **884개 중 879개 통과·5개 skip·실패/오류 0개**, 417.071초.
+  skip은 Windows symlink 권한 관련 4개와 별도 opt-in production-sized DEBUG 1개다.
+  로그: `work/debug_plan_proof_full_c7633e4360dc456bb43160817267d123/unittest.log`.
+  Python 165개 Python 3.10 AST, JSON 5개, trainer/helper 10개 SHA 대조와 정적 감사도 통과했다.
+  이 검사는 합성 입력/명시적 경계 fixture를 포함한 로컬 CPU 검사이며, 서버 실제 데이터·GPU
+  전체 학습 완료 증거가 아니다. 이번 수정에서 서버 원본 파일을 직접 변경하지 않았다.
+- 이번 서버 실패는 새 root·runtime·stage journal 생성 전이다. 수정 코드를 받은 뒤 같은
+  최초 명령을 **`--resume-experiment` 없이** 실행한다. 첫 실행 전 실패, journal 존재,
+  불완전한 root, 재개 요청인데 root가 사라진 경우의 안내를 분리했다. 재개 대상이 없다고
+  새 학습을 권하지 않으며, 기존 파일을 지우거나 checkpoint 없이 재시작하지 않는다.
+
+## 수정 전 v5 검증 — 2026-09-13 (과거 기록)
 
 - 전체 `unittest discover -s tests -p 'test*.py' -v`: **873개 중 868개 통과,
   5개 skip, 실패/오류 0개**, 454.604초. skip은 Windows 심볼릭 링크 권한 관련 4개와
@@ -10349,7 +10389,7 @@ bank-upgrade 파생 root인 `feedback_rawcp`는 이 전처리 원본을 대체�
 conda activate /home/aicompetition06/.conda/envs/nnunet &&
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
-env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES=5 \
+env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=5 \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
   --reuse-preprocessing-from work/feedback_medical_aug \
   --experiment-name feedback_population_v5 \
@@ -40649,6 +40689,7 @@ import copy
 import io
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest import mock
@@ -40659,6 +40700,95 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FeedbackLaunchBridgeDebugTests(unittest.TestCase):
+    def _main_failure(self, state, *, resume=False):
+        """Real CLI/build_plan, one explicit execution-failure boundary only."""
+        with tempfile.TemporaryDirectory(prefix="DEBUG_launch_failure_") as directory:
+            project = Path(directory)
+            shutil.copytree(ROOT / "config", project / "config")
+            original = project / "work/original"
+            original.mkdir(parents=True)
+            (original / "checkpoint.pth").write_bytes(b"DEBUG preserved source; not a checkpoint")
+            target = project / "work/new"
+            if state != "absent":
+                target.mkdir()
+            if state in {"journal", "launch_only", "journal_directory"}:
+                # Deliberately not a valid journal/plan: presence must not be
+                # described as successful verification in an error handler.
+                (target / "launch_plan.json").write_bytes(b"DEBUG unverified original plan")
+            if state in {"journal", "journal_only"}:
+                (target / "execution_journal.json").write_bytes(b"DEBUG unverified original journal")
+            if state == "journal_directory":
+                (target / "execution_journal.json").mkdir()
+            paths_before = {path.relative_to(project).as_posix() for path in project.rglob("*")}
+            files_before = {path.relative_to(project).as_posix(): path.read_bytes()
+                            for path in project.rglob("*") if path.is_file()}
+            argv = ["--medical-root", str(project / "medical"), "--experiment-name", "new",
+                    "--reuse-preprocessing-from", "work/original", "--evaluate"]
+            if resume:
+                argv.append("--resume-experiment")
+            failure = ValueError("DEBUG execution boundary failure; original exception must propagate")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with mock.patch.object(launch, "PROJECT_ROOT", project), \
+                 mock.patch.object(launch, "execute_plan", side_effect=failure) as execute, \
+                 mock.patch.object(launch.subprocess, "run", side_effect=AssertionError("DEBUG evaluation must not launch")) as child, \
+                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                with self.assertRaises(ValueError) as raised:
+                    launch.main(argv)
+            self.assertIs(raised.exception, failure)
+            execute.assert_called_once()
+            self.assertEqual(execute.call_args.kwargs, {"resume_preparation": False, "resume_experiment": resume})
+            self.assertEqual(execute.call_args.args[0]["run_root"], target)
+            child.assert_not_called()
+            self.assertEqual(paths_before, {path.relative_to(project).as_posix() for path in project.rglob("*")})
+            self.assertEqual(files_before, {path.relative_to(project).as_posix(): path.read_bytes()
+                                           for path in project.rglob("*") if path.is_file()})
+            self.assertEqual(target.exists(), state != "absent")
+            self.assertNotIn("[TRAINING COMMANDS COMPLETED]", stdout.getvalue())
+            self.assertIn("[FAILED]", stderr.getvalue())
+            return stderr.getvalue()
+
+    def test_main_prelaunch_failure_never_claims_a_journal_or_recommends_resume(self):
+        message = self._main_failure("absent")
+        self.assertIn("[PRE-LAUNCH]", message)
+        self.assertIn("SAME arguments WITHOUT --resume-experiment", message)
+        self.assertIn("no experiment directory or stage journal was created", message)
+        self.assertNotIn("[JOURNAL PRESENT]", message)
+        self.assertNotIn("[PARTIAL ROOT]", message)
+        self.assertNotIn("[MISSING RESUME ROOT]", message)
+
+    def test_main_missing_resume_root_never_recommends_a_fresh_restart(self):
+        message = self._main_failure("absent", resume=True)
+        self.assertIn("[MISSING RESUME ROOT]", message)
+        self.assertIn("inspect", message)
+        self.assertIn("No automatic fresh restart", message)
+        self.assertNotIn("SAME arguments WITHOUT --resume-experiment", message)
+        self.assertNotIn("[PRE-LAUNCH]", message)
+        self.assertNotIn("[JOURNAL PRESENT]", message)
+        self.assertNotIn("[PARTIAL ROOT]", message)
+
+    def test_main_journal_presence_is_not_a_claim_of_valid_completion(self):
+        for resume in (False, True):
+            with self.subTest(resume=resume):
+                message = self._main_failure("journal", resume=resume)
+                self.assertIn("[JOURNAL PRESENT]", message)
+                self.assertIn("--resume-experiment", message)
+                self.assertIn("reverified", message)
+                self.assertNotIn("has a durable stage journal", message)
+                self.assertNotIn("[PRE-LAUNCH]", message)
+                self.assertNotIn("[PARTIAL ROOT]", message)
+
+    def test_main_partial_root_never_recommends_blind_fresh_or_resume(self):
+        for state in ("empty", "launch_only", "journal_only", "journal_directory"):
+            with self.subTest(state=state):
+                message = self._main_failure(state)
+                self.assertIn("[PARTIAL ROOT]", message)
+                self.assertIn("Preserve", message)
+                self.assertIn("inspect", message)
+                self.assertIn("No automatic retry", message)
+                self.assertNotIn("--resume-experiment", message)
+                self.assertNotIn("[PRE-LAUNCH]", message)
+                self.assertNotIn("[JOURNAL PRESENT]", message)
+
     def test_read_only_lock_never_creates_or_initializes_a_source_file(self):
         from tools.feedback_stage_execution import run_lock
         with tempfile.TemporaryDirectory(prefix="DEBUG_readonly_lock_") as directory:
@@ -40899,8 +41029,9 @@ if __name__ == "__main__":
 
 Tiny generated NIfTI/NPZ fixtures exercise actual raw/preprocess hash validators,
 hardlinks/copies, ownership, interruption and receipt publication. Split planning
-and the launcher's stage-evidence dispatcher are explicit boundary fixtures; no
-native planner, real dataset, GNN training or GPU execution is claimed here.
+is an explicit boundary fixture; plan evidence uses the real launcher's producer
+and native artifact verifier. No native planner, real dataset, GNN training or
+GPU execution is claimed here.
 """
 from __future__ import annotations
 
@@ -40951,6 +41082,7 @@ class PreprocessingReuseDebugTests(unittest.TestCase):
         self.old, self.plan = self._plan(self.old_root, original), self._plan(self.new_root, current)
         self.plan["preprocessing_source_root"] = self.old_root
         self.layouts = {self.old_root: self._layout(self.old), self.new_root: self._layout(self.plan)}
+        self.native_stage_evidence = launch._stage_evidence
         self.patches = [mock.patch.object(reuse, "_layout", side_effect=lambda plan: self.layouts[Path(plan["run_root"])]),
                         mock.patch.object(online, "outer_split", side_effect=lambda *_: copy.deepcopy(self.split)),
                         mock.patch.object(launch, "_stage_evidence", side_effect=self._evidence)]
@@ -41032,12 +41164,12 @@ class PreprocessingReuseDebugTests(unittest.TestCase):
         write_json(pre / online.PREPROCESS_MARKER_NAME, online._preprocess_marker_payload(inputs, outputs))
 
     def _evidence(self, plan, name):
+        if name != "split":
+            return self.native_stage_evidence(plan, name)
         root = Path(plan["run_root"])
         layout = self.layouts[root]
-        paths = ([layout.outer_splits] if name == "split" else
-                 [online.raw_dataset_dir(layout, 901, 0) / online.RAW_MARKER_NAME,
-                  online.preprocessed_dataset_dir(layout, 901, 0) / online.PREPROCESS_MARKER_NAME])
-        return {"format": "feedback_stage_completion_v1", "files": launch._bound_files(root, paths)}
+        return {"format": "feedback_stage_completion_v1",
+                "files": launch._bound_files(root, [layout.outer_splits])}
 
     def _journal(self, plan, *, source):
         root = plan["run_root"]
@@ -41052,6 +41184,110 @@ class PreprocessingReuseDebugTests(unittest.TestCase):
         journal["journal_sha256"] = launch._json_sha256(journal)
         write_json(root / "launch_plan.json", plan)
         write_json(root / "execution_journal.json", journal)
+
+    def _write_source_journal(self, journal):
+        """Rebind only this test's tiny source journal after an explicit mutation."""
+        document = copy.deepcopy(journal)
+        document.pop("journal_sha256", None)
+        document["journal_sha256"] = launch._json_sha256(document)
+        write_json(self.old_root / "execution_journal.json", document)
+
+    @staticmethod
+    def _plan_row(journal):
+        return next(row for row in journal["stages"] if row["name"] == "plan")
+
+    def test_source_plan_evidence_uses_actual_native_four_file_producer(self):
+        evidence = self.native_stage_evidence(self.old, "plan")
+        stored = self._plan_row(launch._read_json(self.old_root / "execution_journal.json"))
+        self.assertEqual(stored["completion_evidence"], evidence)
+        self.assertEqual(len(evidence["files"]), 4)
+        self.assertEqual(set(evidence["files"]), {
+            "online/nnunetv2/nnUNet_preprocessed/Dataset901_LiverOnlineCP_OF0/" + name
+            for name in ("online_cp_preprocess_complete.json", "splits_final.json",
+                         "dataset.json", "DEBUGPlans.json")})
+        result = reuse.validate_reuse(self.plan, self.plan["package_destination"])
+        self.assertFalse(result["learned_artifacts_reused"])
+
+    def test_legacy_preparation_journal_accepts_actual_native_plan_evidence(self):
+        # d904-era preparation journals used this format and the SAME native
+        # four-file plan producer. This does not approve legacy learned state.
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        journal["format"] = "feedback_preparation_execution_v1"
+        self._write_source_journal(journal)
+        before = (self.old_root / "execution_journal.json").read_bytes()
+        receipt = reuse.execute_reuse(self.plan)
+        self.assertFalse(receipt["learned_artifacts_reused"])
+        self.assertEqual(receipt["source_output_manifest_sha256"], receipt["current_output_manifest_sha256"])
+        reuse.verify_reuse(self.plan)
+        self.assertEqual((self.old_root / "execution_journal.json").read_bytes(), before)
+
+    def test_obsolete_two_marker_evidence_is_rejected_not_reinterpreted(self):
+        layout = self.layouts[self.old_root]
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        self._plan_row(journal)["completion_evidence"]["files"] = launch._bound_files(self.old_root, [
+            online.raw_dataset_dir(layout, 901, 0) / online.RAW_MARKER_NAME,
+            online.preprocessed_dataset_dir(layout, 901, 0) / online.PREPROCESS_MARKER_NAME])
+        self._write_source_journal(journal)
+        before = (self.old_root / "execution_journal.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+            reuse.validate_reuse(self.plan)
+        self.assertEqual((self.old_root / "execution_journal.json").read_bytes(), before)
+
+    def test_each_native_plan_evidence_hash_is_required_and_exact(self):
+        original = launch._read_json(self.old_root / "execution_journal.json")
+        files = self._plan_row(original)["completion_evidence"]["files"]
+        self.assertEqual(len(files), 4)
+        for path in files:
+            for mutation in ("changed_sha256", "missing_entry"):
+                with self.subTest(path=path, mutation=mutation):
+                    journal = copy.deepcopy(original)
+                    recorded = self._plan_row(journal)["completion_evidence"]["files"]
+                    if mutation == "changed_sha256":
+                        recorded[path] = "0" * 64
+                    else:
+                        del recorded[path]
+                    self._write_source_journal(journal)
+                    with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+                        reuse.validate_reuse(self.plan)
+        self._write_source_journal(original)
+
+    def test_each_native_plan_artifact_tamper_or_disappearance_is_rejected(self):
+        original = launch._read_json(self.old_root / "execution_journal.json")
+        files = self._plan_row(original)["completion_evidence"]["files"]
+        self.assertEqual(len(files), 4)
+        for relative in files:
+            path = self.old_root / relative
+            original_bytes = path.read_bytes()
+            for mutation in ("changed_bytes", "missing_file"):
+                with self.subTest(path=relative, mutation=mutation):
+                    try:
+                        if mutation == "changed_bytes":
+                            # JSON semantics remain valid; provenance requires
+                            # the producer's exact bytes, not semantic similarity.
+                            path.write_bytes(original_bytes + b"\n")
+                        else:
+                            path.unlink()  # Only this test's generated metadata.
+                        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof|Missing or unsafe"):
+                            reuse.validate_reuse(self.plan)
+                    finally:
+                        path.write_bytes(original_bytes)
+        self.assertEqual(launch._read_json(self.old_root / "execution_journal.json"), original)
+
+    def test_additional_native_plan_evidence_file_is_rejected(self):
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        raw_marker = online.raw_dataset_dir(self.layouts[self.old_root], 901, 0) / online.RAW_MARKER_NAME
+        self._plan_row(journal)["completion_evidence"]["files"].update(
+            launch._bound_files(self.old_root, [raw_marker]))
+        self._write_source_journal(journal)
+        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+            reuse.validate_reuse(self.plan)
+
+    def test_debug_stage_producer_is_rejected_with_valid_native_evidence(self):
+        journal = launch._read_json(self.old_root / "execution_journal.json")
+        self._plan_row(journal)["execution_backend"] = "injected_debug_runner"
+        self._write_source_journal(journal)
+        with self.assertRaisesRegex(ValueError, "Source completed preprocessing stage proof"):
+            reuse.validate_reuse(self.plan)
 
     def test_native_complete_derivative_keeps_manifests_and_never_loads_old_gnn(self):
         before = {str(path): launch._file_sha256(path) for path in self.old_root.rglob("*") if path.is_file()}
@@ -61586,10 +61822,21 @@ def _source(plan, native_package=None):
     raw = online.raw_dataset_dir(old_layout, plan["dataset_id"], plan["outer_fold"])
     pre = online.preprocessed_dataset_dir(old_layout, plan["dataset_id"], plan["outer_fold"])
     evidence = {"format": "feedback_stage_completion_v1", "files": launch._bound_files(
-        source, [raw / online.RAW_MARKER_NAME, pre / online.PREPROCESS_MARKER_NAME])}
-    if (row.get("execution_backend") == "injected_debug_runner"
-            or row.get("completion_evidence") != evidence):
-        raise ValueError("Source completed preprocessing stage proof/configuration changed")
+        source, launch._native_plan_evidence_files(old))}
+    if row.get("execution_backend") == "injected_debug_runner":
+        raise ValueError("Source completed preprocessing stage proof/configuration changed: DEBUG runner evidence cannot authorize reuse")
+    recorded = row.get("completion_evidence")
+    if recorded != evidence:
+        recorded_files = recorded.get("files") if isinstance(recorded, dict) else None
+        details = "malformed completion evidence"
+        if isinstance(recorded_files, dict):
+            expected_files = evidence["files"]
+            details = (f"missing={sorted(set(expected_files) - set(recorded_files))}; "
+                       f"unexpected={sorted(set(recorded_files) - set(expected_files))}; "
+                       f"changed={sorted(key for key in set(recorded_files) & set(expected_files) if recorded_files[key] != expected_files[key])}")
+        raise ValueError("Source completed preprocessing stage proof/configuration changed: "
+                         "expected the native producer's exact four-file plan proof; " + details +
+                         ". Original journal and files were not modified.")
     original, current = launch._read_json(old["train_config"]), launch._read_json(plan["train_config"])
     differences = configuration_differences(original, current)
     nn_cfg = launch._read_json(new_layout.nnunet_config)
@@ -77373,12 +77620,25 @@ def _resume_command(plan, command, *, previously_attempted):
     return argv
 
 
+def _native_plan_evidence_files(plan):
+    """Stable native plan proof shared by its producer and reuse reader.
+
+    This exact four-file contract is also used by the historical recovery
+    producer. The raw marker and complete cohort remain transitively verified
+    by _verified_preprocess_contract, not substituted for these stage records.
+    """
+    dataset = f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{plan['outer_fold']}"
+    pre = Path(plan["env_updates"]["nnUNet_preprocessed"]) / dataset
+    nnconfig = _read_json(Path(plan["project_root"]) / "config/nnunet.json")
+    return [pre / value for value in ("online_cp_preprocess_complete.json", "splits_final.json",
+                                      "dataset.json", f"{nnconfig['dataset']['plans']}.json")]
+
+
 def _stage_evidence(plan, name):
     """Durable output evidence captured only after the native stage succeeds."""
     root, fold = plan["run_root"], plan["outer_fold"]
     gnn = root / f"paired/folds/fold_{fold}/gnn"
     bank = root / f"online/folds/fold_{fold}/bank"
-    dataset = f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{fold}"
     if name == "install_private_trainers":
         inventory = _runtime_inventory(plan["package_destination"])
         files = [Path(plan["package_destination"]) / value for value in inventory]
@@ -77431,10 +77691,7 @@ def _stage_evidence(plan, name):
             raise ValueError("GNN causality audit did not complete")
     elif name == "plan":
         _verify_online_artifacts(plan, name)
-        pre = Path(plan["env_updates"]["nnUNet_preprocessed"]) / dataset
-        nnconfig = _read_json(plan["project_root"] / "config/nnunet.json")
-        files = [pre / value for value in ("online_cp_preprocess_complete.json", "splits_final.json",
-                                            "dataset.json", f"{nnconfig['dataset']['plans']}.json")]
+        files = _native_plan_evidence_files(plan)
         if plan.get("preprocessing_source_root") is not None:
             from tools.feedback_preprocessing_reuse import verify_reuse
             verify_reuse(plan)
@@ -77884,14 +78141,26 @@ def main(argv=None):
                 command.append("--resume")
             subprocess.run(command, cwd=PROJECT_ROOT, env=env, check=True)
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError):
-        print(f"[FAILED] Further stages were not launched. Existing files and partial outputs are preserved: {plan['run_root']}",
+        root = Path(plan["run_root"])
+        root_present = root.exists() or root.is_symlink()
+        output_state = ("Existing files and partial outputs are preserved" if root_present
+                        else "No experiment directory was created")
+        print(f"[FAILED] Further stages were not launched. {output_state}: {root}",
               file=sys.stderr, flush=True)
         if plan["recovery_source_root"] is not None:
             print("Retry options: --resume-preparation is only for incomplete preparation. Once preparation completed, use the SAME original arguments plus --resume-experiment; it verifies cache/receipt/runtime and refuses ambiguous attempts or missing/incompatible training checkpoints. Do not edit the journal, delete preflight files, or use --overwrite. Partial runtime setup still requires a separate new experiment.", file=sys.stderr, flush=True)
         if plan.get("upgrade_source_root") is not None:
             print("Bank upgrade preserved its source and new partial outputs. After complete setup, the SAME upgrade arguments plus --resume-experiment reverify this new root; native bank/checkpoint guards still apply. Error/incomplete bank rows are not erased or forced reusable. Incomplete setup or running/ambiguous attempts are refused. Never delete an old bank, journal or checkpoint to pass a guard.", file=sys.stderr, flush=True)
         if plan["recovery_source_root"] is None and plan.get("upgrade_source_root") is None:
-            print("Fresh execution has a durable stage journal. Repeat the SAME arguments plus --resume-experiment; completed artifacts are reverified, native child receipts distinguish completed work from live/ambiguous work, and missing training checkpoints never trigger a fresh restart. Preserve all attempt files.", file=sys.stderr, flush=True)
+            if not root_present and args.resume_experiment:
+                print("[MISSING RESUME ROOT] The requested resume path does not exist. Preserve existing experiments and inspect the requested path and original launch records. No automatic fresh restart is authorized; missing checkpoints must not become new training.", file=sys.stderr, flush=True)
+            elif not root_present:
+                print("[PRE-LAUNCH] Validation failed before experiment creation; no experiment directory or stage journal was created. After resolving the reported cause, repeat the SAME arguments WITHOUT --resume-experiment. No training checkpoint was started.", file=sys.stderr, flush=True)
+            elif (not root.is_symlink() and all(path.is_file() and not path.is_symlink()
+                    for path in (root / "launch_plan.json", root / "execution_journal.json"))):
+                print("[JOURNAL PRESENT] Preserve all attempt files. Repeat the SAME arguments plus --resume-experiment only after inspecting the reported failure; journal validity and completed artifacts are reverified, native child receipts distinguish completed work from live/ambiguous work, and missing training checkpoints never trigger a fresh restart.", file=sys.stderr, flush=True)
+            else:
+                print("[PARTIAL ROOT] Preserve this existing path and inspect its ownership and launch/journal state. No automatic retry is authorized by this message; do not delete files or start fresh over partial outputs.", file=sys.stderr, flush=True)
         if plan.get("basic_source_root") is not None:
             print("Basic reuse failure does not authorize fresh Basic training or source edits. Preserve the original checkpoint and both proof generations; inspect the reported mismatch. Removing --reuse-basic-from changes the experiment plan and requires a separate new root.", file=sys.stderr, flush=True)
         raise
