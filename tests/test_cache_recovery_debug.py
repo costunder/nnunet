@@ -17,8 +17,8 @@ import torch
 from hiercp import cache
 from hiercp.region import graph_config_budget_compatible
 from hiercp.schema import GraphBuildConfig
-from hiercp.prototype import PrototypeBank
-from hiercp.region import PatientRegionData, save_patient_regions, _region_cache_metadata
+from hiercp.prototype import PROTOTYPE_BANK_FORMAT, PROTOTYPE_FIT_CONTRACT, build_prototype_bank
+from hiercp.region import REGION_DESCRIPTOR_POLICY, PatientRegionData, save_patient_regions, _region_cache_metadata
 from hiercp.common import load_case, stable_case_seed
 
 
@@ -180,8 +180,13 @@ class CacheMigrationDebugTests(DonorEligibilityDebugTests):
         self.new_bank = self.new.parent / "prototypes" / "bank.pt"
         self.regions = self.old.parent / "regions"
         self.new_regions = self.new.parent / "regions"
-        self.bank = PrototypeBank(np.ones((16, 18), np.float32), np.ones((16, 16), np.float32),
-            np.zeros(16, np.float32), np.ones(16, np.float32), np.empty((2, 0), np.int64), ("absent", "donor"))
+        # Real fitted evidence, not a fabricated scorer-compatible saved bank.
+        # The enclosing tests remain explicit structural recovery DEBUG tests.
+        descriptors = np.random.default_rng(901).normal(size=(2 * 24, 16)).astype(np.float32)
+        self.bank = build_prototype_bank(
+            [("absent", descriptors[:24]), ("donor", descriptors[24:])],
+            config=self.graph, rng=np.random.default_rng(1051),
+        )
         self.bank.save(self.original_bank)
         manifest = self.original_bank.parent / "manifest.csv"
         train_sources = sorted(self.sources[:2], key=lambda row: row["case_id"])
@@ -190,6 +195,9 @@ class CacheMigrationDebugTests(DonorEligibilityDebugTests):
             "training_cases": ["absent", "donor"], "source_cases": train_sources, "seed": 42,
             "graph_config": self.graph.to_dict(), "labels": {"liver": 1, "tumor": 2},
             "ct_clip": [-200.0, 250.0], "region_cache_format": cache.REGION_CACHE_FORMAT,
+            "region_descriptor_policy": REGION_DESCRIPTOR_POLICY,
+            "prototype_bank_format": PROTOTYPE_BANK_FORMAT,
+            "prototype_fit_contract": PROTOTYPE_FIT_CONTRACT,
             "state": "ready", "prototype_fingerprint": self.bank.fingerprint(),
             "prototype_sha256": cache._sha256_file(self.original_bank), "manifest_sha256": cache._sha256_file(manifest)}
         self.write_json(self.original_bank.parent / "metadata.json", prototype_metadata)

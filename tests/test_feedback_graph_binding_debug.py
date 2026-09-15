@@ -17,12 +17,17 @@ from unittest import mock
 import nibabel as nib
 import numpy as np
 import torch
+from scipy import ndimage as ndi
 
 from custom_trainers.onlinecp_curriculum_contract import file_sha256
-from hiercp.common import CasePaths, load_case, choose_source_tumor, build_candidate_pool
+from hiercp.common import CasePaths, load_case, choose_source_tumor, build_candidate_pool, distance_to_mask_mm
 from hiercp.feedback import BankGraphProvider, FeedbackGNNRuntime
+from hiercp.feedback_patient import PreparedFeedbackPatient
+from hiercp.feedback_resources import content_digest
+from hiercp.sample import materialize_sample_views
 from hiercp.prototype import build_prototype_bank
-from hiercp.region import REGION_CACHE_SEED_SALT, load_or_build_patient_regions
+from hiercp.region import (REGION_CACHE_SEED_SALT, load_or_build_patient_regions,
+                           _region_cache_metadata, save_patient_regions)
 from tools.online_cp_benchmark import RAW_MARKER_NAME, stable_seed
 from tools.smoke import _full_config
 
@@ -70,6 +75,8 @@ class FeedbackGraphBindingDebugTests(unittest.TestCase):
             entry = "debug_source.npz"
             np.savez(bank_root / entry, candidate_raw_centers=centers, scores=np.asarray([.1, .2], np.float32),
                      source_component=np.asarray([source.component_id], np.int16))
+            second_entry = "debug_second_entry_same_patient.npz"
+            (bank_root / second_entry).write_bytes((bank_root / entry).read_bytes())
             marker = {"train_ids": [case_id], "val_ids": [heldout], "source_cases": [
                 {"case_id": case_id, "image_sha256": file_sha256(image_path), "label_sha256": file_sha256(label_path)},
                 # Names-only held-out metadata: intentionally no held-out voxel
@@ -82,15 +89,35 @@ class FeedbackGraphBindingDebugTests(unittest.TestCase):
                                              "generation": {"source_pad": 3}}), encoding="utf-8")
             contract = {"files": {"train_config": {"path": str(training)}}, "outer_fold": 0,
                         "train_case_ids": [case_id], "validation_case_ids": [heldout],
-                        "entry_sha256": {entry: file_sha256(bank_root / entry)}}
-            index = {"candidate_count": 2, "entries_by_case": {case_id: [entry]},
+                        "entry_sha256": {name: file_sha256(bank_root / name) for name in (entry, second_entry)}}
+            index = {"candidate_count": 2, "entries_by_case": {case_id: [entry, second_entry]},
                      "raw_marker_sha256": file_sha256(raw / RAW_MARKER_NAME)}
-            options = {"raw_data_root": str(raw), "graph_cache_dir": str(root / "graph_cache")}
+            source_regions = root / "verified_quality_regions"
+            native_metadata = _region_cache_metadata(
+                case, liver_label=1, tumor_label=2, config=config, ct_clip=(-200., 250.),
+                seed=stable_seed(42, case_id, REGION_CACHE_SEED_SALT))
+            native_metadata["graph_config"].pop("patient_graph_contract")
+            save_patient_regions(regions, source_regions / case_id, metadata=native_metadata)
+            original_regions = {p: file_sha256(p) for p in source_regions.rglob("*") if p.is_file()}
+            options = {"raw_data_root": str(raw), "graph_cache_dir": str(root / "graph_cache"),
+                       "region_cache_dir": str(source_regions), "graph_cache_minimum_free_bytes": 0}
             metadata = {"graph_config": config.to_dict(), "ct_clip": [-200., 250.]}
             with mock.patch("hiercp.common.load_case", wraps=load_case) as actual_reader:
                 provider = BankGraphProvider(config=options, bank_root=bank_root, contract=contract,
                                               index=index, checkpoint=metadata, prototype=prototype)
+                component_map, _ = ndi.label(case.label == 2, structure=ndi.generate_binary_structure(3, 1))
+                prior_context = PreparedFeedbackPatient(case, component_map, regions,
+                                                         distance_to_mask_mm(case.label == 2, case.spacing), {})
+                prior = materialize_sample_views(
+                    provider._build(entry, bank_root / entry, case_id, prepared=prior_context),
+                    training=False, epoch=0, global_seed=0)
+                with mock.patch("hiercp.region.build_patient_regions", side_effect=AssertionError("verified regions rebuilt")):
+                    inventory = provider.ensure_graph_cache()
+                self.assertEqual(set(inventory), {entry, second_entry})
+                self.assertEqual(provider.preparation_report["cold_entries"], 2)
+                self.assertEqual(original_regions, {p: file_sha256(p) for p in source_regions.rglob("*") if p.is_file()})
                 sample = provider.get(entry)
+                self.assertEqual(content_digest(prior), content_digest(sample))
                 self.assertEqual(actual_reader.call_count, 1)
                 self.assertEqual(actual_reader.call_args.args[0].case_id, case_id)
                 self.assertTrue(np.array_equal(sample["candidate_centers"].numpy(), centers))
@@ -110,7 +137,7 @@ class FeedbackGraphBindingDebugTests(unittest.TestCase):
                     BankGraphProvider(config=options, bank_root=bank_root, contract=contract,
                                       index=forbidden, checkpoint=metadata, prototype=prototype)
                 self.assertEqual(actual_reader.call_count, 1)
-                receipt = next(provider.cache.glob("*.json"))
+                receipt = provider.cache / (provider.store.key(entry, provider.binding) + ".json")
                 receipt.write_text(json.dumps({"sha256": "0" * 64}), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "changed immutable"):
                     provider.get(entry)

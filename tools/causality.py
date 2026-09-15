@@ -5,8 +5,12 @@ The audit preserves the candidate set and upper hierarchy while applying
 controlled interventions to the cached local graphs:
 
 * node_order: graph-isomorphic node permutation (must not change scores);
-* upper_position_noise: forbidden source/candidate coordinates are randomized
-  (must not change scores under the shortcut-safe policy);
+* upper_position_noise: unused raw source/candidate coordinate fields are randomized
+  (recipient anatomy in region features/non-source edges remains permitted);
+* source_address_noise: source provenance/address fields are randomized while
+  source biology and recipient context remain fixed (must not change scores);
+* upper_node_order: aligned L1/L2 region and population-prototype permutations;
+* upper_context: recipient region CT context is changed with topology fixed;
 * upper_clearance_noise: forbidden occupied-clearance values are randomized
   (must not change scores under the shortcut-safe policy);
 * target_context: wrong target CT/context attached to the original topology;
@@ -97,8 +101,8 @@ EMBEDDING_KEYS = (
     "target_relation",
     "fused",
 )
-REPORT_FORMAT = "hiercp_causality_v3_hash_bound"
-INPUT_FORMAT = "hiercp_causality_input_v3"
+REPORT_FORMAT = "hiercp_causality_v4_source_content_hash_bound"
+INPUT_FORMAT = "hiercp_causality_input_v4_source_content"
 PREFLIGHT_FORMAT = "hiercp_causality_preflight_v2_host_bounded"
 PREFLIGHT_IDENTITY_FORMAT = "hiercp_causality_preflight_identity_v2_host_bounded"
 TRAINING_PREFLIGHT_FORMAT = "hiercp_preflight_calibration_v2"
@@ -1017,9 +1021,12 @@ def _input_contract(
 def _strict_failures(verdict: dict[str, Any]) -> list[str]:
     checks = (
         ("permutation_invariant", "node-order invariance"),
-        ("upper_position_shortcut_blocked", "upper-position shortcut invariance"),
-        ("upper_clearance_shortcut_blocked", "upper-clearance shortcut invariance"),
-        ("shortcut_safety_supported", "shortcut-safety composite verdict"),
+        ("upper_raw_coordinate_fields_ignored", "unused raw coordinate-field invariance"),
+        ("upper_raw_clearance_fields_ignored", "unused raw clearance-field invariance"),
+        ("source_address_metadata_ignored", "source address/provenance invariance"),
+        ("upper_context_node_permutation_invariant", "aligned upper node-order invariance"),
+        ("source_address_contract_supported", "source-address contract verdict"),
+        ("upper_context_sensitive", "permitted upper-context response"),
         ("target_context_sensitive", "target-context response"),
         ("context_causality_supported", "context-causality composite verdict"),
     )
@@ -1298,6 +1305,135 @@ def _condition_upper_position_noise(
     return batch
 
 
+def _condition_source_address_noise(
+    batch: HierarchicalBatch, seed: int
+) -> HierarchicalBatch:
+    """Intervene on provenance only, not biological source/recipient descriptors.
+
+    The v4 source conditions every region, so there is no privileged host edge
+    to rewire. This is not a claim that legitimate context cannot identify anatomy.
+    """
+    source = batch.patient_batch["tumor"]
+    source.raw_x = _noise_columns(source.raw_x, UPPER_POSITION_COLUMNS, seed)
+    if "pos" in source:
+        source.pos = _noise_columns(source.pos, (0, 1, 2), seed + 13)
+    for key in ("region_index", "source_region_provenance"):
+        value = source.get(key)
+        if torch.is_tensor(value):
+            source[key] = value + 101 + int(seed) % 97
+    for index, relation in enumerate(batch.patient_batch.edge_types):
+        if "tumor" in (relation[0], relation[2]):
+            batch.patient_batch[relation].edge_attr = _noise_columns(
+                batch.patient_batch[relation].edge_attr,
+                PATIENT_POSITION_EDGE_COLUMNS, seed + 1009 * (index + 1),
+            )
+    return batch
+
+
+def _permute_node_type(graph: HeteroData, node_type: str, permutation: Tensor) -> HeteroData:
+    """Isomorphic reindexing with logical-size allocations, not backing copies."""
+    graph = copy.copy(graph)
+    count = int(graph[node_type].num_nodes)
+    if permutation.numel() != count or not torch.equal(
+        permutation.sort().values, torch.arange(count, device=permutation.device)
+    ):
+        raise ValueError("Node permutation must contain every node exactly once")
+    inverse = torch.empty_like(permutation)
+    inverse[permutation] = torch.arange(count, device=permutation.device)
+    for key, value in list(graph[node_type].items()):
+        if torch.is_tensor(value) and value.ndim and int(value.shape[0]) == count:
+            graph[node_type][key] = value[permutation]
+    for relation in graph.edge_types:
+        if node_type in (relation[0], relation[2]):
+            edge = graph[relation].edge_index
+            graph[relation].edge_index = torch.stack([
+                inverse[edge[0]] if relation[0] == node_type else edge[0],
+                inverse[edge[1]] if relation[2] == node_type else edge[1],
+            ])
+    return graph
+
+
+def _condition_upper_node_order(batch: HierarchicalBatch, seed: int) -> HierarchicalBatch:
+    patients, populations = batch.patient_batch.to_data_list(), batch.prototype_batch.to_data_list()
+    if len(patients) != len(populations):
+        raise ValueError("L1/L2 patient ownership differs")
+    for index, (patient, population) in enumerate(zip(patients, populations)):
+        regions = int(patient["region"].num_nodes)
+        if regions != int(population["region"].num_nodes):
+            raise ValueError("L1/L2 region alignment differs")
+        permutation = _seeded_perm(regions, seed + index * 101)
+        patients[index] = _permute_node_type(patient, "region", permutation)
+        population = _permute_node_type(population, "region", permutation)
+        populations[index] = _permute_node_type(
+            population, "prototype", _seeded_perm(int(population["prototype"].num_nodes), seed + 1009 + index),
+        )
+    batch.patient_batch = Batch.from_data_list(patients)
+    batch.prototype_batch = Batch.from_data_list(populations)
+    return batch
+
+
+def _condition_upper_context(batch: HierarchicalBatch, seed: int) -> HierarchicalBatch:
+    # The two bridge tables describe the same recipient regions. Preserve their
+    # correspondence and all nodes/edges while intervening on permitted CT only.
+    # Population metric edge fields are deliberately held fixed: this isolates
+    # raw node-feature dependence, not a naturally regenerated CT counterfactual.
+    reference = batch.patient_batch["region"].raw_x
+    changed = _noise_columns(reference, (6, 7), seed)
+    batch.patient_batch["region"].raw_x = changed
+    population = batch.prototype_batch["region"].raw_x.clone()
+    if population.shape[0] != changed.shape[0]:
+        raise ValueError("L1/L2 region alignment differs")
+    population[:, (6, 7)] = changed[:, (6, 7)]
+    batch.prototype_batch["region"].raw_x = population
+    return batch
+
+
+def _condition_population_metric(batch: HierarchicalBatch, seed: int) -> HierarchicalBatch:
+    """Diagnostic metric-only intervention; keep dispersion and ownership fixed.
+
+    Add the same positive displacement to distance and signed excess. Reverse
+    relations receive the same values; prototype-pair displacements are
+    symmetric. This is not a sampled physical CT or a CP-utility target.
+    """
+    from hiercp.hierarchy import PROTOTYPE_EDGE_DIMS
+    graphs = batch.prototype_batch.to_data_list()
+    forward_key = ("region", "assigned_to", "prototype")
+    reverse_key = ("prototype", "represents", "region")
+    pair_key = ("prototype", "similar_to", "prototype")
+    for index, graph in enumerate(graphs):
+        for relation, width in PROTOTYPE_EDGE_DIMS.items():
+            if graph[relation].edge_attr.shape[1] != width:
+                raise ValueError(f"Population metric intervention requires typed edge width: {relation}")
+        forward, reverse = graph[forward_key], graph[reverse_key]
+        prototype_count = int(graph["prototype"].num_nodes)
+        generator = torch.Generator(device=forward.edge_attr.device).manual_seed(seed + index * 1009)
+        values = forward.edge_attr.clone()
+        displacement = .25 + torch.rand(values.shape[0], generator=generator,
+                                         device=values.device, dtype=values.dtype)
+        values[:, 6:] = values[:, 6:] + displacement[:, None]
+        forward.edge_attr = values
+        keys = forward.edge_index[0] * prototype_count + forward.edge_index[1]
+        reverse_keys = reverse.edge_index[1] * prototype_count + reverse.edge_index[0]
+        ordered, order = keys.sort()
+        reverse_ordered, reverse_order = reverse_keys.sort()
+        if not torch.equal(ordered, reverse_ordered):
+            raise ValueError("Population assignment/reverse metric edges do not match")
+        reverse_values = reverse.edge_attr.clone()
+        reverse_values[reverse_order, 6:] = values[order, 6:]
+        reverse.edge_attr = reverse_values
+        relation = graph[pair_key]
+        pair_values = relation.edge_attr.clone()
+        low = torch.minimum(relation.edge_index[0], relation.edge_index[1])
+        high = torch.maximum(relation.edge_index[0], relation.edge_index[1])
+        unique, inverse = torch.unique(low * prototype_count + high, return_inverse=True)
+        pair_displacement = .25 + torch.rand(unique.shape[0], generator=generator,
+                                             device=values.device, dtype=values.dtype)
+        pair_values[:, 6:] = pair_values[:, 6:] + pair_displacement[inverse, None]
+        relation.edge_attr = pair_values
+    batch.prototype_batch = Batch.from_data_list(graphs)
+    return batch
+
+
 def _condition_upper_clearance_noise(
     batch: HierarchicalBatch, seed: int
 ) -> HierarchicalBatch:
@@ -1392,6 +1528,9 @@ def _condition_view1_only(batch: HierarchicalBatch, seed: int) -> HierarchicalBa
 
 
 CONDITIONS: dict[str, Callable[[HierarchicalBatch, int], HierarchicalBatch]] = {
+    "source_address_noise": _condition_source_address_noise,
+    "upper_node_order": _condition_upper_node_order,
+    "upper_context": _condition_upper_context,
     "node_order": _condition_node_order,
     "upper_position_noise": _condition_upper_position_noise,
     "upper_clearance_noise": _condition_upper_clearance_noise,
@@ -1400,6 +1539,8 @@ CONDITIONS: dict[str, Callable[[HierarchicalBatch, int], HierarchicalBatch]] = {
     "edge_attr_zero": _condition_edge_attr_zero,
     "topology_shuffle": _condition_topology,
     "view1_only": _condition_view1_only,
+    # Appended: retain every pre-existing condition_index-derived random seed.
+    "population_metric": _condition_population_metric,
 }
 
 
@@ -1860,6 +2001,9 @@ def _execute_audit(args: argparse.Namespace, progress: Any) -> None:
     upper_clearance_invariant = (
         conditions["upper_clearance_noise"]["max_abs_score_delta"] <= tolerance
     )
+    source_address_invariant = conditions["source_address_noise"]["max_abs_score_delta"] <= tolerance
+    upper_node_invariant = conditions["upper_node_order"]["max_abs_score_delta"] <= tolerance
+    upper_context_responds = conditions["upper_context"]["mean_abs_score_delta"] >= response
     target_context_responds = (
         conditions["target_context"]["mean_abs_score_delta"] >= response
     )
@@ -1882,10 +2026,14 @@ def _execute_audit(args: argparse.Namespace, progress: Any) -> None:
     )
     verdict = {
         "permutation_invariant": bool(node_invariant),
-        "upper_position_shortcut_blocked": bool(upper_position_invariant),
-        "upper_clearance_shortcut_blocked": bool(upper_clearance_invariant),
-        "shortcut_safety_supported": bool(
+        "upper_raw_coordinate_fields_ignored": bool(upper_position_invariant),
+        "upper_raw_clearance_fields_ignored": bool(upper_clearance_invariant),
+        "source_address_metadata_ignored": bool(source_address_invariant),
+        "upper_context_node_permutation_invariant": bool(upper_node_invariant),
+        "upper_context_sensitive": bool(upper_context_responds),
+        "source_address_contract_supported": bool(
             upper_position_invariant and upper_clearance_invariant
+            and source_address_invariant and upper_node_invariant
         ),
         "target_context_sensitive": bool(target_context_responds),
         "source_context_sensitive": bool(source_context_responds),
@@ -1935,6 +2083,10 @@ def _execute_audit(args: argparse.Namespace, progress: Any) -> None:
         },
         "clean": clean_metrics,
         "conditions": conditions,
+        "condition_interpretation": {
+            "upper_context": "Raw L1/L2 region CT-node features only; population edge metrics held fixed. Not a regenerated CT counterfactual.",
+            "population_metric": "Diagnostic-only distance/excess intervention with fixed dispersion, matching reverse edges and symmetric prototype pairs; no CP-utility claim or additional strict response threshold.",
+        },
         "view_overlap": overlap_summary,
         "verdict": verdict,
     }

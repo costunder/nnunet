@@ -30,7 +30,12 @@ from custom_trainers.install_onlinecp_custom_trainers import (
 
 def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
                seed=42, python_executable=None, run_root=None, experiment_name=None,
-               train_config=None, recover_from=None, upgrade_bank_from=None):
+               train_config=None, recover_from=None, upgrade_bank_from=None,
+               reuse_preprocessing_from=None, reuse_basic_from=None):
+    if reuse_basic_from is not None and (recover_from is not None or upgrade_bank_from is not None):
+        raise ValueError("Basic control reuse requires a NEW fresh experiment (optionally with preprocessing reuse), not recovery or bank upgrade")
+    if sum(value is not None for value in (recover_from, upgrade_bank_from, reuse_preprocessing_from)) > 1:
+        raise ValueError("Choose only one of preparation recovery, bank upgrade, or preprocessing-only reuse")
     if upgrade_bank_from is not None:
         if recover_from is not None:
             raise ValueError("Choose preparation recovery or bank upgrade, not both")
@@ -70,6 +75,22 @@ def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
             raise ValueError("Recovery source must belong to this checkout's work directory")
         if root == recovery_source or root.is_relative_to(recovery_source) or recovery_source.is_relative_to(root):
             raise ValueError("Recovery output must not overlap its preserved source")
+    preprocessing_source = None
+    if reuse_preprocessing_from is not None:
+        preprocessing_source = Path(reuse_preprocessing_from)
+        preprocessing_source = (project / preprocessing_source if not preprocessing_source.is_absolute() else preprocessing_source).resolve()
+        if preprocessing_source == work.resolve() or not preprocessing_source.is_relative_to(work.resolve()):
+            raise ValueError("Preprocessing source must belong to this checkout's work directory")
+        if root == preprocessing_source or root.is_relative_to(preprocessing_source) or preprocessing_source.is_relative_to(root):
+            raise ValueError("New experiment must not overlap its preserved preprocessing source")
+    basic_source = None
+    if reuse_basic_from is not None:
+        basic_source = Path(reuse_basic_from)
+        basic_source = (project / basic_source if not basic_source.is_absolute() else basic_source).resolve()
+        if basic_source == work.resolve() or not basic_source.is_relative_to(work.resolve()):
+            raise ValueError("Basic source must belong to this checkout's work directory")
+        if root == basic_source or root.is_relative_to(basic_source) or basic_source.is_relative_to(root):
+            raise ValueError("New experiment must not overlap its preserved Basic source")
     explicit_train_config = train_config is not None or recovery_source is not None
     train_config = Path(train_config) if train_config is not None else (
         root / "recovery/train_config.json" if recovery_source is not None else project / "config/train.json")
@@ -91,6 +112,9 @@ def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
     add("install_private_trainers", py, project / "custom_trainers/install_onlinecp_custom_trainers.py",
         "apply", "--nnunet-root", root / "runtime/nnunetv2")
     add("environment", py, project / "run.py", "env", "--medical-root", medical)
+    if basic_source is not None:
+        add("basic_source_preflight", py, "-m", "tools.feedback_basic_reuse",
+            "source", "--experiment-root", root)
     paired = ["--project-root", project, "--medical-root", medical,
               "--work", root / "paired", "--outer-fold", outer_fold, "--device", "cuda:0"]
     if explicit_train_config:
@@ -103,11 +127,18 @@ def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
     if explicit_train_config:
         online_args.extend(["--train-config", train_config])
     for stage in ("plan", "bank"):
-        add(stage, py, "-m", "tools.online_cp_benchmark", stage, *online_args,
-            "--device", "cuda:0", "--candidate-count", 128)
+        if stage == "plan" and preprocessing_source is not None:
+            add(stage, py, "-m", "tools.feedback_preprocessing_reuse", "--experiment-root", root,
+                "--source-root", preprocessing_source)
+        else:
+            add(stage, py, "-m", "tools.online_cp_benchmark", stage, *online_args,
+                "--device", "cuda:0", "--candidate-count", 128)
     policy = project / "config/online_cp_feedback.json"
     add("feedback_contract", py, "-m", "tools.online_cp_curriculum", *online_args,
         "--curriculum-config", policy)
+    if basic_source is not None:
+        add("basic_reuse", py, "-m", "tools.feedback_basic_reuse",
+            "certify", "--experiment-root", root)
     training = ["--bank", online_path / f"folds/fold_{outer_fold}/bank/index.json",
                 "--feedback-config", policy,
                 "--configuration", nnconfig["dataset"]["configuration"],
@@ -115,11 +146,11 @@ def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
     extra = ["--feedback-gnn-config", project / "config/online_cp_feedback_gnn.json",
              "--feedback-raw-root", raw / f"Dataset{dataset_id:03d}_LiverOnlineCP_OF{outer_fold}"]
     for dry_run in (True, False):
-        for arm in ("full", "basic"):
+        for arm in (("full",) if basic_source is not None else ("full", "basic")):
             add(("check_" if dry_run else "train_") + arm,
                 py, "-m", "tools.train_online_feedback", *training, "--arm", arm,
                 *(extra if arm == "full" else []), *( ["--dry-run"] if dry_run else []))
-    return {"project_root": project, "medical_root": medical, "run_root": root,
+    plan = {"project_root": project, "medical_root": medical, "run_root": root,
             "outer_fold": outer_fold, "dataset_id": dataset_id, "seed": seed,
             "experiment_name": relative.as_posix(), "train_config": train_config,
             "recovery_source_root": recovery_source,
@@ -130,6 +161,17 @@ def build_plan(project_root, medical_root, *, outer_fold=0, dataset_id=760,
             "scope": ("Preparation recovery into a new directory; new quality GNN, Full, then Basic. Not training-checkpoint resume or evaluation."
                       if recovery_source is not None else
                       "New experiment: quality GNN, Full, then Basic. Not downstream comparison/evaluation or resume.")}
+    if preprocessing_source is not None:
+        plan["preprocessing_source_root"] = preprocessing_source
+        plan["scope"] = ("NEW quality GNN, bank, runtime and Full/Basic results; share verified native preprocessing only. "
+                         "No old learned GNN, score bank or segmentation checkpoint import.")
+    if basic_source is not None:
+        plan["basic_source_root"] = basic_source
+        plan["scope"] = ("NEW quality GNN, bank and Full training; reuse an originally completed Basic control ONLY after "
+                         "its training provenance and ordered Basic CP inputs are verified equivalent. "
+                         "Keep its original checkpoint/bank identity; no Basic retraining or checkpoint relabelling. "
+                         "Incompatibility stops before Full training; it never silently falls back to fresh Basic training.")
+    return plan
 
 
 def validate_recovery_source(plan, source_root):
@@ -296,7 +338,7 @@ def _resume_inputs(plan):
     return _bound_files(plan["project_root"], files)
 
 
-def _load_experiment_journal(plan, source_identity):
+def _load_experiment_journal(plan, source_identity, *, allow_debug=False):
     root = plan["run_root"]
     path = root / "execution_journal.json"
     _bound_files(root, [path, root / "launch_plan.json"])
@@ -318,6 +360,8 @@ def _load_experiment_journal(plan, source_identity):
     stages = payload["stages"]
     if not isinstance(stages, list):
         raise ValueError("Malformed experiment stage history")
+    from tools.feedback_stage_execution import reconcile_history
+    reconcile_history(plan, payload, allow_debug=allow_debug)
     sequence = [item["name"] for item in plan["commands"]
                 if item["name"] not in {"install_private_trainers", "environment"}]
     preparation = {"copy_private_runtime", "install_private_trainers", "environment", "recover_preparation"}
@@ -440,7 +484,48 @@ def _stage_evidence(plan, name):
     gnn = root / f"paired/folds/fold_{fold}/gnn"
     bank = root / f"online/folds/fold_{fold}/bank"
     dataset = f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{fold}"
-    if name == "gnn-train":
+    if name == "install_private_trainers":
+        inventory = _runtime_inventory(plan["package_destination"])
+        files = [Path(plan["package_destination"]) / value for value in inventory]
+    elif name == "environment":
+        return {"format": "feedback_environment_preflight_v1", "input_files": _resume_inputs(plan)}
+    elif name == "basic_source_preflight":
+        from tools.feedback_basic_reuse import verify_source
+        verify_source(plan)
+        files = [root / "basic_reuse/source.json"]
+    elif name == "basic_reuse":
+        from tools.feedback_basic_reuse import verify_reuse
+        verify_reuse(plan)
+        files = [root / "basic_reuse/receipt.json"]
+    elif name == "split":
+        from tools import paired_benchmark as paired
+        from types import SimpleNamespace
+        outer = root / "paired/outer_splits.json"
+        profiles = root / "paired/case_profiles.csv"
+        layout = SimpleNamespace(outer_splits=outer)
+        split = paired.outer_split(layout, fold)
+        document = _read_json(outer)
+        if (document.get("fingerprint") != paired.case_fingerprint(paired.discover_cases(plan["medical_root"] / "Data"))
+                or set(split["train"]) & set(split["val"])
+                or len(split["train"]) != len(set(split["train"]))
+                or len(split["val"]) != len(set(split["val"]))):
+            raise ValueError("Fresh outer split does not match the current exact cohort")
+        if {item.case_id for item in paired.read_profiles(profiles)} != set(split["train"]) | set(split["val"]):
+            raise ValueError("Split profiles do not cover the exact cohort")
+        files = [outer, profiles]
+    elif name == "gnn-prepare":
+        from hiercp.cache import validate_cache_publication
+        from tools import online_cp_benchmark as online
+        relative = root.relative_to(plan["project_root"] / "work")
+        layout = online.make_layout(argparse.Namespace(
+            project_root=str(plan["project_root"]), medical_root=str(plan["medical_root"]),
+            paired_root=(relative / "paired").as_posix(), online_root=(relative / "online").as_posix(),
+            train_config=str(plan["train_config"])))
+        online._verified_gnn_split(layout, fold)
+        validate_cache_publication(gnn / "graphs")
+        files = [gnn / "split.json", gnn / "prototype.pt", *[gnn / "graphs" / value for value in
+                 ("config.json", "manifest.csv", "index.json", "complete.json")]]
+    elif name == "gnn-train":
         files = [gnn / value for value in ("model.pt", "model.last.pt", "model.pt.preflight.json",
                                           "causality.json", "causality.json.preflight.json")]
         state = _checkpoint_payload(gnn / "model.last.pt")
@@ -455,6 +540,10 @@ def _stage_evidence(plan, name):
         nnconfig = _read_json(plan["project_root"] / "config/nnunet.json")
         files = [pre / value for value in ("online_cp_preprocess_complete.json", "splits_final.json",
                                             "dataset.json", f"{nnconfig['dataset']['plans']}.json")]
+        if plan.get("preprocessing_source_root") is not None:
+            from tools.feedback_preprocessing_reuse import verify_reuse
+            verify_reuse(plan)
+            files.append(root / "preprocessing_reuse/receipt.json")
     elif name == "bank":
         _verify_online_artifacts(plan, name)
         files = [bank / value for value in ("index.json", "config.json", "manifest.csv", "complete.json")]
@@ -496,29 +585,96 @@ def _verify_online_artifacts(plan, name):
     from custom_trainers.onlinecp_curriculum_contract import verify_curriculum_bank_contract
     from custom_trainers.onlinecp_feedback_policy import validate_feedback_config, feedback_config_sha256
     config = validate_feedback_config(_read_json(plan["project_root"] / "config/online_cp_feedback.json"))
-    previous = os.environ.get("nnUNet_preprocessed")
-    try:
-        os.environ["nnUNet_preprocessed"] = plan["env_updates"]["nnUNet_preprocessed"]
-        return verify_curriculum_bank_contract(
-            layout.bank(plan["outer_fold"]) / "index.json", curriculum_sha256=feedback_config_sha256(config),
-            expected_candidate_count=128,
-            dataset_name=f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{plan['outer_fold']}",
-            nnunet_fold=0, contract_filename="feedback_contract.json")
-    finally:
-        if previous is None:
-            os.environ.pop("nnUNet_preprocessed", None)
+    return verify_curriculum_bank_contract(
+        layout.bank(plan["outer_fold"]) / "index.json", curriculum_sha256=feedback_config_sha256(config),
+        expected_candidate_count=128,
+        dataset_name=f"Dataset{plan['dataset_id']:03d}_LiverOnlineCP_OF{plan['outer_fold']}",
+        nnunet_fold=0, contract_filename="feedback_contract.json",
+        preprocessed_root=plan["env_updates"]["nnUNet_preprocessed"])
+
+
+def load_completed_experiment(experiment_root):
+    """Read-only bridge from verified training to prediction/evaluation.
+
+    Evaluation has its own receipt outside the training journal. Consequently
+    an interrupted prediction cannot change this stable training identity.
+    """
+    root = Path(experiment_root).absolute()
+    _bound_files(root, [root / "launch_plan.json", root / "execution_journal.json"])
+    plan = _read_json(root / "launch_plan.json")
+    path_fields = ("project_root", "medical_root", "run_root", "train_config", "package_destination",
+                   "recovery_source_root", "upgrade_source_root", "reuse_paired_root", "preprocessing_source_root",
+                   "basic_source_root")
+    for key in path_fields:
+        if plan.get(key) is not None:
+            plan[key] = Path(plan[key])
+    if (plan["run_root"].resolve() != root.resolve()
+            or plan["project_root"].resolve() != PROJECT_ROOT.resolve()
+            or not root.resolve().is_relative_to(PROJECT_ROOT.resolve() / "work")):
+        raise ValueError("Training receipt does not belong to this checkout and exact experiment root")
+    from tools.feedback_stage_execution import run_lock
+    with run_lock(root, create=False):
+        if plan.get("upgrade_source_root") is not None:
+            from tools.feedback_bank_upgrade import validate_source, load_upgrade_journal
+            journal = load_upgrade_journal(plan, validate_source(plan))
+        elif plan.get("recovery_source_root") is not None:
+            journal = _load_experiment_journal(plan, validate_recovery_source(plan, plan["recovery_source_root"]))
         else:
-            os.environ["nnUNet_preprocessed"] = previous
+            from tools.feedback_fresh_execution import load_journal
+            journal = load_journal(plan)
+        if journal["complete"] is not True:
+            raise ValueError("Training is incomplete; evaluation cannot certify partial or ongoing training")
+        identity = _verify_online_artifacts(plan, "feedback_contract")
+        checkpoints = {}
+        origin = None
+        for arm in ("basic", "full"):
+            if arm == "basic" and plan.get("basic_source_root") is not None:
+                from tools.feedback_basic_reuse import basic_origin
+                origin = basic_origin(plan)
+                checkpoints[arm] = Path(origin["checkpoint"]["path"])
+            else:
+                _stage_evidence(plan, "train_" + arm)
+                checkpoints[arm] = _training_folder(plan, arm) / "checkpoint_final.pth"
+        from tools import online_cp_benchmark as online
+        relative = root.relative_to(plan["project_root"] / "work")
+        paired = (Path(plan["reuse_paired_root"]).relative_to(plan["project_root"] / "work").as_posix()
+                  if plan.get("reuse_paired_root") else (relative / "paired").as_posix())
+        layout = online.make_layout(argparse.Namespace(
+            project_root=str(plan["project_root"]), medical_root=str(plan["medical_root"]),
+            paired_root=paired, online_root=(relative / "online").as_posix(),
+            train_config=str(plan["train_config"])))
+        validation = online.outer_split(layout, plan["outer_fold"])["val"]
+        # The verified bank already binds this small preprocessing marker. Bind
+        # its original raw-source hashes without rehashing the whole bank again.
+        marker_record = identity["files"]["preprocess_marker"]
+        marker_bytes = Path(marker_record["path"]).read_bytes()
+        if hashlib.sha256(marker_bytes).hexdigest() != marker_record["sha256"]:
+            raise ValueError("Verified preprocessing marker changed before evaluation")
+        native_input = json.loads(marker_bytes)["input_contract"]
+        raw_path = online.raw_dataset_dir(layout, plan["dataset_id"], plan["outer_fold"]) / online.RAW_MARKER_NAME
+        raw_bytes = raw_path.read_bytes()
+        raw_contract = json.loads(raw_bytes)
+        if (hashlib.sha256(raw_bytes).hexdigest() != native_input["raw_marker_sha256"]
+                or online.value_sha256(raw_contract) != native_input["raw_contract_sha256"]
+                or raw_contract["dataset_name"] != identity["dataset_name"]
+                or raw_contract["val_ids"] != validation):
+            raise ValueError("Raw input provenance differs from the trained preprocessing contract")
+        proof = {"plan": plan, "bank_identity": identity, "checkpoints": checkpoints,
+                "raw_input_contract": raw_contract,
+                "validation_case_ids": validation, "runtime_inventory": journal["runtime_inventory"],
+                "journal_sha256": _file_sha256(root / "execution_journal.json")}
+        if origin is not None:
+            proof["basic_origin"] = origin
+        return proof
 
 
 def _execute_experiment_resume(plan, identity, *, runner, env):
     root = plan["run_root"]
-    lock = root / "recovery_execution.lock"
-    lock_payload = json.dumps({"pid": os.getpid(), "token": uuid.uuid4().hex, "run_root": str(root)})
-    with lock.open("x", encoding="utf-8") as handle:
-        handle.write(lock_payload)
-    try:
-        journal = _load_experiment_journal(plan, identity)  # race-safe recheck under lock
+    from tools.feedback_stage_execution import run_lock, execute_command_stage
+    if (root / "recovery_execution.lock").exists():
+        raise ValueError("Legacy execution lock preserved; its active/interrupted owner is not implicitly adopted")
+    with run_lock(root):
+        journal = _load_experiment_journal(plan, identity, allow_debug=runner is not subprocess.run)
         history = root / "recovery/journal_history"
         if history.is_symlink():
             raise ValueError("Journal history must not be a symlink")
@@ -539,41 +695,18 @@ def _execute_experiment_resume(plan, identity, *, runner, env):
             if any(row["status"] == "completed" for row in records):
                 print(f"[VERIFIED SKIP {name}] completed artifacts unchanged", flush=True)
                 continue
-            argv = _resume_command(plan, command, previously_attempted=bool(records))
-            record = {"name": name, "status": "running", "input_files": _resume_inputs(plan),
-                      "attempt_id": uuid.uuid4().hex, "argv": argv}
-            journal["stages"].append(record)
-            journal["training_started"] = True
-            _save_journal(root, journal)
-            try:
-                print(f"\n[CONTINUE {name}] {shlex.join(argv)}", flush=True)
-                runner(argv, cwd=plan["project_root"], env=env, check=True)
-                record["completion_evidence"] = _stage_evidence(plan, name)
-            except (Exception, KeyboardInterrupt) as exc:
-                record.update(status="failed", error=f"{type(exc).__name__}: {exc}")
-                _save_journal(root, journal)
-                raise
-            record["status"] = "completed"
-            _save_journal(root, journal)
+            execute_command_stage(plan, journal, command, runner=runner, env=env,
+                                  previously_attempted=bool(records))
         journal["complete"] = True
         _save_journal(root, journal)
-    finally:
-        if lock.read_text(encoding="utf-8") != lock_payload:
-            raise RuntimeError("Recovery execution lock ownership changed; it was not removed")
-        lock.unlink()
 
 
 def _execute_recovery(plan, source, source_identity, *, runner, env, journal=None):
     root = plan["run_root"]
-    token = uuid.uuid4().hex
-    lock = root / "recovery_execution.lock"
-    lock_payload = json.dumps({"pid": os.getpid(), "token": token, "run_root": str(root)})
-    try:
-        with lock.open("x", encoding="utf-8") as handle:
-            handle.write(lock_payload)
-    except FileExistsError as exc:
-        raise FileExistsError(f"Recovery execution lock already exists: {lock}. Check whether its recorded process is still active before retrying; no process was terminated.") from exc
-    try:
+    from tools.feedback_stage_execution import run_lock, execute_command_stage
+    if (root / "recovery_execution.lock").exists():
+        raise ValueError("Legacy recovery lock is preserved; no ambiguous owner was displaced")
+    with run_lock(root):
         continuing = journal is not None
         if continuing:
             # Another launcher may have completed between preflight and lock
@@ -638,13 +771,9 @@ def _execute_recovery(plan, source, source_identity, *, runner, env, journal=Non
         stage("recover_preparation", recover)
         for command in plan["commands"]:
             if command["name"] not in {"install_private_trainers", "environment"}:
-                stage(command["name"], lambda name=command["name"]: child(name), training=True)
+                execute_command_stage(plan, journal, command, runner=runner, env=env)
         journal["complete"] = True
         _save_journal(root, journal)
-    finally:
-        if lock.read_text(encoding="utf-8") != lock_payload:
-            raise RuntimeError("Recovery execution lock ownership changed; it was not removed")
-        lock.unlink()
 
 
 def copy_nnunet_package(source, destination):
@@ -684,8 +813,6 @@ def execute_plan(plan, *, runner=None, package_root=None, resume_preparation=Fal
     recovering = plan.get("recovery_source_root") is not None
     if resume_preparation and resume_experiment:
         raise ValueError("Choose --resume-preparation or --resume-experiment, not both")
-    if resume_experiment and not recovering:
-        raise ValueError("--resume-experiment requires the original --recover-from and experiment identity")
     if resume_preparation and not recovering:
         raise ValueError("--resume-preparation requires --recover-from; it is not training resume")
     if root.is_symlink() or ((root.exists()) and not (resume_preparation or resume_experiment)):
@@ -694,6 +821,13 @@ def execute_plan(plan, *, runner=None, package_root=None, resume_preparation=Fal
         raise ValueError("Experiment output escapes this source checkout")
     source_identity = None
     journal = None
+    if resume_experiment and not recovering:
+        # Strict read-only validation; unfinished receipted attempts are
+        # reconciled only after obtaining the fresh executor's OS lock.
+        from tools.feedback_fresh_execution import FORMAT as FRESH_FORMAT
+        candidate = _read_json(root / "execution_journal.json")
+        if candidate.get("format") != FRESH_FORMAT:
+            raise ValueError("Fresh resume requires its own durable journal; legacy roots were not adopted")
     if recovering:
         recovery_source = plan["recovery_source_root"]
         if not recovery_source.is_dir() or not (recovery_source / "launch_plan.json").is_file():
@@ -709,7 +843,7 @@ def execute_plan(plan, *, runner=None, package_root=None, resume_preparation=Fal
         if resume_experiment:
             if (root / "recovery_execution.lock").exists():
                 raise FileExistsError("Experiment execution lock exists; no active or ambiguous attempt is resumed")
-            journal = _load_experiment_journal(plan, source_identity)
+            journal = _load_experiment_journal(plan, source_identity, allow_debug=runner is not subprocess.run)
     for folder in ("Data/image", "Data/labels"):
         if not (medical / folder).is_dir():
             raise FileNotFoundError(f"Required real-data directory is missing: {medical / folder}")
@@ -721,14 +855,23 @@ def execute_plan(plan, *, runner=None, package_root=None, resume_preparation=Fal
         raise RuntimeError("Insufficient free space for the configured preprocessing contract")
     source = (plan["package_destination"] if resume_experiment else
               Path(package_root).resolve() if package_root is not None else locate_nnunet_root(None))
+    if resume_experiment and not recovering and not Path(source).is_dir():
+        # A local atomic copy interrupted before publication may be retried
+        # from the byte-bound original; no incomplete package is imported.
+        source = Path(candidate["source_identity"]["native_package"])
     if not (source / "training/nnUNetTrainer").is_dir():
         raise ValueError(f"Not an nnunetv2 package: {source}")
+    if plan.get("preprocessing_source_root") is not None:
+        from tools.feedback_preprocessing_reuse import validate_reuse
+        validate_reuse(plan, native_package=source)
+    if plan.get("basic_source_root") is not None:
+        from tools.feedback_basic_reuse import inspect_source
+        inspect_source(plan, target_native_package=source)
     if not resume_experiment and (root == source or root.is_relative_to(source) or source.is_relative_to(root)):
         raise ValueError("Experiment and original nnU-Net package overlap")
     audit_sources()
     env = {**os.environ, **plan["env_updates"]}
-    if recovering:
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONPATH"] = os.pathsep.join([str(root / "runtime"), str(project), env.get("PYTHONPATH", "")])
     gpu_check = ("import torch\n"
                  "n = torch.cuda.device_count()\n"
@@ -740,15 +883,13 @@ def execute_plan(plan, *, runner=None, package_root=None, resume_preparation=Fal
         print(f"[NEW EXPERIMENT] {root}", flush=True)
         with (root / "launch_plan.json").open("x", encoding="utf-8") as handle:
             json.dump(plan, handle, default=str, indent=2)
-    if resume_experiment:
+    if resume_experiment and recovering:
         _execute_experiment_resume(plan, source_identity, runner=runner, env=env)
     elif recovering:
         _execute_recovery(plan, source, source_identity, runner=runner, env=env, journal=journal)
     else:
-        copy_nnunet_package(source, plan["package_destination"])
-        for command in plan["commands"]:
-            print(f"\n[RUN {command['name']}] {shlex.join(command['argv'])}", flush=True)
-            runner(command["argv"], cwd=project, env=env, check=True)
+        from tools.feedback_fresh_execution import execute_fresh
+        execute_fresh(plan, source, runner=runner, env=env, resume=resume_experiment)
     print(f"[TRAINING COMMANDS COMPLETED] {plan['env_updates']['nnUNet_results']}", flush=True)
     print("Downstream comparison and statistical evaluation have not been run.", flush=True)
 
@@ -761,6 +902,8 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=42, help="nnU-Net seed; quality model uses its configured fold-specific seed")
     parser.add_argument("--recover-from", help="Preserve this existing preparation and recover into a new work directory in the same checkout")
     parser.add_argument("--upgrade-bank-from", help="Preserve a stopped, pre-segmentation experiment; reuse verified quality GNN/preprocessing in a NEW bank/runtime/results root")
+    parser.add_argument("--reuse-preprocessing-from", help="New model/GNN/bank experiment sharing only content-verified nnU-Net preprocessing, never old learned checkpoints or scores")
+    parser.add_argument("--reuse-basic-from", help="Explicitly reuse an originally completed Basic control only after training/runtime and ordered full-input equivalence checks; incompatible sources stop, never silently retrain")
     outputs = parser.add_mutually_exclusive_group()
     outputs.add_argument("--run-root", help="Output path inside this checkout's work directory; relative paths start at the checkout")
     outputs.add_argument("--experiment-name", help="Relative experiment name below work (nested names supported)")
@@ -769,25 +912,42 @@ def main(argv=None):
     resume.add_argument("--resume-preparation", action="store_true", help="Reverify and continue this recovery's preparation journal only, never training checkpoints")
     resume.add_argument("--resume-experiment", action="store_true", help="Continue the same verified experiment after preparation; preserve caches and use only native checkpoint resume")
     parser.add_argument("--dry-run", action="store_true", help="Print only: no directories, copying, GPU checks or child commands")
+    parser.add_argument("--evaluate", action="store_true", help="After verified full training, run checkpoint-bound prediction and paired evaluation in a separate output root")
+    parser.add_argument("--evaluation-output", help="New evaluation output directory; defaults to this run's evaluation_feedback_v5 (requires --evaluate)")
     args = parser.parse_args(argv)
+    if args.evaluation_output and not args.evaluate:
+        raise ValueError("--evaluation-output requires --evaluate")
     plan = build_plan(PROJECT_ROOT, args.medical_root, outer_fold=args.outer_fold,
                       dataset_id=args.dataset_id, seed=args.seed, run_root=args.run_root,
                       experiment_name=args.experiment_name, train_config=args.train_config,
-                      recover_from=args.recover_from, upgrade_bank_from=args.upgrade_bank_from)
+                      recover_from=args.recover_from, upgrade_bank_from=args.upgrade_bank_from,
+                      reuse_preprocessing_from=args.reuse_preprocessing_from,
+                      reuse_basic_from=args.reuse_basic_from)
     if args.resume_preparation and args.recover_from is None:
         raise ValueError("--resume-preparation requires --recover-from")
-    if args.resume_experiment and args.recover_from is None and args.upgrade_bank_from is None:
-        raise ValueError("--resume-experiment requires the original --recover-from")
     scope = ("Continue this bank upgrade's verified journal; no GNN/preprocessing recomputation or old-checkpoint import."
              if args.resume_experiment and args.upgrade_bank_from is not None else
+             plan["scope"] + " Resume the same verified NEW experiment; recheck the original Basic proof."
+             if args.resume_experiment and args.reuse_basic_from is not None else
              "Continue this verified experiment: preserve completed preparation, quality GNN then Full/Basic; no overwrite or fresh training fallback."
              if args.resume_experiment else plan["scope"])
     print(f"[SCOPE] {scope}\n[SEEDS] {plan['seed_note']}", flush=True)
     if args.dry_run:
+        if plan.get("basic_source_root") is not None:
+            from tools.feedback_basic_reuse import inspect_source
+            native = plan["package_destination"] if args.resume_experiment else locate_nnunet_root(None)
+            inspect_source(plan, target_native_package=native)
+            print("[VERIFIED BASIC SOURCE] Original completed training checked. Full native-input/bank equivalence is still required before Full training.")
+        if plan.get("preprocessing_source_root") is not None:
+            from tools.feedback_preprocessing_reuse import validate_reuse
+            validate_reuse(plan)
         if args.upgrade_bank_from is not None:
             from tools.feedback_bank_upgrade import dry_run_upgrade
             dry_run_upgrade(plan, resume=args.resume_experiment)
             return
+        if args.resume_experiment and plan["recovery_source_root"] is None:
+            from tools.feedback_fresh_execution import load_journal
+            journal = load_journal(plan)
         if plan["recovery_source_root"] is not None:
             identity = validate_recovery_source(plan, plan["recovery_source_root"])
             if args.resume_preparation:
@@ -805,7 +965,7 @@ def main(argv=None):
             print(f"[DRY RUN ONLY] Would create {plan['run_root']} and a private nnU-Net package copy")
         for command in plan["commands"]:
             if args.resume_experiment:
-                if command["name"] in {"install_private_trainers", "environment"}:
+                if plan["recovery_source_root"] is not None and command["name"] in {"install_private_trainers", "environment"}:
                     continue
                 records = [row for row in journal["stages"] if row["name"] == command["name"]]
                 if any(row["status"] == "completed" for row in records):
@@ -813,9 +973,21 @@ def main(argv=None):
                     continue
                 command = {**command, "argv": _resume_command(plan, command, previously_attempted=bool(records))}
             print(f"[{command['name']}] {shlex.join(command['argv'])}")
+        if args.evaluate:
+            output = Path(args.evaluation_output) if args.evaluation_output else plan["run_root"] / "evaluation_feedback_v5"
+            print(f"[evaluate after training completion] {output}; separate prediction/evaluation receipts, no training-plan mutation")
         return
     try:
         execute_plan(plan, resume_preparation=args.resume_preparation, resume_experiment=args.resume_experiment)
+        if args.evaluate:
+            output = Path(args.evaluation_output) if args.evaluation_output else plan["run_root"] / "evaluation_feedback_v5"
+            env = {**os.environ, **plan["env_updates"], "PYTHONDONTWRITEBYTECODE": "1"}
+            env["PYTHONPATH"] = os.pathsep.join([str(plan["run_root"] / "runtime"), str(PROJECT_ROOT), env.get("PYTHONPATH", "")])
+            command = [plan["python_executable"], "-B", "-m", "tools.evaluate_feedback_experiment",
+                       "--experiment-root", str(plan["run_root"]), "--output-dir", str(output)]
+            if args.resume_experiment and output.exists():
+                command.append("--resume")
+            subprocess.run(command, cwd=PROJECT_ROOT, env=env, check=True)
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError):
         print(f"[FAILED] Further stages were not launched. Existing files and partial outputs are preserved: {plan['run_root']}",
               file=sys.stderr, flush=True)
@@ -823,6 +995,10 @@ def main(argv=None):
             print("Retry options: --resume-preparation is only for incomplete preparation. Once preparation completed, use the SAME original arguments plus --resume-experiment; it verifies cache/receipt/runtime and refuses ambiguous attempts or missing/incompatible training checkpoints. Do not edit the journal, delete preflight files, or use --overwrite. Partial runtime setup still requires a separate new experiment.", file=sys.stderr, flush=True)
         if plan.get("upgrade_source_root") is not None:
             print("Bank upgrade preserved its source and new partial outputs. After complete setup, the SAME upgrade arguments plus --resume-experiment reverify this new root; native bank/checkpoint guards still apply. Error/incomplete bank rows are not erased or forced reusable. Incomplete setup or running/ambiguous attempts are refused. Never delete an old bank, journal or checkpoint to pass a guard.", file=sys.stderr, flush=True)
+        if plan["recovery_source_root"] is None and plan.get("upgrade_source_root") is None:
+            print("Fresh execution has a durable stage journal. Repeat the SAME arguments plus --resume-experiment; completed artifacts are reverified, native child receipts distinguish completed work from live/ambiguous work, and missing training checkpoints never trigger a fresh restart. Preserve all attempt files.", file=sys.stderr, flush=True)
+        if plan.get("basic_source_root") is not None:
+            print("Basic reuse failure does not authorize fresh Basic training or source edits. Preserve the original checkpoint and both proof generations; inspect the reported mismatch. Removing --reuse-basic-from changes the experiment plan and requires a separate new root.", file=sys.stderr, flush=True)
         raise
 
 

@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 FORMAT = "onlinecp_curriculum_bank_contract_v1"
-ARCHITECTURE = "hiercp_conditioned_readout_v3"
+ARCHITECTURE = "hiercp_source_content_population_metric_v5"
 GEOMETRY = "level0_physical_closure_v2"
 STREAM_BYTES = 1024 * 1024  # I/O buffer bound, never a dataset/sample limit.
 
@@ -49,7 +49,32 @@ def value_sha256(value):
 
 
 def _json(path):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    def pairs(values):
+        result = {}
+        for key, value in values:
+            if key in result:
+                raise ValueError(f"Duplicate JSON key in {path}: {key}")
+            result[key] = value
+        return result
+
+    def invalid(value):
+        raise ValueError(f"Nonfinite JSON constant in {path}: {value}")
+
+    return json.loads(Path(path).read_text(encoding="utf-8"),
+                      object_pairs_hook=pairs, parse_constant=invalid)
+
+
+def read_curriculum_contract_payload(path):
+    path = Path(path)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"Contract must be an existing regular, non-symlink file: {path}")
+    before = _signature(path.stat())
+    contract = _json(path)
+    if before != _signature(path.stat()):
+        raise ValueError(f"Contract changed while reading: {path}")
+    if not isinstance(contract, dict):
+        raise ValueError("Contract payload must be a JSON object")
+    return contract
 
 
 def _ids(value, name):
@@ -209,12 +234,30 @@ def _verify_live_preprocessing(contract, live_dataset, train, val, marker):
 
 def verify_curriculum_bank_contract(bank_path, *, curriculum_sha256,
                                     expected_candidate_count, dataset_name, nnunet_fold,
-                                    contract_filename="curriculum_contract.json"):
+                                    contract_filename="curriculum_contract.json", preprocessed_root=None):
     index_path = Path(bank_path).resolve()
     if contract_filename not in {"curriculum_contract.json", "feedback_contract.json"}:
         raise ValueError("Unsupported bank contract filename")
     path = index_path.parent / contract_filename
-    contract = _json(path)
+    contract = read_curriculum_contract_payload(path)
+    return verify_curriculum_contract_payload(
+        contract, index_path, curriculum_sha256=curriculum_sha256,
+        expected_candidate_count=expected_candidate_count,
+        dataset_name=dataset_name, nnunet_fold=nnunet_fold, preprocessed_root=preprocessed_root)
+
+
+def verify_curriculum_contract_payload(contract, bank_path, *, curriculum_sha256,
+                                       expected_candidate_count, dataset_name,
+                                       nnunet_fold, preprocessed_root=None):
+    """Validate staged or published content with the same live runtime checks.
+
+    This does not publish or require a final sidecar. An explicit preprocessing
+    root lets a publisher validate without mutating process-global environment.
+    """
+    index_path = Path(bank_path).resolve()
+    if not isinstance(contract, dict):
+        raise ValueError("Contract payload must be a JSON object")
+    value_sha256(contract)  # Reject nonfinite/non-JSON staged values as well.
     expected = {"format": FORMAT, "architecture_version": ARCHITECTURE,
                 "geometry_contract": GEOMETRY, "dataset_name": dataset_name,
                 "nnunet_fold": nnunet_fold, "curriculum_sha256": curriculum_sha256,
@@ -247,7 +290,7 @@ def verify_curriculum_bank_contract(bank_path, *, curriculum_sha256,
     if (gnn_split.get("train") != gnn_train or gnn_split.get("val") != gnn_val
             or gnn_split.get("outer_validation_excluded") != val):
         raise ValueError("GNN split and contract cohorts disagree")
-    pre_root = os.environ.get("nnUNet_preprocessed")
+    pre_root = preprocessed_root if preprocessed_root is not None else os.environ.get("nnUNet_preprocessed")
     if not pre_root:
         raise ValueError("nnUNet_preprocessed is required for live split verification")
     live_dataset = Path(pre_root) / _component(dataset_name, "dataset name")

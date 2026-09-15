@@ -245,7 +245,9 @@ class FeedbackGNNDebugTests(unittest.TestCase):
 
     def test_debug_raw_center_component_binding_reconstructs_real_candidate_statistics(self):
         from hiercp.common import CasePaths
+        from hiercp.feedback_patient import PreparedFeedbackPatient
         from hiercp.schema import GraphBuildConfig
+        from scipy import ndimage as ndi
 
         with tempfile.TemporaryDirectory(prefix="hiercp_feedback_debug_") as temporary:
             root = Path(temporary)
@@ -268,8 +270,13 @@ class FeedbackGNNDebugTests(unittest.TestCase):
                 return {"candidate_centers": torch.tensor([item.center for item in candidates])}, []
             regions = SimpleNamespace(full_organ_mask=np.ones(label.shape, dtype=bool),
                                       organ_depth=np.ones(label.shape, dtype=np.float32))
-            with mock.patch("hiercp.common.load_case", return_value=case), \
-                 mock.patch("hiercp.region.load_or_build_patient_regions", return_value=regions), \
+            tumor = label == 2
+            prepared = PreparedFeedbackPatient(
+                case, ndi.label(tumor)[0], regions,
+                ndi.distance_transform_edt(~tumor, sampling=case.spacing),
+                {"format": "debug_explicit_prepared_patient"},
+            )
+            with mock.patch.object(provider, "_prepare_patient", return_value=prepared), \
                  mock.patch("hiercp.cache.build_inference_sample", side_effect=inference), \
                  mock.patch.object(provider, "_assert_sources"):
                 result = provider._build("entry", path, "debug")

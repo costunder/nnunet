@@ -170,7 +170,7 @@ class BankUpgradeDebugTests(unittest.TestCase):
                 identity = upgrade.validate_source(f.plan)
                 self.assertEqual(identity["runtime_inventory"], f.journal["runtime_inventory"])
                 launch.execute_plan(f.plan, runner=self.runner(f, calls))
-                completed = upgrade.load_upgrade_journal(f.plan, upgrade.validate_source(f.plan))
+                completed = upgrade.load_upgrade_journal(f.plan, upgrade.validate_source(f.plan), allow_debug=True)
                 self.assertTrue(completed["complete"])
             self.assertTrue(any("bank" in argv for argv, _ in calls))
             for argv, _ in calls:
@@ -398,7 +398,7 @@ class BankUpgradeDebugTests(unittest.TestCase):
                 self.assertFalse(any("plan" in argv for argv in new_calls))
                 self.assertTrue(any(path.read_bytes() == original for path in (f.plan["run_root"] / "upgrade/journal_history").iterdir()))
                 identity = upgrade.validate_source(f.plan)
-                journal = upgrade.load_upgrade_journal(f.plan, identity)
+                journal = upgrade.load_upgrade_journal(f.plan, identity, allow_debug=True)
                 self.assertTrue(journal["complete"])
                 self.assertEqual([row["status"] for row in journal["stages"] if row["name"] == "bank"], ["failed", "completed"])
                 count = len(calls)

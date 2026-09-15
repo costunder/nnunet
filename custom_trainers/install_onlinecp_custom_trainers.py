@@ -39,10 +39,10 @@ MODULES = {
         "bde202bc0060b47350724a219dfa573d946e58410d46453698bd07bb87ab6b1b"
     ),
     "onlinecp_curriculum_contract.py": (
-        "feb7afacb037811212df06516d3b80b701e492b55e0d06fc5fe4d6cfe2768346"
+        "4bcb725c896acde1d828db978d35b7d3e8219122eedb6aa9b2fc3dcf1a040493"
     ),
     "nnUNetTrainer_OnlineCPCurriculum.py": (
-        "e2df88b73261ae538c2f5210402150c676485df367c20f88f085dd9093b64c51"
+        "37936501a55fd2443e414db5083c564e556d7dee96bbf9f1e7d6d38dc98b3f77"
     ),
     "nnUNetTrainer_OnlinePairedCP.py": (
         "ec4b3934a0e05a2810dbab69a8a0f60e06754d4853aea465a3ee735b56008ed1"
@@ -57,7 +57,7 @@ MODULES = {
         "fe0d94b5d98fe376c41b8bf6eb60d8c922b9b1d6f629fe88d5fa1f1ad108982c"
     ),
     "nnUNetTrainer_OnlineCPFeedback.py": (
-        "47ef130863c97207e5cce8fdfd2e0c2da8446ac66ce1df8728d454b457ce18b9"
+        "2ed7f15acf0aad9f9bcbc161b31b3b69b234792bb34a471c15165e958a173c8c"
     ),
     "onlinecp_raw_resampling.py": (
         "49d1c06eed2d5f9ec535ab587e2789f7af7ef8c9d096c0706cc63a9292c318a2"

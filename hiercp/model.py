@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from hiercp.sample import sample_dense_features_variable
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
+from hiercp.contracts import ARCHITECTURE_VERSION, PATIENT_GRAPH_CONTRACT
+from hiercp.hierarchy import PROTOTYPE_EDGE_DIMS
 
 import torch
 from torch import Tensor, nn
@@ -43,7 +45,7 @@ from hiercp.schema import (
     PATIENT_EDGE_DIM,
     PATIENT_EDGE_TYPES,
     PATIENT_NODE_TYPES,
-    PROTOTYPE_EDGE_DIM,
+    POPULATION_METRIC_VERSION,
     PROTOTYPE_EDGE_TYPES,
     PROTOTYPE_FEATURE_DIM,
     PROTOTYPE_NODE_TYPES,
@@ -52,6 +54,12 @@ from hiercp.schema import (
     UPPER_FORBIDDEN_RAW_COLUMNS,
     PATIENT_POSITION_EDGE_COLUMNS,
     UPPER_RAW_DIM,
+    UPPER_CONTENT_COLUMNS,
+    UPPER_CONTENT_DIM,
+    LESION_CONTENT_COLUMNS,
+    LESION_CONTENT_DIM,
+    PATIENT_CONTENT_EDGE_COLUMNS,
+    PATIENT_CONTENT_EDGE_DIM,
 )
 
 
@@ -74,7 +82,7 @@ ABLATION_MODES: tuple[str, ...] = (
     "no_population",
 )
 
-MODEL_ARCHITECTURE_VERSION = "hiercp_conditioned_readout_v3"
+MODEL_ARCHITECTURE_VERSION = ARCHITECTURE_VERSION
 
 # Execution workspace, not a graph/sample limit. Every edge is processed.
 # Budget eight simultaneous FP32 edge-hidden temporaries (gathers, projection,
@@ -159,21 +167,19 @@ def _normalize_ablation_mode(value: str) -> str:
 
 
 def _mask_upper_shortcuts(raw: Tensor) -> Tensor:
-    """Remove label-only upper features while preserving the cached schema."""
+    """Pack permitted content; do not allocate weights for forbidden raw columns."""
 
     if raw.ndim != 2 or int(raw.shape[1]) != UPPER_RAW_DIM:
         raise ValueError(
             f"Expected upper raw features [N,{UPPER_RAW_DIM}], got {tuple(raw.shape)}"
         )
-    mask = raw.new_ones((UPPER_RAW_DIM,))
-    mask[list(UPPER_FORBIDDEN_RAW_COLUMNS)] = 0.0
-    return raw * mask
+    return raw[:, UPPER_CONTENT_COLUMNS]
 
 
 def _mask_tumor_spatial_edge_attr(
     edge_type: tuple[str, str, str], edge_attr: Tensor
 ) -> Tensor:
-    """Hide source-tumor coordinates from every patient-level relation."""
+    """Pack source-content relations; recipient spatial relations retain 12 fields."""
 
     if "tumor" not in (edge_type[0], edge_type[2]):
         return edge_attr
@@ -182,9 +188,21 @@ def _mask_tumor_spatial_edge_attr(
             f"Expected patient edge attributes [E,{PATIENT_EDGE_DIM}], "
             f"got {tuple(edge_attr.shape)} for {edge_type}"
         )
-    mask = edge_attr.new_ones((PATIENT_EDGE_DIM,))
-    mask[list(PATIENT_POSITION_EDGE_COLUMNS)] = 0.0
-    return edge_attr * mask
+    return edge_attr[:, PATIENT_CONTENT_EDGE_COLUMNS]
+
+
+def _require_content_graph(raw_batch: Batch, *, patient: bool) -> None:
+    """Reject old graphs before learned execution, including direct API callers."""
+    declared = getattr(raw_batch, "patient_graph_contract", None)
+    declarations = declared if isinstance(declared, (list, tuple)) else [declared]
+    expected = PATIENT_EDGE_TYPES if patient else PROTOTYPE_EDGE_TYPES
+    if (not declarations or any(value != PATIENT_GRAPH_CONTRACT for value in declarations)
+            or set(raw_batch.edge_types) != set(expected)):
+        raise ValueError(
+            "Incompatible patient_graph_contract/upper relations; legacy source-host "
+            "graphs cannot be reinterpreted as source-content graphs. Rebuild upper "
+            "graphs in a NEW workspace."
+        )
 
 
 def _group_count(channels: int) -> int:
@@ -386,7 +404,7 @@ class HeteroGATv2Block(nn.Module):
         edge_types: Sequence[tuple[str, str, str]],
         dim: int,
         heads: int,
-        edge_dim: int,
+        edge_dim: int | Mapping[tuple[str, str, str], int],
         dropout: float,
     ) -> None:
         super().__init__()
@@ -403,7 +421,7 @@ class HeteroGATv2Block(nn.Module):
                     concat=True,
                     dropout=dropout,
                     add_self_loops=False,
-                    edge_dim=edge_dim,
+                    edge_dim=(edge_dim[edge_type] if isinstance(edge_dim, Mapping) else edge_dim),
                     share_weights=False,
                 )
                 for edge_type in self.edge_types
@@ -828,12 +846,12 @@ class PatientRegionPyGEncoder(nn.Module):
         self.use_local = bool(use_local)
         local_input_dim = hidden_dim * 3 if self.use_local else 0
         self.tumor_project = nn.Sequential(
-            nn.Linear(local_input_dim + UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(local_input_dim + UPPER_CONTENT_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
         self.candidate_project = nn.Sequential(
-            nn.Linear(local_input_dim + UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(local_input_dim + UPPER_CONTENT_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
@@ -843,7 +861,7 @@ class PatientRegionPyGEncoder(nn.Module):
             nn.SiLU(inplace=True),
         )
         self.lesion_project = nn.Sequential(
-            nn.Linear(UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(LESION_CONTENT_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
@@ -859,7 +877,9 @@ class PatientRegionPyGEncoder(nn.Module):
                     edge_types=PATIENT_EDGE_TYPES,
                     dim=hidden_dim,
                     heads=heads,
-                    edge_dim=PATIENT_EDGE_DIM,
+                    edge_dim={edge_type: (PATIENT_CONTENT_EDGE_DIM
+                              if "tumor" in (edge_type[0], edge_type[2]) else PATIENT_EDGE_DIM)
+                              for edge_type in PATIENT_EDGE_TYPES},
                     dropout=dropout,
                 )
                 for _ in range(layers)
@@ -872,26 +892,34 @@ class PatientRegionPyGEncoder(nn.Module):
         local: dict[str, Tensor],
         counts: tuple[int, ...],
     ) -> dict[str, Tensor]:
-        starts: list[int] = []
-        offset = 0
-        for count in counts:
-            starts.append(offset)
-            offset += int(count)
-        if offset != int(local["fused"].shape[0]):
+        _require_content_graph(raw_batch, patient=True)
+        if any(int(count) < 1 for count in counts):
+            raise ValueError("Each source must have a nonempty complete candidate set")
+        if sum(counts) != int(local["fused"].shape[0]):
             raise ValueError("Local embedding count does not match patient candidates")
-        start_index = torch.tensor(
-            starts,
-            dtype=torch.long,
-            device=local["fused"].device,
-        )
         tumor_raw = _mask_upper_shortcuts(raw_batch["tumor"].raw_x)
         candidate_raw = _mask_upper_shortcuts(raw_batch["candidate"].raw_x)
         tumor_input = tumor_raw
         candidate_input = candidate_raw
         if self.use_local:
+            # A source has multiple independently sampled local views. Selecting
+            # the first candidate privileged the positive/order during quality
+            # training. Pool every source view with vectorized disjoint ownership;
+            # all views retain a gradient and candidate permutation is equivariant.
+            source_views = torch.cat(
+                [local["tumor"], local["source_context"], local["source_relation"]], dim=-1,
+            )
+            count_tensor = torch.as_tensor(counts, device=source_views.device, dtype=torch.long)
+            owner = torch.repeat_interleave(
+                torch.arange(len(counts), device=source_views.device), count_tensor,
+            )
+            reduction_dtype = torch.float64 if source_views.dtype == torch.float64 else torch.float32
+            source_mean = torch.zeros(
+                (len(counts), source_views.shape[1]), device=source_views.device, dtype=reduction_dtype,
+            ).index_add(0, owner, source_views.to(reduction_dtype))
+            source_mean = (source_mean / count_tensor[:, None]).to(source_views.dtype)
             tumor_input = torch.cat(
-                [local["tumor"][start_index], local["source_context"][start_index],
-                 local["source_relation"][start_index], tumor_raw], dim=-1,
+                [source_mean, tumor_raw], dim=-1,
             )
             candidate_input = torch.cat(
                 [local["fused"], local["target_context"], local["target_relation"],
@@ -901,7 +929,7 @@ class PatientRegionPyGEncoder(nn.Module):
             "tumor": self.tumor_project(tumor_input),
             "candidate": self.candidate_project(candidate_input),
             "region": self.region_project(raw_batch["region"].raw_x),
-            "lesion": self.lesion_project(raw_batch["lesion"].raw_x),
+            "lesion": self.lesion_project(raw_batch["lesion"].raw_x[:, LESION_CONTENT_COLUMNS]),
             "liver": self.liver_project(raw_batch["liver"].raw_x),
         }
         edge_attr_dict = {
@@ -913,6 +941,24 @@ class PatientRegionPyGEncoder(nn.Module):
         for block in self.blocks:
             x_dict = block(x_dict, raw_batch.edge_index_dict, edge_attr_dict)
         return x_dict
+
+
+def _require_population_metric_graph(raw_batch: Batch) -> None:
+    marker = getattr(raw_batch, "population_metric_version", None)
+    markers = marker if isinstance(marker, (list, tuple)) else [marker]
+    if not markers or any(value != POPULATION_METRIC_VERSION for value in markers):
+        raise ValueError(
+            "Population graph lacks the current absolute descriptor metric contract; "
+            "preserve legacy graphs for historical comparison and build a separately versioned cache."
+        )
+    for relation, width in PROTOTYPE_EDGE_DIMS.items():
+        if relation not in raw_batch.edge_types:
+            raise ValueError(f"Population graph is missing relation {relation}")
+        attributes = raw_batch[relation].edge_attr
+        if attributes.ndim != 2 or int(attributes.shape[1]) != width:
+            raise ValueError(f"Population relation {relation} requires exactly {width} edge fields")
+        if int(attributes.shape[0]) != int(raw_batch[relation].edge_index.shape[1]):
+            raise ValueError(f"Population relation {relation} edge/attribute counts differ")
 
 
 class PrototypePyGEncoder(nn.Module):
@@ -929,7 +975,7 @@ class PrototypePyGEncoder(nn.Module):
         self.use_patient = bool(use_patient)
         patient_input_dim = hidden_dim if self.use_patient else 0
         self.candidate_bridge = nn.Sequential(
-            nn.Linear(patient_input_dim + UPPER_RAW_DIM, hidden_dim),
+            nn.Linear(patient_input_dim + UPPER_CONTENT_DIM, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.SiLU(inplace=True),
         )
@@ -950,7 +996,7 @@ class PrototypePyGEncoder(nn.Module):
                     edge_types=PROTOTYPE_EDGE_TYPES,
                     dim=hidden_dim,
                     heads=heads,
-                    edge_dim=PROTOTYPE_EDGE_DIM,
+                    edge_dim=PROTOTYPE_EDGE_DIMS,
                     dropout=dropout,
                 )
                 for _ in range(layers)
@@ -962,6 +1008,8 @@ class PrototypePyGEncoder(nn.Module):
         raw_batch: Batch,
         patient_x: dict[str, Tensor],
     ) -> dict[str, Tensor]:
+        _require_content_graph(raw_batch, patient=False)
+        _require_population_metric_graph(raw_batch)
         candidate_input = _mask_upper_shortcuts(raw_batch["candidate"].raw_x)
         region_input = raw_batch["region"].raw_x
         if self.use_patient:
@@ -1026,7 +1074,7 @@ class FeedbackDifficultyModel(nn.Module):
     is meaningful here because absolute error, unlike rank, is supervised.
     """
 
-    architecture_version = "hiercp_observed_difficulty_v1"
+    architecture_version = "hiercp_observed_difficulty_v2_source_content"
 
     def __init__(self, quality_model: "HierarchicalPyGPlacementModel") -> None:
         super().__init__()
@@ -1140,7 +1188,7 @@ class HierarchicalPyGPlacementModel(nn.Module):
             raise ValueError("hidden_dim must be divisible by heads")
         self.hidden_dim = int(hidden_dim)
         self.ablation_mode = _normalize_ablation_mode(ablation_mode)
-        self.register_buffer("_architecture_revision", torch.tensor(3, dtype=torch.int64))
+        self.register_buffer("_architecture_revision", torch.tensor(5, dtype=torch.int64))
         self.local_encoder = LocalTumorContextPyGEncoder(
             hidden_dim=hidden_dim,
             heads=heads,
@@ -1185,7 +1233,7 @@ class HierarchicalPyGPlacementModel(nn.Module):
             "no_patient": 9,
             "no_population": 8,
         }[self.ablation_mode]
-        self.score_input_dim = hidden_dim * active_hidden_blocks + UPPER_RAW_DIM
+        self.score_input_dim = hidden_dim * active_hidden_blocks + UPPER_CONTENT_DIM
         self.score_head = nn.Sequential(
             nn.Linear(self.score_input_dim, hidden_dim * 4),
             nn.LayerNorm(hidden_dim * 4),
@@ -1209,11 +1257,11 @@ class HierarchicalPyGPlacementModel(nn.Module):
     def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
         revision = state_dict.get("_architecture_revision")
         if (not isinstance(revision, Tensor) or revision.numel() != 1
-                or int(revision.detach().cpu()) != 3):
+                or int(revision.detach().cpu()) != 5):
             raise RuntimeError(
                 f"Checkpoint architecture is not {MODEL_ARCHITECTURE_VERSION}; "
-                "legacy weights cannot be partially loaded into conditioned readouts. "
-                "Use a separately named experiment and train the new architecture."
+                "Legacy weights remain historical comparisons and cannot be relabelled or partially "
+                "loaded into the population-metric architecture. Use a separately named experiment."
             )
         return super().load_state_dict(state_dict, strict=strict, assign=assign)
 
@@ -1329,6 +1377,9 @@ class HierarchicalPyGPlacementModel(nn.Module):
         shape-only compatibility carriers, never learned projection inputs.
         """
 
+        _require_content_graph(batch.patient_batch, patient=True)
+        _require_content_graph(batch.prototype_batch, patient=False)
+        _require_population_metric_graph(batch.prototype_batch)
         mode = self.ablation_mode
         raw_candidate = _mask_upper_shortcuts(
             batch.patient_batch["candidate"].raw_x

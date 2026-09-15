@@ -4,6 +4,31 @@ This implementation is **not** the earlier expanding GNN rank band. Lower
 compatibility rank is not segmentation difficulty. Existing exact-argmax and
 rank-band results/checkpoints retain their original meaning and are not upgraded.
 
+## Population-metric v5 and historical comparisons
+
+The current upper architecture is `hiercp_source_content_population_metric_v5`.
+Region descriptors retain all 16 dimensions but use observed CT/whole-organ union
+instead of label-conditioned tumor filling. This removes the demonstrated fill
+footprint, not all potentially visible source-pathology information. K16 and the
+30-iteration prototype fit budget remain unchanged; a final nearest-center
+assignment makes support/dispersion consistent, without claiming full convergence.
+The v2 bank stores full descriptor/membership evidence for numerical revalidation.
+
+Only prototype-involving edges gain two fields: standardized descriptor distance
+and signed distance minus mean cluster dispersion (the mean of both dispersions
+for prototype pairs). Candidate-region edges remain 6D. Relative assignment
+weights and these distances are not calibrated safety/difficulty probabilities.
+The original-anchor/corruption ranking target remains a proxy; same-bank negative
+construction means its ranking scores alone do not establish independent L2 CP
+utility. `no_population` removes learned L2, not all prototype-based preprocessing.
+
+Keep old checkpoints, predictions and metrics under their original identities.
+Compare predictions using the same evaluator definition in a new output folder.
+The combined revision is a version comparison, not an isolated L2 ablation.
+`--reuse-basic-from` requires a completed original Basic, identical full native
+training data and ordered raw-CP inputs, and matched training/runtime conditions.
+It is separate from preprocessing reuse and never relabels old GNN/Full weights.
+
 ## Connected training path
 
 The current production bank uses `onlinecp_raw_target_paste_v1`: paste the raw CT
@@ -77,6 +102,13 @@ not proof of useful augmentation: real-data validation is still necessary.
 
 ## Data and resource boundaries
 
+The current v5 upper graph retains the source-content connection to all patient
+regions uniformly instead of revealing its original host region. Recipient
+anatomy is allowed; this is not a claim that all spatial/context information has
+been removed. Explicit source-address, raw-column, region/prototype permutation,
+and permitted-context-response tests are separate contracts. Old v3/v4 graphs,
+quality/difficulty weights and score banks are not relabelled as v5 artifacts.
+
 Only the verified outer-training patients may supply CP inputs, measurements or
 difficulty-GNN targets. No downstream validation loss, Dice, predictions or test
 labels enter the feedback state. The initial prototype/quality model retains its
@@ -95,7 +127,18 @@ device. This adds real graph construction, training and full-pool scoring cost;
 the implementation must log its measured memory and throughput, not claim the
 feedback is free. GNN randomness is isolated from segmentation augmentation and
 network RNG. Graph caches live in the new trainer's own result directory and are
-bound to the actual bank/raw/checkpoint identity.
+bound to the actual bank/raw/checkpoint identity. Patient preparation is shared
+across its source entries. Complete graph generations publish payload and receipt
+together, with mmap and stat/SHA witnesses on warm reads. Interrupted incomplete
+generations are preserved rather than approved as complete graph pairs.
+
+Resource admission uses the full entry inventory, not a small prefix. Update
+trials use real observed targets only; prediction trials cover the full bank.
+Largest and mixed graph batches, host/cgroup limits, worker/prefetch/pin buffers,
+optimizer/workspace bytes and resident nnU-Net memory are accounted separately.
+No invented BCE targets are used for unobserved entries. Measured quality worker
+counts are re-admitted against the feedback workload; this does not claim a new
+exhaustive feedback-worker search or measured server speedup.
 
 ## Initial online bank preparation
 
@@ -103,8 +146,10 @@ The initial immutable quality bank is distinct from the difficulty-GNN graph
 cache used during nnU-Net epochs. Its standard builder removes duplicate full
 target-graph construction; both standard and multi-pool argmax builders use
 ordered, measured CPU graph preparation and disk-backed pending scoring inputs.
-The 128 candidate centers, compatibility model, graph scale and CP rules are
-unchanged. This does not retrain or modify the stored quality model.
+These bank-builder optimizations preserve the 128 candidate centers, graph scale,
+CP rules and the already-fitted compatibility model of the same architecture
+version. This statement is not v3/v4-to-v5 compatibility: population-metric v5 trains
+a new quality GNN and creates a new score bank, as described below.
 
 See [online bank preparation and scoring](online_bank_performance.md) for phase
 logs, resource-report paths, calibration and storage costs, and the distinction
@@ -135,8 +180,13 @@ option authorizes a second process on a running experiment.
 Preparation recovery requires an experiment originally created with `--recover-from`.
 The separate `--upgrade-bank-from` workflow also supports its own verified
 `--resume-experiment` continuation, not `--resume-preparation`. These flags do not
-make an ordinary fresh, non-recovery launch resumable.
-It does not run downstream comparison/statistics. `--outer-fold`, `--dataset-id`
+retroactively make an old unjournaled launch resumable. Newly created fresh runs
+now have their own durable stage journal. Producer-written native exit receipts
+and current artifact verification allow completed stages to be skipped without
+guessing that an orphan child stopped. No checkpoint means no fresh-training fallback.
+The default ends after training; optional `--evaluate` adds checkpoint-bound native
+prediction and paired evaluation/statistics in separate generation/receipt files.
+`--outer-fold`, `--dataset-id`
 and the nnU-Net `--seed` are explicit options; GNN/bank seeds still follow their
 checked-in fold-specific configuration.
 
@@ -162,15 +212,26 @@ is explicitly placed in this new trainer's `feedback_graph_cache` subdirectory.
 Run `--help`/`--dry-run` to inspect paths before launching. All 250 nnU-Net epochs,
 CP probability 0.5, and 128 candidate centers are retained.
 
-For the failed historical `work/feedback_medical_aug` donor-resampling bank, use
-the current `--upgrade-bank-from` command in [README](../README.md), not a forced
-same-directory continuation. It verifies and retains the completed quality GNN
-and shared preprocessing while creating a new bank, private trainer runtime and
-Full/Basic result directories. Historical exact-argmax, rank-only curriculum and
+For population-metric v5, use the preprocessing-only reuse command in
+[README](../README.md). Its versioned dependency projection verifies unchanged
+labels, full nnU-Net configuration, raw cohort/split, native implementation and
+every preprocessing output. Known non-preprocessing configuration changes are
+recorded; unknown keys are not silently ignored. Only verified preprocessing is
+shared, while the full v5 quality model and a new score bank are built. Original
+GNNs, runtimes, journals and results remain intact. Historical exact-argmax, rank-only curriculum and
 legacy downstream-ablation launchers reject this typed bank before starting work;
 their old checkpoints are not converted to the new CP semantics.
 
-For an already-created `work/feedback_rawcp` upgrade stopped at the raw-case
+The source must be the original durably completed native preprocessing root
+(`work/feedback_medical_aug` in the recorded experiment), not the later bank-upgrade
+root. Packed preprocessing payloads are hard-linked; metadata and new unpacked
+arrays are separate. The supported workflow only reads shared payloads, but they
+are not filesystem-enforced immutable copies. Manual edits to a shared inode
+would affect both roots and are outside the supported workflow.
+
+The following paragraph describes the historical compatible-version disk retry,
+not permission to load old GNN artifacts in population-metric v5. For an already-created
+`work/feedback_rawcp` upgrade stopped at the raw-case
 disk-reserve preflight, repeat its original upgrade arguments with
 `--resume-experiment` after the failed process has stopped. Completed setup,
 GNN/preprocessing and audited successful bank entries are retained. An error row
@@ -189,6 +250,18 @@ checkpoint; legacy checkpoints and missing-checkpoint fresh-start fallbacks are
 rejected. A complete epoch checkpoint includes nnU-Net, the difficulty GNN and
 optimizer, measured batch policy, table, predictions/provenance, RNG and the
 last observed events. CUDA bitwise equivalence is not asserted.
+
+Complete GNN model/optimizer/RNG state is validated before native segmentation
+state is changed. If a later native restore step fails, that trainer instance is
+unusable and must not train or save a partially restored state.
+
+Evaluation v5 maximizes valid TP cardinality, then quality over valid edges only.
+Below-threshold edges cannot choose which GT lesion is recorded as detected.
+Old predictions may be independently re-evaluated in a new output folder, but
+old reports and definitions are never overwritten. The optional feedback producer
+also binds checkpoint files, the actually loaded network weights, native runtime,
+input images and output case receipts. Unreceipted partial predictions are not
+reused as certified completed cases.
 
 ## Verification scope
 

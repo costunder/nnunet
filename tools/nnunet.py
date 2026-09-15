@@ -511,6 +511,7 @@ def train_one(project: Path, p: Paths, cfg: Mapping[str, Any], condition: str, b
 
 
 def train(project: Path, p: Paths, cfg: Mapping[str, Any], folds: Sequence[int], device: str, dry: bool) -> None:
+    require_supported_offline_target("train")
     if not plan_ready(p,cfg): raise PipelineError("Preprocessing is not ready")
     install_splits(p)
     splits=load_json(p.splits_json)["splits"]
@@ -601,12 +602,23 @@ def status(p: Paths,cfg: Mapping[str,Any])->None:
     print("  evaluation:       ","ready" if (p.eval_dir/"summary.json").is_file() else "missing")
 
 
+def require_supported_offline_target(target):
+    if target in {"train", "all"}:
+        raise PipelineError(
+            "Unsupported legacy offline baseline+CP training: globally generated CP cannot prove "
+            "fold-specific validation exclusion. No preparation or baseline training was launched. "
+            "Use tools/run_feedback_experiment.py for a new fold-specific feedback experiment; "
+            "historical evaluation remains available. Existing artifacts are preserved.")
+
+
 def main()->None:
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument("target",choices=("check","prepare","plan","train","evaluate","all","status"))
     ap.add_argument("--project-root",required=True); ap.add_argument("--medical-root",required=True); ap.add_argument("--workspace",required=True); ap.add_argument("--config",required=True)
     ap.add_argument("--nnunet-root",default=None); ap.add_argument("--device",default="auto"); ap.add_argument("--folds",default=None); ap.add_argument("--materialization",choices=("symlink","hardlink","copy"),default="symlink"); ap.add_argument("--overwrite",action="store_true"); ap.add_argument("--dry-run",action="store_true")
-    a=ap.parse_args(); project=Path(a.project_root).resolve(); medical=Path(a.medical_root).resolve(); workspace=Path(a.workspace).resolve(); cfg=load_json(Path(a.config).resolve()); validate_cfg(cfg)
+    a=ap.parse_args()
+    require_supported_offline_target(a.target)
+    project=Path(a.project_root).resolve(); medical=Path(a.medical_root).resolve(); workspace=Path(a.workspace).resolve(); cfg=load_json(Path(a.config).resolve()); validate_cfg(cfg)
     p=paths_for(workspace,cfg,Path(a.nnunet_root).expanduser() if a.nnunet_root else None)
     for d in (p.root,p.raw,p.preprocessed,p.results,p.logs): d.mkdir(parents=True,exist_ok=True)
     device="cuda" if a.device in ("auto","cuda","cuda:0") or str(a.device).startswith("cuda") else a.device

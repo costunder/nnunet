@@ -186,8 +186,10 @@ class CausalityBankContractDebugTests(unittest.TestCase):
             "resource_fingerprint": {"selected_device": device, "DEBUG_historic_resources": True},
             "selected_batch_size": 2, "selected_num_workers": 2,
             "batch_trials": batches, "worker_trials": workers}
-        verdict = {key: True for key in ("permutation_invariant", "upper_position_shortcut_blocked",
-            "upper_clearance_shortcut_blocked", "shortcut_safety_supported", "target_context_sensitive",
+        verdict = {key: True for key in ("permutation_invariant", "upper_raw_coordinate_fields_ignored",
+            "upper_raw_clearance_fields_ignored", "source_address_contract_supported",
+            "source_address_metadata_ignored", "upper_context_node_permutation_invariant",
+            "upper_context_sensitive", "target_context_sensitive",
             "context_causality_supported", "spatial_edge_sensitive", "topology_sensitive")}
         self.report = {"format": causality.REPORT_FORMAT, "debug_metadata_fixture": True,
             "status": "complete", "strict_pass": True, "checkpoint": str(self.checkpoint_path),

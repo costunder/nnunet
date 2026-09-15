@@ -41,7 +41,9 @@ from scipy import ndimage as ndi
 from scipy.optimize import linear_sum_assignment
 from scipy.stats import wilcoxon
 
-VERSION = "online_basic_hiercp_evaluation_v4"
+VERSION = "online_basic_hiercp_evaluation_v5"
+MATCHING_OBJECTIVE = "maximum_valid_cardinality_then_valid_quality_v1"
+MATCHING_TIE_POLICY = "equal_cardinality_equal_quality_matchings_may_be_nonunique; no_size_preference_or_epsilon"
 DEFAULT_DATASET_ID = 730
 DEFAULT_PAIRED_ROOT = "paired_basic_vs_hiercp"
 DEFAULT_ONLINE_ROOT = "online_basic_vs_hiercp"
@@ -393,7 +395,10 @@ def match_components(matrices: PairMatrices, criterion: Criterion) -> Match:
         # Prioritize the number of valid one-to-one detections, then pair quality.
         # The validity bonus is greater than any possible sum of normalized scores.
         bonus = float(min(matrices.num_gt, matrices.num_pred) + 1)
-        objective = valid.astype(np.float64) * bonus + np.clip(score, 0.0, 1.0)
+        # Invalid pairs must contribute no secondary quality, since those pairs
+        # are discarded below. Exact ties can have multiple optimal assignments;
+        # do not introduce an epsilon that reverses a real quality difference.
+        objective = valid.astype(np.float64) * bonus + np.where(valid, np.clip(score, 0.0, 1.0), 0.0)
         rows, columns = linear_sum_assignment(-objective)
         pairs = [
             (int(row), int(column))
@@ -989,13 +994,17 @@ def evaluate(args: argparse.Namespace) -> Path:
         nn_cfg,
         args.hier_trainer,
     )
+    if getattr(args, "basic_validation", None) is not None:
+        basic_validation = Path(args.basic_validation).expanduser().absolute()
+    if getattr(args, "hier_validation", None) is not None:
+        hier_validation = Path(args.hier_validation).expanduser().absolute()
     for folder in (basic_validation, hier_validation):
         if not folder.is_dir():
             raise EvaluationError(f"Validation prediction folder missing: {folder}")
 
     output = (
         Path(args.output).expanduser().absolute() if args.output
-        else online / "folds" / f"fold_{args.outer_fold}" / "evaluation_v2"
+        else online / "folds" / f"fold_{args.outer_fold}" / "evaluation_v5"
     )
     if output.exists() or output.is_symlink():
         raise EvaluationError(f"Refusing existing evaluation output: {output}. Choose a NEW --output path.")
@@ -1021,6 +1030,8 @@ def evaluate(args: argparse.Namespace) -> Path:
             "plans": nn_cfg["dataset"]["plans"], "configuration": nn_cfg["dataset"]["configuration"],
             "tumor_label": tumor_label, "size_bins_mm": bins, "connectivity": 26,
             "matching": "one-to-one threshold-valid Hungarian; lesion quality maximizes Dice",
+            "matching_objective": MATCHING_OBJECTIVE,
+            "matching_tie_policy": MATCHING_TIE_POLICY,
             "criteria": [{"name": c.name, "metric": c.metric, "threshold": c.threshold,
                           "legacy": c.legacy} for c in CRITERIA],
             "bootstrap_iterations": args.bootstrap_iterations,
@@ -1533,6 +1544,8 @@ def evaluate(args: argparse.Namespace) -> Path:
 
     summary = {
         "version": VERSION,
+        "matching_objective": MATCHING_OBJECTIVE,
+        "matching_tie_policy": MATCHING_TIE_POLICY,
         "evaluation_contract": evaluation_contract,
         "source_files": source_hashes,
         "legacy_metrics": legacy_for_regression,
@@ -1724,6 +1737,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--dataset-id", type=int, default=DEFAULT_DATASET_ID)
     value.add_argument("--basic-trainer", default=DEFAULT_BASIC_TRAINER)
     value.add_argument("--hier-trainer", default=DEFAULT_HIER_TRAINER)
+    value.add_argument("--basic-validation", help="Explicit prediction directory; exact full outer-val inventory is required")
+    value.add_argument("--hier-validation", help="Explicit prediction directory; exact full outer-val inventory is required")
     value.add_argument("--tumor-label", type=int, default=2)
     value.add_argument("--size-bins", type=float, nargs=2, default=(10.0, 20.0))
     value.add_argument("--bootstrap-iterations", type=int, default=20000)

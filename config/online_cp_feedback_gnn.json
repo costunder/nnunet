@@ -1,4 +1,5 @@
 {
+  "graph_cache_minimum_free_bytes": 85899345920,
   "format": "hiercp_feedback_gnn_config_v1",
   "enabled": true,
   "seed": 42073,

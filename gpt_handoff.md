@@ -1,9 +1,99 @@
 # HierCP GPT handoff
 
-작성일: 2026-09-12 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
-`source_commit` 및 `Tree`를 따른다. raw CP → nnU-Net 전처리의 후보 위치별 표현과
-trainer 연결 및 과거 실패 로그 호환성 수정에 이어, 최신 변경은 bank의
-**저장 전 디스크 사전검사 실패에 한정한 증거 기반 재시도**다.
+작성일: 2026-09-13 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+`Source manifest`를 따른다. 최신 변경은 **source-content / population-metric v5**다.
+이전 v4의 785개 중 780개 통과·5개 skip 기록은 과거 검사이며, v5나 Basic 재사용
+기능의 검증 결과로 인용하면 안 된다. 현재 변경은 아래 별도의 v5 검사 결과를 따른다.
+의료 데이터 전체 학습, GPU 전체 학습, 서버 결과 재평가는 실행하지 않았다.
+배포 명령 갱신: 2026-09-15 KST, 사용자가 현재 할당받았다고 명시한 물리 GPU는 5번이다.
+Git 배포 여부는 실제 원격 `origin/main`으로 확인하며 로컬 검사·문서 생성과 구분한다.
+
+## 현재 working tree 검증 — 2026-09-13
+
+- 전체 `unittest discover -s tests -p 'test*.py' -v`: **873개 중 868개 통과,
+  5개 skip, 실패/오류 0개**, 454.604초. skip은 Windows 심볼릭 링크 권한 관련 4개와
+  별도 opt-in production-sized DEBUG smoke 1개다. 축소 테스트는 DEBUG이며 최종 학습이 아니다.
+- 로컬 로그: `work/debug_v5_full_035e6fbe23464145832d75d3d301fa2b/unittest.log`.
+  의료 데이터와 마찬가지로 실행 로그 자체는 `code.txt` 전달물에 넣지 않는다.
+- Python 165개 Python 3.10 AST, 설정 JSON 5개와 중복 key 검사, trainer/helper 10개의
+  실제 소스·installer·`SHA256SUMS` 대조 통과. `tools.audit`와 `git diff --check`도 통과했다.
+  audit의 오래된 `val_margin` 문자열 검사를 현재 margin 계산·선택 연결 검사로 보정했다.
+  추가 DEBUG 검사 3개에서 margin tie-break와 누락/비유한 값 거절을 확인했다.
+- 기존 모델·raw CP·feedback·재개·평가 검사와 새 population metric, 최종 K-means 소속,
+  관측 CT, 중단 후 비파괴 publication, Basic 재사용 provenance 검사를 함께 실행했다.
+  초기 scoped 검사에서 발견한 테스트 호출 인자/예외 문구 불일치는 수정 후 전체 검사에 포함했다.
+- 로컬 환경: PyTorch 2.6.0+cpu, PyG 2.6.1, CPU affinity 16, 물리 RAM 약 17.62 GiB,
+  전체 검사 시작 전 사용 가능 RAM 약 3.69 GiB. 동시에 무거운 Python 검사를 실행하지 않았다.
+  합성 1,499,368-edge 실제 attention DEBUG는 전 간선과 gradient를 유지했으며,
+  forward+backward 0.708초, 해당 시점 process peak working set 1,025,908,736 bytes였다.
+  이 검사의 C4/2-head 설정은 production H128 모델이나 서버 처리량의 검증이 아니다.
+- 구현·정적 검사·CPU 회귀/DEBUG 검증과 **의료 데이터 전체 학습·GPU 자원 측정·최종 평가**는
+  구분한다. 후자는 미실행이며, 실제 서버 Basic 재사용 가능 여부도 아직 승인하지 않았다.
+
+## 최신 L2 변경과 과거 결과의 의미
+
+- architecture는 `hiercp_source_content_population_metric_v5`, patient graph는
+  `patient_source_content_population_v2`, upper policy는
+  `source_content_observed_ct_population_v4`다. 기존 graph/checkpoint의 버전 문자열만
+  바꾸어 새 결과로 승인하지 않는다.
+- K-means는 기존 K16·최대 30회 중심 갱신을 유지한다. 마지막 중심으로 최종 소속을
+  재계산하고 그 소속으로 support/dispersion을 만든다. 최종 소속 일치와 완전한 Lloyd
+  수렴은 다르며, 반복 수·종료 사유·최종 재할당 및 중심 잔차를 별도로 기록한다.
+- prototype bank v2는 전체 training region descriptor·case별 행 수·최종 label/count와
+  fit 계약을 보존한다. load/build/save에서 재검산하되 매 candidate assignment마다
+  전체 fit 검사를 반복하지 않는다. support는 환자 유병률이 아니라 region 표본 비율이다.
+- 관측 CT와 whole-organ union으로 region CT 평균·표준편차를 계산한다. 종양 annotation
+  영역을 평균값으로 치환하지 않는다. 이는 치환 footprint 제거이지, 실제 CT에 보이는
+  병변이나 모든 source-anchor 단서가 제거됐다는 증명이 아니다. 16D 특징은 유지한다.
+- candidate↔region 간선은 6D, prototype 관련 간선은 기존 6D에 표준화 descriptor 거리와
+  `거리 - 군집 평균 중심거리`를 더한 8D다. prototype↔prototype은 두 군집 dispersion의
+  평균을 참조한다. 상대 top-2 weight나 signed excess를 calibrated confidence, 의학적
+  적합성 보증 또는 nnU-Net difficulty라고 해석하지 않는다.
+- 원본 CT·라벨, split, 조건이 동일한 native 전처리는 보존·검증 재사용한다. 이번에 의미가
+  바뀐 region descriptor·population bank·상위 graph·GNN은 새 workspace에서 만든다.
+- `--reuse-basic-from`은 명시한 완료 Basic의 원래 checkpoint/bank/runtime/history를 보존한다.
+  새 Full 전에 전체 CP 입력·128 후보 순서·native data/seg/properties/plans/split 및 훈련
+  조건 동등성을 검사한다. bank 동등성만으로 checkpoint 재사용을 승인하지 않으며,
+  검증 실패 시 Basic 재학습을 몰래 시작하지 않는다. 실제 서버 Basic 재사용 승인은 미실행이다.
+- `python -B -m tools.audit_population_bank --prototype-bank <기존_bank.pt>`는 읽기 전용이다.
+  구형 v1의 구조 검사와 원래 descriptor 부재에 따른 membership 미검증을 구분한다.
+  이 감사만으로 outer/inner cohort 독립성이나 checkpoint 재사용 권한이 증명되지 않는다.
+
+기존 학습 결과는 삭제 대상이 아니라 **이전 설계의 비교·진단 자료**다. 같은 사례·평가 정의로
+별도 폴더에서 재평가하고 원래 모델/코드/seed/split/CP 조건을 함께 남긴다. 여러 변경을 함께
+적용한 v5 차이를 L2 단독 기여로 주장하면 안 된다. 개발에 사용한 결과는 탐색적 결과로
+구분하고, 좋지 않은 결과도 선택적으로 숨기지 않는다.
+
+Quality GNN의 target은 여전히 원래 anchor와 설계된 negative/corruption을 구별하는 proxy다.
+같은 prototype가 negative 구분에도 사용되므로 ranking accuracy/MRR만으로 L2의 실제 CP
+효용을 증명하지 못한다. `no_population`은 학습되는 L2 제거이지 prototype를 활용하는 모든
+전처리·negative 생성의 제거가 아니다. 별도 Difficulty GNN의 실제 segmentation 오차 관측과
+Quality의 의미적 compatibility, 최종 downstream 개선은 서로 구분해야 한다.
+
+## 앞서 반영한 source-content v4 수정의 경계
+
+- L1의 실제 source-host 연결을 없애고 source 내용을 모든 24개 region에 같은
+  규칙으로 전달한다. recipient 해부학적 문맥은 허용한다. 모든 위치 정보를
+  없앴다는 뜻이 아니며, 고정된 생물학적 입력에서 source 주소 bookkeeping이
+  점수에 전달되지 않는 계약이다. canonical graph와 checkpoint는 새 버전을 요구한다.
+- 상수 0으로 마스킹되던 입력 열은 학습 projection에서 제외하되 H128/4 heads,
+  3/2/2 blocks, 전체 graph/128 후보/40·250 epochs는 보존한다.
+- 계약은 staging 검증 후 no-clobber 발행하며 같은 완성 계약은 전수 검증 후 재사용한다.
+  feedback graph cache는 payload/receipt를 묶은 새 generation으로 발행한다.
+- feedback은 환자 준비 결과를 공유하고 graph mmap/witness를 사용한다. 실제 관측만
+  update target으로 사용하며, update와 전체 bank prediction의 largest/mixed batch 및
+  host/cgroup/prefetch/optimizer/VRAM 예산을 구분한다. 서버 처리량 개선은 아직 미측정이다.
+- 새 fresh run도 stage journal과 native child 종료 receipt로 재개한다. 불명확한
+  실행을 중복 시작하거나 checkpoint 없는 학습을 새 학습으로 바꾸지 않는다.
+  GNN state를 native segmentation state 변경 전에 검증하며, 복원 중 실패한 trainer는
+  계속 사용할 수 없게 잠근다.
+- 평가 v5는 유효 matching edge에만 secondary score를 적용한다. `--evaluate`는
+  학습 완료 후 checkpoint에 결합된 새 예측 generation과 paired 평가를 생성한다.
+  기존 결과를 덮어쓰거나 과거 metric을 새 정의로 재표기하지 않는다.
+- `--reuse-preprocessing-from`은 **새 GNN/model/bank 실험**에서 확인된 native 전처리만
+  공유한다. 원본·신규 설정 차이를 의존성별로 기록한다. old GNN/optimizer/placement
+  score나 old graph 전체를 v4로 승격하지 않는다. 기존 raw bank 배열을 임의로 새 bank에
+  연결하는 우회도 없다.
 
 ## 1. 전달물과 읽는 방법
 
@@ -101,7 +191,8 @@ raw XYZ `[0.705078125,0.705078125,0.699999988079071]`, target reader-grid
 ## 4. 모델과 두 GNN의 역할
 
 활성 계약은 `full_v22`, `level0_physical_closure_v2`,
-`hiercp_conditioned_readout_v3`이다. 실제 설정은 `config/train.json`과
+`hiercp_source_content_population_metric_v5`, `patient_source_content_population_v2`,
+`source_content_observed_ct_population_v4`이다. 실제 설정은 `config/train.json`과
 기존 실험의 `recovery/train_config.json`을 함께 확인한다.
 
 - **L0 — local:** 종양 표면·내부, source/target 실질 context, 간 표면 anchor의
@@ -110,7 +201,9 @@ raw XYZ `[0.705078125,0.705078125,0.699999988079071]`, target reader-grid
   유지되며 자원 제한 초과를 조용한 잘림으로 처리하지 않는다.
 - **L1 — patient:** source tumor, 후보, 간 region, 다른 병변, whole-liver 관계.
   최종 region/lesion/liver 상태가 candidate-conditioned readout에 연결된다.
-  source 위치 shortcut은 해당 계약에서 차단한다.
+  원래 source region을 가리키는 privileged host edge는 사용하지 않는다.
+  source address/raw-column/permutation/context-response 검사를 구분하며,
+  실제 학습 모델의 shortcut 활용 여부나 실제 환자 누수까지 입증했다고 하지 않는다.
 - **L2 — population:** training-only **간 context** prototype clustering과
   source/patient/local 조건부 readout이다. 암 종류를 클러스터링하는 분류기가 아니다.
   건강한 위치가 비슷해 보인다고 양성 정답을 만들어 넣지 않는다. 후보의 기하학적
@@ -221,13 +314,16 @@ verified preparation + private nnU-Net runtime
   -> feedback contract + arm dry-run checks
   -> Full feedback nnU-Net
   -> Basic control nnU-Net
+  -> optional --evaluate: checkpoint-bound prediction -> paired evaluation v5
 ```
 
 검증된 완료 단계는 재사용하고, 미완료 단계는 계약이 허용할 때만 이어간다.
-이 runner는 downstream prediction·평가·통계 분석까지 수행하지 않는다.
+기본 실행은 학습에서 끝난다. `--evaluate`를 명시하면 별도 receipt/output으로
+downstream prediction·평가·통계를 연결한다. 학습 journal identity는 바꾸지 않는다.
 bank 단계 시작은 기존 GNN이나 전처리를 처음부터 지웠다는 뜻이 아니다.
 
-새 `--upgrade-bank-from` 경로는 위의 기존 recovery 재학습 경로와 별개다.
+`--upgrade-bank-from`은 호환되는 같은 모델의 bank 표현 변경 경로다.
+아래 설명은 이 경로의 원칙이며 old v3/v4 모델을 현 v5로 승격하는 명령이 아니다.
 검증된 기존 paired GNN/cache/prototype/causality는 원래 경로로 참조하고,
 공통 raw/preprocessed 결과는 원본을 보존하는 새 data view로 재사용한다.
 native unpack이 원본 preprocessed 폴더에 새 파일을 쓰지 않도록 새 root에서 수행한다.
@@ -267,7 +363,39 @@ zero-support 수와 measured CPU 준비 자원을 구분해 기록한다.
 기존 exact-argmax/ArgmaxV3/rank-only curriculum/downstream ablation은 이 새 typed bank를
 학습/재채점 전에 거절한다. 새 실행은 Full/Basic feedback runner를 사용한다.
 
-## 7. 검증된 범위와 과거 성능 결과
+## 7. 검증 범위와 과거 성능 결과
+
+아래 v4 검사는 2026-09-12의 과거 기록이다. 현재 v5/Basic 재사용 검증 상태는 이 문서
+첫 부분과 구분한다. 어떤 CPU 회귀 결과도 실제 의료 데이터 전체 파이프라인 검증이나
+임상 효과 입증으로 표현하지 않으며, 서로 중복된 검사 수를 합산하지 않는다.
+
+- 2026-09-12 source-content v4 최종 working tree: 전체
+  `python -B -m unittest discover -s tests -p 'test*.py' -q`
+  **785개 중 780개 통과·5개 skip·실패/오류 0**, 234.000초, 종료 코드 0.
+  skip은 Windows symlink 권한 제약 4개와 별도 opt-in 대규모 production smoke 1개다.
+  이 전체 회귀 후 문서 exporter의 EOF 빈 줄만 정리했고, 해당 exporter DEBUG 5개를
+  다시 실행해 모두 통과했다. 이는 당시 기록이며 이후 v5/Basic 재사용 변경은
+  이 과거 검사에 포함되지 않는다.
+  모델/causality 21개, 전처리 공유 14개, feedback graph/resources 25개,
+  발행/평가 연결 42개, native trainer 연결 23개, 실행/재개 58개,
+  실행 잠금/인자 bridge 15개와 export 5개 집중 검사는 이 전체 검사와 중복되므로
+  독립 표본이나 별도 전체 실행으로 합산하지 않는다.
+- Python **153개**의 Python 3.10 AST, JSON **5개**의 중복 key/비표준 숫자 검사,
+  trainer **10개**의 실제 SHA와 installer/SHA256SUMS 일치, `git diff --check` 통과.
+  로컬 CPU 16 logical cores, RAM 18,918,256,640 bytes, 마지막 정적 검사 시 available
+  2,995,515,392 bytes를 확인했다. PyTorch 2.6.0+cpu / PyG 2.6.1 환경이며 CUDA는 없다.
+  `nnUNet_n_proc_DA=2`와 임시 matplotlib cache는 로컬 DEBUG 프로세스에만 적용했다.
+- 실제 소형 NPZ/B2ND/NIfTI I/O, native Python child 종료 증거, torch 모델/SGD/Adam/RNG
+  상태 검증, 중단·재시도·원본 보존, full128 logit/gradient 비교를 실행했다.
+  평가 producer 테스트의 `cohort=2`, `parameters=3`은 명시적인 DEBUG predictor 대역이다.
+  실제 전체 nnU-Net forward/학습을 했다는 뜻이 아니며 production 모델 설정은 그대로다.
+- 실제 `feedback_medical_aug` source 자격 preflight, 전체 의료 cohort bank 생성,
+  40-epoch quality GNN, 250-epoch Full/Basic nnU-Net, native 전체 epoch/checkpoint 재개,
+  GPU 자원/처리량, NFS 잠금 동작, 실제 예측/전체 paired 평가·통계는 **미실행/미검증**이다.
+  실제 서버의 보존된 source 설정·native 산출물·원본 SHA·실행 상태가 맞는지는 서버에서
+  검사해야 한다. CPU DEBUG 성공을 학습 성능 향상·모든 shortcut 차단으로 확대하지 않는다.
+
+다음 날짜별 기록은 변경 전 revision의 역사적 결과다.
 
 - 2026-09-12 디스크 재개 수정: 전체 `python -B -m unittest discover -s tests -p 'test*.py' -q`
   **680개 중 677개 통과, 3개 건너뜀, 실패 0**, 231.251초, 종료 코드 0.
@@ -346,32 +474,42 @@ L2가 무효라는 결론이나 자동 제거 승인은 아니다.
 검증된 bank/GNN/preprocessing은 보존한다. 오류가 있으면 해당 실패 경로를 고치고
 명시적인 검증 후 이어가며, journal/lock/manifest를 지워 통과시키지 않는다.
 
-아래는 **`feedback_rawcp`의 실패 프로세스가 종료되어 있고, GNN/공통 전처리와
-새 실험의 setup이 완료되어 검증 가능한 경우**, 기존 raw-target 실험을 재개하는 명령이다.
+아래는 기존 작업이 실행 중이지 않음을 확인한 뒤, **원래 native 전처리가 완료된
+`feedback_medical_aug`에서 전처리만 공유하는 새 v5 실험**의 명령 형식이다.
+bank-upgrade 파생 root인 `feedback_rawcp`는 이 전처리 원본을 대체하지 않는다.
+현재 검증 상태는 문서 첫 부분을 따른다. 아래 명령은 서버 checkout을 `git pull --ff-only`로
+갱신한 뒤 실행하며, 실제 source 자격과 현재 디스크/GPU 할당은 첫 preflight에서 확인한다.
+기존 GNN·bank·segmentation checkpoint를 새 버전으로 재표기하거나 이어 학습하지 않는다.
 실행 중인 프로세스를 중단하라는 지시가 아니다.
-변경 전 `feedback_medical_aug`에 새 trainer를 덮어씌워 resume하는 명령이 아니다.
-현재 할당 GPU 번호만 입력한다. 예전 GPU 번호를 재사용한다고 가정하지 않는다.
+아래 GPU 5번은 2026-09-15 사용자 할당에 따른 것이다. 할당이 바뀌면 해당 번호도 바꿔야 한다.
+프로세스에는 이 GPU 한 개만 보이며 내부 `cuda:0`은 물리 GPU 5번을 가리킨다.
 
 ```bash
 conda activate /home/aicompetition06/.conda/envs/nnunet &&
 cd /home/aicompetition06/Medical/HierCP-git &&
 git pull --ff-only &&
-read -r -p "현재 할당받은 GPU 번호: " CP_GPU &&
-test -n "$CP_GPU" &&
-env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
+env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES=5 \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
-  --upgrade-bank-from work/feedback_medical_aug \
-  --experiment-name feedback_rawcp \
+  --reuse-preprocessing-from work/feedback_medical_aug \
+  --experiment-name feedback_population_v5 \
   --medical-root /home/aicompetition06/Medical \
   --outer-fold 0 \
   --dataset-id 760 \
   --seed 42 \
-  --resume-experiment
+  --evaluate
 ```
 
-현재 `feedback_rawcp`는 bank 파일이 이미 생성된 실험이므로 `--resume-experiment`를 쓴다.
-이전 source-history 검증 실패처럼 root 생성 전 멈춘 상황과 혼동하지 않는다.
-실제로 새 root가 없는 최초 생성에만 이 재개 플래그를 빼며, 기존 root를 삭제해 새로 시작하지 않는다.
+완료된 raw-target Basic 원본이 별도로 확인된 경우에만
+`--reuse-basic-from work/<완료_Basic_실험>`을 추가할 수 있다. 이 옵션은 원래 checkpoint와
+전체 CP/native 입력·학습 이력 검증을 요구하며, 현재 서버의 어떤 Basic도 이 문서만으로
+재사용 승인된 것은 아니다. 구형 legacy CP 결과는 자동으로 이 조건을 만족하지 않는다.
+
+새 v5 root의 지원되는 중단 경계에서는 위와 **동일한 인자에 `--resume-experiment`만
+추가**한다. 미완료나 출처 불명 파일을 자동 승인하는 옵션이 아니며, 기존 root를 삭제해서
+새로 시작하지 않는다. 준비 단계 또는 native 종료 증거가 불명확하면 보존 후 거절한다.
+공유되는 packed 전처리는 hard link이며, 메타데이터와 새 unpack 배열은 분리된다.
+파일시스템 강제 read-only 복사본은 아니므로 공유 inode를 수작업 변경하면 양쪽에 영향을 준다.
+지원되는 실행 경로는 공유 payload를 읽기만 하며 덮어쓰기·재전처리를 수행하지 않는다.
 원본 `feedback_medical_aug` journal은 수정하지 않는다. 기존 `--recover-from` 기반
 실험의 `--resume-preparation`/`--resume-experiment` 경로도 남아 있지만 새 bank 표현으로
 구버전 runtime을 바꾸는 수단이 아니다. `--overwrite`나 journal 수작업 삭제로 우회하지 않는다.

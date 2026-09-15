@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import random
 import time
+import uuid
 from typing import Any, Mapping
 
 import numpy as np
@@ -27,8 +28,12 @@ from torch.utils.data import DataLoader, Dataset
 from custom_trainers.onlinecp_curriculum_contract import file_sha256, value_sha256
 from hiercp.data import collate_samples
 from hiercp.model import FeedbackDifficultyModel, HierarchicalPyGPlacementModel
+from hiercp.feedback_resources import (EXECUTION_VERSION, allocation_guard, calibration_batches,
+                                      content_digest, missing_optimizer_bytes, require_allocation,
+                                      sample_inventory, snapshot_guard, tensor_bytes, validate_inventory)
+from hiercp.feedback_storage import FeedbackGraphStore
 
-FORMAT = "hiercp_feedback_gnn_state_v1"
+FORMAT = "hiercp_feedback_gnn_state_v2"
 MEASUREMENT = "onlinecp_surviving_lesion_feedback_v1"
 
 
@@ -138,18 +143,21 @@ class BankGraphProvider:
 
     This supports the verified single-pool online bank only. Multi-pool argmax
     banks are rejected instead of flattening away the original graph context.
-    Cold graph construction runs in DataLoader workers; no voxel from held-out
-    patients is loaded, even though their IDs appear in the split marker.
+    Cold graphs are committed by measured patient-parallel preparation before
+    loading batches. No voxel from held-out patients is loaded.
     """
 
     def __init__(self, *, config, bank_root, contract, index, checkpoint, prototype):
         from hiercp.schema import graph_config_from_dict
+        from hiercp.contracts import PATIENT_GRAPH_CONTRACT
         from tools.online_cp_benchmark import RAW_MARKER_NAME
 
         self.root = Path(bank_root).resolve(strict=True)
         self.contract = copy.deepcopy(contract)
         self.index = copy.deepcopy(index)
         self.prototype = prototype
+        if checkpoint["graph_config"].get("patient_graph_contract") != PATIENT_GRAPH_CONTRACT:
+            raise ValueError("Feedback graph requires explicit current patient source-content semantics; legacy host graphs cannot be reused")
         self.graph_config = graph_config_from_dict(checkpoint["graph_config"])
         self.ct_clip = tuple(checkpoint["ct_clip"])
         self.train = _json(contract["files"]["train_config"]["path"])
@@ -180,15 +188,22 @@ class BankGraphProvider:
             raise ValueError("Feedback bank entry/cohort inventory differs from its contract")
         self.counts = {entry: int(index["candidate_count"]) for entry in self.entry_cases}
         code = {name: file_sha256(Path(__file__).with_name(name)) for name in
-                ("feedback.py", "model.py", "local.py", "hierarchy.py", "sample.py", "schema.py",
+                ("local.py", "hierarchy.py", "sample.py", "schema.py", "spatial.py",
                  "region.py", "common.py", "curriculum.py", "cache.py")}
-        self.binding = {"format": "hiercp_feedback_graph_binding_v1",
+        self.binding = {"format": "hiercp_feedback_graph_binding_v2",
+                        "builder_contract": "exact_bank_centers_patient_shared_v1",
                         "bank_contract_sha256": value_sha256(contract), "code": code,
                         "prototype_fingerprint": prototype.fingerprint(),
                         "graph_config": checkpoint["graph_config"], "seed": self.seed,
                         "view_policy": "bank_scoring_fixed_inference_epoch0_seed0"}
         self.cache = Path(config["graph_cache_dir"]).resolve() / value_sha256(self.binding)
         self.cache.mkdir(parents=True, exist_ok=True)
+        self.store = FeedbackGraphStore(self.cache, minimum_free_bytes=config.get("graph_cache_minimum_free_bytes"))
+        self.region_cache_dir = config.get("region_cache_dir")
+        if self.region_cache_dir is not None and not Path(self.region_cache_dir).is_absolute():
+            raise ValueError("Feedback region cache must have an explicit absolute source path")
+        self.inventory, self.preparation_report = None, None
+        self.require_committed = False
 
     @staticmethod
     def _stat(path):
@@ -200,43 +215,76 @@ class BankGraphProvider:
             if self._stat(path) != self.source_stats[str(path)]:
                 raise ValueError(f"Feedback source changed since provenance verification: {path}")
 
-    def _canonical(self, entry):
+    def _canonical(self, entry, prepared=None):
         case = self.entry_cases[entry]
         self._assert_sources(case)
         source = (self.root / entry).resolve(strict=True)
         if not source.is_relative_to(self.root) or file_sha256(source) != self.contract["entry_sha256"][entry]:
             raise ValueError("Feedback bank entry content/path changed")
-        key = value_sha256({"entry": entry, "binding": self.binding})
-        target, receipt = self.cache / f"{key}.pt", self.cache / f"{key}.json"
-        if target.exists() or receipt.exists():
-            if (target.is_symlink() or receipt.is_symlink() or not target.is_file()
-                    or not receipt.is_file() or _json(receipt).get("sha256") != file_sha256(target)):
-                raise ValueError(f"Incomplete or changed immutable feedback graph cache: {target}")
-            payload = torch.load(target, map_location="cpu", weights_only=False)
-            if payload["binding"] != self.binding or payload["entry_id"] != entry:
-                raise ValueError("Feedback graph cache identity mismatch; no overwrite was performed")
-            return payload["sample"]
-        sample = self._build(entry, source, case)
-        from hiercp.sample import materialize_sample_views
-        # Scoring views are fixed, not epoch augmentations. Cache their actual
-        # graph topology too, so repeated updates do not resample/rebuild it.
-        materialize_sample_views(sample, training=False, epoch=0, global_seed=0)
-        # Exclusive creation, not a replacement of a prior cache/result. A crash
-        # leaves an explicit incomplete pair which must be inspected, not reused.
-        with target.open("xb") as handle:
-            torch.save({"binding": self.binding, "entry_id": entry, "sample": sample}, handle)
-            handle.flush()
-            os.fsync(handle.fileno())
-        with receipt.open("x", encoding="utf-8") as handle:
-            json.dump({"sha256": file_sha256(target)}, handle)
-        return sample
+        if self.require_committed and not self.store.committed(entry, self.binding):
+            raise ValueError("Feedback DataLoader encountered an uncommitted graph; cold work must finish before calibration")
+        def build():
+            from hiercp.sample import materialize_sample_views
+            sample = self._build(entry, source, case, prepared=prepared)
+            return materialize_sample_views(sample, training=False, epoch=0, global_seed=0)
+        return self.store.get_or_build(entry, self.binding, count=self.counts[entry], case_id=case, build=build)
 
-    def _build(self, entry, entry_path, case_id):
-        from scipy import ndimage as ndi
+    def _prepare_patient(self, case_id):
+        from hiercp.feedback_patient import prepare_feedback_patient
+        from hiercp.region import REGION_CACHE_SEED_SALT
+        from tools.online_cp_benchmark import stable_seed
+        self._assert_sources(case_id)
+        return prepare_feedback_patient(
+            case_id, self.raw_paths[case_id], liver_label=int(self.train["labels"]["liver"]),
+            tumor_label=int(self.train["labels"]["tumor"]), config=self.graph_config,
+            ct_clip=self.ct_clip, seed=stable_seed(self.seed, case_id, REGION_CACHE_SEED_SALT),
+            cache_root=self.cache / "patient_shared", region_cache_dir=self.region_cache_dir)
+
+    def ensure_graph_cache(self):
+        """Commit and inventory the entire bank, sharing each cold patient once.
+
+        Case concurrency is measured against the current allocation; it changes
+        neither graph/cardinality nor the observed target distribution.
+        """
+        from hiercp.preparation_runtime import run_case_jobs
+        import nibabel as nib
+        started = time.perf_counter()
+        pending = {}
+        rows = {}
+        for entry, case in sorted(self.entry_cases.items()):
+            self._assert_sources(case)
+            if self.store.committed(entry, self.binding):
+                rows[entry] = self.store.read(entry, self.binding, count=self.counts[entry], case_id=case, with_sample=False)
+            else:
+                pending.setdefault(case, []).append(entry)
+        cold = sum(len(entries) for entries in pending.values())
+        def prepare(case):
+            context = self._prepare_patient(case)
+            result = {}
+            for entry in pending[case]:
+                sample = self._canonical(entry, prepared=context)
+                del sample
+                result[entry] = self.store.read(entry, self.binding, count=self.counts[entry], case_id=case, with_sample=False)
+            return result
+        report_path = self.cache / ("preparation." + uuid.uuid4().hex + ".json")
+        tasks = sorted(pending, key=lambda case: (-int(np.prod(nib.load(str(self.raw_paths[case][0])).shape)), case))
+        if tasks:
+            run_case_jobs(tasks=tasks, function=prepare, commit=rows.update, workers="auto", report_path=report_path)
+        validate_inventory(rows, list(self.entry_cases))
+        self.inventory = dict(sorted(rows.items()))
+        self.require_committed = True
+        self.preparation_report = {"format": "hiercp_feedback_graph_preparation_v2",
+                                   "cold_entries": cold, "warm_entries": len(rows) - cold,
+                                   "total_entries": len(rows), "candidate_counts": sorted(set(self.counts.values())),
+                                   "case_shared_preparation": True, "mmap_payloads": True,
+                                   "seconds": time.perf_counter() - started,
+                                   "case_measurement": str(report_path) if tasks else None,
+                                   "inventory_sha256": value_sha256(self.inventory)}
+        return self.inventory
+
+    def _build(self, entry, entry_path, case_id, prepared=None):
         from hiercp.cache import build_inference_sample
-        from hiercp.common import (CasePaths, CandidateInfo, load_case, context_ring_mask,
-                                   distance_to_mask_mm, slices_for_center)
-        from hiercp.region import REGION_CACHE_SEED_SALT, load_or_build_patient_regions
+        from hiercp.common import CandidateInfo, context_ring_mask, slices_for_center
         from tools.online_cp_benchmark import _source_from_component, stable_seed
 
         with np.load(entry_path, allow_pickle=False) as stored:
@@ -247,18 +295,10 @@ class BankGraphProvider:
             component = int(stored["source_component"].item())
             if component < 1:
                 raise ValueError("Feedback source component must identify a real positive tumor component")
-        image, label = self.raw_paths[case_id]
-        case = load_case(CasePaths(case_id, image, label))
+        prepared = self._prepare_patient(case_id) if prepared is None else prepared
+        case, components, regions, distance = prepared.case, prepared.components, prepared.regions, prepared.distance
         tumor_label, liver_label = int(self.train["labels"]["tumor"]), int(self.train["labels"]["liver"])
-        tumor = case.label == tumor_label
-        components, _ = ndi.label(tumor, structure=ndi.generate_binary_structure(3, 1))
         source = _source_from_component(case, components, component, int(self.train["generation"]["source_pad"]))
-        regions = load_or_build_patient_regions(
-            case, liver_label=liver_label, tumor_label=tumor_label, config=self.graph_config,
-            ct_clip=self.ct_clip, seed=stable_seed(self.seed, case_id, REGION_CACHE_SEED_SALT),
-            cache_dir=None, overwrite=False, mmap=False,
-        )
-        distance = distance_to_mask_mm(tumor, case.spacing)
         ring = context_ring_mask(source.patch_mask, width=3)
         candidates = []
         for raw in centers:
@@ -325,6 +365,7 @@ class FeedbackGNNRuntime:
         self.config = validate_feedback_gnn_config(config)
         self.model, self.provider = model.cpu(), provider
         self.identity, self.device = copy.deepcopy(identity), torch.device(device)
+        self.identity["feedback_execution_version"] = EXECUTION_VERSION
         if type(num_workers) is not int or num_workers < 0 or type(local_chunk_size) is not int or local_chunk_size < 1:
             raise ValueError("Feedback needs measured worker and complete local chunking settings")
         self.num_workers, self.local_chunk_size = num_workers, local_chunk_size
@@ -335,6 +376,7 @@ class FeedbackGNNRuntime:
         self.completed_epoch, self.trained_through_epoch, self.optimizer_steps = -1, -1, 0
         self.nnunet_progress, self.calibration, self.last_report = None, {}, {}
         self.incomplete_update = False
+        self.inventory, self.inventory_sha256, self.preparation_report = None, None, None
 
     @classmethod
     def from_config(cls, config, *, bank_root, bank_contract, bank_index, device):
@@ -357,7 +399,9 @@ class FeedbackGNNRuntime:
         if _json(bank_contract["files"]["index"]["path"]) != bank_index:
             raise ValueError("Feedback bank index differs from the verified publication")
         checkpoint = torch.load(bank_contract["files"]["gnn_checkpoint"]["path"],
-                                map_location="cpu", weights_only=False)
+                                map_location="cpu", mmap=True, weights_only=False)
+        snapshot_guard(3 * tensor_bytes(checkpoint.get("state_dict", {})),
+                       phase="feedback_quality_and_difficulty_initialization")
         require_current_checkpoint(checkpoint)
         if (checkpoint.get("training_complete") is not True
                 or checkpoint.get("gradient_connectivity", {}).get("verified") is not True):
@@ -442,6 +486,11 @@ class FeedbackGNNRuntime:
                     state[key] = value.to(self.device)
 
     def _park(self):
+        from hiercp.feedback_resources import tensors
+        copy_bytes = sum(value.numel() * value.element_size()
+                         for value in tensors((self.model.state_dict(), self.optimizer.state_dict()))
+                         if value.device.type != "cpu")
+        snapshot_guard(copy_bytes, phase="feedback_park_model_and_actual_optimizer")
         self.optimizer.zero_grad(set_to_none=True)
         self.model.cpu()
         for state in self.optimizer.state.values():
@@ -473,114 +522,41 @@ class FeedbackGNNRuntime:
             self.connected_parameters.update(name for name, _ in active)
             self.optimizer_steps += 1
 
-    def _calibrate(self, entries, grouped=None):
-        sizes, power = [], 1
-        while power <= len(entries):
-            sizes.append(power)
-            power *= 2
-        if len(entries) not in sizes:
-            sizes.append(len(entries))
-        trials, best = [], None
-        rng = _capture_rng()
-        before = tensor_state_sha256(self.model.state_dict())
-        external_bytes = 0
-        if self.device.type == "cuda":
-            free, total = torch.cuda.mem_get_info(self.device)
-            external_bytes = max(0, total - free - torch.cuda.memory_reserved(self.device))
-        first_oom = None
-        for size in sizes:
-            if first_oom is not None:
-                trials.append({"physical_batch_size": size,
-                               "status": "skipped_due_measured_smaller_prefix_oom", "smaller_prefix_size": first_oom})
-                continue
-            # Calibration is explicitly a representative source batch, never a
-            # training-data subset: actual updates below consume every record.
-            seconds, peaks = [], []
-            probe = None
+    def _ensure_inventory(self):
+        if self.inventory is None:
+            rng = _capture_rng()
             try:
-                probe = (torch.optim.AdamW(self.model.parameters(), lr=0., weight_decay=self.config["weight_decay"])
-                         if grouped is not None else None)
-                for _ in range(self.config["calibration_repeats"]):
-                    _restore_rng(rng)
-                    self.model.train(grouped is not None)
-                    if self.device.type == "cuda":
-                        torch.cuda.synchronize(self.device)
-                        torch.cuda.reset_peak_memory_stats(self.device)
-                    start = time.perf_counter()
-                    for names, batch in self._loader(entries[:size], size):
-                        graph_shapes = {
-                            "source_patch_shape": list(batch.source_patches.shape),
-                            "target_patch_shape": list(batch.target_patches.shape),
-                            "local_nodes": batch.local_batch.num_nodes,
-                            "local_edges": batch.local_batch.num_edges,
-                            "patient_nodes": batch.patient_batch.num_nodes,
-                            "patient_edges": batch.patient_batch.num_edges,
-                            "population_nodes": batch.prototype_batch.num_nodes,
-                            "population_edges": batch.prototype_batch.num_edges,
-                        }
-                        if grouped is not None:
-                            probe.zero_grad(set_to_none=True)
-                            self._backward(self._forward_loss(batch, names, grouped), probe, record=False)
-                        else:
-                            with torch.inference_mode():
-                                self.model.predict_logits(batch, local_chunk_size=self.local_chunk_size)
-                    if self.device.type == "cuda":
-                        torch.cuda.synchronize(self.device)
-                    seconds.append(time.perf_counter() - start)
-                    peaks.append(torch.cuda.max_memory_allocated(self.device) if self.device.type == "cuda" else 0)
-                total = torch.cuda.get_device_properties(self.device).total_memory if self.device.type == "cuda" else None
-                safe = total is None or max(peaks) + external_bytes <= total * self.config["max_vram_fraction"]
-                throughput = size / float(np.median(seconds))
-                trials.append({"physical_batch_size": size, "status": "safe" if safe else "vram_headroom_exceeded",
-                               "seconds": seconds, "samples_per_second": throughput, "peak_vram_bytes": max(peaks),
-                               "estimated_external_vram_bytes": external_bytes, "input_graph_shapes": graph_shapes})
-                if safe and (best is None or (throughput, size) > best):
-                    best = (throughput, size)
-            except torch.cuda.OutOfMemoryError:
-                trials.append({"physical_batch_size": size, "status": "cuda_oom"})
-                # Nested prefixes contain all smaller-prefix sources/candidates.
-                # Larger prefixes cannot reduce this model's simultaneous full
-                # upper-graph inputs. Do not allocate the whole cohort on host
-                # after a smaller actual CUDA batch has already failed.
-                first_oom = size
+                if isinstance(self.provider, BankGraphProvider):
+                    rows = self.provider.ensure_graph_cache()
+                    self.preparation_report = copy.deepcopy(self.provider.preparation_report)
+                else:
+                    # Explicit DEBUG/custom providers still materialize every
+                    # supplied source. Preparation must not alter stream RNG.
+                    rows = {entry: sample_inventory(self.provider.get(entry), entry_id=entry,
+                                                    candidate_count=self.provider.counts[entry])
+                            for entry in sorted(self.provider.entry_cases)}
+                    self.preparation_report = {"format": "explicit_provider_materialization",
+                                               "total_entries": len(rows), "cohort_reduced": False}
+                validate_inventory(rows, list(self.provider.entry_cases))
+                self.inventory = rows
+                self.inventory_sha256 = value_sha256(rows)
             finally:
-                self.model.zero_grad(set_to_none=True)
-                batch = None  # Release any CUDA input retained after a failed probe.
-                del probe
-                if self.device.type == "cuda":
-                    torch.cuda.empty_cache()
-        _restore_rng(rng)
-        if before != tensor_state_sha256(self.model.state_dict()):
-            raise RuntimeError("Feedback calibration changed model weights; training was not continued")
-        if best is None:
-            raise RuntimeError(f"No measured safe full-hierarchy feedback batch: {trials}; no scale reduction applied")
-        report = {"mode": "actual_observation_bce_backward_adamw_lr0" if grouped is not None else "full_pool_prediction",
-                  "physical_batch_size": best[1], "effective_batch_size": best[1], "trials": trials,
-                  "available_source_entries": len(entries), "calibration_entry_order": list(entries),
-                  "num_workers": self.num_workers, "device": str(self.device), "cpu_cores": os.cpu_count(),
-                  "model_kwargs": self.identity.get("model_kwargs", "explicit_debug_fixture"),
-                  "precision": ("bfloat16_autocast" if grouped is not None and self.config["amp"]
-                                and self.device.type == "cuda" else "float32"),
-                  "parameter_count": sum(p.numel() for p in self.model.parameters()),
-                  "trainable_parameter_count": sum(p.numel() for p in self.model.parameters() if p.requires_grad),
-                  "candidate_counts": sorted(set(self.provider.counts.values())),
-                  "representative_calibration_only": True}
-        if self.device.type == "cuda":
-            free, total = torch.cuda.mem_get_info(self.device)
-            report.update(gpu=torch.cuda.get_device_name(self.device), free_vram_bytes=free, total_vram_bytes=total,
-                          visible_gpu_count=torch.cuda.device_count())
-        try:
-            import psutil
-        except ImportError:
-            report["host_memory_status"] = "unavailable: psutil not installed"
-        else:
-            report.update(process_rss_bytes=psutil.Process().memory_info().rss,
-                          available_ram_bytes=psutil.virtual_memory().available,
-                          cpu_utilization_percent=psutil.cpu_percent(interval=None))
-        print(f"[FeedbackGNNCalibration] {report}", flush=True)
-        return report
+                _restore_rng(rng)
+        return self.inventory
+
+    def _host_guard(self, entries, size):
+        proof = allocation_guard(self._ensure_inventory(), entries, size, workers=self.num_workers,
+                                 prefetch_factor=self.config["prefetch_factor"],
+                                 pin_memory=self.device.type == "cuda")
+        require_allocation(proof)
+        return proof
+
+    def _calibrate(self, entries, grouped=None):
+        from hiercp.feedback_calibration import calibrate_feedback
+        return calibrate_feedback(self, entries, grouped)
 
     def update(self, records, epoch, *, nnunet_progress):
+        from hiercp.feedback_calibration import close_loader
         if self.incomplete_update:
             raise RuntimeError("Previous feedback update failed partway; restore a complete checkpoint before continuing")
         if epoch <= self.completed_epoch:
@@ -599,14 +575,17 @@ class FeedbackGNNRuntime:
             return self.last_report
         entries = sorted(grouped)
         self.incomplete_update = True
+        loader = None
         with self._isolated():
             try:
+                self._ensure_inventory()
                 self._activate()
                 report = self._calibrate(entries, grouped)
                 self.calibration["update"] = report
                 self._activate_optimizer()
                 batches = []
                 self.model.train()
+                self._host_guard(entries, report["physical_batch_size"])
                 loader = self._loader(entries, report["physical_batch_size"], shuffle=True)
                 for _ in range(self.config["update_passes_per_epoch"]):
                     for names, batch in loader:
@@ -625,9 +604,12 @@ class FeedbackGNNRuntime:
                                     "all_parameters_connected": expected <= self.connected_parameters}
                 return copy.deepcopy(self.last_report)
             finally:
+                if loader is not None:
+                    close_loader(loader)
                 self._park()
 
     def predict(self, epoch):
+        from hiercp.feedback_calibration import close_loader
         if self.incomplete_update:
             raise RuntimeError("Cannot predict from an incompletely updated feedback model")
         if type(epoch) is not int or epoch <= self.completed_epoch:
@@ -640,14 +622,18 @@ class FeedbackGNNRuntime:
             return None, None
         entries = sorted(self.provider.entry_cases)
         predictions = {}
+        loader = None
         with self._isolated():
             try:
+                self._ensure_inventory()
                 self._activate()
                 report = self._calibrate(entries)
                 self.calibration["predict"] = report
                 self.model.eval()
+                self._host_guard(entries, report["physical_batch_size"])
+                loader = self._loader(entries, report["physical_batch_size"])
                 with torch.inference_mode():
-                    for names, batch in self._loader(entries, report["physical_batch_size"]):
+                    for names, batch in loader:
                         values = self.model.predict_logits(batch, local_chunk_size=self.local_chunk_size)
                         if len(values) != len(names):
                             raise RuntimeError("Feedback prediction lost source graph alignment")
@@ -669,9 +655,13 @@ class FeedbackGNNRuntime:
                               "nnunet_progress": copy.deepcopy(self.nnunet_progress)}
                 return predictions, provenance
             finally:
+                if loader is not None:
+                    close_loader(loader)
                 self._park()
 
     def state_dict(self):
+        snapshot_guard(tensor_bytes((self.model.state_dict(), self.optimizer.state_dict())),
+                       phase="feedback_native_checkpoint_state_copy")
         if self.incomplete_update:
             raise RuntimeError("Cannot checkpoint an incomplete feedback update as completed training")
         return {"format": FORMAT, "architecture_version": self.model.architecture_version,
@@ -682,14 +672,23 @@ class FeedbackGNNRuntime:
                 "optimizer_steps": self.optimizer_steps, "nnunet_progress": copy.deepcopy(self.nnunet_progress),
                 "calibration": copy.deepcopy(self.calibration), "connected_parameters": sorted(self.connected_parameters)}
 
-    def load_state_dict(self, state):
-        if (state.get("format") != FORMAT or state.get("architecture_version") != self.model.architecture_version
+    def validate_state_dict(self, state):
+        """Pure prevalidation for the native trainer BEFORE its state is changed."""
+        if (not isinstance(state, dict) or state.get("format") != FORMAT or state.get("architecture_version") != self.model.architecture_version
                 or state.get("identity") != self.identity or state.get("config") != self.config):
-            raise ValueError("Feedback resume identity/config/architecture differs; no partial load applied")
+            raise ValueError(f"Feedback resume identity/config/architecture differs; expected {FORMAT}/"
+                             f"{self.model.architecture_version}. Old source-location semantics are not migrated.")
+        required = {"format", "architecture_version", "identity", "config", "model", "optimizer", "rng",
+                    "observations", "completed_epoch", "trained_through_epoch", "optimizer_steps",
+                    "nnunet_progress", "calibration", "connected_parameters"}
+        if set(state) != required:
+            raise ValueError("Feedback resume state is incomplete or has an unknown schema")
         completed, trained = state.get("completed_epoch"), state.get("trained_through_epoch")
         if type(completed) is not int or type(trained) is not int or not -1 <= trained <= completed:
             raise ValueError("Feedback resume has invalid epoch provenance")
         history = state["observations"]
+        if not isinstance(history, list) or any(not isinstance(row, dict) for row in history):
+            raise ValueError("Feedback resume observations have an invalid schema")
         observed_epochs = []
         for row in history:
             validate_observations([row], epoch=row.get("epoch"), entry_cases=self.provider.entry_cases,
@@ -698,15 +697,85 @@ class FeedbackGNNRuntime:
         if (observed_epochs != sorted(observed_epochs) or max(observed_epochs, default=-1) != trained
                 or type(state.get("optimizer_steps")) is not int or state["optimizer_steps"] < bool(history)):
             raise ValueError("Feedback resume observation/trained-epoch/optimizer lineage differs")
-        if history and (state["nnunet_progress"]["completed_epoch"] != trained
+        if history and (not isinstance(state["nnunet_progress"], dict)
+                        or state["nnunet_progress"].get("completed_epoch") != trained
+                        or type(state["nnunet_progress"].get("optimizer_steps")) is not int
+                        or state["nnunet_progress"]["optimizer_steps"] < 0
                         or not _is_sha256(state["nnunet_progress"].get("network_sha256"))):
             raise ValueError("Feedback resume nnU-Net provenance differs from the last real GNN update")
         expected = {name for name, value in self.model.named_parameters() if value.requires_grad}
-        if not set(state["connected_parameters"]) <= expected:
+        if (not isinstance(state["connected_parameters"], list)
+                or any(not isinstance(name, str) for name in state["connected_parameters"])
+                or len(state["connected_parameters"]) != len(set(state["connected_parameters"]))
+                or not set(state["connected_parameters"]) <= expected
+                or not isinstance(state["calibration"], dict)):
             raise ValueError("Feedback resume gradient parameter names differ from the architecture")
+        current = self.model.state_dict()
+        if not isinstance(state["model"], dict) or set(state["model"]) != set(current):
+            raise ValueError("Feedback resume model parameter/buffer names differ")
         revision = state["model"].get("hierarchy._architecture_revision")
-        if revision is None or not torch.equal(revision.cpu(), self.model.hierarchy._architecture_revision.cpu()):
+        if not torch.is_tensor(revision) or not torch.equal(revision.cpu(), self.model.hierarchy._architecture_revision.cpu()):
             raise ValueError("Feedback resume hierarchy revision differs from the frozen quality lineage")
+        for name, reference in current.items():
+            value = state["model"][name]
+            if (not torch.is_tensor(value) or value.shape != reference.shape or value.dtype != reference.dtype
+                    or not bool(torch.isfinite(value).all())):
+                raise ValueError(f"Feedback resume model tensor differs: {name}")
+        optimizer = state["optimizer"]
+        if not isinstance(optimizer, dict) or set(optimizer) != {"state", "param_groups"}:
+            raise ValueError("Feedback resume optimizer schema differs")
+        saved_groups, groups = optimizer["param_groups"], self.optimizer.param_groups
+        if not isinstance(saved_groups, list) or len(saved_groups) != len(groups) or not isinstance(optimizer["state"], dict):
+            raise ValueError("Feedback resume optimizer parameter groups differ")
+        canonical_groups = self.optimizer.state_dict()["param_groups"]
+        if any(not isinstance(saved, dict) or saved.get("params") != canonical["params"]
+               for saved, canonical in zip(saved_groups, canonical_groups)):
+            raise ValueError("Feedback resume optimizer canonical parameter-ID order differs")
+        parameters = {}
+        for saved, live in zip(saved_groups, groups):
+            if (not isinstance(saved, dict) or set(saved) != set(live)
+                    or any(saved[key] != live[key] for key in live if key != "params")
+                    or len(saved["params"]) != len(live["params"])):
+                raise ValueError("Feedback resume optimizer options/cardinality differ")
+            for identity, parameter in zip(saved["params"], live["params"]):
+                if type(identity) is not int or identity < 0 or identity in parameters:
+                    raise ValueError("Feedback resume optimizer parameter identity differs")
+                parameters[identity] = parameter
+        if not set(optimizer["state"]) <= set(parameters):
+            raise ValueError("Feedback resume optimizer has an unknown parameter")
+        for identity, values in optimizer["state"].items():
+            if not isinstance(values, dict) or set(values) != {"step", "exp_avg", "exp_avg_sq"}:
+                raise ValueError("Feedback resume AdamW state is incomplete")
+            step = values["step"]
+            if (not torch.is_tensor(step) or step.numel() != 1 or not bool(torch.isfinite(step).all())
+                    or not 0 <= step.item() <= state["optimizer_steps"] or step.item() != int(step.item())):
+                raise ValueError("Feedback resume AdamW step differs")
+            for name in ("exp_avg", "exp_avg_sq"):
+                value, reference = values[name], parameters[identity]
+                if (not torch.is_tensor(value) or value.shape != reference.shape or value.dtype != reference.dtype
+                        or not bool(torch.isfinite(value).all())):
+                    raise ValueError(f"Feedback resume AdamW moment differs: {identity}/{name}")
+                if name == "exp_avg_sq" and bool((value < 0).any()):
+                    raise ValueError("Feedback resume AdamW second moment is negative")
+        rng = state["rng"]
+        if not isinstance(rng, dict) or set(rng) != {"python", "numpy", "torch", "cuda"}:
+            raise ValueError("Feedback resume RNG schema differs")
+        # Independent generators validate the state without advancing a caller.
+        random.Random().setstate(rng["python"])
+        np.random.RandomState().set_state(rng["numpy"])
+        if (not torch.is_tensor(rng["torch"]) or rng["torch"].dtype != torch.uint8
+                or rng["torch"].shape != self.rng["torch"].shape):
+            raise ValueError("Feedback resume CPU RNG differs")
+        torch.Generator(device="cpu").set_state(rng["torch"].cpu())
+        if (not isinstance(rng["cuda"], list) or len(rng["cuda"]) != len(self.rng["cuda"])
+                or any(not torch.is_tensor(value) or value.dtype != torch.uint8 or value.shape != expected.shape
+                       for value, expected in zip(rng["cuda"], self.rng["cuda"]))):
+            raise ValueError("Feedback resume CUDA RNG topology/state differs")
+        for index, value in enumerate(rng["cuda"]):
+            torch.Generator(device=f"cuda:{index}").set_state(value.cpu())
+
+    def load_state_dict(self, state):
+        self.validate_state_dict(state)
         self.incomplete_update = True
         self.model.load_state_dict(state["model"], strict=True)
         self.optimizer.load_state_dict(state["optimizer"])

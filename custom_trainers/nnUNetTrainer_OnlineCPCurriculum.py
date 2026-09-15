@@ -243,6 +243,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
         }
 
     def on_train_epoch_start(self):
+        self._require_usable_checkpoint_state()
         if self._existing_checkpoints and not self._resume_loaded:
             raise CurriculumError("Existing checkpoints require explicit verified resume; refusing a fresh restart over existing results")
         self.epoch_stage(self.curriculum_config, int(self.current_epoch))
@@ -250,6 +251,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
         return super().on_train_epoch_start()
 
     def train_step(self, batch: dict) -> dict:
+        self._require_usable_checkpoint_state()
         required = {"online_cp_choice_token", "online_cp_schedule_token", "online_cp_applied"}
         if not required.issubset(batch):
             raise CurriculumError("The curriculum loader/audit path was bypassed")
@@ -300,6 +302,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
         )
 
     def on_validation_epoch_start(self):
+        self._require_usable_checkpoint_state()
         if self._curriculum_val_epoch != int(self.current_epoch):
             if isinstance(self._curriculum_val_augmenter, MultiThreadedAugmenter):
                 self._curriculum_val_augmenter._finish()
@@ -375,6 +378,80 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
     def _restore_checkpoint_extension(self, extension, next_epoch):
         self._validate_checkpoint_extension(extension, next_epoch)
 
+    def _prevalidate_checkpoint_restore(self, checkpoint, state, next_epoch):
+        """Validate tensor/optimizer/RNG structure without touching live state.
+
+        Extensions validate their complete secondary-model state here, after
+        initialization but before the first native network/optimizer mutation.
+        No full-size shadow network or optimizer allocation is necessary.
+        """
+        current = self._unwrapped_network().state_dict()
+        weights = checkpoint["network_weights"]
+        if not isinstance(weights, dict) or set(weights) != set(current):
+            raise CurriculumError("Resume network keys differ from the initialized model")
+        for name, expected in current.items():
+            value = weights[name]
+            if (not torch.is_tensor(value) or value.shape != expected.shape
+                    or value.dtype != expected.dtype
+                    or not bool(torch.isfinite(value).all())):
+                raise CurriculumError(f"Invalid resume network tensor: {name}")
+        saved = checkpoint["optimizer_state"]
+        groups = saved.get("param_groups") if isinstance(saved, dict) else None
+        if (not isinstance(groups, list) or len(groups) != len(self.optimizer.param_groups)
+                or not isinstance(saved.get("state"), dict)):
+            raise CurriculumError("Malformed native optimizer resume state")
+        parameters = {}
+        canonical_groups = self.optimizer.state_dict()["param_groups"]
+        for group, live, canonical in zip(groups, self.optimizer.param_groups, canonical_groups):
+            ids = group.get("params") if isinstance(group, dict) else None
+            if not isinstance(ids, list) or len(ids) != len(live["params"]):
+                raise CurriculumError("Resume optimizer parameter grouping changed")
+            if ids != canonical["params"]:
+                raise CurriculumError("Resume optimizer parameter identity/order changed")
+            if set(group) != set(live):
+                raise CurriculumError("Resume optimizer group schema changed")
+            for key, value in group.items():
+                if key == "lr":
+                    if (isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, float, np.integer, np.floating))
+                            or not np.isfinite(value) or value < 0):
+                        raise CurriculumError("Invalid optimizer learning rate")
+                elif key != "params" and value != live[key]:
+                    raise CurriculumError(f"Resume optimizer setting changed: {key}")
+            for index, parameter in zip(ids, live["params"]):
+                if type(index) is not int or index in parameters:
+                    raise CurriculumError("Duplicate or invalid optimizer parameter identity")
+                parameters[index] = parameter
+        if not set(saved["state"]).issubset(parameters):
+            raise CurriculumError("Resume optimizer contains unknown parameters")
+        for index, values in saved["state"].items():
+            if not isinstance(values, dict):
+                raise CurriculumError("Malformed optimizer parameter state")
+            for key, value in values.items():
+                if torch.is_tensor(value):
+                    expected_shape = () if key == "step" else parameters[index].shape
+                    if (value.shape != expected_shape or not bool(torch.isfinite(value).all())
+                            or (key == "step" and bool(value < 0))):
+                        raise CurriculumError(f"Invalid optimizer tensor: {index}/{key}")
+                elif (key != "step" or isinstance(value, (bool, np.bool_))
+                      or not isinstance(value, (int, float, np.integer, np.floating))
+                      or not np.isfinite(value) or value < 0):
+                    raise CurriculumError(f"Invalid optimizer scalar state: {index}/{key}")
+        # Independent RNG objects validate saved states without changing the
+        # current Python/NumPy/Torch streams, including on validation failure.
+        random.Random().setstate(state["python_rng"])
+        np.random.RandomState().set_state(state["numpy_rng"])
+        torch.Generator(device="cpu").set_state(state["cpu_rng"].cpu())
+        for index, value in enumerate(state["cuda_rng"]):
+            torch.Generator(device=f"cuda:{index}").set_state(value.cpu())
+        if not isinstance(state["lr_scheduler_state"], dict):
+            raise CurriculumError("Missing scheduler resume dictionary")
+
+    def _require_usable_checkpoint_state(self):
+        if getattr(self, "_checkpoint_restore_failed", False):
+            raise CurriculumError(
+                "A checkpoint restore failed after mutation began. This trainer is locked; "
+                "create a new trainer and load the last verified complete checkpoint.")
+
     def _unwrapped_network(self):
         network = self.network.module if self.is_ddp else self.network
         return getattr(network, "_orig_mod", network)
@@ -398,6 +475,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
                 raise CurriculumError(f"Checkpoint last-epoch {name} is not a complete uint64 digest")
 
     def save_checkpoint(self, filename: str) -> None:
+        self._require_usable_checkpoint_state()
         if self.disable_checkpointing:
             raise CurriculumError("This experiment requires recoverable curriculum checkpoints")
         next_epoch = int(self.current_epoch) + 1
@@ -444,6 +522,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
             temporary.unlink(missing_ok=True)
 
     def load_checkpoint(self, filename_or_checkpoint) -> None:
+        self._require_usable_checkpoint_state()
         # Only load trusted checkpoints produced by this project. Pickle-based
         # optimizer/RNG state is not an interchange format for untrusted files.
         checkpoint = (torch.load(str(filename_or_checkpoint), map_location="cpu", weights_only=False)
@@ -490,6 +569,11 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
             raise CurriculumError("Missing or invalid CPU/CUDA RNG ByteTensor state")
         if (self.grad_scaler is None) != (checkpoint["grad_scaler_state"] is None):
             raise CurriculumError("Resume AMP scaler availability changed")
+        self._prevalidate_checkpoint_restore(checkpoint, state, epoch)
+        # An unexpected native load error must never leave a usable half-loaded
+        # trainer. The flag is cleared only after every state and RNG is loaded.
+        self._checkpoint_restore_failed = True
+        self._resume_loaded = False
         self._unwrapped_network().load_state_dict(checkpoint["network_weights"], strict=True)
         self.optimizer.load_state_dict(checkpoint["optimizer_state"])
         if self.grad_scaler is not None:
@@ -509,6 +593,7 @@ class _nnUNetTrainer_250epochs_OnlineCurriculum(_nnUNetTrainer_250epochs_OnlineC
         if cuda_rng:
             torch.cuda.set_rng_state_all([v.cpu() for v in cuda_rng])
         self._resume_loaded = True
+        self._checkpoint_restore_failed = False
         self.print_to_log_file(
             f"[OnlineCPCurriculumResume] restored epoch={epoch} config_sha256={self.curriculum_sha256} "
             "network/optimizer/scaler/scheduler/RNG restored; augmentation restarts by epoch; "

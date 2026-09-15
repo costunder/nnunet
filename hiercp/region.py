@@ -1,8 +1,9 @@
 """Patient-specific liver-region partition and reusable region descriptors.
 
-The partition is computed from all liver voxels, not from tumor locations. This
-keeps tumor-free candidate regions represented and prevents positive-label
-leakage. Expensive case-level products are persisted as a cropped compressed archive
+The partition uses the whole liver/tumor organ union. Regional CT statistics use
+the observed image, without tumor-mask-dependent filling. This removes the fill
+footprint but does not remove real lesion appearance or prove clinical utility.
+Expensive case-level products are persisted as a cropped compressed archive
 and reused by prototype fitting, cache construction, and generation. Reuse is
 fail-closed: both source volumes and the compact artifact are content-addressed.
 """
@@ -14,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -32,7 +34,8 @@ from hiercp.common import (
 from hiercp.schema import REGION_FEATURE_DIM, UPPER_RAW_DIM, GraphBuildConfig
 
 
-REGION_CACHE_FORMAT = "hiercp_patient_regions_v2"
+REGION_CACHE_FORMAT = "hiercp_patient_regions_v3"
+REGION_DESCRIPTOR_POLICY = "observed_ct_organ_union_v2"
 REGION_CACHE_STORAGE = "compact_crop_npz_v1"
 REGION_CACHE_FILENAME = "regions.npz"
 REGION_CACHE_SEED_SALT = "patient_regions_v2"
@@ -68,12 +71,17 @@ def numpy_kmeans(
     *,
     rng: np.random.Generator,
     iterations: int,
-) -> tuple[np.ndarray, np.ndarray]:
+    return_diagnostics: bool = False,
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, dict]:
     """Small deterministic NumPy k-means with k-means++ initialization."""
 
     values = np.asarray(values, dtype=np.float32)
     if values.ndim != 2 or values.shape[0] == 0:
         raise ValueError("values must be a non-empty matrix")
+    if not np.isfinite(values).all():
+        raise ValueError("K-means requires finite descriptor values")
+    if type(return_diagnostics) is not bool:
+        raise ValueError("return_diagnostics must be boolean")
     if isinstance(clusters, (bool, np.bool_)) or int(clusters) != clusters:
         raise ValueError(f"clusters must be an exact integer, got {clusters!r}")
     cluster_count = int(clusters)
@@ -106,6 +114,7 @@ def numpy_kmeans(
         minimum = np.minimum(minimum, np.sum((values - centers[-1]) ** 2, axis=1))
     center_array = np.asarray(centers, dtype=np.float32)
     labels = np.zeros(values.shape[0], dtype=np.int32)
+    stopping_reason = "iteration_budget"
     for iteration in range(iteration_count):
         distances = np.sum((values[:, None] - center_array[None]) ** 2, axis=-1)
         labels = np.argmin(distances, axis=1).astype(np.int32)
@@ -121,9 +130,43 @@ def numpy_kmeans(
             updated[cluster] = members.mean(axis=0)
         if np.allclose(updated, center_array, atol=1e-4):
             center_array = updated
+            stopping_reason = "center_allclose"
             break
         center_array = updated
-    return center_array, labels
+    # Final E-step only: no additional center update or change to the iteration
+    # budget. The last M-step's input labels need not match its output centers.
+    squared = np.sum((values[:, None] - center_array[None]) ** 2, axis=-1)
+    if not np.isfinite(squared).all():
+        raise RuntimeError("K-means final descriptor distances are non-finite")
+    final_labels = np.argmin(squared, axis=1).astype(np.int32)
+    counts = np.bincount(final_labels, minlength=cluster_count)
+    if np.any(counts == 0):
+        raise RuntimeError(
+            "K-means final assignment has an empty configured cluster; refusing "
+            f"cluster removal or random replacement: counts={counts.tolist()}"
+        )
+    diagnostics = {
+        "iterations_used": iteration + 1,
+        "stopping_reason": stopping_reason,
+        "final_reassigned_count": int(np.count_nonzero(final_labels != labels)),
+        "membership_stable": bool(np.array_equal(final_labels, labels)),
+    }
+    if return_diagnostics:
+        return center_array, final_labels, diagnostics
+    return center_array, final_labels
+
+
+def _observed_context_image(case: LoadedCase) -> np.ndarray:
+    """Observed CT, independent of the tumor/liver annotation distinction.
+
+    The caller partitions the unchanged whole-organ union. Real lesion
+    appearance remains possible; these statistics are not background-only or
+    calibrated placement confidence. No intensity is erased or synthesized.
+    """
+    output = case.image.astype(np.float32, copy=True)
+    if not np.isfinite(output).all():
+        raise ValueError("Observed regional CT descriptors require a finite image")
+    return output
 
 
 def _context_only_image(
@@ -132,35 +175,12 @@ def _context_only_image(
     liver_label: int,
     tumor_label: int,
 ) -> np.ndarray:
-    """Erase tumor intensity before region/prototype CT statistics are computed."""
+    """Compatibility alias for observed CT; neither label controls its values.
 
-    output = case.image.astype(np.float32, copy=True)
-    tumor = case.label == int(tumor_label)
-    if not np.any(tumor):
-        return output
-    liver_only = case.label == int(liver_label)
-    global_values = output[liver_only]
-    finite_values = output[np.isfinite(output)]
-    global_fill = float(np.median(global_values)) if global_values.size else float(
-        np.median(finite_values) if finite_values.size else 0.0
-    )
-    structure = ndi.generate_binary_structure(3, 1)
-    components, count = ndi.label(tumor, structure=structure)
-    for component_id in range(1, count + 1):
-        component = components == component_id
-        slices = bbox_of_mask(component, pad=5)
-        local_component = component[slices]
-        local_liver = liver_only[slices]
-        ring = ndi.binary_dilation(
-            local_component,
-            structure=structure,
-            iterations=4,
-        ) & ~local_component & local_liver
-        values = output[slices][ring]
-        fill = float(np.mean(values)) if values.size >= 8 else global_fill
-        local_output = output[slices]
-        local_output[local_component] = fill
-    return output
+    New region construction calls ``_observed_context_image`` explicitly. The
+    old name does not retain the historical annotation-conditioned fill path.
+    """
+    return _observed_context_image(case)
 
 
 def _canonical_voxel_features(
@@ -266,11 +286,7 @@ def build_patient_regions(
     region_labels = np.full(case.shape, -1, dtype=np.int16)
     region_labels[tuple(coordinates.T)] = assignments.astype(np.int16)
 
-    descriptor_image = _context_only_image(
-        case,
-        liver_label=liver_label,
-        tumor_label=tumor_label,
-    )
+    descriptor_image = _observed_context_image(case)
     ct_normalized = ct_normalize(descriptor_image, ct_clip)
     boundary = full_organ & (depth <= float(config.boundary_depth_mm))
     organ_volume = max(1, int(full_organ.sum()))
@@ -363,6 +379,7 @@ def _region_cache_metadata(
     return {
         "format": REGION_CACHE_FORMAT,
         "integrity_format": REGION_CACHE_INTEGRITY_FORMAT,
+        "descriptor_policy": REGION_DESCRIPTOR_POLICY,
         "case_id": case.paths.case_id,
         "image": dict(case.image_source_signature),
         "label": dict(case.label_source_signature),
@@ -454,21 +471,24 @@ def save_patient_regions(
 ) -> None:
     """Atomically persist an exact liver-bounding-box cache in compressed form.
 
-    The logical cache format remains ``hiercp_patient_regions_v2`` because the
-    region partition and descriptors are unchanged. Only the physical storage
-    representation changes. Outside the liver, ``organ_depth`` is exactly zero
+    The v3 format binds observed CT descriptors; historical v2 mean-filled
+    descriptors are not reused. Geometry sampling seed and compact storage are
+    unchanged. Outside the liver, ``organ_depth`` is exactly zero
     and ``region_labels`` is exactly -1, so those voxels need not be stored.
     """
 
     root = Path(destination)
+    if root.exists() or root.is_symlink():
+        raise FileExistsError(
+            f"Existing region cache is preserved: {root}. Reuse it through the "
+            "verified load path, or select a fresh descriptor-policy namespace."
+        )
+    if metadata.get("format") != REGION_CACHE_FORMAT or metadata.get("descriptor_policy") != REGION_DESCRIPTOR_POLICY:
+        raise ValueError("Region publication requires the explicit current format and descriptor policy")
     root.parent.mkdir(parents=True, exist_ok=True)
-    temporary = root.with_name(f"{root.name}.tmp.{os.getpid()}")
-    _remove_cache_path(
-        temporary,
-        overwrite=overwrite,
-        action="remove an existing temporary region-cache path",
-    )
-    temporary.mkdir(parents=True)
+    # A retry gets its own staging directory. Neither historical results nor
+    # interrupted staging from another attempt are deleted or repurposed.
+    temporary = Path(tempfile.mkdtemp(prefix=f".{root.name}.tmp.", dir=root.parent))
     slices, crop_start, crop_stop = _compact_crop(regions)
     labels_crop = np.ascontiguousarray(regions.region_labels[slices], dtype=np.int16)
     depth_crop = np.ascontiguousarray(regions.organ_depth[slices], dtype=np.float32)
@@ -497,12 +517,15 @@ def save_patient_regions(
     (temporary / "metadata.json").write_text(
         json.dumps(metadata_payload, indent=2), encoding="utf-8"
     )
-    _remove_cache_path(
-        root,
-        overwrite=overwrite,
-        action="replace an existing region cache",
-    )
-    temporary.replace(root)
+    if root.exists() or root.is_symlink():
+        raise FileExistsError(
+            f"Concurrent region target is preserved: {root}; completed staging remains at {temporary}"
+        )
+    # Publish only a complete directory, so an interrupted write cannot leave a
+    # partial final cache that blocks normal verified retry. Windows rename is
+    # no-replace. On POSIX, an empty directory created in this narrow check/rename
+    # race can be replaced; nonempty results and symlinks are never removed here.
+    temporary.rename(root)
 
 
 def _load_compact_regions(
@@ -650,20 +673,24 @@ def load_or_build_patient_regions(
         )
 
     case_root = Path(cache_dir) / case.paths.case_id
-    if case_root.is_dir() and not overwrite:
+    if case_root.is_symlink():
+        raise FileExistsError(
+            f"Region-cache symlink is preserved but cannot be reused: {case_root}. "
+            "Use a verified, explicitly owned region-cache directory."
+        )
+    if case_root.is_dir():
         regions, metadata = load_patient_regions(case_root, mmap=mmap)
         if not _metadata_equal(metadata, expected):
             raise FileExistsError(
                 f"Region cache is incompatible for {case.paths.case_id}: {case_root}. "
-                "Confirm the path, then pass overwrite=True, or use a separate workspace."
+                "The existing cache is preserved; use a new descriptor-policy workspace."
             )
         verify_loaded_case_source_signatures(case)
         return regions
-    if (case_root.exists() or case_root.is_symlink()) and not overwrite:
+    if case_root.exists() or case_root.is_symlink():
         raise FileExistsError(
-            "Refusing to replace an existing non-directory region-cache path without "
-            f"explicit overwrite authorization: {case_root}. Confirm the path, then "
-            "pass overwrite=True, or use a separate workspace."
+            "Existing non-directory region-cache path is preserved: "
+            f"{case_root}. Use a new descriptor-policy workspace."
         )
 
     regions = build_patient_regions(

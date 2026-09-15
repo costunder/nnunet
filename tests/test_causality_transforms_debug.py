@@ -13,9 +13,10 @@ import torch
 from torch_geometric.data import Batch
 
 from hiercp.data import HierarchicalBatch
+from hiercp.hierarchy import PROTOTYPE_EDGE_DIMS
 from hiercp.schema import (
     LOCAL_EDGE_DIM, LOCAL_EDGE_TYPES, PATIENT_EDGE_DIM, PATIENT_EDGE_TYPES,
-    PROTOTYPE_EDGE_DIM, PROTOTYPE_EDGE_TYPES,
+    PROTOTYPE_EDGE_TYPES,
 )
 from tools import causality
 from test_hierarchy_model_debug import debug_batch, debug_model
@@ -101,16 +102,17 @@ class CausalityTransformsDebugTests(unittest.TestCase):
             (batch.local_batch, LOCAL_EDGE_TYPES, LOCAL_EDGE_DIM),
             (batch.local_batch_view2, LOCAL_EDGE_TYPES, LOCAL_EDGE_DIM),
             (batch.patient_batch, PATIENT_EDGE_TYPES, PATIENT_EDGE_DIM),
-            (batch.prototype_batch, PROTOTYPE_EDGE_TYPES, PROTOTYPE_EDGE_DIM),
+            (batch.prototype_batch, PROTOTYPE_EDGE_TYPES, PROTOTYPE_EDGE_DIMS),
         ):
             if graph is None:
                 continue
             self.assertEqual(set(graph.edge_types), set(relations))
             self.assertTrue(graph.validate(raise_on_error=True))
             for relation in relations:
+                relation_width = width[relation] if isinstance(width, dict) else width
                 self.assertEqual(graph[relation].edge_index.shape[0], 2)
                 self.assertEqual(tuple(graph[relation].edge_attr.shape),
-                                 (graph[relation].edge_index.shape[1], width))
+                                 (graph[relation].edge_index.shape[1], relation_width))
 
     def test_zero_rows_preserve_width_dtype_input_and_rng(self):
         for dtype in (torch.float32, torch.float64):

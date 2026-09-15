@@ -36,7 +36,8 @@ class FeedbackExperimentDebugTests(unittest.TestCase):
         project = root / "checkout with spaces" / "HierCP"
         medical = root / "DEBUG medical directories only"
         (project / "config").mkdir(parents=True)
-        (project / "config/nnunet.json").write_bytes((ROOT / "config/nnunet.json").read_bytes())
+        for name in ("nnunet.json", "train.json", "online_cp_feedback.json", "online_cp_feedback_gnn.json"):
+            (project / "config" / name).write_bytes((ROOT / "config" / name).read_bytes())
         for name in ("Data/image", "Data/labels"):
             (medical / name).mkdir(parents=True)
         source = root / "DEBUG installed package" / "nnunetv2"
@@ -164,6 +165,8 @@ class FeedbackExperimentDebugTests(unittest.TestCase):
                 before_env = dict(os.environ)
                 with mock.patch.object(launcher, "locate_nnunet_root", side_effect=AssertionError("DEBUG explicit package only")), \
                      mock.patch.object(launcher, "audit_sources", wraps=launcher.audit_sources) as audit, \
+                     mock.patch.object(launcher, "_runtime_inventory", return_value={"DEBUG": "injected installer, no native approval"}), \
+                     mock.patch.object(launcher, "_stage_evidence", side_effect=lambda plan, name: {"DEBUG_stage": name}), \
                      contextlib.redirect_stdout(io.StringIO()):
                     launcher.execute_plan(plan, runner=runner, package_root=source)
                 self.assertEqual(dict(os.environ), before_env)
@@ -246,7 +249,10 @@ class FeedbackExperimentDebugTests(unittest.TestCase):
                         raise subprocess.CalledProcessError(7, argv)
                     return subprocess.CompletedProcess(argv, 0)
                 before = file_bytes(source)
-                with mock.patch.object(launcher, "audit_sources", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                with mock.patch.object(launcher, "audit_sources", return_value={}), \
+                     mock.patch.object(launcher, "_runtime_inventory", return_value={"DEBUG": "injected installer, no native approval"}), \
+                     mock.patch.object(launcher, "_stage_evidence", side_effect=lambda plan, name: {"DEBUG_stage": name}), \
+                     contextlib.redirect_stdout(io.StringIO()):
                     with self.assertRaises(subprocess.CalledProcessError):
                         launcher.execute_plan(plan, runner=runner, package_root=source)
                 self.assertEqual(len(calls), failed_stage + 2)
@@ -821,11 +827,18 @@ class FeedbackExperimentResumeDebugTests(unittest.TestCase):
             project, medical, _, source, plan, identity = self.failed_calibration(Path(tmp))
             before = file_bytes(Path(tmp))
             output = io.StringIO()
+            actual_loader = launcher._load_experiment_journal
             with mock.patch.object(launcher, "PROJECT_ROOT", project), \
                  mock.patch.object(launcher.sys, "executable", "DEBUG_PYTHON_NOT_EXECUTED"), \
                  mock.patch.object(launcher, "validate_recovery_source", return_value=identity), \
                  mock.patch("hiercp.cache.validate_cache_publication", return_value={}), \
+                 mock.patch.object(launcher, "_load_experiment_journal",
+                                   side_effect=lambda p, i: actual_loader(p, i, allow_debug=True)), \
                  mock.patch.object(launcher, "execute_plan") as execute, contextlib.redirect_stdout(output):
+                # The fixture used an explicit runner double. Production still
+                # refuses those receipts; only this DEBUG CLI test opts in.
+                with self.assertRaisesRegex(ValueError, "DEBUG native-runner"):
+                    actual_loader(plan, identity)
                 launcher.main(["--medical-root", str(medical), "--recover-from", str(source),
                     "--experiment-name", "feedback_medical_aug", "--outer-fold", "0", "--dataset-id", "760",
                     "--seed", "42", "--resume-experiment", "--dry-run"])

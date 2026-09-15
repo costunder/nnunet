@@ -27,6 +27,7 @@ from hiercp.cache import (
 )
 from hiercp.sample import materialize_sample_views
 from hiercp.tensor import torch_load_compat
+from hiercp.contracts import require_current_patient_graph
 
 
 @dataclass
@@ -185,6 +186,7 @@ class HierarchicalCacheDataset(Dataset[dict]):
             raise ValueError(
                 f"Unsupported cache format in {path}: {sample.get('format')}"
             )
+        require_current_patient_graph(sample.get("graph_config", {}))
         # Keep dense patches in the on-disk float16 representation.  Converting
         # to float32 here doubles RAM and PCIe traffic without recovering any
         # precision; autocast handles them on the GPU.
@@ -216,6 +218,7 @@ def load_cache_config(cache_dir: str | os.PathLike[str]) -> dict:
         raise ValueError(f"Invalid cache config {path}: {exc}") from exc
     if not isinstance(payload, dict) or payload.get("format") != CACHE_FORMAT:
         raise ValueError(f"Unsupported cache config: {path}")
+    require_current_patient_graph(payload.get("graph_config", {}))
     return payload
 
 def load_cache_index(cache_dir: str | os.PathLike[str]) -> dict:

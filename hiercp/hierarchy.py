@@ -24,12 +24,14 @@ from hiercp.common import (
     normalized_position,
 )
 from hiercp.curriculum import CandidateSpec
+from hiercp.contracts import PATIENT_GRAPH_CONTRACT
 from hiercp.prototype import PrototypeBank
 from hiercp.region import PatientRegionData, upper_geometry_vector
 from hiercp.schema import (
     PATIENT_EDGE_DIM,
     PATIENT_EDGE_TYPES,
     PATIENT_NODE_TYPES,
+    POPULATION_METRIC_VERSION,
     PROTOTYPE_EDGE_DIM,
     PROTOTYPE_EDGE_TYPES,
     PROTOTYPE_FEATURE_DIM,
@@ -37,6 +39,18 @@ from hiercp.schema import (
     REGION_FEATURE_DIM,
     UPPER_RAW_DIM,
     GraphBuildConfig,
+)
+
+
+PROTOTYPE_SPATIAL_EDGE_DIM = 6
+PROTOTYPE_EDGE_DIMS = {
+    relation: (PROTOTYPE_EDGE_DIM if "prototype" in (relation[0], relation[2])
+               else PROTOTYPE_SPATIAL_EDGE_DIM)
+    for relation in PROTOTYPE_EDGE_TYPES
+}
+PROTOTYPE_METRIC_FIELDS = (
+    "standardized_descriptor_distance",
+    "distance_minus_cluster_mean_distance",
 )
 
 
@@ -410,13 +424,17 @@ def build_patient_graph(
     liver_raw = _liver_raw(case, regions, tumor_label=tumor_label, ct_clip=ct_clip)[None]
 
     graph = HeteroData()
+    graph.patient_graph_contract = PATIENT_GRAPH_CONTRACT
     graph["tumor"].raw_x = torch.from_numpy(source_raw.astype(np.float32))
     graph["tumor"].pos = torch.from_numpy(
         normalized_position(source.anchor_center, case.shape)[None].astype(np.float32)
     )
-    graph["tumor"].region_index = torch.tensor(
+    graph["tumor"].source_region_provenance = torch.tensor(
         [regions.region_at(source.anchor_center)], dtype=torch.long
     )
+    # This token describes donor biology, not a lesion hosted at its old address.
+    # Provenance is separate and is never used for incidence or edge features.
+    graph["tumor"].region_index = torch.tensor([-1], dtype=torch.long)
     graph["candidate"].raw_x = torch.from_numpy(candidate_raw)
     graph["candidate"].pos = torch.from_numpy(candidate_position)
     graph["candidate"].region_index = torch.from_numpy(candidate_regions)
@@ -441,8 +459,9 @@ def build_patient_graph(
     candidate_to_region = np.stack(
         [np.arange(num_candidates, dtype=np.int64), candidate_regions], axis=0
     )
-    tumor_region = int(graph["tumor"].region_index.item())
-    tumor_to_region = np.asarray([[0], [tumor_region]], dtype=np.int64)
+    # Every recipient region receives the same donor-content token. All regions
+    # (including tumor-free regions) remain eligible for learned compatibility.
+    tumor_to_region = _full_bipartite(1, num_regions)
     candidate_to_lesion = _full_bipartite(num_candidates, num_lesions)
     lesion_to_region = np.stack(
         [np.arange(num_lesions, dtype=np.int64), lesion_regions], axis=0
@@ -457,8 +476,8 @@ def build_patient_graph(
         ),
         ("candidate", "belongs_to", "region"): candidate_to_region,
         ("region", "contains_candidate", "candidate"): candidate_to_region[[1, 0]],
-        ("tumor", "hosted_by", "region"): tumor_to_region,
-        ("region", "hosts_tumor", "tumor"): tumor_to_region[[1, 0]],
+        ("tumor", "conditions", "region"): tumor_to_region,
+        ("region", "context_for", "tumor"): tumor_to_region[[1, 0]],
         ("candidate", "near", "lesion"): candidate_to_lesion,
         ("lesion", "near", "candidate"): candidate_to_lesion[[1, 0]],
         ("lesion", "hosted_by", "region"): lesion_to_region,
@@ -480,16 +499,33 @@ def _prototype_edge_attributes(
     edge_index: np.ndarray,
     weights: np.ndarray,
     ranks: np.ndarray,
+    *,
+    descriptor_distance: np.ndarray | None = None,
+    dispersion_reference: np.ndarray | None = None,
 ) -> np.ndarray:
-    if edge_index.shape[1] == 0:
-        return np.empty((0, PROTOTYPE_EDGE_DIM), dtype=np.float32)
+    """Append absolute metrics in descriptor units, never confidence or ratios."""
+    if (descriptor_distance is None) != (dispersion_reference is None):
+        raise ValueError("Population descriptor distance and dispersion must be supplied together")
+    count = int(edge_index.shape[1])
+    for name, values in (("weights", weights), ("ranks", ranks)):
+        if np.shape(values) != (count,) or not np.isfinite(values).all():
+            raise ValueError(f"Invalid prototype edge {name}")
     delta = destination_position[edge_index[1]] - source_position[edge_index[0]]
     distance = np.linalg.norm(delta, axis=1, keepdims=True)
-    attributes = np.concatenate(
-        [delta, distance, weights[:, None], ranks[:, None]],
-        axis=1,
-    ).astype(np.float32)
-    if attributes.shape[1] != PROTOTYPE_EDGE_DIM:
+    columns = [delta, distance, weights[:, None], ranks[:, None]]
+    expected_width = PROTOTYPE_SPATIAL_EDGE_DIM
+    if descriptor_distance is not None:
+        descriptor_distance = np.asarray(descriptor_distance, dtype=np.float32)
+        dispersion_reference = np.asarray(dispersion_reference, dtype=np.float32)
+        for name, values in (("descriptor distance", descriptor_distance),
+                             ("dispersion reference", dispersion_reference)):
+            if values.shape != (count,) or not np.isfinite(values).all() or np.any(values < 0):
+                raise ValueError(f"Invalid population {name}")
+        columns.extend([descriptor_distance[:, None],
+                        (descriptor_distance - dispersion_reference)[:, None]])
+        expected_width = PROTOTYPE_EDGE_DIM
+    attributes = np.concatenate(columns, axis=1).astype(np.float32)
+    if attributes.shape != (count, expected_width) or not np.isfinite(attributes).all():
         raise RuntimeError(f"Prototype edge attribute mismatch: {attributes.shape}")
     return attributes
 
@@ -500,8 +536,14 @@ def _set_prototype_relation(
     edge_index: np.ndarray,
     weights: np.ndarray,
     ranks: np.ndarray,
+    *,
+    descriptor_distance: np.ndarray | None = None,
+    dispersion_reference: np.ndarray | None = None,
 ) -> None:
     source_type, _, destination_type = edge_type
+    metric_relation = "prototype" in (source_type, destination_type)
+    if metric_relation != (descriptor_distance is not None and dispersion_reference is not None):
+        raise ValueError(f"Population metric fields do not match relation {edge_type}")
     graph[edge_type].edge_index = torch.from_numpy(edge_index.astype(np.int64))
     graph[edge_type].edge_attr = torch.from_numpy(
         _prototype_edge_attributes(
@@ -510,6 +552,8 @@ def _set_prototype_relation(
             edge_index,
             weights.astype(np.float32),
             ranks.astype(np.float32),
+            descriptor_distance=descriptor_distance,
+            dispersion_reference=dispersion_reference,
         )
     )
 
@@ -543,6 +587,11 @@ def build_prototype_graph(
     )
 
     graph = HeteroData()
+    graph.patient_graph_contract = PATIENT_GRAPH_CONTRACT
+    graph.population_metric_version = POPULATION_METRIC_VERSION
+    graph.population_metric_fields = "|".join(PROTOTYPE_METRIC_FIELDS)
+    graph.population_assignment_weight_semantics = "relative_top_m_softmax_not_calibrated_confidence"
+    graph.population_dispersion_reference = "cluster_mean_distance;prototype_pairs_arithmetic_mean"
     graph["candidate"].raw_x = patient_graph["candidate"].raw_x.clone()
     graph["candidate"].pos = patient_graph["candidate"].pos.clone()
     graph["candidate"].region_index = torch.from_numpy(candidate_regions)
@@ -571,12 +620,18 @@ def build_prototype_graph(
         one_candidate,
         zero_candidate,
     )
+    # Prepared once per graph, never rebuilt during candidate forward calls.
+    descriptor_distances = bank.standardized_distances(regions.region_features)
+    assignment_distances = descriptor_distances[region_source, prototype_destination]
+    assignment_dispersion = bank.cluster_mean_distance[prototype_destination]
     _set_prototype_relation(
         graph,
         ("region", "assigned_to", "prototype"),
         region_to_prototype,
         flat_weights,
         ranks,
+        descriptor_distance=assignment_distances,
+        dispersion_reference=assignment_dispersion,
     )
     _set_prototype_relation(
         graph,
@@ -584,6 +639,8 @@ def build_prototype_graph(
         region_to_prototype[[1, 0]],
         flat_weights,
         ranks,
+        descriptor_distance=assignment_distances,
+        dispersion_reference=assignment_dispersion,
     )
 
     prototype_edges = bank.edge_index.astype(np.int64)
@@ -592,12 +649,22 @@ def build_prototype_graph(
         similarity = np.exp(-np.linalg.norm(delta, axis=1)).astype(np.float32)
     else:
         similarity = np.empty((0,), dtype=np.float32)
+    prototype_descriptor_distance = np.linalg.norm(
+        bank.standardized_centers[prototype_edges[1]]
+        - bank.standardized_centers[prototype_edges[0]], axis=1,
+    ).astype(np.float32)
+    prototype_dispersion = (
+        bank.cluster_mean_distance[prototype_edges[0]]
+        + bank.cluster_mean_distance[prototype_edges[1]]
+    ) * np.float32(0.5)
     _set_prototype_relation(
         graph,
         ("prototype", "similar_to", "prototype"),
         prototype_edges,
         similarity,
         np.zeros_like(similarity),
+        descriptor_distance=prototype_descriptor_distance,
+        dispersion_reference=prototype_dispersion,
     )
     for edge_type in PROTOTYPE_EDGE_TYPES:
         if edge_type not in graph.edge_types:

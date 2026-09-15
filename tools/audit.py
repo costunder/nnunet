@@ -76,7 +76,7 @@ def main() -> None:
 
     required = {
         "schema": (
-            'UPPER_FEATURE_POLICY: Final[str] = "shortcut_safe_upper_v1"',
+            'UPPER_FEATURE_POLICY: Final[str] = "source_content_observed_ct_population_v4"',
             "UPPER_FORBIDDEN_RAW_COLUMNS",
             "PATIENT_POSITION_EDGE_COLUMNS",
         ),
@@ -143,7 +143,9 @@ def main() -> None:
             "_checkpoint_selection_record",
             "_checkpoint_selection_is_better",
             "fixed_validation_epoch",
-            "val_margin",
+            'result["margin"]',
+            'validated["margin"]',
+            "selection = _checkpoint_selection_record(val_metrics)",
             "upper_feature_policy",
             "local_candidate_chunk_size",
         ),
@@ -154,7 +156,7 @@ def main() -> None:
             "topology_shuffle",
             "upper_position_noise",
             "upper_clearance_noise",
-            "shortcut_safety_supported",
+            "source_address_contract_supported",
             "context_causality_supported",
         ),
         "run": (

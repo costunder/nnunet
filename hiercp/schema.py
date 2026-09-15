@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Final
 
-from hiercp.contracts import GEOMETRY_CONTRACT
+from hiercp.contracts import GEOMETRY_CONTRACT, PATIENT_GRAPH_CONTRACT
 
 NodeType = str
 EdgeType = tuple[str, str, str]
@@ -26,18 +26,33 @@ UPPER_RAW_DIM: Final[int] = 14
 REGION_FEATURE_DIM: Final[int] = 16
 PROTOTYPE_FEATURE_DIM: Final[int] = REGION_FEATURE_DIM + 2
 PATIENT_EDGE_DIM: Final[int] = 12
-PROTOTYPE_EDGE_DIM: Final[int] = 6
+PROTOTYPE_EDGE_DIM: Final[int] = 8
+POPULATION_METRIC_VERSION: Final[str] = "population_descriptor_distance_excess_v2"
 
-# Runtime feature policy: source/candidate absolute coordinates and occupied
-# clearance are forbidden ranking inputs.  They remain in the V22 cache for
-# backward-compatible deserialization, but the model masks them before every
-# projection.  Patient relations incident to the source tumor likewise mask
-# their position delta and distance columns.
-UPPER_FEATURE_POLICY: Final[str] = "shortcut_safe_upper_v2"
+# Source biology and recipient anatomy are allowed; the source's bookkeeping
+# address/host relation and label-only clearance are not scorer inputs. Target
+# region positions and non-source spatial deltas deliberately retain recipient
+# anatomy. Ignoring raw coordinate columns does NOT imply spatial blindness.
+# Raw storage widths retain provenance; projections receive packed allowlists.
+UPPER_FEATURE_POLICY: Final[str] = "source_content_observed_ct_population_v4"
 UPPER_POSITION_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2)
 UPPER_OCCUPIED_DISTANCE_INDEX: Final[int] = 4
 UPPER_FORBIDDEN_RAW_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2, 4)
 PATIENT_POSITION_EDGE_COLUMNS: Final[tuple[int, ...]] = (0, 1, 2, 3, 11)
+UPPER_CONTENT_COLUMNS: Final[tuple[int, ...]] = tuple(
+    column for column in range(UPPER_RAW_DIM) if column not in UPPER_FORBIDDEN_RAW_COLUMNS
+)
+UPPER_CONTENT_DIM: Final[int] = len(UPPER_CONTENT_COLUMNS)
+# Existing non-source lesions retain their recipient anatomy. Their raw
+# clearance/alignment slots are builder constants, not trainable inputs.
+LESION_CONTENT_COLUMNS: Final[tuple[int, ...]] = tuple(
+    column for column in range(UPPER_RAW_DIM) if column not in (4, 10)
+)
+LESION_CONTENT_DIM: Final[int] = len(LESION_CONTENT_COLUMNS)
+PATIENT_CONTENT_EDGE_COLUMNS: Final[tuple[int, ...]] = tuple(
+    column for column in range(PATIENT_EDGE_DIM) if column not in PATIENT_POSITION_EDGE_COLUMNS
+)
+PATIENT_CONTENT_EDGE_DIM: Final[int] = len(PATIENT_CONTENT_EDGE_COLUMNS)
 
 LOCAL_NODE_TYPES: Final[tuple[NodeType, ...]] = (
     "tumor_surface",
@@ -87,8 +102,8 @@ PATIENT_EDGE_TYPES: Final[tuple[EdgeType, ...]] = (
     ("candidate", "spatial_neighbor", "candidate"),
     ("candidate", "belongs_to", "region"),
     ("region", "contains_candidate", "candidate"),
-    ("tumor", "hosted_by", "region"),
-    ("region", "hosts_tumor", "tumor"),
+    ("tumor", "conditions", "region"),
+    ("region", "context_for", "tumor"),
     ("candidate", "near", "lesion"),
     ("lesion", "near", "candidate"),
     ("lesion", "hosted_by", "region"),
@@ -151,6 +166,7 @@ class GraphBuildConfig:
 
     graph_schema_version: str = "full_v22"
     geometry_contract: str = GEOMETRY_CONTRACT
+    patient_graph_contract: str = PATIENT_GRAPH_CONTRACT
     adaptive_source_full_shape: bool = True
     adaptive_roi_margin_mm: float = 30.0
     adaptive_roi_max_radius_mm: float = 64.0
@@ -187,6 +203,8 @@ class GraphBuildConfig:
     sample_relation_edge_limit: int = 500_000
 
     def validate(self) -> None:
+        if self.patient_graph_contract != PATIENT_GRAPH_CONTRACT:
+            raise ValueError("Patient graph contract is obsolete; rebuild upper graphs in a new workspace")
         if self.geometry_contract != GEOMETRY_CONTRACT:
             raise ValueError("Geometry contract is obsolete; use a new graph-cache workspace")
         if self.graph_schema_version != "full_v22":

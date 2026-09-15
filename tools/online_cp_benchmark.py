@@ -662,7 +662,7 @@ def _verified_gnn_causality(layout: Layout, outer_fold: int) -> dict[str, Any]:
                 "response_threshold": 1.0e-4,
             }
         ):
-            raise ValueError("Causality v3 report is stale or not a strict full-val audit")
+            raise ValueError(f"Causality {REPORT_FORMAT} report is stale or not a strict full-val audit")
         _validate_reusable_report(
             report,
             input_contract=current_input,
@@ -708,7 +708,7 @@ def _verified_gnn_causality(layout: Layout, outer_fold: int) -> dict[str, Any]:
             raise ValueError("GNN artifacts changed during causality verification")
     except (FileNotFoundError, OSError, RuntimeError, TypeError, ValueError) as exc:
         raise OnlineBenchmarkError(
-            f"Fold-specific GNN causality v3 contract is invalid: {exc}"
+            f"Fold-specific GNN causality {REPORT_FORMAT} contract is invalid: {exc}"
         ) from exc
     return report
 

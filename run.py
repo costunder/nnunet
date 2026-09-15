@@ -716,6 +716,12 @@ def parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = parser().parse_args()
     try:
+        if args.target == "full" or NNUNET_TARGETS.get(args.target) in {"train", "all"}:
+            raise RunError(
+                "Unsupported legacy offline full/baseline+CP training: globally generated CP "
+                "cannot prove fold-specific validation exclusion. No files or training were started. "
+                "Use tools/run_feedback_experiment.py for a new fold-specific feedback experiment; "
+                "historical nnunet-evaluate remains available. Existing artifacts are preserved.")
         medical = medical_root(args.medical_root)
         work = Path(args.work).expanduser().resolve() if args.work else DEFAULT_WORK.resolve()
         _guard_run_contract(args, work)

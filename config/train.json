@@ -10,6 +10,7 @@
     250.0
   ],
   "graph": {
+    "patient_graph_contract": "patient_source_content_population_v2",
     "patch_size": 48,
     "context_radius_mm": 28.0,
     "context_shells_mm": [

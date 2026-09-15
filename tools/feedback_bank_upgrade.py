@@ -523,7 +523,7 @@ def _verify_views(plan, receipt):
     launch._verify_online_artifacts(plan, "plan")
 
 
-def load_upgrade_journal(plan, identity):
+def load_upgrade_journal(plan, identity, *, allow_debug=False):
     launch = _launcher()
     root = plan["run_root"]
     launch._bound_files(root, [root / "launch_plan.json", root / "execution_journal.json", root / "upgrade/views.json"])
@@ -544,6 +544,8 @@ def load_upgrade_journal(plan, identity):
     complete = []
     if not isinstance(journal["stages"], list):
         raise ValueError("Malformed bank-upgrade stage history")
+    from tools.feedback_stage_execution import reconcile_history
+    reconcile_history(plan, journal, allow_debug=allow_debug)
     for row in journal["stages"]:
         if (not isinstance(row, dict) or row.get("status") not in {"completed", "failed"}
                 or len(complete) >= len(sequence) or row.get("name") != sequence[len(complete)]):
@@ -597,7 +599,7 @@ def execute_upgrade(plan, *, runner=None, package_root=None, resume=False):
     source_runtime = old["package_destination"]
     if package_root is not None and Path(package_root).resolve() != source_runtime.resolve():
         raise ValueError("Bank upgrade must copy the verified historical native runtime")
-    journal = load_upgrade_journal(plan, identity) if resume else None
+    journal = load_upgrade_journal(plan, identity, allow_debug=runner is not subprocess.run) if resume else None
     rows, resources = (None, None) if resume else view_plan(plan)
     print("[HISTORICAL QUALITY CONFIG] Source bytes and completed optimizer trajectory are preserved; "
           "no current batch/worker setting is applied to that training. "
@@ -614,12 +616,10 @@ def execute_upgrade(plan, *, runner=None, package_root=None, resume=False):
     if not resume:
         root.mkdir(parents=True, exist_ok=False)
         _write_new(root / "launch_plan.json", plan)
-    lock = root / "bank_upgrade_execution.lock"
-    token = {"pid": os.getpid(), "token": uuid.uuid4().hex, "run_root": str(root)}
-    _write_new(lock, token)
-    try:
+    from tools.feedback_stage_execution import execute_command_stage, run_lock
+    with run_lock(root):
         if resume:
-            journal = load_upgrade_journal(plan, identity)
+            journal = load_upgrade_journal(plan, identity, allow_debug=runner is not subprocess.run)
             original = (root / "execution_journal.json").read_bytes()
             archive = root / "upgrade/journal_history" / (launch._file_sha256(root / "execution_journal.json") + ".json")
             _owned_view_target(plan, archive)
@@ -677,11 +677,8 @@ def execute_upgrade(plan, *, runner=None, package_root=None, resume=False):
             if any(row["status"] == "completed" for row in previous):
                 print(f"[VERIFIED SKIP {name}] completed artifacts unchanged", flush=True)
                 continue
-            stage(name, lambda name=name, previous=previous: child(name, bool(previous)))
+            execute_command_stage(plan, journal, commands[name], runner=runner, env=env,
+                                  previously_attempted=bool(previous))
         journal["complete"] = True
         launch._save_journal(root, journal)
         print(f"[BANK UPGRADE COMPLETED] {plan['env_updates']['nnUNet_results']}; no downstream evaluation was run", flush=True)
-    finally:
-        if launch._read_json(lock) != token:
-            raise RuntimeError("Bank-upgrade lock ownership changed; it was not removed")
-        lock.unlink()

@@ -23,6 +23,8 @@ if AVAILABLE:
     import torch
     from torch_geometric.data import Batch, HeteroData
     from hiercp.loss import CurriculumConfig, curriculum_ranking_loss
+    from hiercp.contracts import PATIENT_GRAPH_CONTRACT
+    from hiercp.hierarchy import PROTOTYPE_EDGE_DIMS
     from hiercp.model import (
         ABLATION_MODES, MODEL_ARCHITECTURE_VERSION, CandidateContextReadout,
         CompatibilityGatedGATv2Conv, HierarchicalPyGPlacementModel,
@@ -31,7 +33,7 @@ if AVAILABLE:
         CONTEXT_SHELL_FEATURE_INDEX, LOCAL_NODE_TYPES, LOCAL_EDGE_TYPES,
         LOCAL_HANDCRAFTED_DIM, LOCAL_EDGE_DIM, PATIENT_NODE_TYPES,
         PATIENT_EDGE_TYPES, PATIENT_EDGE_DIM, PROTOTYPE_NODE_TYPES,
-        PROTOTYPE_EDGE_TYPES, PROTOTYPE_EDGE_DIM, UPPER_RAW_DIM,
+        PROTOTYPE_EDGE_TYPES, POPULATION_METRIC_VERSION, UPPER_RAW_DIM,
         REGION_FEATURE_DIM, PROTOTYPE_FEATURE_DIM,
     )
 
@@ -58,15 +60,18 @@ def debug_relations(graph, edge_types, edge_dim, generator):
             membership = torch.stack([torch.arange(count), torch.arange(count) % graph["region"].num_nodes])
             edge_index = membership if source == "candidate" else membership.flip(0)
         graph[edge_type].edge_index = edge_index
-        graph[edge_type].edge_attr = torch.randn(edge_index.shape[1], edge_dim, generator=generator)
+        width = edge_dim[edge_type] if isinstance(edge_dim, dict) else edge_dim
+        graph[edge_type].edge_attr = torch.randn(edge_index.shape[1], width, generator=generator)
 
 
-def debug_batch(counts=(4, 3), *, empty_lesions=False, seed=914, patch_size=8):
+def debug_batch(counts=(4, 3), *, empty_lesions=False, seed=914, patch_size=8,
+                region_count=3, prototype_count=3):
     generator = torch.Generator().manual_seed(seed)
     patients, populations, locals_first, locals_second = [], [], [], []
     for count in counts:
         patient = HeteroData()
-        sizes = {"tumor": 1, "candidate": count, "region": 3,
+        patient.patient_graph_contract = PATIENT_GRAPH_CONTRACT
+        sizes = {"tumor": 1, "candidate": count, "region": region_count,
                  "lesion": 0 if empty_lesions else 2, "liver": 1}
         for node_type in PATIENT_NODE_TYPES:
             width = REGION_FEATURE_DIM if node_type == "region" else UPPER_RAW_DIM
@@ -74,14 +79,16 @@ def debug_batch(counts=(4, 3), *, empty_lesions=False, seed=914, patch_size=8):
             patient[node_type].num_nodes = sizes[node_type]
         debug_relations(patient, PATIENT_EDGE_TYPES, PATIENT_EDGE_DIM, generator)
         population = HeteroData()
+        population.patient_graph_contract = PATIENT_GRAPH_CONTRACT
+        population.population_metric_version = POPULATION_METRIC_VERSION
         for node_type in PROTOTYPE_NODE_TYPES:
             if node_type == "prototype":
-                population[node_type].raw_x = torch.randn(3, PROTOTYPE_FEATURE_DIM, generator=generator)
-                population[node_type].num_nodes = 3
+                population[node_type].raw_x = torch.randn(prototype_count, PROTOTYPE_FEATURE_DIM, generator=generator)
+                population[node_type].num_nodes = prototype_count
             else:
                 population[node_type].raw_x = patient[node_type].raw_x.clone()
                 population[node_type].num_nodes = sizes[node_type]
-        debug_relations(population, PROTOTYPE_EDGE_TYPES, PROTOTYPE_EDGE_DIM, generator)
+        debug_relations(population, PROTOTYPE_EDGE_TYPES, PROTOTYPE_EDGE_DIMS, generator)
         patients.append(patient)
         populations.append(population)
     for candidate_index in range(sum(counts)):
@@ -261,7 +268,7 @@ class ConditionedHierarchyDebugTests(unittest.TestCase):
         self.assertEqual(model.architecture_version, MODEL_ARCHITECTURE_VERSION)
         legacy = dict(model.state_dict())
         legacy.pop("_architecture_revision")
-        with self.assertRaisesRegex(RuntimeError, "legacy weights"):
+        with self.assertRaisesRegex(RuntimeError, "(?i)legacy weights"):
             model.load_state_dict(legacy, strict=False)
         model.load_state_dict(model.state_dict())
 

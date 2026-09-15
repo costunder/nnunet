@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import inspect
+import random
 from pathlib import Path
 import sys
 import unittest
@@ -350,6 +351,109 @@ class FeedbackTrainerIntegrationDebugTests(unittest.TestCase):
             incomplete = copy.deepcopy(extension); incomplete.pop(key)
             with self.subTest(key=key), self.assertRaises(self.module.CurriculumError):
                 trainer._validate_checkpoint_extension(incomplete, 1)
+
+    def native_prevalidation_fixture(self):
+        """Real tiny SGD/RNG boundary, not a trained nnU-Net checkpoint."""
+        trainer = object.__new__(self.module._nnUNetTrainer_250epochs_OnlineFeedback)
+        trainer.is_ddp = False
+        trainer.network = torch.nn.Linear(3, 2)
+        trainer.optimizer = torch.optim.SGD(trainer.network.parameters(), lr=0.01, momentum=0.9)
+        trainer.network(torch.ones(2, 3)).sum().backward()
+        trainer.optimizer.step()
+        trainer.optimizer.zero_grad(set_to_none=True)
+        checkpoint = {"network_weights": copy.deepcopy(trainer.network.state_dict()),
+                      "optimizer_state": copy.deepcopy(trainer.optimizer.state_dict())}
+        state = {"python_rng": random.getstate(), "numpy_rng": np.random.get_state(),
+                 "cpu_rng": torch.get_rng_state(), "cuda_rng": [], "lr_scheduler_state": {}}
+        return trainer, checkpoint, state
+
+    def test_native_prevalidation_is_pure_and_rejects_corrupt_sgd_or_rng(self):
+        base = self.module._nnUNetTrainer_250epochs_OnlineCurriculum
+        trainer, checkpoint, state = self.native_prevalidation_fixture()
+        model_before = copy.deepcopy(trainer.network.state_dict())
+        optimizer_before = copy.deepcopy(trainer.optimizer.state_dict())
+        py_before, np_before, cpu_before = random.getstate(), np.random.get_state(), torch.get_rng_state()
+        base._prevalidate_checkpoint_restore(trainer, checkpoint, state, 1)
+        for mutation in ("nan_momentum", "scalar_momentum", "bad_lr", "wrong_momentum", "parameter_order", "python_rng"):
+            payload, rng = copy.deepcopy(checkpoint), copy.deepcopy(state)
+            if mutation == "nan_momentum":
+                next(iter(payload["optimizer_state"]["state"].values()))["momentum_buffer"].fill_(float("nan"))
+            elif mutation == "scalar_momentum":
+                next(iter(payload["optimizer_state"]["state"].values()))["momentum_buffer"] = 1.0
+            elif mutation == "bad_lr":
+                payload["optimizer_state"]["param_groups"][0]["lr"] = float("nan")
+            elif mutation == "wrong_momentum":
+                payload["optimizer_state"]["param_groups"][0]["momentum"] = 0.5
+            elif mutation == "parameter_order":
+                payload["optimizer_state"]["param_groups"][0]["params"].reverse()
+            else:
+                rng["python_rng"] = (999, (), None)
+            with self.subTest(mutation=mutation), self.assertRaises((ValueError, RuntimeError, TypeError)):
+                base._prevalidate_checkpoint_restore(trainer, payload, rng, 1)
+            torch.testing.assert_close(trainer.network.state_dict(), model_before, rtol=0, atol=0)
+            torch.testing.assert_close(trainer.optimizer.state_dict(), optimizer_before, rtol=0, atol=0)
+            self.assertEqual(random.getstate(), py_before)
+            np.testing.assert_equal(np.random.get_state(), np_before)
+            self.assertTrue(torch.equal(torch.get_rng_state(), cpu_before))
+
+    def test_full_prevalidation_checks_gnn_before_native_state_mutation(self):
+        trainer, checkpoint, state = self.native_prevalidation_fixture()
+        trainer.basic_control = False
+        validator = mock.Mock(side_effect=ValueError("DEBUG invalid difficulty optimizer state"))
+        trainer.feedback_gnn = SimpleNamespace(validate_state_dict=validator)
+        state["extension"] = {"gnn": {"DEBUG_invalid_optimizer": True}}
+        before = copy.deepcopy(trainer.network.state_dict())
+        # Policy identity has independent real-state tests above; this explicit
+        # boundary isolates the full runtime-validator ordering in the trainer.
+        with mock.patch.object(trainer, "_validate_checkpoint_extension"), \
+             self.assertRaisesRegex(ValueError, "invalid difficulty optimizer"):
+            trainer._prevalidate_checkpoint_restore(checkpoint, state, 1)
+        validator.assert_called_once_with(state["extension"]["gnn"])
+        torch.testing.assert_close(trainer.network.state_dict(), before, rtol=0, atol=0)
+
+    def test_failed_restore_locks_training_and_checkpoint_saving_before_other_work(self):
+        trainer = object.__new__(self.module._nnUNetTrainer_250epochs_OnlineFeedback)
+        trainer._checkpoint_restore_failed = True
+        for action in (lambda: trainer.on_train_epoch_start(), lambda: trainer.train_step({}),
+                       lambda: trainer.on_validation_epoch_start(),
+                       lambda: trainer.save_checkpoint("DEBUG_must_not_be_written.pth")):
+            with self.assertRaisesRegex(self.module.CurriculumError, "trainer is locked"):
+                action()
+
+    def test_actual_network_restore_then_optimizer_failure_locks_instance(self):
+        """Actual tensor restore with an injected late optimizer I/O failure."""
+        base = self.module._nnUNetTrainer_250epochs_OnlineCurriculum
+        trainer, checkpoint, state = self.native_prevalidation_fixture()
+        trainer.curriculum_config = {"DEBUG_policy_boundary": True}
+        trainer.curriculum_sha256 = "a" * 64
+        trainer.curriculum_bank_identity = {"DEBUG_bank_boundary": True}
+        trainer.was_initialized = True
+        trainer.num_iterations_per_epoch, trainer.batch_size = 1, 2
+        trainer.grad_scaler = None
+        runtime = {"cuda_device_count": 0}
+        state.update(format=trainer.resume_format, next_epoch=1,
+                     config=trainer.curriculum_config, config_sha256=trainer.curriculum_sha256,
+                     bank_identity=trainer.curriculum_bank_identity, runtime_identity=runtime,
+                     last_epoch={"epoch": 0}, extension={})
+        checkpoint.update(grad_scaler_state=None, logging={}, _best_ema=None,
+                          current_epoch=1, init_args={}, trainer_name=trainer.__class__.__name__,
+                          inference_allowed_mirroring_axes=None, onlinecp_curriculum_resume=state)
+        for value in checkpoint["network_weights"].values():
+            value.add_(1)
+        with mock.patch.object(trainer, "_validate_epoch_record"), \
+             mock.patch.object(trainer, "_validate_checkpoint_extension"), \
+             mock.patch.object(trainer, "_verify_bank", return_value=trainer.curriculum_bank_identity), \
+             mock.patch.object(trainer, "_runtime_identity", return_value=runtime), \
+             mock.patch.object(trainer, "_prevalidate_checkpoint_restore",
+                               side_effect=lambda c, s, e: base._prevalidate_checkpoint_restore(trainer, c, s, e)), \
+             mock.patch.object(trainer.optimizer, "load_state_dict", side_effect=RuntimeError("DEBUG late optimizer failure")), \
+             self.assertRaisesRegex(RuntimeError, "DEBUG late optimizer failure"):
+            base.load_checkpoint(trainer, checkpoint)
+        torch.testing.assert_close(trainer.network.state_dict(), checkpoint["network_weights"], rtol=0, atol=0)
+        self.assertTrue(trainer._checkpoint_restore_failed)
+        self.assertFalse(trainer._resume_loaded)
+        with self.assertRaisesRegex(self.module.CurriculumError, "trainer is locked"):
+            trainer.save_checkpoint("DEBUG_never_written.pth")
 
     def test_checkpoint_table_identity_change_rejected_without_live_mutation(self):
         trainer, extension = self.checkpoint_fixture()

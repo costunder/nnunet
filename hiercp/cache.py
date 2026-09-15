@@ -59,7 +59,7 @@ from hiercp.nifti_geometry import validate_donor_geometry
 CACHE_FORMAT = "full-cache"
 CACHE_INDEX_FORMAT = "full-index"
 CACHE_COMPLETE_FORMAT = "full-complete"
-PROTOTYPE_METADATA_FORMAT = "hiercp_prototype_metadata_v3_sha256"
+PROTOTYPE_METADATA_FORMAT = "hiercp_prototype_metadata_v4_fit_evidence"
 CACHE_PROGRESS_FORMAT = "hiercp_cache_progress_csv_v2_sha256"
 CACHE_PROGRESS_COLUMNS = (
     "case_id",
@@ -588,6 +588,38 @@ def _validate_recoverable_partial_cache(
             "Use a separate workspace if these files came from a different configuration."
         )
 
+def _publish_prototype_bytes(path: Path, payload: bytes) -> None:
+    """Create an immutable publication file, or verify the identical retry."""
+    import tempfile
+
+    if path.is_symlink():
+        raise ValueError(f"Prototype publication cannot replace a symlink: {path}")
+    if path.exists():
+        if not path.is_file() or path.read_bytes() != payload:
+            raise FileExistsError(f"Different prototype publication preserved: {path}")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary, path)
+        except FileExistsError:
+            if path.is_symlink() or not path.is_file() or path.read_bytes() != payload:
+                raise FileExistsError(f"Concurrent different prototype publication preserved: {path}")
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _prototype_json_bytes(value: dict) -> bytes:
+    return (json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n").encode("utf-8")
+
+
 def prepare_prototype_bank(
     *,
     data_dir: str | os.PathLike[str],
@@ -607,6 +639,9 @@ def prepare_prototype_bank(
     Patient-region data are stored once per case under ``region_cache_dir`` and
     then reused by hierarchical cache preparation.
     """
+
+    from hiercp.prototype import PROTOTYPE_BANK_FORMAT, PROTOTYPE_FIT_CONTRACT
+    from hiercp.region import REGION_DESCRIPTOR_POLICY
 
     output = Path(output_path)
     raw_requested = _validated_case_ids(
@@ -628,23 +663,24 @@ def prepare_prototype_bank(
         "labels": {"liver": int(liver_label), "tumor": int(tumor_label)},
         "ct_clip": [float(value) for value in ct_clip],
         "region_cache_format": REGION_CACHE_FORMAT,
+        "region_descriptor_policy": REGION_DESCRIPTOR_POLICY,
+        "prototype_bank_format": PROTOTYPE_BANK_FORMAT,
+        "prototype_fit_contract": PROTOTYPE_FIT_CONTRACT,
     }
     metadata_path = output.parent / "metadata.json"
     manifest_path = output.parent / "manifest.csv"
+    intent_path = output.parent / "publication_intent.json"
+    if any(path.is_symlink() for path in (output, metadata_path, manifest_path, intent_path)):
+        raise ValueError("Prototype publication artifacts must not be symlinks")
     if (output.exists() or output.is_symlink()) and not output.is_file():
         raise FileExistsError(f"Prototype output is not a regular file: {output}")
-    if output.is_file() and not overwrite:
+    existing_metadata = _load_json_object(metadata_path) if metadata_path.is_file() else None
+    if output.is_file() and existing_metadata is not None and existing_metadata.get("state") == "ready":
         metadata = _load_json_object(metadata_path)
         compatible_metadata = dict(metadata)
         if graph_config_budget_compatible(metadata.get("graph_config"), expected_metadata["graph_config"]):
             compatible_metadata["graph_config"] = expected_metadata["graph_config"]
         _assert_metadata_equal(compatible_metadata, expected_metadata, context="Prototype bank")
-        if metadata.get("state") != "ready":
-            raise ValueError(
-                "Prototype metadata is not in a published ready state; use "
-                "--overwrite after confirming the exact output path, or use a "
-                "separate workspace"
-            )
         _assert_file_sha256(
             output,
             metadata.get("prototype_sha256"),
@@ -669,7 +705,7 @@ def prepare_prototype_bank(
         if stored_cases != requested:
             raise ValueError(
                 "Existing prototype bank was fitted on different training cases; "
-                "use --overwrite or a separate workspace"
+                "preserve it and use a separate workspace"
             )
         if metadata.get("prototype_fingerprint") != bank.fingerprint():
             raise ValueError("Prototype metadata fingerprint does not match bank contents")
@@ -680,12 +716,19 @@ def prepare_prototype_bank(
         for path in (metadata_path, manifest_path)
         if path.exists() or path.is_symlink()
     ]
-    if not output.is_file() and stale_sidecars and not overwrite:
+    if (output.is_file() or stale_sidecars) and not intent_path.is_file():
         raise FileExistsError(
-            "Prototype output is missing but stale sidecars already exist: "
-            f"{stale_sidecars}. Use --overwrite after confirming these exact paths, "
-            "or choose a separate workspace."
+            "Existing incomplete/historical prototype artifacts have no matching "
+            "publication intent and are preserved. Choose a NEW workspace: "
+            f"{output.parent}"
         )
+    # Bind the complete inputs BEFORE publishing any result. An interrupted
+    # current-version publication can be rebuilt and compared exactly; an old
+    # bank or a different intent is never overwritten, even with --overwrite.
+    _publish_prototype_bytes(intent_path, _prototype_json_bytes({
+        "format": "hiercp_prototype_publication_intent_v1",
+        "inputs": expected_metadata,
+    }))
 
     groups: list[tuple[str, np.ndarray]] = []
     rows: list[dict[str, object]] = []
@@ -703,7 +746,7 @@ def prepare_prototype_bank(
                 config=graph_config,
                 seed=region_seed,
                 ct_clip=ct_clip,
-                overwrite=overwrite,
+                overwrite=False,
             )
             return (
                 paths.case_id,
@@ -767,10 +810,16 @@ def prepare_prototype_bank(
             "Prototype source files changed while descriptors were being prepared; "
             "no prototype publication was written. Retry with stable inputs."
         )
-    bank.save(output, overwrite=overwrite)
-    _atomic_manifest_save(rows, manifest_path)
-    _atomic_json_save(
-        {
+    bank.save(output, overwrite=False)
+    import csv
+    import io
+    manifest_buffer = io.StringIO(newline="")
+    manifest_writer = csv.DictWriter(manifest_buffer, fieldnames=[
+        "case_id", "status", "regions", "image_sha256", "label_sha256"])
+    manifest_writer.writeheader()
+    manifest_writer.writerows(sorted(rows, key=lambda row: row["case_id"]))
+    _publish_prototype_bytes(manifest_path, manifest_buffer.getvalue().encode("utf-8"))
+    _publish_prototype_bytes(metadata_path, _prototype_json_bytes({
             **expected_metadata,
             "data_dir": str(Path(data_dir).resolve()),
             "prototypes": bank.num_prototypes,
@@ -778,9 +827,7 @@ def prepare_prototype_bank(
             "prototype_sha256": _sha256_file(output),
             "manifest_sha256": _sha256_file(manifest_path),
             "state": "ready",
-        },
-        metadata_path,
-    )
+        }))
     print(f"[OK] prototype bank saved: {output} prototypes={bank.num_prototypes}")
     return bank
 

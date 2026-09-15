@@ -9,6 +9,25 @@ The core HierCP implementation and configuration are present in this repository.
 images, graph caches, checkpoints, generated volumes, and nnU-Net results are
 not included.
 
+The active upper model is `hiercp_source_content_population_metric_v5`.
+Population banks now retain full fit evidence and final-center memberships;
+region CT descriptors use observed CT without tumor-label-conditioned filling.
+Prototype relations include standardized descriptor distance and signed excess
+over cluster mean distance, while candidate-region relations keep their 6D
+contract. Model widths/depths, configured graph sizes/connectivity budgets and
+training epochs are unchanged; the upper feature/edge contract is versioned anew.
+These distances are not calibrated confidence or observed CP benefit.
+
+Preserve previous experiments for version-labelled comparisons. Reuse unchanged
+native preprocessing independently of the revised GNN artifacts. A completed
+Basic control can be requested with `--reuse-basic-from`, but is accepted only
+after original training provenance and full ordered CP/native-input equivalence
+are verified; its checkpoint and bank identity are never rewritten. Inspect
+historical population banks with
+`python -B -m tools.audit_population_bank --prototype-bank <path>`;
+legacy structural validity is not membership proof.
+See `gpt_handoff.md` for verification status and limitations.
+
 OnlineCP requires the versioned trainer bundle in
 [`custom_trainers/`](custom_trainers/). It contains historical paired/argmax
 trainers and the current Full/Basic Feedback trainers, including their policy,
@@ -125,8 +144,9 @@ zero new native label support. A real zero-support CP still trains segmentation;
 only its difficulty-feedback observation is unavailable. Full and Basic share
 the same original preprocessing and event/source/appearance schedule.
 
-For the stopped `feedback_medical_aug` experiment with verified completed GNN
-and preprocessing, start a NEW bank/runtime/results directory:
+For population-metric v5, start a NEW GNN/bank/runtime/results experiment. A verified
+historical native preprocessing result can be shared without importing its learned
+GNN, scores, or segmentation checkpoints:
 
 ```bash
 conda activate /home/aicompetition06/.conda/envs/nnunet &&
@@ -135,16 +155,24 @@ git pull --ff-only &&
 read -r -p "Allocated GPU: " CP_GPU &&
 env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
 /home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
-  --upgrade-bank-from work/feedback_medical_aug \
-  --experiment-name feedback_rawcp \
+  --reuse-preprocessing-from work/feedback_medical_aug \
+  --experiment-name feedback_population_v5 \
   --medical-root /home/aicompetition06/Medical \
-  --outer-fold 0 --dataset-id 760 --seed 42
+  --outer-fold 0 --dataset-id 760 --seed 42 --evaluate
 ```
 
-The old GNN stays at its verified path, immutable preprocessing payloads get a
-new directory view, and native unpacking writes only to the new view. Old bank,
-runtime, journals and results are not overwritten. This launch trains Full then
-Basic; downstream prediction/evaluation is a separate task. See
+The original completed native planning/preprocessing root is required; an upgrade
+root such as `feedback_rawcp` is not an interchangeable source. The old GNN stays
+unchanged; v5 trains a new quality model. Verified preprocessing payloads get a
+hard-linked view, while metadata and native unpacking outputs belong to the new
+root. These links are not filesystem-enforced read-only copies: manually editing
+a shared payload affects both roots. The supported workflow never overwrites or
+reprocesses those shared payloads.
+Old banks, runtimes, journals and results are not overwritten. Full and Basic
+retain all configured epochs/candidates. `--evaluate` additionally runs checkpoint-
+bound prediction and paired evaluation in a separate v5 output. Same-argument
+`--resume-experiment` is supported for newly journaled fresh runs, never as a
+missing-checkpoint fresh-start fallback. See
 [`gpt_handoff.md`](gpt_handoff.md) for scope, test evidence and safe retry limits.
 
 ## Standalone/offline production workflow
@@ -162,19 +190,19 @@ python run.py generate --run-mode production \
   --medical-root /home/aicompetition06/Medical --device cuda:0
 ```
 
-The aggregate targets are:
+The supported offline generation aggregate is:
 
 ```bash
 python run.py all --run-mode production \
   --medical-root /home/aicompetition06/Medical --device cuda:0
-python run.py full --run-mode production \
-  --medical-root /home/aicompetition06/Medical --device cuda:0
 ```
 
 `all` performs preparation, HierCP training, generation, exact validation, and
-dataset assembly. `full` performs those stages and then runs the configured
-nnU-Net preparation, five-fold training, and evaluation. Only a successfully
-completed `full` run is the complete standalone/offline production experiment.
+dataset assembly. It is not a completed downstream segmentation experiment.
+`full`, `nnunet-all`, and aggregate `nnunet-train` are deliberately rejected at
+top-level preflight: globally generated CP cannot prove fold-held-out label
+exclusion. The leakage guard remains; use the fold-specific online workflow for
+supported downstream training, not expensive offline stages followed by a late failure.
 
 Production rejects `--max-cases`, `--case-id`, `--epochs`, `--batch-size`, and
 `--num-workers` command-line overrides. It also rejects skipped validation or
@@ -258,10 +286,14 @@ remaining memory requirements and verification scope are documented in
 [`docs/online_bank_performance.md`](docs/online_bank_performance.md).
 Do not update a checkout or trainer installation used by a running experiment.
 An existing compatible bank is verified and reused; the performance-only change
-in `ebe58ff` does not require deleting it or restarting the GNN. The new raw
-transport contract DOES require a separate bank/runtime as described above,
-while verified GNN/shared preprocessing remain reusable. Follow the
-[recovery guide](docs/feedback_recovery.md) for a stopped, eligible continuation.
+in `ebe58ff` does not require deleting it or restarting the GNN. The historical
+raw-transport change required a separate bank/runtime but could reuse a verified
+GNN only within its compatible architecture version. That does not admit old
+GNNs into v5: the current architecture requires a new quality GNN and bank.
+Verified native preprocessing and separately proven Basic-only results can be
+reused; Basic reuse is an explicit opt-in, not an old Full checkpoint conversion.
+The [recovery guide](docs/feedback_recovery.md) describes compatible-version
+historical continuations, not a v5 upgrade of old GNN weights.
 
 ## Exact validation and assembly
 

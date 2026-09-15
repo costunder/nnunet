@@ -214,6 +214,8 @@ class _nnUNetTrainer_250epochs_OnlineFeedback(_nnUNetTrainer_250epochs_OnlineCur
                 raise CurriculumError("Set ONLINE_CP_FEEDBACK_RAW_ROOT to the original verified raw dataset directory")
             self._feedback_gnn_config["raw_data_root"] = str(Path(raw_root).resolve())
             self._feedback_gnn_config["graph_cache_dir"] = str(Path(self.output_folder) / "feedback_graph_cache")
+            quality_checkpoint = Path(self.curriculum_bank_identity["files"]["gnn_checkpoint"]["path"])
+            self._feedback_gnn_config["region_cache_dir"] = str(quality_checkpoint.parent / "regions")
 
     def _code_identity(self):
         result = super()._code_identity()
@@ -278,11 +280,13 @@ class _nnUNetTrainer_250epochs_OnlineFeedback(_nnUNetTrainer_250epochs_OnlineCur
         return super()._make_train_augmenter(epoch)
 
     def on_train_epoch_start(self):
+        self._require_usable_checkpoint_state()
         self._feedback_records = []
         self._feedback_epoch_counts = {}
         return super().on_train_epoch_start()
 
     def train_step(self, batch):
+        self._require_usable_checkpoint_state()
         if batch.pop("feedback_snapshot_sha256", None) != self._feedback_snapshot_sha256:
             raise CurriculumError("Prefetched batch belongs to a different feedback snapshot")
         entries = batch.pop("feedback_entry_ids")
@@ -436,6 +440,16 @@ class _nnUNetTrainer_250epochs_OnlineFeedback(_nnUNetTrainer_250epochs_OnlineCur
         self._feedback_epoch_summary = extension["last_epoch"]
         self._feedback_records = extension["last_observations"]
         self._feedback_optimizer_steps = extension["optimizer_steps"]
+
+    def _prevalidate_checkpoint_restore(self, checkpoint, state, next_epoch):
+        super()._prevalidate_checkpoint_restore(checkpoint, state, next_epoch)
+        extension = state.get("extension", {})
+        self._validate_checkpoint_extension(extension, next_epoch)
+        if not self.basic_control:
+            if self.feedback_gnn is None:
+                raise CurriculumError("Initialize the complete feedback GNN before restoring a checkpoint")
+            # Pure validation must precede native network/optimizer mutation.
+            self.feedback_gnn.validate_state_dict(extension["gnn"])
 
     def load_checkpoint(self, filename_or_checkpoint):
         # One trusted-file read; base restore receives the already decoded dict.
