@@ -1,0 +1,345 @@
+import os, re, glob
+import nibabel as nib
+import numpy as np
+from skimage import measure
+from scipy import ndimage as ndi
+
+# =========================
+# CONFIG
+# =========================
+DATA_DIR = "Data"
+DATA_AUG_DIR = "Data_aug"
+
+IMAGE_DIR = os.path.join(DATA_DIR, "image")
+LABEL_DIR = os.path.join(DATA_DIR, "labels")
+
+OUT_IMAGE_DIR = os.path.join(DATA_AUG_DIR, "image")
+OUT_LABEL_DIR = os.path.join(DATA_AUG_DIR, "labels")
+
+# Augmentation parameters (same as your single-case code)
+LIVER_LABEL = 1
+TUMOR_LABEL = 2
+NUM_COPIES = 1                 # how many new tumors to paste per case
+BLEND_BORDER = 0               # 0 = hard paste (set >0 for feathered edges)
+INTENSITY_SCALE_RANGE = (0.95, 1.05)
+INTENSITY_SHIFT_RANGE = (-5.0, 5.0)
+MIN_LIVER_COVERAGE = 0.85
+AVOID_OVERLAP_WITH_ORIG = True
+# Keep pasted tumors away from existing tumors & each other
+OCCUPIED_CLEARANCE_VOX = 2    # dilated safety margin (voxels) around occupied areas
+MIN_CENTER_SEPARATION_VOX = 12  # optional extra spacing between centers
+RNG_SEED = None                  # None => non-deterministic; or set an int for reproducible but varied runs
+
+# =========================
+# HELPERS
+# =========================
+def ensure_dirs():
+    os.makedirs(OUT_IMAGE_DIR, exist_ok=True)
+    os.makedirs(OUT_LABEL_DIR, exist_ok=True)
+
+def bbox_of_mask(mask, pad=2):
+    zz, yy, xx = np.where(mask)
+    zmin, zmax = max(0, zz.min()-pad), min(mask.shape[0]-1, zz.max()+pad)
+    ymin, ymax = max(0, yy.min()-pad), min(mask.shape[1]-1, yy.max()+pad)
+    xmin, xmax = max(0, xx.min()-pad), min(mask.shape[2]-1, xx.max()+pad)
+    return (slice(zmin, zmax+1), slice(ymin, ymax+1), slice(xmin, xmax+1))
+
+def feather_alpha(binary_mask, blend_border=3):
+    if blend_border <= 0:
+        return binary_mask.astype(np.float32)
+    dist_to_bg = ndi.distance_transform_edt(binary_mask)
+    alpha = np.clip(dist_to_bg / float(blend_border), 0.0, 1.0).astype(np.float32)
+    return alpha
+
+def centroid_world(mask, affine):
+    if not mask.any():
+        return (np.nan, np.nan, np.nan)
+    coords = np.column_stack(np.where(mask))
+    c_vox = coords.mean(axis=0)
+    c_h = np.r_[c_vox, 1.0]
+    c_w = (affine @ c_h)[:3]
+    return tuple(map(float, c_w))
+
+def try_random_centers_shuffled(liver_mask, patch_shape, rng, max_tries=4000):
+    pz, py, px = patch_shape
+    hz, hy, hx = pz//2, py//2, px//2
+    Z, Y, X = liver_mask.shape
+    zmin, zmax = hz, Z - (pz - hz)
+    ymin, ymax = hy, Y - (py - hy)
+    xmin, xmax = hx, X - (px - hx)
+    if zmax <= zmin or ymax <= ymin or xmax <= xmin:
+        return
+    zz, yy, xx = np.where(liver_mask)
+    keep = (zz >= zmin) & (zz < zmax) & (yy >= ymin) & (yy < ymax) & (xx >= xmin) & (xx < xmax)
+    cand = np.column_stack([zz[keep], yy[keep], xx[keep]])
+    if len(cand) == 0:
+        return
+    for idx in rng.permutation(len(cand))[:max_tries]:
+        cz, cy, cx = cand[idx]
+        yield int(cz), int(cy), int(cx)
+
+def load_case_safely(image_path, label_path):
+    """Return (img3d_float32, lab3d_int16, affine_img, affine_lab, img_hdr, lab_hdr, spacing, voxel_mm3)
+    using nibabel's slicer to avoid ever materializing the full 4D array."""
+    img_nii_full = nib.load(image_path)
+    lab_nii_full = nib.load(label_path)
+
+    # ---- Slice to 3D *at the NIfTI level* (no 4D materialization)
+    if len(img_nii_full.shape) == 4:
+        if img_nii_full.shape[0] <= 4:   # (C,Z,Y,X)
+            img_nii = img_nii_full.slicer[0, ...]
+        else:                            # (Z,Y,X,C)
+            img_nii = img_nii_full.slicer[..., 0]
+    else:
+        img_nii = img_nii_full
+
+    if len(lab_nii_full.shape) == 4:
+        if lab_nii_full.shape[0] <= 4:
+            lab_nii = lab_nii_full.slicer[0, ...]
+        else:
+            lab_nii = lab_nii_full.slicer[..., 0]
+    else:
+        lab_nii = lab_nii_full
+
+    # ---- Now materialize only the 3D slices in compact dtypes
+    img = np.asarray(img_nii.dataobj, dtype=np.float32, order="C")
+    lab = np.asarray(lab_nii.dataobj, dtype=np.int16,   order="C")
+
+    affine_img = img_nii.affine
+    affine_lab = lab_nii.affine
+    img_header = img_nii.header.copy()
+    lab_header = lab_nii.header.copy()
+
+    zooms = img_header.get_zooms()
+    if len(zooms) < 3:
+        raise RuntimeError(f"Unexpected zooms: {zooms}")
+    spacing = np.array(zooms[:3], dtype=np.float32)
+    voxel_mm3 = float(np.prod(spacing))
+
+    return img, lab, affine_img, affine_lab, img_header, lab_header, spacing, voxel_mm3
+
+
+# =========================
+# CORE AUGMENTATION (one case)
+# =========================
+def augment_case(image_path, label_path, out_image_path, out_label_path):
+
+    (img, lab,
+    affine_img, affine_lab,
+    img_hdr, lab_hdr,
+    spacing, voxel_mm3) = load_case_safely(image_path, label_path)
+
+    # Sanity checks (will print once per case)
+    # If you still see a 4D shape here, we failed to slice correctly.
+    if img.ndim != 3: raise RuntimeError(f"CT not 3D: {img.shape}  -> check loader")
+    if lab.ndim != 3: raise RuntimeError(f"Label not 3D: {lab.shape} -> check loader")
+
+
+    # Masks
+    liver_mask = (lab == LIVER_LABEL).astype(np.uint8)
+    tumor_mask = (lab == TUMOR_LABEL).astype(np.uint8)
+
+    if not liver_mask.any():
+        print(f"[Skip] No liver in {os.path.basename(label_path)}")
+        return False
+    if not tumor_mask.any():
+        print(f"[Skip] No tumor in {os.path.basename(label_path)}")
+        return False
+
+    '''
+    # Pick a single tumor component (largest)
+    lab_cc, n_cc = ndi.label(tumor_mask)
+    sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]
+    if not sizes:
+        raise ValueError("No connected components in tumor mask.")
+    src_id = max(sizes, key=lambda t: t[1])[0]
+    src_comp = (lab_cc == src_id)
+    '''
+    lab_cc, n_cc = ndi.label(tumor_mask)
+    if n_cc == 0:
+        raise ValueError("No tumor components in mask.")
+
+    # --- Option 1: choose a random tumor (all components equally likely)
+    src_id = np.random.default_rng(RNG_SEED if RNG_SEED is not None else None).integers(1, n_cc + 1)
+
+
+    # --- Option 2 (alternative): choose proportional to size
+    # sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]
+    # ids, weights = zip(*sizes)
+    # src_id = rng.choice(ids, p=np.array(weights)/sum(weights))
+
+    src_comp = (lab_cc == src_id)
+
+    # Crop source tumor patch
+    src_slz, src_sly, src_slx = bbox_of_mask(src_comp, pad=2)
+    tumor_ct_patch = img[src_slz, src_sly, src_slx].astype(np.float32)
+    tumor_mask_patch = src_comp[src_slz, src_sly, src_slx].astype(bool)
+    alpha_patch = feather_alpha(tumor_mask_patch, BLEND_BORDER)
+
+    # Distance transform from original tumor (for separation)
+    if AVOID_OVERLAP_WITH_ORIG:
+        dt_from_orig = ndi.distance_transform_edt(~tumor_mask)
+    else:
+        dt_from_orig = None
+
+    # Output volumes
+    out_img = img.copy()
+    out_lab = lab.copy()
+    pasted_masks = []
+    report_rows = []
+    # Start with original tumors as occupied
+    occupied_mask = tumor_mask.copy()
+
+    # Precompute a dilated "forbidden" zone around occupied voxels
+    # (keeps patches away by OCCUPIED_CLEARANCE_VOX voxels)
+    structure = ndi.generate_binary_structure(3, 1)  # 6-neighborhood
+    forbidden = ndi.binary_dilation(
+        occupied_mask,
+        structure=structure,
+        iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))
+    )
+    dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)
+
+
+    rng = np.random.default_rng(RNG_SEED)
+    pasted_count = 0
+
+    for k in range(NUM_COPIES):
+        placed = False
+        for center in try_random_centers_shuffled(liver_mask, tumor_mask_patch.shape, rng, max_tries=4000):
+            pz, py, px = tumor_mask_patch.shape
+            hz, hy, hx = pz//2, py//2, px//2
+            cz, cy, cx = center
+            z1, z2 = cz-hz, cz-hz+pz
+            y1, y2 = cy-hy, cy-hy+py
+            x1, x2 = cx-hx, cx-hx+px
+
+            roi_liver = liver_mask[z1:z2, y1:y2, x1:x2]
+            roi_forbidden = forbidden[z1:z2, y1:y2, x1:x2]
+
+            # ---- HARD NO-OVERLAP RULE with occupied (+clearance)
+            if (tumor_mask_patch & roi_forbidden).any():
+                continue
+
+            # ---- Coverage rule (after forbidding overlap)
+            inside_frac = (tumor_mask_patch & roi_liver).sum() / (tumor_mask_patch.sum() + 1e-6)
+            if inside_frac < MIN_LIVER_COVERAGE:
+                continue
+
+            # ---- Optional: center separation (vs. original+pastes)
+            if MIN_CENTER_SEPARATION_VOX > 0:
+                if dist_from_occupied[cz, cy, cx] < MIN_CENTER_SEPARATION_VOX:
+                    continue
+
+            # ---- Paste (intensity jitter + feather)
+            scale = rng.uniform(*INTENSITY_SCALE_RANGE)
+            shift = rng.uniform(*INTENSITY_SHIFT_RANGE)
+            roi_ct = out_img[z1:z2, y1:y2, x1:x2]
+            alpha_eff = alpha_patch * tumor_mask_patch.astype(np.float32)
+            pasted_ct = (1.0 - alpha_eff) * roi_ct + alpha_eff * (tumor_ct_patch * scale + shift)
+            out_img[z1:z2, y1:y2, x1:x2] = pasted_ct
+
+            # ---- Labels
+            new_mask_full = np.zeros_like(out_lab, dtype=bool)
+            new_mask_full[z1:z2, y1:y2, x1:x2] = tumor_mask_patch
+            out_lab[new_mask_full] = TUMOR_LABEL
+            pasted_masks.append(new_mask_full)
+
+            pasted_count += 1
+
+            # ---- UPDATE OCCUPIED + FORBIDDEN + DISTANCE for next iterations
+            occupied_mask |= new_mask_full
+            forbidden = ndi.binary_dilation(
+                occupied_mask,
+                structure=structure,
+                iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))
+            )
+            dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)
+
+            # ---- reporting (unchanged)
+            vox = int(new_mask_full.sum())
+            vol_mm3 = vox * voxel_mm3
+            c_src = centroid_world(src_comp, affine_lab)
+            c_new = centroid_world(new_mask_full, affine_lab)
+
+
+            offset = tuple(float(b - a) for a, b in zip(c_src, c_new))
+            report_rows.append({
+                "copy_idx": k+1,
+                "voxels": vox,
+                "volume_mm3": vol_mm3,
+                "center_world_mm": c_new,
+                "offset_from_src_mm": offset,
+                "liver_coverage": float(inside_frac),
+                "scale": float(scale),
+                "shift": float(shift),
+            })
+            placed = True
+            break
+
+        if not placed:
+            print(f"[Warn] Could not place tumor copy #{k+1} (relax coverage or clearance).")
+
+
+    # Save outputs using original headers/affine to keep geometry consistent
+    nib.save(nib.Nifti1Image(out_img.astype(np.float32), affine_img, img_hdr), out_image_path)
+    nib.save(nib.Nifti1Image(out_lab.astype(np.int16),  affine_lab, lab_hdr),  out_label_path)
+
+
+    vox = int(src_comp.sum())
+    vol_mm3 = vox * voxel_mm3
+    c_src = centroid_world(src_comp, affine_lab)
+    print(f"[OK] {os.path.basename(image_path)}  pasted:{pasted_count}  "
+                    f"orig_tumor_vox:{vox}  vol:{vol_mm3:.1f} mm³  "
+                    f"center(mm):{tuple(round(v,1) for v in c_src)}")
+    return True
+
+# =========================
+# BATCH DRIVER
+# =========================
+def main():
+    ensure_dirs()
+
+    # find all images like liver_XX_0000.nii.gz
+    image_files = sorted(glob.glob(os.path.join(IMAGE_DIR, "liver_*_0000.nii.gz")))
+
+    # pattern to extract the case id ("liver_1_0000.nii.gz" -> "liver_1")
+    pat = re.compile(r"^(?P<prefix>liver_\d+)_0000\.nii\.gz$")
+
+    total = 0
+    ok = 0
+    skipped = 0
+    for img_path in image_files:
+        fname = os.path.basename(img_path)
+        m = pat.match(fname)
+        if not m:
+            print(f"[Skip] Unexpected image name: {fname}")
+            skipped += 1
+            continue
+        base = m.group("prefix")  # e.g., liver_70
+        lab_path = os.path.join(LABEL_DIR, f"{base}.nii.gz")
+        if not os.path.exists(lab_path):
+            print(f"[Skip] Missing label for {fname}: {lab_path}")
+            skipped += 1
+            continue
+
+        out_img_path = os.path.join(OUT_IMAGE_DIR, f"{base}_0000.nii.gz")
+        out_lab_path = os.path.join(OUT_LABEL_DIR,  f"{base}.nii.gz")
+
+        # idempotent: skip if already exists
+        if os.path.exists(out_img_path) and os.path.exists(out_lab_path):
+            print(f"[Skip] Already exists: {base}")
+            skipped += 1
+            continue
+
+        total += 1
+        try:
+            if augment_case(img_path, lab_path, out_img_path, out_lab_path):
+                ok += 1
+        except Exception as e:
+            print(f"[Error] {base}: {e}")
+
+    print(f"\nDone. processed={total}  ok={ok}  skipped={skipped}  out_dir={DATA_AUG_DIR}")
+
+if __name__ == "__main__":
+    main()

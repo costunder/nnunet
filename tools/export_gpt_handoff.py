@@ -21,6 +21,36 @@ EXCLUDED_PARTS = {".git", ".venv", "venv", "__pycache__", "work", "results",
 EXCLUDED_NAMES = {"code.txt", ".env"}
 
 
+def verify_source_only_notebook(content: str, relative: str) -> None:
+    """Refuse rendered patient data, rather than silently stripping on export.
+
+    Only source cells and empty metadata are accepted. Review/sanitize the
+    notebook separately; the exporter never modifies its input notebook.
+    """
+    notebook = json.loads(content)
+    if (not isinstance(notebook, dict) or notebook.get("nbformat") != 4
+            or notebook.get("metadata") != {}
+            or not isinstance(notebook.get("cells"), list)
+            or set(notebook) != {"cells", "metadata", "nbformat", "nbformat_minor"}):
+        raise ValueError(f"Not a source-only notebook: {relative}")
+    for cell in notebook["cells"]:
+        if not isinstance(cell, dict):
+            raise ValueError(f"Malformed source notebook cell: {relative}")
+        kind = cell.get("cell_type")
+        allowed = {"cell_type", "metadata", "source", "id"}
+        if kind == "code":
+            allowed.update({"outputs", "execution_count"})
+            if cell.get("outputs") != [] or cell.get("execution_count") is not None:
+                raise ValueError(f"Notebook output/execution data must be cleared: {relative}")
+        elif kind != "markdown":
+            raise ValueError(f"Unsupported source notebook cell type: {relative}")
+        source = cell.get("source")
+        if (cell.get("metadata") != {} or not set(cell).issubset(allowed)
+                or not (isinstance(source, str) or
+                        isinstance(source, list) and all(isinstance(line, str) for line in source))):
+            raise ValueError(f"Notebook attachments/metadata or malformed source: {relative}")
+
+
 def git(root: Path, *args: str) -> bytes:
     return subprocess.check_output(
         ["git", "-c", f"safe.directory={root.as_posix()}", *args], cwd=root)
@@ -39,6 +69,8 @@ def source_record(root: Path, relative: str) -> tuple[dict, str]:
     if b"\x00" in raw:
         raise ValueError(f"Binary input is not a handoff text source: {relative}")
     content = raw.decode("utf-8").replace("\r\n", "\n")
+    if name.suffix.lower() == ".ipynb":
+        verify_source_only_notebook(content, relative)
     exported = content.encode("utf-8")
     return ({"path": name.as_posix(), "source_sha256": hashlib.sha256(raw).hexdigest(),
              "export_sha256": hashlib.sha256(exported).hexdigest(),

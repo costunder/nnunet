@@ -9,16 +9,16 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
 
 {
   "format": "hiercp_working_tree_code_export_v1",
-  "base_commit": "3acef3c60689cc3d9a05c0282a89da8887336bce",
+  "base_commit": "572f1f961bc5618ebab5b3ff5756952281fb8b2b",
   "snapshot": "current working tree; not a claim that changes were committed or pushed",
-  "generated_utc": "2026-09-15T08:06:54.543296+00:00",
-  "file_count": 190,
+  "generated_utc": "2026-09-15T15:07:33.507685+00:00",
+  "file_count": 196,
   "files": [
     {
       "path": ".gitignore",
-      "source_sha256": "7ecefc8bf02d22f17a62f9fdeed21bb5735c08477f08f683894116c109ae0749",
-      "export_sha256": "7ecefc8bf02d22f17a62f9fdeed21bb5735c08477f08f683894116c109ae0749",
-      "export_bytes": 731
+      "source_sha256": "2aab353fa68c608f6f95e7f8c0138cfd9f45cf362c2efb7ee7559a1c14bbef96",
+      "export_sha256": "2aab353fa68c608f6f95e7f8c0138cfd9f45cf362c2efb7ee7559a1c14bbef96",
+      "export_bytes": 753
     },
     {
       "path": "AGENTS.md",
@@ -28,9 +28,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "README.md",
-      "source_sha256": "411b68fa74ca66e2b8c33c7961afb62a19eacf39091edacbf7a9819a1b3d95fb",
-      "export_sha256": "411b68fa74ca66e2b8c33c7961afb62a19eacf39091edacbf7a9819a1b3d95fb",
-      "export_bytes": 17085
+      "source_sha256": "b7b965e9ff2e26cac13eab253fdc83d0923d3896d267774d455e9641659ff7ce",
+      "export_sha256": "b7b965e9ff2e26cac13eab253fdc83d0923d3896d267774d455e9641659ff7ce",
+      "export_bytes": 17328
     },
     {
       "path": "config/nnunet.json",
@@ -160,9 +160,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "docs/cp_input_repair.md",
-      "source_sha256": "e7d3ac24fffee5ec92abfee60113dfc86fce52ae03bdca7724abcac9560df336",
-      "export_sha256": "e7d3ac24fffee5ec92abfee60113dfc86fce52ae03bdca7724abcac9560df336",
-      "export_bytes": 8683
+      "source_sha256": "1684c9c4f00a3ae3836c376a6179c630f50da8d5d5909d2123370e6395519015",
+      "export_sha256": "1684c9c4f00a3ae3836c376a6179c630f50da8d5d5909d2123370e6395519015",
+      "export_bytes": 11091
     },
     {
       "path": "docs/design.md",
@@ -214,9 +214,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "gpt_handoff.md",
-      "source_sha256": "b45eb8c9c31a52d2f26d393b5affe4c567364a6c410763353bd6088064a66562",
-      "export_sha256": "b45eb8c9c31a52d2f26d393b5affe4c567364a6c410763353bd6088064a66562",
-      "export_bytes": 47316
+      "source_sha256": "2bb959ef3f0f214bf74dcff13a011920d681d82285f019761cd4d8b9e4a9490f",
+      "export_sha256": "2bb959ef3f0f214bf74dcff13a011920d681d82285f019761cd4d8b9e4a9490f",
+      "export_bytes": 50276
     },
     {
       "path": "hiercp/__init__.py",
@@ -403,6 +403,36 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
       "source_sha256": "8e12cc41a6291974b3c673f2a67e47ec734cfac2d2fe6aab258bc9dd6b9ea144",
       "export_sha256": "8e12cc41a6291974b3c673f2a67e47ec734cfac2d2fe6aab258bc9dd6b9ea144",
       "export_bytes": 544
+    },
+    {
+      "path": "reference/medical_data_aug/3d_copy_paste_tumor.py.txt",
+      "source_sha256": "986fd6afb95b94c70614ac02d2b9ced776cbd680c5e70d4dd11e20148383bd70",
+      "export_sha256": "986fd6afb95b94c70614ac02d2b9ced776cbd680c5e70d4dd11e20148383bd70",
+      "export_bytes": 12765
+    },
+    {
+      "path": "reference/medical_data_aug/README.md",
+      "source_sha256": "bf8cc130b5d76e12e496896335524bb708645d28dab91391ac6853a60a106e33",
+      "export_sha256": "bf8cc130b5d76e12e496896335524bb708645d28dab91391ac6853a60a106e33",
+      "export_bytes": 2413
+    },
+    {
+      "path": "reference/medical_data_aug/README.original.md",
+      "source_sha256": "c685f28ecd3dc02ea4537abc8c1113734d22c55f8a2d2f4210099dc27972968d",
+      "export_sha256": "c685f28ecd3dc02ea4537abc8c1113734d22c55f8a2d2f4210099dc27972968d",
+      "export_bytes": 6520
+    },
+    {
+      "path": "reference/medical_data_aug/provenance.json",
+      "source_sha256": "06fc53a758ccdcf081673af2171867bf7bb090743c1e445cbd993d1ec5482603",
+      "export_sha256": "06fc53a758ccdcf081673af2171867bf7bb090743c1e445cbd993d1ec5482603",
+      "export_bytes": 3348
+    },
+    {
+      "path": "reference/medical_data_aug/view_nifti_liver.ipynb",
+      "source_sha256": "ffb7535c64acc918fdd89bf7139c4f50a6602a6cddaee1b0a7d1dd2f5e24f798",
+      "export_sha256": "ffb7535c64acc918fdd89bf7139c4f50a6602a6cddaee1b0a7d1dd2f5e24f798",
+      "export_bytes": 50235
     },
     {
       "path": "requirements-debug.txt",
@@ -676,9 +706,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tests/test_gpt_handoff_export_debug.py",
-      "source_sha256": "6736bb08ebf3072e0af75429de747ebb6616475e03f679a2a9f6a7a612ce7d68",
-      "export_sha256": "6736bb08ebf3072e0af75429de747ebb6616475e03f679a2a9f6a7a612ce7d68",
-      "export_bytes": 3724
+      "source_sha256": "eab0c61cdf8618c957b8340ef02858315de0ec737b3247ffc8f2d83bf337242a",
+      "export_sha256": "eab0c61cdf8618c957b8340ef02858315de0ec737b3247ffc8f2d83bf337242a",
+      "export_bytes": 5254
     },
     {
       "path": "tests/test_hierarchy_loss_debug.py",
@@ -700,9 +730,15 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tests/test_medical_aug_reference_debug.py",
-      "source_sha256": "565268bd2597bac321eb9353e0e26b3769c82e9b03a21177641d4c6ce7d1e328",
-      "export_sha256": "565268bd2597bac321eb9353e0e26b3769c82e9b03a21177641d4c6ce7d1e328",
-      "export_bytes": 5702
+      "source_sha256": "bc5b5575696cd18dce78313c6f920f387c849fb8c91bb21ecd8e23a678f96b70",
+      "export_sha256": "bc5b5575696cd18dce78313c6f920f387c849fb8c91bb21ecd8e23a678f96b70",
+      "export_bytes": 14644
+    },
+    {
+      "path": "tests/test_medical_aug_source_import_debug.py",
+      "source_sha256": "97b24e387fd9e88f0136748a9f48ca66b4eae64b5308abc2f3588b65a6e74e1a",
+      "export_sha256": "97b24e387fd9e88f0136748a9f48ca66b4eae64b5308abc2f3588b65a6e74e1a",
+      "export_bytes": 2589
     },
     {
       "path": "tests/test_no_placement_cache_debug.py",
@@ -994,9 +1030,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "tools/export_gpt_handoff.py",
-      "source_sha256": "bebaf1c816000719e6ca44fd24ba4701a7b2de229b825be642d19df784a4c6a5",
-      "export_sha256": "bebaf1c816000719e6ca44fd24ba4701a7b2de229b825be642d19df784a4c6a5",
-      "export_bytes": 6225
+      "source_sha256": "f6a28ca10369ef795eda3cf793038a35548b2186e01e4dffa6230b1b7edf4215",
+      "export_sha256": "f6a28ca10369ef795eda3cf793038a35548b2186e01e4dffa6230b1b7edf4215",
+      "export_bytes": 7982
     },
     {
       "path": "tools/feedback_bank_upgrade.py",
@@ -1170,6 +1206,7 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
 /checkpoints/
 
 # External medical data and generated volume/array artifacts
+/Medical Data Aug.zip
 /Data/
 /Data_aug/
 /Task03_Liver/
@@ -1709,6 +1746,9 @@ regression checks below on the target server before the full experiment.
   reuse/upgrade boundaries.
 - [`gpt_handoff.md`](gpt_handoff.md) and [`code.txt`](code.txt): current project
   handoff and complete tracked-text source export; no patient images are included.
+- [`reference/medical_data_aug/`](reference/medical_data_aug/): restored original
+  Basic-CP source, source-only historical notebook and SHA provenance. Its active
+  implementation is already integrated, not a second preprocessing/CP command.
 - [`config/train.json`](config/train.json): graph, model, cache, training, and
   generation contract.
 - [`config/nnunet.json`](config/nnunet.json): downstream nnU-Net contract.
@@ -8225,6 +8265,38 @@ not an experiment output directory. It contains a batch script, a notebook,
 and a `liver_70` image/label pair. It does not contain the failing `liver_76`.
 Do not commit the archive or its medical images to the repository.
 
+The complete original batch source and all 24 notebook cell sources are now
+tracked in `reference/medical_data_aug/` and included in `code.txt`. The batch
+has a `.py.txt` suffix because it is historical source with known defects, not
+an additional production implementation. The notebook has no saved outputs,
+attachments, execution counts or metadata; two opening cells warn and stop an
+accidental Run All. Member/source hashes record exactly what was imported.
+The original README is preserved apart from line endings and its medical-data
+sharing link. The original archive and all patient volumes stay local.
+
+## Original source to active pipeline
+
+| Original batch step | Active implementation |
+| --- | --- |
+| 3D/first-channel loading, compact dtype, header/affine preservation | `hiercp.common._slice_nii_to_3d`, `load_case`, `save_case_pair` |
+| Connected-component source selection and padded full tumor patch | `hiercp.common.choose_source_tumor` |
+| Liver coverage, occupied clearance and native-voxel separation | `hiercp.common.build_candidate_pool`, shared `config/train.json` cache/generation sections |
+| HU scale/shift, hard or feather paste, corresponding label update | `hiercp.common.feather_alpha`, `paste_source`; online raw-target `custom_trainers.onlinecp_raw_resampling.apply_candidate` |
+| Candidate materialization and selection | `tools.online_cp_benchmark.build_online_bank`, paired Basic/Full online policy; a research extension beyond the original first-valid-location sampler |
+| Applying raw CP to native preprocessed training crops | `nnUNetDataLoaderOnlineCP._apply_raw_paste_to_crop` in `custom_trainers/nnUNetTrainer_OnlinePairedCP.py` |
+
+The original batch does **not** implement nnU-Net planning, normalization or
+spacing resampling. Its preprocessing is input loading/3D selection and source
+patch preparation. The notebook additionally has display-only intensity scaling
+and visualization experiments; those are not training preprocessing. Current
+native nnU-Net preprocessing remains shared between Basic and Full, with raw CP
+mapped through the native operators. Do not feed a globally CP-augmented
+`Data_aug` directory as if it were untouched input or run the original generator
+before online CP. This import adds provenance and source-grounded tests, not a
+second augmentation pass or a changed experiment contract.
+
+## Original versus research placement policy
+
 The earlier `code.txt` HierCP export is a different reference stage. Its
 placement tests must not be described as proof of equivalence to that ZIP:
 
@@ -9873,13 +9945,43 @@ downloaded by these unit tests.
 ===== FILE: gpt_handoff.md =====
 # HierCP GPT handoff
 
-갱신일: 2026-09-15 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+갱신일: 2026-09-16 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
 `Source manifest`를 따른다. 최신 변경은 **source-content / population-metric v5**다.
 이전 v4의 785개 중 780개 통과·5개 skip 기록은 과거 검사이며, v5나 Basic 재사용
 기능의 검증 결과로 인용하면 안 된다. 현재 변경은 아래 별도의 v5 검사 결과를 따른다.
 의료 데이터 전체 학습, GPU 전체 학습, 서버 결과 재평가는 실행하지 않았다.
 배포 명령 갱신: 2026-09-15 KST, 사용자가 현재 할당받았다고 명시한 물리 GPU는 5번이다.
 Git 배포 여부는 실제 원격 `origin/main`으로 확인하며 로컬 검사·문서 생성과 구분한다.
+
+## 2026-09-16 Medical Data Aug 원본 소스 통합
+
+- `reference/medical_data_aug/`에 ZIP의 배치 코드 전체와 notebook 원본 24개 cell source를
+  복원했다. 배치 `.py.txt`는 알려진 결함을 포함한 역사적 원문이며 활성 실행 파일이 아니다.
+  배치의 줄바꿈/줄 끝 공백만 정규화했고 전체 AST는 원본과 같다.
+  notebook은 출력·execution count·attachment·metadata를 제거하고 맨 앞에 안내/Run All
+  방지 2개 cell만 추가했다. 원본 README의 데이터 공유 URL은 제외했다. ZIP/member SHA와
+  변환 후 SHA·각 cell source SHA를 `provenance.json`에 남겼다. 이 소스들은 `code.txt`에도
+  포함된다. CT/label 및 렌더링된 의료영상은 Git/전달 문서에 포함하지 않는다.
+- 원본 batch와 notebook 전체 소스를 직접 대조했다. batch의 전처리는 3D/첫 채널 로딩,
+  dtype/geometry 보존과 source patch 준비이며 별도 nnU-Net 정규화·spacing resampling은
+  없다. notebook의 display normalization은 학습 전처리가 아니다. 기존 `hiercp.common`과
+  raw-target bank→`onlinecp_raw_resampling.apply_candidate`→online trainer에 CP가 이미
+  연결돼 있다. 함수별 대응은 `docs/cp_input_repair.md`에 정리했다.
+- 따라서 별도의 Data_aug 생성 단계를 online 앞에 넣지 않았다. 이는 CP를 두 번 적용하는
+  변경이 된다. 원본의 uint8 반전 오류·조용한 crop/실패·검증 없는 출력 재사용은 이식하지
+  않는다. 원본 4,000회/첫 유효 위치와 현재 128후보/seeded online schedule은 동일 RNG
+  실험이 아니며, 기존에 명시한 연구 확장이다. 모델·학습·CP 설정 및 runtime은 변경 없음.
+- export 도구는 출력/attachment/metadata가 남은 notebook을 거절하고 기존 code.txt를
+  보존한다. notebook을 재실행해 의료영상을 저장한 상태로 그대로 전달하지 않는다.
+- 이번 작업은 소스 복원/대조와 DEBUG 검증이다. 실제 의료 데이터 추출·전체 전처리·GPU
+  학습·평가를 새로 실행하지 않았으며, 기존 checkpoint/bank/preprocessing을 변경하지 않았다.
+- 이번 관련 CPU 회귀 **77/77 통과, 11.304초**: 원본 연산/설정 대조, 소스 SHA/24 cell 보존,
+  출력 포함 notebook 전달 거절, raw resampling/trainer, no-placement와 NIfTI geometry 검사.
+  첫 패키지형 테스트 호출은 기존 테스트 간 import 경로 때문에 1개 모듈 로딩에 실패했으며,
+  tests를 검색 경로에 둔 호출로 7개 모듈 모두 다시 실행했다. 테스트 실패를 skip하지 않았다.
+  Python 166개 Python 3.10 AST·설정 JSON 5개 및 ZIP/member SHA/원본 batch AST/24 cell
+  source 일치도 확인했다. 이번에는 전체 884개 회귀를 재실행하지 않았으며 아래 수치는 이전
+  변경의 기록이다. 생산 runtime·설정·trainer 파일에는 이번 diff가 없다.
 
 ## 2026-09-15 전처리 재사용 완료 증거 수정
 
@@ -30043,6 +30145,1917 @@ custom_trainers = ["SHA256SUMS", "README.md"]
 
 ===== END FILE: pyproject.toml =====
 
+===== FILE: reference/medical_data_aug/3d_copy_paste_tumor.py.txt =====
+import os, re, glob
+import nibabel as nib
+import numpy as np
+from skimage import measure
+from scipy import ndimage as ndi
+
+# =========================
+# CONFIG
+# =========================
+DATA_DIR = "Data"
+DATA_AUG_DIR = "Data_aug"
+
+IMAGE_DIR = os.path.join(DATA_DIR, "image")
+LABEL_DIR = os.path.join(DATA_DIR, "labels")
+
+OUT_IMAGE_DIR = os.path.join(DATA_AUG_DIR, "image")
+OUT_LABEL_DIR = os.path.join(DATA_AUG_DIR, "labels")
+
+# Augmentation parameters (same as your single-case code)
+LIVER_LABEL = 1
+TUMOR_LABEL = 2
+NUM_COPIES = 1                 # how many new tumors to paste per case
+BLEND_BORDER = 0               # 0 = hard paste (set >0 for feathered edges)
+INTENSITY_SCALE_RANGE = (0.95, 1.05)
+INTENSITY_SHIFT_RANGE = (-5.0, 5.0)
+MIN_LIVER_COVERAGE = 0.85
+AVOID_OVERLAP_WITH_ORIG = True
+# Keep pasted tumors away from existing tumors & each other
+OCCUPIED_CLEARANCE_VOX = 2    # dilated safety margin (voxels) around occupied areas
+MIN_CENTER_SEPARATION_VOX = 12  # optional extra spacing between centers
+RNG_SEED = None                  # None => non-deterministic; or set an int for reproducible but varied runs
+
+# =========================
+# HELPERS
+# =========================
+def ensure_dirs():
+    os.makedirs(OUT_IMAGE_DIR, exist_ok=True)
+    os.makedirs(OUT_LABEL_DIR, exist_ok=True)
+
+def bbox_of_mask(mask, pad=2):
+    zz, yy, xx = np.where(mask)
+    zmin, zmax = max(0, zz.min()-pad), min(mask.shape[0]-1, zz.max()+pad)
+    ymin, ymax = max(0, yy.min()-pad), min(mask.shape[1]-1, yy.max()+pad)
+    xmin, xmax = max(0, xx.min()-pad), min(mask.shape[2]-1, xx.max()+pad)
+    return (slice(zmin, zmax+1), slice(ymin, ymax+1), slice(xmin, xmax+1))
+
+def feather_alpha(binary_mask, blend_border=3):
+    if blend_border <= 0:
+        return binary_mask.astype(np.float32)
+    dist_to_bg = ndi.distance_transform_edt(binary_mask)
+    alpha = np.clip(dist_to_bg / float(blend_border), 0.0, 1.0).astype(np.float32)
+    return alpha
+
+def centroid_world(mask, affine):
+    if not mask.any():
+        return (np.nan, np.nan, np.nan)
+    coords = np.column_stack(np.where(mask))
+    c_vox = coords.mean(axis=0)
+    c_h = np.r_[c_vox, 1.0]
+    c_w = (affine @ c_h)[:3]
+    return tuple(map(float, c_w))
+
+def try_random_centers_shuffled(liver_mask, patch_shape, rng, max_tries=4000):
+    pz, py, px = patch_shape
+    hz, hy, hx = pz//2, py//2, px//2
+    Z, Y, X = liver_mask.shape
+    zmin, zmax = hz, Z - (pz - hz)
+    ymin, ymax = hy, Y - (py - hy)
+    xmin, xmax = hx, X - (px - hx)
+    if zmax <= zmin or ymax <= ymin or xmax <= xmin:
+        return
+    zz, yy, xx = np.where(liver_mask)
+    keep = (zz >= zmin) & (zz < zmax) & (yy >= ymin) & (yy < ymax) & (xx >= xmin) & (xx < xmax)
+    cand = np.column_stack([zz[keep], yy[keep], xx[keep]])
+    if len(cand) == 0:
+        return
+    for idx in rng.permutation(len(cand))[:max_tries]:
+        cz, cy, cx = cand[idx]
+        yield int(cz), int(cy), int(cx)
+
+def load_case_safely(image_path, label_path):
+    """Return (img3d_float32, lab3d_int16, affine_img, affine_lab, img_hdr, lab_hdr, spacing, voxel_mm3)
+    using nibabel's slicer to avoid ever materializing the full 4D array."""
+    img_nii_full = nib.load(image_path)
+    lab_nii_full = nib.load(label_path)
+
+    # ---- Slice to 3D *at the NIfTI level* (no 4D materialization)
+    if len(img_nii_full.shape) == 4:
+        if img_nii_full.shape[0] <= 4:   # (C,Z,Y,X)
+            img_nii = img_nii_full.slicer[0, ...]
+        else:                            # (Z,Y,X,C)
+            img_nii = img_nii_full.slicer[..., 0]
+    else:
+        img_nii = img_nii_full
+
+    if len(lab_nii_full.shape) == 4:
+        if lab_nii_full.shape[0] <= 4:
+            lab_nii = lab_nii_full.slicer[0, ...]
+        else:
+            lab_nii = lab_nii_full.slicer[..., 0]
+    else:
+        lab_nii = lab_nii_full
+
+    # ---- Now materialize only the 3D slices in compact dtypes
+    img = np.asarray(img_nii.dataobj, dtype=np.float32, order="C")
+    lab = np.asarray(lab_nii.dataobj, dtype=np.int16,   order="C")
+
+    affine_img = img_nii.affine
+    affine_lab = lab_nii.affine
+    img_header = img_nii.header.copy()
+    lab_header = lab_nii.header.copy()
+
+    zooms = img_header.get_zooms()
+    if len(zooms) < 3:
+        raise RuntimeError(f"Unexpected zooms: {zooms}")
+    spacing = np.array(zooms[:3], dtype=np.float32)
+    voxel_mm3 = float(np.prod(spacing))
+
+    return img, lab, affine_img, affine_lab, img_header, lab_header, spacing, voxel_mm3
+
+
+# =========================
+# CORE AUGMENTATION (one case)
+# =========================
+def augment_case(image_path, label_path, out_image_path, out_label_path):
+
+    (img, lab,
+    affine_img, affine_lab,
+    img_hdr, lab_hdr,
+    spacing, voxel_mm3) = load_case_safely(image_path, label_path)
+
+    # Sanity checks (will print once per case)
+    # If you still see a 4D shape here, we failed to slice correctly.
+    if img.ndim != 3: raise RuntimeError(f"CT not 3D: {img.shape}  -> check loader")
+    if lab.ndim != 3: raise RuntimeError(f"Label not 3D: {lab.shape} -> check loader")
+
+
+    # Masks
+    liver_mask = (lab == LIVER_LABEL).astype(np.uint8)
+    tumor_mask = (lab == TUMOR_LABEL).astype(np.uint8)
+
+    if not liver_mask.any():
+        print(f"[Skip] No liver in {os.path.basename(label_path)}")
+        return False
+    if not tumor_mask.any():
+        print(f"[Skip] No tumor in {os.path.basename(label_path)}")
+        return False
+
+    '''
+    # Pick a single tumor component (largest)
+    lab_cc, n_cc = ndi.label(tumor_mask)
+    sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]
+    if not sizes:
+        raise ValueError("No connected components in tumor mask.")
+    src_id = max(sizes, key=lambda t: t[1])[0]
+    src_comp = (lab_cc == src_id)
+    '''
+    lab_cc, n_cc = ndi.label(tumor_mask)
+    if n_cc == 0:
+        raise ValueError("No tumor components in mask.")
+
+    # --- Option 1: choose a random tumor (all components equally likely)
+    src_id = np.random.default_rng(RNG_SEED if RNG_SEED is not None else None).integers(1, n_cc + 1)
+
+
+    # --- Option 2 (alternative): choose proportional to size
+    # sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]
+    # ids, weights = zip(*sizes)
+    # src_id = rng.choice(ids, p=np.array(weights)/sum(weights))
+
+    src_comp = (lab_cc == src_id)
+
+    # Crop source tumor patch
+    src_slz, src_sly, src_slx = bbox_of_mask(src_comp, pad=2)
+    tumor_ct_patch = img[src_slz, src_sly, src_slx].astype(np.float32)
+    tumor_mask_patch = src_comp[src_slz, src_sly, src_slx].astype(bool)
+    alpha_patch = feather_alpha(tumor_mask_patch, BLEND_BORDER)
+
+    # Distance transform from original tumor (for separation)
+    if AVOID_OVERLAP_WITH_ORIG:
+        dt_from_orig = ndi.distance_transform_edt(~tumor_mask)
+    else:
+        dt_from_orig = None
+
+    # Output volumes
+    out_img = img.copy()
+    out_lab = lab.copy()
+    pasted_masks = []
+    report_rows = []
+    # Start with original tumors as occupied
+    occupied_mask = tumor_mask.copy()
+
+    # Precompute a dilated "forbidden" zone around occupied voxels
+    # (keeps patches away by OCCUPIED_CLEARANCE_VOX voxels)
+    structure = ndi.generate_binary_structure(3, 1)  # 6-neighborhood
+    forbidden = ndi.binary_dilation(
+        occupied_mask,
+        structure=structure,
+        iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))
+    )
+    dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)
+
+
+    rng = np.random.default_rng(RNG_SEED)
+    pasted_count = 0
+
+    for k in range(NUM_COPIES):
+        placed = False
+        for center in try_random_centers_shuffled(liver_mask, tumor_mask_patch.shape, rng, max_tries=4000):
+            pz, py, px = tumor_mask_patch.shape
+            hz, hy, hx = pz//2, py//2, px//2
+            cz, cy, cx = center
+            z1, z2 = cz-hz, cz-hz+pz
+            y1, y2 = cy-hy, cy-hy+py
+            x1, x2 = cx-hx, cx-hx+px
+
+            roi_liver = liver_mask[z1:z2, y1:y2, x1:x2]
+            roi_forbidden = forbidden[z1:z2, y1:y2, x1:x2]
+
+            # ---- HARD NO-OVERLAP RULE with occupied (+clearance)
+            if (tumor_mask_patch & roi_forbidden).any():
+                continue
+
+            # ---- Coverage rule (after forbidding overlap)
+            inside_frac = (tumor_mask_patch & roi_liver).sum() / (tumor_mask_patch.sum() + 1e-6)
+            if inside_frac < MIN_LIVER_COVERAGE:
+                continue
+
+            # ---- Optional: center separation (vs. original+pastes)
+            if MIN_CENTER_SEPARATION_VOX > 0:
+                if dist_from_occupied[cz, cy, cx] < MIN_CENTER_SEPARATION_VOX:
+                    continue
+
+            # ---- Paste (intensity jitter + feather)
+            scale = rng.uniform(*INTENSITY_SCALE_RANGE)
+            shift = rng.uniform(*INTENSITY_SHIFT_RANGE)
+            roi_ct = out_img[z1:z2, y1:y2, x1:x2]
+            alpha_eff = alpha_patch * tumor_mask_patch.astype(np.float32)
+            pasted_ct = (1.0 - alpha_eff) * roi_ct + alpha_eff * (tumor_ct_patch * scale + shift)
+            out_img[z1:z2, y1:y2, x1:x2] = pasted_ct
+
+            # ---- Labels
+            new_mask_full = np.zeros_like(out_lab, dtype=bool)
+            new_mask_full[z1:z2, y1:y2, x1:x2] = tumor_mask_patch
+            out_lab[new_mask_full] = TUMOR_LABEL
+            pasted_masks.append(new_mask_full)
+
+            pasted_count += 1
+
+            # ---- UPDATE OCCUPIED + FORBIDDEN + DISTANCE for next iterations
+            occupied_mask |= new_mask_full
+            forbidden = ndi.binary_dilation(
+                occupied_mask,
+                structure=structure,
+                iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))
+            )
+            dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)
+
+            # ---- reporting (unchanged)
+            vox = int(new_mask_full.sum())
+            vol_mm3 = vox * voxel_mm3
+            c_src = centroid_world(src_comp, affine_lab)
+            c_new = centroid_world(new_mask_full, affine_lab)
+
+
+            offset = tuple(float(b - a) for a, b in zip(c_src, c_new))
+            report_rows.append({
+                "copy_idx": k+1,
+                "voxels": vox,
+                "volume_mm3": vol_mm3,
+                "center_world_mm": c_new,
+                "offset_from_src_mm": offset,
+                "liver_coverage": float(inside_frac),
+                "scale": float(scale),
+                "shift": float(shift),
+            })
+            placed = True
+            break
+
+        if not placed:
+            print(f"[Warn] Could not place tumor copy #{k+1} (relax coverage or clearance).")
+
+
+    # Save outputs using original headers/affine to keep geometry consistent
+    nib.save(nib.Nifti1Image(out_img.astype(np.float32), affine_img, img_hdr), out_image_path)
+    nib.save(nib.Nifti1Image(out_lab.astype(np.int16),  affine_lab, lab_hdr),  out_label_path)
+
+
+    vox = int(src_comp.sum())
+    vol_mm3 = vox * voxel_mm3
+    c_src = centroid_world(src_comp, affine_lab)
+    print(f"[OK] {os.path.basename(image_path)}  pasted:{pasted_count}  "
+                    f"orig_tumor_vox:{vox}  vol:{vol_mm3:.1f} mm³  "
+                    f"center(mm):{tuple(round(v,1) for v in c_src)}")
+    return True
+
+# =========================
+# BATCH DRIVER
+# =========================
+def main():
+    ensure_dirs()
+
+    # find all images like liver_XX_0000.nii.gz
+    image_files = sorted(glob.glob(os.path.join(IMAGE_DIR, "liver_*_0000.nii.gz")))
+
+    # pattern to extract the case id ("liver_1_0000.nii.gz" -> "liver_1")
+    pat = re.compile(r"^(?P<prefix>liver_\d+)_0000\.nii\.gz$")
+
+    total = 0
+    ok = 0
+    skipped = 0
+    for img_path in image_files:
+        fname = os.path.basename(img_path)
+        m = pat.match(fname)
+        if not m:
+            print(f"[Skip] Unexpected image name: {fname}")
+            skipped += 1
+            continue
+        base = m.group("prefix")  # e.g., liver_70
+        lab_path = os.path.join(LABEL_DIR, f"{base}.nii.gz")
+        if not os.path.exists(lab_path):
+            print(f"[Skip] Missing label for {fname}: {lab_path}")
+            skipped += 1
+            continue
+
+        out_img_path = os.path.join(OUT_IMAGE_DIR, f"{base}_0000.nii.gz")
+        out_lab_path = os.path.join(OUT_LABEL_DIR,  f"{base}.nii.gz")
+
+        # idempotent: skip if already exists
+        if os.path.exists(out_img_path) and os.path.exists(out_lab_path):
+            print(f"[Skip] Already exists: {base}")
+            skipped += 1
+            continue
+
+        total += 1
+        try:
+            if augment_case(img_path, lab_path, out_img_path, out_lab_path):
+                ok += 1
+        except Exception as e:
+            print(f"[Error] {base}: {e}")
+
+    print(f"\nDone. processed={total}  ok={ok}  skipped={skipped}  out_dir={DATA_AUG_DIR}")
+
+if __name__ == "__main__":
+    main()
+
+===== END FILE: reference/medical_data_aug/3d_copy_paste_tumor.py.txt =====
+
+===== FILE: reference/medical_data_aug/README.md =====
+# Medical Data Aug — original source integrated with HierCP
+
+This directory restores the code from the user-provided `Medical Data Aug.zip`.
+It is part of the repository and the complete `code.txt` handoff. The original
+archive stays local and unchanged; no CT, segmentation volume or rendered
+patient image is included here.
+
+- `3d_copy_paste_tumor.py.txt`: complete original batch source, with line endings
+  and trailing whitespace normalized; the complete AST is unchanged. The `.txt`
+  suffix deliberately distinguishes historical code with
+  known defects from supported executable code; no function was omitted.
+- `view_nifti_liver.ipynb`: all 24 original cell sources, in order. Outputs,
+  execution counts, attachments and metadata are cleared. Two new opening cells
+  identify it as historical and prevent accidental **Run All**. Individual cells
+  still contain their original experiments and writes; this is not the current
+  training notebook.
+- `README.original.md`: original documentation with only line endings normalized
+  and the external medical-data sharing URL omitted. Its instructions are
+  historical, not instructions to override the repository's `AGENTS.md`.
+- `provenance.json`: archive/member SHA-256, imported text SHA-256 and each original
+  notebook cell-source SHA-256. Exclusions and transformations are explicit.
+
+## Executable integration
+
+The original algorithm was already ported into the active implementation. It is
+not necessary or correct to execute the historical batch before online training.
+That would paste into `Data_aug` first and then paste again in the online trainer.
+See [the integrated mapping](../../docs/cp_input_repair.md#original-source-to-active-pipeline)
+and [the current runner](../../tools/run_feedback_experiment.py).
+
+The reference tests now read the actual restored source. Do not restore its
+`uint8` bitwise-inversion bug, permissive notebook cropping, exception swallowing,
+or unchecked output reuse into the active pipeline. The production pipeline's
+128 candidates, seeded paired schedules, GNNs, full graph rules and training
+configuration are unchanged by this source import.
+
+## Verification limits
+
+Source restoration and DEBUG numerical comparisons are not native whole-cohort
+preprocessing, GPU training or evaluation. No medical data was loaded or extracted
+for this import, and no existing experiment or private trainer was rewritten.
+
+===== END FILE: reference/medical_data_aug/README.md =====
+
+===== FILE: reference/medical_data_aug/README.original.md =====
+# 3D Liver Tumor Copy-Paste Augmentation
+
+This project augments 3D liver CT volumes by copying an existing tumor from each case and pasting it into another valid location inside the same liver. The corresponding tumor label is pasted into the segmentation volume at the same location.
+
+## Files
+
+- `3d_copy_paste_tumor.py` — batch augmentation script.
+- `view_nifti_liver.ipynb` — notebook for inspecting NIfTI files, visualizing liver/tumor labels, and experimenting with augmentation on a single case.
+
+## Requirements
+
+- Python 3.9 or newer
+- NumPy
+- NiBabel
+- SciPy
+- scikit-image
+- Matplotlib
+- Plotly
+- JupyterLab or Jupyter Notebook
+
+Create an environment and install the dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install numpy nibabel scipy scikit-image matplotlib plotly jupyterlab
+```
+
+On Windows, activate the environment with:
+
+```powershell
+.venv\Scripts\activate
+```
+
+## Expected Dataset Structure
+
+Download the Liver CT dataset from the following Google Drive folder:
+
+[External medical-data sharing link omitted from the public source archive.]
+
+After downloading and extracting the dataset, arrange the CT images and labels as shown below. Rename or reorganize the files if necessary to match the naming convention expected by the script.
+
+Run the code from the project directory. The input data must use this structure:
+
+```text
+project/
+├── 3d_copy_paste_tumor.py
+├── view_nifti_liver.ipynb
+└── Data/
+    ├── image/
+    │   ├── liver_1_0000.nii.gz
+    │   ├── liver_2_0000.nii.gz
+    │   └── ...
+    └── labels/
+        ├── liver_1.nii.gz
+        ├── liver_2.nii.gz
+        └── ...
+```
+
+Each image must have a matching label:
+
+```text
+Data/image/liver_<case_id>_0000.nii.gz
+Data/labels/liver_<case_id>.nii.gz
+```
+
+The default label definitions are:
+
+- `0`: background
+- `1`: liver
+- `2`: tumor
+
+Change `LIVER_LABEL` and `TUMOR_LABEL` in the script if the dataset uses different values.
+
+## Run Batch Augmentation
+
+From the project directory, run:
+
+```bash
+python 3d_copy_paste_tumor.py
+```
+
+The script processes every file matching:
+
+```text
+Data/image/liver_*_0000.nii.gz
+```
+
+It creates the following output structure automatically:
+
+```text
+Data_aug/
+├── image/
+│   ├── liver_1_0000.nii.gz
+│   └── ...
+└── labels/
+    ├── liver_1.nii.gz
+    └── ...
+```
+
+The augmented CT and label retain their original affine matrices and NIfTI headers. If both output files for a case already exist, that case is skipped to avoid overwriting the previous result.
+
+## Main Configuration
+
+Edit the configuration section near the top of `3d_copy_paste_tumor.py` before running it:
+
+| Setting | Default | Description |
+|---|---:|---|
+| `DATA_DIR` | `"Data"` | Input dataset directory |
+| `DATA_AUG_DIR` | `"Data_aug"` | Output dataset directory |
+| `LIVER_LABEL` | `1` | Liver label value |
+| `TUMOR_LABEL` | `2` | Tumor label value |
+| `NUM_COPIES` | `1` | Number of new tumors requested per case |
+| `BLEND_BORDER` | `0` | Edge feathering width in voxels; `0` uses hard copy-paste |
+| `INTENSITY_SCALE_RANGE` | `(0.95, 1.05)` | Random multiplicative intensity change |
+| `INTENSITY_SHIFT_RANGE` | `(-5.0, 5.0)` | Random additive intensity change |
+| `MIN_LIVER_COVERAGE` | `0.85` | Minimum fraction of the pasted tumor inside the liver |
+| `OCCUPIED_CLEARANCE_VOX` | `2` | Minimum voxel margin around existing and pasted tumors |
+| `MIN_CENTER_SEPARATION_VOX` | `12` | Minimum center distance from occupied tumor regions |
+| `RNG_SEED` | `None` | Random seed; use an integer for reproducible runs |
+
+Example reproducible configuration:
+
+```python
+NUM_COPIES = 2
+BLEND_BORDER = 2
+RNG_SEED = 42
+```
+
+If the script cannot find a valid location, it prints a warning. In that situation, reduce `MIN_LIVER_COVERAGE`, `OCCUPIED_CLEARANCE_VOX`, or `MIN_CENTER_SEPARATION_VOX`. The case may still be saved even when fewer tumors than requested were placed, so check the reported `pasted` count.
+
+## Use the Visualization Notebook
+
+Start JupyterLab:
+
+```bash
+jupyter lab
+```
+
+Open `view_nifti_liver.ipynb`, then update the paths in its configuration cells, for example:
+
+```python
+IMAGE_PATH = "Data/image/liver_1_0000.nii.gz"
+LABEL_PATH = "Data/labels/liver_1.nii.gz"
+```
+
+The notebook includes:
+
+- image shape, spacing, data type, and unique-label inspection;
+- axial, coronal, and sagittal views with label overlays;
+- 3D liver and tumor surface visualization;
+- interactive Plotly visualization;
+- single-case copy-paste experimentation; and
+- saving augmented single-case NIfTI volumes.
+
+Run only the section needed, because later cells contain independent examples with their own file paths and configuration. In particular, replace hard-coded case paths such as `liver_70` before running those cells. Some 3D volume plots use substantial memory; keep `show_ct_volume = False` or increase `downsample` for large volumes.
+
+## How the Augmentation Works
+
+For each case, the batch script:
+
+1. Loads the CT image and segmentation as 3D arrays.
+2. Finds connected tumor components and randomly selects one source tumor.
+3. Crops the source CT and tumor-mask patch.
+4. Searches for a new location inside the liver.
+5. Rejects locations that violate liver coverage, overlap, clearance, or center-separation constraints.
+6. Applies random intensity scaling and shifting to the copied CT patch.
+7. Pastes the tumor into both the CT and segmentation volumes.
+8. Saves the augmented image-label pair.
+
+For 4D inputs, the loader selects the first channel and processes it as a 3D volume.
+
+## Console Messages
+
+- `[OK]` — the case was processed and saved.
+- `[Warn]` — one requested tumor copy could not be placed.
+- `[Skip] No liver` or `[Skip] No tumor` — the required label is absent.
+- `[Skip] Missing label` — no matching label file was found.
+- `[Skip] Already exists` — the output pair already exists.
+- `[Error]` — the case failed; the remaining cases continue processing.
+
+The final line reports the number of processed, successful, and skipped cases.
+
+## Re-running Cases
+
+To regenerate a case, remove or rename both of its existing output files before running the script again:
+
+```text
+Data_aug/image/liver_<case_id>_0000.nii.gz
+Data_aug/labels/liver_<case_id>.nii.gz
+```
+
+Keep the original `Data/` directory unchanged and review augmented image-label alignment before using the generated data for model training.
+
+===== END FILE: reference/medical_data_aug/README.original.md =====
+
+===== FILE: reference/medical_data_aug/provenance.json =====
+{
+  "format": "medical_data_aug_source_import_v1",
+  "archive_name": "Medical Data Aug.zip",
+  "archive_sha256": "93b00ba0f6267da212bb7f82acdb404fccf500cefbbe47990e40001de06d33f2",
+  "role": "historical source provenance; runtime uses existing integrated hiercp and raw-target OnlineCP implementations",
+  "imported": [
+    {
+      "zip_member": "3d_copy_paste_tumor.py",
+      "zip_member_sha256": "048414d569b715797d92b38722e5b8e3788476848507c94a39eca6902d1505dc",
+      "repository_file": "3d_copy_paste_tumor.py.txt",
+      "repository_lf_sha256": "986fd6afb95b94c70614ac02d2b9ced776cbd680c5e70d4dd11e20148383bd70",
+      "transformation": "Normalize line endings to LF and remove trailing whitespace; preserve complete AST."
+    },
+    {
+      "zip_member": "README.md",
+      "zip_member_sha256": "967319f4e23e8cd01c614a600e5c422f9ce9ea033ab7fba6b04acb9197092ad2",
+      "repository_file": "README.original.md",
+      "repository_lf_sha256": "c685f28ecd3dc02ea4537abc8c1113734d22c55f8a2d2f4210099dc27972968d"
+    },
+    {
+      "zip_member": "view_nifti_liver.ipynb",
+      "zip_member_sha256": "14b8dbeddf2a6b1a10ea63d4ff41f0e403fe728b38d7d6f74e77646aa0cead30",
+      "repository_file": "view_nifti_liver.ipynb",
+      "repository_lf_sha256": "ffb7535c64acc918fdd89bf7139c4f50a6602a6cddaee1b0a7d1dd2f5e24f798"
+    }
+  ],
+  "notebook_original_cell_count": 24,
+  "notebook_guard_cells": 2,
+  "notebook_original_cell_sources_sha256": [
+    "4ee5825ca4313816473dd5fe853db760490076f89ea2971aa29127c022ea7888",
+    "947c6b4ed3d6752742988d712b0a45978722352983740dbd948bcc06ad69eede",
+    "e0dc1c694f150d31272c9be12e08bab09a4da2f87dea7fceb798ed704b7d58fd",
+    "d800ba1bbb8390bb95ef9a2b39bec7e663d20cee105c0dcd0255bc439784f0c1",
+    "a89ee5f3cfdd67d9205dde5968d435e525cc9460749c948522b760038ab68772",
+    "b8fbbb9f309ed4550156170b74873aa12c4cffcea51fcafd1795d9daa55f3c0c",
+    "15c808f5522c10c0b284dcaa13a678cd29543d7e1bffd21a8e143a730b44ed11",
+    "fe2eccb333edf2bb6b7162366a21155678c60f517c37707db2ab1940ef948ec7",
+    "603e60551fd45c0a45fa3a835694211f61f65fb9599e6f568be5c8a49720871e",
+    "552c815ffc6715960a5077e334c93611ac0ae23c6719d47261622f1e2eb38e7a",
+    "84bcb11e2e8b1d7f2a22b3bc66652ef669cfaaee61347a533160ceaa98d22fa6",
+    "84bcb11e2e8b1d7f2a22b3bc66652ef669cfaaee61347a533160ceaa98d22fa6",
+    "562951b65c1288677f7b05b47e82713bcac3a14611d5caec67e1821e784809cd",
+    "866339176a0ef070364d2bac777e97eb28b0603155fc18accdc9e7532ddb2aff",
+    "19d29203008ad78239bb37bb96d2743d5aba9dcf45531b8dd02fda0717258d89",
+    "1973e166cb5975fde7272b13577cedd307ba30c77e3f4d57a9320f1229b54fe4",
+    "26cc1a2103a4f0a8a81c7463326db2289ab5e42eb5188f43805fad334b733266",
+    "6aab2f6f9af319cc05840dc032cd43ab9974886b54e26bfde80033e656ed416e",
+    "dc0d7972de34a8b844708b12c8dd413a0dca735f375c439ead602451087c21e6",
+    "cc1d3a3dac76c16f51e2fca9b1ba701e389e13a1fb5b8c73e6768efedb636c7e",
+    "e2d96036cff87bceb474841405c3623096edcc761b7d4320d6de1e85c9efabae",
+    "b74f7d21723512f230489b66ce4dee85036bdec6cdd641c0e85ec1590cd8a249",
+    "88895b83d69907140c9d11041524dc8f10ec505a828c0f817af6ad2872e09503",
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  ],
+  "excluded": [
+    "Data/ (all CT and segmentation volumes)",
+    "notebook outputs, execution counts, attachments, metadata",
+    "external medical-data download link"
+  ]
+}
+
+===== END FILE: reference/medical_data_aug/provenance.json =====
+
+===== FILE: reference/medical_data_aug/view_nifti_liver.ipynb =====
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Historical Medical Data Aug notebook — source only\n",
+    "All 24 original cell sources follow unchanged. Outputs, execution counts, attachments and metadata were removed; no CT/label data is included.\n",
+    "This is an audit/reference notebook, NOT the supported training entry point. Do not Run All: original cells include permissive shape cropping, the batch uint8-distance bug, independent configurations and NIfTI writes.\n",
+    "Use ../../tools/run_feedback_experiment.py and ../../docs/cp_input_repair.md for the current integrated pipeline. The initial guard intentionally prevents accidental Run All.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "raise RuntimeError(\"Historical source notebook; review cells only. Use tools/run_feedback_experiment.py for supported training.\")\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import os\n",
+    "import numpy as np\n",
+    "import nibabel as nib\n",
+    "import matplotlib.pyplot as plt"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# ---------- CONFIG ----------\n",
+    "# Point these to your files\n",
+    "IMAGE_PATH = \"Data/image/liver_1_0000.nii.gz\"\n",
+    "LABEL_PATH = \"Data/labels/liver_1.nii.gz\""
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Slice indices to visualize (set to 'mid' to auto-pick middle)\n",
+    "SLICE_IDX = {\"axial\": \"mid\", \"coronal\": \"mid\", \"sagittal\": \"mid\"}\n",
+    "LABEL_ALPHA = 0.35  # overlay transparency"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# ---------- UTILS ----------\n",
+    "def load_nifti(path):\n",
+    "    ni = nib.load(path)\n",
+    "    data = ni.get_fdata(dtype=np.float32)  # float32 for math + display\n",
+    "    hdr = ni.header\n",
+    "    affine = ni.affine\n",
+    "    spacing = hdr.get_zooms()[: data.ndim]  # voxel spacing per axis\n",
+    "    return data, affine, spacing, hdr\n",
+    "\n",
+    "def ensure_3d(vol):\n",
+    "    \"\"\"\n",
+    "    Many medical datasets store images as:\n",
+    "      - 3D: (Z, Y, X)\n",
+    "      - 4D: (C, Z, Y, X) or (Z, Y, X, C)\n",
+    "    We’ll reduce to (Z, Y, X), picking the first channel if needed.\n",
+    "    \"\"\"\n",
+    "    if vol.ndim == 3:\n",
+    "        return vol\n",
+    "    if vol.ndim == 4:\n",
+    "        # Try (C, Z, Y, X)\n",
+    "        if vol.shape[0] <= 4 and vol.shape[1] >= 8:\n",
+    "            return vol[0]\n",
+    "        # Try (Z, Y, X, C)\n",
+    "        if vol.shape[-1] <= 4 and vol.shape[0] >= 8:\n",
+    "            return vol[..., 0]\n",
+    "    raise ValueError(f\"Unsupported shape {vol.shape}; expected 3D or 4D with a small channel dim.\")\n",
+    "\n",
+    "def pick_index(length, spec):\n",
+    "    if spec == \"mid\":\n",
+    "        return length // 2\n",
+    "    if isinstance(spec, int):\n",
+    "        return max(0, min(length - 1, spec))\n",
+    "    raise ValueError(\"Slice spec must be 'mid' or an int.\")\n",
+    "\n",
+    "def normalize_for_display(vol, p_low=1, p_high=99):\n",
+    "    \"\"\"\n",
+    "    Robust min-max normalization using percentiles to avoid outliers.\n",
+    "    Returns float64 in [0,1].\n",
+    "    \"\"\"\n",
+    "    low = np.percentile(vol, p_low)\n",
+    "    high = np.percentile(vol, p_high)\n",
+    "    if high <= low:\n",
+    "        high = low + 1e-6\n",
+    "    vol = np.clip(vol, low, high)\n",
+    "    return (vol - low) / (high - low)\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# ---------- LOAD ----------\n",
+    "img_raw, img_affine, img_spacing, img_hdr = load_nifti(IMAGE_PATH)\n",
+    "lab_raw, lab_affine, lab_spacing, lab_hdr = load_nifti(LABEL_PATH)\n",
+    "\n",
+    "img = ensure_3d(img_raw)\n",
+    "lab = ensure_3d(lab_raw)"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# sanity check on spatial dims (allow small mismatches and crop if needed)\n",
+    "minZ = min(img.shape[0], lab.shape[0])\n",
+    "minY = min(img.shape[1], lab.shape[1])\n",
+    "minX = min(img.shape[2], lab.shape[2])\n",
+    "if (minZ, minY, minX) != img.shape or (minZ, minY, minX) != lab.shape:\n",
+    "    img = img[:minZ, :minY, :minX]\n",
+    "    lab = lab[:minZ, :minY, :minX]"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# ---------- INFO ----------\n",
+    "print(\"Image shape (Z,Y,X):\", img.shape, \"spacing:\", img_spacing[:3])\n",
+    "print(\"Label shape (Z,Y,X):\", lab.shape, \"spacing:\", lab_spacing[:3])\n",
+    "print(\"Image dtype:\", img_raw.dtype, \"| Label dtype:\", lab_raw.dtype)\n",
+    "unique_labels = np.unique(lab.astype(np.int32))\n",
+    "print(\"Unique label values:\", unique_labels)"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# ---------- DISPLAY SLICES ----------\n",
+    "# Normalize image for display\n",
+    "img_disp = normalize_for_display(img)"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Choose indices\n",
+    "iz = pick_index(img.shape[0], SLICE_IDX[\"axial\"])\n",
+    "iy = pick_index(img.shape[1], SLICE_IDX[\"coronal\"])\n",
+    "ix = pick_index(img.shape[2], SLICE_IDX[\"sagittal\"])"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Extract planes\n",
+    "axial_img, axial_lab = img_disp[iz], lab[iz]\n",
+    "coronal_img, coronal_lab = img_disp[:, iy, :], lab[:, iy, :]\n",
+    "sagittal_img, sagittal_lab = img_disp[:, :, ix], lab[:, :, ix]"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Plot 3 views with label overlay\n",
+    "fig = plt.figure(figsize=(12, 10))\n",
+    "\n",
+    "# Axial (Z fixed) -> plane is (Y,X)\n",
+    "plt.subplot(2, 2, 1)\n",
+    "plt.title(f\"Axial (z={iz})\")\n",
+    "plt.imshow(axial_img, origin=\"lower\")\n",
+    "# Overlay labels (non-zero as foreground). Using default colormap with alpha.\n",
+    "plt.imshow((axial_lab > 0).astype(float), origin=\"lower\", alpha=LABEL_ALPHA)\n",
+    "plt.axis(\"off\")"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Plot 3 views with label overlay\n",
+    "fig = plt.figure(figsize=(12, 10))\n",
+    "\n",
+    "# Axial (Z fixed) -> plane is (Y,X)\n",
+    "plt.subplot(2, 2, 1)\n",
+    "plt.title(f\"Axial (z={iz})\")\n",
+    "plt.imshow(axial_img, origin=\"lower\")\n",
+    "# Overlay labels (non-zero as foreground). Using default colormap with alpha.\n",
+    "plt.imshow((axial_lab > 0).astype(float), origin=\"lower\", alpha=LABEL_ALPHA)\n",
+    "plt.axis(\"off\")"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Sagittal (X fixed) -> plane is (Z,Y)\n",
+    "plt.subplot(2, 2, 3)\n",
+    "plt.title(f\"Sagittal (x={ix})\")\n",
+    "plt.imshow(sagittal_img.T, origin=\"lower\")   # transpose so (Z,Y) reads left-right\n",
+    "plt.imshow((sagittal_lab > 0).astype(float).T, origin=\"lower\", alpha=LABEL_ALPHA)\n",
+    "plt.axis(\"off\")"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "plt.tight_layout()\n",
+    "plt.show()\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "voxel_count = np.prod(img.shape)\n",
+    "label_voxel_frac = (lab > 0).sum() / voxel_count\n",
+    "print(f\"Foreground (label>0) voxels: {label_voxel_frac:.4%}\")"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "from skimage import measure\n",
+    "\n",
+    "# ---- Paths ----\n",
+    "img_path = \"Data/image/liver_1_0000.nii.gz\"\n",
+    "lab_path = \"Data/labels/liver_1.nii.gz\"\n",
+    "\n",
+    "# ---- Load ----\n",
+    "img = nib.load(img_path).get_fdata()\n",
+    "lab = nib.load(lab_path).get_fdata()\n",
+    "\n",
+    "# Pick the structure you want (e.g., liver=1, tumor=2, etc.)\n",
+    "target_label = 1\n",
+    "mask = (lab == target_label).astype(np.uint8)\n",
+    "\n",
+    "# ---- Extract 3D surface (marching cubes) ----\n",
+    "verts, faces, normals, values = measure.marching_cubes(mask, level=0.5)\n",
+    "\n",
+    "# ---- Plot ----\n",
+    "fig = plt.figure(figsize=(8, 8))\n",
+    "ax = fig.add_subplot(111, projection=\"3d\")\n",
+    "\n",
+    "# Surface\n",
+    "mesh = ax.plot_trisurf(\n",
+    "    verts[:, 0], verts[:, 1], faces, verts[:, 2],\n",
+    "    cmap=\"Spectral\", lw=0.5, alpha=0.8\n",
+    ")\n",
+    "\n",
+    "ax.set_xlabel(\"X\")\n",
+    "ax.set_ylabel(\"Y\")\n",
+    "ax.set_zlabel(\"Z\")\n",
+    "ax.set_title(\"3D Liver Surface\")\n",
+    "\n",
+    "plt.show()\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "import plotly.graph_objects as go\n",
+    "\n",
+    "lab = nib.load(\"Data/labels/liver_1.nii.gz\").get_fdata()\n",
+    "mask = (lab == 1)  # target structure\n",
+    "\n",
+    "fig = go.Figure(data=go.Volume(\n",
+    "    x=np.arange(mask.shape[0]).repeat(mask.shape[1]*mask.shape[2]),\n",
+    "    y=np.tile(np.arange(mask.shape[1]).repeat(mask.shape[2]), mask.shape[0]),\n",
+    "    z=np.tile(np.arange(mask.shape[2]), mask.shape[0]*mask.shape[1]),\n",
+    "    value=mask.flatten().astype(np.float32),\n",
+    "    isomin=0.5, isomax=1.0,\n",
+    "    opacity=0.1,   # low for volume, increase for dense\n",
+    "    surface_count=1\n",
+    "))\n",
+    "fig.show()\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "from skimage import measure\n",
+    "\n",
+    "# ---- Load data ----\n",
+    "img = nib.load(\"Data/image/liver_1_0000.nii.gz\").get_fdata()\n",
+    "lab = nib.load(\"Data/labels/liver_1.nii.gz\").get_fdata()\n",
+    "\n",
+    "# Normalize image for surface extraction\n",
+    "img_norm = (img - img.min()) / (img.max() - img.min())\n",
+    "\n",
+    "# Liver mask (label==1)\n",
+    "mask = (lab == 1).astype(np.uint8)\n",
+    "\n",
+    "# ---- Extract surfaces ----\n",
+    "# CT iso-surface (choose intensity ~0.5 for mid-gray structure)\n",
+    "verts_img, faces_img, _, _ = measure.marching_cubes(img_norm, level=0.5, step_size=2)\n",
+    "\n",
+    "# Segmentation surface (label=1)\n",
+    "verts_lab, faces_lab, _, _ = measure.marching_cubes(mask, level=0.5)\n",
+    "\n",
+    "# ---- Plot ----\n",
+    "fig = plt.figure(figsize=(10, 10))\n",
+    "ax = fig.add_subplot(111, projection=\"3d\")\n",
+    "\n",
+    "# Grayscale CT surface\n",
+    "ax.plot_trisurf(\n",
+    "    verts_img[:, 0], verts_img[:, 1], faces_img, verts_img[:, 2],\n",
+    "    color=\"lightgray\", alpha=0.3, linewidth=0\n",
+    ")\n",
+    "\n",
+    "# Blue segmentation surface\n",
+    "ax.plot_trisurf(\n",
+    "    verts_lab[:, 0], verts_lab[:, 1], faces_lab, verts_lab[:, 2],\n",
+    "    color=\"blue\", alpha=0.6, linewidth=0\n",
+    ")\n",
+    "\n",
+    "ax.set_xlabel(\"X\")\n",
+    "ax.set_ylabel(\"Y\")\n",
+    "ax.set_zlabel(\"Z\")\n",
+    "ax.set_title(\"3D Liver (Gray CT + Blue Label)\")\n",
+    "\n",
+    "plt.show()\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "\n",
+    "# Load segmentation\n",
+    "lab_path = \"Data/labels/liver_1.nii.gz\"\n",
+    "lab = nib.load(lab_path).get_fdata().astype(int)\n",
+    "\n",
+    "# Get unique labels\n",
+    "unique_labels = np.unique(lab)\n",
+    "print(\"Unique label values:\", unique_labels)\n",
+    "\n",
+    "# If you want counts for each label:\n",
+    "for val in unique_labels:\n",
+    "    count = np.sum(lab == val)\n",
+    "    print(f\"Label {val}: {count} voxels\")\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "from skimage import measure\n",
+    "import plotly.graph_objects as go\n",
+    "\n",
+    "# --------- CONFIG ---------\n",
+    "image_path = \"Data/image/liver_70_0000.nii.gz\"\n",
+    "label_path = \"Data/labels/liver_70.nii.gz\"\n",
+    "LIVER_LABEL = 1\n",
+    "TUMOR_LABEL = 2\n",
+    "show_ct_volume = False   # True = add semi-transparent CT volume (heavier)\n",
+    "downsample = 2           # used only when show_ct_volume=True (>=2 recommended)\n",
+    "\n",
+    "# --------- LOAD ---------\n",
+    "img_nii = nib.load(image_path)\n",
+    "lab_nii = nib.load(label_path)\n",
+    "\n",
+    "img = img_nii.get_fdata()          # (Z,Y,X) or similar\n",
+    "lab = lab_nii.get_fdata().astype(int)\n",
+    "\n",
+    "# Handle 4D inputs by picking first channel\n",
+    "if img.ndim == 4:\n",
+    "    # assume either (C,Z,Y,X) or (Z,Y,X,C)\n",
+    "    img = img[0] if img.shape[0] <= 4 else img[..., 0]\n",
+    "\n",
+    "# Voxel spacing (zooms) — use first 3 dims\n",
+    "zooms = img_nii.header.get_zooms()\n",
+    "spacing = np.array(zooms[:3], dtype=float)  # (Z,Y,X) spacing in mm (or dataset units)\n",
+    "\n",
+    "# --------- SURFACES (marching cubes) ---------\n",
+    "# --------- SURFACES (marching cubes with affine) ---------\n",
+    "affine = lab_nii.affine  # 4x4 matrix mapping voxel -> world (mm)\n",
+    "\n",
+    "def marching_with_affine(mask, affine):\n",
+    "    v, f, _, _ = measure.marching_cubes(mask, level=0.5)\n",
+    "    v_h = np.c_[v, np.ones(len(v))]           # make homogeneous (N,4)\n",
+    "    v_w = (affine @ v_h.T).T[:, :3]           # apply affine → world coords\n",
+    "    return v_w, f\n",
+    "\n",
+    "# Liver\n",
+    "liver_mask = (lab == LIVER_LABEL).astype(np.uint8)\n",
+    "v_liver, f_liver = marching_with_affine(liver_mask, affine) if liver_mask.any() else (np.empty((0,3)), np.empty((0,3),dtype=int))\n",
+    "\n",
+    "# Tumor\n",
+    "tumor_mask = (lab == TUMOR_LABEL).astype(np.uint8)\n",
+    "v_tumor, f_tumor = marching_with_affine(tumor_mask, affine) if tumor_mask.any() else (np.empty((0,3)), np.empty((0,3),dtype=int))\n",
+    "\n",
+    "\n",
+    "# --------- BUILD FIGURE ---------\n",
+    "fig = go.Figure()\n",
+    "\n",
+    "# Liver mesh (light gray)\n",
+    "if len(v_liver):\n",
+    "    fig.add_trace(go.Mesh3d(\n",
+    "        x=v_liver[:,0], y=v_liver[:,1], z=v_liver[:,2],\n",
+    "        i=f_liver[:,0], j=f_liver[:,1], k=f_liver[:,2],\n",
+    "        color=\"lightgray\", opacity=0.25, name=\"Liver\", lighting=dict(ambient=0.6)\n",
+    "    ))\n",
+    "\n",
+    "# Tumor mesh (blue)\n",
+    "if len(v_tumor):\n",
+    "    fig.add_trace(go.Mesh3d(\n",
+    "        x=v_tumor[:,0], y=v_tumor[:,1], z=v_tumor[:,2],\n",
+    "        i=f_tumor[:,0], j=f_tumor[:,1], k=f_tumor[:,2],\n",
+    "        color=\"blue\", opacity=0.85, name=\"Tumor\", lighting=dict(ambient=0.5)\n",
+    "    ))\n",
+    "\n",
+    "# Optional: add semi-transparent CT volume for context\n",
+    "if show_ct_volume:\n",
+    "    # Downsample volume for performance\n",
+    "    z_slice = slice(None, None, downsample)\n",
+    "    y_slice = slice(None, None, downsample)\n",
+    "    x_slice = slice(None, None, downsample)\n",
+    "    vol = img[z_slice, y_slice, x_slice]\n",
+    "\n",
+    "    # Normalize intensities robustly (1–99 percentile)\n",
+    "    p1, p99 = np.percentile(vol, [1, 99])\n",
+    "    vol = np.clip(vol, p1, p99)\n",
+    "    vol = (vol - p1) / max(p99 - p1, 1e-6)\n",
+    "\n",
+    "    # Build coordinate grid in *physical units* using spacing\n",
+    "    zz, yy, xx = np.mgrid[\n",
+    "        0:vol.shape[0]*spacing[0]:spacing[0],\n",
+    "        0:vol.shape[1]*spacing[1]:spacing[1],\n",
+    "        0:vol.shape[2]*spacing[2]:spacing[2],\n",
+    "    ]\n",
+    "    # Plotly Volume expects 1D arrays for x,y,z\n",
+    "    fig.add_trace(go.Volume(\n",
+    "        x=xx.flatten(), y=yy.flatten(), z=zz.flatten(),\n",
+    "        value=vol.astype(np.float32).flatten(),\n",
+    "        opacity=0.08, surface_count=10, name=\"CT volume\",\n",
+    "        opacityscale=[[0, 0.0], [1, 1.0]],\n",
+    "        showscale=False\n",
+    "    ))\n",
+    "\n",
+    "# Layout: equal aspect in data units; nice camera\n",
+    "fig.update_layout(\n",
+    "    scene=dict(\n",
+    "        xaxis_title=\"X (mm)\", yaxis_title=\"Y (mm)\", zaxis_title=\"Z (mm)\",\n",
+    "        aspectmode=\"data\",\n",
+    "    ),\n",
+    "    legend=dict(itemsizing=\"constant\"),\n",
+    "    margin=dict(l=0, r=0, t=30, b=0),\n",
+    "    title=\"Interactive 3D — Liver (gray) & Tumor (blue)\"\n",
+    ")\n",
+    "\n",
+    "fig.show()\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "from skimage import measure\n",
+    "from scipy import ndimage as ndi\n",
+    "import plotly.graph_objects as go\n",
+    "\n",
+    "# =========================================\n",
+    "# --------- CONFIG (edit as needed) -------\n",
+    "# =========================================\n",
+    "image_path = \"Data/image/liver_70_0000.nii.gz\"\n",
+    "label_path = \"Data/labels/liver_70.nii.gz\"\n",
+    "LIVER_LABEL = 1\n",
+    "TUMOR_LABEL = 2\n",
+    "NUM_COPIES = 1                 # how many new tumors to paste\n",
+    "BLEND_BORDER = 0               # voxels to feather tumor edges (0 = hard paste)\n",
+    "INTENSITY_SCALE_RANGE = (0.95, 1.05)\n",
+    "INTENSITY_SHIFT_RANGE = (-5.0, 5.0)\n",
+    "MIN_LIVER_COVERAGE = 0.85      # fraction of pasted tumor that must lie inside liver\n",
+    "AVOID_OVERLAP_WITH_ORIG = True # discourage placing new tumor too close to original\n",
+    "# Keep pasted tumors away from existing tumors & each other\n",
+    "OCCUPIED_CLEARANCE_VOX = 2    # dilated safety margin (voxels) around occupied areas\n",
+    "MIN_CENTER_SEPARATION_VOX = 12  # optional extra spacing between centers\n",
+    "RNG_SEED = None                  # None => non-deterministic; or set an int for reproducible but varied runs\n",
+    "\n",
+    "# Visualization\n",
+    "show_ct_volume = False\n",
+    "downsample = 2\n",
+    "\n",
+    "# =========================================\n",
+    "# --------- LOAD --------------------------\n",
+    "# =========================================\n",
+    "img_nii = nib.load(image_path)\n",
+    "lab_nii = nib.load(label_path)\n",
+    "\n",
+    "img = img_nii.get_fdata()          # (Z,Y,X)\n",
+    "lab = lab_nii.get_fdata().astype(int)\n",
+    "\n",
+    "# Handle 4D inputs by picking first channel\n",
+    "if img.ndim == 4:\n",
+    "    img = img[0] if img.shape[0] <= 4 else img[..., 0]\n",
+    "\n",
+    "# Spacing / affine\n",
+    "zooms = img_nii.header.get_zooms()\n",
+    "spacing = np.array(zooms[:3], dtype=float)   # (Z,Y,X) spacing in mm\n",
+    "voxel_mm3 = float(spacing[0] * spacing[1] * spacing[2])\n",
+    "affine = lab_nii.affine\n",
+    "\n",
+    "# Masks\n",
+    "liver_mask = (lab == LIVER_LABEL)\n",
+    "tumor_mask = (lab == TUMOR_LABEL)\n",
+    "\n",
+    "if not liver_mask.any():\n",
+    "    raise ValueError(\"No liver voxels found (LIVER_LABEL).\")\n",
+    "if not tumor_mask.any():\n",
+    "    raise ValueError(\"No tumor voxels found (TUMOR_LABEL).\")\n",
+    "\n",
+    "# =========================================\n",
+    "# --------- HELPERS -----------------------\n",
+    "# =========================================\n",
+    "rng = np.random.default_rng(RNG_SEED)\n",
+    "\n",
+    "def bbox_of_mask(mask, pad=2):\n",
+    "    zz, yy, xx = np.where(mask)\n",
+    "    zmin, zmax = max(0, zz.min()-pad), min(mask.shape[0]-1, zz.max()+pad)\n",
+    "    ymin, ymax = max(0, yy.min()-pad), min(mask.shape[1]-1, yy.max()+pad)\n",
+    "    xmin, xmax = max(0, xx.min()-pad), min(mask.shape[2]-1, xx.max()+pad)\n",
+    "    return (slice(zmin, zmax+1), slice(ymin, ymax+1), slice(xmin, xmax+1))\n",
+    "\n",
+    "def marching_with_affine(mask, affine):\n",
+    "    if not mask.any():\n",
+    "        return np.empty((0,3)), np.empty((0,3), int)\n",
+    "    v, f, _, _ = measure.marching_cubes(mask.astype(np.uint8), level=0.5)\n",
+    "    v_h = np.c_[v, np.ones(len(v))]\n",
+    "    v_w = (affine @ v_h.T).T[:, :3]\n",
+    "    return v_w, f\n",
+    "\n",
+    "def feather_alpha(binary_mask, blend_border=3):\n",
+    "    if blend_border <= 0:\n",
+    "        return binary_mask.astype(np.float32)\n",
+    "    dist_to_bg = ndi.distance_transform_edt(binary_mask)\n",
+    "    alpha = np.clip(dist_to_bg / float(blend_border), 0.0, 1.0).astype(np.float32)\n",
+    "    return alpha\n",
+    "\n",
+    "def centroid_world(mask):\n",
+    "    if not mask.any():\n",
+    "        return (np.nan, np.nan, np.nan)\n",
+    "    coords = np.column_stack(np.where(mask))\n",
+    "    # voxel-space centroid (z,y,x)\n",
+    "    c_vox = coords.mean(axis=0)\n",
+    "    c_h = np.r_[c_vox, 1.0]\n",
+    "    c_w = (affine @ c_h)[:3]\n",
+    "    return tuple(map(float, c_w))\n",
+    "\n",
+    "'''\n",
+    "# Pick a single tumor component (largest)\n",
+    "lab_cc, n_cc = ndi.label(tumor_mask)\n",
+    "sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]\n",
+    "if not sizes:\n",
+    "    raise ValueError(\"No connected components in tumor mask.\")\n",
+    "src_id = max(sizes, key=lambda t: t[1])[0]\n",
+    "src_comp = (lab_cc == src_id)\n",
+    "'''\n",
+    "lab_cc, n_cc = ndi.label(tumor_mask)\n",
+    "if n_cc == 0:\n",
+    "    raise ValueError(\"No tumor components in mask.\")\n",
+    "\n",
+    "# --- Option 1: choose a random tumor (all components equally likely)\n",
+    "src_id = np.random.default_rng(RNG_SEED if RNG_SEED is not None else None).integers(1, n_cc + 1)\n",
+    "\n",
+    "# --- Option 2 (alternative): choose proportional to size\n",
+    "# sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]\n",
+    "# ids, weights = zip(*sizes)\n",
+    "# src_id = rng.choice(ids, p=np.array(weights)/sum(weights))\n",
+    "src_comp = (lab_cc == src_id)\n",
+    "\n",
+    "src_slz, src_sly, src_slx = bbox_of_mask(src_comp, pad=2)\n",
+    "tumor_ct_patch = img[src_slz, src_sly, src_slx].astype(np.float32)\n",
+    "tumor_mask_patch = src_comp[src_slz, src_sly, src_slx].astype(bool)\n",
+    "alpha_patch = feather_alpha(tumor_mask_patch, BLEND_BORDER)\n",
+    "\n",
+    "# Distance to original tumor to avoid overlapping (optional)\n",
+    "if AVOID_OVERLAP_WITH_ORIG:\n",
+    "    dt_from_orig = ndi.distance_transform_edt(~tumor_mask)\n",
+    "\n",
+    "# =========================================\n",
+    "# --------- PASTE INSIDE SAME VOLUME ------\n",
+    "# =========================================\n",
+    "out_img = img.copy()\n",
+    "out_lab = lab.copy()\n",
+    "\n",
+    "# start with existing tumors as \"occupied\"\n",
+    "occupied_mask = tumor_mask.copy()\n",
+    "\n",
+    "# Precompute a dilated \"forbidden\" zone around occupied voxels\n",
+    "# (keeps patches away by OCCUPIED_CLEARANCE_VOX voxels)\n",
+    "structure = ndi.generate_binary_structure(3, 1)  # 6-neighborhood\n",
+    "forbidden = ndi.binary_dilation(\n",
+    "    occupied_mask,\n",
+    "    structure=structure,\n",
+    "    iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))\n",
+    ")\n",
+    "dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)\n",
+    "\n",
+    "\n",
+    "pasted_masks = []   # store each pasted tumor mask (full-volume)\n",
+    "report_rows = []\n",
+    "\n",
+    "def try_random_centers_shuffled(liver_mask, patch_shape, rng, max_tries=4000):\n",
+    "    pz, py, px = patch_shape\n",
+    "    hz, hy, hx = pz//2, py//2, px//2\n",
+    "    Z, Y, X = liver_mask.shape\n",
+    "    zmin, zmax = hz, Z - (pz - hz)\n",
+    "    ymin, ymax = hy, Y - (py - hy)\n",
+    "    xmin, xmax = hx, X - (px - hx)\n",
+    "    if zmax <= zmin or ymax <= ymin or xmax <= xmin:\n",
+    "        return\n",
+    "    zz, yy, xx = np.where(liver_mask)\n",
+    "    keep = (zz >= zmin) & (zz < zmax) & (yy >= ymin) & (yy < ymax) & (xx >= xmin) & (xx < xmax)\n",
+    "    cand = np.column_stack([zz[keep], yy[keep], xx[keep]])\n",
+    "    if len(cand) == 0:\n",
+    "        return\n",
+    "    for idx in rng.permutation(len(cand))[:max_tries]:\n",
+    "        cz, cy, cx = cand[idx]\n",
+    "        yield int(cz), int(cy), int(cx)\n",
+    "\n",
+    "\n",
+    "for k in range(NUM_COPIES):\n",
+    "    placed = False\n",
+    "    for center in try_random_centers_shuffled(liver_mask, tumor_mask_patch.shape, rng, max_tries=4000):\n",
+    "        pz, py, px = tumor_mask_patch.shape\n",
+    "        hz, hy, hx = pz//2, py//2, px//2\n",
+    "        cz, cy, cx = center\n",
+    "        z1, z2 = cz-hz, cz-hz+pz\n",
+    "        y1, y2 = cy-hy, cy-hy+py\n",
+    "        x1, x2 = cx-hx, cx-hx+px\n",
+    "\n",
+    "        roi_liver = liver_mask[z1:z2, y1:y2, x1:x2]\n",
+    "        roi_forbidden = forbidden[z1:z2, y1:y2, x1:x2]\n",
+    "\n",
+    "        # ---- HARD NO-OVERLAP RULE with occupied (+clearance)\n",
+    "        if (tumor_mask_patch & roi_forbidden).any():\n",
+    "            continue\n",
+    "\n",
+    "        # ---- Coverage rule (after forbidding overlap)\n",
+    "        inside_frac = (tumor_mask_patch & roi_liver).sum() / (tumor_mask_patch.sum() + 1e-6)\n",
+    "        if inside_frac < MIN_LIVER_COVERAGE:\n",
+    "            continue\n",
+    "\n",
+    "        # ---- Optional: center separation (vs. original+pastes)\n",
+    "        if MIN_CENTER_SEPARATION_VOX > 0:\n",
+    "            if dist_from_occupied[cz, cy, cx] < MIN_CENTER_SEPARATION_VOX:\n",
+    "                continue\n",
+    "\n",
+    "        # ---- Paste (intensity jitter + feather)\n",
+    "        scale = rng.uniform(*INTENSITY_SCALE_RANGE)\n",
+    "        shift = rng.uniform(*INTENSITY_SHIFT_RANGE)\n",
+    "        roi_ct = out_img[z1:z2, y1:y2, x1:x2]\n",
+    "        alpha_eff = alpha_patch * tumor_mask_patch.astype(np.float32)\n",
+    "        pasted_ct = (1.0 - alpha_eff) * roi_ct + alpha_eff * (tumor_ct_patch * scale + shift)\n",
+    "        out_img[z1:z2, y1:y2, x1:x2] = pasted_ct\n",
+    "\n",
+    "        # ---- Labels\n",
+    "        new_mask_full = np.zeros_like(out_lab, dtype=bool)\n",
+    "        new_mask_full[z1:z2, y1:y2, x1:x2] = tumor_mask_patch\n",
+    "        out_lab[new_mask_full] = TUMOR_LABEL\n",
+    "        pasted_masks.append(new_mask_full)\n",
+    "\n",
+    "        # ---- UPDATE OCCUPIED + FORBIDDEN + DISTANCE for next iterations\n",
+    "        occupied_mask |= new_mask_full\n",
+    "        forbidden = ndi.binary_dilation(\n",
+    "            occupied_mask,\n",
+    "            structure=structure,\n",
+    "            iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))\n",
+    "        )\n",
+    "        dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)\n",
+    "\n",
+    "        # ---- reporting (unchanged)\n",
+    "        vox = int(new_mask_full.sum())\n",
+    "        vol_mm3 = vox * voxel_mm3\n",
+    "        c_src = centroid_world(src_comp)\n",
+    "        c_new = centroid_world(new_mask_full)\n",
+    "        offset = tuple(float(b - a) for a, b in zip(c_src, c_new))\n",
+    "        report_rows.append({\n",
+    "            \"copy_idx\": k+1,\n",
+    "            \"voxels\": vox,\n",
+    "            \"volume_mm3\": vol_mm3,\n",
+    "            \"center_world_mm\": c_new,\n",
+    "            \"offset_from_src_mm\": offset,\n",
+    "            \"liver_coverage\": float(inside_frac),\n",
+    "            \"scale\": float(scale),\n",
+    "            \"shift\": float(shift),\n",
+    "        })\n",
+    "        placed = True\n",
+    "        break\n",
+    "\n",
+    "    if not placed:\n",
+    "        print(f\"[Warn] Could not place tumor copy #{k+1} (relax coverage or clearance).\")\n",
+    "\n",
+    "\n",
+    "# =========================================\n",
+    "# --------- PRINT RESULTS -----------------\n",
+    "# =========================================\n",
+    "orig_vox = int(src_comp.sum())\n",
+    "orig_vol = orig_vox * voxel_mm3\n",
+    "print(\"Original tumor:\")\n",
+    "print(f\"  voxels: {orig_vox:,}  volume: {orig_vol:,.1f} mm³  center(world): {centroid_world(src_comp)}\")\n",
+    "print(\"\\nPasted tumors:\")\n",
+    "if not report_rows:\n",
+    "    print(\"  (none)\")\n",
+    "else:\n",
+    "    for r in report_rows:\n",
+    "        c = r[\"center_world_mm\"]\n",
+    "        o = r[\"offset_from_src_mm\"]\n",
+    "        print(f\"  #{r['copy_idx']:>2}  voxels={r['voxels']:,}  vol={r['volume_mm3']:,.1f} mm³\"\n",
+    "              f\"  center={tuple(round(v,1) for v in c)} mm\"\n",
+    "              f\"  offset={tuple(round(v,1) for v in o)} mm\"\n",
+    "              f\"  coverage={r['liver_coverage']:.2f}  scale={r['scale']:.3f} shift={r['shift']:.1f}\")\n",
+    "\n",
+    "# =========================================\n",
+    "# --------- 3D SURFACES -------------------\n",
+    "# =========================================\n",
+    "# Marching cubes for liver, original tumor, pasted tumors\n",
+    "v_liver, f_liver = marching_with_affine(liver_mask, affine)\n",
+    "v_tumor_orig, f_tumor_orig = marching_with_affine(src_comp, affine)\n",
+    "\n",
+    "# union of pasted tumors for display\n",
+    "if pasted_masks:\n",
+    "    pasted_union = np.logical_or.reduce(pasted_masks)\n",
+    "else:\n",
+    "    pasted_union = np.zeros_like(lab, bool)\n",
+    "\n",
+    "v_tumor_paste, f_tumor_paste = marching_with_affine(pasted_union, affine)\n",
+    "\n",
+    "# --------- BUILD FIGURE ---------\n",
+    "fig = go.Figure()\n",
+    "\n",
+    "# Liver (light gray)\n",
+    "if len(v_liver):\n",
+    "    fig.add_trace(go.Mesh3d(\n",
+    "        x=v_liver[:,0], y=v_liver[:,1], z=v_liver[:,2],\n",
+    "        i=f_liver[:,0], j=f_liver[:,1], k=f_liver[:,2],\n",
+    "        color=\"lightgray\", opacity=0.25, name=\"Liver\", lighting=dict(ambient=0.6)\n",
+    "    ))\n",
+    "\n",
+    "# Original tumor (blue)\n",
+    "if len(v_tumor_orig):\n",
+    "    fig.add_trace(go.Mesh3d(\n",
+    "        x=v_tumor_orig[:,0], y=v_tumor_orig[:,1], z=v_tumor_orig[:,2],\n",
+    "        i=f_tumor_orig[:,0], j=f_tumor_orig[:,1], k=f_tumor_orig[:,2],\n",
+    "        color=\"blue\", opacity=0.85, name=\"Tumor (original)\", lighting=dict(ambient=0.5)\n",
+    "    ))\n",
+    "\n",
+    "# Pasted tumor(s) (red)\n",
+    "if len(v_tumor_paste):\n",
+    "    fig.add_trace(go.Mesh3d(\n",
+    "        x=v_tumor_paste[:,0], y=v_tumor_paste[:,1], z=v_tumor_paste[:,2],\n",
+    "        i=f_tumor_paste[:,0], j=f_tumor_paste[:,1], k=f_tumor_paste[:,2],\n",
+    "        color=\"red\", opacity=0.85, name=\"Tumor (pasted)\", lighting=dict(ambient=0.5)\n",
+    "    ))\n",
+    "\n",
+    "# Centroid markers\n",
+    "orig_c = centroid_world(src_comp)\n",
+    "fig.add_trace(go.Scatter3d(\n",
+    "    x=[orig_c[0]], y=[orig_c[1]], z=[orig_c[2]],\n",
+    "    mode=\"markers+text\", text=[\"orig\"], textposition=\"top center\",\n",
+    "    marker=dict(size=5), name=\"orig center\"\n",
+    "))\n",
+    "for r in report_rows:\n",
+    "    cx, cy, cz = r[\"center_world_mm\"]\n",
+    "    fig.add_trace(go.Scatter3d(\n",
+    "        x=[cx], y=[cy], z=[cz],\n",
+    "        mode=\"markers+text\", text=[f\"copy{r['copy_idx']}\"], textposition=\"top center\",\n",
+    "        marker=dict(size=5), name=f\"copy{r['copy_idx']} center\"\n",
+    "    ))\n",
+    "\n",
+    "# Optional CT volume\n",
+    "if show_ct_volume:\n",
+    "    z_slice = slice(None, None, downsample)\n",
+    "    y_slice = slice(None, None, downsample)\n",
+    "    x_slice = slice(None, None, downsample)\n",
+    "    vol = out_img[z_slice, y_slice, x_slice]\n",
+    "    p1, p99 = np.percentile(vol, [1, 99])\n",
+    "    vol = np.clip(vol, p1, p99); vol = (vol - p1) / max(p99 - p1, 1e-6)\n",
+    "    zz, yy, xx = np.mgrid[\n",
+    "        0:vol.shape[0]*spacing[0]:spacing[0],\n",
+    "        0:vol.shape[1]*spacing[1]:spacing[1],\n",
+    "        0:vol.shape[2]*spacing[2]:spacing[2],\n",
+    "    ]\n",
+    "    fig.add_trace(go.Volume(\n",
+    "        x=xx.flatten(), y=yy.flatten(), z=zz.flatten(),\n",
+    "        value=vol.astype(np.float32).flatten(),\n",
+    "        opacity=0.08, surface_count=10, name=\"CT volume\",\n",
+    "        opacityscale=[[0, 0.0], [1, 1.0]], showscale=False\n",
+    "    ))\n",
+    "\n",
+    "fig.update_layout(\n",
+    "    scene=dict(\n",
+    "        xaxis_title=\"X (mm)\", yaxis_title=\"Y (mm)\", zaxis_title=\"Z (mm)\",\n",
+    "        aspectmode=\"data\",\n",
+    "    ),\n",
+    "    legend=dict(itemsizing=\"constant\"),\n",
+    "    margin=dict(l=0, r=0, t=35, b=0),\n",
+    "    title=\"3D Copy-Paste Tumor in Same Case — Liver (gray), Original (blue), Pasted (red)\"\n",
+    ")\n",
+    "fig.show()\n",
+    "\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save augmented CT\n",
+    "nib.save(\n",
+    "    nib.Nifti1Image(out_img.astype(np.float32), img_nii.affine, img_nii.header),\n",
+    "    \"aug_ct_samecase_70_1.nii.gz\"\n",
+    ")\n",
+    "\n",
+    "# Save augmented segmentation\n",
+    "nib.save(\n",
+    "    nib.Nifti1Image(out_lab.astype(np.int16), lab_nii.affine, lab_nii.header),\n",
+    "    \"aug_seg_samecase_70_1.nii.gz\"\n",
+    ")\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "import os, re, glob\n",
+    "import nibabel as nib\n",
+    "import numpy as np\n",
+    "from skimage import measure\n",
+    "from scipy import ndimage as ndi\n",
+    "\n",
+    "# =========================\n",
+    "# CONFIG\n",
+    "# =========================\n",
+    "DATA_DIR = \"Data\"\n",
+    "DATA_AUG_DIR = \"Data_aug\"\n",
+    "\n",
+    "IMAGE_DIR = os.path.join(DATA_DIR, \"image\")\n",
+    "LABEL_DIR = os.path.join(DATA_DIR, \"labels\")\n",
+    "\n",
+    "OUT_IMAGE_DIR = os.path.join(DATA_AUG_DIR, \"image\")\n",
+    "OUT_LABEL_DIR = os.path.join(DATA_AUG_DIR, \"labels\")\n",
+    "\n",
+    "# Augmentation parameters (same as your single-case code)\n",
+    "LIVER_LABEL = 1\n",
+    "TUMOR_LABEL = 2\n",
+    "NUM_COPIES = 1                 # how many new tumors to paste per case\n",
+    "BLEND_BORDER = 0               # 0 = hard paste (set >0 for feathered edges)\n",
+    "INTENSITY_SCALE_RANGE = (0.95, 1.05)\n",
+    "INTENSITY_SHIFT_RANGE = (-5.0, 5.0)\n",
+    "MIN_LIVER_COVERAGE = 0.85\n",
+    "AVOID_OVERLAP_WITH_ORIG = True\n",
+    "# Keep pasted tumors away from existing tumors & each other\n",
+    "OCCUPIED_CLEARANCE_VOX = 2    # dilated safety margin (voxels) around occupied areas\n",
+    "MIN_CENTER_SEPARATION_VOX = 12  # optional extra spacing between centers\n",
+    "RNG_SEED = None                  # None => non-deterministic; or set an int for reproducible but varied runs\n",
+    "\n",
+    "# =========================\n",
+    "# HELPERS\n",
+    "# =========================\n",
+    "def ensure_dirs():\n",
+    "    os.makedirs(OUT_IMAGE_DIR, exist_ok=True)\n",
+    "    os.makedirs(OUT_LABEL_DIR, exist_ok=True)\n",
+    "\n",
+    "def bbox_of_mask(mask, pad=2):\n",
+    "    zz, yy, xx = np.where(mask)\n",
+    "    zmin, zmax = max(0, zz.min()-pad), min(mask.shape[0]-1, zz.max()+pad)\n",
+    "    ymin, ymax = max(0, yy.min()-pad), min(mask.shape[1]-1, yy.max()+pad)\n",
+    "    xmin, xmax = max(0, xx.min()-pad), min(mask.shape[2]-1, xx.max()+pad)\n",
+    "    return (slice(zmin, zmax+1), slice(ymin, ymax+1), slice(xmin, xmax+1))\n",
+    "\n",
+    "def feather_alpha(binary_mask, blend_border=3):\n",
+    "    if blend_border <= 0:\n",
+    "        return binary_mask.astype(np.float32)\n",
+    "    dist_to_bg = ndi.distance_transform_edt(binary_mask)\n",
+    "    alpha = np.clip(dist_to_bg / float(blend_border), 0.0, 1.0).astype(np.float32)\n",
+    "    return alpha\n",
+    "\n",
+    "def centroid_world(mask, affine):\n",
+    "    if not mask.any():\n",
+    "        return (np.nan, np.nan, np.nan)\n",
+    "    coords = np.column_stack(np.where(mask))\n",
+    "    c_vox = coords.mean(axis=0)\n",
+    "    c_h = np.r_[c_vox, 1.0]\n",
+    "    c_w = (affine @ c_h)[:3]\n",
+    "    return tuple(map(float, c_w))\n",
+    "\n",
+    "def try_random_centers_shuffled(liver_mask, patch_shape, rng, max_tries=4000):\n",
+    "    pz, py, px = patch_shape\n",
+    "    hz, hy, hx = pz//2, py//2, px//2\n",
+    "    Z, Y, X = liver_mask.shape\n",
+    "    zmin, zmax = hz, Z - (pz - hz)\n",
+    "    ymin, ymax = hy, Y - (py - hy)\n",
+    "    xmin, xmax = hx, X - (px - hx)\n",
+    "    if zmax <= zmin or ymax <= ymin or xmax <= xmin:\n",
+    "        return\n",
+    "    zz, yy, xx = np.where(liver_mask)\n",
+    "    keep = (zz >= zmin) & (zz < zmax) & (yy >= ymin) & (yy < ymax) & (xx >= xmin) & (xx < xmax)\n",
+    "    cand = np.column_stack([zz[keep], yy[keep], xx[keep]])\n",
+    "    if len(cand) == 0:\n",
+    "        return\n",
+    "    for idx in rng.permutation(len(cand))[:max_tries]:\n",
+    "        cz, cy, cx = cand[idx]\n",
+    "        yield int(cz), int(cy), int(cx)\n",
+    "\n",
+    "def load_case_safely(image_path, label_path):\n",
+    "    img_nii = nib.load(image_path)\n",
+    "    lab_nii = nib.load(label_path)\n",
+    "\n",
+    "    img_do = img_nii.dataobj\n",
+    "    lab_do = lab_nii.dataobj\n",
+    "\n",
+    "    # ---- CT/MRI (slice first, then cast)\n",
+    "    if getattr(img_do, \"ndim\", None) == 4:\n",
+    "        if img_do.shape[0] <= 4:     # (C,Z,Y,X)\n",
+    "            img = np.asarray(img_do[0, ...], dtype=np.float32, order=\"C\")\n",
+    "        else:                        # (Z,Y,X,C)\n",
+    "            img = np.asarray(img_do[..., 0], dtype=np.float32, order=\"C\")\n",
+    "    else:\n",
+    "        img = np.asarray(img_do, dtype=np.float32, order=\"C\")\n",
+    "\n",
+    "    # ---- Label\n",
+    "    if getattr(lab_do, \"ndim\", None) == 4:\n",
+    "        if lab_do.shape[0] <= 4:\n",
+    "            lab = np.asarray(lab_do[0, ...], dtype=np.int16, order=\"C\")\n",
+    "        else:\n",
+    "            lab = np.asarray(lab_do[..., 0], dtype=np.int16, order=\"C\")\n",
+    "    else:\n",
+    "        lab = np.asarray(lab_do, dtype=np.int16, order=\"C\")\n",
+    "\n",
+    "    affine_img = img_nii.affine\n",
+    "    affine_lab = lab_nii.affine          # usually same; keep both to be safe\n",
+    "    img_header = img_nii.header.copy()\n",
+    "    lab_header = lab_nii.header.copy()\n",
+    "\n",
+    "    zooms = img_header.get_zooms()\n",
+    "    spacing = np.array(zooms[:3], dtype=float)\n",
+    "    voxel_mm3 = float(np.prod(spacing))\n",
+    "    return img, lab, affine_img, affine_lab, img_header, lab_header, spacing, voxel_mm3\n",
+    "\n",
+    "\n",
+    "\n",
+    "# =========================\n",
+    "# CORE AUGMENTATION (one case)\n",
+    "# =========================\n",
+    "def augment_case(image_path, label_path, out_image_path, out_label_path):\n",
+    "    \n",
+    "    (img, lab,\n",
+    "    affine_img, affine_lab,\n",
+    "    img_hdr, lab_hdr,\n",
+    "    spacing, voxel_mm3) = load_case_safely(image_path, label_path)\n",
+    "    \n",
+    "    # Sanity checks (will print once per case)\n",
+    "    # If you still see a 4D shape here, we failed to slice correctly.\n",
+    "    if img.ndim != 3: raise RuntimeError(f\"CT not 3D: {img.shape}  -> check loader\")\n",
+    "    if lab.ndim != 3: raise RuntimeError(f\"Label not 3D: {lab.shape} -> check loader\")\n",
+    "\n",
+    "\n",
+    "    # Masks\n",
+    "    liver_mask = (lab == LIVER_LABEL).astype(np.uint8)\n",
+    "    tumor_mask = (lab == TUMOR_LABEL).astype(np.uint8)\n",
+    "\n",
+    "    if not liver_mask.any():\n",
+    "        print(f\"[Skip] No liver in {os.path.basename(label_path)}\")\n",
+    "        return False\n",
+    "    if not tumor_mask.any():\n",
+    "        print(f\"[Skip] No tumor in {os.path.basename(label_path)}\")\n",
+    "        return False\n",
+    "\n",
+    "    '''\n",
+    "    # Pick a single tumor component (largest)\n",
+    "    lab_cc, n_cc = ndi.label(tumor_mask)\n",
+    "    sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]\n",
+    "    if not sizes:\n",
+    "        raise ValueError(\"No connected components in tumor mask.\")\n",
+    "    src_id = max(sizes, key=lambda t: t[1])[0]\n",
+    "    src_comp = (lab_cc == src_id)\n",
+    "    '''\n",
+    "    lab_cc, n_cc = ndi.label(tumor_mask)\n",
+    "    if n_cc == 0:\n",
+    "        raise ValueError(\"No tumor components in mask.\")\n",
+    "    \n",
+    "    # --- Option 1: choose a random tumor (all components equally likely)\n",
+    "    src_id = np.random.default_rng(RNG_SEED if RNG_SEED is not None else None).integers(1, n_cc + 1)\n",
+    "\n",
+    "    \n",
+    "    # --- Option 2 (alternative): choose proportional to size\n",
+    "    # sizes = [(i, (lab_cc == i).sum()) for i in range(1, n_cc+1)]\n",
+    "    # ids, weights = zip(*sizes)\n",
+    "    # src_id = rng.choice(ids, p=np.array(weights)/sum(weights))\n",
+    "    \n",
+    "    src_comp = (lab_cc == src_id)\n",
+    "\n",
+    "    # Crop source tumor patch\n",
+    "    src_slz, src_sly, src_slx = bbox_of_mask(src_comp, pad=2)\n",
+    "    tumor_ct_patch = img[src_slz, src_sly, src_slx].astype(np.float32)\n",
+    "    tumor_mask_patch = src_comp[src_slz, src_sly, src_slx].astype(bool)\n",
+    "    alpha_patch = feather_alpha(tumor_mask_patch, BLEND_BORDER)\n",
+    "\n",
+    "    # Distance transform from original tumor (for separation)\n",
+    "    if AVOID_OVERLAP_WITH_ORIG:\n",
+    "        dt_from_orig = ndi.distance_transform_edt(~tumor_mask)\n",
+    "    else:\n",
+    "        dt_from_orig = None\n",
+    "\n",
+    "    # Output volumes\n",
+    "    out_img = img.copy()\n",
+    "    out_lab = lab.copy()\n",
+    "    pasted_masks = []\n",
+    "    report_rows = []\n",
+    "    # Start with original tumors as occupied\n",
+    "    occupied_mask = tumor_mask.copy()\n",
+    "    \n",
+    "    # Precompute a dilated \"forbidden\" zone around occupied voxels\n",
+    "    # (keeps patches away by OCCUPIED_CLEARANCE_VOX voxels)\n",
+    "    structure = ndi.generate_binary_structure(3, 1)  # 6-neighborhood\n",
+    "    forbidden = ndi.binary_dilation(\n",
+    "        occupied_mask,\n",
+    "        structure=structure,\n",
+    "        iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))\n",
+    "    )\n",
+    "    dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)\n",
+    "\n",
+    "\n",
+    "    rng = np.random.default_rng(RNG_SEED)\n",
+    "    pasted_count = 0\n",
+    "\n",
+    "    for k in range(NUM_COPIES):\n",
+    "        placed = False\n",
+    "        for center in try_random_centers_shuffled(liver_mask, tumor_mask_patch.shape, rng, max_tries=4000):\n",
+    "            pz, py, px = tumor_mask_patch.shape\n",
+    "            hz, hy, hx = pz//2, py//2, px//2\n",
+    "            cz, cy, cx = center\n",
+    "            z1, z2 = cz-hz, cz-hz+pz\n",
+    "            y1, y2 = cy-hy, cy-hy+py\n",
+    "            x1, x2 = cx-hx, cx-hx+px\n",
+    "    \n",
+    "            roi_liver = liver_mask[z1:z2, y1:y2, x1:x2]\n",
+    "            roi_forbidden = forbidden[z1:z2, y1:y2, x1:x2]\n",
+    "    \n",
+    "            # ---- HARD NO-OVERLAP RULE with occupied (+clearance)\n",
+    "            if (tumor_mask_patch & roi_forbidden).any():\n",
+    "                continue\n",
+    "    \n",
+    "            # ---- Coverage rule (after forbidding overlap)\n",
+    "            inside_frac = (tumor_mask_patch & roi_liver).sum() / (tumor_mask_patch.sum() + 1e-6)\n",
+    "            if inside_frac < MIN_LIVER_COVERAGE:\n",
+    "                continue\n",
+    "    \n",
+    "            # ---- Optional: center separation (vs. original+pastes)\n",
+    "            if MIN_CENTER_SEPARATION_VOX > 0:\n",
+    "                if dist_from_occupied[cz, cy, cx] < MIN_CENTER_SEPARATION_VOX:\n",
+    "                    continue\n",
+    "    \n",
+    "            # ---- Paste (intensity jitter + feather)\n",
+    "            scale = rng.uniform(*INTENSITY_SCALE_RANGE)\n",
+    "            shift = rng.uniform(*INTENSITY_SHIFT_RANGE)\n",
+    "            roi_ct = out_img[z1:z2, y1:y2, x1:x2]\n",
+    "            alpha_eff = alpha_patch * tumor_mask_patch.astype(np.float32)\n",
+    "            pasted_ct = (1.0 - alpha_eff) * roi_ct + alpha_eff * (tumor_ct_patch * scale + shift)\n",
+    "            out_img[z1:z2, y1:y2, x1:x2] = pasted_ct\n",
+    "    \n",
+    "            # ---- Labels\n",
+    "            new_mask_full = np.zeros_like(out_lab, dtype=bool)\n",
+    "            new_mask_full[z1:z2, y1:y2, x1:x2] = tumor_mask_patch\n",
+    "            out_lab[new_mask_full] = TUMOR_LABEL\n",
+    "            pasted_masks.append(new_mask_full)\n",
+    "\n",
+    "            pasted_count += 1\n",
+    "    \n",
+    "            # ---- UPDATE OCCUPIED + FORBIDDEN + DISTANCE for next iterations\n",
+    "            occupied_mask |= new_mask_full\n",
+    "            forbidden = ndi.binary_dilation(\n",
+    "                occupied_mask,\n",
+    "                structure=structure,\n",
+    "                iterations=int(max(OCCUPIED_CLEARANCE_VOX, 0))\n",
+    "            )\n",
+    "            dist_from_occupied = ndi.distance_transform_edt(~occupied_mask)\n",
+    "    \n",
+    "            # ---- reporting (unchanged)\n",
+    "            vox = int(new_mask_full.sum())\n",
+    "            vol_mm3 = vox * voxel_mm3\n",
+    "            c_src = centroid_world(src_comp, affine)\n",
+    "            c_new = centroid_world(new_mask_full, affine)\n",
+    "            \n",
+    "\n",
+    "            offset = tuple(float(b - a) for a, b in zip(c_src, c_new))\n",
+    "            report_rows.append({\n",
+    "                \"copy_idx\": k+1,\n",
+    "                \"voxels\": vox,\n",
+    "                \"volume_mm3\": vol_mm3,\n",
+    "                \"center_world_mm\": c_new,\n",
+    "                \"offset_from_src_mm\": offset,\n",
+    "                \"liver_coverage\": float(inside_frac),\n",
+    "                \"scale\": float(scale),\n",
+    "                \"shift\": float(shift),\n",
+    "            })\n",
+    "            placed = True\n",
+    "            break\n",
+    "    \n",
+    "        if not placed:\n",
+    "            print(f\"[Warn] Could not place tumor copy #{k+1} (relax coverage or clearance).\")\n",
+    "\n",
+    "\n",
+    "    # Save outputs using original headers/affine to keep geometry consistent\n",
+    "    nib.save(nib.Nifti1Image(out_img.astype(np.float32), affine_img, img_hdr), out_image_path)\n",
+    "    nib.save(nib.Nifti1Image(out_lab.astype(np.int16),  affine_lab, lab_hdr),  out_label_path)\n",
+    "\n",
+    "\n",
+    "    vox = int(src_comp.sum())\n",
+    "    vol_mm3 = vox * voxel_mm3\n",
+    "    c_src = centroid_world(src_comp, affine)\n",
+    "    print(f\"[OK] {os.path.basename(image_path)}  pasted:{pasted_count}  \"\n",
+    "                    f\"orig_tumor_vox:{vox}  vol:{vol_mm3:.1f} mm³  \"\n",
+    "                    f\"center(mm):{tuple(round(v,1) for v in c_src)}\")\n",
+    "    return True\n",
+    "\n",
+    "# =========================\n",
+    "# BATCH DRIVER\n",
+    "# =========================\n",
+    "def main():\n",
+    "    ensure_dirs()\n",
+    "\n",
+    "    # find all images like liver_XX_0000.nii.gz\n",
+    "    image_files = sorted(glob.glob(os.path.join(IMAGE_DIR, \"liver_*_0000.nii.gz\")))\n",
+    "\n",
+    "    # pattern to extract the case id (\"liver_1_0000.nii.gz\" -> \"liver_1\")\n",
+    "    pat = re.compile(r\"^(?P<prefix>liver_\\d+)_0000\\.nii\\.gz$\")\n",
+    "\n",
+    "    total = 0\n",
+    "    ok = 0\n",
+    "    skipped = 0\n",
+    "    for img_path in image_files:\n",
+    "        fname = os.path.basename(img_path)\n",
+    "        m = pat.match(fname)\n",
+    "        if not m:\n",
+    "            print(f\"[Skip] Unexpected image name: {fname}\")\n",
+    "            skipped += 1\n",
+    "            continue\n",
+    "        base = m.group(\"prefix\")  # e.g., liver_70\n",
+    "        lab_path = os.path.join(LABEL_DIR, f\"{base}.nii.gz\")\n",
+    "        if not os.path.exists(lab_path):\n",
+    "            print(f\"[Skip] Missing label for {fname}: {lab_path}\")\n",
+    "            skipped += 1\n",
+    "            continue\n",
+    "\n",
+    "        out_img_path = os.path.join(OUT_IMAGE_DIR, f\"{base}_0000.nii.gz\")\n",
+    "        out_lab_path = os.path.join(OUT_LABEL_DIR,  f\"{base}.nii.gz\")\n",
+    "\n",
+    "        # idempotent: skip if already exists\n",
+    "        if os.path.exists(out_img_path) and os.path.exists(out_lab_path):\n",
+    "            print(f\"[Skip] Already exists: {base}\")\n",
+    "            skipped += 1\n",
+    "            continue\n",
+    "\n",
+    "        total += 1\n",
+    "        try:\n",
+    "            if augment_case(img_path, lab_path, out_img_path, out_lab_path):\n",
+    "                ok += 1\n",
+    "        except Exception as e:\n",
+    "            print(f\"[Error] {base}: {e}\")\n",
+    "\n",
+    "    print(f\"\\nDone. processed={total}  ok={ok}  skipped={skipped}  out_dir={DATA_AUG_DIR}\")\n",
+    "\n",
+    "if __name__ == \"__main__\":\n",
+    "    main()\n"
+   ],
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [],
+   "outputs": [],
+   "execution_count": null
+  }
+ ],
+ "metadata": {},
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
+
+===== END FILE: reference/medical_data_aug/view_nifti_liver.ipynb =====
+
 ===== FILE: requirements-debug.txt =====
 # Isolated CPU test environment only. Do not install over the server environment.
 # Install torch/torchvision using https://download.pytorch.org/whl/cpu first.
@@ -42770,6 +44783,7 @@ if __name__ == "__main__":
 
 ===== FILE: tests/test_gpt_handoff_export_debug.py =====
 """DEBUG: documentation completeness/hash checks; no medical/model execution."""
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -42844,6 +44858,33 @@ class HandoffExportDebug(unittest.TestCase):
         (self.root / "binary.bin").write_bytes(b"\x00\x01")
         with self.assertRaises(ValueError):
             subject.source_record(self.root, "binary.bin")
+
+    def test_source_only_notebook_export_and_rendered_data_rejection(self):
+        notebook = {"nbformat": 4, "nbformat_minor": 4, "metadata": {}, "cells": [
+            {"cell_type": "code", "metadata": {}, "source": ["value = 1\n"],
+             "execution_count": None, "outputs": []}]}
+        target = self.root / "reference.ipynb"
+        target.write_text(json.dumps(notebook), encoding="utf-8")
+        self.assertEqual(self.export([target.name])["file_count"], 3)
+        clean_export = (self.root / "code.txt").read_bytes()
+        variants = []
+        for key, value in (("outputs", [{"data": {"image/png": "DEBUG_NOT_REAL_DATA"}}]),
+                           ("execution_count", 1), ("metadata", {"widgets": "DEBUG"}),
+                           ("attachments", {"image.png": "DEBUG"})):
+            changed = copy.deepcopy(notebook)
+            changed["cells"][0][key] = value
+            variants.append(changed)
+        changed = copy.deepcopy(notebook)
+        changed["metadata"] = {"widgets": "DEBUG"}
+        variants.append(changed)
+        for changed in variants:
+            with self.subTest(changed=changed):
+                target.write_text(json.dumps(changed), encoding="utf-8")
+                source_before = target.read_bytes()
+                with self.assertRaises(ValueError):
+                    self.export([target.name])
+                self.assertEqual((self.root / "code.txt").read_bytes(), clean_export)
+                self.assertEqual(target.read_bytes(), source_before)
 
 
 if __name__ == "__main__":
@@ -43611,8 +45652,14 @@ if __name__ == "__main__":
 ===== END FILE: tests/test_level0_geometry.py =====
 
 ===== FILE: tests/test_medical_aug_reference_debug.py =====
-"""DEBUG small arrays: reference CP predicates, not training or medical metrics."""
+"""DEBUG small arrays: archive-source CP predicates, never medical metrics.
 
+Only selected pure helper functions and the paste kernel are compiled from the
+preserved reference text. Its loader, batch driver and NIfTI save code are never
+executed. The original uint8-inversion defect is demonstrated, not adopted.
+"""
+
+import ast
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -43625,6 +45672,28 @@ from hiercp.common import build_candidate_pool, choose_source_tumor, paste_sourc
 
 
 class MedicalAugReferenceDebugTests(unittest.TestCase):
+    def reference(self):
+        path = Path(__file__).resolve().parents[1] / "reference/medical_data_aug/3d_copy_paste_tumor.py.txt"
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        names = {"LIVER_LABEL", "TUMOR_LABEL", "NUM_COPIES", "BLEND_BORDER",
+                 "INTENSITY_SCALE_RANGE", "INTENSITY_SHIFT_RANGE", "MIN_LIVER_COVERAGE",
+                 "AVOID_OVERLAP_WITH_ORIG", "OCCUPIED_CLEARANCE_VOX", "MIN_CENTER_SEPARATION_VOX",
+                 "RNG_SEED"}
+        literals = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in names:
+                        self.assertNotIn(target.id, literals)
+                        literals[target.id] = ast.literal_eval(node.value)
+        self.assertEqual(set(literals), names)
+        functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
+        namespace = {"np": np, "ndi": ndi}
+        pure_helpers = ast.Module(body=[functions[name] for name in ("bbox_of_mask", "feather_alpha")],
+                                  type_ignores=[])
+        exec(compile(pure_helpers, str(path), "exec"), namespace)
+        return path, functions, literals, namespace
+
     def fixture(self):
         shape = (35, 11, 11)
         image = np.arange(np.prod(shape), dtype=np.float32).reshape(shape)
@@ -43646,16 +45715,116 @@ class MedicalAugReferenceDebugTests(unittest.TestCase):
         return build_candidate_pool(case, source, **kwargs)
 
     def test_shared_default_matches_reference_geometry_without_model_reduction(self):
+        _, functions, original, _ = self.reference()
         cfg = json.loads((Path(__file__).resolve().parents[1] / "config/train.json").read_text())
+        bbox = functions["bbox_of_mask"]
+        defaults = dict(zip([arg.arg for arg in bbox.args.args][-len(bbox.args.defaults):],
+                            map(ast.literal_eval, bbox.args.defaults)))
+        calls = [node for node in ast.walk(functions["augment_case"]) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name) and node.func.id == "bbox_of_mask"]
+        self.assertEqual(len(calls), 1)
+        call_pad = next(ast.literal_eval(item.value) for item in calls[0].keywords if item.arg == "pad")
+        self.assertEqual(call_pad, defaults["pad"])
+        self.assertEqual(cfg["labels"], {"liver": original["LIVER_LABEL"], "tumor": original["TUMOR_LABEL"]})
         for section in ("cache", "generation"):
-            self.assertEqual(cfg[section]["source_pad"], 2)
-            self.assertEqual(cfg[section]["occupied_clearance_vox"], 2)
-            self.assertEqual(cfg[section]["min_liver_coverage"], 0.85)
+            self.assertEqual(cfg[section]["source_pad"], call_pad)
+            self.assertEqual(cfg[section]["occupied_clearance_vox"], original["OCCUPIED_CLEARANCE_VOX"])
+            self.assertEqual(cfg[section]["min_liver_coverage"], original["MIN_LIVER_COVERAGE"])
             self.assertEqual(cfg[section]["min_center_separation_mm"], 0.0)
-            self.assertEqual(cfg[section]["min_center_separation_vox"], 12.0)
+            self.assertEqual(cfg[section]["min_center_separation_vox"], original["MIN_CENTER_SEPARATION_VOX"])
             self.assertEqual(cfg[section]["no_placement_policy"], "retain_original")
+        self.assertEqual(cfg["generation"]["num_copies"], original["NUM_COPIES"])
+        self.assertEqual(cfg["generation"]["blend_border"], original["BLEND_BORDER"])
+        self.assertEqual(tuple(cfg["generation"]["intensity_scale_range"]), original["INTENSITY_SCALE_RANGE"])
+        self.assertEqual(tuple(cfg["generation"]["intensity_shift_range"]), original["INTENSITY_SHIFT_RANGE"])
+        self.assertIs(original["AVOID_OVERLAP_WITH_ORIG"], True)
+        # The production experiment intentionally has a recorded deterministic
+        # seed and an extended candidate search; neither is claimed identical to
+        # the original batch's unseeded, 4000-proposal sampler.
+        self.assertIsNone(original["RNG_SEED"])
         self.assertEqual(cfg["cache"]["total_candidates"], 8)
         self.assertEqual(cfg["cache"]["candidate_pool_size"], 128)
+
+    def test_hard_and_feather_paste_match_original_helper_and_kernel(self):
+        path, functions, original, helpers = self.reference()
+        loops = [node for node in ast.walk(functions["augment_case"])
+                 if isinstance(node, ast.For) and isinstance(node.target, ast.Name) and node.target.id == "center"]
+        self.assertEqual(len(loops), 1)
+        body = loops[0].body
+        start = next(index for index, node in enumerate(body) if isinstance(node, ast.Assign)
+                     and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "scale")
+        end = next(index for index, node in enumerate(body) if isinstance(node, ast.Assign)
+                   and isinstance(node.targets[0], ast.Subscript)
+                   and isinstance(node.targets[0].value, ast.Name) and node.targets[0].value.id == "out_lab")
+        occupied_updates = [node for node in body if isinstance(node, ast.AugAssign)
+                            and isinstance(node.target, ast.Name) and node.target.id == "occupied_mask"]
+        self.assertEqual(len(occupied_updates), 1)
+        kernel = compile(ast.Module(body=body[start:end + 1] + occupied_updates, type_ignores=[]), str(path), "exec")
+        shape = (19, 19, 19)
+        image = np.arange(np.prod(shape), dtype=np.float32).reshape(shape) * np.float32(0.25) - np.float32(500)
+        label = np.ones(shape, dtype=np.int16)
+        label[8:11, 8:11, 8:11] = original["TUMOR_LABEL"]
+        image_before, label_before = image.copy(), label.copy()
+        source, _, _ = choose_source_tumor(image, label, tumor_label=original["TUMOR_LABEL"],
+                                         rng=np.random.default_rng(42), selection="random", pad=2)
+        reference_slices = helpers["bbox_of_mask"](label == original["TUMOR_LABEL"], pad=2)
+        self.assertEqual(source.patch_slices, reference_slices)
+        np.testing.assert_array_equal(source.patch_image, image[reference_slices])
+        np.testing.assert_array_equal(source.patch_mask, (label == original["TUMOR_LABEL"])[reference_slices])
+        candidate = SimpleNamespace(slices=(slice(1, 8), slice(2, 9), slice(3, 10)))
+        changed = np.zeros(shape, dtype=bool)
+        changed[candidate.slices] = source.patch_mask
+        for blend in (0, 1, 3):
+            with self.subTest(blend_border=blend):
+                out_image, out_label = image.copy(), label.copy()
+                occupied = label == original["TUMOR_LABEL"]
+                scale, shift = paste_source(out_image, out_label, occupied, source, candidate,
+                    tumor_label=original["TUMOR_LABEL"], rng=np.random.default_rng(730),
+                    intensity_scale_range=original["INTENSITY_SCALE_RANGE"],
+                    intensity_shift_range=original["INTENSITY_SHIFT_RANGE"], blend_border=blend)
+                alpha = helpers["feather_alpha"](source.patch_mask, blend)
+                if blend == 3:
+                    self.assertTrue(np.any((alpha > 0) & (alpha < 1)))
+                namespace = {"np": np, "rng": np.random.default_rng(730),
+                    "INTENSITY_SCALE_RANGE": original["INTENSITY_SCALE_RANGE"],
+                    "INTENSITY_SHIFT_RANGE": original["INTENSITY_SHIFT_RANGE"],
+                    "TUMOR_LABEL": original["TUMOR_LABEL"], "tumor_ct_patch": source.patch_image,
+                    "tumor_mask_patch": source.patch_mask, "alpha_patch": alpha,
+                    "out_img": image.copy(), "out_lab": label.copy(),
+                    "occupied_mask": label == original["TUMOR_LABEL"],
+                    "z1": 1, "z2": 8, "y1": 2, "y2": 9, "x1": 3, "x2": 10}
+                exec(kernel, namespace)
+                self.assertEqual((scale, shift), (namespace["scale"], namespace["shift"]))
+                np.testing.assert_array_equal(out_image, namespace["out_img"])
+                np.testing.assert_array_equal(out_label, namespace["out_lab"])
+                np.testing.assert_array_equal(occupied, namespace["occupied_mask"])
+                np.testing.assert_array_equal(out_image[~changed], image[~changed])
+                np.testing.assert_array_equal(out_label[~changed], label[~changed])
+        np.testing.assert_array_equal(image, image_before)
+        np.testing.assert_array_equal(label, label_before)
+
+    def test_original_uint8_inversion_is_not_boolean_distance_semantics(self):
+        path, functions, original, _ = self.reference()
+        assignments = [node for node in ast.walk(functions["augment_case"]) if isinstance(node, ast.Assign)
+                       and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "dist_from_occupied"]
+        self.assertEqual(len(assignments), 2)
+        self.assertEqual(ast.dump(assignments[0].value), ast.dump(assignments[1].value))
+        expression = compile(ast.Expression(body=assignments[0].value), str(path), "eval")
+        occupied = np.zeros((35, 11, 11), dtype=np.uint8)
+        occupied[17, 5, 5] = 1
+        np.testing.assert_array_equal(np.unique(~occupied), np.array([254, 255], dtype=np.uint8))
+        legacy = eval(expression, {"ndi": ndi, "occupied_mask": occupied})
+        corrected = eval(expression, {"ndi": ndi, "occupied_mask": occupied.astype(bool)})
+        probe = (17, 5, 8)
+        self.assertGreater(legacy[17, 5, 5], 0)
+        self.assertEqual(corrected[17, 5, 5], 0)
+        self.assertGreaterEqual(legacy[probe], original["MIN_CENTER_SEPARATION_VOX"])
+        self.assertEqual(corrected[probe], 3)
+        self.assertLess(corrected[probe], original["MIN_CENTER_SEPARATION_VOX"])
+        case, source = self.fixture()
+        candidates, physical_distance = self.pool(case, source)
+        self.assertEqual(physical_distance[17, 5, 5], 0)
+        self.assertNotIn(probe, {candidate.center for candidate in candidates})
 
     def test_native_voxel_reference_predicate_and_physical_gnn_features(self):
         case, source = self.fixture()
@@ -43715,6 +45884,63 @@ class MedicalAugReferenceDebugTests(unittest.TestCase):
             self.pool(case, source, min_center_separation_mm=12.0)
 
 ===== END FILE: tests/test_medical_aug_reference_debug.py =====
+
+===== FILE: tests/test_medical_aug_source_import_debug.py =====
+"""DEBUG source provenance/privacy checks, no medical data or notebook execution."""
+import ast
+import hashlib
+import json
+from pathlib import Path
+import unittest
+
+from tools.export_gpt_handoff import source_record
+
+
+ROOT = Path(__file__).resolve().parents[1]
+REFERENCE = ROOT / "reference" / "medical_data_aug"
+
+
+class MedicalAugSourceImportDebugTests(unittest.TestCase):
+    def test_all_restored_sources_match_recorded_digest(self):
+        manifest = json.loads((REFERENCE / "provenance.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["format"], "medical_data_aug_source_import_v1")
+        self.assertEqual({row["zip_member"] for row in manifest["imported"]}, {
+            "3d_copy_paste_tumor.py", "README.md", "view_nifti_liver.ipynb"})
+        for row in manifest["imported"]:
+            path = REFERENCE / row["repository_file"]
+            self.assertEqual(path.parent, REFERENCE)
+            record, _ = source_record(ROOT, path.relative_to(ROOT).as_posix())
+            self.assertEqual(record["export_sha256"], row["repository_lf_sha256"])
+
+    def test_all_original_notebook_cells_preserved_without_patient_outputs(self):
+        manifest = json.loads((REFERENCE / "provenance.json").read_text(encoding="utf-8"))
+        path = REFERENCE / "view_nifti_liver.ipynb"
+        _, body = source_record(ROOT, path.relative_to(ROOT).as_posix())
+        notebook = json.loads(body)
+        self.assertEqual(manifest["notebook_guard_cells"], 2)
+        self.assertEqual(manifest["notebook_original_cell_count"], 24)
+        self.assertEqual(len(notebook["cells"]), 26)
+        guard = ast.parse("".join(notebook["cells"][1]["source"]))
+        self.assertIsInstance(guard.body[0], ast.Raise)
+        original = notebook["cells"][2:]
+        self.assertEqual([hashlib.sha256("".join(c["source"]).encode()).hexdigest()
+                          for c in original], manifest["notebook_original_cell_sources_sha256"])
+        for cell in original:
+            if cell["cell_type"] == "code":
+                ast.parse("".join(cell["source"]), feature_version=(3, 10))
+
+    def test_only_reviewed_sources_are_in_reference_directory(self):
+        self.assertEqual({p.name for p in REFERENCE.iterdir()}, {
+            "README.md", "README.original.md", "provenance.json",
+            "3d_copy_paste_tumor.py.txt", "view_nifti_liver.ipynb"})
+        self.assertNotIn("drive.google.com", (REFERENCE / "README.original.md").read_text())
+        self.assertIn("/Medical Data Aug.zip", (ROOT / ".gitignore").read_text())
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+===== END FILE: tests/test_medical_aug_source_import_debug.py =====
 
 ===== FILE: tests/test_no_placement_cache_debug.py =====
 """DEBUG zero-placement accounting only; structural fixtures, no model training."""
@@ -59705,6 +61931,36 @@ EXCLUDED_PARTS = {".git", ".venv", "venv", "__pycache__", "work", "results",
 EXCLUDED_NAMES = {"code.txt", ".env"}
 
 
+def verify_source_only_notebook(content: str, relative: str) -> None:
+    """Refuse rendered patient data, rather than silently stripping on export.
+
+    Only source cells and empty metadata are accepted. Review/sanitize the
+    notebook separately; the exporter never modifies its input notebook.
+    """
+    notebook = json.loads(content)
+    if (not isinstance(notebook, dict) or notebook.get("nbformat") != 4
+            or notebook.get("metadata") != {}
+            or not isinstance(notebook.get("cells"), list)
+            or set(notebook) != {"cells", "metadata", "nbformat", "nbformat_minor"}):
+        raise ValueError(f"Not a source-only notebook: {relative}")
+    for cell in notebook["cells"]:
+        if not isinstance(cell, dict):
+            raise ValueError(f"Malformed source notebook cell: {relative}")
+        kind = cell.get("cell_type")
+        allowed = {"cell_type", "metadata", "source", "id"}
+        if kind == "code":
+            allowed.update({"outputs", "execution_count"})
+            if cell.get("outputs") != [] or cell.get("execution_count") is not None:
+                raise ValueError(f"Notebook output/execution data must be cleared: {relative}")
+        elif kind != "markdown":
+            raise ValueError(f"Unsupported source notebook cell type: {relative}")
+        source = cell.get("source")
+        if (cell.get("metadata") != {} or not set(cell).issubset(allowed)
+                or not (isinstance(source, str) or
+                        isinstance(source, list) and all(isinstance(line, str) for line in source))):
+            raise ValueError(f"Notebook attachments/metadata or malformed source: {relative}")
+
+
 def git(root: Path, *args: str) -> bytes:
     return subprocess.check_output(
         ["git", "-c", f"safe.directory={root.as_posix()}", *args], cwd=root)
@@ -59723,6 +61979,8 @@ def source_record(root: Path, relative: str) -> tuple[dict, str]:
     if b"\x00" in raw:
         raise ValueError(f"Binary input is not a handoff text source: {relative}")
     content = raw.decode("utf-8").replace("\r\n", "\n")
+    if name.suffix.lower() == ".ipynb":
+        verify_source_only_notebook(content, relative)
     exported = content.encode("utf-8")
     return ({"path": name.as_posix(), "source_sha256": hashlib.sha256(raw).hexdigest(),
              "export_sha256": hashlib.sha256(exported).hexdigest(),

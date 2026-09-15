@@ -1,4 +1,5 @@
 """DEBUG: documentation completeness/hash checks; no medical/model execution."""
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -73,6 +74,33 @@ class HandoffExportDebug(unittest.TestCase):
         (self.root / "binary.bin").write_bytes(b"\x00\x01")
         with self.assertRaises(ValueError):
             subject.source_record(self.root, "binary.bin")
+
+    def test_source_only_notebook_export_and_rendered_data_rejection(self):
+        notebook = {"nbformat": 4, "nbformat_minor": 4, "metadata": {}, "cells": [
+            {"cell_type": "code", "metadata": {}, "source": ["value = 1\n"],
+             "execution_count": None, "outputs": []}]}
+        target = self.root / "reference.ipynb"
+        target.write_text(json.dumps(notebook), encoding="utf-8")
+        self.assertEqual(self.export([target.name])["file_count"], 3)
+        clean_export = (self.root / "code.txt").read_bytes()
+        variants = []
+        for key, value in (("outputs", [{"data": {"image/png": "DEBUG_NOT_REAL_DATA"}}]),
+                           ("execution_count", 1), ("metadata", {"widgets": "DEBUG"}),
+                           ("attachments", {"image.png": "DEBUG"})):
+            changed = copy.deepcopy(notebook)
+            changed["cells"][0][key] = value
+            variants.append(changed)
+        changed = copy.deepcopy(notebook)
+        changed["metadata"] = {"widgets": "DEBUG"}
+        variants.append(changed)
+        for changed in variants:
+            with self.subTest(changed=changed):
+                target.write_text(json.dumps(changed), encoding="utf-8")
+                source_before = target.read_bytes()
+                with self.assertRaises(ValueError):
+                    self.export([target.name])
+                self.assertEqual((self.root / "code.txt").read_bytes(), clean_export)
+                self.assertEqual(target.read_bytes(), source_before)
 
 
 if __name__ == "__main__":

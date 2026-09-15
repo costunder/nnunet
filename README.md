@@ -77,6 +77,9 @@ regression checks below on the target server before the full experiment.
   reuse/upgrade boundaries.
 - [`gpt_handoff.md`](gpt_handoff.md) and [`code.txt`](code.txt): current project
   handoff and complete tracked-text source export; no patient images are included.
+- [`reference/medical_data_aug/`](reference/medical_data_aug/): restored original
+  Basic-CP source, source-only historical notebook and SHA provenance. Its active
+  implementation is already integrated, not a second preprocessing/CP command.
 - [`config/train.json`](config/train.json): graph, model, cache, training, and
   generation contract.
 - [`config/nnunet.json`](config/nnunet.json): downstream nnU-Net contract.

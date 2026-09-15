@@ -1,0 +1,60 @@
+{
+  "format": "medical_data_aug_source_import_v1",
+  "archive_name": "Medical Data Aug.zip",
+  "archive_sha256": "93b00ba0f6267da212bb7f82acdb404fccf500cefbbe47990e40001de06d33f2",
+  "role": "historical source provenance; runtime uses existing integrated hiercp and raw-target OnlineCP implementations",
+  "imported": [
+    {
+      "zip_member": "3d_copy_paste_tumor.py",
+      "zip_member_sha256": "048414d569b715797d92b38722e5b8e3788476848507c94a39eca6902d1505dc",
+      "repository_file": "3d_copy_paste_tumor.py.txt",
+      "repository_lf_sha256": "986fd6afb95b94c70614ac02d2b9ced776cbd680c5e70d4dd11e20148383bd70",
+      "transformation": "Normalize line endings to LF and remove trailing whitespace; preserve complete AST."
+    },
+    {
+      "zip_member": "README.md",
+      "zip_member_sha256": "967319f4e23e8cd01c614a600e5c422f9ce9ea033ab7fba6b04acb9197092ad2",
+      "repository_file": "README.original.md",
+      "repository_lf_sha256": "c685f28ecd3dc02ea4537abc8c1113734d22c55f8a2d2f4210099dc27972968d"
+    },
+    {
+      "zip_member": "view_nifti_liver.ipynb",
+      "zip_member_sha256": "14b8dbeddf2a6b1a10ea63d4ff41f0e403fe728b38d7d6f74e77646aa0cead30",
+      "repository_file": "view_nifti_liver.ipynb",
+      "repository_lf_sha256": "ffb7535c64acc918fdd89bf7139c4f50a6602a6cddaee1b0a7d1dd2f5e24f798"
+    }
+  ],
+  "notebook_original_cell_count": 24,
+  "notebook_guard_cells": 2,
+  "notebook_original_cell_sources_sha256": [
+    "4ee5825ca4313816473dd5fe853db760490076f89ea2971aa29127c022ea7888",
+    "947c6b4ed3d6752742988d712b0a45978722352983740dbd948bcc06ad69eede",
+    "e0dc1c694f150d31272c9be12e08bab09a4da2f87dea7fceb798ed704b7d58fd",
+    "d800ba1bbb8390bb95ef9a2b39bec7e663d20cee105c0dcd0255bc439784f0c1",
+    "a89ee5f3cfdd67d9205dde5968d435e525cc9460749c948522b760038ab68772",
+    "b8fbbb9f309ed4550156170b74873aa12c4cffcea51fcafd1795d9daa55f3c0c",
+    "15c808f5522c10c0b284dcaa13a678cd29543d7e1bffd21a8e143a730b44ed11",
+    "fe2eccb333edf2bb6b7162366a21155678c60f517c37707db2ab1940ef948ec7",
+    "603e60551fd45c0a45fa3a835694211f61f65fb9599e6f568be5c8a49720871e",
+    "552c815ffc6715960a5077e334c93611ac0ae23c6719d47261622f1e2eb38e7a",
+    "84bcb11e2e8b1d7f2a22b3bc66652ef669cfaaee61347a533160ceaa98d22fa6",
+    "84bcb11e2e8b1d7f2a22b3bc66652ef669cfaaee61347a533160ceaa98d22fa6",
+    "562951b65c1288677f7b05b47e82713bcac3a14611d5caec67e1821e784809cd",
+    "866339176a0ef070364d2bac777e97eb28b0603155fc18accdc9e7532ddb2aff",
+    "19d29203008ad78239bb37bb96d2743d5aba9dcf45531b8dd02fda0717258d89",
+    "1973e166cb5975fde7272b13577cedd307ba30c77e3f4d57a9320f1229b54fe4",
+    "26cc1a2103a4f0a8a81c7463326db2289ab5e42eb5188f43805fad334b733266",
+    "6aab2f6f9af319cc05840dc032cd43ab9974886b54e26bfde80033e656ed416e",
+    "dc0d7972de34a8b844708b12c8dd413a0dca735f375c439ead602451087c21e6",
+    "cc1d3a3dac76c16f51e2fca9b1ba701e389e13a1fb5b8c73e6768efedb636c7e",
+    "e2d96036cff87bceb474841405c3623096edcc761b7d4320d6de1e85c9efabae",
+    "b74f7d21723512f230489b66ce4dee85036bdec6cdd641c0e85ec1590cd8a249",
+    "88895b83d69907140c9d11041524dc8f10ec505a828c0f817af6ad2872e09503",
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  ],
+  "excluded": [
+    "Data/ (all CT and segmentation volumes)",
+    "notebook outputs, execution counts, attachments, metadata",
+    "external medical-data download link"
+  ]
+}

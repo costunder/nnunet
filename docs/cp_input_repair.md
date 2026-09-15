@@ -7,6 +7,38 @@ not an experiment output directory. It contains a batch script, a notebook,
 and a `liver_70` image/label pair. It does not contain the failing `liver_76`.
 Do not commit the archive or its medical images to the repository.
 
+The complete original batch source and all 24 notebook cell sources are now
+tracked in `reference/medical_data_aug/` and included in `code.txt`. The batch
+has a `.py.txt` suffix because it is historical source with known defects, not
+an additional production implementation. The notebook has no saved outputs,
+attachments, execution counts or metadata; two opening cells warn and stop an
+accidental Run All. Member/source hashes record exactly what was imported.
+The original README is preserved apart from line endings and its medical-data
+sharing link. The original archive and all patient volumes stay local.
+
+## Original source to active pipeline
+
+| Original batch step | Active implementation |
+| --- | --- |
+| 3D/first-channel loading, compact dtype, header/affine preservation | `hiercp.common._slice_nii_to_3d`, `load_case`, `save_case_pair` |
+| Connected-component source selection and padded full tumor patch | `hiercp.common.choose_source_tumor` |
+| Liver coverage, occupied clearance and native-voxel separation | `hiercp.common.build_candidate_pool`, shared `config/train.json` cache/generation sections |
+| HU scale/shift, hard or feather paste, corresponding label update | `hiercp.common.feather_alpha`, `paste_source`; online raw-target `custom_trainers.onlinecp_raw_resampling.apply_candidate` |
+| Candidate materialization and selection | `tools.online_cp_benchmark.build_online_bank`, paired Basic/Full online policy; a research extension beyond the original first-valid-location sampler |
+| Applying raw CP to native preprocessed training crops | `nnUNetDataLoaderOnlineCP._apply_raw_paste_to_crop` in `custom_trainers/nnUNetTrainer_OnlinePairedCP.py` |
+
+The original batch does **not** implement nnU-Net planning, normalization or
+spacing resampling. Its preprocessing is input loading/3D selection and source
+patch preparation. The notebook additionally has display-only intensity scaling
+and visualization experiments; those are not training preprocessing. Current
+native nnU-Net preprocessing remains shared between Basic and Full, with raw CP
+mapped through the native operators. Do not feed a globally CP-augmented
+`Data_aug` directory as if it were untouched input or run the original generator
+before online CP. This import adds provenance and source-grounded tests, not a
+second augmentation pass or a changed experiment contract.
+
+## Original versus research placement policy
+
 The earlier `code.txt` HierCP export is a different reference stage. Its
 placement tests must not be described as proof of equivalence to that ZIP:
 

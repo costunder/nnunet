@@ -1,12 +1,42 @@
 # HierCP GPT handoff
 
-갱신일: 2026-09-15 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
+갱신일: 2026-09-16 KST. 실행 소스 기준과 파일 목록은 동반 `code.txt`의
 `Source manifest`를 따른다. 최신 변경은 **source-content / population-metric v5**다.
 이전 v4의 785개 중 780개 통과·5개 skip 기록은 과거 검사이며, v5나 Basic 재사용
 기능의 검증 결과로 인용하면 안 된다. 현재 변경은 아래 별도의 v5 검사 결과를 따른다.
 의료 데이터 전체 학습, GPU 전체 학습, 서버 결과 재평가는 실행하지 않았다.
 배포 명령 갱신: 2026-09-15 KST, 사용자가 현재 할당받았다고 명시한 물리 GPU는 5번이다.
 Git 배포 여부는 실제 원격 `origin/main`으로 확인하며 로컬 검사·문서 생성과 구분한다.
+
+## 2026-09-16 Medical Data Aug 원본 소스 통합
+
+- `reference/medical_data_aug/`에 ZIP의 배치 코드 전체와 notebook 원본 24개 cell source를
+  복원했다. 배치 `.py.txt`는 알려진 결함을 포함한 역사적 원문이며 활성 실행 파일이 아니다.
+  배치의 줄바꿈/줄 끝 공백만 정규화했고 전체 AST는 원본과 같다.
+  notebook은 출력·execution count·attachment·metadata를 제거하고 맨 앞에 안내/Run All
+  방지 2개 cell만 추가했다. 원본 README의 데이터 공유 URL은 제외했다. ZIP/member SHA와
+  변환 후 SHA·각 cell source SHA를 `provenance.json`에 남겼다. 이 소스들은 `code.txt`에도
+  포함된다. CT/label 및 렌더링된 의료영상은 Git/전달 문서에 포함하지 않는다.
+- 원본 batch와 notebook 전체 소스를 직접 대조했다. batch의 전처리는 3D/첫 채널 로딩,
+  dtype/geometry 보존과 source patch 준비이며 별도 nnU-Net 정규화·spacing resampling은
+  없다. notebook의 display normalization은 학습 전처리가 아니다. 기존 `hiercp.common`과
+  raw-target bank→`onlinecp_raw_resampling.apply_candidate`→online trainer에 CP가 이미
+  연결돼 있다. 함수별 대응은 `docs/cp_input_repair.md`에 정리했다.
+- 따라서 별도의 Data_aug 생성 단계를 online 앞에 넣지 않았다. 이는 CP를 두 번 적용하는
+  변경이 된다. 원본의 uint8 반전 오류·조용한 crop/실패·검증 없는 출력 재사용은 이식하지
+  않는다. 원본 4,000회/첫 유효 위치와 현재 128후보/seeded online schedule은 동일 RNG
+  실험이 아니며, 기존에 명시한 연구 확장이다. 모델·학습·CP 설정 및 runtime은 변경 없음.
+- export 도구는 출력/attachment/metadata가 남은 notebook을 거절하고 기존 code.txt를
+  보존한다. notebook을 재실행해 의료영상을 저장한 상태로 그대로 전달하지 않는다.
+- 이번 작업은 소스 복원/대조와 DEBUG 검증이다. 실제 의료 데이터 추출·전체 전처리·GPU
+  학습·평가를 새로 실행하지 않았으며, 기존 checkpoint/bank/preprocessing을 변경하지 않았다.
+- 이번 관련 CPU 회귀 **77/77 통과, 11.304초**: 원본 연산/설정 대조, 소스 SHA/24 cell 보존,
+  출력 포함 notebook 전달 거절, raw resampling/trainer, no-placement와 NIfTI geometry 검사.
+  첫 패키지형 테스트 호출은 기존 테스트 간 import 경로 때문에 1개 모듈 로딩에 실패했으며,
+  tests를 검색 경로에 둔 호출로 7개 모듈 모두 다시 실행했다. 테스트 실패를 skip하지 않았다.
+  Python 166개 Python 3.10 AST·설정 JSON 5개 및 ZIP/member SHA/원본 batch AST/24 cell
+  source 일치도 확인했다. 이번에는 전체 884개 회귀를 재실행하지 않았으며 아래 수치는 이전
+  변경의 기록이다. 생산 runtime·설정·trainer 파일에는 이번 diff가 없다.
 
 ## 2026-09-15 전처리 재사용 완료 증거 수정
 

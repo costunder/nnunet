@@ -10,6 +10,7 @@
 /checkpoints/
 
 # External medical data and generated volume/array artifacts
+/Medical Data Aug.zip
 /Data/
 /Data_aug/
 /Task03_Liver/
