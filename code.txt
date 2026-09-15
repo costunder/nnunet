@@ -9,9 +9,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
 
 {
   "format": "hiercp_working_tree_code_export_v1",
-  "base_commit": "572f1f961bc5618ebab5b3ff5756952281fb8b2b",
+  "base_commit": "049e7fbe8dbab8b16bcf63c7dfd58e170b1fa32a",
   "snapshot": "current working tree; not a claim that changes were committed or pushed",
-  "generated_utc": "2026-09-15T15:07:33.507685+00:00",
+  "generated_utc": "2026-09-15T16:03:52.823604+00:00",
   "file_count": 196,
   "files": [
     {
@@ -28,9 +28,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "README.md",
-      "source_sha256": "b7b965e9ff2e26cac13eab253fdc83d0923d3896d267774d455e9641659ff7ce",
-      "export_sha256": "b7b965e9ff2e26cac13eab253fdc83d0923d3896d267774d455e9641659ff7ce",
-      "export_bytes": 17328
+      "source_sha256": "28aa49bda2813ed8aa9097ed6066a0dad59aaf37cf694ffe3549814aacb889c6",
+      "export_sha256": "28aa49bda2813ed8aa9097ed6066a0dad59aaf37cf694ffe3549814aacb889c6",
+      "export_bytes": 17658
     },
     {
       "path": "config/nnunet.json",
@@ -214,9 +214,9 @@ Text is UTF-8 with LF line endings. export_bytes excludes the separator newline.
     },
     {
       "path": "gpt_handoff.md",
-      "source_sha256": "2bb959ef3f0f214bf74dcff13a011920d681d82285f019761cd4d8b9e4a9490f",
-      "export_sha256": "2bb959ef3f0f214bf74dcff13a011920d681d82285f019761cd4d8b9e4a9490f",
-      "export_bytes": 50276
+      "source_sha256": "6cf5485b69d47d6228af558025e09536cef8a51b80b5c9dba06b3e606f4cd207",
+      "export_sha256": "6cf5485b69d47d6228af558025e09536cef8a51b80b5c9dba06b3e606f4cd207",
+      "export_bytes": 50913
     },
     {
       "path": "hiercp/__init__.py",
@@ -1749,6 +1749,10 @@ regression checks below on the target server before the full experiment.
 - [`reference/medical_data_aug/`](reference/medical_data_aug/): restored original
   Basic-CP source, source-only historical notebook and SHA provenance. Its active
   implementation is already integrated, not a second preprocessing/CP command.
+- [`feedback/`](feedback/): historical 2026-09-12 review reports, diagnostic source
+  and evidence ZIP (five files, 267,843 bytes). These predate the current fixes;
+  they are preserved review evidence, not current execution/verification claims.
+  They are shared separately and remain excluded from the active `code.txt` export.
 - [`config/train.json`](config/train.json): graph, model, cache, training, and
   generation contract.
 - [`config/nnunet.json`](config/nnunet.json): downstream nnU-Net contract.
@@ -9952,6 +9956,13 @@ downloaded by these unit tests.
 의료 데이터 전체 학습, GPU 전체 학습, 서버 결과 재평가는 실행하지 않았다.
 배포 명령 갱신: 2026-09-15 KST, 사용자가 현재 할당받았다고 명시한 물리 GPU는 5번이다.
 Git 배포 여부는 실제 원격 `origin/main`으로 확인하며 로컬 검사·문서 생성과 구분한다.
+
+추가 공유 자료: `feedback/`의 2026-09-12 보고서·진단 코드·증거 ZIP 5개
+(원본 합계 267,843 bytes)를 원문 보존하여 저장소에 포함한다. 증거 ZIP의 19개 항목은
+보고서/진단 소스/목록/JSON/CSV/로그이며 의료영상은 없다. 이는 당시 코드에 대한 과거
+검토 자료이지 최신 수정의 검증 결과가 아니다. 활성 코드 전달용 `code.txt`에는 계속
+제외하고 별도로 공유한다. `Medical Data Aug.zip` 원본은 108,928,778 bytes여서
+이번 소용량 자료 추가 대상에서 제외했다. 학습 결과·환경·cache도 변경하지 않았다.
 
 ## 2026-09-16 Medical Data Aug 원본 소스 통합
 

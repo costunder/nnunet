@@ -80,6 +80,10 @@ regression checks below on the target server before the full experiment.
 - [`reference/medical_data_aug/`](reference/medical_data_aug/): restored original
   Basic-CP source, source-only historical notebook and SHA provenance. Its active
   implementation is already integrated, not a second preprocessing/CP command.
+- [`feedback/`](feedback/): historical 2026-09-12 review reports, diagnostic source
+  and evidence ZIP (five files, 267,843 bytes). These predate the current fixes;
+  they are preserved review evidence, not current execution/verification claims.
+  They are shared separately and remain excluded from the active `code.txt` export.
 - [`config/train.json`](config/train.json): graph, model, cache, training, and
   generation contract.
 - [`config/nnunet.json`](config/nnunet.json): downstream nnU-Net contract.
