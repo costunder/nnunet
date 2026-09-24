@@ -1,3 +1,11 @@
+## v2.22 r6 — 원본 CT 준비의 중복 벤치마크 제거 (2026-09-24)
+
+- 서버 로그는 학습이 아니라 `observations`의 128개 CT 워밍업 뒤 동일 128개를 worker1로 다시 읽는 단계였다. 이 경로는 이후 여러 worker 후보에서도 같은 CT를 반복 측정했다.
+- 서버 도구를 기존 v1의 실제 작업 보존형 스케줄러에 연결했다. 큰 CT부터 한 번씩 처리하고 완료 결과를 즉시 저장한다. 관측 규칙·모델·전체 데이터·seed·학습 설정은 불변이다. 개별 시작/완료와 10초 heartbeat를 출력한다.
+- 로컬 전체131개를 정확히131회 처리, 관측14,102개·donor527개 및 전체 중심/정답/split/donor 배정 동일. 실제 작업 wave 합계361.73초이며 서버 소요시간 예측이 아니다. 관련7검사 통과(0skip). 증거: `validation/v222_r6/observation_single_scan.json`.
+- `tools/stop_v222_observation_job.py`는 기록된 해당 observations 자식의 소유자/PID/명령/부모/진행 단계를 검증한다. `--stop` 명시 시 그 자식만 중단하고 wrapper의 실패 기록을 확인한다. 다른 단계로 진행됐으면 거절한다. 보호 조건 단위검사는 통과했으나 Linux 실제 신호 실행은 로컬 Windows에서 검증하지 않았다.
+- paired 그래프 준비의 별도 benchmark 및 전체 학습 성능을 이번 수정으로 검증했다고 주장하지 않는다. 서버 재시작은 사용자가 명령을 실행해야 한다. 기존 출력은 보존하고 새 출력 경로를 사용한다.
+
 ## v2.22 r6 — 서버 실행용 Git 배포 준비 (2026-09-24)
 
 - **사용자 서버 출력으로 확인한 최신 상태:** `ece-agpu16`, checkout `/home/aicompetition06/Medical/HierCP-v222-r6`, 원본 `Medical/Data/image`·`Data/labels` 존재, Python3.10.18의 `nnunet` 환경 활성화. 사용자 할당은 물리GPU6. 지정한 UUID `MIG-774a3cc0-0169-5e18-b5d9-fe1b7a1d6ce7`에서 PyTorch가 A100-SXM4-80GB MIG1g.10gb/9.5GiB/1device 인식한 출력을 받았다. 이를 다시 묻거나 GPU0/과거GPU5/A6000으로 취급하지 않는다. 긴 Python heredoc 대신 새 `tools/run_v222_server.py` 실행 명령을 제공한다. 현재 환경을 유지하고 원본 관측→실제graph DEBUG→전체paired cache→batch32/9GB DEBUG→auto-batch GNN40epoch를 순차 실행한다. 단계 실패 시 후속 실행 차단·기존 결과 보존. 실행기 제어 단위3검사 통과; 모델소스 hash 불변. 서버 본학습 시작 증거는 아직 받지 못했다.

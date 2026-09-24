@@ -11,6 +11,8 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
+import time
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import psutil
 import torch
@@ -44,7 +46,7 @@ def observation_metadata(inventory,split,identities,cfg):
 def observations(medical,split_path,output):
     from hiercp.common import discover_cases
     from hiercp_v222.data import inspect_case,assert_no_duplicate_ct
-    from hiercp_v222.parallel import run_jobs
+    from hiercp.preparation_runtime import run_case_jobs,snapshot
     from hiercp_v22.volumes import volume_memory_bound
     cfg,_=configuration();split=read_json(split_path)
     approved=read_json(ROOT/'config/split_cp80_fold0.json')
@@ -59,13 +61,33 @@ def observations(medical,split_path,output):
     write_new(root/'started.json',dict(config=cfg,split=split,identities=identities,
         medical_root=str(Path(medical).resolve()),source_identity=provenance(),debug=False,subset=False))
     torch.set_num_threads(1)
+    active=set();lock=threading.Lock();stop=threading.Event();began=time.monotonic()
     def scan(c):
-        return c,inspect_case(paths[c],cfg['donor_max_diameter_mm'],cfg if c in split['outer_train'] else None)
+        with lock:active.add(c)
+        print(json.dumps(dict(stage='raw_case_started',case=c)),flush=True)
+        try:return c,inspect_case(paths[c],cfg['donor_max_diameter_mm'],cfg if c in split['outer_train'] else None)
+        finally:
+            with lock:active.remove(c)
     def commit(pair):
+        write_new(root/'cases'/f'{pair[0]}.json',pair[1])
         inventory[pair[0]]=pair[1]
         print(json.dumps(dict(stage='raw_inventory',completed=len(inventory),total=len(paths))),flush=True)
-    run_jobs(list(paths),scan,commit,cfg['preparation_workers'],root/'resources.json',
-        memory_per_job=max(volume_memory_bound(p.image_path) for p in paths.values()),benchmark_function=scan)
+    bounds={c:volume_memory_bound(p.image_path) for c,p in paths.items()}
+    if max(bounds.values())>snapshot()['available_memory_bytes']*.5:
+        raise MemoryError('Largest full CT requires more than the preparation RAM reserve')
+    # Existing v1 scheduler: real work only, retain every output, grow 1/2/4...
+    # by measured throughput/RSS. Largest-volume first is a conservative pilot.
+    ordered=sorted(paths,key=lambda c:(-bounds[c],c))
+    def heartbeat():
+        while not stop.wait(10):
+            with lock:running=sorted(active)
+            print(json.dumps(dict(stage='raw_inventory_heartbeat',completed=len(inventory),total=len(paths),
+                active_cases=running,elapsed_seconds=time.monotonic()-began,
+                rss_bytes=psutil.Process().memory_info().rss)),flush=True)
+    monitor=threading.Thread(target=heartbeat,daemon=True);monitor.start()
+    try:
+        run_case_jobs(tasks=ordered,function=scan,commit=commit,workers=cfg['preparation_workers'],report_path=root/'resources.json')
+    finally:stop.set();monitor.join()
     assert_no_duplicate_ct(inventory,split)
     write_new(root/'inventory.json',inventory)
     meta=observation_metadata(inventory,split,identities,cfg)

@@ -27,6 +27,25 @@ tail -n 80 v222_mig10gb_r6.log
 
 실행기는 아래의 기존 검증된 단계별 명령을 순서대로 호출한다. DEBUG profile32/allocator9GB이며 production batch는auto, GNN40epochs이다. 각 단계의 started/complete/failed JSON을 run root에 기록한다. 실패하면 다음 단계는 시작하지 않는다. `pipeline_complete.json`은 GNN 완료만 뜻한다. Python/GPU 환경 설치·재할당·원본 전송은 수행하지 않는다. 실행기 자체의 순서/실패 차단 단위3검사가 통과했으며 서버 전체 실행을 완료했다고 주장하지 않는다.
 
+## 실행 중인 observations 중복 벤치마크 교체 (2026-09-24)
+
+`workers1 tasks128 calibrationTrue`는 학습이 아니라 기존 준비 코드가 동일 CT를 반복 읽는 측정 단계다. 수정본은 전체131개를 한 번씩 처리하고 결과를 저장한다. 개별 완료와10초 heartbeat를 출력한다. 로컬 전체 재생성 결과 동일성 및 관련7검사 통과. 모델·데이터·학습 설정은 유지한다.
+
+현재 `nnunet` 환경과 지정된 GPU6의 MIG 환경변수를 유지한다. 아래는 기존 run의 소유자·정확한 자식 명령·진행 단계를 확인한 뒤 해당 observations 자식만 중단한다. 기존 파일과 로그는 보존한다. stop helper는 PID와 명령을 먼저 출력하고 wrapper의 실패 기록을 확인한다. 이미 다음 단계에 도달했거나 프로세스가 불명확하면 거절하고 새 실행도 시작하지 않는다. Linux 신호 실행 자체는 로컬 Windows에서 검증하지 않았으며 보호 조건 단위검사만 완료했다.
+
+```bash
+if cd /home/aicompetition06/Medical/HierCP-v222-r6 &&
+   git fetch origin codex/v222-server-r6 &&
+   V222_STOP_TOOL="$(mktemp /tmp/v222-stop.XXXXXX.py)" &&
+   git show FETCH_HEAD:tools/stop_v222_observation_job.py > "$V222_STOP_TOOL" &&
+   python "$V222_STOP_TOOL" --output work/v222_mig10gb_r6 --stop &&
+   git pull --ff-only origin codex/v222-server-r6; then
+  nohup python -u tools/run_v222_server.py --medical-root /home/aicompetition06/Medical --output work/v222_mig10gb_r6_scanfix >> v222_mig10gb_r6_scanfix.log 2>&1 < /dev/null &
+fi
+```
+
+로그: `tail -n 40 v222_mig10gb_r6_scanfix.log`. `raw_inventory completed/total`가 실제 완료 수다. 이 수정은 observations 단계에 한정하며 paired graph 준비와 전체 학습의 서버 소요시간은 아직 실측 전이다.
+
 ## 코드와 환경
 
 브랜치 `codex/v222-server-r6`를 새 디렉터리에 checkout하고 최종 보고한 커밋 SHA를 확인한다. 기존 서버 checkout·실험을 덮어쓰지 않는다. Git에는 코드·설정·문서·작은 검증 보고서 및 원본 보존용 소스 archive만 포함한다.
