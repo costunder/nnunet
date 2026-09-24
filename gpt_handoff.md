@@ -1,4 +1,9 @@
-## 2026-09-24 최신 — 시각화한 v1 L0로 전체 GNN 학습 요청
+## 2026-09-25 최신 — 서버 진행 화면 오류 수정
+
+- 사용자 서버 출력: `work/v222_mig10gb_r6_scanfix`의 paired_cache가14,102/14,102에 도달한 뒤 viewer `Progress.event`에서 `KeyError: completed`. 이는 `stage_complete` envelope를 graph 진행 이벤트로 분류한 버그다. 로컬에서 실제 runner 이벤트 스트림으로 동일 오류 재현 후 lifecycle 분리를 수정했다. 관련11검사 통과. 테스트 범위는 UI/프로세스 제어이며 새 모델 학습 검증이 아니다.
+- worker는 viewer와 별도 세션이므로 viewer traceback만으로 학습 종료를 단정하지 않는다. 현재 서버 worker 생존/후속 profile/GNN 시작 여부는 아직 출력으로 확인되지 않았다. 기존 run을 삭제하거나 새 학습을 시작하지 말고, Git fetch 후 수정된 독립 viewer만 `/tmp`에 추출하여 `--output work/v222_mig10gb_r6_scanfix`로 연결한다. 실행 중 checkout은 pull하지 않는다. 단계7개의 완료 비율로 표시되던 전체 ETA/rate도 제거했다. 모델·cache provenance·학습 설정 변경 없음.
+
+## 2026-09-24 — 시각화한 v1 L0로 전체 GNN 학습 요청
 
 - **최신 사용자 요구: tail 반복 대신 tqdm 화면.** `tools/watch_v222_server.py`를 독립 도구로 추가했다. Git fetch 후 `/tmp`로 이 파일만 추출하면 checkout 변경/학습 재시작 없이 기존 최신 run에 `--latest`로 연결한다. 새 `run_v222_server.py`는 직접 실행하며 자동으로 worker를 분리하고 상세 출력을 `console.log`에 저장, 전경은 tqdm 화면이다. 더 이상 새 실행 명령에 nohup/리디렉션/&를 붙이지 않는다. Ctrl+C는 viewer만 닫고 학습은 계속된다. 실제 완료 수 없는 단계는 경과 시간만 표시하며 전체 학습 완료는 최종 pipeline marker가 있어야 한다. 관련9검사 통과; 실제 별도 프로세스가 viewer 중단 뒤 완료되는 것 검증. 합성 프로토콜 테스트를 의료 모델 검증으로 보고하지 않는다. 모델 provenance 불변. 원격 MobaXterm에서 직접 화면 확인/서버 재시작은 수행하지 않았다.
 

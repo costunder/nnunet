@@ -1,3 +1,9 @@
+## v2.22 r6 — tqdm 단계 완료 이벤트 오류 수정 (2026-09-25)
+
+- 서버에서 paired graph14,102개 생성 뒤 viewer가 `KeyError: completed`로 종료됐다. runner의 `event=stage_complete, stage=paired_cache`를 개별 graph 진행 이벤트로 잘못 분류한 오류를 재현했다. lifecycle 이벤트를 먼저 분리해 처리하고 기존 완료 수를 보존한다.
+- 실제 `execute`가 생성한 로그의 완료 경계와 재접속 재생 회귀검사를 추가했다. 수정 전 동일 KeyError 재현, 수정 후 관련11검사 통과. UI 프로토콜 검증이며 새 의료 모델 학습 검증이 아니다.
+- 소요시간이 서로 다른7단계 수로 계산되던 전체 ETA/rate는 제거했다. 개별 작업의 실측 tqdm ETA는 유지한다. 모델·캐시·학습 프로세스는 수정하거나 재시작하지 않았다. 서버 worker의 현재 진행은 수정 viewer를 기존 run에 연결해 확인한다.
+
 ## v2.22 r6 — tqdm 진행 화면과 실행 중 재접속 (2026-09-24)
 
 - `run_v222_server.py`를 터미널에서 직접 실행하면 작업은 분리된 프로세스로 유지하고 화면에 두 줄 tqdm을 갱신한다. 상세 출력은 run의 `console.log`에 저장한다. 화면의 Ctrl+C는 worker를 중단하지 않는다.

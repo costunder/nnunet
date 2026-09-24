@@ -68,10 +68,22 @@ class Progress:
 
     def event(self, row):
         stage = row.get('stage')
-        if row.get('event') == 'stage_started':
-            self.stage = stage
-            self.phase_to(stage)
-        elif stage in ('raw_inventory', 'raw_inventory_heartbeat', 'paired_cache', 'support_memory'):
+        lifecycle = row.get('event')
+        if lifecycle is not None:
+            # Runner lifecycle envelopes and child progress share stage names,
+            # but only child progress carries per-item completed/total fields.
+            if lifecycle == 'stage_started':
+                self.stage = stage
+                self.phase_to(stage)
+            elif lifecycle == 'stage_complete':
+                self.stage = stage
+                self.detail = 'stage complete; waiting for next stage'
+            elif lifecycle == 'stage_failed':
+                self.stage = stage
+                self.phase_to(f'{stage} FAILED')
+                self.detail = 'see failure receipt and log'
+            return
+        if stage in ('raw_inventory', 'raw_inventory_heartbeat', 'paired_cache', 'support_memory'):
             self.phase_to(stage)
             self.done, self.total = row['completed'], row['total']
         elif stage == 'optimization':
@@ -144,7 +156,10 @@ def watch(root, log=None, interval=.5, stream=None):
     for row in reader.read():
         state.event(row)
     print(f'Live progress | {root.name}\nLog: {log}\nCtrl+C: close viewer only; training continues.', file=stream)
-    overall = tqdm(total=7, desc='Pipeline stages', position=0, dynamic_ncols=True, file=stream)
+    # Stages have unequal durations. A stage-count ETA/rate is not meaningful,
+    # especially when reattaching and replaying completed receipts instantly.
+    overall = tqdm(total=7, desc='Pipeline stages', position=0, dynamic_ncols=True, file=stream,
+                   bar_format='{desc}: {n_fmt}/{total_fmt} |{bar}| {postfix}')
     current = tqdm(total=state.total, initial=state.done, desc=state.phase, position=1,
                    dynamic_ncols=True, file=stream, unit='item')
     key = None

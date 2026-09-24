@@ -7,8 +7,9 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from contextlib import redirect_stdout
 
-from tools.run_v222_server import launch_worker, ROOT
+from tools.run_v222_server import launch_worker, execute, ROOT
 from tools.watch_v222_server import LogReader, Progress, terminal_status, watch
 
 
@@ -18,6 +19,39 @@ class Terminal(io.StringIO):
 
 
 class ProgressTests(unittest.TestCase):
+    def test_stage_completion_is_not_an_item_progress_event(self):
+        for name in ('raw_inventory', 'raw_inventory_heartbeat', 'paired_cache', 'support_memory'):
+            with self.subTest(stage=name):
+                state=Progress()
+                state.event(dict(event='stage_started',stage=name))
+                state.event(dict(stage=name,completed=14102,total=14102,active_cases=[]))
+                # Exact producer schema: no completed/total on stage_complete.
+                state.event(dict(event='stage_complete',stage=name,seconds=7604.0))
+                self.assertEqual((state.done,state.total),(14102,14102))
+                self.assertIn('complete',state.detail)
+                state.event(dict(event='stage_started',stage='profile_DEBUG'))
+                self.assertEqual(state.stage,'profile_DEBUG')
+                self.assertIsNone(state.total)
+
+    def test_actual_runner_event_stream_can_be_replayed_after_cache_completion(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+            root=Path(tmp);log=root/'console.log'
+            def child(command,**kwargs):
+                # Protocol-only child stand-in; execute emits real lifecycle events.
+                print(json.dumps(dict(stage='paired_cache',completed=14102,total=14102)))
+                print(json.dumps(dict(stage='paired_cache_complete',observations=14102)))
+                return subprocess.CompletedProcess(command,0)
+            with log.open('w') as stream,redirect_stdout(stream):
+                execute([('paired_cache',['protocol-test'])],root,{},child)
+            state=Progress()
+            for row in LogReader(log).read():state.event(row)
+            self.assertEqual(state.done,14102)
+            screen=Terminal()
+            with patch('tools.watch_v222_server.time.sleep',side_effect=KeyboardInterrupt):
+                self.assertEqual(watch(root,stream=screen),0)
+            self.assertIn('14102/14102',screen.getvalue())
+            self.assertNotIn('it/s',screen.getvalue())
+
     def test_split_log_record_and_old_python_dict(self):
         with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
             path=Path(tmp)/'console.log'
