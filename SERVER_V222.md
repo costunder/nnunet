@@ -4,6 +4,29 @@
 
 현재 진입점은 `run_v222_v1_l0.py`다. v1 방식 paired L0 + v2.22 L1/L2, 5,550,806 parameters, seed42, 전체 GNN40epochs를 유지한다. `run_v222.py`는 이전 L0 경로다. Native online CP bank/nnU-Net 연결과 segmentation 평가는 미완료이므로 이번 실행은 **paired GNN 학습**이다.
 
+## 현재 확인된 서버에서 짧게 실행
+
+사용자 출력 확인: `ece-agpu16`, `nnunet` 환경 활성화, 코드 checkout·원본 경로 존재, GPU6의 지정 MIG가 PyTorch에1g.10gb/9.5GiB로 표시됐다. 다시 환경을 만들거나 GPU 할당을 바꾸지 않는다. 다음 명령은 새 run이며 같은 output이 이미 있으면 덮어쓰지 않고 실패한다.
+
+```bash
+git pull --ff-only origin codex/v222-server-r6
+```
+
+pull 성공 후 현재 `(nnunet)` 환경에서:
+
+```bash
+nohup python -u tools/run_v222_server.py \
+  --medical-root /home/aicompetition06/Medical \
+  --output work/v222_mig10gb_r6 \
+  >> v222_mig10gb_r6.log 2>&1 < /dev/null &
+```
+
+```bash
+tail -n 80 v222_mig10gb_r6.log
+```
+
+실행기는 아래의 기존 검증된 단계별 명령을 순서대로 호출한다. DEBUG profile32/allocator9GB이며 production batch는auto, GNN40epochs이다. 각 단계의 started/complete/failed JSON을 run root에 기록한다. 실패하면 다음 단계는 시작하지 않는다. `pipeline_complete.json`은 GNN 완료만 뜻한다. Python/GPU 환경 설치·재할당·원본 전송은 수행하지 않는다. 실행기 자체의 순서/실패 차단 단위3검사가 통과했으며 서버 전체 실행을 완료했다고 주장하지 않는다.
+
 ## 코드와 환경
 
 브랜치 `codex/v222-server-r6`를 새 디렉터리에 checkout하고 최종 보고한 커밋 SHA를 확인한다. 기존 서버 checkout·실험을 덮어쓰지 않는다. Git에는 코드·설정·문서·작은 검증 보고서 및 원본 보존용 소스 archive만 포함한다.

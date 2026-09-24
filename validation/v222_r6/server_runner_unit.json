@@ -1,0 +1,11 @@
+{
+  "unit_tests": 3,
+  "failures": 0,
+  "skips": 0,
+  "tests": "tests.test_v222_server_runner",
+  "scope": "orchestration unit tests, not medical training or server execution",
+  "model_source_unchanged": true,
+  "server_facts_source": "user provided terminal output",
+  "server_full_training_started": false,
+  "runner_sha256": "abc4d9f96da6977be967d5d5748e134dad8b71682b1b0cd536c41ba54d214285"
+}
