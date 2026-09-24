@@ -17,6 +17,12 @@ python run_v222_v1_l0.py check
 
 `.gitattributes`는 고정 v1 원본과 새 소스의 바이트를 보존한다. 해시를 재표기하거나 검사를 끄지 않는다. A6000 실제 처리량은 아직 측정 전이다.
 
+## A100 MIG 10GB에서의 추가 조건
+
+스케줄러가 지정한 `CUDA_VISIBLE_DEVICES`는 유지한다. 수동 지정이 필요하면 본인에게 할당된 MIG UUID를 사용하며, 물리 GPU 번호0으로 덮어쓰지 않는다. 아래 DEBUG profile은 `--batch-size 32`를 명시한다. 기존 batch64 기본 호출은10GB에서 사용하지 않는다. 본학습의 `batch_size=auto`는 실제 MIG에서 다시 측정하며, 로컬 테스트로 MIG 처리량을 추정하지 않는다.
+
+RTX5070Ti의 PyTorch allocator를9GB로 제한하는 실제 CT 테스트 도구는 `tools/smoke_v1_memory_limit.py`다. 이는 CUDA context 등 allocator 외부 메모리나 MIG 연산량을 재현하지 않는다. 전체 모델을 유지하고 큰 실제 그래프에서 physical16/32/64, gradient·optimizer·정확한 재개·평가 출력을 검사한다. 완전한 본학습이 아닌 명시적 DEBUG이며 검증 결과는 별도 기록한다.
+
 ## 서버 원본으로 관측·그래프 생성
 
 원본은 `/home/aicompetition06/Medical/Data/image` 및 `Data/labels`다. 전체131개 case를 사용한다. `config/split_cp80_fold0.json`은 현재 로컬 CP80 비교 split이며 재추첨하지 않는다. outer train/val105/26, inner train/val84/21이다. 과거 서버 실험과 split 동일성을 검증했다고 주장하지 않는다.
@@ -53,10 +59,10 @@ python tools/smoke_v1_execution_lifecycle.py work/v222_server_lifecycle_DEBUG
 HIERCP_TEST_FIXTURE=work/v222_server_graph_DEBUG/actual_graphs_DEBUG.pt \
 python tools/profile_v1_execution.py \
   work/v222_server_paired_cache_r6/index.json \
-  work/v222_server_physical64_profile_DEBUG release_unused
+  work/v222_server_physical32_profile_DEBUG release_unused --batch-size 32
 ```
 
-실제 metadata가 없으면 관련 테스트가 skip되므로 전체 통과로 세지 않는다. `verify`는 서버 원본에서3recipient/6관측의 전체 크기 그래프를 직접 생성하고 forward/loss/gradient/optimizer 연결을 검사한다. GPU 테스트는 순차 실행한다. profile은 full-size query64 batch 순서10개를 측정하며 본학습을10batch로 제한하지 않는다. lifecycle DEBUG는 실행 제어 검사 때문에 같은 fixture를 train/val로 재사용하므로 점수를 성능 결과로 쓰지 않는다.
+실제 metadata가 없으면 관련 테스트가 skip되므로 전체 통과로 세지 않는다. `verify`는 서버 원본에서3recipient/6관측의 전체 크기 그래프를 직접 생성하고 forward/loss/gradient/optimizer 연결을 검사한다. GPU 테스트는 순차 실행한다. profile은 지정한 physical batch로 실제 그래프를10배치 처리하며 본학습을10batch로 제한하지 않는다. lifecycle DEBUG는 실행 제어 검사 때문에 같은 fixture를 train/val로 재사용하므로 점수를 성능 결과로 쓰지 않는다.
 
 ## 본학습과 재개
 

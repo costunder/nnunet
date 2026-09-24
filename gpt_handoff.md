@@ -1,5 +1,7 @@
 ## 2026-09-24 최신 — 시각화한 v1 L0로 전체 GNN 학습 요청
 
+- **MIG10GB 사전 메모리 smoke 실측:** RTX5070Ti에 PyTorch allocator9GB 상한을 강제하고 초과 할당 OOM을 확인했다. 실제 큰 그래프6배치씩과 저장된 실제 support1,216개, 전체5,550,806 parameter 사용. physical16 최대allocated3.695GB/reserved3.813GB, physical32 6.404GB/6.717GB로 forward/backward/모든 gradient/모듈 update/저장·재개 비트일치/eval 통과. physical64는9GB 상한에서 OOM. `tools/smoke_v1_memory_limit.py`, `validation/v222_r6/memory_limit_9GB_DEBUG.json`, `docs/v222_mig10gb_smoke_20260924.md`에 기록했다. 모델/그래프/production설정은 불변. 전체11,279 support/전체epoch/A100 MIG 속도는 검증하지 않았고 CUDA context 등 allocator 밖 메모리는 상한에 포함되지 않는다. profile 도구에 `--batch-size`, `--allocator-gb` 추가;10GB에서는 기존batch64 명령을 쓰지 않는다.
+
 - **코드 전용 배포 검증 완료:** 새 Git checkout(autocrlf=false)에서 소스 해시/전체5,550,806 parameters 동일. 원본131개에서14,102관측·527donor를 재생성해 이전 중심/정답/donor 배정 전부 일치. 회귀20+재생성2검사 통과(0skip), 실제 원본→6개 full graph→L0/L1/L2 gradient/update 및 checkpoint 재개·epoch 평가 DEBUG 통과. 상세 `validation/v222_r6/code_only_release_checks.json`. 로컬 전체 그래프 재생성/40epoch/서버 학습/nnU-Net 평가를 완료했다고 주장하지 않는다. 캐시 전송 없이 서버에서 생성한다.
 
 - **최신 배포 지시: 로컬 테스트 후 코드만 GitHub로 이동.** 캐시 전송 제안은 사용자가 거부했고 폐기했다. `SERVER_V222.md`와 `tools/v1_server.py observations`는 서버의 원본 CT에서 관측을 재생성한 뒤 `run_v222_v1_l0.py prepare`로 paired 그래프를 생성한다. `config/split_cp80_fold0.json`으로 현재 로컬 split을 고정하며 seed42/전체 데이터/모델을 유지한다. 로컬 캐시·가중치·DEBUG fixture는 전송하지 않는다. 새 raw 재생성 경로 검증 및 Git 업로드 결과는 후속 기록 확인. 서버 본학습 미실행.

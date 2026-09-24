@@ -1,5 +1,7 @@
 ## v2.22 r6 — 서버 실행용 Git 배포 준비 (2026-09-24)
 
+- **MIG10GB 사전 메모리 smoke 실측:** RTX5070Ti에 PyTorch allocator9GB 상한을 강제하고 초과 할당 OOM을 확인했다. 실제 큰 그래프6배치씩과 저장된 실제 support1,216개, 전체5,550,806 parameter 사용. physical16 최대allocated3.695GB/reserved3.813GB, physical32 6.404GB/6.717GB로 forward/backward/모든 gradient/모듈 update/저장·재개 비트일치/eval 통과. physical64는9GB 상한에서 OOM. `tools/smoke_v1_memory_limit.py`, `validation/v222_r6/memory_limit_9GB_DEBUG.json`, `docs/v222_mig10gb_smoke_20260924.md`에 기록했다. 모델/그래프/production설정은 불변. 전체11,279 support/전체epoch/A100 MIG 속도는 검증하지 않았고 CUDA context 등 allocator 밖 메모리는 상한에 포함되지 않는다. profile 도구에 `--batch-size`, `--allocator-gb` 추가;10GB에서는 기존batch64 명령을 쓰지 않는다.
+
 - **코드 전용 배포 검증 완료:** 새 Git checkout(autocrlf=false)에서 소스 해시/전체5,550,806 parameters 동일. 원본131개에서14,102관측·527donor를 재생성해 이전 중심/정답/donor 배정 전부 일치. 회귀20+재생성2검사 통과(0skip), 실제 원본→6개 full graph→L0/L1/L2 gradient/update 및 checkpoint 재개·epoch 평가 DEBUG 통과. 상세 `validation/v222_r6/code_only_release_checks.json`. 로컬 전체 그래프 재생성/40epoch/서버 학습/nnU-Net 평가를 완료했다고 주장하지 않는다. 캐시 전송 없이 서버에서 생성한다.
 
 - 실행 진입점은 `run_v222_v1_l0.py`. 사용자 지시에 따라 **코드만 Git 이동, 서버 원본 CT로 재생성**한다. 캐시 전송/경로 연결 절차는 폐기했다. `SERVER_V222.md`에 명령을 기록했다.
