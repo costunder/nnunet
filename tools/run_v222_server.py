@@ -10,8 +10,22 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import psutil
 
 ROOT=Path(__file__).resolve().parents[1]
+
+
+def launch_worker(command,output):
+    """Own a detached worker; the foreground is only an attachable viewer."""
+    output.mkdir(parents=True,exist_ok=False)
+    options = (dict(creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+               if os.name=='nt' else dict(start_new_session=True))
+    with (output/'console.log').open('x',encoding='utf-8') as log:
+        child=subprocess.Popen(command,cwd=ROOT,stdin=subprocess.DEVNULL,stdout=log,
+                               stderr=subprocess.STDOUT,**options)
+    write_new(output/'worker.json',dict(pid=child.pid,created_at=psutil.Process(child.pid).create_time(),
+                                      command=command,viewer_can_disconnect=True))
+    return child
 
 
 def stages(medical,output,profile_batch,allocator_gb):
@@ -59,13 +73,25 @@ def main():
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--profile-batch',type=int,default=32,help='DEBUG only; production batch remains auto')
     p.add_argument('--profile-allocator-gb',type=float,default=9.0,help='DEBUG PyTorch allocator cap only')
+    p.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
     a=p.parse_args()
     if a.profile_batch<1 or a.profile_allocator_gb<=0:raise ValueError('Positive DEBUG profile settings required')
     medical=a.medical_root.resolve();output=a.output.resolve()
     for folder in ('image','labels'):
         if not (medical/'Data'/folder).is_dir():raise FileNotFoundError(medical/'Data'/folder)
-    # No duplicate run or replacement of an earlier output, even after failure.
-    output.mkdir(parents=True,exist_ok=False)
+    if not a.worker:
+        if not sys.stderr.isatty():
+            raise RuntimeError('Run directly in a terminal: logs/background execution are automatic; omit nohup and redirection')
+        # Import/check tqdm before starting any background work.
+        sys.path.insert(0,str(ROOT))
+        from tools.watch_v222_server import watch
+        command=[sys.executable,'-u',str(Path(__file__).resolve()),'--medical-root',str(medical),
+                 '--output',str(output),'--profile-batch',str(a.profile_batch),
+                 '--profile-allocator-gb',str(a.profile_allocator_gb),'--worker']
+        launch_worker(command,output)
+        return watch(output)
+    if (output/'requested.json').exists():
+        raise FileExistsError('Existing run cannot be overwritten')
     env=dict(os.environ,HIERCP_TEST_OBSERVATION_INDEX=str(output/'observations/index.json'),
              HIERCP_TEST_FIXTURE=str(output/'graph_DEBUG/actual_graphs_DEBUG.pt'))
     plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb)
@@ -86,4 +112,5 @@ def main():
     write_new(output/'pipeline_complete.json',dict(gnn_training_complete=True,nnunet_training_complete=False))
 
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+    raise SystemExit(main())

@@ -27,6 +27,27 @@ tail -n 80 v222_mig10gb_r6.log
 
 실행기는 아래의 기존 검증된 단계별 명령을 순서대로 호출한다. DEBUG profile32/allocator9GB이며 production batch는auto, GNN40epochs이다. 각 단계의 started/complete/failed JSON을 run root에 기록한다. 실패하면 다음 단계는 시작하지 않는다. `pipeline_complete.json`은 GNN 완료만 뜻한다. Python/GPU 환경 설치·재할당·원본 전송은 수행하지 않는다. 실행기 자체의 순서/실패 차단 단위3검사가 통과했으며 서버 전체 실행을 완료했다고 주장하지 않는다.
 
+## 터미널 진행 화면: tqdm 기본 표시 (2026-09-24)
+
+새 실행은 아래처럼 직접 실행한다. 실행기가 실제 작업을 별도 프로세스로 유지하고, 터미널에는 두 줄의 tqdm을 갱신한다. 상세 출력은 실행 폴더 `console.log`에 자동 저장된다. `nohup`, 출력 리디렉션, `&`, 반복적인 `tail` 명령이 필요하지 않다. Ctrl+C는 진행 화면만 닫으며 학습은 중단하지 않는다. 실제 학습 중단에는 아래 문서의 `STOP_AFTER_BATCH`를 사용한다.
+
+```bash
+python tools/run_v222_server.py --medical-root /home/aicompetition06/Medical --output work/v222_mig10gb_r6_progress
+```
+
+이미 실행 중인 작업에 화면만 연결하려면 아래를 실행한다. 작업 checkout을 pull하거나 프로세스를 중단하지 않는다. 구형 실행기의 외부 `.log`와 새 실행기의 `console.log`를 모두 읽는다. `--latest`는 현재 checkout의 `work/v222_mig10gb_r6*` 중 최신 기록된 run을 선택하며, 명시하려면 `--output work/<run>`을 쓴다.
+
+```bash
+git fetch origin codex/v222-server-r6 &&
+V222_VIEW="$(mktemp /tmp/v222-progress.XXXXXX.py)" &&
+git show FETCH_HEAD:tools/watch_v222_server.py > "$V222_VIEW" &&
+python "$V222_VIEW" --latest
+```
+
+CT 완료 수, 그래프 완료 수, support 인코딩 수, epoch별 query 수·loss·step을 실제 로그에서 읽는다. 속도/ETA는 연결 후 새로 완료되는 작업을 기준으로 측정하며, 과거 로그를 빠르게 읽은 속도를 쓰지 않는다. 별도 측정이나 validation처럼 완료 수를 제공하지 않는 단계는 단계명과 경과 시간만 표시한다. 구형 벤치마크의 미출력 case 진행률을 추측하지 않는다. 전체 단계7개는 동일 소요시간이 아니므로 단계 완료 비율을 전체 시간의 비율로 해석하지 않는다. 오류 시 화면을 종료하고 마지막 로그와 실패 기록 경로를 표시한다.
+
+검증: 진행 프로토콜/실제 분리 프로세스/화면 중단 후 지속/실패 표시와 기존 제어 검사9개 통과. 합성 입력은 UI 테스트로만 사용했고 학습 증거가 아니다. 모델·캐시 provenance 불변. Linux/MobaXterm 실제 화면은 원격으로 직접 확인하지 않았다.
+
 ## 실행 중인 observations 중복 벤치마크 교체 (2026-09-24)
 
 `workers1 tasks128 calibrationTrue`는 학습이 아니라 기존 준비 코드가 동일 CT를 반복 읽는 측정 단계다. 수정본은 전체131개를 한 번씩 처리하고 결과를 저장한다. 개별 완료와10초 heartbeat를 출력한다. 로컬 전체 재생성 결과 동일성 및 관련7검사 통과. 모델·데이터·학습 설정은 유지한다.
@@ -40,11 +61,11 @@ if cd /home/aicompetition06/Medical/HierCP-v222-r6 &&
    git show FETCH_HEAD:tools/stop_v222_observation_job.py > "$V222_STOP_TOOL" &&
    python "$V222_STOP_TOOL" --output work/v222_mig10gb_r6 --stop &&
    git pull --ff-only origin codex/v222-server-r6; then
-  nohup python -u tools/run_v222_server.py --medical-root /home/aicompetition06/Medical --output work/v222_mig10gb_r6_scanfix >> v222_mig10gb_r6_scanfix.log 2>&1 < /dev/null &
+  python tools/run_v222_server.py --medical-root /home/aicompetition06/Medical --output work/v222_mig10gb_r6_scanfix
 fi
 ```
 
-로그: `tail -n 40 v222_mig10gb_r6_scanfix.log`. `raw_inventory completed/total`가 실제 완료 수다. 이 수정은 observations 단계에 한정하며 paired graph 준비와 전체 학습의 서버 소요시간은 아직 실측 전이다.
+터미널에는 tqdm 진행 화면이 자동 연결된다. `work/v222_mig10gb_r6_scanfix/console.log`에 상세 로그가 남는다. 이 준비 성능 수정은 observations 단계에 한정하며 paired graph 준비와 전체 학습의 서버 소요시간은 아직 실측 전이다.
 
 ## 코드와 환경
 
