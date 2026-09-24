@@ -1,0 +1,23 @@
+{
+  "format": "basic_vs_v222_cp80_v1",
+  "basic_trainer": "nnUNetTrainer_250epochs_BasicCP80Online",
+  "gnn_trainer": "nnUNetTrainer_250epochs_OnlinePromptGraphV222",
+  "gnn_config": "config/prompt_graph_v222.json",
+  "cp_attempt_probability": 0.8,
+  "seed": 42,
+  "native_reference": "work/local_v21_5070ti_20260919/native/native.json",
+  "split_reference": "work/local_v21_5070ti_20260919/dataset/split.json",
+  "nnunet_configuration": "3d_fullres",
+  "nnunet_epochs": 250,
+  "physical_batch": 2,
+  "gradient_accumulation": 1,
+  "patch_size": [128, 128, 128],
+  "gnn_epochs": 40,
+  "native_workers": "same measured value in both runs; pending calibration",
+  "gate_schedule": "shared five draws per sample; first draw < 0.8; actual paste success audited separately",
+  "comparison_scope": "whole_method_comparison; donor/size/location/crop differences remain",
+  "basic_original_reference_preserved": true,
+  "gnn_comparison_center_rule": "annotated_liver_center_excluding_exact_positive_anchors_v1",
+  "gnn_revision": "hiercp_v222_raw_ct_cluster_r3",
+  "evaluation_scope": "same untouched outer_val cases and existing v5 evaluation metrics"
+}

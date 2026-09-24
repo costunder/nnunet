@@ -1,0 +1,473 @@
+"""Canonical Level-0 tumor/context node construction.
+
+The cache stores complete deterministic node tables and complete physical-radius
+edge indices for the source tumor and every erased target context.  It does not
+build a fixed-size graph and it never creates k-NN edges.  ``hiercp.sample``
+materialises induced HeteroData views inside the training/inference pipeline.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Mapping, Sequence
+
+import numpy as np
+import torch
+
+try:
+    from torch_geometric.data import HeteroData
+except ModuleNotFoundError as exc:  # pragma: no cover - runtime dependency
+    raise ModuleNotFoundError(
+        "PyTorch Geometric is required. Run: python -m tools.install"
+    ) from exc
+
+from hiercp.common import (
+    LoadedCase,
+    SourceTumor,
+    ct_normalize,
+    erase_mask_with_context,
+)
+from hiercp.curriculum import CandidateSpec
+from .schema import LOCAL_NODE_TYPES, LOCAL_EDGE_TYPES
+from hiercp.schema import (
+    LOCAL_HANDCRAFTED_DIM,
+    EdgeType,
+    GraphBuildConfig,
+)
+from .spatial import (
+    LEVEL0_GEOMETRY_CONTRACT,
+    build_patch_payload,
+    canonical_coordinate_sets,
+    cross_radius_edges,
+    exact_source_footprint,
+    extract_centered,
+    radius_edges,
+    source_node_specifications,
+    target_node_specifications,
+    transform_footprint_physical,
+)
+
+
+@dataclass
+class BuiltLocalGraph:
+    """Canonical cache payload for one source/target placement pair."""
+
+    graph: HeteroData | None
+    source_patch: np.ndarray
+    target_patch: np.ndarray
+    source_local: dict[str, Any]
+    target_local: dict[str, Any]
+
+
+@dataclass
+class PreparedLocalSource:
+    """Candidate-invariant source branch, constructed once per training sample."""
+
+    source_footprint: np.ndarray
+    source_patch: np.ndarray
+    canonical_nodes: dict[str, dict[str, torch.Tensor]]
+    canonical_edges: dict[EdgeType, torch.Tensor]
+    canonical_counts: dict[str, int]
+
+
+@dataclass
+class PatchFields:
+    model_input: np.ndarray
+    ct_norm: np.ndarray
+    organ: np.ndarray
+    footprint: np.ndarray
+    liver_depth_mm: np.ndarray
+    outside_tumor_mm: np.ndarray
+
+
+@dataclass
+class _PreparedLocalTarget:
+    """Full native target geometry before node features and radius edges."""
+
+    fields: PatchFields
+    coordinates: dict[str, np.ndarray]
+    transform: np.ndarray
+
+
+def _require_full_graph(config: GraphBuildConfig) -> None:
+    config.validate()
+    if (
+        config.graph_schema_version != "full_v22"
+        or not config.canonical_full_graph
+        or not config.adaptive_source_full_shape
+    ):
+        raise ValueError(
+            "local_graph requires graph_schema_version=full_v22, "
+            "canonical_full_graph=true and adaptive_source_full_shape=true"
+        )
+
+
+def _transform_footprint(
+    footprint: np.ndarray,
+    spec: CandidateSpec,
+    *,
+    spacing: Sequence[float],
+    config: GraphBuildConfig,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply the graph's physical-mm transform about the actual paste anchor."""
+    forward = spec.rotation_matrix @ np.diag(spec.scale_array)
+    transformed = transform_footprint_physical(footprint, forward, spacing, config)
+    return transformed, forward.astype(np.float32)
+
+
+def _patch_fields(
+    case: LoadedCase,
+    center: tuple[int, int, int],
+    footprint: np.ndarray,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    *,
+    config: GraphBuildConfig,
+    erase_target: bool,
+    ct_clip: tuple[float, float],
+) -> PatchFields:
+    payload = build_patch_payload(
+        image=case.image,
+        center=center,
+        footprint=footprint,
+        full_organ=full_organ_mask,
+        organ_depth=organ_depth,
+        spacing=case.spacing,
+        config=config,
+        erase_target=erase_target,
+        ct_clip=ct_clip,
+        ct_normalize_fn=ct_normalize,
+        erase_fn=erase_mask_with_context,
+    )
+    declared = tuple(PatchFields.__dataclass_fields__)
+    missing = [name for name in declared if name not in payload]
+    if missing:
+        raise RuntimeError(
+            "PatchFields compatibility failure: "
+            f"missing={missing}, available={sorted(payload)}"
+        )
+    return PatchFields(**{name: payload[name] for name in declared})
+
+
+def _grid_coordinates(coordinates: np.ndarray, shape: Sequence[int]) -> np.ndarray:
+    denominator = np.maximum(np.asarray(shape, dtype=np.float32) - 1.0, 1.0)
+    normalized_zyx = coordinates.astype(np.float32) / denominator[None] * 2.0 - 1.0
+    return normalized_zyx[:, [2, 1, 0]].astype(np.float32)
+
+
+def _shell_value(distance_mm: np.ndarray, shells: tuple[float, ...]) -> np.ndarray:
+    bins = np.digitize(distance_mm, np.asarray(shells, dtype=np.float32), right=True)
+    return bins.astype(np.float32) / max(1.0, float(len(shells)))
+
+
+def _relative_mm(
+    coordinates: np.ndarray,
+    shape: tuple[int, int, int],
+    spacing: np.ndarray,
+) -> np.ndarray:
+    center = (np.asarray(shape, dtype=np.float32) - 1.0) * 0.5
+    return (
+        (coordinates.astype(np.float32) - center[None])
+        * np.asarray(spacing, dtype=np.float32)[None]
+    ).astype(np.float32)
+
+
+def _pack_nodes(
+    fields: PatchFields,
+    specifications: Mapping[str, tuple[np.ndarray, str, float]],
+    case: LoadedCase,
+    config: GraphBuildConfig,
+    *,
+    branch_flag: float,
+) -> dict[str, dict[str, torch.Tensor]]:
+    output = {}
+    for kind, (coordinates, _, _) in specifications.items():
+        index=tuple(coordinates.T)
+        # Shell membership is existing topology/pooling metadata, not a learned input.
+        shell=np.digitize(fields.outside_tumor_mm[index], np.asarray(config.context_shells_mm), right=True)
+        output[kind] = {
+            "grid": torch.from_numpy(_grid_coordinates(coordinates, fields.ct_norm.shape)),
+            "pos_mm": torch.from_numpy(_relative_mm(coordinates, fields.ct_norm.shape, case.spacing)),
+            "shell_id": torch.from_numpy(np.clip(shell,0,len(config.context_shells_mm)-1).astype(np.int64)),
+        }
+    return output
+
+
+
+def _edge_radius(edge_type: EdgeType, config: GraphBuildConfig) -> float:
+    source_type, relation, destination_type = edge_type
+    if source_type == destination_type:
+        if "context" in source_type:
+            return float(config.context_edge_radius_mm)
+        if "liver_surface" in source_type:
+            return float(config.liver_edge_radius_mm)
+        if source_type == "tumor_surface":
+            return float(config.surface_edge_radius_mm)
+    if relation in {"interfaces_source", "interfaces_target", "interfaces_tumor"}:
+        return float(config.interface_edge_radius_mm)
+    if relation in {"near_liver_surface", "anchors_context"}:
+        return float(config.liver_edge_radius_mm)
+    if relation == "corresponds_to":
+        return float(config.correspondence_radius_mm)
+    return float(config.cross_edge_radius_mm)
+
+
+def _canonical_edges(
+    nodes: Mapping[str, Mapping[str, torch.Tensor]],
+    edge_types: Sequence[EdgeType],
+    config: GraphBuildConfig,
+    *,
+    transform: np.ndarray | None = None,
+) -> dict[EdgeType, torch.Tensor]:
+    """Build the complete physical-radius topology for canonical node tables.
+
+    Edge attributes are deterministic functions of node features and are built
+    only after an induced training view is selected.  The cached full graph
+    therefore stores complete edge indices in compact int32 form.
+    """
+    positions = {
+        node_type: value["pos_mm"].detach().cpu().numpy().astype(np.float32, copy=False)
+        for node_type, value in nodes.items()
+    }
+    result: dict[EdgeType, torch.Tensor] = {}
+    for edge_type in edge_types:
+        source_type, relation, destination_type = edge_type
+        if source_type not in positions or destination_type not in positions:
+            continue
+        source_position = positions[source_type]
+        if transform is not None and (
+            (source_type == "tumor_surface" and relation == "interfaces_target")
+            or (source_type == "source_context" and relation == "corresponds_to")
+        ):
+            source_position = source_position @ transform.T
+        destination_position = positions[destination_type]
+        radius = _edge_radius(edge_type, config)
+        if source_type == destination_type:
+            edge_index = radius_edges(source_position, radius, include_self=False)
+        else:
+            edge_index = cross_radius_edges(
+                source_position, destination_position, radius
+            )
+        edge_count = int(edge_index.shape[1])
+        limit = int(config.canonical_relation_edge_limit)
+        if limit > 0 and edge_count > limit:
+            raise RuntimeError(
+                "Canonical relation exceeds canonical_relation_edge_limit without "
+                f"truncation: edge_type={edge_type}, edges={edge_count}, limit={limit}"
+            )
+        result[edge_type] = torch.from_numpy(
+            edge_index.astype(np.int32, copy=False)
+        )
+    return result
+
+
+def prepare_local_source(
+    case: LoadedCase,
+    source: SourceTumor,
+    *,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    config: GraphBuildConfig,
+    rng: np.random.Generator,
+    ct_clip: tuple[float, float],
+) -> PreparedLocalSource:
+    """Build all canonical source nodes without applying a training budget."""
+
+    del rng  # canonical construction is deterministic
+    _require_full_graph(config)
+    source_footprint = exact_source_footprint(source)
+    fields = _patch_fields(
+        case,
+        source.anchor_center,
+        source_footprint,
+        full_organ_mask,
+        organ_depth,
+        config=config,
+        erase_target=False,
+        ct_clip=ct_clip,
+    )
+    if int(fields.footprint.sum()) != int(source_footprint.sum()):
+        raise RuntimeError(
+            "Source footprint was cropped before canonical construction: "
+            f"paste={int(source_footprint.sum())}, graph={int(fields.footprint.sum())}"
+        )
+    actual = extract_centered(source.full_mask, source.anchor_center, fields.footprint.shape, pad_value=False)
+    if not np.array_equal(fields.footprint, actual):
+        raise ValueError('Source footprint is misregistered to actual donor CT/GT; rebuild with shape//2 anchor')
+    coordinates = canonical_coordinate_sets(fields, config, case.spacing)
+    nodes = _pack_nodes(
+        fields,
+        source_node_specifications(coordinates),
+        case,
+        config,
+        branch_flag=1.0,
+    )
+    source_types = frozenset(nodes)
+    source_edges = _canonical_edges(
+        nodes,
+        [
+            edge_type
+            for edge_type in LOCAL_EDGE_TYPES
+            if edge_type[0] in source_types and edge_type[2] in source_types
+        ],
+        config,
+    )
+    return PreparedLocalSource(
+        source_footprint=source_footprint,
+        source_patch=fields.model_input.astype(np.float32, copy=False),
+        canonical_nodes=nodes,
+        canonical_edges=source_edges,
+        canonical_counts={key: int(value["grid"].shape[0]) for key, value in nodes.items()},
+    )
+
+
+def _prepare_local_target(
+    case: LoadedCase,
+    spec: CandidateSpec,
+    *,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    config: GraphBuildConfig,
+    ct_clip: tuple[float, float],
+    prepared_source: PreparedLocalSource,
+) -> _PreparedLocalTarget:
+    """Keep geometry admission identical for validation and materialisation.
+
+    Coordinate construction is intentional: checking only ROI extents would
+    miss required empty semantic node sets. No node or edge is sampled here.
+    """
+    virtual_footprint, transform = _transform_footprint(
+        prepared_source.source_footprint, spec, spacing=case.spacing, config=config
+    )
+    fields = _patch_fields(
+        case,
+        spec.center,
+        virtual_footprint,
+        full_organ_mask,
+        organ_depth,
+        config=config,
+        erase_target=True,
+        ct_clip=ct_clip,
+    )
+    coordinates = canonical_coordinate_sets(fields, config, case.spacing)
+    return _PreparedLocalTarget(fields, coordinates, transform)
+
+
+def validate_local_geometry(
+    case: LoadedCase,
+    source: SourceTumor,
+    spec: CandidateSpec,
+    *,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    config: GraphBuildConfig,
+    ct_clip: tuple[float, float],
+    prepared_source: PreparedLocalSource,
+) -> None:
+    """Validate full target geometry without constructing a disposable graph.
+
+    The source must already have passed ``prepare_local_source``. As in
+    ``build_local_graph`` with a prepared source, its canonical footprint is
+    authoritative. The same physical transform, native ROI, liver-surface
+    search and complete coordinate checks run here; their exceptions are not
+    suppressed. Feature packing and complete radius edges are constructed
+    once, during actual inference, where allocation/topology errors still
+    propagate normally. Canonical construction does not consume RNG state.
+    """
+    _require_full_graph(config)
+    if not isinstance(prepared_source, PreparedLocalSource):
+        raise TypeError("validate_local_geometry requires a PreparedLocalSource")
+    _prepare_local_target(
+        case,
+        spec,
+        full_organ_mask=full_organ_mask,
+        organ_depth=organ_depth,
+        config=config,
+        ct_clip=ct_clip,
+        prepared_source=prepared_source,
+    )
+
+
+def build_local_graph(
+    case: LoadedCase,
+    source: SourceTumor,
+    spec: CandidateSpec,
+    *,
+    full_organ_mask: np.ndarray,
+    organ_depth: np.ndarray,
+    config: GraphBuildConfig,
+    rng: np.random.Generator,
+    ct_clip: tuple[float, float],
+    prepared_source: PreparedLocalSource | None = None,
+) -> BuiltLocalGraph:
+    """Build complete canonical source/target topology; views are sampled later."""
+
+    _require_full_graph(config)
+    prepared = prepared_source or prepare_local_source(
+        case,
+        source,
+        full_organ_mask=full_organ_mask,
+        organ_depth=organ_depth,
+        config=config,
+        rng=rng,
+        ct_clip=ct_clip,
+    )
+    target = _prepare_local_target(
+        case,
+        spec,
+        full_organ_mask=full_organ_mask,
+        organ_depth=organ_depth,
+        config=config,
+        ct_clip=ct_clip,
+        prepared_source=prepared,
+    )
+    target_fields = target.fields
+    target_coordinates = target.coordinates
+    transform = target.transform
+    target_nodes = _pack_nodes(
+        target_fields,
+        target_node_specifications(target_coordinates),
+        case,
+        config,
+        branch_flag=-1.0,
+    )
+    all_nodes: dict[str, Mapping[str, torch.Tensor]] = {
+        **prepared.canonical_nodes,
+        **target_nodes,
+    }
+    target_edges = _canonical_edges(
+        all_nodes,
+        [edge_type for edge_type in LOCAL_EDGE_TYPES if edge_type not in prepared.canonical_edges],
+        config,
+        transform=transform,
+    )
+    source_local = {
+        "format": "canonical-full-v22",
+        "geometry_contract": LEVEL0_GEOMETRY_CONTRACT,
+        "nodes": prepared.canonical_nodes,
+        "edges": prepared.canonical_edges,
+        "footprint_voxels": int(prepared.source_footprint.sum()),
+        "counts": prepared.canonical_counts,
+        "edge_counts": {
+            edge_type: int(edge_index.shape[1])
+            for edge_type, edge_index in prepared.canonical_edges.items()
+        },
+    }
+    target_local = {
+        "format": "canonical-full-v22",
+        "geometry_contract": LEVEL0_GEOMETRY_CONTRACT,
+        "nodes": target_nodes,
+        "edges": target_edges,
+        "transform": torch.from_numpy(transform.astype(np.float32)),
+        "counts": {key: int(value["grid"].shape[0]) for key, value in target_nodes.items()},
+        "edge_counts": {
+            edge_type: int(edge_index.shape[1])
+            for edge_type, edge_index in target_edges.items()
+        },
+    }
+    return BuiltLocalGraph(
+        graph=None,
+        source_patch=prepared.source_patch,
+        target_patch=target_fields.model_input.astype(np.float32, copy=False),
+        source_local=source_local,
+        target_local=target_local,
+    )

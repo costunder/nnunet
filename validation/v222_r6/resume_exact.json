@@ -1,0 +1,19 @@
+{
+  "debug": true,
+  "real_CT": true,
+  "full_training": false,
+  "transfer_L0_bitwise_equal": true,
+  "host_graph_pinning_preserved": true,
+  "host_graph_stores_preserved": true,
+  "resumed_loss_bitwise_equal": true,
+  "resumed_all_parameters_bitwise_equal": true,
+  "resumed_optimizer_bitwise_equal": true,
+  "resumed_partial_support_memory_bitwise_equal": true,
+  "validation_allocator_callback_metrics_identical": true,
+  "checkpoint_bytes": 67256647,
+  "checkpoint_seconds": 0.3165123999933712,
+  "first_loss": 1.1802873611450195,
+  "resumed_loss": 1.1106603145599365,
+  "all_parameter_gradients_present": true,
+  "all_parameter_gradients_finite": true
+}

@@ -1,0 +1,25 @@
+{
+  "files": {
+    "hiercp_v2/bank.py": "e72281e54f2b6b278b161b8f40c8d6447b73ec3caa0b22bb0398fda18ca3530a",
+    "hiercp_v2/contracts.py": "d0092c28525ea191c974d42892c91fc498e29748d623e6a43ee5638b4264e85b",
+    "hiercp_v2/data.py": "8f5df508c00212da005e711679eb93c59b8ea5528bba816417eee13e1b7ba870",
+    "hiercp_v2/donors.py": "b3ba23a31904b1617b30abe1de1311cd593b37e1ccbc637ef929300ea03f51fa",
+    "hiercp_v2/evaluation.py": "aee213296616d11ddd2aa97e258d558b2a903aeb61c9d6837f873837ce9d313f",
+    "hiercp_v2/model.py": "1f59bdb4e411f38b6b4d6093bd89c5d77803b0ecda8207db49f443d174f6fa64",
+    "hiercp_v2/native_adapter.py": "35e372bf570a072804756a85a9ee73aadf1cb2e937a3c55177651363bc12ae94",
+    "hiercp_v2/nnunet.py": "1795bf3bae19f70c5483b59f45564cdd371ef98809d37fff48d86db2ba04850b",
+    "hiercp_v2/nnUNetTrainer_OnlinePromptGraphV2.py": "f6e3301f41993d5678bced918a9782c935ad471f5a91089b265c88751a39dc80",
+    "hiercp_v2/parallel.py": "32f216eb50bcab9c696039a24e5cf1788224f48cb20ed30fa2bcf60c0f926568",
+    "hiercp_v2/scoring.py": "5c8947bde95be34d518e62c2db0eb6f308296eeb06e6c64c0808c657c63d5873",
+    "hiercp_v2/storage.py": "597a888eed69f03f315a8d1e7220012decd9a4552049a6f3fd2b014efa6f7227",
+    "hiercp_v2/training.py": "f0f51d455064bd0c7d3470d97975b8cc53bc303ce1ab029185e227f5d0b46aa1",
+    "hiercp_v2/volumes.py": "4d06fa77ad8dc697b29e7c9dcfcc5a3428d2402131aa81b1569f72580b7acf53",
+    "hiercp_v2/__init__.py": "99209334e9e6238384776ec91ac6a62fc8a45da76cbc3d2f1a22c40976645355",
+    "run_v2.py": "ecd6fff7b262efd6edf2ec27731d669ee2e964d6e2fc9394f67d63e9cee42410",
+    "config/prompt_graph_v2.json": "d1908d2001766e0b0ac20461ad4c27a6a76773cbfdac6197f3a7b9a8f701e09f",
+    "PATCH_NOTES.md": "7c1960e44d8d30a6316ed1798e22c7b79a669e50e0cfa9970fd075c87fcf2bfc",
+    "gpt_handoff.md": "4d1b86bc09621df904fb233d33709a2e441ae3deac8027572ce4a8d2c14de5b3",
+    "code.txt": "ee7c317a162066b91e8586c0ed134e3be525b245c5c40d8befa7d706061b46fa"
+  },
+  "archive_sha256": "c6cb74766a54c6d5c3be4cbac8f0369cd1d96fa82fd6183ec1224e935eb6ae59"
+}

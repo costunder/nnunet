@@ -1,0 +1,19 @@
+{
+  "debug": true,
+  "full_epoch_measured": false,
+  "all_10_losses_exact": true,
+  "graph_and_batch_sizes_exact": true,
+  "last_batch": {
+    "graphs": 64,
+    "nodes": 669271,
+    "edges": 46852381,
+    "before_seconds": 277.8130102000141,
+    "after_seconds": 48.00270179999643,
+    "speedup": 5.7874452850075775,
+    "before_reserved_bytes": 21388853248,
+    "after_reserved_bytes": 12767461376
+  },
+  "all_10_before_seconds": 759.1432488000137,
+  "all_10_after_seconds": 421.04381079992163,
+  "limitation": "Six actual CT support fixtures, full-size real query graphs. Default run briefly overlapped small CUDA unit tests; this is not an isolated full-epoch benchmark. Release run had exclusive training GPU use."
+}

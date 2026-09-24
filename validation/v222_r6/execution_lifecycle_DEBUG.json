@@ -1,0 +1,14 @@
+{
+  "debug": true,
+  "full_training": false,
+  "real_CT": true,
+  "full_model_parameters": 5550806,
+  "purpose": "execution lifecycle only; train/validation fixture reuse is not a performance experiment",
+  "paused_after_optimizer_step": 1,
+  "resumed_epoch_finished": true,
+  "query_coverage": 6,
+  "optimization_steps": 3,
+  "support_refresh_completed": true,
+  "validation_executed": true,
+  "best_checkpoint_finalized": true
+}
