@@ -158,7 +158,8 @@ def watch(root, log=None, interval=.5, stream=None):
     print(f'Live progress | {root.name}\nLog: {log}\nCtrl+C: close viewer only; training continues.', file=stream)
     # Stages have unequal durations. A stage-count ETA/rate is not meaningful,
     # especially when reattaching and replaying completed receipts instantly.
-    overall = tqdm(total=7, desc='Pipeline stages', position=0, dynamic_ncols=True, file=stream,
+    requested = read_json(root/'requested.json')
+    overall = tqdm(total=len(requested['stages']) if requested else 7, desc='Pipeline stages', position=0, dynamic_ncols=True, file=stream,
                    bar_format='{desc}: {n_fmt}/{total_fmt} |{bar}| {postfix}')
     current = tqdm(total=state.total, initial=state.done, desc=state.phase, position=1,
                    dynamic_ncols=True, file=stream, unit='item')
@@ -166,6 +167,10 @@ def watch(root, log=None, interval=.5, stream=None):
     checkpoint_stamp = None
     try:
         while True:
+            if requested is None:
+                requested = read_json(root/'requested.json')
+                if requested is not None:
+                    overall.total = len(requested['stages'])
             for row in reader.read():
                 state.event(row)
             # Phase receipts cover validation/final-memory transitions without

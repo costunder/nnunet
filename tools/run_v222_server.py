@@ -28,12 +28,33 @@ def launch_worker(command,output):
     return child
 
 
-def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64):
+def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,optimized=False,cache=None,resume=None):
     """Delegate to existing verified entry points without changing model config."""
     run=lambda name,*args:[sys.executable,'-u',str(ROOT/name),*map(str,args)]
     def gpu(name,*args):
         if edge_workspace_mib==64:return run(name,*args)
         return run('tools/v222_gpu_workspace.py','--workspace-mib',edge_workspace_mib,name,*args)
+    if optimized:
+        plan=[('resources',run('tools/v1_server.py','resources','--output',output/'resources.json')),
+              ('model_check',run('run_v222_v1_l0.py','check'))]
+        if resume and cache is None:raise ValueError('--resume requires the original --cache index')
+        if not resume:
+            if cache is None:
+                plan.append(('observations',run('tools/v1_server.py','observations','--medical-root',medical,'--output',output/'observations')))
+            plan.append(('graph_DEBUG',gpu('run_v222_v1_l0.py','verify','--output',output/'graph_DEBUG')))
+            if cache is None:
+                plan.append(('paired_cache',run('tools/v222_prepare_optimized.py','--index',output/'observations/index.json','--output',output/'paired_cache')))
+            index=cache if cache is not None else output/'paired_cache/index.json'
+            plan.append(('profile_DEBUG',run('tools/v222_gpu_workspace.py','--workspace-mib',edge_workspace_mib,
+                '--optimized-runtime','tools/profile_v1_execution.py',index,output/'profile_DEBUG','default',
+                '--batch-size',profile_batch,'--allocator-gb',allocator_gb)))
+        index=cache if cache is not None else output/'paired_cache/index.json'
+        arguments=['--cache',index,'--output',output/'training']
+        if resume:arguments+=['--resume',resume] # Inherit saved numerical/allocator policy.
+        else:arguments+=['--workspace-mib',edge_workspace_mib]
+        plan.append(('gnn_training',run('tools/run_v222_optimized.py',*arguments)))
+        return plan
+    if cache or resume:raise ValueError('Cache reuse/resume is supported by --runtime optimized')
     return [
         ('resources',run('tools/v1_server.py','resources','--output',output/'resources.json')),
         ('model_check',run('run_v222_v1_l0.py','check')),
@@ -77,13 +98,24 @@ def main():
     p.add_argument('--profile-batch',type=int,default=32,help='DEBUG only; production batch remains auto')
     p.add_argument('--profile-allocator-gb',type=float,default=9.0,help='DEBUG PyTorch allocator cap only')
     p.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
-    p.add_argument('--edge-workspace-mib',type=int,choices=(64,256,512),default=64,
+    p.add_argument('--runtime',choices=('optimized','legacy'),default='optimized')
+    p.add_argument('--cache',type=Path,help='Existing complete paired index; skips raw/paired preparation')
+    p.add_argument('--resume',type=Path,help='Rolling checkpoint with the same cache; resumes directly')
+    p.add_argument('--edge-workspace-mib',type=int,choices=(64,256,512),
                    help='Execution scratch budget only; 256 measured locally. Preserve old runs at 64.')
     a=p.parse_args()
+    if a.resume and not a.cache:raise ValueError('--resume requires --cache')
+    if a.resume and a.edge_workspace_mib is not None:raise ValueError('Resume inherits workspace; omit --edge-workspace-mib')
+    if a.edge_workspace_mib is None:a.edge_workspace_mib=256 if a.runtime=='optimized' else 64
+    if a.cache:a.cache=a.cache.resolve()
+    if a.resume:a.resume=a.resume.resolve()
+    for file in (a.cache,a.resume):
+        if file is not None and not file.is_file():raise FileNotFoundError(file)
     if a.profile_batch<1 or a.profile_allocator_gb<=0:raise ValueError('Positive DEBUG profile settings required')
     medical=a.medical_root.resolve();output=a.output.resolve()
-    for folder in ('image','labels'):
-        if not (medical/'Data'/folder).is_dir():raise FileNotFoundError(medical/'Data'/folder)
+    if a.cache is None:
+        for folder in ('image','labels'):
+            if not (medical/'Data'/folder).is_dir():raise FileNotFoundError(medical/'Data'/folder)
     if not a.worker:
         if not sys.stderr.isatty():
             raise RuntimeError('Run directly in a terminal: logs/background execution are automatic; omit nohup and redirection')
@@ -93,19 +125,24 @@ def main():
         command=[sys.executable,'-u',str(Path(__file__).resolve()),'--medical-root',str(medical),
                  '--output',str(output),'--profile-batch',str(a.profile_batch),
                  '--profile-allocator-gb',str(a.profile_allocator_gb),
-                 '--edge-workspace-mib',str(a.edge_workspace_mib),'--worker']
+                 '--runtime',a.runtime,'--worker']
+        if not a.resume:command+=['--edge-workspace-mib',str(a.edge_workspace_mib)]
+        if a.cache:command+=['--cache',str(a.cache)]
+        if a.resume:command+=['--resume',str(a.resume)]
         launch_worker(command,output)
         return watch(output)
     if (output/'requested.json').exists():
         raise FileExistsError('Existing run cannot be overwritten')
-    env=dict(os.environ,HIERCP_TEST_OBSERVATION_INDEX=str(output/'observations/index.json'),
+    env=dict(os.environ,HIERCP_TEST_OBSERVATION_INDEX=str(a.cache or output/'observations/index.json'),
              HIERCP_TEST_FIXTURE=str(output/'graph_DEBUG/actual_graphs_DEBUG.pt'))
-    plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb,a.edge_workspace_mib)
+    plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb,a.edge_workspace_mib,
+                optimized=a.runtime=='optimized',cache=a.cache,resume=a.resume)
     write_new(output/'requested.json',dict(python=sys.executable,medical_root=str(medical),
         cuda_visible_devices=env.get('CUDA_VISIBLE_DEVICES'),conda_prefix=env.get('CONDA_PREFIX'),
         production_model_config_changed=False,production_batch='auto',gnn_epochs=40,
         profile_batch=a.profile_batch,profile_allocator_gb=a.profile_allocator_gb,
-        edge_workspace_mib=a.edge_workspace_mib,
+        runtime=a.runtime,cache=str(a.cache) if a.cache else None,resume=str(a.resume) if a.resume else None,
+        edge_workspace_mib='inherited from checkpoint' if a.resume else a.edge_workspace_mib,
         scope='paired GNN only; native online bank and nnU-Net not integrated',
         stages=[dict(name=n,command=c) for n,c in plan]))
     execute(plan,output,env)

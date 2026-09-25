@@ -1,3 +1,16 @@
+## v2.22 r6 — 준비·학습 중복 제거 backend (2026-09-25)
+
+- 모델/cache 소스와 전체 연구 설정을 보존하고 `tools/run_v222_optimized.py`를 서버 기본 경로에 연결. 실제 준비 결과를 버리지 않는 worker 측정, donor별 병렬 로딩, epoch별 graph view RAM cache, batch 내 donor CNN 입력 공유, 불필요한 GPU prefix clone 제거, bounded 비동기 원자 checkpoint 저장 적용.
+- 실제 CT/full model/batch32/9GB DEBUG 6step 합계 기존64MiB158.91초 → 수정256MiB64.86초. 같은64MiB에서는 전체속도 개선 없음(161.95초), warm reload3.376→0.307초. 동일64MiB 2step 가중치/optimizer/loss bitwise 일치. 256MiB 수치 차이는 허용한다고 숨기지 않고 별도 실행 정책으로 기록.
+- 회귀47검사, 실제 CT 재개·부분 support 재개 bitwise 일치, DEBUG epoch 제어 흐름, 실제2관측 canonical graph 일치 통과. 전체 준비/40epoch/A100 MIG 속도/분할 평가 미실행. [검증과 한계](docs/v222_runtime_optimization_20260925.md).
+- 새 실행은256MiB/allocator 유지, 기존 checkpoint 재개는 원래 정책 상속. `--cache --resume`으로 기존 graph/가중치를 사용하고 준비 재실행을 생략. runtime SHA와 durable/pending checkpoint 상태 기록. 서버 미적용, 기존 결과 보존. [실행 명령](SERVER_V222.md).
+
+## v2.22 r6 — 보존 v1과 현재의 직접 비교 기록 (2026-09-25)
+
+- production 모델 변경 없이 비교 도구 추가. 실제 CT2case/16위치에서 각 native L0 입력으로 batch8/16 측정. batch16 forward는 보존v1 2.592초/현재1.914초. 미학습 L0 probe이며 native 전체학습/과거epoch시간 재현이 아니다.
+- 캐시entry 단위·case당 후보수·두graph view·support 재인코딩·전체parameter를 대조했다. 현재 정규epoch L0 forward25,381쌍, backward11,279쌍. epoch 결과 `seconds`가 전체 wall time이 아닌 optimization 누적임도 기록했다.
+- 64→256MiB A/B를 v1 비교로 대신한 보고를 정정한다. 서버·기존cache·모델·production설정 불변. [비교와 한계](docs/v1_current_comparison_20260925.md), `validation/v222_r6/v1_current_comparison_20260925_DEBUG.json`.
+
 ## v2.22 r6 — 캐시 이후 L0 실행 비용 실측 및 작업 메모리 선택 (2026-09-25)
 
 - 실제 batch32 두 개(각각23.86M/24.37M edges), 전체5.55M 모델,9GB allocator 조건에서 edge 작업 메모리64→256MiB 비교. step22.152→6.710초,21.905→6.411초. L0/역전파가 개선되며 peak allocated약6.3GB 유지. graph/model/data 축소 없음. A100/전체epoch 속도나 앞선CPU graph 준비시간 개선으로 일반화하지 않는다.

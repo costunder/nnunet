@@ -2,36 +2,47 @@
 
 사용자 지시: **로컬 테스트 → 코드·설정 Git 업로드 → 서버 원본 CT로 준비 및 학습**. 로컬 graph cache, CT, checkpoint, DEBUG fixture를 전송하지 않는다.
 
-현재 진입점은 `run_v222_v1_l0.py`다. v1 방식 paired L0 + v2.22 L1/L2, 5,550,806 parameters, seed42, 전체 GNN40epochs를 유지한다. `run_v222.py`는 이전 L0 경로다. Native online CP bank/nnU-Net 연결과 segmentation 평가는 미완료이므로 이번 실행은 **paired GNN 학습**이다.
+현재 서버 진입점은 `tools/run_v222_server.py`이며 기본값은 중복 제거 backend인 `tools/run_v222_optimized.py`다. v1 방식 paired L0 + v2.22 L1/L2, 5,550,806 parameters, seed42, 전체 GNN40epochs를 유지한다. `run_v222.py`는 이전 L0 경로다. Native online CP bank/nnU-Net 연결과 segmentation 평가는 미완료이므로 이번 실행은 **paired GNN 학습**이다.
 
 ## 현재 확인된 서버에서 짧게 실행
 
-사용자 출력 확인: `ece-agpu16`, `nnunet` 환경 활성화, 코드 checkout·원본 경로 존재, GPU6의 지정 MIG가 PyTorch에1g.10gb/9.5GiB로 표시됐다. 다시 환경을 만들거나 GPU 할당을 바꾸지 않는다. 다음 명령은 새 run이며 같은 output이 이미 있으면 덮어쓰지 않고 실패한다.
+사용자 출력 확인: `ece-agpu16`, `nnunet` 환경 활성화, GPU6의 지정 MIG1g.10gb/9.5GiB. 기존 할당과 환경을 유지한다. **실행 중인 checkout은 pull하지 않는다.** 코드만 별도 checkout으로 준비한다. 아래 worktree 경로가 이미 있으면 덮어쓰지 않고 실패한다.
 
 ```bash
-git pull --ff-only origin codex/v222-server-r6
+git -C /home/aicompetition06/Medical/HierCP-v222-r6 fetch origin codex/v222-server-r6 &&
+git -C /home/aicompetition06/Medical/HierCP-v222-r6 worktree add --detach /home/aicompetition06/Medical/HierCP-v222-r6-runtime FETCH_HEAD
 ```
 
-pull 성공 후 현재 `(nnunet)` 환경에서:
+기존 worker가 종료/저장 중단된 것을 확인한 뒤 아래 둘 중 하나만 실행한다. 기존 worker에 대한 중단 명령은 이 문서에서 자동 실행하지 않는다. 현재 서버 진행 상태는 로컬에서 확인하지 못했다.
+
+**기존 가중치에서 이어가기:** 완료된14,102개 graph index와 rolling checkpoint를 그대로 참조한다. raw/graph/profile 단계를 반복하지 않는다. 기존64MiB workspace와 allocator 정책은 상속하므로 아래 fresh256MiB 속도 개선을 보장하지 않는다.
 
 ```bash
-nohup python -u tools/run_v222_server.py \
+cd /home/aicompetition06/Medical/HierCP-v222-r6-runtime &&
+python tools/run_v222_server.py \
   --medical-root /home/aicompetition06/Medical \
-  --output work/v222_mig10gb_r6 \
-  >> v222_mig10gb_r6.log 2>&1 < /dev/null &
+  --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
+  --resume /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/training/checkpoint_latest.pt \
+  --output work/v222_mig10gb_r6_runtime_resume
 ```
+
+**가중치를 새로 학습하는 경우에만:** `--resume`을 빼고 새 output을 사용한다. 기존 cache는 재사용하며256MiB workspace + 중복 제거 loader/writer로 시작한다. 이것은 이어 학습이 아니다.
 
 ```bash
-tail -n 80 v222_mig10gb_r6.log
+cd /home/aicompetition06/Medical/HierCP-v222-r6-runtime &&
+python tools/run_v222_server.py \
+  --medical-root /home/aicompetition06/Medical \
+  --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
+  --output work/v222_mig10gb_r6_runtime_fresh
 ```
 
-실행기는 아래의 기존 검증된 단계별 명령을 순서대로 호출한다. DEBUG profile32/allocator9GB이며 production batch는auto, GNN40epochs이다. 각 단계의 started/complete/failed JSON을 run root에 기록한다. 실패하면 다음 단계는 시작하지 않는다. `pipeline_complete.json`은 GNN 완료만 뜻한다. Python/GPU 환경 설치·재할당·원본 전송은 수행하지 않는다. 실행기 자체의 순서/실패 차단 단위3검사가 통과했으며 서버 전체 실행을 완료했다고 주장하지 않는다.
+터미널에는 tqdm이 표시되고 로그는 자동 저장된다. `--cache` 없는 새 데이터 준비는 calibration 결과를 버리지 않는 준비기를 사용한다. DEBUG profile32/allocator9GB, production batch auto, GNN40epochs를 유지한다. 기존 입력·checkpoint는 수정하지 않으며 항상 새 output을 사용한다. [실측·검증·한계](docs/v222_runtime_optimization_20260925.md).
 
 ## GPU 엣지 연산의 작업 메모리 선택 (2026-09-25)
 
 새 실행은 `--edge-workspace-mib 256`을 선택할 수 있다. 모델 크기, 모든 graph node/edge, physical batch 계약은 그대로이며 한 번에 계산하는 edge 조각만 커진다. 로컬 실제 batch32 두 개/9GB allocator에서64MiB 대비 step3.30~3.42배 개선, peak allocated약6.3GB를 측정했다. 서버 A100 처리량과 전체epoch 시간으로 일반화하지 않는다. [측정과 검증 범위](docs/v222_cached_execution_20260925.md).
 
-기존 기본값은64MiB로 남겨 실행 중인 작업과 이전 checkpoint의 수치 정책을 보존한다. 다른 작업 메모리로 재개하면 gradient 누적 순서가 달라질 수 있으므로 새 실행기는 정책 불일치를 거절한다. wrapper는 보존 모델 파일을 수정하지 않으며 기존 완성 cache를 재생성할 필요가 없다. 현재 서버 작업은 이 조사에서 재시작하거나 변경하지 않았다. 실행 중인 작업과 동시에 새 학습을 시작하지 않는다.
+2026-09-25 중복 제거 이후 **새 실행 기본값은256MiB**다. `--runtime legacy`는 기존64MiB 경로를 보존한다. `--resume`은 원래 workspace·allocator 정책을 상속하며 수치 정책 변경을 거절한다. 현재 서버 작업을 이 조사에서 재시작하거나 변경하지 않았다. 실행 중인 작업과 동시에 새 학습을 시작하지 않는다.
 
 ## 터미널 진행 화면: tqdm 기본 표시 (2026-09-24)
 

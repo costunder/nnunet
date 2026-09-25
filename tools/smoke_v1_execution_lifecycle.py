@@ -31,6 +31,7 @@ def main():
         def __len__(self):return len(self.rows)
         def item(self,i,epoch=0):return fixture['values'][i],i
     def stop_after_first(self):
+        if hasattr(self,'flush'):self.flush()
         receipt=json.loads((self.root/'checkpoint_status.json').read_text(encoding='utf-8'))
         return receipt['phase']=='optimization' and receipt['step']==1
     with patch.object(execution,'configuration',return_value=(cfg,base)),patch.object(execution,'PairDataset',FixtureDataset):
@@ -48,4 +49,10 @@ def main():
         paused_after_optimizer_step=1,resumed_epoch_finished=True,query_coverage=6,optimization_steps=3,
         support_refresh_completed=True,validation_executed=True,best_checkpoint_finalized=True)
     (root/'result.json').write_text(json.dumps(report,indent=2),encoding='utf-8');print(json.dumps(report),flush=True)
-if __name__=='__main__':main()
+if __name__=='__main__':
+    if '--optimized' in sys.argv:
+        sys.argv.remove('--optimized')
+        from tools.v222_runtime_execution import installed
+        with installed(dict(debug=True)):
+            main()
+    else:main()

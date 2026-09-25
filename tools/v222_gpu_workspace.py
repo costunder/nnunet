@@ -43,6 +43,7 @@ def check_resume(arguments,workspace_mib):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--workspace-mib',type=int,choices=(64,256,512),required=True)
+    p.add_argument('--optimized-runtime',action='store_true',help='Use optimized input loader for DEBUG profiling')
     p.add_argument('entry',choices=('run_v222_v1_l0.py','tools/profile_v1_execution.py'))
     p.add_argument('arguments',nargs=argparse.REMAINDER)
     a=p.parse_args();output=output_path(a.entry,a.arguments)
@@ -60,7 +61,15 @@ def main():
             validation_scope='local real full-size DEBUG batches; not A100 MIG throughput or full-training validation'),f,indent=2)
     print(json.dumps(dict(stage='edge_execution_workspace',workspace_mib=a.workspace_mib,receipt=str(receipt))),flush=True)
     sys.argv=[str(ROOT/a.entry),*a.arguments]
-    runpy.run_path(str(ROOT/a.entry),run_name='__main__')
+    if a.optimized_runtime:
+        if a.entry!='tools/profile_v1_execution.py':
+            raise ValueError('Optimized production training uses run_v222_optimized.py')
+        from tools.v222_runtime_execution import installed
+        from tools.run_v222_optimized import runtime_identity
+        with installed(dict(debug=True,runtime_sha256=runtime_identity())):
+            runpy.run_path(str(ROOT/a.entry),run_name='__main__')
+    else:
+        runpy.run_path(str(ROOT/a.entry),run_name='__main__')
 
 
 if __name__=='__main__':main()

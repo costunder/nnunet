@@ -40,8 +40,10 @@ def main():
     first,_,_,check=optimizer_step(net,optimizer,cpu,args,plan,classes,weights,5,check_gradients=True)
     state=dict(phase='optimization',epoch=0,step=1,next_batch=1,last_group='debug_real_CT',plan=plan,memory=args)
     saver=Saver(root,net,optimizer,dict(debug=True));receipt=saver.save(state)
+    if hasattr(saver,'flush'):saver.flush()
     expected,_,_,_=optimizer_step(net,optimizer,cpu,args,plan,classes,weights,5)
     expected_model=tree_to(net.state_dict(),'cpu');expected_optimizer=tree_to(optimizer.state_dict(),'cpu')
+    if hasattr(saver,'close'):saver.close()
     del net,optimizer,saver;torch.cuda.empty_cache()
     loaded=torch.load(root/'checkpoint_latest.pt',map_location='cpu',weights_only=False)
     net=model(cfg,base).cuda();net.local.dense_batch_size=6
@@ -81,6 +83,13 @@ def main():
         resumed_loss_bitwise_equal=True,resumed_all_parameters_bitwise_equal=True,resumed_optimizer_bitwise_equal=True,
         resumed_partial_support_memory_bitwise_equal=True,
         validation_allocator_callback_metrics_identical=True,
-        checkpoint_bytes=receipt['bytes'],checkpoint_seconds=receipt['seconds'],first_loss=first['loss'],resumed_loss=actual['loss'],**check)
+        checkpoint_bytes=(root/'checkpoint_latest.pt').stat().st_size,checkpoint_seconds=receipt['seconds'],first_loss=first['loss'],resumed_loss=actual['loss'],**check)
     (root/'result.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps(result),flush=True)
-if __name__=='__main__':main()
+if __name__=='__main__':
+    if '--optimized' in sys.argv:
+        sys.argv.remove('--optimized')
+        from tools.v222_runtime_execution import installed, AsyncSaver, encode_memory
+        Saver=AsyncSaver
+        with installed(dict(debug=True)):
+            main()
+    else:main()

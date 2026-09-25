@@ -1,4 +1,20 @@
-## 2026-09-25 최신 — 캐시 이후 실행 병목 실측
+## 2026-09-25 최신 — 중복 제거 구현·실제 CT 검증 완료, 서버 미적용
+
+- 사용자 요청은 v2.22 중복 연산 제거. `tools/v222_runtime_cache.py`, `v222_runtime_execution.py`, `run_v222_optimized.py`, `v222_prepare_optimized.py` 추가. 보존 모델·core/cache provenance·전체 규모는 변경하지 않음. server runner 기본 backend 연결 및 기존 `--cache --resume` 지원.
+- 실제 CT batch32×6/full5,550,806params/9GB allocator: 기존64MiB158.91s, 수정64MiB161.95s, 수정256MiB64.86s. 같은64MiB 전체속도 개선 없음; cache warm reload3.376→0.307s, checkpoint 제출0.328→0.122s. 256MiB 최대allocated6.403/reserved8.009GB. 두조건2step loss/model/optimizer bitwise 일치는64MiB끼리만 검증. workspace변경은 수치정책변경이며 기존재개에 강제하지 않음.
+- 회귀47개, 실제 optimizer/부분 support resume bitwise, DEBUG epoch pause→resume→refresh→validation→final checkpoint, actual2관측 canonical CT/node/edge 동일 통과. 전체support 대신 실제prefix1,216/11,279를 쓴 성능 DEBUG이며 전체epoch/MIG속도/CP효용 검증 아님. 전체14,102graph 재생성/40epoch/nnU-Net 실행 안함.
+- 새run256MiB와 allocator 유지; 기존run재개는64MiB/release정책상속. backend SHA를 rollingcheckpoint에 기록. durable상태는 checkpoint_status.json, runtime_events.jsonl. 기존 step_timings의checkpoint_step은 제출step, 기존metrics.csv seconds는optimization만. 새runtime log schema/phase별시간으로 구분.
+- 최초 legacy 테스트가 첫step 기록없이 종료되어 성공으로 세지 않음. 별도legacy64_r2로 재실행 완료. 로컬검증로그 `work/v222_runtime_20260925_DEBUG/`, Git증거 `validation/v222_r6/runtime_optimization_20260925_DEBUG.json`, 상세 `docs/v222_runtime_optimization_20260925.md`. 실제서버미접속/미중단/미업데이트. SERVER_V222.md에 active checkout을 바꾸지 않는 코드worktree 및 cache재개 명령을 기록.
+
+## 2026-09-25 이전 — 사용자 요구대로 v1/현재를 직접 대조
+
+- 사용자는 v1과 현재 비교를 요청했는데 현재64/256MiB A/B로 대신 답한 것을 지적했다. 해당3.3~3.4배는 v1 대비 개선이 아니다. 다시 요청과 다른 측정을 완료 보고로 대신하지 않는다.
+- 보존v1 revision74dcc2cf와현재코드/작업량을대조하고같은실제CT2case/16위치에서L0비교실행. batch16 forward v1 2.592초/current1.914초, probe backward6.177/5.234초. 전체parameters10,434,532/5,550,806, L0 5,600,740/4,718,420. 이조건에서현재L0가더크거나느리다는근거없음.
+- 보존v1설정은case당2×8후보/후보당2graph view(CNN공유). 현재128비교위치+적격양성전체, train11,279/val2,823, 초기/매epoch/최종support재인코딩. 정규epoch L0 forward25,381쌍/backward11,279쌍. 캐시entry숫자단순비율이나작업횟수를시간배수로표현금지.
+- DEBUG native L0 입력·미학습가중치·squared-output probe·single-view·같은케이스쌍이며전체native학습loss비교가아님. 과거실제학습checkpoint/revision/epoch시간은미복구. 오래된복구code dump는stockGATv2여서보존v1과동일실행이라고단정못함. 서버는미접속/미변경. 현재`v1_execution.py` epoch`seconds`는optimization누적이며support/validation포함전체시간아님.
+- `tools/compare_preserved_v1_l0_debug.py`, `docs/v1_current_comparison_20260925.md`, `validation/v222_r6/v1_current_comparison_20260925_DEBUG.json`. 보존SHA/실제입력일치/모든L0유한gradient검증; batch8/16실행완료. production모델/cache소스변경없음. 전체학습/평가/서버전체epoch비교미완료를명시한다.
+
+## 2026-09-25 이전 — 캐시 이후 실행 병목 실측
 
 - 사용자 지적: v1도 graph cache가 있는데 캐시 생성만으로 느림을 설명하지 말 것. 실제local5070Ti/9GB allocator/full model/batch32 두 입력의64→256MiB edge작업 메모리 A/B 완료:22.152→6.710초,21.905→6.411초. L0+역전파가 주비용이었다. L1/L2 주원인 단정은 철회. 실제support는저장된1,216prefix이며full11,279보다적으므로full-support비용확정금지. graph준비2시간/A100속도/전체epoch 개선으로 일반화금지.
 - `tools/v222_gpu_workspace.py`가같은모델과cache를유지한채실행메모리만선택하고`*.workspace.json`기록. 서버실행기`--edge-workspace-mib 256`지원하지만기존기본64유지. 현재서버작업은중단/재시작/수정하지않았다. 기존64checkpoint는256정확재개로허용하지않는다. 새정책은loss동일이지만gradient최대parameter별상대L2차이약0.48%이며비트동일아님. 관련14검사통과, 전체학습/평가는미실행. `docs/v222_cached_execution_20260925.md`와`validation/v222_r6/cached_step_workspace_20260925_DEBUG.json`참조.
