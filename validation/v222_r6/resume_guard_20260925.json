@@ -1,0 +1,19 @@
+{
+  "scope": "Read-only source-run admission guard; no remote process control or GPU training",
+  "unit_tests_passed": 26,
+  "server_process_unchanged": true,
+  "user_verified_source_pid": 3350532,
+  "source_run": "v222_mig10gb_r6_scanfix",
+  "oom_report": {
+    "source_process_GiB": 6.16,
+    "resume_process_GiB": 3.16,
+    "free_MiB": 149
+  },
+  "limitation": "Not a global GPU lock; unrelated GPU tenants and post-check races remain possible",
+  "files": {
+    "tools/v222_resume_guard.py": "d8b061fbcf3032bd95765c939a288b5e52a7bf084c656ef235ff2dcdb6ca4f35",
+    "tools/run_v222_server.py": "989011585da8e2c20eeeadb9ccd46215078dceca5c64ba059be3ec8dc65bb7cf",
+    "tests/test_v222_resume_guard.py": "3a4b9b99dcd930088676b7a291efd3efc9e2c6486f82389b4d08c033a1869228"
+  },
+  "test_log_sha256": "4efc32309d5013c0884b34d086d50a0fc12625b821a3b2536b0ccedceba1e343"
+}

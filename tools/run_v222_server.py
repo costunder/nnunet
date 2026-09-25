@@ -13,6 +13,8 @@ import time
 import psutil
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+from tools.v222_resume_guard import assert_source_runs_idle
 
 
 def launch_worker(command,output):
@@ -79,8 +81,12 @@ def execute(plan,output,env,runner=subprocess.run):
         write_new(output/f'{number:02d}_{name}.started.json',receipt)
         print(json.dumps(dict(event='stage_started',**receipt)),flush=True)
         try:
+            if name=='gnn_training':
+                def argument(flag):
+                    return command[command.index(flag)+1] if flag in command else None
+                assert_source_runs_idle(argument('--cache'),argument('--resume'))
             result=runner(command,cwd=ROOT,env=env,check=False)
-        except OSError as error:
+        except (OSError,RuntimeError,psutil.Error) as error:
             write_new(output/f'{number:02d}_{name}.failed.json',dict(**receipt,error=str(error)))
             raise
         if result.returncode:
@@ -111,6 +117,7 @@ def main():
     if a.resume:a.resume=a.resume.resolve()
     for file in (a.cache,a.resume):
         if file is not None and not file.is_file():raise FileNotFoundError(file)
+    assert_source_runs_idle(a.cache,a.resume)
     if a.profile_batch<1 or a.profile_allocator_gb<=0:raise ValueError('Positive DEBUG profile settings required')
     medical=a.medical_root.resolve();output=a.output.resolve()
     if a.cache is None:

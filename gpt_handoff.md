@@ -1,4 +1,10 @@
-## 2026-09-25 최신 — 중복 제거 구현·실제 CT 검증 완료, 서버 미적용
+## 2026-09-25 최신 — 서버 중복 재개 OOM 원인 확인
+
+- 사용자가76fa430의 별도 runtime checkout에서resume 실행. resources/model_check 통과 후 OOM. 메시지는 총9.5GiB 중149MiB free, 다른PID3350532가6.16GiB, 새process약3.16GiB 사용. `ps`로3350532/PPID3284259가 `/home/aicompetition06/Medical/HierCP-v222-r6/run_v222_v1_l0.py train --cache .../v222_mig10gb_r6_scanfix/paired_cache/index.json --output .../v222_mig10gb_r6_scanfix/training --release-unused`임을 확인했고경과16:15:52. 기존학습이계속돌고있었음.
+- 새resume실패를 기존학습실패/가중치소실로 취급하지 말 것. 기존 scanfix viewer에 재접속하고 현재step을 확인해야 함. 새실행의 `runtime_resume` output은 덮어쓰지 않음. 기존학습을 자동으로 죽이거나중복재시작하지 않음. 최적화로전환하려면 기존학습의저장후중단상태확인이선행되어야함.
+- `tools/v222_resume_guard.py` 및server사전검사 추가: sourceworker PID/create_time, 고아trainer exactoutput, 자기worker 제외, 타사용자명령미조회. guard두번(분리worker생성전/GNN직전) 적용. 연구/core및학습backend SHA불변. 관련26검사통과. 실행guard는 알려진source-run 중복을차단하며 모든GPU경쟁이나 실행직후의race를완전히차단하는전역GPUlock은아님. 서버프로세스미변경.
+
+## 2026-09-25 이전 — 중복 제거 구현·실제 CT 검증 완료, 서버 미적용
 
 - 사용자 요청은 v2.22 중복 연산 제거. `tools/v222_runtime_cache.py`, `v222_runtime_execution.py`, `run_v222_optimized.py`, `v222_prepare_optimized.py` 추가. 보존 모델·core/cache provenance·전체 규모는 변경하지 않음. server runner 기본 backend 연결 및 기존 `--cache --resume` 지원.
 - 실제 CT batch32×6/full5,550,806params/9GB allocator: 기존64MiB158.91s, 수정64MiB161.95s, 수정256MiB64.86s. 같은64MiB 전체속도 개선 없음; cache warm reload3.376→0.307s, checkpoint 제출0.328→0.122s. 256MiB 최대allocated6.403/reserved8.009GB. 두조건2step loss/model/optimizer bitwise 일치는64MiB끼리만 검증. workspace변경은 수치정책변경이며 기존재개에 강제하지 않음.

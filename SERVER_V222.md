@@ -6,6 +6,15 @@
 
 ## 현재 확인된 서버에서 짧게 실행
 
+**2026-09-25 사용자 출력으로 기존 학습 실행 중 확인:** PID3350532는 `v222_mig10gb_r6_scanfix/training`을 사용하는 원래 trainer다. 새 resume의 OOM 당시 기존6.16GiB + 새3.16GiB가 같은 MIG를 점유했다. 이 상태에서는 아래 재개 명령을 다시 실행하지 않고 기존 화면에 연결한다. 이미 만들어진 runtime checkout의 viewer를 사용할 수 있다.
+
+```bash
+python /home/aicompetition06/Medical/HierCP-v222-r6-runtime/tools/watch_v222_server.py \
+  --output /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix
+```
+
+수정된 runner는 원본 worker와 해당 output의 trainer가 살아 있으면 새 실행을 거부한다. 이 검사는 신호를 보내지 않는다. 최신 서버 상태는 viewer에서 확인하고, 아래 최적화 재개는 원본이 저장 후 중단된 경우에만 사용한다. 다른 GPU 작업의 점유까지 없음을 보장하는 전역 GPU lock은 아니다.
+
 사용자 출력 확인: `ece-agpu16`, `nnunet` 환경 활성화, GPU6의 지정 MIG1g.10gb/9.5GiB. 기존 할당과 환경을 유지한다. **실행 중인 checkout은 pull하지 않는다.** 코드만 별도 checkout으로 준비한다. 아래 worktree 경로가 이미 있으면 덮어쓰지 않고 실패한다.
 
 ```bash

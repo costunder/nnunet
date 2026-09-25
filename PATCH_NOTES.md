@@ -1,3 +1,9 @@
+## v2.22 r6 — 실행 중인 원본 학습과 중복 재개 차단 (2026-09-25)
+
+- 사용자 서버에서 새 resume가 OOM. 로그상 기존 PID3350532가6.16GiB, 새 프로세스가약3.16GiB를 사용. 사용자의 `ps` 출력으로3350532가 원래 `scanfix` trainer이며16시간 이상 계속 실행 중임을 확인했다. 모델 크기나 batch 부족으로 단정하지 않는다.
+- server runner가 분리 worker 생성 전과 GNN 실행 직전에 원본 run의 worker PID·생성시각 및 정확한 training output을 사용하는 trainer의 생존 여부를 확인한다. 부모 worker가 죽고 trainer만 남은 경우도 차단한다. 다른 사용자의 프로세스를 종료하거나 GPU 할당을 변경하지 않는다.
+- 관련26검사 통과. PID 재사용/죽은 worker/무관한 Python 구분 및 차단 시 학습 미실행·실패 기록 검증. 서버 프로세스 중단/패치 적용/새 학습은 수행하지 않았다. 현재는 기존 실행 viewer 재접속이 우선이다.
+
 ## v2.22 r6 — 준비·학습 중복 제거 backend (2026-09-25)
 
 - 모델/cache 소스와 전체 연구 설정을 보존하고 `tools/run_v222_optimized.py`를 서버 기본 경로에 연결. 실제 준비 결과를 버리지 않는 worker 측정, donor별 병렬 로딩, epoch별 graph view RAM cache, batch 내 donor CNN 입력 공유, 불필요한 GPU prefix clone 제거, bounded 비동기 원자 checkpoint 저장 적용.
