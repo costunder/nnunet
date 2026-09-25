@@ -1,3 +1,9 @@
+## v2.22 r6 — 캐시 이후 L0 실행 비용 실측 및 작업 메모리 선택 (2026-09-25)
+
+- 실제 batch32 두 개(각각23.86M/24.37M edges), 전체5.55M 모델,9GB allocator 조건에서 edge 작업 메모리64→256MiB 비교. step22.152→6.710초,21.905→6.411초. L0/역전파가 개선되며 peak allocated약6.3GB 유지. graph/model/data 축소 없음. A100/전체epoch 속도나 앞선CPU graph 준비시간 개선으로 일반화하지 않는다.
+- `tools/v222_gpu_workspace.py`와 서버 `--edge-workspace-mib` 추가. 기존캐시 그대로, 실행 정책 별도 기록, 다른 정책의 checkpoint 재개 거절. 서버 기본64MiB 유지; 진행 중 서버작업은 미변경. 실제loss 동일, gradient 최대 parameter별 상대L2차이약0.48%로 비트동일 주장은 하지 않는다.
+- 관련14검사 통과. 전체support 대신실제1,216 prefix를 사용한 DEBUG이며 전체학습/평가 미실행. [실측·한계](docs/v222_cached_execution_20260925.md), `validation/v222_r6/cached_step_workspace_20260925_DEBUG.json`.
+
 ## v2.22 r6 — tqdm 단계 완료 이벤트 오류 수정 (2026-09-25)
 
 - 서버에서 paired graph14,102개 생성 뒤 viewer가 `KeyError: completed`로 종료됐다. runner의 `event=stage_complete, stage=paired_cache`를 개별 graph 진행 이벤트로 잘못 분류한 오류를 재현했다. lifecycle 이벤트를 먼저 분리해 처리하고 기존 완료 수를 보존한다.

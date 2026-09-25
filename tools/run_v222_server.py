@@ -28,18 +28,21 @@ def launch_worker(command,output):
     return child
 
 
-def stages(medical,output,profile_batch,allocator_gb):
+def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64):
     """Delegate to existing verified entry points without changing model config."""
     run=lambda name,*args:[sys.executable,'-u',str(ROOT/name),*map(str,args)]
+    def gpu(name,*args):
+        if edge_workspace_mib==64:return run(name,*args)
+        return run('tools/v222_gpu_workspace.py','--workspace-mib',edge_workspace_mib,name,*args)
     return [
         ('resources',run('tools/v1_server.py','resources','--output',output/'resources.json')),
         ('model_check',run('run_v222_v1_l0.py','check')),
         ('observations',run('tools/v1_server.py','observations','--medical-root',medical,'--output',output/'observations')),
-        ('graph_DEBUG',run('run_v222_v1_l0.py','verify','--output',output/'graph_DEBUG')),
+        ('graph_DEBUG',gpu('run_v222_v1_l0.py','verify','--output',output/'graph_DEBUG')),
         ('paired_cache',run('run_v222_v1_l0.py','prepare','--index',output/'observations/index.json','--output',output/'paired_cache')),
-        ('profile_DEBUG',run('tools/profile_v1_execution.py',output/'paired_cache/index.json',output/'profile_DEBUG',
+        ('profile_DEBUG',gpu('tools/profile_v1_execution.py',output/'paired_cache/index.json',output/'profile_DEBUG',
                             'release_unused','--batch-size',profile_batch,'--allocator-gb',allocator_gb)),
-        ('gnn_training',run('run_v222_v1_l0.py','train','--cache',output/'paired_cache/index.json',
+        ('gnn_training',gpu('run_v222_v1_l0.py','train','--cache',output/'paired_cache/index.json',
                            '--output',output/'training','--release-unused')),
     ]
 
@@ -74,6 +77,8 @@ def main():
     p.add_argument('--profile-batch',type=int,default=32,help='DEBUG only; production batch remains auto')
     p.add_argument('--profile-allocator-gb',type=float,default=9.0,help='DEBUG PyTorch allocator cap only')
     p.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
+    p.add_argument('--edge-workspace-mib',type=int,choices=(64,256,512),default=64,
+                   help='Execution scratch budget only; 256 measured locally. Preserve old runs at 64.')
     a=p.parse_args()
     if a.profile_batch<1 or a.profile_allocator_gb<=0:raise ValueError('Positive DEBUG profile settings required')
     medical=a.medical_root.resolve();output=a.output.resolve()
@@ -87,18 +92,20 @@ def main():
         from tools.watch_v222_server import watch
         command=[sys.executable,'-u',str(Path(__file__).resolve()),'--medical-root',str(medical),
                  '--output',str(output),'--profile-batch',str(a.profile_batch),
-                 '--profile-allocator-gb',str(a.profile_allocator_gb),'--worker']
+                 '--profile-allocator-gb',str(a.profile_allocator_gb),
+                 '--edge-workspace-mib',str(a.edge_workspace_mib),'--worker']
         launch_worker(command,output)
         return watch(output)
     if (output/'requested.json').exists():
         raise FileExistsError('Existing run cannot be overwritten')
     env=dict(os.environ,HIERCP_TEST_OBSERVATION_INDEX=str(output/'observations/index.json'),
              HIERCP_TEST_FIXTURE=str(output/'graph_DEBUG/actual_graphs_DEBUG.pt'))
-    plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb)
+    plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb,a.edge_workspace_mib)
     write_new(output/'requested.json',dict(python=sys.executable,medical_root=str(medical),
         cuda_visible_devices=env.get('CUDA_VISIBLE_DEVICES'),conda_prefix=env.get('CONDA_PREFIX'),
         production_model_config_changed=False,production_batch='auto',gnn_epochs=40,
         profile_batch=a.profile_batch,profile_allocator_gb=a.profile_allocator_gb,
+        edge_workspace_mib=a.edge_workspace_mib,
         scope='paired GNN only; native online bank and nnU-Net not integrated',
         stages=[dict(name=n,command=c) for n,c in plan]))
     execute(plan,output,env)

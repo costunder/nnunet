@@ -1,4 +1,10 @@
-## 2026-09-25 최신 — 서버 진행 화면 오류 수정
+## 2026-09-25 최신 — 캐시 이후 실행 병목 실측
+
+- 사용자 지적: v1도 graph cache가 있는데 캐시 생성만으로 느림을 설명하지 말 것. 실제local5070Ti/9GB allocator/full model/batch32 두 입력의64→256MiB edge작업 메모리 A/B 완료:22.152→6.710초,21.905→6.411초. L0+역전파가 주비용이었다. L1/L2 주원인 단정은 철회. 실제support는저장된1,216prefix이며full11,279보다적으므로full-support비용확정금지. graph준비2시간/A100속도/전체epoch 개선으로 일반화금지.
+- `tools/v222_gpu_workspace.py`가같은모델과cache를유지한채실행메모리만선택하고`*.workspace.json`기록. 서버실행기`--edge-workspace-mib 256`지원하지만기존기본64유지. 현재서버작업은중단/재시작/수정하지않았다. 기존64checkpoint는256정확재개로허용하지않는다. 새정책은loss동일이지만gradient최대parameter별상대L2차이약0.48%이며비트동일아님. 관련14검사통과, 전체학습/평가는미실행. `docs/v222_cached_execution_20260925.md`와`validation/v222_r6/cached_step_workspace_20260925_DEBUG.json`참조.
+- 상세profiler 첫실행은GPU계산후통계집계메모리가커져직접생성PID24896만명령/생성시간검증및보고후종료했다. 이결과는비교에서제외하고profiler없는CUDAevent로재측정했다. v1원문fullcache235/pairedcache187,40epoch완료확인;entry단위가달라현재14,102와단순비율비교금지.
+
+## 2026-09-25 — 서버 진행 화면 오류 수정
 
 - 사용자 서버 출력: `work/v222_mig10gb_r6_scanfix`의 paired_cache가14,102/14,102에 도달한 뒤 viewer `Progress.event`에서 `KeyError: completed`. 이는 `stage_complete` envelope를 graph 진행 이벤트로 분류한 버그다. 로컬에서 실제 runner 이벤트 스트림으로 동일 오류 재현 후 lifecycle 분리를 수정했다. 관련11검사 통과. 테스트 범위는 UI/프로세스 제어이며 새 모델 학습 검증이 아니다.
 - worker는 viewer와 별도 세션이므로 viewer traceback만으로 학습 종료를 단정하지 않는다. 현재 서버 worker 생존/후속 profile/GNN 시작 여부는 아직 출력으로 확인되지 않았다. 기존 run을 삭제하거나 새 학습을 시작하지 말고, Git fetch 후 수정된 독립 viewer만 `/tmp`에 추출하여 `--output work/v222_mig10gb_r6_scanfix`로 연결한다. 실행 중 checkout은 pull하지 않는다. 단계7개의 완료 비율로 표시되던 전체 ETA/rate도 제거했다. 모델·cache provenance·학습 설정 변경 없음.

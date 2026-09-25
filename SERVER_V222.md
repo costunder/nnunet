@@ -27,6 +27,12 @@ tail -n 80 v222_mig10gb_r6.log
 
 실행기는 아래의 기존 검증된 단계별 명령을 순서대로 호출한다. DEBUG profile32/allocator9GB이며 production batch는auto, GNN40epochs이다. 각 단계의 started/complete/failed JSON을 run root에 기록한다. 실패하면 다음 단계는 시작하지 않는다. `pipeline_complete.json`은 GNN 완료만 뜻한다. Python/GPU 환경 설치·재할당·원본 전송은 수행하지 않는다. 실행기 자체의 순서/실패 차단 단위3검사가 통과했으며 서버 전체 실행을 완료했다고 주장하지 않는다.
 
+## GPU 엣지 연산의 작업 메모리 선택 (2026-09-25)
+
+새 실행은 `--edge-workspace-mib 256`을 선택할 수 있다. 모델 크기, 모든 graph node/edge, physical batch 계약은 그대로이며 한 번에 계산하는 edge 조각만 커진다. 로컬 실제 batch32 두 개/9GB allocator에서64MiB 대비 step3.30~3.42배 개선, peak allocated약6.3GB를 측정했다. 서버 A100 처리량과 전체epoch 시간으로 일반화하지 않는다. [측정과 검증 범위](docs/v222_cached_execution_20260925.md).
+
+기존 기본값은64MiB로 남겨 실행 중인 작업과 이전 checkpoint의 수치 정책을 보존한다. 다른 작업 메모리로 재개하면 gradient 누적 순서가 달라질 수 있으므로 새 실행기는 정책 불일치를 거절한다. wrapper는 보존 모델 파일을 수정하지 않으며 기존 완성 cache를 재생성할 필요가 없다. 현재 서버 작업은 이 조사에서 재시작하거나 변경하지 않았다. 실행 중인 작업과 동시에 새 학습을 시작하지 않는다.
+
 ## 터미널 진행 화면: tqdm 기본 표시 (2026-09-24)
 
 새 실행은 아래처럼 직접 실행한다. 실행기가 실제 작업을 별도 프로세스로 유지하고, 터미널에는 두 줄의 tqdm을 갱신한다. 상세 출력은 실행 폴더 `console.log`에 자동 저장된다. `nohup`, 출력 리디렉션, `&`, 반복적인 `tail` 명령이 필요하지 않다. Ctrl+C는 진행 화면만 닫으며 학습은 중단하지 않는다. 실제 학습 중단에는 아래 문서의 `STOP_AFTER_BATCH`를 사용한다.

@@ -1,0 +1,151 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "full_training": false,
+  "model_parameters": 5550806,
+  "physical_batch": 32,
+  "effective_batch": 32,
+  "allocator_cap_bytes": 9000000000,
+  "baseline_workspace_mib": 64,
+  "tuned_workspace_mib": 256,
+  "support_prefix": 1216,
+  "full_support": 11279,
+  "comparison": [
+    {
+      "group": "liver_39",
+      "nodes": 346135,
+      "edges": 23857190,
+      "baseline": {
+        "step": 1,
+        "loss": 1.2198596000671387,
+        "wall_seconds": 22.152028099983,
+        "H2D": 0.02098521614074707,
+        "L0": 6.10668017578125,
+        "L1_L2": 0.023171615600585938,
+        "backward": 15.8569140625,
+        "optimizer": 0.07684909057617187,
+        "allocated": 581130240,
+        "reserved": 6587154432,
+        "peak_allocated": 6296335872,
+        "peak_reserved": 6587154432,
+        "inactive_split": 10266624,
+        "allocation_retries": 0,
+        "rss": 4051718144
+      },
+      "tuned": {
+        "step": 1,
+        "loss": 1.2198596000671387,
+        "wall_seconds": 6.710312800016254,
+        "H2D": 0.021407264709472656,
+        "L0": 1.9509638671875,
+        "L1_L2": 0.0445250244140625,
+        "backward": 4.53261376953125,
+        "optimizer": 0.08228518676757812,
+        "allocated": 581130240,
+        "reserved": 6589251584,
+        "peak_allocated": 6296335872,
+        "peak_reserved": 6589251584,
+        "inactive_split": 10266624,
+        "allocation_retries": 0,
+        "rss": 3917369344
+      },
+      "speedup": 3.301191577824709,
+      "loading_seconds": [
+        3.814070900029037,
+        3.871070699999109
+      ],
+      "gradient_parameters": 544,
+      "max_gradient_absolute_difference": 0.0009765625,
+      "max_parameter_gradient_relative_l2": 0.0047610954293815545,
+      "checkpoint_seconds": [
+        0.4392991000204347,
+        0.2693819999694824
+      ]
+    },
+    {
+      "group": "liver_117",
+      "nodes": 343880,
+      "edges": 24373716,
+      "baseline": {
+        "step": 1,
+        "loss": 0.820559561252594,
+        "wall_seconds": 21.90513379999902,
+        "H2D": 0.020397375106811524,
+        "L0": 5.93659375,
+        "L1_L2": 0.023153343200683595,
+        "backward": 15.778337890625,
+        "optimizer": 0.07647090911865234,
+        "allocated": 593101824,
+        "reserved": 6538919936,
+        "peak_allocated": 6322568192,
+        "peak_reserved": 6538919936,
+        "inactive_split": 6683648,
+        "allocation_retries": 0,
+        "rss": 3927642112
+      },
+      "tuned": {
+        "step": 1,
+        "loss": 0.820559561252594,
+        "wall_seconds": 6.4109461000189185,
+        "H2D": 0.02259177589416504,
+        "L0": 1.72673876953125,
+        "L1_L2": 0.023817663192749024,
+        "backward": 4.49658935546875,
+        "optimizer": 0.07788764953613281,
+        "allocated": 592645632,
+        "reserved": 6557794304,
+        "peak_allocated": 6319638528,
+        "peak_reserved": 6557794304,
+        "inactive_split": 11334144,
+        "allocation_retries": 0,
+        "rss": 3792195584
+      },
+      "speedup": 3.4168332502334375,
+      "loading_seconds": [
+        4.014791900001001,
+        3.90669049997814
+      ],
+      "gradient_parameters": 544,
+      "max_gradient_absolute_difference": 0.00048828125,
+      "max_parameter_gradient_relative_l2": 0.003921309135711795,
+      "checkpoint_seconds": [
+        0.30462840001564473,
+        0.2776136000175029
+      ]
+    }
+  ],
+  "model_and_cache_provenance_unchanged": true,
+  "server_process_modified": false,
+  "limitations": [
+    "RTX5070Ti measurements are not A100 MIG timings or full-epoch speedups",
+    "Real initial support prefix; full-cohort support and clinical efficacy not measured",
+    "Floating point gradients differ by chunk accumulation order; not bitwise-identical execution",
+    "Profiler-enabled first trial stopped during expensive trace aggregation and excluded from speedup numbers"
+  ],
+  "wrapper_actual_CT_validation": {
+    "actual_CT": true,
+    "total_parameters": 5550806,
+    "all_parameter_gradients_finite": true,
+    "updated_groups": {
+      "local.dense_encoder": true,
+      "local.project": true,
+      "local.blocks.0": true,
+      "local.blocks.1": true,
+      "local.blocks.2": true,
+      "local.source_relation": true,
+      "local.target_relation": true,
+      "local.final_fuse": true,
+      "l1.0": true,
+      "l1.1": true,
+      "l2.0": true,
+      "l2.1": true,
+      "l2_updates.0": true,
+      "l2_updates.1": true
+    },
+    "recipient_CT_score_delta": 0.017764270305633545,
+    "donor_CT_score_delta": 0.012603998184204102,
+    "whole_training": false,
+    "whole_evaluation": false
+  },
+  "unit_tests_passed": 14
+}
