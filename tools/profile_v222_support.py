@@ -22,7 +22,8 @@ def main():
     p.add_argument('--debug-batches',type=int)
     p.add_argument('--release-unused',action=argparse.BooleanOptionalAction,default=True)
     p.add_argument('--loader',choices=('thread','process','serial-prefetch'),default='thread')
-    p.add_argument('--producer-processes',type=int,choices=(1,2),default=1)
+    p.add_argument('--producer-processes',type=int,choices=(1,2,4),default=1)
+    p.add_argument('--fixed-support-snapshot',action='store_true')
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
     import torch
     from hiercp_v222.v1_cache import configuration
@@ -42,6 +43,8 @@ def main():
         loader_base=SerialLoader
     else:loader_base=CachedPairLoader
     from tools import v222_runtime_execution as backend
+    if a.fixed_support_snapshot:
+        from tools import v222_support_snapshot as backend
     import hiercp.model as implementation
     if a.backend_file:
         spec=importlib.util.spec_from_file_location('profile_preserved_backend',a.backend_file)
@@ -63,6 +66,7 @@ def main():
         requested_observations=len(data),total_observations=original_count,
         cache_sha256=sha(data.path),checkpoint_sha256=sha(checkpoint),source_identity=provenance(),
         physical_batch=32,workers=8,loader=a.loader,release_unused=a.release_unused,
+        fixed_support_snapshot=a.fixed_support_snapshot,
         GPU=torch.cuda.get_device_name(),input_shape=[32,1,48,48,48],
         full_model=base['model'],model_parameters=sum(p.numel() for p in net.parameters()))
     (a.output/'started.json').write_text(json.dumps(evidence,indent=2))
@@ -116,6 +120,8 @@ def main():
             paused=not completed,observations=len(values),total_observations=original_count,
             full_training=False,model_parameters=sum(p.numel() for p in net.parameters()),physical_batch=32,
             loader=a.loader,producer_processes=a.producer_processes if a.loader=='process' else 0,
+            fixed_support_snapshot=a.fixed_support_snapshot,
+            support_snapshot_count=getattr(saver,'support_snapshots',0),
             precision='bfloat16',workspace_mib=256,allocator_cap_bytes=9000000000,release_unused=a.release_unused,workers=8,
             gpu=torch.cuda.get_device_name(),seconds=elapsed,
             seconds_by_component={k:sum(r.get(k,0) for r in rows) for k in ('loader_wait_seconds','H2D_seconds','CNN_seconds','GNN_seconds','other_L0_seconds','checkpoint_seconds','allocator_release_seconds')},

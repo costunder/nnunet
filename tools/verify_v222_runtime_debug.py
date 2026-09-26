@@ -1,8 +1,9 @@
 """Actual full-size cached queries: runtime equivalence, reuse and throughput.
 
 Explicit DEBUG: six batches from three heavy recipient groups, actual saved
-1,216-observation support prefix, unchanged full model. Not full-support or
-A100-MIG speed validation. Modes run in separate fresh processes.
+1,216-observation support prefix by default, or a verified full-support profile
+when explicitly requested, unchanged full model. Not A100-MIG speed validation.
+Modes run in separate fresh processes.
 """
 import argparse
 import gc
@@ -22,6 +23,8 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--batch', type=int, choices=(16, 32), default=32)
     parser.add_argument('--reference', type=Path)
+    parser.add_argument('--full-support-profile', type=Path,
+        help='Completed real support profile directory; verify its source/checkpoint manifest before using all embeddings')
     args = parser.parse_args()
     root = args.output
     root.mkdir(parents=True, exist_ok=False)
@@ -35,6 +38,7 @@ def main():
     from hiercp_v222.contracts import sha
     from tools.v222_runtime_cache import CachedPairDataset, CachedPairLoader
     from tools.v222_runtime_execution import AsyncSaver
+    from tools.v222_support_snapshot import AsyncSaver as SupportSnapshotSaver
     from tools.v222_process_loader import ProcessPairLoader,close_producers
     from tools.verify_v1_resume import equal
     cfg, base = configuration()
@@ -55,12 +59,29 @@ def main():
         rows = dataset.rows[:prefix]
         meta = dataset.meta
     memory = memory_metadata(Prefix, saved['state']['memory_work'].cuda())
+    if args.full_support_profile:
+        folder=args.full_support_profile
+        manifest=json.loads((folder/'started.json').read_text())
+        result=json.loads((folder/'result.json').read_text())
+        weights_path=ROOT/'work/v222_runtime_20260925_DEBUG/optimized256/checkpoint_latest.pt'
+        if (not result['full_support'] or result['observations']!=len(dataset)
+                or manifest['cache_sha256']!=sha(cache)
+                or manifest['checkpoint_sha256']!=sha(weights_path)
+                or manifest['source_identity']!=provenance()):
+            raise ValueError('Full support profile provenance or coverage mismatch')
+        saved=torch.load(weights_path,map_location='cpu',weights_only=False)
+        embeddings=torch.load(folder/'embeddings_DEBUG.pt',map_location='cpu',weights_only=False)
+        if embeddings.shape!=(len(dataset),128):raise ValueError('Full support shape mismatch')
+        prefix=len(dataset)
+        memory=memory_metadata(dataset,embeddings.cuda())
+        del embeddings
     net = model(cfg, base).cuda()
     net.load_state_dict(saved['model'])
     net.local.dense_batch_size = args.batch
-    del saved
     optimizer = torch.optim.AdamW(net.parameters(), lr=base['training']['lr'],
         weight_decay=base['training']['weight_decay'], fused=True)
+    if args.full_support_profile:optimizer.load_state_dict(saved['optimizer'])
+    del saved
     by_group = {}
     for i, row in enumerate(dataset.rows):
         by_group.setdefault(row['patient_group'], []).append(i)
@@ -74,11 +95,14 @@ def main():
     classes = torch.tensor([r['target'] for r in dataset.rows], device='cuda')
     counts = torch.bincount(classes, minlength=2).float()
     weights = counts.sum()/(2*counts)
-    saver = (AsyncSaver if optimized else Saver)(root, net, optimizer, dict(debug=True))
+    saver_class=SupportSnapshotSaver if args.mode=='process' else (AsyncSaver if optimized else Saver)
+    saver = saver_class(root, net, optimizer, dict(debug=True))
     loader = loader_class(dataset, 8)
     details = dict(debug=True, mode=args.mode, workspace_mib=args.workspace_mib,
         model_parameters=sum(p.numel() for p in net.parameters()), batch=args.batch,
         allocator_cap_bytes=9000000000, support_prefix=prefix, full_support=len(dataset),
+        all_support_used=prefix==len(dataset),
+        release_unused=bool(args.full_support_profile) or not optimized,
         gpu=torch.cuda.get_device_name(), cpu_logical=psutil.cpu_count(),
         available_ram=psutil.virtual_memory().available, precision='bfloat16',
         workers=8, gradient_accumulation=1, full_training=False, real_CT=True,
@@ -88,6 +112,7 @@ def main():
     print(json.dumps({k:v for k,v in details.items() if k not in ('queries','graph_config','model')}), flush=True)
     rows = []
     reference_step = None
+    last_group=None
     net.train()
     try:
         iterator = iter(loader.batches([ids for _,ids in chosen], epoch=0))
@@ -95,15 +120,17 @@ def main():
             start = time.perf_counter()
             cpu = next(iterator)
             loaded = time.perf_counter()
-            support = support_for_recipient(memory, group)
-            with torch.autocast('cuda', dtype=torch.bfloat16):
-                plan = net.fit_support_clusters(*support)
+            if not args.full_support_profile or group!=last_group:
+                support = support_for_recipient(memory, group)
+                with torch.autocast('cuda', dtype=torch.bfloat16):
+                    plan = net.fit_support_clusters(*support)
+                last_group=group
             values, timing, usage, gradients = optimizer_step(net, optimizer, cpu, support, plan,
                 classes[indices], weights, 5, check_gradients=number==0)
             state = dict(phase='optimization', epoch=0, step=number+1, next_batch=number+1,
                          memory=memory, plan=plan)
             receipt = saver.save(state)
-            if not optimized:
+            if not optimized or args.full_support_profile:
                 torch.cuda.empty_cache()
             row = dict(step=number+1, loader_wait_seconds=loaded-start,
                 step_wall_seconds=time.perf_counter()-start, checkpoint_submit_seconds=receipt['seconds'],
@@ -126,7 +153,8 @@ def main():
                     if not equal(reference_step, old):
                         raise AssertionError('Runtime changed step-2 model/optimizer/loss for same workspace and CT inputs')
                     del old
-            del cpu, plan, support, state
+            del cpu, state
+            if not args.full_support_profile:del plan,support
         if isinstance(saver, AsyncSaver):
             saver.flush()
         # Reload the same epoch-0 inputs, then prove a cache hit avoids graph
@@ -151,7 +179,7 @@ def main():
             warm_cache_before=before_cache, warm_cache_after=after_cache,
             peak_allocated=max(r['peak_allocated'] for r in rows),
             peak_reserved=max(r['peak_reserved'] for r in rows),
-            scope='Six real full-size batches and native loss updates; partial real support; not a full epoch or final accuracy')
+            scope='Six real full-size batches and native loss updates; '+('full real support' if args.full_support_profile else 'partial real support')+'; not a full epoch or final accuracy')
         (root/'result.json').write_text(json.dumps(final, indent=2))
         print(json.dumps(dict(stage='runtime_debug_complete', mode=args.mode,
             peak_reserved=final['peak_reserved'], warm_reload_seconds=warm_reload,

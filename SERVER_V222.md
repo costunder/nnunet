@@ -6,9 +6,9 @@
 
 ## 현재 확인된 서버에서 짧게 실행
 
-### 2026-09-26 CPU 준비 분리 경로
+### 2026-09-26 CPU 준비·pinning·support 복사 개선 경로
 
-`--runtime process`는 동일 모델과 입력을 유지하면서 CPU graph 준비를 별도 producer 2개로 분리한다. decode threads는 현재 저장된 workers8을 4개씩 나눈다. 캐시는 단계 사이 유지한다. 로컬 동일 2,368개 support 비교는 412.27→185.30초였다. A100 MIG 전체 epoch 실측은 아니다. [측정 및 검증 범위](docs/v222_support_process_20260926.md).
+`--runtime process`는 동일 모델과 입력을 유지하면서 CPU graph 준비를 별도 producer4개로 분리한다. 현재 저장된 workers8을 2개씩 나누고 별도 pinning thread로 최대4batch를 선행 준비한다. 캐시는 단계 사이 유지한다. Support pass 중 불변인 model/Adam은 한 번 CPU에 복사하고, checkpoint 자체는 매 batch 완전한 파일로 저장한다. [측정 및 검증 범위](docs/v222_support_snapshot_20260926.md). A100 MIG 전체 epoch 실측은 아니다.
 
 현재 대상은 **`v222_mig10gb_r6_fast_resume_20260926`**이다. 먼저 최신 viewer에서 Ctrl+C를 누르고 **PAUSED** 표시까지 기다린다. 구형 viewer가 `close viewer only`라고 표시한다면 아래 파일을 현재 작업에만 생성하고, 최신 viewer를 연결해 PAUSED를 확인한다. 서버나 SSH를 종료하는 명령은 사용하지 않는다.
 
@@ -32,17 +32,17 @@ PAUSED 이후 **코드만** 새 worktree로 받고 저장된 위치부터 재개
 conda activate nnunet
 cd /home/aicompetition06/Medical/HierCP-v222-r6-runtime &&
 git fetch origin codex/v222-server-r6 &&
-git worktree add --detach /home/aicompetition06/Medical/HierCP-v222-r6-process origin/codex/v222-server-r6 &&
-cd /home/aicompetition06/Medical/HierCP-v222-r6-process &&
+git worktree add --detach /home/aicompetition06/Medical/HierCP-v222-r6-process2 origin/codex/v222-server-r6 &&
+cd /home/aicompetition06/Medical/HierCP-v222-r6-process2 &&
 CUDA_VISIBLE_DEVICES=MIG-774a3cc0-0169-5e18-b5d9-fe1b7a1d6ce7 python tools/run_v222_server.py \
   --runtime process \
   --medical-root /home/aicompetition06/Medical \
   --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
   --resume /home/aicompetition06/Medical/HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926/training/checkpoint_latest.pt \
-  --output work/v222_process_resume_20260926
+  --output work/v222_process2_resume_20260926
 ```
 
-새 worktree나 output이 이미 존재하면 덮어쓰지 않고 실패한다. 원본 학습이 아직 살아 있거나 알려진 runtime SHA와 다르면 실행을 거부한다. `256MiB`, batch, allocator 정책, optimizer/RNG, epoch/step, 부분 support 진행 위치는 checkpoint에서 그대로 이어진다. 이 명령에 `--migrate-workspace-mib`를 다시 추가할 필요는 없다.
+새 worktree나 output이 이미 존재하면 덮어쓰지 않고 실패한다. 원본 학습이 아직 살아 있거나 알려진 runtime SHA와 다르면 실행을 거부한다. `256MiB`, batch, allocator 정책, optimizer/RNG, epoch/step, 부분 support 진행 위치는 checkpoint에서 그대로 이어진다. 이 명령에 `--migrate-workspace-mib`를 다시 추가할 필요는 없다. 위 명령은 마지막으로 확인된 `fast_resume`가 최신 실행인 경우다. 이미 다른 output에서 이어 학습했다면 그 최신 checkpoint를 사용해야 하며 `fast_resume`로 되돌리지 않는다.
 
 ### 이전 실행 기록과 명령
 

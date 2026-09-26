@@ -1,3 +1,11 @@
+## v2.22 r6 — support 반복 복사와 pinning 대기 개선 (2026-09-26)
+
+- Support pass 안에서 불변인 model/Adam CPU snapshot을 한 번만 생성한다. 매 batch 완전한 checkpoint의 원자 저장·부분 support 진행·RNG·중단 복구는 유지한다. Optimization 단계에서는 가중치가 바뀌므로 매번 새 snapshot을 저장한다.
+- CPU producer4개×decode2 threads, 별도 parent pinning thread와 순서 보존 prefetch4를 적용한다. 모델5,550,806parameters, 전체11,279 support, graph 규모, batch32, workspace256MiB, allocator 정책은 유지한다.
+- 로컬 전체 support: 925.65→722.25초(약22% 단축). Loader 대기229.59→11.47초, checkpoint 복사·제출57.00→4.99초. 모든11,279 embedding과 model/Adam bitwise 일치. GNN CUDA-event 구간은535.87→595.68초로 증가했으며 전체 시간이 단축된 결과다.
+- 배포된 이전 process runtime 해시를 명시적으로 허용해 기존 진행 위치를 보존한다. 서버는 아직 변경하지 않았다. [검증과 제한](docs/v222_support_snapshot_20260926.md), [저장 중단 후 이어 실행 명령](SERVER_V222.md).
+- 회귀36검사, 실제 전체 support 기반6대형batch의 전체model/Adam/loss 동일성, 모든유한gradient, 실제 CT optimizer·부분 support 중단 재개 검증 통과. 초기 준비 제외 학습batch 평균12.09→8.83초. 전체40epoch와 A100 MIG 실측은 미완료다.
+
 ## v2.22 r6 — support 준비 프로세스 분리 (2026-09-26)
 
 - 전체 속도 최적화를 검증한 것처럼 보고한 범위를 정정. 기존 검증은 학습6batch 중심이었으며 전체 support/A100 MIG epoch 속도를 확인하지 않았다.

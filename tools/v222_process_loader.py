@@ -1,12 +1,13 @@
 """Bounded CPU producer processes; model execution remains in the main process.
 
-Two producers split the requested decode workers and prefetch two complete
+Four producers split the requested decode workers and prefetch four complete
 physical batches in order. Their combined immutable-cache budget is 20% of
 available RAM at creation. Producers persist across support/train/validation
 phases so closing a loader does not discard the canonical graph cache.
+One parent-process thread pins completed CPU batches ahead of GPU consumption.
 """
 from collections import deque
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import contextmanager
 import multiprocessing
 from unittest.mock import patch
@@ -50,7 +51,7 @@ def produce(partition, row_ids, epoch, workers):
 
 
 class ProcessPairLoader:
-    producer_count = 2
+    producer_count = 4
 
     def __init__(self, dataset, workers):
         if workers < 0:
@@ -71,6 +72,7 @@ class ProcessPairLoader:
         self.pool = _pools[key]
         self.pending = deque()
         self.closed = False
+        self.pin_pool = ThreadPoolExecutor(max_workers=1,thread_name_prefix='graph-pin-prefetch')
 
     def submit(self, ids, epoch, workers):
         if self.closed:
@@ -100,19 +102,22 @@ class ProcessPairLoader:
         for _ in range(self.depth):
             ids = next(iterator, None)
             if ids is not None:
-                self.pending.append(self.submit(ids, epoch, width))
+                self.pending.append(self.pin_pool.submit(self.receive,self.submit(ids, epoch, width)))
         while self.pending:
             job = self.pending.popleft()
-            value = self.receive(job)
+            value = job.result()
             ids = next(iterator, None)
             if ids is not None:
-                self.pending.append(self.submit(ids, epoch, width))
+                self.pending.append(self.pin_pool.submit(self.receive,self.submit(ids, epoch, width)))
             yield value
 
     def close(self):
         self.closed = True
-        while self.pending:
-            self.pending.popleft()[0].result()
+        try:
+            while self.pending:
+                self.pending.popleft().result()
+        finally:
+            self.pin_pool.shutdown(wait=True)
 
 
 def close_producers():

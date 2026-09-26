@@ -22,6 +22,16 @@ class ProcessRuntimeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(runtime.validate_resume(self.saved(runtime.runtime_identity()),Path(root)/'checkpoint_latest.pt'),(256,True))
 
+    def test_published_process_runtime_migration_preserves_state(self):
+        saved=self.saved(runtime.PUBLISHED_PROCESS_RUNTIME);before=copy.deepcopy(saved)
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(runtime.validate_resume(saved,Path(root)/'checkpoint_latest.pt'),(256,True))
+            changed=copy.deepcopy(saved)
+            changed['execution_policy']['runtime_sha256']['tools/v222_process_loader.py']='unverified'
+            with self.assertRaisesRegex(ValueError,'runtime changed'):
+                runtime.validate_resume(changed,Path(root)/'checkpoint_latest.pt')
+        self.assertEqual(saved,before)
+
     def test_unknown_runtime_and_allocator_change_are_rejected(self):
         with tempfile.TemporaryDirectory() as root:
             checkpoint=Path(root)/'checkpoint_latest.pt'

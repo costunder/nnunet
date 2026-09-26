@@ -1,4 +1,13 @@
-## 2026-09-26 최신 — support 병목 실측과 CPU producer 분리
+## 2026-09-26 최신 — support 반복 snapshot과 pinning 대기 개선
+
+- 사용자 “제대로 개선하라고”에 따라 실제 남은 병목을 수정했다. `tools/v222_support_snapshot.py`는 support pass 동안 model/Adam CPU copy를1회로 줄이고, 매 batch 완전한 checkpoint 저장과 부분 support/RNG 복구는 유지한다. Optimization 단계 snapshot은 원래대로 매번 새로 만든다.
+- `tools/v222_process_loader.py`: producer4개×decode2 threads, parent의 별도 pinning thread, 순서 유지 prefetch4. 기존 캐시 예산·단계 사이 유지 정책과 모델/graph/data/batch/수치 workspace를 보존했다. 원본 연구·cache source 파일은 수정하지 않았다.
+- 전체11,279 support/353batch: 직전925.646→722.247초, 약22% 단축. Loader 대기229.586→11.474초, checkpoint 복사·제출57.003→4.995초. 전체embedding/model/Adam bitwise 일치. Peak allocated3.505GB/reserved5.090GB 동일. GNN-event 구간535.869→595.677초 증가는 숨기지 않으며 host launch 간격이 포함된 값이다. 모든 병목 제거나 서버 속도를 검증했다고 말하지 않는다.
+- `--runtime process`가 새 경로를 사용한다. 이전3파일 optimized runtime 및 배포683a9f7의 정확한5파일 process runtime에서만 전환을 허용한다. Unknown hash는 거부하고 saved tensor state는 수정하지 않는다. 기존 checkpoint/cache를 계속 사용한다.
+- 관련 회귀36개 통과. 전체 support 기반6대형batch의6회 갱신 후 전체model/Adam/각loss bitwise 일치, 모든유한gradient 확인. Step2~6 평균12.09→8.83초, peak reserved6.671GB. 실제 CT optimizer 및 부분 support 중단 재개도 bitwise 일치. [검증 기록](docs/v222_support_snapshot_20260926.md), `validation/v222_r6/support_snapshot_20260926_DEBUG.json` 참조. 이전 partial-support1216 검사와 구분한다. Python/NumPy 전역 RNG의 두 독립 profile 초기 상태는 달랐으므로 cross-run RNG 동등성은 Torch/CUDA만 주장한다. 각 저장 시점의 Python/NumPy RNG 보존은 별도 단위 검사했다.
+- 서버 실행은 아직 변경하지 않았다. 최신 확인된 run은 `HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926`. `SERVER_V222.md` 상단에서 PAUSED 후 새 `HierCP-v222-r6-process2` code worktree로 이어간다. 새 진행 기록이 있다면 최신 checkpoint를 사용해야 하며 예전 fast_resume로 되돌리지 않는다. GPU6의 MIG 할당을 유지한다. 전체40epoch/전체평가/nnU-Net 연동 완료를 주장하지 않는다.
+
+## 2026-09-26 이전 — support 병목 실측과 CPU producer 분리
 
 - 사용자는 “속도 최적화가 제대로 됐냐”는 질문에 검증 범위가 뒤집힌 점에 항의했다. 이전 실제 6 training batch 검사만으로 전체 최적화 완료를 보고한 것은 잘못이다. A100 MIG 전체 epoch 시간은 미측정이다.
 - 로컬 전체 모델/batch32/8 decode workers/256MiB/bf16/매 batch 저장으로 support 경로를 계측했다. 기존 첫 2,368개 412.270초, CPU producer 분리 경로 같은 순서 185.302초(2.22배). GNN CUDA-event 구간에는 host launch 지연도 포함된다. 같은 Python 프로세스의 graph 준비와 CUDA 호출 간섭이 주요 개선 대상이었다. GIL만의 기여율을 별도로 측정했다고 주장하지 않는다.
