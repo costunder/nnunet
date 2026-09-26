@@ -1,0 +1,14 @@
+{
+  "scope": "Progress/control protocol, not medical training",
+  "passed_tests": 19,
+  "real_cooperative_child": true,
+  "default_ctrl_c": "request selected run checkpointed pause and wait for PAUSED",
+  "epoch_display": true,
+  "server_applied": false,
+  "training_code_unchanged": true,
+  "files": {
+    "tools/watch_v222_server.py": "d48982374709989df4ec910821fd5818281dab202f568f55a772dc6f482af237",
+    "tests/test_v222_progress.py": "11e711157166927175ca38fdc6f9682d868c177e72d0ee88833326cd6235589b"
+  },
+  "test_log_sha256": "abc657d0574edfcc1eb2ed1f1ec15c811b004365e5a1f972bd5351424d1f3247"
+}

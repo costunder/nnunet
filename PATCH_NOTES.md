@@ -1,3 +1,9 @@
+## v2.22 r6 — 진행 화면 epoch 표시 및 Ctrl+C 저장 중단 (2026-09-26)
+
+- support 진행 화면에서 현재epoch를 볼 수 없어 `cat`을 별도 요구하던 문제 수정. viewer가 저장된 epoch/step 및 전체epochs를 읽어 initial support/epoch refresh/validation/final support를 구분한다. final support를epoch41로 표시하지 않는다.
+- Ctrl+C 기본값을 화면닫기에서 선택한 run의 저장후중단 요청으로 변경. STOP_AFTER_BATCH를 생성하고 PAUSED 확인까지 기다린다. 강제종료/신호/학습재시작 없음. read-only가 필요한 경우 `--detach-on-interrupt` 명시. 초기화 전 준비는 지원되는 batch중단 대상이 없음을 오류로 표시한다.
+- 실제 협력중단 자식 포함 관련19검사통과. 기존학습소스/가중치불변. 실행중인checkout을pull할필요없이최신viewer파일만/tmp로받아연결가능.
+
 ## v2.22 r6 — 기존 checkpoint를 빠른 workspace로 명시적 전환 (2026-09-26)
 
 - 앞선 재개 명령은64MiB 실행 정책을 상속해서 주된 GPU 속도 개선을 적용하지 못했다. `--resume ... --migrate-workspace-mib 256` 추가. 모든 저장 상태와 모델·데이터·batch를 유지하고256MiB GPU chunk로 전환하며 이전/새workspace, 원checkpoint SHA, saved step/epoch/phase를 기록한다.

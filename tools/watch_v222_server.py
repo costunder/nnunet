@@ -1,12 +1,14 @@
-"""Read-only, attachable tqdm console for existing v2.22 server runs.
+"""Attachable tqdm console with explicit checkpointed pause on Ctrl+C.
 
 Self-contained: may be fetched to /tmp while an older checkout keeps running.
-Ctrl+C closes only this viewer. It never signals or changes a training process.
+Ctrl+C requests the selected run's cooperative pause, then waits for PAUSED.
+No process signals are sent. --detach-on-interrupt keeps read-only behavior.
 """
 import argparse
 import ast
 from collections import deque
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -140,7 +142,42 @@ def terminal_status(root):
     return None
 
 
-def watch(root, log=None, interval=.5, stream=None):
+def request_pause(root):
+    """Request only this run's supported pause protocol; never kill a process."""
+    root=Path(root).resolve()
+    training=root/'training'
+    if training.is_symlink() or not training.resolve().is_relative_to(root):
+        raise ValueError('Training directory must remain inside the selected run')
+    if not (training/'initialization.json').is_file():
+        raise RuntimeError('Training has not initialized; no supported batch-pause target yet. Nothing was stopped.')
+    marker=training/'STOP_AFTER_BATCH'
+    if marker.is_symlink():
+        raise ValueError('Pause marker cannot be a symlink')
+    try:
+        with marker.open('x',encoding='utf-8') as stream:
+            stream.write('Requested from progress viewer Ctrl+C\n')
+            stream.flush();os.fsync(stream.fileno())
+    except FileExistsError:
+        if not marker.is_file():raise ValueError('Invalid existing pause marker')
+    return marker
+
+
+def training_display(state,saved,contract,pause_pending=False):
+    label,detail=state.phase,state.detail
+    if saved:
+        epoch=saved['epoch'];epochs=(contract or {}).get('epochs','?')
+        phase=saved['phase']
+        if phase=='initial_memory':label=f'before epoch {epoch}/{epochs} | initial support'
+        elif phase=='refresh_memory':label=f'epoch {epoch}/{epochs} | support refresh'
+        elif phase=='final_memory':label='final support | selected model'
+        elif phase=='validation':label=f'epoch {epoch}/{epochs} | validation'
+        else:label=f'epoch {epoch}/{epochs} | {phase}'
+        detail=f"saved step={saved['step']} | {detail}"
+    if pause_pending:detail='PAUSE REQUESTED: waiting for current work + checkpoint | '+detail
+    return label,detail
+
+
+def watch(root, log=None, interval=.5, stream=None, detach_on_interrupt=False):
     root = Path(root).resolve()
     if not root.is_dir():
         raise FileNotFoundError(root)
@@ -155,7 +192,9 @@ def watch(root, log=None, interval=.5, stream=None):
     reader, state = LogReader(log), Progress()
     for row in reader.read():
         state.event(row)
-    print(f'Live progress | {root.name}\nLog: {log}\nCtrl+C: close viewer only; training continues.', file=stream)
+    behavior=('detach viewer; training continues' if detach_on_interrupt else
+              'save and pause training; wait for PAUSED (validation finishes first)')
+    print(f'Live progress | {root.name}\nLog: {log}\nCtrl+C: {behavior}.', file=stream)
     # Stages have unequal durations. A stage-count ETA/rate is not meaningful,
     # especially when reattaching and replaying completed receipts instantly.
     requested = read_json(root/'requested.json')
@@ -165,47 +204,57 @@ def watch(root, log=None, interval=.5, stream=None):
                    dynamic_ncols=True, file=stream, unit='item')
     key = None
     checkpoint_stamp = None
+    contract=None
+    pause_pending=(root/'training/STOP_AFTER_BATCH').is_file()
     try:
         while True:
-            if requested is None:
-                requested = read_json(root/'requested.json')
-                if requested is not None:
-                    overall.total = len(requested['stages'])
-            for row in reader.read():
-                state.event(row)
-            # Phase receipts cover validation/final-memory transitions without
-            # changing the frozen model sources or inventing validation counts.
-            saved = read_json(root/'training/checkpoint_status.json')
-            if saved and saved['saved_at'] != checkpoint_stamp:
-                checkpoint_stamp = saved['saved_at']
-                phase = saved['phase']
-                if phase in ('validation', 'initial_memory', 'refresh_memory', 'final_memory'):
-                    if phase == 'validation':
-                        state.phase_to(f"epoch {saved['epoch']} validation")
-                    elif state.phase != 'support_memory':
-                        state.phase_to(phase)
-            newkey = (state.stage, state.phase, state.total, saved['epoch'] if saved else state.epoch)
-            if newkey != key or state.done < current.n:
-                current.total = state.total
-                current.reset(total=state.total)
-                # Never derive ETA from replaying historical logs in a millisecond.
-                current.n = current.initial = state.done
-                current.last_print_n = state.done
-                key = newkey
-            elif state.done > current.n:
-                current.update(state.done-current.n)
-            overall.n = len(list(root.glob('[0-9][0-9]_*.complete.json')))
-            overall.set_postfix_str(state.stage, refresh=False)
-            current.set_description_str(state.phase, refresh=False)
-            current.set_postfix_str(state.detail, refresh=False)
-            overall.refresh()
-            current.refresh()
-            result = terminal_status(root)
-            if result:
-                break
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        result = ('Viewer closed; training was not signalled', None)
+            try:
+                if requested is None:
+                    requested = read_json(root/'requested.json')
+                    if requested is not None:
+                        overall.total = len(requested['stages'])
+                for row in reader.read():
+                    state.event(row)
+                # Phase receipts cover validation/final-memory transitions without
+                # changing the frozen model sources or inventing validation counts.
+                saved = read_json(root/'training/checkpoint_status.json')
+                if saved and saved['saved_at'] != checkpoint_stamp:
+                    checkpoint_stamp = saved['saved_at']
+                    phase = saved['phase']
+                    if phase in ('validation', 'initial_memory', 'refresh_memory', 'final_memory'):
+                        if phase == 'validation':
+                            state.phase_to(f"epoch {saved['epoch']} validation")
+                        elif state.phase != 'support_memory':
+                            state.phase_to(phase)
+                newkey = (state.stage, state.phase, state.total, saved['epoch'] if saved else state.epoch)
+                if newkey != key or state.done < current.n:
+                    current.total = state.total
+                    current.reset(total=state.total)
+                    # Never derive ETA from replaying historical logs in a millisecond.
+                    current.n = current.initial = state.done
+                    current.last_print_n = state.done
+                    key = newkey
+                elif state.done > current.n:
+                    current.update(state.done-current.n)
+                if contract is None:contract=read_json(root/'training/execution_contract.json')
+                label,detail=training_display(state,saved,contract,pause_pending)
+                overall.n = len(list(root.glob('[0-9][0-9]_*.complete.json')))
+                overall.set_postfix_str(state.stage, refresh=False)
+                current.set_description_str(label, refresh=False)
+                current.set_postfix_str(detail, refresh=False)
+                overall.refresh()
+                current.refresh()
+                result = terminal_status(root)
+                if result:
+                    break
+                time.sleep(interval)
+            except KeyboardInterrupt:
+                if detach_on_interrupt:
+                    result = ('Viewer closed; training was not signalled', None)
+                    break
+                marker=request_pause(root)
+                pause_pending=True
+                tqdm.write(f'Pause requested: {marker}. Waiting for checkpoint and PAUSED; no process was killed.',file=stream)
     finally:
         current.close()
         overall.close()
@@ -222,13 +271,14 @@ def main():
     group.add_argument('--output', type=Path)
     group.add_argument('--latest', action='store_true', help='Attach newest v222_mig10gb_r6* run in ./work')
     p.add_argument('--log', type=Path)
+    p.add_argument('--detach-on-interrupt',action='store_true',help='Ctrl+C closes this viewer without pausing training')
     a = p.parse_args()
     if a.latest:
         candidates = list(Path('work').glob('v222_mig10gb_r6*/requested.json'))
         if not candidates:
             raise FileNotFoundError('No recorded v222_mig10gb_r6 run in ./work')
         a.output = max(candidates, key=lambda x: x.stat().st_mtime).parent
-    return watch(a.output, a.log)
+    return watch(a.output, a.log,detach_on_interrupt=a.detach_on_interrupt)
 
 
 if __name__ == '__main__':

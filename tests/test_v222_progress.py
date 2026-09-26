@@ -10,7 +10,7 @@ from unittest.mock import patch
 from contextlib import redirect_stdout
 
 from tools.run_v222_server import launch_worker, execute, ROOT
-from tools.watch_v222_server import LogReader, Progress, terminal_status, watch
+from tools.watch_v222_server import LogReader, Progress, terminal_status, watch, request_pause, training_display
 
 
 class Terminal(io.StringIO):
@@ -19,6 +19,76 @@ class Terminal(io.StringIO):
 
 
 class ProgressTests(unittest.TestCase):
+    def test_support_display_includes_saved_epoch_and_step_without_inventing_epoch41(self):
+        state=Progress();state.event(dict(stage='support_memory',completed=6144,total=11279,physical_batch=32))
+        saved=dict(phase='refresh_memory',epoch=10,step=1234)
+        label,detail=training_display(state,saved,dict(epochs=40))
+        self.assertIn('epoch 10/40',label);self.assertIn('support refresh',label)
+        self.assertIn('saved step=1234',detail)
+        saved.update(phase='initial_memory',epoch=1,step=0)
+        self.assertIn('before epoch 1/40',training_display(state,saved,dict(epochs=40))[0])
+        saved.update(phase='final_memory',epoch=41)
+        self.assertNotIn('41',training_display(state,saved,dict(epochs=40))[0])
+        self.assertEqual(state.done,6144)
+
+    def test_pause_request_requires_initialized_selected_training_and_is_idempotent(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+            root=Path(tmp)
+            with self.assertRaisesRegex(RuntimeError,'not initialized'):request_pause(root)
+            training=root/'training';training.mkdir();(training/'initialization.json').write_text('{}')
+            checkpoint=training/'checkpoint_latest.pt';checkpoint.write_bytes(b'protocol fixture, not trained weights')
+            first=request_pause(root);before=first.read_bytes()
+            self.assertEqual(request_pause(root),first)
+            self.assertEqual(first.read_bytes(),before)
+            self.assertEqual(checkpoint.read_bytes(),b'protocol fixture, not trained weights')
+
+    def test_ctrl_c_requests_pause_and_waits_for_confirmation(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+            root=Path(tmp);training=root/'training';training.mkdir()
+            (training/'initialization.json').write_text('{}')
+            (training/'execution_contract.json').write_text(json.dumps(dict(epochs=40)))
+            (training/'checkpoint_status.json').write_text(json.dumps(dict(phase='refresh_memory',epoch=10,step=100,saved_at=1)))
+            (root/'console.log').write_text(json.dumps(dict(stage='support_memory',completed=6144,total=11279))+'\n')
+            calls=[]
+            def interrupt_then_confirm(_):
+                calls.append(1)
+                if len(calls)==1:raise KeyboardInterrupt
+                self.assertTrue((training/'STOP_AFTER_BATCH').is_file())
+                (root/'pipeline_paused.json').write_text('{}')
+            screen=Terminal()
+            with patch('tools.watch_v222_server.time.sleep',side_effect=interrupt_then_confirm):
+                self.assertEqual(watch(root,stream=screen),0)
+            self.assertEqual(len(calls),2)
+            self.assertIn('epoch 10/40',screen.getvalue())
+            self.assertIn('6144/11279',screen.getvalue())
+            self.assertIn('PAUSE REQUESTED',screen.getvalue())
+            self.assertIn('PAUSED |',screen.getvalue())
+
+    def test_real_cooperative_child_finishes_only_after_viewer_requests_pause(self):
+        import time
+        real_sleep=time.sleep
+        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+            root=Path(tmp)/'run'
+            script="\n".join([
+                'import time', 'from pathlib import Path', f'root=Path({str(root)!r})',
+                "(root/'training').mkdir()", "(root/'training/initialization.json').write_text('{}')",
+                'end=time.monotonic()+10',
+                "while not (root/'training/STOP_AFTER_BATCH').exists() and time.monotonic()<end: time.sleep(.02)",
+                "assert (root/'training/STOP_AFTER_BATCH').exists(), 'pause was not requested'",
+                "(root/'training/paused.json').write_text('{}')", "(root/'pipeline_paused.json').write_text('{}')"])
+            child=launch_worker([sys.executable,'-u','-c',script],root)
+            for _ in range(200):
+                if (root/'training/initialization.json').is_file():break
+                real_sleep(.02)
+            interrupted=[]
+            def interrupt_once(_):
+                if not interrupted:
+                    interrupted.append(True);raise KeyboardInterrupt
+                real_sleep(.02)
+            with patch('tools.watch_v222_server.time.sleep',side_effect=interrupt_once):
+                self.assertEqual(watch(root,stream=Terminal()),0)
+            self.assertEqual(child.wait(timeout=15),0)
+
     def test_stage_completion_is_not_an_item_progress_event(self):
         for name in ('raw_inventory', 'raw_inventory_heartbeat', 'paired_cache', 'support_memory'):
             with self.subTest(stage=name):
@@ -48,7 +118,7 @@ class ProgressTests(unittest.TestCase):
             self.assertEqual(state.done,14102)
             screen=Terminal()
             with patch('tools.watch_v222_server.time.sleep',side_effect=KeyboardInterrupt):
-                self.assertEqual(watch(root,stream=screen),0)
+                self.assertEqual(watch(root,stream=screen,detach_on_interrupt=True),0)
             self.assertIn('14102/14102',screen.getvalue())
             self.assertNotIn('it/s',screen.getvalue())
 
@@ -104,7 +174,7 @@ class ProgressTests(unittest.TestCase):
             child=launch_worker([sys.executable,'-u','-c',script],output)
             screen=Terminal()
             with patch('tools.watch_v222_server.time.sleep',side_effect=KeyboardInterrupt):
-                self.assertEqual(watch(output,stream=screen),0)
+                self.assertEqual(watch(output,stream=screen,detach_on_interrupt=True),0)
             self.assertIsNone(child.poll())
             self.assertEqual(child.wait(timeout=20),0)
             self.assertIn('PROTOCOL TEST FINISHED',(output/'console.log').read_text())

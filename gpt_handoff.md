@@ -1,4 +1,10 @@
-## 2026-09-26 최신 — 개선 버전으로 이어가기 옵션 추가
+## 2026-09-26 최신 — 별도 cat 없이 epoch 표시, Ctrl+C 저장 중단
+
+- 사용자는support진행이몇epoch인지볼수없고cat확인을위해Ctrl+C해도학습은계속되는UX에강하게불만. `watch_v222_server.py`의기본Ctrl+C를 `training/STOP_AFTER_BATCH` 작성후PAUSED까지대기로변경. 신호/kill없음. epoch/전체epochs/savedstep/지원메모리phase를한화면에표시. --detach-on-interrupt만기존read-only동작.
+- 현재 실행 `HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926`는재시작하지않고viewer만교체. 이미열린구형viewer는이전동작이므로Ctrl+C로화면만닫고, gitfetch→gitshow로/tmp의새viewer를실행. activecheckout pull/merge불필요. actualepoch는서버metadata읽기전추측금지.
+- 관련19검사통과: Ctrl+C pause후대기, actualcooperativechild, 상태파일읽어epoch표시, finalmemoryepoch41방지, marker안전성/초기화전거절, read-onlydetach. 학습/GPU/runtimeidentity/checkpoint 변경없음. validation중중단요청은validation종료후반영; 준비초기화전batchpause는지원하지않으므로명시적오류. 서버viewer아직미교체.
+
+## 2026-09-26 이전 — 개선 버전으로 이어가기 옵션 추가
 
 - 사용자는 느린 원본이 계속돌고있고Ctrl+C가viewer만닫는점 및 개선버전실행명령누락을 재차지적. 저장중단은 원본training/STOP_AFTER_BATCH, pipeline PAUSED 확인 후 새 run으로 전환. 원격프로세스직접제어는하지않음.
 - 기존 --resume가64MiB를강제상속하여속도개선핵심을누락한문제 수정. server/optimized runner에 `--migrate-workspace-mib 256` 추가. 원본scanfixcheckpoint의가중치/optimizer/RNG/support/plan/epoch/cursor를그대로복원, allocator/모델규모/batch불변, GPUchunk만명시적전환. 수치누적차이및원checkpoint SHA를workspace policy에기록. 기존active source 차단유지.

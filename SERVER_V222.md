@@ -56,7 +56,11 @@ python tools/run_v222_server.py \
 
 ## 터미널 진행 화면: tqdm 기본 표시 (2026-09-24)
 
-새 실행은 아래처럼 직접 실행한다. 실행기가 실제 작업을 별도 프로세스로 유지하고, 터미널에는 두 줄의 tqdm을 갱신한다. 상세 출력은 실행 폴더 `console.log`에 자동 저장된다. `nohup`, 출력 리디렉션, `&`, 반복적인 `tail` 명령이 필요하지 않다. Ctrl+C는 진행 화면만 닫으며 학습은 중단하지 않는다. 실제 학습 중단에는 아래 문서의 `STOP_AFTER_BATCH`를 사용한다.
+2026-09-26 수정: **Ctrl+C 기본 동작은 해당 학습의 저장 후 중단 요청**이다. viewer가 `training/STOP_AFTER_BATCH`를 만들고 `PAUSED`까지 기다린다. optimizer/support는 현재 batch 뒤, validation은 해당 검증 뒤 중단한다. 프로세스에 종료 신호를 보내지 않는다. 학습 초기화 전 준비 단계는 이 batch 중단 프로토콜을 지원하지 않으며, 중단했다고 거짓 표시하지 않고 오류를 낸다. 화면만 닫으려면 독립 viewer의 `--detach-on-interrupt`를 명시한다.
+
+화면은 `execution_contract.json` 및 `checkpoint_status.json`을 직접 읽어 전체 epoch 수·저장된 epoch/step·initial support/epoch support refresh/validation/final support를 구분해 표시한다. 마지막 support를 가짜 epoch41로 표시하지 않는다. 별도 `cat`으로 상태 파일을 읽을 필요가 없다.
+
+새 실행은 아래처럼 직접 실행한다. 상세 출력은 실행 폴더 `console.log`에 자동 저장되고 터미널의 두 줄 tqdm을 갱신한다. `nohup`, 출력 리디렉션, `&`, 반복적인 `tail` 명령이 필요하지 않다.
 
 ```bash
 python tools/run_v222_server.py --medical-root /home/aicompetition06/Medical --output work/v222_mig10gb_r6_progress
@@ -70,6 +74,14 @@ V222_VIEW="$(mktemp /tmp/v222-progress.XXXXXX.py)" &&
 git show FETCH_HEAD:tools/watch_v222_server.py > "$V222_VIEW" &&
 python "$V222_VIEW" --latest
 ```
+
+이미 열려 있는 구형 viewer는 기존 Ctrl+C 동작을 유지하므로 한 번 닫고 새 viewer에 연결한다. 현재 개선 재개 실행을 명시하려면 위 마지막 줄을 다음으로 바꾼다. 새 viewer부터 Ctrl+C가 저장 후 학습 중단을 요청한다.
+
+```bash
+python "$V222_VIEW" --output /home/aicompetition06/Medical/HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926
+```
+
+2026-09-26 검증: 관련19검사 통과. 화면 Ctrl+C→선택한 run에만 pause marker 생성→PAUSED 확인까지 대기, 초기화 전 거절, marker 중복 요청 안전성, checkpoint payload 보존, support 중 epoch/step 표시, 마지막 support의 epoch41 표시 방지, 명시적 read-only detach, 실제 별도 자식의 협력 중단을 검증했다. 모델·GPU 계산 경로·기존 checkpoint는 변경하지 않았다. 서버 창 교체는 사용자가 위 명령을 실행해야 한다.
 
 CT 완료 수, 그래프 완료 수, support 인코딩 수, epoch별 query 수·loss·step을 실제 로그에서 읽는다. 속도/ETA는 연결 후 새로 완료되는 작업을 기준으로 측정하며, 과거 로그를 빠르게 읽은 속도를 쓰지 않는다. 별도 측정이나 validation처럼 완료 수를 제공하지 않는 단계는 단계명과 경과 시간만 표시한다. 구형 벤치마크의 미출력 case 진행률을 추측하지 않는다. 전체 단계7개는 동일 소요시간이 아니므로 단계 완료 비율을 전체 시간의 비율로 해석하지 않는다. 오류 시 화면을 종료하고 마지막 로그와 실패 기록 경로를 표시한다.
 
