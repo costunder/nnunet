@@ -1,0 +1,21 @@
+# v2.2 독립 코드 검토 요청 — observed_rank_v1
+
+이 프로젝트는 donor 종양과 recipient 후보의 국소 CT 문맥을 paired v1 L0로 비교하고, L1 data–label 관계 및 L2 환자 간 정렬을 통해 CP 위치를 추천하려고 합니다.
+이번 변경은 실제 관측 종양을 상위로 학습하고, 실제 추천 시 모든 주석 종양과 paste footprint가 겹치는 후보를 제외하는 것입니다. GT로 점수를 올리거나 무조건 1위만 버리는 구현이면 오류입니다.
+
+02_PIPELINE_AND_CODE_MAP.md를 먼저 읽고 03_ACTIVE_PATH_CODE.txt, 03_ALL_CODE.txt 또는 ZIP의 source_tree에서 실제 호출 경로를 추적해 주세요. 검증 기록은 04_EVIDENCE_AND_HISTORY.txt에 있습니다. 문서 설명보다 실행 코드를 우선하고, 읽지 못한 파일이나 실행하지 않은 검사를 명시해 주세요. 과거 버전/미사용 경로를 현재 기본 실행으로 오인하지 마세요.
+
+특히 다음을 독립적으로 확인해 주세요.
+1. 새 server 기본 process → ranking trainer → loss/backward/optimizer/validation/checkpoint 경로가 실제 연결되어 있는가?
+2. 같은 CT의 관측 양성 대 미관측 비교 순위 목적이 의도와 맞는가? 미관측을 CP 불가 정답으로 취급하는 부분은 없는가? CE 보조 목적과 rank 목적의 충돌 가능성은?
+3. detached epoch L0 reference, live query 교체, batch에 한쪽 이상 포함된 pair, pair 중복 가중 및 무양성 CT 처리가 정확한가? 메모리 근사를 full-case end-to-end로 과장하는가?
+4. query 환자를 recipient/donor 양쪽 support에서 제외하는가? validation/test GT가 support·forward·점수·학습에 유입되는가? case ID만으로 실제 환자 독립성을 보장한다고 잘못 주장하는가?
+5. CNN stride4 좌표 수정, 그래프 batching, L1 T/F/U 관계와 L2 clustering/alignment 구현 및 gradient가 설명과 일치하는가?
+6. 관측 종양 본체를 보는 shortcut 및 위치마다 다른 donor 때문에 고정 donor 추천이 학습되지 않을 위험은? 이를 구분할 실험은?
+7. 모든 후보를 모델로 먼저 scoring한 뒤 실제 변환된 전체 paste mask로 모든 크기의 주석 종양 겹침·경계·간 포함률을 검사하는가? GT가 원래 score나 rank를 바꾸는가?
+8. rank validation의 Recall@k/MRR/동점/무양성 CT/best checkpoint 기준은 정확한가? 실행 성공을 추천 성능으로 제시하지 않는가?
+9. 새 objective와 좌표계를 이전 CE checkpoint에 조용히 적용하는가? exact resume, provenance, DEBUG artifact 거부, pause/resume 및 worker 소유권이 안전한가?
+10. nnU-Net 온라인 CP 연결은 아직 미완료라는 한계를 확인하고, 완료에 필요한 실제 호출 지점을 제시해 주세요. 기존 legacy score_candidates를 새 추천 API와 혼동하지 마세요.
+11. 모델·그래프·전체 데이터·physical batch를 임의 축소하지 않고 중복 계산/메모리/동기화/프로세스 병목을 개선할 수 있는가?
+
+답변 형식: 심각도 순으로 문제, 원본 파일:줄, 재현 조건, 영향, 최소 수정안, 필요한 검증을 제시해 주세요. 확정 버그 / 설계 위험 / 미검증 가설을 구분해 주세요. 전체 코드 중 확인한 범위와 미확인 범위를 명시하고, DEBUG 수치를 최종 연구 성능으로 해석하지 마세요.
