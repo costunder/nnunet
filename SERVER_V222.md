@@ -24,7 +24,7 @@ git -C /home/aicompetition06/Medical/HierCP-v222-r6 worktree add --detach /home/
 
 기존 worker가 종료/저장 중단된 것을 확인한 뒤 아래 둘 중 하나만 실행한다. 기존 worker에 대한 중단 명령은 이 문서에서 자동 실행하지 않는다. 현재 서버 진행 상태는 로컬에서 확인하지 못했다.
 
-**기존 가중치에서 이어가기:** 완료된14,102개 graph index와 rolling checkpoint를 그대로 참조한다. raw/graph/profile 단계를 반복하지 않는다. 기존64MiB workspace와 allocator 정책은 상속하므로 아래 fresh256MiB 속도 개선을 보장하지 않는다.
+**기존 가중치에서 개선된256MiB로 이어가기 (2026-09-26):** 완료된14,102개 graph index와 rolling checkpoint를 그대로 참조한다. `--migrate-workspace-mib 256`은 가중치·optimizer·RNG·support·L2 plan·epoch/batch 위치를 복원하면서 GPU 연산 chunk만 변경한다. raw/graph/profile 단계를 반복하지 않는다. 기존 allocator 정책은 유지한다. 이후 부동소수점 누적 순서가 달라질 수 있음을 checkpoint 실행 정책에 명시하며, 최종 결과의 bitwise 동일을 주장하지 않는다. 이 옵션이 없으면 기존 workspace를 상속한다.
 
 ```bash
 cd /home/aicompetition06/Medical/HierCP-v222-r6-runtime &&
@@ -32,7 +32,8 @@ python tools/run_v222_server.py \
   --medical-root /home/aicompetition06/Medical \
   --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
   --resume /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/training/checkpoint_latest.pt \
-  --output work/v222_mig10gb_r6_runtime_resume
+  --migrate-workspace-mib 256 \
+  --output work/v222_mig10gb_r6_fast_resume_20260926
 ```
 
 **가중치를 새로 학습하는 경우에만:** `--resume`을 빼고 새 output을 사용한다. 기존 cache는 재사용하며256MiB workspace + 중복 제거 loader/writer로 시작한다. 이것은 이어 학습이 아니다.
@@ -51,7 +52,7 @@ python tools/run_v222_server.py \
 
 새 실행은 `--edge-workspace-mib 256`을 선택할 수 있다. 모델 크기, 모든 graph node/edge, physical batch 계약은 그대로이며 한 번에 계산하는 edge 조각만 커진다. 로컬 실제 batch32 두 개/9GB allocator에서64MiB 대비 step3.30~3.42배 개선, peak allocated약6.3GB를 측정했다. 서버 A100 처리량과 전체epoch 시간으로 일반화하지 않는다. [측정과 검증 범위](docs/v222_cached_execution_20260925.md).
 
-2026-09-25 중복 제거 이후 **새 실행 기본값은256MiB**다. `--runtime legacy`는 기존64MiB 경로를 보존한다. `--resume`은 원래 workspace·allocator 정책을 상속하며 수치 정책 변경을 거절한다. 현재 서버 작업을 이 조사에서 재시작하거나 변경하지 않았다. 실행 중인 작업과 동시에 새 학습을 시작하지 않는다.
+2026-09-25 중복 제거 이후 **새 실행 기본값은256MiB**다. `--runtime legacy`는 기존64MiB 경로를 보존한다. `--resume` 기본값은 원래 workspace·allocator 정책 상속이다. 2026-09-26 추가한 `--migrate-workspace-mib 256`으로 workspace 전환을 명시할 수 있다. 실제 CT/full model의64MiB 저장→256MiB 재개를 메모리상의256MiB 연속 실행과 비교해 loss·전체가중치·optimizer가 일치하고 cursor가 유지됨을 확인했다. 관련24검사 통과. 전체epoch/A100속도 검증은 아니다.
 
 ## 터미널 진행 화면: tqdm 기본 표시 (2026-09-24)
 

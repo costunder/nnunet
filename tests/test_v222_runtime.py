@@ -156,6 +156,25 @@ class SaverTests(unittest.TestCase):
 
 
 class IntegrationTests(unittest.TestCase):
+    def test_explicit_workspace_migration_preserves_saved_state_and_allocator(self):
+        from tools.run_v222_optimized import resume_policy
+        from tools.run_v222_server import stages
+        from copy import deepcopy
+        with tempfile.TemporaryDirectory(dir=ROOT) as directory:
+            checkpoint=Path(directory)/'train/checkpoint_latest.pt'
+            saved=dict(model={'weight':[1.,2.]},optimizer={'step':14},rng={'seed':42},
+                state=dict(step=14,epoch=1,next_batch=7,release_unused=True,memory=[1,2,3],plan={'a':4}))
+            before=deepcopy(saved)
+            self.assertEqual(resume_policy(saved,checkpoint,migrate_workspace=256),(256,True))
+            self.assertEqual(saved,before)
+            with self.assertRaises(ValueError):resume_policy(saved,checkpoint,workspace_override=256)
+            with self.assertRaises(ValueError):resume_policy(saved,checkpoint,migrate_workspace=512)
+            with self.assertRaises(ValueError):resume_policy(saved,checkpoint,migrate_workspace=256,release_override=False)
+            plan=dict(stages(Path('/medical'),Path('/run'),32,9,optimized=True,cache=Path('/cache/index.json'),resume=checkpoint,migrate_workspace=256))
+            self.assertEqual(list(plan),['resources','model_check','gnn_training'])
+            self.assertIn('--migrate-workspace-mib',plan['gnn_training'])
+            self.assertNotIn('--workspace-mib',plan['gnn_training'])
+
     def test_resume_embedded_workspace_survives_checkpoint_move_and_rejects_changes(self):
         from tools.run_v222_optimized import runtime_identity,resume_policy
         from tools.v222_gpu_workspace import policy_path

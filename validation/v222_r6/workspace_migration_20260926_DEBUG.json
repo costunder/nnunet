@@ -1,0 +1,32 @@
+{
+  "debug": true,
+  "real_CT": true,
+  "full_training": false,
+  "from_workspace_mib": 64,
+  "to_workspace_mib": 256,
+  "model_parameters": 5550806,
+  "physical_batch": 6,
+  "purpose": "Migration correctness on real regression fixture, not throughput or MIG capacity",
+  "resumed256_matches_in_memory256_loss_model_optimizer": true,
+  "comparison_to_continued64": false,
+  "saved_cursor_preserved": true,
+  "loss": 1.1106603145599365,
+  "all_parameter_gradients_present": true,
+  "all_parameter_gradients_finite": true,
+  "allocated": 197432832,
+  "reserved": 1000341504,
+  "peak_allocated": 804419072,
+  "peak_reserved": 1000341504,
+  "inactive_split": 39545344,
+  "allocation_retries": 0,
+  "rss": 2674597888,
+  "unit_tests_passed": 24,
+  "unit_log_sha256": "f20b0c0bacb411172981d740757dab8f0452b79f9734b49e96353cbce4024317",
+  "server_applied": false,
+  "source_hashes": {
+    "tools/run_v222_optimized.py": "a15430575a7675cc6d574ecf90f9bbffbda2d973b9e94fea72e8b2f867a246f5",
+    "tools/run_v222_server.py": "2e3409d4c4a1f204a48a5c6d9170d21243c87e65778bcc4f522bb91c7b294e8f",
+    "tools/verify_v222_workspace_migration_debug.py": "4193f5a239aa71e75cbacc9c8eba31fab2dcdf03e2dc0be1b112ce81e8de4261",
+    "tests/test_v222_runtime.py": "d38a5d0bf1b4917e7edbcffc2b76ada776f1d7709fe25571015d04178e354e35"
+  }
+}

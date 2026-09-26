@@ -1,4 +1,11 @@
-## 2026-09-25 최신 — 서버 중복 재개 OOM 원인 확인
+## 2026-09-26 최신 — 개선 버전으로 이어가기 옵션 추가
+
+- 사용자는 느린 원본이 계속돌고있고Ctrl+C가viewer만닫는점 및 개선버전실행명령누락을 재차지적. 저장중단은 원본training/STOP_AFTER_BATCH, pipeline PAUSED 확인 후 새 run으로 전환. 원격프로세스직접제어는하지않음.
+- 기존 --resume가64MiB를강제상속하여속도개선핵심을누락한문제 수정. server/optimized runner에 `--migrate-workspace-mib 256` 추가. 원본scanfixcheckpoint의가중치/optimizer/RNG/support/plan/epoch/cursor를그대로복원, allocator/모델규모/batch불변, GPUchunk만명시적전환. 수치누적차이및원checkpoint SHA를workspace policy에기록. 기존active source 차단유지.
+- 실제CT6관측/full5.55M DEBUG 64save→256resume가동일state의메모리내256continuation과loss/전체model/optimizer일치, gradient전부유한,cursor보존.24회귀검사통과. 검증 `validation/v222_r6/workspace_migration_20260926_DEBUG.json`. 서버전체epoch속도예측및64continuation bitwise동일주장금지.
+- 원본scanfix checkpoint에서재개하는명령에새flag와새output `work/v222_mig10gb_r6_fast_resume_20260926`을사용. 실패한runtime_resume를덮어쓰지않음. 이전최적화backend checkpoint는코드SHA가다르면기존엄격검증으로거절됨; 이번사용명령의원본scanfix checkpoint는해당없음.
+
+## 2026-09-25 이전 — 서버 중복 재개 OOM 원인 확인
 
 - 사용자가76fa430의 별도 runtime checkout에서resume 실행. resources/model_check 통과 후 OOM. 메시지는 총9.5GiB 중149MiB free, 다른PID3350532가6.16GiB, 새process약3.16GiB 사용. `ps`로3350532/PPID3284259가 `/home/aicompetition06/Medical/HierCP-v222-r6/run_v222_v1_l0.py train --cache .../v222_mig10gb_r6_scanfix/paired_cache/index.json --output .../v222_mig10gb_r6_scanfix/training --release-unused`임을 확인했고경과16:15:52. 기존학습이계속돌고있었음.
 - 새resume실패를 기존학습실패/가중치소실로 취급하지 말 것. 기존 scanfix viewer에 재접속하고 현재step을 확인해야 함. 새실행의 `runtime_resume` output은 덮어쓰지 않음. 기존학습을 자동으로 죽이거나중복재시작하지 않음. 최적화로전환하려면 기존학습의저장후중단상태확인이선행되어야함.

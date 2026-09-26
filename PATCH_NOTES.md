@@ -1,3 +1,8 @@
+## v2.22 r6 — 기존 checkpoint를 빠른 workspace로 명시적 전환 (2026-09-26)
+
+- 앞선 재개 명령은64MiB 실행 정책을 상속해서 주된 GPU 속도 개선을 적용하지 못했다. `--resume ... --migrate-workspace-mib 256` 추가. 모든 저장 상태와 모델·데이터·batch를 유지하고256MiB GPU chunk로 전환하며 이전/새workspace, 원checkpoint SHA, saved step/epoch/phase를 기록한다.
+- 실제 CT/full5,550,806parameter/6관측 DEBUG에서64MiB checkpoint→256MiB 재개와 동일 상태의메모리내256MiB 연속 실행의 loss/전체model/optimizer bitwise 일치, cursor유지, 전체유한gradient 확인. 64MiB를 계속쓴 결과와 같다는 뜻은 아니다. 관련24검사통과. 전체학습/서버속도/서버전환 미실행.
+
 ## v2.22 r6 — 실행 중인 원본 학습과 중복 재개 차단 (2026-09-25)
 
 - 사용자 서버에서 새 resume가 OOM. 로그상 기존 PID3350532가6.16GiB, 새 프로세스가약3.16GiB를 사용. 사용자의 `ps` 출력으로3350532가 원래 `scanfix` trainer이며16시간 이상 계속 실행 중임을 확인했다. 모델 크기나 batch 부족으로 단정하지 않는다.

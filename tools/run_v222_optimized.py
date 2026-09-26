@@ -31,13 +31,17 @@ def resume_workspace(checkpoint, saved_policy=None):
     return embedded if embedded is not None else (external if external is not None else 64)
 
 
-def resume_policy(saved, checkpoint, workspace_override=None, release_override=None):
+def resume_policy(saved, checkpoint, workspace_override=None, release_override=None, migrate_workspace=None):
     policy = saved.get('execution_policy')
     if policy is not None and policy.get('runtime_sha256') != runtime_identity():
         raise ValueError('Optimized runtime changed since checkpoint; review a migration instead of silent resume')
     workspace = resume_workspace(checkpoint, policy)
     if workspace_override is not None and workspace_override != workspace:
         raise ValueError('Resume must retain numerical workspace policy')
+    if migrate_workspace is not None:
+        if workspace_override is not None or migrate_workspace != 256:
+            raise ValueError('Explicit migration supports measured 256MiB only; omit --workspace-mib')
+        workspace = migrate_workspace
     release = bool(saved['state']['release_unused'])
     if release_override is not None and release_override != release:
         raise ValueError('Resume must retain allocator policy')
@@ -50,9 +54,13 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--resume', type=Path)
     parser.add_argument('--workspace-mib', type=int, choices=(64, 256, 512))
+    parser.add_argument('--migrate-workspace-mib',type=int,choices=(256,),
+        help='Explicit resume migration: preserve saved state, use measured 256MiB chunks; future rounding may differ')
     # Kept explicit for resuming a prior allocation policy.
     parser.add_argument('--release-unused', action=argparse.BooleanOptionalAction, default=None)
     args = parser.parse_args()
+    if args.migrate_workspace_mib is not None and not args.resume:
+        raise ValueError('--migrate-workspace-mib requires --resume')
     if args.output.exists():
         raise FileExistsError('A new output directory is required; existing run is preserved')
     import torch
@@ -66,6 +74,7 @@ def main():
     # Validate before publishing a new execution policy.
     PairDataset(args.cache, 'inner_train')
     old_policy = None
+    migration = None
     if args.resume:
         saved = torch.load(args.resume, weights_only=False, map_location='cpu')
         if (saved.get('format') != execution.RESUME_FORMAT or saved.get('source_identity') != provenance()
@@ -73,7 +82,13 @@ def main():
                 or saved.get('cache_sha256') != sha(args.cache) or saved.get('debug') is not False):
             raise ValueError('Resume requires an exact production model/cache/config identity')
         old_policy = saved.get('execution_policy')
-        workspace, release = resume_policy(saved,args.resume,args.workspace_mib,args.release_unused)
+        workspace, release = resume_policy(saved,args.resume,args.workspace_mib,args.release_unused,args.migrate_workspace_mib)
+        if args.migrate_workspace_mib is not None:
+            migration = dict(from_workspace_mib=resume_workspace(args.resume,old_policy),
+                to_workspace_mib=workspace,checkpoint=str(args.resume.resolve()),checkpoint_sha256=sha(args.resume),
+                saved_step=saved['state']['step'],saved_epoch=saved['state']['epoch'],saved_phase=saved['state']['phase'],
+                state_preserved='model, optimizer, RNG, support memory, cluster plan, epoch and batch cursor',
+                numerical_change='Future edge gradient accumulation may differ; not bitwise equivalent to continued 64MiB execution')
         del saved
     else:
         workspace = 256 if args.workspace_mib is None else args.workspace_mib
@@ -82,6 +97,7 @@ def main():
     policy = dict(format='v222_optimized_execution_v1', runtime_sha256=runtime_identity(),
         workspace_mib=workspace, release_unused=release, cache_rebuild_required=False,
         original_runtime_resume=args.resume is not None and old_policy is None,
+        workspace_migration=migration,
         checkpoint_policy='one bounded asynchronous writer; immutable CPU snapshot every batch; durable status separate',
         graph_view_cache='RAM bounded; exact record identity and epoch; no learned embedding reuse across weight updates')
     receipt = policy_path(args.output)
