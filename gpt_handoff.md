@@ -1,4 +1,13 @@
-## 2026-09-26 최신 — 별도 cat 없이 epoch 표시, Ctrl+C 저장 중단
+## 2026-09-26 최신 — support 병목 실측과 CPU producer 분리
+
+- 사용자는 “속도 최적화가 제대로 됐냐”는 질문에 검증 범위가 뒤집힌 점에 항의했다. 이전 실제 6 training batch 검사만으로 전체 최적화 완료를 보고한 것은 잘못이다. A100 MIG 전체 epoch 시간은 미측정이다.
+- 로컬 전체 모델/batch32/8 decode workers/256MiB/bf16/매 batch 저장으로 support 경로를 계측했다. 기존 첫 2,368개 412.270초, CPU producer 분리 경로 같은 순서 185.302초(2.22배). GNN CUDA-event 구간에는 host launch 지연도 포함된다. 같은 Python 프로세스의 graph 준비와 CUDA 호출 간섭이 주요 개선 대상이었다. GIL만의 기여율을 별도로 측정했다고 주장하지 않는다.
+- `tools/v222_process_loader.py`: producer 2개×4 decode threads, 합산 cache 가용 RAM20%, 최대2 batch 순차 prefetch, 단계 사이 producer/cache 유지, CPU 공유 storage IPC, 주 프로세스에서만 pin/CUDA. 모델·graph·관측 수·batch·numerical workspace·allocator·저장 주기는 유지한다. CSR 연산 후보나 allocator 해제 제거는 최종 경로에 적용하지 않았다.
+- 명시적인 `--runtime process`와 `tools/run_v222_process_runtime.py`로 전환한다. 직전 그대로의 runtime SHA 또는 새 SHA만 허용하고 원본 checkpoint를 수정하지 않는다. `fast_resume`의 최신 가중치/Adam/RNG/epoch/cursor/부분 support/plan을 복원한다. `scanfix`의 오래된 학습 checkpoint로 되돌리지 않는다. cache만 scanfix 경로를 계속 참조한다.
+- 관련 회귀32개, 실제 CT 2기록 CPU 입력 완전 일치 및 loader 종료 후 producer pool 유지 확인. 전체 support 및 actual optimizer 비교 결과는 `docs/v222_support_process_20260926.md`와 validation JSON을 확인한다. 원격 서버 실행은 수정하거나 재시작하지 않았다. 최신 viewer에서 Ctrl+C→PAUSED 후 새 코드 worktree로 전환하는 명령은 `SERVER_V222.md` 맨 위에 있다.
+- 최종 검증: 전체11,279 support/353batch 925.646초(15분26초), peak allocated3.505GB/reserved5.090GB, OOM없음. 기존2,368 embedding 및 topology/count bitwise 일치. 대형실제6query-batch 학습51.848초, step2–6평균6.924초, peak allocated6.403GB/reserved8.009GB, 모든gradient유한. 기존256MiB step2의loss/전체model/Adam bitwise 일치. `validation/v222_r6/support_process_20260926_DEBUG.json`. support weights와6step 검사는 DEBUG checkpoint이며 의료성능/40epoch/MIG전체검증으로 표현하지 않는다.
+
+## 2026-09-26 이전 — 별도 cat 없이 epoch 표시, Ctrl+C 저장 중단
 
 - 사용자는support진행이몇epoch인지볼수없고cat확인을위해Ctrl+C해도학습은계속되는UX에강하게불만. `watch_v222_server.py`의기본Ctrl+C를 `training/STOP_AFTER_BATCH` 작성후PAUSED까지대기로변경. 신호/kill없음. epoch/전체epochs/savedstep/지원메모리phase를한화면에표시. --detach-on-interrupt만기존read-only동작.
 - 현재 실행 `HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926`는재시작하지않고viewer만교체. 이미열린구형viewer는이전동작이므로Ctrl+C로화면만닫고, gitfetch→gitshow로/tmp의새viewer를실행. activecheckout pull/merge불필요. actualepoch는서버metadata읽기전추측금지.

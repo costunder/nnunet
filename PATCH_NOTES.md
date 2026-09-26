@@ -1,3 +1,11 @@
+## v2.22 r6 — support 준비 프로세스 분리 (2026-09-26)
+
+- 전체 속도 최적화를 검증한 것처럼 보고한 범위를 정정. 기존 검증은 학습6batch 중심이었으며 전체 support/A100 MIG epoch 속도를 확인하지 않았다.
+- 같은 Python 프로세스의 graph 준비와 CUDA launch 간섭을 줄이도록 CPU producer2개×4 decode threads를 별도 실행. 단계 사이 bounded cache 유지, 순서 보존 prefetch2, GPU physical batch32와 원래 연산·모델·전체 관측을 유지한다. 동일 support2,368개 로컬 배치시간 합계 412.27→185.30초(2.22배).
+- 서버 `--runtime process`와 알려진 이전 runtime에서의 명시적 loader 전환 지원. 원본 checkpoint/cache 보존, 중복 실행 차단, 저장 위치부터 재개. 기존 runtime 소스 SHA를 변경하지 않으며 새 경로는 별도 코드 SHA를 기록한다.
+- 회귀32개 및 실제 CPU 입력 일치 확인. 전체 support/optimizer 상세 증거와 제한은 [측정 기록](docs/v222_support_process_20260926.md), 실행은 [서버 명령](SERVER_V222.md) 참조. 서버 적용은 아직 수행하지 않았다.
+- 전체11,279 support를 로컬15분26초에 완료, 기존2,368 embedding 완전일치. 실제대형6batch 학습 통과, 기존256MiB step2의loss/가중치/Adam 완전일치 및 전체유한gradient 확인. 전체40epoch·A100 MIG 속도·의료성능평가는 미실행.
+
 ## v2.22 r6 — 진행 화면 epoch 표시 및 Ctrl+C 저장 중단 (2026-09-26)
 
 - support 진행 화면에서 현재epoch를 볼 수 없어 `cat`을 별도 요구하던 문제 수정. viewer가 저장된 epoch/step 및 전체epochs를 읽어 initial support/epoch refresh/validation/final support를 구분한다. final support를epoch41로 표시하지 않는다.

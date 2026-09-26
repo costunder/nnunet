@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mode', choices=('legacy', 'optimized'), required=True)
+    parser.add_argument('--mode', choices=('legacy', 'optimized', 'process'), required=True)
     parser.add_argument('--workspace-mib', type=int, choices=(64, 256), required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--batch', type=int, choices=(16, 32), default=32)
@@ -35,6 +35,7 @@ def main():
     from hiercp_v222.contracts import sha
     from tools.v222_runtime_cache import CachedPairDataset, CachedPairLoader
     from tools.v222_runtime_execution import AsyncSaver
+    from tools.v222_process_loader import ProcessPairLoader,close_producers
     from tools.verify_v1_resume import equal
     cfg, base = configuration()
     configure_runtime(base, 42)
@@ -46,9 +47,9 @@ def main():
                        map_location='cpu', weights_only=False)
     if saved['source_identity'] != provenance() or saved['cache_sha256'] != sha(cache):
         raise ValueError('Real model/support/cache provenance mismatch')
-    optimized = args.mode == 'optimized'
+    optimized = args.mode != 'legacy'
     dataset = (CachedPairDataset if optimized else PairDataset)(cache, 'inner_train')
-    loader_class = CachedPairLoader if optimized else PairLoader
+    loader_class = ProcessPairLoader if args.mode=='process' else (CachedPairLoader if optimized else PairLoader)
     prefix = saved['state']['memory_next']
     class Prefix:
         rows = dataset.rows[:prefix]
@@ -133,7 +134,7 @@ def main():
         began = time.perf_counter()
         first = loader.make(chosen[0][1], 0)
         first_reload = time.perf_counter()-began
-        before_cache = dataset.store.cache.report() if optimized else None
+        before_cache = dataset.store.cache.report() if args.mode=='optimized' else None
         began = time.perf_counter()
         second = loader.make(chosen[0][1], 0)
         warm_reload = time.perf_counter()-began
@@ -141,8 +142,8 @@ def main():
             raise AssertionError('Repeated graph view changed')
         if not torch.equal(first.source_patches, second.source_patches) or not torch.equal(first.target_patches, second.target_patches):
             raise AssertionError('Repeated CT input changed')
-        after_cache = dataset.store.cache.report() if optimized else None
-        if optimized and after_cache['misses'] != before_cache['misses']:
+        after_cache = dataset.store.cache.report() if args.mode=='optimized' else None
+        if args.mode=='optimized' and after_cache['misses'] != before_cache['misses']:
             raise AssertionError('Warm graph access unnecessarily recomputed inputs')
         del first, second
         final = dict(**details, steps=rows, same_workspace_reference_bitwise_equal=bool(args.reference),
@@ -159,6 +160,7 @@ def main():
         loader.close()
         if isinstance(saver, AsyncSaver):
             saver.close()
+        if args.mode=='process':close_producers()
 
 
 if __name__ == '__main__':

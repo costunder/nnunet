@@ -6,6 +6,46 @@
 
 ## 현재 확인된 서버에서 짧게 실행
 
+### 2026-09-26 CPU 준비 분리 경로
+
+`--runtime process`는 동일 모델과 입력을 유지하면서 CPU graph 준비를 별도 producer 2개로 분리한다. decode threads는 현재 저장된 workers8을 4개씩 나눈다. 캐시는 단계 사이 유지한다. 로컬 동일 2,368개 support 비교는 412.27→185.30초였다. A100 MIG 전체 epoch 실측은 아니다. [측정 및 검증 범위](docs/v222_support_process_20260926.md).
+
+현재 대상은 **`v222_mig10gb_r6_fast_resume_20260926`**이다. 먼저 최신 viewer에서 Ctrl+C를 누르고 **PAUSED** 표시까지 기다린다. 구형 viewer가 `close viewer only`라고 표시한다면 아래 파일을 현재 작업에만 생성하고, 최신 viewer를 연결해 PAUSED를 확인한다. 서버나 SSH를 종료하는 명령은 사용하지 않는다.
+
+```bash
+touch /home/aicompetition06/Medical/HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926/training/STOP_AFTER_BATCH
+```
+
+최신 viewer만 가져와 확인하려면 실행 중인 checkout을 변경하지 않고 다음을 사용한다. 기존 viewer가 이미 최신이고 PAUSED가 보이면 이 단계는 생략한다.
+
+```bash
+cd /home/aicompetition06/Medical/HierCP-v222-r6-runtime &&
+git fetch origin codex/v222-server-r6 &&
+V222_VIEW="$(mktemp /tmp/v222-progress.XXXXXX.py)" &&
+git show origin/codex/v222-server-r6:tools/watch_v222_server.py > "$V222_VIEW" &&
+python "$V222_VIEW" --output /home/aicompetition06/Medical/HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926
+```
+
+PAUSED 이후 **코드만** 새 worktree로 받고 저장된 위치부터 재개한다. `fast_resume`의 최신 체크포인트를 사용하며 예전 `scanfix` 체크포인트로 되돌아가지 않는다. graph cache는 기존 절대 경로를 참조하고 재생성·복사하지 않는다. 기존 GPU6 MIG 할당을 유지한다.
+
+```bash
+conda activate nnunet
+cd /home/aicompetition06/Medical/HierCP-v222-r6-runtime &&
+git fetch origin codex/v222-server-r6 &&
+git worktree add --detach /home/aicompetition06/Medical/HierCP-v222-r6-process origin/codex/v222-server-r6 &&
+cd /home/aicompetition06/Medical/HierCP-v222-r6-process &&
+CUDA_VISIBLE_DEVICES=MIG-774a3cc0-0169-5e18-b5d9-fe1b7a1d6ce7 python tools/run_v222_server.py \
+  --runtime process \
+  --medical-root /home/aicompetition06/Medical \
+  --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
+  --resume /home/aicompetition06/Medical/HierCP-v222-r6-runtime/work/v222_mig10gb_r6_fast_resume_20260926/training/checkpoint_latest.pt \
+  --output work/v222_process_resume_20260926
+```
+
+새 worktree나 output이 이미 존재하면 덮어쓰지 않고 실패한다. 원본 학습이 아직 살아 있거나 알려진 runtime SHA와 다르면 실행을 거부한다. `256MiB`, batch, allocator 정책, optimizer/RNG, epoch/step, 부분 support 진행 위치는 checkpoint에서 그대로 이어진다. 이 명령에 `--migrate-workspace-mib`를 다시 추가할 필요는 없다.
+
+### 이전 실행 기록과 명령
+
 **2026-09-25 사용자 출력으로 기존 학습 실행 중 확인:** PID3350532는 `v222_mig10gb_r6_scanfix/training`을 사용하는 원래 trainer다. 새 resume의 OOM 당시 기존6.16GiB + 새3.16GiB가 같은 MIG를 점유했다. 이 상태에서는 아래 재개 명령을 다시 실행하지 않고 기존 화면에 연결한다. 이미 만들어진 runtime checkout의 viewer를 사용할 수 있다.
 
 ```bash
