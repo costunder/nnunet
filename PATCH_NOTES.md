@@ -1,3 +1,10 @@
+## v2.22 r6 — 독립 검토 오류 수정 (2026-09-27)
+
+- 실제 CNN stride/padding에 맞게 입력→특징 좌표 변환. 중심23.5를22로 읽던 반례 수정. 새 `--runtime process`는 `stride4`, 기존 checkpoint는 `legacy` 의미를 유지하며 상호 exact resume 전환을 거부한다. 원본 CT graph cache 재사용 가능, learned support는 corrected 학습에서 새로 생성한다.
+- 자기 server worker의 정상 child만 exact output/조상 확인으로 허용하고, process-runtime 고아 trainer도 중복 검사한다. 동일 환자 여러 CT의 support owner를 합쳐 L2 task로 전달한다.
+- worker calibration을 production prefetch 경로로 변경하고 후보별 pool 중첩을 방지했다. 기존 resume의 worker/batch는 유지한다.
+- 48회귀 검사, 실제 CT full-model/batch32 유한 gradient, corrected optimizer·partial support 재개 동일성 확인. 모델5,550,806 parameters와 graph/data 규모 유지. 연구 타당성·donor 적합성·paired online CP/nnU-Net·전체40epoch 검증은 미완료다. [상세 조치와 근거](docs/v222_independent_review_response_20260927.md).
+
 ## v2.22 r6 — support 반복 복사와 pinning 대기 개선 (2026-09-26)
 
 - Support pass 안에서 불변인 model/Adam CPU snapshot을 한 번만 생성한다. 매 batch 완전한 checkpoint의 원자 저장·부분 support 진행·RNG·중단 복구는 유지한다. Optimization 단계에서는 가중치가 바뀌므로 매번 새 snapshot을 저장한다.

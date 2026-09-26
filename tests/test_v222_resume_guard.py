@@ -41,8 +41,10 @@ class GuardTests(unittest.TestCase):
             p.status.return_value='running'
             own=Mock();own.username.return_value='test-user'
             with patch('tools.v222_resume_guard.psutil.Process',return_value=own),patch('tools.v222_resume_guard.psutil.process_iter',return_value=[p]):
-                with self.assertRaisesRegex(RuntimeError,'source trainer'):
-                    assert_source_runs_idle(resume=root/'training/checkpoint_latest.pt')
+                for entry in ('run_v222_v1_l0.py','run_v222_optimized.py','run_v222_process_runtime.py'):
+                    p.cmdline.return_value=['python',entry,'--output','training']
+                    with self.assertRaisesRegex(RuntimeError,'source trainer'):
+                        assert_source_runs_idle(resume=root/'training/checkpoint_latest.pt')
 
     def test_unrelated_python_and_other_user_are_not_touched(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:

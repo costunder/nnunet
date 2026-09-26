@@ -30,14 +30,19 @@ def launch_worker(command,output):
     return child
 
 
-def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,optimized=False,cache=None,resume=None,migrate_workspace=None,process_loader=False):
+def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,optimized=False,cache=None,resume=None,migrate_workspace=None,process_loader=False,feature_coordinates=None):
     """Delegate to existing verified entry points without changing model config."""
     run=lambda name,*args:[sys.executable,'-u',str(ROOT/name),*map(str,args)]
     if process_loader and not optimized:
         raise ValueError('Process producer requires optimized execution')
+    if feature_coordinates is not None and not process_loader:
+        raise ValueError('Feature coordinate contract requires --runtime process')
     if migrate_workspace is not None and (not optimized or not resume or migrate_workspace!=256):
         raise ValueError('Workspace migration requires optimized resume at 256MiB')
     def gpu(name,*args):
+        if process_loader:
+            return run('tools/v222_gpu_workspace.py','--workspace-mib',edge_workspace_mib,
+                       '--feature-coordinates',feature_coordinates or 'stride4',name,*args)
         if edge_workspace_mib==64:return run(name,*args)
         return run('tools/v222_gpu_workspace.py','--workspace-mib',edge_workspace_mib,name,*args)
     if optimized:
@@ -51,14 +56,16 @@ def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,opt
             if cache is None:
                 plan.append(('paired_cache',run('tools/v222_prepare_optimized.py','--index',output/'observations/index.json','--output',output/'paired_cache')))
             index=cache if cache is not None else output/'paired_cache/index.json'
+            review_args=['--feature-coordinates',feature_coordinates or 'stride4'] if process_loader else []
             plan.append(('profile_DEBUG',run('tools/v222_gpu_workspace.py','--workspace-mib',edge_workspace_mib,
-                '--optimized-runtime','tools/profile_v1_execution.py',index,output/'profile_DEBUG','default',
+                '--optimized-runtime',*review_args,'tools/profile_v1_execution.py',index,output/'profile_DEBUG','default',
                 '--batch-size',profile_batch,'--allocator-gb',allocator_gb)))
         index=cache if cache is not None else output/'paired_cache/index.json'
         arguments=['--cache',index,'--output',output/'training']
         if resume:arguments+=['--resume',resume] # Inherit saved numerical/allocator policy.
         else:arguments+=['--workspace-mib',edge_workspace_mib]
         if migrate_workspace is not None:arguments+=['--migrate-workspace-mib',migrate_workspace]
+        if feature_coordinates is not None:arguments+=['--feature-coordinates',feature_coordinates]
         entry='tools/run_v222_process_runtime.py' if process_loader else 'tools/run_v222_optimized.py'
         plan.append(('gnn_training',run(entry,*arguments)))
         return plan
@@ -90,7 +97,7 @@ def execute(plan,output,env,runner=subprocess.run):
             if name=='gnn_training':
                 def argument(flag):
                     return command[command.index(flag)+1] if flag in command else None
-                assert_source_runs_idle(argument('--cache'),argument('--resume'))
+                assert_source_runs_idle(argument('--cache'),argument('--resume'),output=argument('--output'))
             result=runner(command,cwd=ROOT,env=env,check=False)
         except (OSError,RuntimeError,psutil.Error) as error:
             write_new(output/f'{number:02d}_{name}.failed.json',dict(**receipt,error=str(error)))
@@ -111,12 +118,15 @@ def main():
     p.add_argument('--profile-allocator-gb',type=float,default=9.0,help='DEBUG PyTorch allocator cap only')
     p.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
     p.add_argument('--runtime',choices=('optimized','process','legacy'),default='optimized')
+    p.add_argument('--feature-coordinates',choices=('legacy','stride4'),
+                   help='Process runtime: stride4 for new training, saved coordinate policy for resume')
     p.add_argument('--cache',type=Path,help='Existing complete paired index; skips raw/paired preparation')
     p.add_argument('--resume',type=Path,help='Rolling checkpoint with the same cache; resumes directly')
     p.add_argument('--migrate-workspace-mib',type=int,choices=(256,),help='Resume state with explicitly changed 256MiB execution workspace')
     p.add_argument('--edge-workspace-mib',type=int,choices=(64,256,512),
                    help='Execution scratch budget only; 256 measured locally. Preserve old runs at 64.')
     a=p.parse_args()
+    if a.feature_coordinates is not None and a.runtime!='process':raise ValueError('--feature-coordinates requires --runtime process')
     if a.migrate_workspace_mib is not None and (not a.resume or a.runtime=='legacy'):
         raise ValueError('--migrate-workspace-mib requires optimized --resume')
     if a.resume and not a.cache:raise ValueError('--resume requires --cache')
@@ -126,7 +136,7 @@ def main():
     if a.resume:a.resume=a.resume.resolve()
     for file in (a.cache,a.resume):
         if file is not None and not file.is_file():raise FileNotFoundError(file)
-    assert_source_runs_idle(a.cache,a.resume)
+    assert_source_runs_idle(a.cache,a.resume,output=a.output.resolve()/'training')
     if a.profile_batch<1 or a.profile_allocator_gb<=0:raise ValueError('Positive DEBUG profile settings required')
     medical=a.medical_root.resolve();output=a.output.resolve()
     if a.cache is None:
@@ -146,6 +156,7 @@ def main():
         if a.cache:command+=['--cache',str(a.cache)]
         if a.resume:command+=['--resume',str(a.resume)]
         if a.migrate_workspace_mib is not None:command+=['--migrate-workspace-mib',str(a.migrate_workspace_mib)]
+        if a.feature_coordinates is not None:command+=['--feature-coordinates',a.feature_coordinates]
         launch_worker(command,output)
         return watch(output)
     if (output/'requested.json').exists():
@@ -154,12 +165,13 @@ def main():
              HIERCP_TEST_FIXTURE=str(output/'graph_DEBUG/actual_graphs_DEBUG.pt'))
     plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb,a.edge_workspace_mib,
                 optimized=a.runtime!='legacy',cache=a.cache,resume=a.resume,migrate_workspace=a.migrate_workspace_mib,
-                process_loader=a.runtime=='process')
+                process_loader=a.runtime=='process',feature_coordinates=a.feature_coordinates)
     write_new(output/'requested.json',dict(python=sys.executable,medical_root=str(medical),
         cuda_visible_devices=env.get('CUDA_VISIBLE_DEVICES'),conda_prefix=env.get('CONDA_PREFIX'),
         production_model_config_changed=False,production_batch='auto',gnn_epochs=40,
         profile_batch=a.profile_batch,profile_allocator_gb=a.profile_allocator_gb,
         runtime=a.runtime,cache=str(a.cache) if a.cache else None,resume=str(a.resume) if a.resume else None,
+        requested_feature_coordinates=a.feature_coordinates,
         edge_workspace_mib='inherited from checkpoint' if a.resume else a.edge_workspace_mib,
         explicit_workspace_migration_mib=a.migrate_workspace_mib,
         scope='paired GNN only; native online bank and nnU-Net not integrated',

@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import psutil
 
-TRAINERS = {'run_v222_v1_l0.py', 'run_v222_optimized.py'}
+TRAINERS = {'run_v222_v1_l0.py', 'run_v222_optimized.py', 'run_v222_process_runtime.py'}
 
 
 def output_argument(command):
@@ -18,7 +18,30 @@ def output_argument(command):
     return None
 
 
-def assert_source_runs_idle(cache=None, resume=None):
+def owns_current_worker(process, output, own_pid):
+    """Only the recorded worker for this exact destination may be an ancestor.
+
+    Being a parent alone is insufficient: an active source run stays a blocker.
+    No PID, command or session is modified.
+    """
+    if output is None:
+        return False
+    current=psutil.Process(own_pid)
+    if process.pid not in {own_pid,*(p.pid for p in current.parents())}:
+        return False
+    command=process.cmdline()
+    if '--worker' not in command or not any(Path(token).name=='run_v222_server.py' for token in command):
+        return False
+    for i,token in enumerate(command):
+        value=command[i+1] if token=='--output' and i+1<len(command) else token.split('=',1)[1] if token.startswith('--output=') else None
+        if value is not None:
+            root=Path(value)
+            if not root.is_absolute():root=Path(process.cwd())/root
+            return (root/'training').resolve()==Path(output).resolve()
+    return False
+
+
+def assert_source_runs_idle(cache=None, resume=None, *, output=None):
     roots = set()
     if resume is not None:
         roots.add(Path(resume).resolve().parent)
@@ -27,6 +50,8 @@ def assert_source_runs_idle(cache=None, resume=None):
         path = Path(cache).resolve()
         if (path.parent.parent/'worker.json').is_file():
             roots.add(path.parent.parent/'training')
+    if output is not None:
+        roots.add(Path(output).resolve())
     blockers = []
     own_pid = os.getpid()
     for training in roots:
@@ -35,8 +60,10 @@ def assert_source_runs_idle(cache=None, resume=None):
             record = json.loads(receipt.read_text(encoding='utf-8'))
             try:
                 process = psutil.Process(record['pid'])
-                if (process.pid != own_pid and process.create_time() == record['created_at']
-                        and process.status() != psutil.STATUS_ZOMBIE):
+                same_destination=output is not None and training==Path(output).resolve()
+                if (process.create_time() == record['created_at']
+                        and process.status() != psutil.STATUS_ZOMBIE
+                        and not (same_destination and owns_current_worker(process,output,own_pid))):
                     blockers.append(dict(pid=process.pid,source=str(receipt),kind='source worker'))
             except psutil.NoSuchProcess:
                 pass # A completed source worker is expected, not a fallback.
@@ -53,11 +80,11 @@ def assert_source_runs_idle(cache=None, resume=None):
                 argument = output_argument(process.cmdline())
                 if argument is None:
                     continue
-                output = Path(argument)
-                if not output.is_absolute():
-                    output = Path(process.cwd())/output
-                if output.resolve() in roots and process.status() != psutil.STATUS_ZOMBIE:
-                    blockers.append(dict(pid=process.pid,source=str(output.resolve()),kind='source trainer'))
+                trainer_output = Path(argument)
+                if not trainer_output.is_absolute():
+                    trainer_output = Path(process.cwd())/trainer_output
+                if trainer_output.resolve() in roots and process.status() != psutil.STATUS_ZOMBIE:
+                    blockers.append(dict(pid=process.pid,source=str(trainer_output.resolve()),kind='source trainer'))
             except psutil.NoSuchProcess:
                 continue # Process finished during this read-only snapshot.
     if blockers:

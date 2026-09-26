@@ -1,4 +1,14 @@
-## 2026-09-26 최신 — support 반복 snapshot과 pinning 대기 개선
+## 2026-09-27 최신 — 독립 검토에서 확인된 오류 수정
+
+- 첨부 GPT 검토를 실제 코드/CT와 대조. CNN 정규화 좌표를12³ 특징 격자에 그대로 쓰던 오류(23.5→22), 정상 server worker 차단, process trainer 탐지 누락, 조건부 다중 검사 owner 오류를 재현·수정했다. 이전 bitwise 동일성 검사는 좌표 정확성 검사가 아니었다.
+- `tools/v222_review_contracts.py` 실행 adapter: 새 process run은 `stride4` 좌표, 기존 checkpoint 재개는 필드 없으면 `legacy`. 반대 contract로 exact resume 불가. raw graph/cache/core source 보존, corrected 학습의 learned support는 새로 계산. 기존 여러 case/동일 환자 support plan의 relabelled resume도 거부. 공개 고유case별 group 경로는 동일하다.
+- 최신 published7d88fc8의6파일 hash migration을 명시 추가. 기존 runtime 정책/가중치/Adam/RNG/cursor는 유지. unknown runtime 거부. root direct/optimized/legacy 진입점은 보존 경로이며 corrected adapter가 자동 적용되지 않는다. 서버 fresh DEBUG도 process 좌표를 명시 전달한다.
+- worker calibration은 production `.batches()`로 cold/warm4batch를 측정한다. 실제16개 대형CT graph probe에서 workers0/2/4/8 warm1.416/.870/.762/.768초; 로컬4선택은 서버/GPU overlap 최적성 주장 아님. savedworkers8 재개는 그대로다.
+- 48관련회귀 통과. 실제CT5,550,806parameter/batch32/346,135nodes/23,857,190edges update와 모든유한gradient, peakallocated6.296GB 확인. Support6관측만 사용한 명시적 DEBUG이며 fullsupport/전체학습이 아니다. corrected optimizer·partial support 중단재개 loss/model/Adam/memory bitwise 일치.
+- 현재 label로 donor compatibility/CP효용이 입증되지 않았다는 연구 지적은 여전히 유효하다. donor swap/recipient-only/center control/동일조건 nnU-Net CP 비교는 미실행. 중심 CT를 임의로 다시 가리거나 loss/모델규모를 바꾸지 않았다. paired online CP/nnU-Net 미완료. 서버 작업은 변경하지 않았다.
+- [상세 대응](docs/v222_independent_review_response_20260927.md), `validation/v222_r6/review_fixes_20260927_DEBUG.json`, `SERVER_V222.md` 최상단을 확인. 기존 속도수치는 legacy 좌표의 역사적 증거다.
+
+## 2026-09-26 이전 — support 반복 snapshot과 pinning 대기 개선
 
 - 사용자 “제대로 개선하라고”에 따라 실제 남은 병목을 수정했다. `tools/v222_support_snapshot.py`는 support pass 동안 model/Adam CPU copy를1회로 줄이고, 매 batch 완전한 checkpoint 저장과 부분 support/RNG 복구는 유지한다. Optimization 단계 snapshot은 원래대로 매번 새로 만든다.
 - `tools/v222_process_loader.py`: producer4개×decode2 threads, parent의 별도 pinning thread, 순서 유지 prefetch4. 기존 캐시 예산·단계 사이 유지 정책과 모델/graph/data/batch/수치 workspace를 보존했다. 원본 연구·cache source 파일은 수정하지 않았다.

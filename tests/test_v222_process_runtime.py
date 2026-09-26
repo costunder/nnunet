@@ -22,6 +22,25 @@ class ProcessRuntimeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(runtime.validate_resume(self.saved(runtime.runtime_identity()),Path(root)/'checkpoint_latest.pt'),(256,True))
 
+    def test_snapshot_release_retains_legacy_coordinates(self):
+        from tools.v222_review_contracts import resolve_feature_contract
+        saved=self.saved(runtime.PUBLISHED_SNAPSHOT_RUNTIME);before=copy.deepcopy(saved)
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(runtime.validate_resume(saved,Path(root)/'checkpoint_latest.pt'),(256,True))
+        self.assertEqual(resolve_feature_contract(saved),'legacy')
+        self.assertEqual(saved,before)
+
+    def test_fresh_process_preflight_uses_same_coordinates(self):
+        for contract in ('legacy','stride4',None):
+            result=dict(stages(Path('/medical'),Path('/new'),32,9.,optimized=True,
+                cache=Path('/old/index.json'),process_loader=True,feature_coordinates=contract))
+            for name in ('graph_DEBUG','profile_DEBUG'):
+                command=result[name]
+                self.assertEqual(command[command.index('--feature-coordinates')+1],contract or 'stride4')
+            if contract:
+                command=result['gnn_training']
+                self.assertEqual(command[command.index('--feature-coordinates')+1],contract)
+
     def test_published_process_runtime_migration_preserves_state(self):
         saved=self.saved(runtime.PUBLISHED_PROCESS_RUNTIME);before=copy.deepcopy(saved)
         with tempfile.TemporaryDirectory() as root:

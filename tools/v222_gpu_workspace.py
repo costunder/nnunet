@@ -5,6 +5,7 @@ chunk sizes can change floating-point gradient summation; it is not bit-exact
 with the old policy. Resume requires the original workspace policy.
 """
 import argparse
+from contextlib import ExitStack
 import json
 from pathlib import Path
 import runpy
@@ -44,9 +45,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--workspace-mib',type=int,choices=(64,256,512),required=True)
     p.add_argument('--optimized-runtime',action='store_true',help='Use optimized input loader for DEBUG profiling')
+    p.add_argument('--feature-coordinates',choices=('legacy','stride4'),help='Explicit DEBUG model-input contract')
     p.add_argument('entry',choices=('run_v222_v1_l0.py','tools/profile_v1_execution.py'))
     p.add_argument('arguments',nargs=argparse.REMAINDER)
     a=p.parse_args();output=output_path(a.entry,a.arguments)
+    if a.feature_coordinates and a.entry=='run_v222_v1_l0.py' and a.arguments[0]!='verify':
+        raise ValueError('Feature contract wrapper is DEBUG only; train through run_v222_process_runtime.py')
     if output.exists():raise FileExistsError(f'New output required: {output}')
     check_resume(a.arguments,a.workspace_mib)
     import hiercp.model as implementation
@@ -55,20 +59,22 @@ def main():
     implementation.EDGE_ATTENTION_WORKSPACE_BYTES=a.workspace_mib*1024**2
     receipt=policy_path(output);receipt.parent.mkdir(parents=True,exist_ok=True)
     with receipt.open('x') as f:
-        json.dump(dict(workspace_mib=a.workspace_mib,entry=a.entry,arguments=a.arguments,
+        json.dump(dict(workspace_mib=a.workspace_mib,entry=a.entry,arguments=a.arguments,feature_coordinates=a.feature_coordinates or 'legacy',
             model_and_graph_scale_changed=False,cache_rebuild_required=False,
             numerical_policy='unchanged operator; changed edge chunk accumulation order; not bit-exact across workspace sizes',
             validation_scope='local real full-size DEBUG batches; not A100 MIG throughput or full-training validation'),f,indent=2)
     print(json.dumps(dict(stage='edge_execution_workspace',workspace_mib=a.workspace_mib,receipt=str(receipt))),flush=True)
     sys.argv=[str(ROOT/a.entry),*a.arguments]
-    if a.optimized_runtime:
-        if a.entry!='tools/profile_v1_execution.py':
-            raise ValueError('Optimized production training uses run_v222_optimized.py')
-        from tools.v222_runtime_execution import installed
-        from tools.run_v222_optimized import runtime_identity
-        with installed(dict(debug=True,runtime_sha256=runtime_identity())):
-            runpy.run_path(str(ROOT/a.entry),run_name='__main__')
-    else:
+    with ExitStack() as contexts:
+        if a.optimized_runtime:
+            if a.entry!='tools/profile_v1_execution.py':
+                raise ValueError('Optimized production training uses run_v222_optimized.py')
+            from tools.v222_runtime_execution import installed
+            from tools.run_v222_optimized import runtime_identity
+            contexts.enter_context(installed(dict(debug=True,runtime_sha256=runtime_identity())))
+        if a.feature_coordinates:
+            from tools.v222_review_contracts import installed as reviewed
+            contexts.enter_context(reviewed(a.feature_coordinates))
         runpy.run_path(str(ROOT/a.entry),run_name='__main__')
 
 

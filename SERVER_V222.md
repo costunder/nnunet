@@ -1,5 +1,25 @@
 # v2.22 r6 서버 실행: 코드만 Git으로 이동
 
+## 2026-09-27 우선 확인 — 좌표 오류 수정과 기존 재개의 구분
+
+독립 검토에서 CNN 입력→특징 좌표 오류가 확인됐다. [수정·검증·남은 연구 문제](docs/v222_independent_review_response_20260927.md). **기존 checkpoint 재개는 과거 입력 의미를 유지하며, 좌표가 수정된 새로운 실험으로 바뀌지 않는다.** 기존 학습과 corrected 학습을 같은 run/성능 결과로 섞지 않는다.
+
+수정된 fresh 학습은 최신 코드 checkout에서 아래처럼 명시한다. 실행 중인 학습이 있으면 먼저 기존 viewer의 Ctrl+C→PAUSED를 확인한다. 새 코드 checkout 준비 방식은 아래의 code-only worktree 절차를 따르며 실행 중 checkout은 pull하지 않는다. 여기서는 서버 명령을 실행하지 않았다.
+
+```bash
+conda activate nnunet
+CUDA_VISIBLE_DEVICES=MIG-774a3cc0-0169-5e18-b5d9-fe1b7a1d6ce7 python tools/run_v222_server.py \
+  --runtime process \
+  --feature-coordinates stride4 \
+  --medical-root /home/aicompetition06/Medical \
+  --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
+  --output work/v222_stride4_fresh_20260927
+```
+
+원본 graph cache를 재사용하지만 가중치와 learned support는 새로 학습/계산한다. `--resume` 없는 새 실험이다. 모델/graph/data/epoch를 축소하지 않으며 production batch/worker는 실제 calibration으로 결정된다. 최신 process fresh 기본 좌표도 `stride4`지만 명령에는 의도를 명시했다. 다른 `optimized/legacy` 경로는 과거 좌표를 보존한다.
+
+과거 작업을 정확히 이어가려면 아래2026-09-26의 `--runtime process --resume 최신checkpoint` 명령을 사용하고 `--feature-coordinates stride4`를 추가하지 않는다. 필드가 없는 checkpoint는 `legacy`로 처리된다. 이미 corrected로 시작한 run은 saved `stride4`를 상속한다. 서로 다른 coordinate contract의 exact resume는 거부한다. 아래의 오래된 fresh 예시는 legacy 좌표를 사용하는 역사적 명령이다.
+
 사용자 지시: **로컬 테스트 → 코드·설정 Git 업로드 → 서버 원본 CT로 준비 및 학습**. 로컬 graph cache, CT, checkpoint, DEBUG fixture를 전송하지 않는다.
 
 현재 서버 진입점은 `tools/run_v222_server.py`이며 기본값은 중복 제거 backend인 `tools/run_v222_optimized.py`다. v1 방식 paired L0 + v2.22 L1/L2, 5,550,806 parameters, seed42, 전체 GNN40epochs를 유지한다. `run_v222.py`는 이전 L0 경로다. Native online CP bank/nnU-Net 연결과 segmentation 평가는 미완료이므로 이번 실행은 **paired GNN 학습**이다.

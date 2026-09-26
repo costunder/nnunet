@@ -10,6 +10,7 @@ from collections import deque
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import contextmanager
 import multiprocessing
+import time
 from unittest.mock import patch
 
 import torch
@@ -23,6 +24,12 @@ _loaders = {}
 _path = None
 _budget = None
 _pools = {}
+
+
+def producer_layout(workers):
+    if workers < 0:raise ValueError('Decode worker count must be nonnegative')
+    depth=min(ProcessPairLoader.producer_count,max(1,workers))
+    return depth,workers//depth if workers else 0
 
 
 def initialize(path, cache_budget):
@@ -62,7 +69,7 @@ class ProcessPairLoader:
         if len(partitions) != 1:
             raise ValueError('Each loader must use one existing inner partition')
         self.dataset, self.workers, self.partition = dataset, workers, partitions[0]
-        self.depth = self.producer_count
+        self.depth,self.decode_width = producer_layout(workers)
         key = (str(dataset.path), self.depth)
         if key not in _pools:
             total_budget = int(snapshot()['available_memory_bytes'] * .20)
@@ -98,7 +105,7 @@ class ProcessPairLoader:
             raise RuntimeError('Previous prefetch must be drained before reuse')
         iterator = iter(groups)
         # Split decode threads across active producers, not across samples.
-        width = self.workers//self.depth if self.workers else 0
+        width = self.decode_width
         for _ in range(self.depth):
             ids = next(iterator, None)
             if ids is not None:
@@ -127,6 +134,41 @@ def close_producers():
         pool.shutdown(wait=True)
 
 
+def calibrate_workers(dataset,indices,root):
+    """Measure the production prefetch path, not single-producer make().
+
+    Same complete diagnostic graphs at each candidate width; four batches in
+    both cold and warm passes. Pool teardown bounds memory across candidates.
+    This is a loader-only measurement, not overlapped GPU throughput.
+    """
+    from hiercp_v222.v1_training import write_new,emit
+    reports=[]
+    for workers in (0,2,4,8):
+        close_producers()
+        loader=ProcessPairLoader(dataset,workers)
+        report=dict(workers=workers,graphs_per_batch=len(indices),batches_per_pass=4,
+                    producers=loader.depth,decode_threads_per_producer=loader.decode_width,
+                    debug_calibration=True,path='ProcessPairLoader.batches')
+        try:
+            for key in ('seconds','warm_seconds'):
+                start=time.perf_counter();count=0
+                for payload in loader.batches([indices]*4,0):
+                    count+=1
+                    report['nodes_per_batch']=int(payload.graph.num_nodes)
+                    report['edges_per_batch']=int(payload.graph.num_edges)
+                    del payload
+                if count!=4:raise RuntimeError('Incomplete calibration stream')
+                report[key]=time.perf_counter()-start
+            reports.append(report);emit(stage='paired_loader_calibration',**report)
+        finally:
+            loader.close();close_producers()
+    selected=min(reports,key=lambda r:r['warm_seconds'])['workers']
+    write_new(root/'loader_calibration.json',dict(reports=reports,selected=selected,
+        cache_policy='one producer pool at a time; combined budget 20% available RAM',
+        worker_kind='production process prefetch; parent pin thread',gpu_overlap_measured=False))
+    return selected
+
+
 @contextmanager
 def installed():
     """Called inside the existing execution backend's installation context."""
@@ -139,7 +181,8 @@ def installed():
         module.PairLoader = ProcessPairLoader
     v222_runtime_execution.CachedPairLoader = ProcessPairLoader
     try:
-        yield
+        with patch.object(v1_training,'calibrate_workers',calibrate_workers):
+            yield
     finally:
         try:
             close_producers()

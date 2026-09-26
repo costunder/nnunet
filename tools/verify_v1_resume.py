@@ -86,7 +86,15 @@ def main():
         checkpoint_bytes=(root/'checkpoint_latest.pt').stat().st_size,checkpoint_seconds=receipt['seconds'],first_loss=first['loss'],resumed_loss=actual['loss'],**check)
     (root/'result.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps(result),flush=True)
 if __name__=='__main__':
-    if '--fixed-support-snapshot' in sys.argv:
+    if '--reviewed-stride4' in sys.argv:
+        sys.argv.remove('--reviewed-stride4')
+        from tools.v222_runtime_execution import installed
+        from tools.v222_support_snapshot import installed as support_installed, AsyncSaver, encode_memory
+        from tools.v222_review_contracts import installed as review_installed
+        Saver=AsyncSaver
+        with installed(dict(debug=True,feature_coordinates='stride4',support_task_contract='patient_group_v1')),support_installed(),review_installed('stride4'):
+            main()
+    elif '--fixed-support-snapshot' in sys.argv:
         sys.argv.remove('--fixed-support-snapshot')
         from tools.v222_runtime_execution import installed
         from tools.v222_support_snapshot import installed as support_installed, AsyncSaver, encode_memory
