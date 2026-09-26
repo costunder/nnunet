@@ -1,0 +1,20 @@
+{
+  "format": "v22_observed_ranking_v1",
+  "release": "v2.2",
+  "objective": "observed_rank_v1",
+  "ranking": "mean_pairwise_logistic_observed_over_unobserved_within_case",
+  "ranking_weight": 1.0,
+  "observation_auxiliary_weight": 1.0,
+  "weight_rationale": "Keep the existing observed-presence task and L2 alignment; add a unit-weight mean rank loss. User-approved ranking extension; weights are not claimed optimal.",
+  "reference": "detached_epoch_L0_memory_with_current_minibatch_embeddings_replaced",
+  "rank_pairs": "all same-case positive/unobserved pairs touching the current physical minibatch",
+  "zero_positive_case": "retain observation auxiliary and L2 training; report unavailable within-case positive ranking",
+  "positive_scope": "all eligible small-tumor observation anchors in the preserved cache",
+  "unknown_scope": "not observed at candidate center; NOT a confirmed invalid CP placement",
+  "selection_metric": "ranking_pairwise_loss",
+  "report_recall_at": [1, 5, 10],
+  "filter_order": "score_all_then_exclude_all_observed_tumor_overlap_then_select",
+  "overlap": "any recipient tumor voxel under the actual transformed paste footprint",
+  "no_eligible_candidate": "keep_original",
+  "native_online_nnunet_integrated": false
+}

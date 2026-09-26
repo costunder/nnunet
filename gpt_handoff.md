@@ -1,4 +1,13 @@
-## 2026-09-27 최신 — 독립 검토에서 확인된 오류 수정
+## 2026-09-27 최신 — 사용자 승인 관측 종양 순위 학습
+
+- 사용자 합의: 실제 종양은 순위 학습의 양성이고 상위에 오도록 학습; 추천할 때 관측 종양과 겹치는 위치를 제외. `observed_rank_v1` 구현. 단순 top1 삭제/GT score boost 금지. [현재 상세 계약](docs/v22_observed_ranking_20260927.md), `config/v22_observed_ranking.json`.
+- Mean same-case pairwise logistic rank loss + 기존 observed-presence CE + L2 alignment. 미관측은 CP 불가능 정답이 아니다. 분류 CE는 관측 존재 보조학습. 참조 L0는 detached epoch memory, live rows는 현재 L0로 교체. Query group recipient/donor 양쪽 support 배제 유지. Full-case 최신 L0 역전파라고 설명하지 말 것. 모든원관측1회visit/전체graph 유지; 무양성 train19/84case는 기존보조/L2 유지하고 순위평가불가 별도집계.
+- 새 `tools/v22_ranking_training.py`가 기존 loader/snapshot/resume 실행 루프를 호출하며 rank calibration/평가/selection을 연결. Best checkpoint는 validation ranking_pairwise_loss, Recall@1/5/10/MRR/개별observed rank/무양성case를 기록. 원core/cache provenance 불변. 같은CT에 donor가 다르게 배정된 기존캐시이므로 donor조건부효과는 별도미검증.
+- `tools/v22_rank_recommendation.py`: final checkpoint coordinate/objective/source/support 확인, fixed-donor 후보 전부 scoring 후 정확한 paste footprint와 all-tumor label overlap 제외, 무후보keep_original. Native nnU-Net CP event 연결은 미완료. legacy score_candidates가 새필터를 자동호출한다고 말하지 말 것.
+- 새 process run 및 server기본runtime는 process/observed_rank_v1/stride4. 구checkpoint objective없으면 observation_ce로보존. CE→rank exact resume 거부, 새output+기존cache 사용. 코드/설정만 바뀌었으며 서버미실행. prior6480715도 runtime migration에 명시.
+- 58회귀, 실제CTphysical32/5,550,806params/21,995,327edges에서 rank-only L0 gradient비영·전체유한gradient,1,888순위쌍, peakallocated6.184GB, loss/model/Adam 재개bitwise일치. Query32allU지만 samecase59양성참조. 별도train8/val2/1epoch/physical2 DEBUG fullcyclepause→resume→best/final memory 완료, Recall@1=0을숨기지않음. 실제mask2후보 둘다overlap제외/원본유지. 전체40epoch/CP효용 검증은 아님.
+
+## 2026-09-27 이전 — 독립 검토에서 확인된 오류 수정
 
 - 첨부 GPT 검토를 실제 코드/CT와 대조. CNN 정규화 좌표를12³ 특징 격자에 그대로 쓰던 오류(23.5→22), 정상 server worker 차단, process trainer 탐지 누락, 조건부 다중 검사 owner 오류를 재현·수정했다. 이전 bitwise 동일성 검사는 좌표 정확성 검사가 아니었다.
 - `tools/v222_review_contracts.py` 실행 adapter: 새 process run은 `stride4` 좌표, 기존 checkpoint 재개는 필드 없으면 `legacy`. 반대 contract로 exact resume 불가. raw graph/cache/core source 보존, corrected 학습의 learned support는 새로 계산. 기존 여러 case/동일 환자 support plan의 relabelled resume도 거부. 공개 고유case별 group 경로는 동일하다.

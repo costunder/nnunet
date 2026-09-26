@@ -106,6 +106,13 @@ R26의 학습 scorer/top-k/gate/유도 부분 그래프를 `hiercp_v222/l0_compa
 - R7 nnU-Net과 프로젝트에 이미 생성된 `nnUNetResEncUNetMPlans.json`을 구조 출처로 사용한다. 이번 `CNNLocalEncoder`는 plan의 ResidualEncoder 6단계/채널/블록 전체를 직접 사용한다. 원 segmentation decoder는 만들지 않으며 기존 L0 48³ CT와128D readout을 적용한 별도 기준선이다. 원 nnU-Net의128³ segmentation 입력·정규화·학습·성능을 재현했다고 주장하지 않는다. 설치 library 버전과 실제 encoder 소스 SHA는 실행 started.json에 기록했다.
 - [구현 및 실제 한 케이스 검증](docs/v22_cnn_l0_20260924.md). 초기 가중치 실행이며 learned feature/saliency나 CP 성능 개선의 증거로 사용하지 않는다.
 
+## v2.2 관측 종양 순위 학습 — 2026-09-27
+
+- **R33 — Rendle et al. BPR: Bayesian Personalized Ranking from Implicit Feedback.** [원문](https://arxiv.org/abs/1205.2618), §3–4. 관측된 양성과 미관측 항목의 상대 순위를 학습하며, 미관측끼리의 정답 순서를 알 수 없다는 점을 확인했다. 본 프로젝트는 `softplus(-(s_positive-s_unobserved))`를 같은 CT의 위치에 적용하고 기존 관측 CE/L2를 유지하는 변형이다. 원래 사용자–상품 MF/BPR 학습이나 종양 CP 성능을 재현했다고 주장하지 않는다. Epoch detached L0 reference와 unit loss weights는 프로젝트 구현 선택이며 원 논문에서 검증한 설정이 아니다.
+- **R34 — Imagining the Unseen: Generative Location Modeling for Object Placement.** [원문](https://arxiv.org/abs/2410.13564), §3.1–3.2. 희소 양성 위치로 여러 가능한 삽입 위치를 학습하고, 명시적 negative annotation이 있을 때 선호학습을 사용하는 논의 참고. 미관측 위치를 전부 부적합으로 간주하는 문제의 근거다. 해당 논문의 generative transformer/DPO를 이 GNN에 구현한 것은 아니며 CT 종양 CP의 타당성 근거로 전용하지 않는다.
+
+연결 코드: `tools/v22_rank_objective.py`, `tools/v22_ranking_training.py`, `tools/v22_rank_recommendation.py`. 구체적인 목표·근사·DEBUG 검증·미완료 항목은 [v2.2 순위 학습 기록](docs/v22_observed_ranking_20260927.md)을 따른다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

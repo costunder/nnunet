@@ -1,5 +1,26 @@
 # v2.22 r6 서버 실행: 코드만 Git으로 이동
 
+## 최신 v2.2 — 관측 종양 순위 학습 (2026-09-27)
+
+새 objective는 `observed_rank_v1`이다. 실제 관측 종양을 상위로 학습하고 추천 시 주석 종양과 실제 paste footprint가 겹치는 후보를 제외한다. [구현·검증·남은 한계](docs/v22_observed_ranking_20260927.md). Server runner의 새 기본 runtime은 process이며, 기존 checkpoint 재개는 saved objective를 유지한다.
+
+아래는 **새 순위 학습** 명령이다. 기존 CE 가중치를 exact resume하는 명령이 아니다. 원본 graph cache만 재사용한다. 코드가 최신 checkout에 준비되고 기존 GPU 학습이 저장 중단된 상태에서 실행한다. 이번 작업에서는 원격 업로드/서버 실행을 하지 않았다.
+
+```bash
+conda activate nnunet
+CUDA_VISIBLE_DEVICES=MIG-774a3cc0-0169-5e18-b5d9-fe1b7a1d6ce7 python tools/run_v222_server.py \
+  --runtime process \
+  --training-objective observed_rank_v1 \
+  --feature-coordinates stride4 \
+  --medical-root /home/aicompetition06/Medical \
+  --cache /home/aicompetition06/Medical/HierCP-v222-r6/work/v222_mig10gb_r6_scanfix/paired_cache/index.json \
+  --output work/v22_observed_rank_20260927
+```
+
+새 profile DEBUG는 실제 새 rank loss와 corrected 좌표의 `verify_v22_ranking_real_debug.py`를 사용한다. Production은 전체 cohort/40epochs 및 실제 새 objective의 batch/worker calibration을 사용한다. 기존 CE→ranking exact resume는 오류로 거부한다. 이미 순위 학습으로 시작한 작업은 그 최신 checkpoint를 `--resume`으로 재개할 수 있다. `--training-objective observation_ce`는 기존 관측 분류를 새로 실행하려는 경우에만 명시한다.
+
+Native online CP/nnU-Net 통합은 아직 미완료이며 이 명령은 GNN 순위 학습이다. 아래 이전 절의 fresh process 기본값 설명은 이 최신 절로 대체한다.
+
 ## 2026-09-27 우선 확인 — 좌표 오류 수정과 기존 재개의 구분
 
 독립 검토에서 CNN 입력→특징 좌표 오류가 확인됐다. [수정·검증·남은 연구 문제](docs/v222_independent_review_response_20260927.md). **기존 checkpoint 재개는 과거 입력 의미를 유지하며, 좌표가 수정된 새로운 실험으로 바뀌지 않는다.** 기존 학습과 corrected 학습을 같은 run/성능 결과로 섞지 않는다.

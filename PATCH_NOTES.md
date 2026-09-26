@@ -1,3 +1,11 @@
+## v2.2 — 관측 종양 순위 학습 / 추천 시 종양 제외 (2026-09-27)
+
+- 사용자 합의한 `observed_rank_v1` 구현. 관측 종양을 같은 CT의 미관측 후보보다 높게 두는 mean pairwise logistic loss를 기존 관측 CE/L2 정렬에 추가한다. 현재 batch에 양성이 없어도 detached epoch L0 reference와 live query 교체로 전체 same-case 비교를 제공한다. 기존 graph/model/모든 관측 유지.
+- 제외 전 순위 Recall@1/5/10, MRR, mean observed rank 및 무양성 case 집계. Best epoch는 ranking loss로 선택한다. 종양 점수/순위를 정답으로 강제하지 않는다.
+- paired 후보 추천 API: 동일 donor·recipient 모델 scoring 후, 실제 전체 paste footprint가 주석 종양과 겹치는 모든 후보 제외. 1위만 버리는 방식이 아니다. 유효 후보가 없으면 원본 유지. 기존 nnU-Net CP 이벤트 통합은 여전히 미완료.
+- 새 process run은 순위 objective+stride4. 기존 CE checkpoint는 그대로 이어지며 objective 변경 exact resume는 거부. Native CT graph cache 재사용 가능. 모델5,550,806 parameters, 전체데이터, seed42/CP80%/40epochs 유지.
+- 58회귀 검사, 실제 full-model/batch32 rank-only L0 gradient·전체 유한gradient·optimizer 재개 일치, 명시적 작은1epoch lifecycle 및 실제 마스크 제외 검증 완료. 전체학습/CP 성능 승인 아님. [학습 정의·증거·남은 한계](docs/v22_observed_ranking_20260927.md).
+
 ## v2.22 r6 — 독립 검토 오류 수정 (2026-09-27)
 
 - 실제 CNN stride/padding에 맞게 입력→특징 좌표 변환. 중심23.5를22로 읽던 반례 수정. 새 `--runtime process`는 `stride4`, 기존 checkpoint는 `legacy` 의미를 유지하며 상호 exact resume 전환을 거부한다. 원본 CT graph cache 재사용 가능, learned support는 corrected 학습에서 새로 생성한다.

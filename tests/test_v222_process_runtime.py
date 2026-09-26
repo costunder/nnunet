@@ -33,7 +33,8 @@ class ProcessRuntimeTest(unittest.TestCase):
     def test_fresh_process_preflight_uses_same_coordinates(self):
         for contract in ('legacy','stride4',None):
             result=dict(stages(Path('/medical'),Path('/new'),32,9.,optimized=True,
-                cache=Path('/old/index.json'),process_loader=True,feature_coordinates=contract))
+                cache=Path('/old/index.json'),process_loader=True,feature_coordinates=contract,
+                training_objective='observation_ce' if contract=='legacy' else None))
             for name in ('graph_DEBUG','profile_DEBUG'):
                 command=result[name]
                 self.assertEqual(command[command.index('--feature-coordinates')+1],contract or 'stride4')
