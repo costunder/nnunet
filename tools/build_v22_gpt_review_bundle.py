@@ -96,8 +96,11 @@ def main():
                 for candidate in (stem+'.py',stem+'/__init__.py'):
                     if (ROOT/candidate).is_file() and candidate not in blobs:missing_imports.add(candidate)
     if syntax_errors:raise ValueError(f'Python syntax errors: {syntax_errors}')
-    if any(r['tracked'] and not r['matches_base_commit'] for r in manifest):
-        raise ValueError('Tracked source differs from HEAD; commit the intended changes before exporting')
+    # Frozen files intentionally use CRLF checkouts via .gitattributes; compare
+    # Git's clean representation for dirtiness, while retaining raw-byte hashes.
+    dirty={p.decode() for p in git('diff','--name-only','-z',commit,'--').split(b'\0') if p}
+    if dirty.intersection(blobs):
+        raise ValueError(f'Tracked source differs from HEAD: {sorted(dirty.intersection(blobs))}')
     if missing_imports:raise ValueError(f'Missing existing local import modules: {sorted(missing_imports)}')
     # Source-only archive must retain every file required by the frozen v1 guard.
     preserved=json.loads(blobs['versions/v1/manifest.json'])['files']
@@ -143,6 +146,8 @@ def main():
         source_scope='Tracked source plus explicitly selected current untracked source in named code/docs/config directories',
         excludes=['Current root code.txt (existing user file preserved)','CT/masks','work/cache/checkpoints','environments','Git database'],
         source_count=len(blobs),files=manifest,other_exclusions=excluded,
+        tracked_sources_git_clean=True,
+        checkout_note='matches_base_commit compares raw bytes; false with git-clean sources can reflect intentional .gitattributes CRLF checkout conversion. ZIP SHA256 always describes original working-tree bytes.',
         source_syntax_errors=syntax_errors,
         archives_note='Immutable previous-source/audit archives retained for verify_v1; historical code.txt inside them is historical, not current')
     documents['manifest.json']=json.dumps(metadata,ensure_ascii=False,indent=2)+'\n'
