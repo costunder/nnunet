@@ -102,12 +102,13 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
     optimizer=torch.optim.AdamW(net.parameters(),lr=base['training']['lr'],weight_decay=base['training']['weight_decay'],fused=base['training']['fused_optimizer'])
     settings=configuration()
     from tools.v22_resume_state import optimizer_contract
+    from tools.v22_resume_integrity import rng_contract,plan_generation
     loaded=torch.load(resume,map_location='cpu',weights_only=False) if resume else None
     run_id=loaded['run_id'] if loaded is not None else uuid.uuid4().hex
     identity=dict(training_objective=OBJECTIVE,ranking_contract=settings,feature_coordinates='stride4',
                   artifact_contract=ARTIFACT_CONTRACT,geometry_contract=GEOMETRY_CONTRACT,run_id=run_id,
                   support_task_contract='patient_group_v1',config=cfg,base=base,source_identity=ex.provenance(),cache_sha256=ex.sha(cache),debug=bool(debug),
-                  optimizer_contract=optimizer_contract(net,optimizer))
+                  optimizer_contract=optimizer_contract(net,optimizer),rng_contract=rng_contract())
     ex.write_new(root/'initialization.json',dict(**identity,parameters=sum(p.numel() for p in net.parameters()),
         train_samples=len(dataset),validation_samples=len(validation),subset=bool(debug),gpu=torch.cuda.get_device_name()))
     if resume:
@@ -206,6 +207,7 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
                     if group!=state['last_group']:
                         support=ex.support_for_recipient(state['memory'],group)
                         with torch.autocast('cuda',dtype=torch.bfloat16):state['plan']=net.fit_support_clusters(*support)
+                        state['plan_generation']=plan_generation(state,run_id,net.state_dict(),group)
                         state['audits'][group]=state['plan']['audit'];state['last_group']=group
                     elif support is None:support=ex.support_for_recipient(state['memory'],group)
                     plan_done=time.perf_counter()
@@ -261,7 +263,7 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
                 best=best_snapshot(net,state['epoch']+1,state['best'],identity)
                 saver.identity['best_snapshot']=best
                 state['best_snapshot_meta']={k:best[k] for k in ('epoch','metric','model_sha256')}
-            state['epoch']+=1;ex.fresh_epoch(state);state['phase']='optimization'
+            state['epoch']+=1;ex.fresh_epoch(state);state['plan_generation']=None;state['phase']='optimization'
             saver.save(state);ex.emit(stage='epoch_complete',**{k:v for k,v in row.items() if k!='clusters'})
             if stop():return root/'checkpoint_latest.pt'
     if state['phase']!='final_memory':
@@ -282,7 +284,9 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
     from tools.run_v222_process_runtime import runtime_identity
     payload['execution_policy_runtime_sha256']=runtime_identity()
     payload['selected_model_sha256']=tree_hash(payload['state_dict'])
-    payload['memory_model_sha256']=payload['selected_model_sha256']
+    if payload['selected_model_sha256']!=saver.identity['best_snapshot']['model_sha256']:
+        raise ValueError('Final artifact model is not the selected best')
+    payload['memory_model_sha256']=state['memory_generation']['model_sha256']
     payload['memory_sha256']=tree_hash(payload['memory'])
     validate_artifact(payload,'final',allow_debug=debug)
     ex.save_torch_new(root/'checkpoint.pt',payload)

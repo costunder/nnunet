@@ -88,12 +88,14 @@ class AsyncSaver(original.Saver):
             execution_policy=self.execution_policy, state=state, model=self.net.state_dict(),
             optimizer=self.optimizer.state_dict(), rng=original.rng_state()))
         snapshot_seconds = time.perf_counter() - began - wait_seconds
-        if payload.get('artifact_contract')=='observed_rank_artifact_v3':
+        if payload.get('artifact_contract')=='observed_rank_artifact_v4':
             from tools.v22_artifacts import tree_hash
             # Adam is immutable between optimizer updates, including memory passes.
             if getattr(self,'adam_hash_step',None)!=state['step']:
                 self.adam_hash=tree_hash(payload['optimizer']);self.adam_hash_step=state['step']
             payload['optimizer_sha256']=self.adam_hash
+            from tools.v22_resume_integrity import seal_resume
+            seal_resume(payload)
         receipt = dict(phase=state['phase'], epoch=state['epoch'] + 1, step=state['step'],
             next_batch=state.get('next_batch', 0), memory_completed=state.get('memory_next', 0),
             snapshot_seconds=snapshot_seconds, writer_wait_seconds=wait_seconds,

@@ -58,7 +58,14 @@ class AsyncSaver(backend.AsyncSaver):
 def encode_memory(net,dataset,state,saver,batch,workers,release_unused):
     net.eval()
     with saver.fixed_support(),patch.object(backend,'CachedPairLoader',CachedPairLoader),patch.object(backend,'progress',progress):
-        return backend.encode_memory(net,dataset,state,saver,batch,workers,release_unused)
+        ranking=saver.identity.get('artifact_contract')=='observed_rank_artifact_v4'
+        if ranking:
+            from tools.v22_resume_integrity import start_memory
+            start_memory(state,saver.identity['run_id'],saver.frozen_payload['model'])
+        complete=backend.encode_memory(net,dataset,state,saver,batch,workers,release_unused)
+        if ranking and complete:
+            state['memory_generation']=state.pop('memory_work_generation')
+        return complete
 
 
 @contextmanager

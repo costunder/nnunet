@@ -1,6 +1,8 @@
 # v2.2 독립 재검토 요청 — observed_rank_v1 오류 수정본
 
-최신 대상은 아래 이전 수정에 더해 R01–R06를 보강한 artifact v3/content binding 수정본입니다. 정확한 commit은 manifest.json을 확인하세요. docs/v22_rereview_repairs_20260927.md 및 validation/v222_r6/rereview_repairs_20260927_DEBUG.json을 먼저 읽고 Adam mapping/hash·phase/best/cursor·calibration reuse·모든 후보 frame/content·workers0·invalid empty를 우선 재검증해 주세요. 72회귀, 실제 process 연속/중단재개 model·Adam·모든 RNG 동일, 실제2,368voxel raw paste 및 workers0/1/2/4/8 일치, 잘못된 calibration7종 process 거부를 기록했습니다. 전체규모/G3·native/G4·효용/G5는 여전히 미완료입니다.
+최신 대상은 B01–B03 exact-resume 보강 / artifact v4입니다. docs/v22_resume_integrity_20260927.md와 validation/v222_r6/resume_integrity_20260927_DEBUG.json을 우선 읽고, tools/v22_resume_integrity.py 및 실제 호출 경로를 검증해 주세요. final-memory current model/best/buffer/prefix generation, frozen plan/teacher/support generation, 선언된 CUDA RNG 수·shape·dtype·content가 핵심입니다. 정상 optimization에서 best를 강제로 load하거나 plan을 재생성하거나 RNG를 reseed하지 않는지 확인하세요. 82회귀 및 실제 CT DEBUG의 다음 gradient/Adam/RNG 동일성·final-memory 경계·portable 복구와 손상10종 거부를 기록했습니다. earlier-best는 CPU fixture, 같은 episode 수치는 실제 CT batch 재사용 probe이며 다중 batch 전체 epoch 검증은 아닙니다. 이 한계를 포함해 새 반례를 찾아 주세요. 아래 v3/R01–R06는 이전 단계입니다. G3/G4/G5는 여전히 미완료입니다.
+
+직전 대상은 아래 이전 수정에 더해 R01–R06를 보강한 artifact v3/content binding 수정본입니다. 정확한 commit은 manifest.json을 확인하세요. docs/v22_rereview_repairs_20260927.md 및 validation/v222_r6/rereview_repairs_20260927_DEBUG.json을 먼저 읽고 Adam mapping/hash·phase/best/cursor·calibration reuse·모든 후보 frame/content·workers0·invalid empty를 우선 재검증해 주세요. 72회귀, 실제 process 연속/중단재개 model·Adam·모든 RNG 동일, 실제2,368voxel raw paste 및 workers0/1/2/4/8 일치, 잘못된 calibration7종 process 거부를 기록했습니다. 전체규모/G3·native/G4·효용/G5는 여전히 미완료입니다.
 
 이전 단계는 6a054de의 실제 수정 및 cb3154c 전달 문서 정리본입니다. 당시 calibration list 오류, donor anchor 이동, 동점 순위, 외부 best 파일 의존 및 artifact/환자/placement 검증을 수정했습니다. 아래 이전 주장과 최신 주장을 구분하고 코드와 반례로 재검증해 주세요.
 

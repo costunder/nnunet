@@ -1,4 +1,10 @@
-## v2.2 — 재검토 R01–R06 검증 계약 보강 (2026-09-27)
+## v2.2 — B01–B03 exact-resume 보강 / artifact v4 (2026-09-27)
+
+- final-memory 가중치·buffer를 embedded best와 결속하고 support prefix generation/hash를 확인한다. frozen cluster plan의 내용·teacher/support generation·내부 구조를 확인한다. 선언된 CUDA 장치 수/배열 및 Torch/NumPy/Python RNG 상태를 검사한다.
+- 정상 optimization의 stale reference/teacher를 유지한다. best 강제 load, plan 재생성, RNG reseed fallback 없음. 모델/loss/donor/production 규모 변경 없음.
+- 82회귀와 실제 CT GPU DEBUG 연속/재개 gradient·Adam·RNG 및 final-memory 경계/portable 복구 검사. G3/G4/G5 미완료. [상세 기록과 제한](docs/v22_resume_integrity_20260927.md).
+
+## v2.2 — 재검토 R01–R06 검증 계약 보강 (2026-09-27, 이전)
 
 - Adam moment/순서/shape/유한값/step/hash 및 best·phase·cursor 일관성을 검증한다. artifact v3; 이전 checkpoint를 metadata만 바꿔 재개하지 않는다.
 - calibration reuse의 의미/runtime/실제 측정 목록을 검증한다. 모든 placement frame 및 recipient CT·간 union·graph payload를 결속하고 workers0·정상 empty/invalid 요청을 구분했다.

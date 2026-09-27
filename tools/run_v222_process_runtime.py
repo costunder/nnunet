@@ -46,7 +46,7 @@ def runtime_identity():
            'tools/v22_rank_objective.py','tools/v22_ranking_steps.py','tools/v22_ranking_training.py',
            'tools/v22_rank_recommendation.py','config/v22_observed_ranking.json')
     paths+=('tools/v22_artifacts.py','tools/v22_candidate_order.py','tools/v22_runtime_receipts.py','tools/v22_pair_audit.py')
-    paths+=('tools/v22_resume_state.py','tools/v22_calibration.py')
+    paths+=('tools/v22_resume_state.py','tools/v22_calibration.py','tools/v22_resume_integrity.py')
     return {**prior_identity(), **{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in paths}}
 
 

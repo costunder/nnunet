@@ -4,7 +4,7 @@ import json
 import math
 import torch
 
-ARTIFACT_CONTRACT='observed_rank_artifact_v3'
+ARTIFACT_CONTRACT='observed_rank_artifact_v4'
 
 
 def tree_hash(value):
@@ -117,10 +117,6 @@ def validate_artifact(value,kind,*,allow_debug=False,identity=None,resume_rows=N
         if state['epoch']>value['config']['gnn_epochs']:raise ValueError('Resume epoch exceeds configured training')
         if not isinstance(value['optimizer'],dict) or not {'state','param_groups'}<=value['optimizer'].keys():
             raise ValueError('Complete Adam state required')
-        rng=value['rng']
-        if not isinstance(rng,dict) or not {'torch','cuda','numpy','python'}<=rng.keys() or rng['torch'].dtype!=torch.uint8:
-            raise ValueError('Complete RNG state required')
-        if not isinstance(rng['cuda'],list) or any(t.dtype!=torch.uint8 for t in rng['cuda']):raise ValueError('Invalid CUDA RNG state')
         prefix=state.get('memory_work');done=state.get('memory_next',0)
         if not isinstance(done,int) or done<0:raise ValueError('Invalid support cursor')
         if prefix is not None and (prefix.shape!=(done,128) or not torch.isfinite(prefix).all()):
@@ -134,6 +130,8 @@ def validate_artifact(value,kind,*,allow_debug=False,identity=None,resume_rows=N
         from tools.v22_resume_state import validate_adam,validate_resume_state
         validate_adam(value['optimizer'],value['optimizer_contract'],state['step'],value['optimizer_sha256'])
         validate_resume_state(value,resume_rows)
+        from tools.v22_resume_integrity import validate_integrity
+        validate_integrity(value,resume_rows)
         return value
     epochs=value.get('completed_epochs',0)
     if not isinstance(epochs,int) or not 1<=epochs<=value['config']['gnn_epochs']:raise ValueError('Invalid completed epoch')

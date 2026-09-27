@@ -1,4 +1,10 @@
-## 2026-09-27 최신 — 재검토 R01–R06 수정
+## 2026-09-27 최신 — B01–B03 exact-resume 무결성
+
+- [최신 수정·범위](docs/v22_resume_integrity_20260927.md), `validation/v222_r6/resume_integrity_20260927_DEBUG.json` 우선. artifact v4: final-memory model/best/prefix generation, frozen plan/teacher/support, CUDA 논리 장치와 전체 RNG 검증.
+- 82회귀. 실제 CT 전체 모델 DEBUG 연속/재개 loss·전체 gradient·Adam·RNG 일치, final-memory 3경계 및 단일 rolling portable 복구, 10개 실제 artifact 손상 거부. 같은 episode는 실제 batch 재사용 수치 probe이며 다중 batch 전체 epoch로 표현하지 않는다. earlier-best 다중 epoch 조건은 CPU fixture로 확인했다.
+- 모델/loss/donor/seed/CP80/production 규모 불변. v3 checkpoint 재표시 금지. core graph 불변이므로 동일 content-bound graph는 검증 후 재사용; runtime 변경으로 calibration 재측정. G3/G4/G5 미완료.
+
+## 2026-09-27 이전 — 재검토 R01–R06 수정
 
 - [최신 수정 기록](docs/v22_rereview_repairs_20260927.md), `validation/v222_r6/rereview_repairs_20260927_DEBUG.json`을 먼저 읽는다. artifact는 v3이며 Adam mapping/hash·best/cursor admission을 추가했다.
 - calibration reuse는 동일 의미/source/runtime/실제 측정만 허용. recommendation은 모든 frame·동일 event·recipient CT/간 union/graph payload 결속을 검사. workers0 지원 및 invalid empty 거부. 모델/loss/donor/전체규모 불변.

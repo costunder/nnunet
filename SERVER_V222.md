@@ -1,5 +1,9 @@
 # v2.22 r6 서버 실행: 코드만 Git으로 이동
 
+## 2026-09-27 최신 — artifact v4 exact-resume
+
+[B01–B03 수정과 검증](docs/v22_resume_integrity_20260927.md): final-memory best/prefix, cluster teacher/plan, CUDA RNG 계약을 보강했다. **v3 checkpoint에 새 metadata/hash를 붙여 exact resume하지 않는다.** 기존 결과를 보존한다. 이번 tools 수정은 core graph를 바꾸지 않았으므로 동일 최신 provenance/content-bound cache는 검증 후 사용할 수 있다. runtime이 달라진 calibration은 재측정한다. 실제 검증은 로컬 DEBUG이며 새 전체 support/MIG G3·native G4·성능 G5 승인이 아니다.
+
 ## 2026-09-27 재검토 후 — artifact v3 / graph content binding
 
 [R01–R06 수정](docs/v22_rereview_repairs_20260927.md)으로 Adam·cursor·calibration 및 graph 내용 검증을 강화했다. 이전 artifact v2나 content binding이 없는 cache를 최신으로 재표시하지 않는다. 새 계약으로 생성한 동일 source/runtime의 checkpoint만 재개하며, calibration runtime이 다르면 재측정한다. 아래 명령들은 해당 과거 revision 기록이며 최신 전체 규모 검증/G4/G5가 완료됐다는 의미가 아니다.
