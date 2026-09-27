@@ -1,3 +1,9 @@
+## v2.2 — S01 로컬 설치본 확인 / CUDA epoch 경계 검사 (2026-09-28)
+
+- 로컬 실제 부모에는 S01의 SystemExit 종료 분기가 없음을 함수 원문/MRO로 확인. 해당하지 않는 production 종료 패치를 추가하지 않았다. 서버 설치본은 미확인.
+- 읽기 전용 설치 조사 도구와 원문 증거 추가. 실제 102M native CUDA/batch2의 첫·중간·마지막 epoch, best 보존, final cursor, logger/저장 공간 실패와 재개 검사 통과. 회귀21개 통과.
+- [범위와 결과](docs/v22_s01_installed_boundary_20260928.md). core83/runtime20/online identity15 불변. OS 종료 신호·full G3/G4/G5 미검증. 이번 추가 때문에 catalog/cache 재생성 불필요.
+
 ## v2.2 — F03 native SGD 상태 보호 / U01 best 저장 / GPU 검증 (2026-09-28)
 
 - 새 segmentation checkpoint에 저장 시 불변 내용 hash와 실제 SGD parameter/state mapping·유한성·shape/dtype·GradScaler 검증 추가. 정상 unused parameter 예외를 유지하고 누락 상태를 0으로 만들지 않는다.

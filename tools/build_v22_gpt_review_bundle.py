@@ -14,6 +14,7 @@ sys.path.insert(0,str(ROOT))
 
 REQUEST=(ROOT/'docs/gpt_review_request_v22.txt').read_text(encoding='utf-8')
 GUIDE=(ROOT/'docs/gpt_review_guide_v22.md').read_text(encoding='utf-8')
+GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_s01_installed_boundary_20260928.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_segmentation_gpu_review_20260928.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_online_review_fixes_20260927.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_current_model_integrity_20260927.md').read_text(encoding='utf-8')
@@ -23,6 +24,7 @@ GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_review_repairs_20260927.md').read_text(enco
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_observed_ranking_20260927.md').read_text(encoding='utf-8')
 
 ACTIVE=[
+ 'tools/inspect_installed_epoch_boundary.py','tools/verify_v22_epoch_boundary_debug.py',
  'tools/v22_seg_state.py','tests/test_v22_seg_state.py','tools/verify_v22_segmentation_cuda_debug.py',
  'tools/v22_online_runtime.py','tools/v22_online_native.py','tools/v22_online_storage.py',
  'tools/v22_online_checkpoint.py','tests/test_v22_online_review_fixes.py',
@@ -139,7 +141,8 @@ def main():
     frames=[frame(name,blobs[name]) for name in code_names]
     documents['03_ALL_CODE.txt']=header+''.join(frames)
     documents['03_ACTIVE_PATH_CODE.txt']=header+''.join(frame(name,blobs[name]) for name in ACTIVE)
-    evidence_names=[n for n in ('docs/v22_segmentation_gpu_review_20260928.md','validation/v222_r6/segmentation_GPU_review_20260928_DEBUG.json',
+    evidence_names=[n for n in ('docs/v22_s01_installed_boundary_20260928.md','validation/v222_r6/installed_epoch_boundary_20260928.json','validation/v222_r6/s01_GPU_boundary_20260928_DEBUG.json',
+        'docs/v22_segmentation_gpu_review_20260928.md','validation/v222_r6/segmentation_GPU_review_20260928_DEBUG.json',
         'docs/v22_online_review_fixes_20260927.md','validation/v222_r6/online_review_fixes_20260927_DEBUG.json',
         'docs/v22_online_bridge_storage_20260927.md','docs/v22_current_model_integrity_20260927.md','validation/v222_r6/current_model_integrity_20260927_DEBUG.json',
         'docs/v22_resume_integrity_20260927.md','validation/v222_r6/resume_integrity_20260927_DEBUG.json',
@@ -172,7 +175,7 @@ def main():
                             index.append(f'  - `{name}:{method.lineno}` — `{node.name}.{method.name}`\n')
     documents['SYMBOL_INDEX.md']=''.join(index)
     metadata=dict(format='v22_gpt_review_source_snapshot_v1',generated_utc=datetime.now(timezone.utc).isoformat(),
-        base_commit=commit,review_release='v2.2 observed_rank_v1; native SGD integrity F03 / completed best lifecycle U01; actual native CUDA continuation DEBUG; core83/runtime20 frozen',
+        base_commit=commit,review_release='v2.2 observed_rank_v1; S01 installed-parent source audit and actual CUDA first/middle/final boundary DEBUG; production unchanged from c989ae1',
         source_scope='Tracked source plus explicitly selected current untracked source in named code/docs/config directories',
         excludes=['Current root code.txt (existing user file preserved)','CT/masks','work/cache/checkpoints','environments','Git database'],
         source_count=len(blobs),files=manifest,other_exclusions=excluded,
@@ -183,7 +186,8 @@ def main():
     documents['manifest.json']=json.dumps(metadata,ensure_ascii=False,indent=2)+'\n'
     documents['00_START_HERE.txt']=f'''GPT 교차 검증용 v2.2 계열 파일 묶음
 현재 대상: v2.2 observed_rank_v1 + stride4; paired v1 L0 + L1/L2
-최신 수정: F03 native SGD/momentum/scaler 내용 검증, U01 완료된 epoch의 latest/best 및 중단 복구. 실제 full-network CUDA DEBUG 검증.
+최신 검증: S01 조건부 종료 분기는 로컬 설치본에 없음. 실제 상속/함수 원문과 CUDA 첫·중간·마지막 epoch 경계 검사 추가. 서버 설치본은 별도 확인 필요.
+production 코드는 c989ae1 그대로이며 F03/U01 보호 유지. 실제 OS 신호 종료를 검증했다고 주장하지 않습니다.
 v4 이하 checkpoint에 새 hash를 붙여 exact resume하지 않습니다. 동일 최신 core provenance/content-bound graph는 검증 후 재사용 가능.
 관측 종양 순위 학습 → 모든 주석 종양과 paste 겹침 제외 → 실제 온라인 입력 연결. 전체 support/segmentation 공존 G4와 효용 G5는 미완료.
 기준 commit: {commit}

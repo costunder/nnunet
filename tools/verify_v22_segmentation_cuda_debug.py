@@ -16,6 +16,7 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--native',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--epoch-boundary-audit',action='store_true',help='DEBUG installed first/middle/final boundary and failure cases')
     args=parser.parse_args();root=args.output.resolve();root.mkdir(parents=True,exist_ok=False)
     native=json.loads(args.native.read_text());plans=json.loads(Path(native['plans']).read_text())
     os.environ.update(nnUNet_preprocessed=str(Path(native['preprocessed']).parent),nnUNet_raw=str(Path(native['raw']).parent),
@@ -148,6 +149,10 @@ def main():
         owner.load_checkpoint(latest)
         recovered=torch.load(best,map_location='cpu',weights_only=False)
         if owner.current_epoch!=3 or owner._best_ema!=.9 or recovered['online_best']['epoch']!=3:raise AssertionError('Pending best recovery failed')
+        boundary=None
+        if args.epoch_boundary_audit:
+            from tools.verify_v22_epoch_boundary_debug import verify
+            boundary=verify(owner,root/'epoch_boundary_DEBUG')
         owner.optimizer.zero_grad(set_to_none=True);gc.collect();torch.cuda.synchronize()
     evidence=dict(debug=True,actual_CT='liver_31',actual_installed_native_network=True,actual_CUDA=True,
         production_constructor=False,full_GNN_support_coexistence=False,full_training=False,full_evaluation=False,
@@ -162,7 +167,7 @@ def main():
         corruption_rejected=rejected,best_worse_epoch_preserved=True,latest_best_interruption_recovered=True,
         installed_trainer_path=inspect.getfile(nnunetv2_trainer),installed_trainer_sha256=contract['nnunet_source_sha256'],
         upstream_latest_before_best=True,peak_CUDA_allocated_bytes=torch.cuda.max_memory_allocated(),peak_CUDA_reserved_bytes=torch.cuda.max_memory_reserved(),
-        seconds=time.perf_counter()-start,resources=measure.report)
+        seconds=time.perf_counter()-start,resources=measure.report,epoch_boundary_audit=boundary)
     (root/'result.json').write_text(json.dumps(evidence,indent=2),encoding='utf-8')
     print(json.dumps(dict(result=str(root/'result.json'),seconds=evidence['seconds'],peak_CUDA=evidence['peak_CUDA_allocated_bytes'])),flush=True)
 

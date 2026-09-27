@@ -1,3 +1,10 @@
+## 2026-09-28 최신 — S01 조건부 적용 조사와 CUDA 경계 검증
+
+- [설치본 확인/실제 GPU 결과](docs/v22_s01_installed_boundary_20260928.md). 로컬 부모의 on_epoch_end는 best/logger 결정 후 epoch 증가와 정상 반환이며 종료 분기가 없다. MRO와 함수 원문·hash를 installed_epoch_boundary_20260928.json에 포함했다. 서버 설치본은 별도 확인이 필요하다.
+- production은 c989ae1 그대로다. SystemExit를 삼키거나 finally에서 실패 epoch를 저장하는 변경을 넣지 않았다. F03/U01 보호와 core83/runtime20/online identity15 보존.
+- 실제102M native CUDA/batch2/128³ 다음 optimizer update 일치, epoch1/125/250 저장·재개, best 보존, logger 오류/디스크 부족 보존, final250 통과. 회귀21개. peak allocated6.22GiB. 경계 번호와 metric은 DEBUG 통제 입력이며 250epoch 학습이 아니다.
+- 읽기 전용 서버 명령: python tools/inspect_installed_epoch_boundary.py. OS 신호 종료 및 full G3/G4/G5 미검증. 이 도구 추가 때문에 catalog/cache를 새로 만들지 않는다.
+
 ## 2026-09-28 최신 — native SGD 무결성 F03 / best lifecycle U01 / GPU 검증
 
 - [이번 수정과 GPU 검증](docs/v22_segmentation_gpu_review_20260928.md). 설치 nnU-Net의 SGD(momentum0.99/Nesterov)와 latest→best 순서를 직접 확인했다. 새 segmentation 상태의 불변 snapshot/hash, parameter/state coverage·shape/dtype·유한성·scaler 검사를 추가했다. 계약은 online_rank_epoch_resume_v2이며 v1 segmentation checkpoint에 hash를 새로 붙이지 않는다.

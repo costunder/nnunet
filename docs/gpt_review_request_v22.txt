@@ -1,3 +1,11 @@
+# 최신 검토 — S01 설치본 적용 여부와 실제 CUDA 경계 검사
+
+첨부 검토의 최소 방향대로 실제 설치 부모부터 확인했습니다. 로컬에는 on_epoch_end의 직접 SystemExit 분기가 없으며 best/logger 결정 뒤 epoch가 증가하고 정상 반환합니다. production은 c989ae1 그대로입니다. tools/inspect_installed_epoch_boundary.py와 validation/v222_r6/installed_epoch_boundary_20260928.json의 MRO·함수 원문을 직접 확인해 주세요. AST 직접 호출 목록을 간접 호출까지 안전하다는 증명으로 사용하지 마세요. 서버 설치본과 실제 OS 신호 종료는 아직 확인하지 않았습니다.
+
+새 docs/v22_s01_installed_boundary_20260928.md와 validation/v222_r6/s01_GPU_boundary_20260928_DEBUG.json이 최신입니다. 실제102M native CUDA/batch2/128³ 다음 update 일치, 통제 epoch1/125/250의 latest/best 및 final cursor, logger 오류/디스크 부족 보존을 검사했습니다. epoch 번호/metric은 경계용 통제 입력이며 250epoch 학습이나 Dice 성능이 아닙니다. 전체 support/CP/표준 증강과의 동시 G4를 검증했다고 합산하지 마세요. 이전 해결된 F03/U01을 미해결로 되돌리지 말고 새 확정 결함과 조건부 설치 호환성, 미검증 G3/G4/G5를 구분해 주세요.
+
+아래는 이전 F03/U01 전달본의 요청과 회귀 범위입니다.
+
 # v2.2 독립 재검토 요청 — F03 native SGD 상태 / U01 best 순서 / CUDA 검증
 
 최신 검토는 docs/v22_segmentation_gpu_review_20260928.md와 validation/v222_r6/segmentation_GPU_review_20260928_DEBUG.json부터 시작해 주세요. tools/v22_seg_state.py와 tools/v22_online_checkpoint.py의 저장 시 불변 snapshot·내용 hash·SGD parameter mapping·정상 unused state·scaler 검증, 실제 부모 epoch 종료 후 latest/best 결정, 두 파일 사이 중단 복구를 확인해 주세요. 기존 GNN AdamW validator를 native SGD에 그대로 적용하지 않았습니다. 로컬 설치본의 실제102M native network, batch2×128³, CUDA autocast/SGD/GradScaler로 다음 update의 model/momentum/gradient 차이0과 RNG 일치를 확인했습니다. 최종 실행은 loss도 bitwise 일치했지만 이전 실행에는 허용오차 내 차이가 있었으므로 CUDA CE의 일반적 결정론 보장과 구분합니다. 공유 storage/view의 snapshot 별칭 보존과 불변성도 확인해 주세요. controlled best metric은 실제 성능이 아닙니다. 전체 GNN support/CP/표준 증강과의 공존 G4는 미완료입니다.

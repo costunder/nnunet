@@ -1,3 +1,5 @@
+최신 검토 범위는 [S01 설치본 조사와 CUDA epoch 경계](v22_s01_installed_boundary_20260928.md)입니다. 설치 부모 함수 원문은 `validation/v222_r6/installed_epoch_boundary_20260928.json`, 실제 실행은 `validation/v222_r6/s01_GPU_boundary_20260928_DEBUG.json`에 있습니다. 로컬에는 조건부 종료 분기가 없고 production 코드는 c989ae1에서 변경하지 않았습니다. 서버/신호 종료 안전까지 입증한 것으로 해석하지 마세요.
+
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
 **2026-09-28 최신은 F03/U01 및 native CUDA 재개 검증이다.** `docs/v22_segmentation_gpu_review_20260928.md`, `validation/v222_r6/segmentation_GPU_review_20260928_DEBUG.json`을 먼저 읽는다. 새 native SGD 상태 검증과 완료 epoch latest/best 저장 경계를 확인한다. GNN core83/runtime20과 F01/F02 보호는 유지한다. 아래 현재/최신 표현은 각 이전 revision의 기록이다.

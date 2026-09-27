@@ -1,0 +1,386 @@
+{
+  "debug": true,
+  "review_attachment": "3aa7fcc8-a2d2-4100-a385-1583962c26bb",
+  "baseline_commit": "c989ae1ed6944d9f9625e66e610bb29ab9858fc1",
+  "S01": {
+    "local_installed_parent_direct_exit_branch": false,
+    "server_parent_unverified": true,
+    "production_patch_applied": false,
+    "actual_OS_signals_sent": false,
+    "reason": "Installed parent completes logger/best, increments current_epoch and returns normally; conditional exit-parent defect is not resolved for other versions."
+  },
+  "core83_runtime20_unchanged": true,
+  "online_identity15_unchanged": {
+    "tools/v22_online_selection.py": "7aef50cbf26e5359aa59f6c438879fc73d3652191066e0f7f46f75a52d9f085b",
+    "tools/v22_online_rank_bank.py": "63c9eb4f4f5dc7ae72ebbf61c98b6005df55a2cf72da6095deef904888419d45",
+    "tools/v22_online_rank_adapter.py": "4e3c6d844b1f29c3da08274c1f00a9af28f79127e2d83ba6d73c43bc2d203e98",
+    "custom_trainers/nnUNetTrainer_OnlineRankV22.py": "e444e8da91a5d3f914968a57a059bd7d7a4d0871b34fae3dc67d07a5b7aa75ec",
+    "tools/train_v22_online_rank.py": "7053c2a4b12c9979eb1fe9addad4486c94899ce62eec16b6c5de807e2c8d5a1d",
+    "tools/v22_online_runtime.py": "c4756cef4612c176269eb117e2ebb9cf3e67ac92a5e7a0161dbeaaaa8352b7a9",
+    "tools/v22_online_native.py": "cecc44f3d645ed8a3abe8331832d99b35e374020fb3f72783563a0040a6a620f",
+    "tools/v22_online_storage.py": "205f79950b0ee0fce8ac96448e5fdef1ed5bd230aca9e72093ffa004453cb887",
+    "tools/v22_online_checkpoint.py": "5df0106b422abc5480a0c364ede44b64240e36738ae3fe8bd5bae2c2aca19dda",
+    "tools/v22_seg_state.py": "03fc499b858cc7857c4820f774453bf2efeedbcfb22472dbcb89d2112855a033",
+    "comparison_randomness.py": "ad8f38c917c3663bea55bd281d916edd2279250fb9f843c5dc3c26aacfaceeb7",
+    "custom_trainers/nnUNetTrainer_OnlinePairedCP.py": "ec4b3934a0e05a2810dbab69a8a0f60e06754d4853aea465a3ee735b56008ed1",
+    "custom_trainers/onlinecp_raw_resampling.py": "49d1c06eed2d5f9ec535ab587e2789f7af7ef8c9d096c0706cc63a9292c318a2",
+    "custom_trainers/onlinecp_raw_bank.py": "0cf1249958de0bebece45501fc689844fb3e8a1ec1bd47f44d62a0cc790a7a6b",
+    "tools/online_raw_bank_preparation.py": "c4c8950d0ac7849c8a712f2993d0c75b80333d7e151941f3980c39f7918db150"
+  },
+  "installed_source_audit": {
+    "path": "validation/v222_r6/installed_epoch_boundary_20260928.json",
+    "sha256": "45752d9b599046f4df396236006327f9aacf726b6c5c8cfa8545f2822b9b56e2"
+  },
+  "actual_GPU": {
+    "debug": true,
+    "actual_CT": "liver_31",
+    "actual_installed_native_network": true,
+    "actual_CUDA": true,
+    "production_constructor": false,
+    "full_GNN_support_coexistence": false,
+    "full_training": false,
+    "full_evaluation": false,
+    "scope": "Native checkpoint CUDA smoke: actual CT two initial updates and identical next update; controlled best lifecycle metrics are synthetic",
+    "GPU": "NVIDIA GeForce RTX 5070 Ti",
+    "physical_batch": 2,
+    "input_shape": [
+      2,
+      1,
+      128,
+      128,
+      128
+    ],
+    "model_parameters": 102350575,
+    "architecture": {
+      "network_class_name": "dynamic_network_architectures.architectures.unet.ResidualEncoderUNet",
+      "arch_kwargs": {
+        "n_stages": 6,
+        "features_per_stage": [
+          32,
+          64,
+          128,
+          256,
+          320,
+          320
+        ],
+        "conv_op": "torch.nn.modules.conv.Conv3d",
+        "kernel_sizes": [
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ]
+        ],
+        "strides": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            2,
+            2,
+            2
+          ],
+          [
+            2,
+            2,
+            2
+          ],
+          [
+            2,
+            2,
+            2
+          ],
+          [
+            2,
+            2,
+            2
+          ],
+          [
+            2,
+            2,
+            2
+          ]
+        ],
+        "n_blocks_per_stage": [
+          1,
+          3,
+          4,
+          6,
+          6,
+          6
+        ],
+        "n_conv_per_stage_decoder": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "conv_bias": true,
+        "norm_op": "torch.nn.modules.instancenorm.InstanceNorm3d",
+        "norm_op_kwargs": {
+          "eps": 1e-05,
+          "affine": true
+        },
+        "dropout_op": null,
+        "dropout_op_kwargs": null,
+        "nonlin": "torch.nn.LeakyReLU",
+        "nonlin_kwargs": {
+          "inplace": true
+        }
+      },
+      "_kw_requires_import": [
+        "conv_op",
+        "norm_op",
+        "dropout_op",
+        "nonlin"
+      ]
+    },
+    "optimizer": "torch.optim.SGD",
+    "optimizer_groups": [
+      {
+        "lr": 0.00996399278941777,
+        "momentum": 0.99,
+        "dampening": 0,
+        "weight_decay": 3e-05,
+        "nesterov": true,
+        "maximize": false,
+        "foreach": null,
+        "differentiable": false,
+        "fused": null,
+        "initial_lr": 0.01
+      }
+    ],
+    "grad_scaler": {
+      "scale": 65536.0,
+      "growth_factor": 2.0,
+      "backoff_factor": 0.5,
+      "growth_interval": 2000,
+      "_growth_tracker": 2
+    },
+    "next_loss": 1.174100399017334,
+    "resumed_loss": 1.174100399017334,
+    "loss_abs_difference": 0.0,
+    "next_batch_is_distinct_third_crop": true,
+    "next_update_exact": true,
+    "next_update_within_tolerance": true,
+    "max_abs_differences": {
+      "model": 0.0,
+      "optimizer": 0.0,
+      "gradients": 0.0
+    },
+    "gradient_model_optimizer_scaler_hash": "00c905537964cbe4fa137a783958a74c370ae58920f0815d2111f4bcfc3092cb",
+    "resumed_state_hash": "00c905537964cbe4fa137a783958a74c370ae58920f0815d2111f4bcfc3092cb",
+    "rng_exact": true,
+    "CUDA_cross_entropy_strict_determinism_unsupported": true,
+    "global_determinism": false,
+    "cudnn_deterministic": true,
+    "benchmark": false,
+    "tf32": false,
+    "corruption_rejected": [
+      "empty_momentum",
+      "model_nan",
+      "model_inf",
+      "momentum_nan",
+      "momentum_shape",
+      "momentum_dtype",
+      "group_mapping",
+      "scaler_missing",
+      "scaler_none",
+      "scaler_nan",
+      "scaler_counter"
+    ],
+    "best_worse_epoch_preserved": true,
+    "latest_best_interruption_recovered": true,
+    "installed_trainer_path": "D:\\AI project\\nnunet\\.venv\\lib\\site-packages\\nnunetv2\\training\\nnUNetTrainer\\nnUNetTrainer.py",
+    "installed_trainer_sha256": "7096efb2040135eb60df3c8bf39cdbcc373e299671fcee365b3aff2f4da4dfbd",
+    "upstream_latest_before_best": true,
+    "peak_CUDA_allocated_bytes": 6680252416,
+    "peak_CUDA_reserved_bytes": 7652507648,
+    "seconds": 207.13147660001414,
+    "resources": {
+      "elapsed_seconds": 207.1297166000004,
+      "before": {
+        "rss_bytes": 1272930304,
+        "available_memory_bytes": 46817787904,
+        "host_total_memory_bytes": 68640653312,
+        "cpu_capacity": 16,
+        "cpu_affinity_cores": 16,
+        "cpu_allocation_cores": 16.0,
+        "process_cpu_seconds": 9.234375,
+        "cgroup": {
+          "locations_resolved": false,
+          "values": {},
+          "missing_files": [],
+          "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+        }
+      },
+      "after": {
+        "rss_bytes": 7376429056,
+        "available_memory_bytes": 40638464000,
+        "host_total_memory_bytes": 68640653312,
+        "cpu_capacity": 16,
+        "cpu_affinity_cores": 16,
+        "cpu_allocation_cores": 16.0,
+        "process_cpu_seconds": 429.65625,
+        "cgroup": {
+          "locations_resolved": false,
+          "values": {},
+          "missing_files": [],
+          "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+        }
+      },
+      "sampled_peak_rss_bytes": 9457766400,
+      "minimum_available_memory_bytes": 38567469056,
+      "average_cpu_cores": 2.0297516063902115,
+      "rss_sampling_interval_seconds": 0.1,
+      "monitor_samples": 1964,
+      "monitor_cpu_seconds": 0.171875,
+      "monitor_wall_seconds": 0.8300372987287119,
+      "status": "complete",
+      "error": null,
+      "sampling_error": null,
+      "final_snapshot_error": null
+    },
+    "epoch_boundary_audit": {
+      "debug": true,
+      "actual_CUDA_updated_model": true,
+      "controlled_epoch_numbers": true,
+      "controlled_metrics_not_Dice_results": true,
+      "epoch_cases": [
+        {
+          "completed_epoch": 1,
+          "controlled_metric": 0.8,
+          "best_epoch": 1,
+          "actual_file_load": true,
+          "latest_sha256": "c2f27c650a291a71d84e562b64ff614b18950fcd75aa0357b1f705ba29262450",
+          "best_sha256": "bdb405bb40fc35fb7f254b2fcaf0ae302a55f8c57d08142d704092791754f81f"
+        },
+        {
+          "completed_epoch": 125,
+          "controlled_metric": 0.7,
+          "best_epoch": 1,
+          "actual_file_load": true,
+          "latest_sha256": "e39e1a169c99c317c849ea6f6fc7a0646acbc5230dc30d2258d3b9ffdbdcc7dc",
+          "best_sha256": "bdb405bb40fc35fb7f254b2fcaf0ae302a55f8c57d08142d704092791754f81f"
+        },
+        {
+          "completed_epoch": 125,
+          "controlled_metric": 0.9,
+          "best_epoch": 125,
+          "actual_file_load": true,
+          "latest_sha256": "d78b3d99c4d241887b7d732dd9c932f72a57d75c8ffcf13e86eef04b1fa439f3",
+          "best_sha256": "d78b3d99c4d241887b7d732dd9c932f72a57d75c8ffcf13e86eef04b1fa439f3"
+        },
+        {
+          "completed_epoch": 250,
+          "controlled_metric": 0.8,
+          "best_epoch": 125,
+          "actual_file_load": true,
+          "latest_sha256": "af801245ac6b4470440849b0224980c4373203d4b9e19b7593f64b994ca7cee0",
+          "best_sha256": "d78b3d99c4d241887b7d732dd9c932f72a57d75c8ffcf13e86eef04b1fa439f3"
+        },
+        {
+          "completed_epoch": 250,
+          "controlled_metric": 0.95,
+          "best_epoch": 250,
+          "actual_file_load": true,
+          "latest_sha256": "f8e3b3060c9ef1f55bfc4836cce76696922b93108b4c791319f21ed1f0d1add6",
+          "best_sha256": "f8e3b3060c9ef1f55bfc4836cce76696922b93108b4c791319f21ed1f0d1add6"
+        }
+      ],
+      "parent_error_no_publication": true,
+      "disk_full_propagated_and_old_bytes_preserved": true,
+      "final_cursor": 250,
+      "final_sha256": "85a8dcc242b8e5078b773f181b3d9349de38845348161e9d7980543a6e488dc2",
+      "actual_OS_signals_sent": false,
+      "signal_termination_not_supported_by_local_parent": true,
+      "scope": "Installed parent normal/error boundaries; not a graceful signal shutdown test"
+    }
+  },
+  "source_sha256": {
+    "tools/inspect_installed_epoch_boundary.py": "17388c647da9da7969cc58a18e0dae7c5a8ae295d0a14a9dbca9a084ef507604",
+    "tools/verify_v22_epoch_boundary_debug.py": "f09932635b28c2772906dd0b9931c686af470e016d4aebe90732d882feef9f50",
+    "tools/verify_v22_segmentation_cuda_debug.py": "cf15448b648d6be291bf7f1714df5805ac0361bdefef70f206abaf5a4be10219"
+  },
+  "regression_tests": 21,
+  "regression_passed": true,
+  "initial_test_harness_failure": "3 import errors: tests helper path omitted; corrected PYTHONPATH=tests, no production code change",
+  "logs": [
+    {
+      "path": "work\\v22_s01_20260928_DEBUG.console.log",
+      "sha256": "e8502a5347ecdec4fa8fa0be29ad1cd98cd2e51d563e9a302a1e979e33ec19bc"
+    },
+    {
+      "path": "work\\v22_s01_regression_20260928.log",
+      "sha256": "4a162639b0975edc721d75a918cafac9be89599dfe162264c22c7346946230e6"
+    },
+    {
+      "path": "work\\v22_s01_regression_20260928_corrected.log",
+      "sha256": "b9d9284c2592bcc9fd8f2e6992e89c3047bf7ad1cfdd11a3a0472759641da0a3"
+    }
+  ],
+  "retained_DEBUG_checkpoints": [
+    {
+      "path": "work\\v22_s01_20260928_DEBUG\\best_lifecycle_DEBUG\\checkpoint_best.pth",
+      "bytes": 819061407,
+      "sha256": "25414e4f1796d4967f3e5945cfc225c672f1bf98ec82807a8ccdb1fc2927205c"
+    },
+    {
+      "path": "work\\v22_s01_20260928_DEBUG\\best_lifecycle_DEBUG\\checkpoint_latest.pth",
+      "bytes": 819061407,
+      "sha256": "63db42ef58061a1f31384d25599dd51a835f48498158c345fe06bb6f8a0a5b48"
+    },
+    {
+      "path": "work\\v22_s01_20260928_DEBUG\\epoch_boundary_DEBUG\\checkpoint_best.pth",
+      "bytes": 819083423,
+      "sha256": "f8e3b3060c9ef1f55bfc4836cce76696922b93108b4c791319f21ed1f0d1add6"
+    },
+    {
+      "path": "work\\v22_s01_20260928_DEBUG\\epoch_boundary_DEBUG\\checkpoint_final.pth",
+      "bytes": 819083423,
+      "sha256": "85a8dcc242b8e5078b773f181b3d9349de38845348161e9d7980543a6e488dc2"
+    },
+    {
+      "path": "work\\v22_s01_20260928_DEBUG\\results\\Dataset821_PromptGraphV2\\nnUNetTrainer_250epochs_OnlineRankV22__nnUNetResEncUNetMPlans__3d_fullres\\fold_0\\checkpoint_best.pth",
+      "bytes": 819061599,
+      "sha256": "68ac72d115537a7ae6b598d506404c59dbea68e3147178e2037244124b97096e"
+    },
+    {
+      "path": "work\\v22_s01_20260928_DEBUG\\results\\Dataset821_PromptGraphV2\\nnUNetTrainer_250epochs_OnlineRankV22__nnUNetResEncUNetMPlans__3d_fullres\\fold_0\\checkpoint_latest.pth",
+      "bytes": 819061599,
+      "sha256": "c456837cb552403401d44f731352d7ebb22ca47c5b00e0441b57949ed7b92657"
+    }
+  ],
+  "run_command": ".venv/Scripts/python.exe -u tools/verify_v22_segmentation_cuda_debug.py --native work/local_v21_5070ti_20260919/native/native.json --output work/v22_s01_20260928_DEBUG --epoch-boundary-audit",
+  "full_training": false,
+  "full_evaluation": false,
+  "full_GNN_support_segmentation_coexistence": false
+}
