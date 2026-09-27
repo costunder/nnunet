@@ -1,4 +1,4 @@
-# v2.2 현재 코드 검토 지도 — observed_rank_v1
+# v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
 이 파일은 현재 검토 경로의 지도다. ZIP manifest의 base_commit이 정확한 소스 기준이며, untracked로 표시된 보조/과거 소스는 GitHub 커밋에 포함되지 않을 수 있다. 현재 작업 중인 root code.txt는 사용자 파일이므로 변경하거나 포함하지 않는다. CT·마스크·그래프 캐시·가중치는 전달하지 않는다.
 
@@ -8,7 +8,7 @@
 
 새 기본 설정은 `observed_rank_v1` + `stride4`, overlay는 `config/v22_observed_ranking.json`이다. 원본 `config/prompt_graph_v222_v1_l0.json`과 `config/train.json`은 보존된 base/cache 계약이며 단독으로 최신 학습 목적을 설명하지 않는다. 새 preflight는 `tools/verify_v22_ranking_real_debug.py`를 실행한다.
 
-`run_v222_v1_l0.py` 직접 실행과 명시적 `observation_ce`는 기존 분류 경로다. `run_v222.py` 및 과거 PPR/A*/recipient-only/GraphUNet 제안은 현재 기본이 아니다. 기존 checkpoint의 objective/좌표계 필드가 없으면 CE/legacy로 해석하며 새 rank/stride4로 exact resume하지 않는다. raw graph cache는 재사용하되 새 목표 학습은 새 output에서 시작한다.
+`run_v222_v1_l0.py` 직접 실행과 명시적 `observation_ce`는 기존 분류 경로다. `run_v222.py` 및 과거 PPR/A*/recipient-only/GraphUNet 제안은 현재 기본이 아니다. **이번 explicit anchor 수정으로 기존 geometry graph/cache를 재사용할 수 없다.** 원본 CT/GT에서 새 graph를 만들어 새 학습으로 시작한다. 기존 결과는 보존하고 provenance만 바꾸지 않는다. 새 geometry/artifact 계약이 일치하는 checkpoint만 exact resume한다.
 
 ## 데이터와 L0 → L1 → L2
 
@@ -25,14 +25,16 @@ donor는 inner-train에서 query 환자 그룹을 제외해 seed로 배정된다
 
 ## 최신 변경과 반드시 확인할 한계
 
-아래에 붙인 `docs/v22_observed_ranking_20260927.md`가 새 목적, memory 근사, 평가와 추천 API의 상세 명세다. `tools/v22_rank_recommendation.py:recommend`는 동일 recipient/donor 후보를 모두 scoring한 뒤 GT 마스크로 paste 유효성만 검사한다. 새 API를 nnU-Net 온라인 CP 이벤트에 연결하는 부분은 아직 미완료다. 기존 legacy `v1_local.score_candidates`가 자동 변경됐다고 가정하지 않는다.
+`docs/v22_review_repairs_20260927.md`가 최신 수정 명세다. geometry=`paired_explicit_anchor_symmetric_padding_v2`, artifact=`observed_rank_artifact_v2`. `hiercp_v222/placement.py`와 `hiercp_v22/data.py`가 explicit anchor/padding/CT·GT grid/변환 마스크를 다룬다. `tools/v22_artifacts.py`는 유형별 checkpoint와 CPU best/support 결속, `v22_candidate_order.py`는 GT 독립 동점, `v22_runtime_receipts.py`는 calibration schema를 다룬다.
+
+`docs/v22_observed_ranking_20260927.md`는 이전 목적 정의의 기록이며 캐시 재사용·이전 검증 수치는 최신 수정 명세로 대체한다. `tools/v22_rank_recommendation.py:recommend`는 동일 recipient/donor 후보를 모두 scoring한 뒤 PlacementSpec의 전체 mask로 paste 유효성만 검사한다. 새 API를 nnU-Net 온라인 CP 이벤트에 연결하는 부분은 아직 미완료다. 기존 legacy `v1_local.score_candidates`가 자동 변경됐다고 가정하지 않는다.
 
 `tools/v222_review_contracts.py`는 CNN 좌표의 stride4 수정과 환자 그룹 owner 병합을 제공한다. 원본 입력48격자를 feature12격자 끝점에 단순 대응시키던 오류를 고쳤으며 feature 실제 중심은0,4,…44다. 경계44..47은 기존 border sampling에 따라44로 clamp된다. 이전 수치 동등성 검사는 이 좌표 오류 자체가 옳다는 증거가 아니었다. 정상 worker 소유권, orphan runtime 식별, worker calibration도 함께 수정했다.
 
 ## 근거를 읽는 순서
 
-1. `validation/v222_r6/observed_ranking_20260927_DEBUG.json`: 58회귀 검사, 실제 CT physical32 full-model gradient/resume DEBUG, 별도 train8/val2 lifecycle DEBUG, 실제 두 후보 whole-footprint 제외 DEBUG. 전체 학습/추천 효용 검증이 아니다.
-2. `docs/v222_independent_review_response_20260927.md` 및 `validation/v222_r6/review_fixes_20260927_DEBUG.json`: 이전 GPT 검토에 대한 수정/미해결 답변.
+1. `docs/v22_review_repairs_20260927.md` 및 `validation/v222_r6/review_repairs_20260927_DEBUG.json`: 현재 수정 source/runtime SHA, 64회귀, 131 CT/GT header, 실제 process full-model train8/val2/physical2/1epoch, CPU best portable resume, 실제 mask 검사. DEBUG profile은 production config와 분리한다. G3/G4/G5는 미완료다.
+2. `validation/v222_r6/observed_ranking_20260927_DEBUG.json`, `docs/v222_independent_review_response_20260927.md` 및 `validation/v222_r6/review_fixes_20260927_DEBUG.json`: 이전 revision의 검사. physical32 결과를 이번 수정의 full-scale 검증으로 인용하지 않는다.
 3. `gpt_handoff.md`, `PATCH_NOTES.md`, `SERVER_V222.md`, `REFERENCES.md`: 최신 항목부터 읽고 과거 설계/실행 기록과 구분한다.
 4. `docs/v222_support_snapshot_20260926.md` 등의 속도 결과는 이전 CE/legacy 경로다. 새 rank trainer나 A100 MIG 처리량으로 인용하지 않는다.
 

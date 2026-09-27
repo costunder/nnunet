@@ -14,9 +14,15 @@ sys.path.insert(0,str(ROOT))
 
 REQUEST=(ROOT/'docs/gpt_review_request_v22.txt').read_text(encoding='utf-8')
 GUIDE=(ROOT/'docs/gpt_review_guide_v22.md').read_text(encoding='utf-8')
+GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_review_repairs_20260927.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_observed_ranking_20260927.md').read_text(encoding='utf-8')
 
 ACTIVE=[
+ 'hiercp_v222/placement.py','hiercp_v22/data.py','tools/v22_artifacts.py',
+ 'tools/v22_candidate_order.py','tools/v22_runtime_receipts.py','tools/v22_pair_audit.py',
+ 'tools/v22_debug_profile.py','tests/test_v22_review_repairs.py',
+ 'tools/verify_v22_portable_resume_debug.py','tools/verify_v22_review_selection_debug.py',
+ 'tools/build_v22_review_debug_cache.py','tools/audit_v22_physical_grids.py',
  'tools/v22_ranking_training.py','tools/v22_ranking_steps.py','tools/v22_rank_objective.py',
  'tools/v22_rank_recommendation.py','tools/v222_review_contracts.py','config/v22_observed_ranking.json',
  'tests/test_v22_observed_ranking.py','tools/verify_v22_ranking_real_debug.py',
@@ -116,10 +122,12 @@ def main():
     frames=[frame(name,blobs[name]) for name in code_names]
     documents['03_ALL_CODE.txt']=header+''.join(frames)
     documents['03_ACTIVE_PATH_CODE.txt']=header+''.join(frame(name,blobs[name]) for name in ACTIVE)
-    evidence_names=[n for n in ('docs/v22_observed_ranking_20260927.md','docs/v222_independent_review_response_20260927.md',
+    evidence_names=[n for n in ('docs/v22_review_repairs_20260927.md',
+        'validation/v222_r6/review_repairs_20260927_DEBUG.json','docs/v22_review_intake_20260927.md',
+        'docs/v22_observed_ranking_20260927.md','docs/v222_independent_review_response_20260927.md',
         'gpt_handoff.md','PATCH_NOTES.md','SERVER_V222.md','REFERENCES.md',
         'docs/v222_support_snapshot_20260926.md','docs/v222_support_process_20260926.md') if n in blobs]
-    evidence_names+=sorted(n for n in blobs if n.startswith('validation/') and n.endswith('.json'))
+    evidence_names+=sorted(n for n in blobs if n.startswith('validation/') and n.endswith('.json') and n not in evidence_names)
     documents['04_EVIDENCE_AND_HISTORY.txt']=f'# Evidence and historical context; newest records first\nBase commit: {commit}\nHistorical proposals do not override the current call path. Metrics are DEBUG evidence, not final medical scores.\n\n'+''.join(frame(n,blobs[n]) for n in evidence_names)
     part=[];size=0;parts=[]
     for content in frames:
@@ -142,7 +150,7 @@ def main():
                             index.append(f'  - `{name}:{method.lineno}` — `{node.name}.{method.name}`\n')
     documents['SYMBOL_INDEX.md']=''.join(index)
     metadata=dict(format='v22_gpt_review_source_snapshot_v1',generated_utc=datetime.now(timezone.utc).isoformat(),
-        base_commit=commit,review_release='v2.2 observed_rank_v1 + stride4; paired v1 L0 and v2.22 L1/L2',
+        base_commit=commit,review_release='v2.2 observed_rank_v1 + stride4 + explicit anchor geometry v2 + artifact v2; reviewed fixes',
         source_scope='Tracked source plus explicitly selected current untracked source in named code/docs/config directories',
         excludes=['Current root code.txt (existing user file preserved)','CT/masks','work/cache/checkpoints','environments','Git database'],
         source_count=len(blobs),files=manifest,other_exclusions=excluded,
@@ -153,6 +161,8 @@ def main():
     documents['manifest.json']=json.dumps(metadata,ensure_ascii=False,indent=2)+'\n'
     documents['00_START_HERE.txt']=f'''GPT 교차 검증용 v2.2 계열 파일 묶음
 현재 대상: v2.2 observed_rank_v1 + stride4; paired v1 L0 + L1/L2
+최신 수정: explicit anchor geometry v2 / typed artifact v2 / portable CPU best snapshot.
+기존 geometry cache/checkpoint는 그대로 재사용할 수 없습니다. 최신 수정 기록을 먼저 읽으세요.
 관측 종양 순위 학습 → 모든 주석 종양과 paste 겹침 제외. 온라인 nnU-Net CP 통합은 미완료.
 기준 commit: {commit}
 

@@ -1,4 +1,17 @@
-# v2.2 독립 코드 검토 요청 — observed_rank_v1
+# v2.2 독립 재검토 요청 — observed_rank_v1 오류 수정본
+
+이번 대상은 6a054de의 실제 수정 및 그 이후 전달 문서 정리본입니다. 정확한 기준 commit은 manifest.json을 확인하세요. 이전 검토에서 확인된 calibration list 오류, donor anchor 이동, 동점 순위, 외부 best 파일 의존 및 artifact/환자/placement 검증을 수정했습니다. 아래 주장을 승인하지 말고 실제 코드와 반례로 재검증해 주세요.
+
+먼저 docs/v22_review_repairs_20260927.md와 validation/v222_r6/review_repairs_20260927_DEBUG.json을 읽으세요. 64회귀, 실제 process DEBUG 저장→재개→1epoch 완료, 외부 best 읽기 금지 복구 및 실제 CT 2,368 voxel footprint 검사를 했습니다. 전체 코호트/G3, native online CP/G4, 전체 성능/G5는 미완료입니다. 이전 physical32·전체 support 결과를 이번 geometry revision의 증거로 사용하지 마세요.
+
+재검토 핵심:
+- fresh/reuse calibration의 list schema, 잘못된 semantic key 충돌 처리.
+- spacing/회전/scale/mirror 후 explicit anchor와 graph→filter→raw paste의 동일 voxel 좌표. 이전 cache 재사용 차단.
+- GT 독립 단일 tie order와 Recall@k/MRR, CPU best의 불변성·run identity·단일 rolling 파일 복구.
+- resume/epoch/final별 누락·오염·held-out donor·owner/group/coverage·NaN·runtime 불일치 거부.
+- CT/간 union/후보/donor/support를 고정하고 종양 GT만 바꾼 score/rank 불변성. 결정론 runtime 대조군과 실제 native 최종 입력을 구별.
+- 기존 pair estimator는 유지했습니다. 비균등 가중·shortcut·고정 donor 목적·worst-batch calibration은 해결됐다고 가정하지 마세요.
+- 새 API의 원본 유지 처리가 native bank/RPC/trainer RNG까지 연결됐다고 오인하지 마세요.
 
 이 프로젝트는 donor 종양과 recipient 후보의 국소 CT 문맥을 paired v1 L0로 비교하고, L1 data–label 관계 및 L2 환자 간 정렬을 통해 CP 위치를 추천하려고 합니다.
 이번 변경은 실제 관측 종양을 상위로 학습하고, 실제 추천 시 모든 주석 종양과 paste footprint가 겹치는 후보를 제외하는 것입니다. GT로 점수를 올리거나 무조건 1위만 버리는 구현이면 오류입니다.
