@@ -21,6 +21,9 @@ GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_review_repairs_20260927.md').read_text(enco
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_observed_ranking_20260927.md').read_text(encoding='utf-8')
 
 ACTIVE=[
+ 'tools/v22_online_selection.py','tools/v22_online_rank_bank.py','tools/v22_online_rank_adapter.py',
+ 'custom_trainers/nnUNetTrainer_OnlineRankV22.py','tools/train_v22_online_rank.py',
+ 'tools/v22_cache_storage.py','tests/test_v22_online_rank_bridge.py',
  'tools/verify_v22_current_model_admission_debug.py',
  'tools/v22_resume_integrity.py','tests/test_v22_resume_integrity.py',
  'tools/verify_v22_integrity_process_debug.py','tools/verify_v22_same_episode_debug.py',

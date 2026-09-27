@@ -28,7 +28,7 @@ def build_pair(row, loaded, donor, base, writer):
     return row | writer.write(relative,record,f"{row['donor_case_id']}:{row['donor_component']}")
 
 
-def prepare(index, output, reuse=None):
+def prepare(index, output, reuse=None, *, storage_plan=None):
     import numpy as np
     import torch
     from hiercp_v222.v1_cache import (configuration, read_json, write_new, sha, provenance, assign_pairs,
@@ -44,7 +44,14 @@ def prepare(index, output, reuse=None):
         raise ValueError('Observation input belongs to a different model/construction source')
     rows = assign_pairs(meta, cfg)
     root = Path(output).resolve()
+    if storage_plan is None:
+        raise ValueError('Full cache creation requires --storage-plan from tools/v22_cache_storage.py; no cache created')
+    from tools.v22_cache_storage import admit
+    storage = admit(read_json(storage_plan), index, output,
+        dict(graphs=len(rows),shared_sources=len(meta['donor_pool']),donors=len(meta['donor_pool'])),
+        int(cfg['minimum_free_gb']*1024**3))
     root.mkdir(parents=True, exist_ok=False)
+    write_new(root/'storage_admission.json',storage)
     raw = {r['case_id']: r for r in meta['raw_records']}
     write_new(root/'started.json', dict(format=CACHE_FORMAT, config=cfg, base=base,
         source_index_sha256=sha(index), source_identity=provenance(), debug=False, subset=False,
@@ -153,5 +160,6 @@ if __name__ == '__main__':
     parser.add_argument('--index', required=True)
     parser.add_argument('--output', required=True)
     parser.add_argument('--reuse')
+    parser.add_argument('--storage-plan',required=True,help='Explicit size projection bound to this full index/output')
     args = parser.parse_args()
-    prepare(args.index, args.output, args.reuse)
+    prepare(args.index, args.output, args.reuse, storage_plan=args.storage_plan)

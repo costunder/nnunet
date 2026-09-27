@@ -1,4 +1,11 @@
-## v2.2 — 독립 검토 종료 및 G3 준비 기록 (2026-09-27, 코드 변경 없음)
+## v2.2 — 온라인 ranking 연결 / 저장량 admission (2026-09-27)
+
+- 별도 paired ranking bank/RPC/loader/native trainer를 연결했다. raw rank를 유지한 eligible 선택 또는 None을 소비하고, CT/mask/anchor/recipient/donor를 대조한다. legacy raw argmax 강제 경로는 변경하지 않고 새 진입점과 분리했다.
+- 후보 graph는 이벤트 중 메모리에서만 생성한다. 전체 training cache 준비에는 파일 크기 기반 산정서를 요구하며, source index·전체 개수·출력 경로·디스크 여유를 생성 전에 검사한다.
+- 새 DEBUG8 및 관련 회귀56 통과. 실제 CT 추천3개/support8, synthetic native 최종 입력 parity, 실제 localhost RPC는 각각의 검증 범위를 명시한다. 전체 G3/G4/G5 미완료. [상세](docs/v22_online_bridge_storage_20260927.md).
+- core83/runtime20 및 학습 목적/규모 보존. 전체 cache 생성·전체 학습 없음. 기존 사용자 `code.txt` 보존.
+
+## v2.2 — 독립 검토 종료 및 G3 준비 기록 (2026-09-27, 이전 문서-only 전달본)
 
 - 사용자 제공 독립 검토에서 C01/B01–B03 수정 확인, 새 확정 버그 미재현. 구현은 `ea702fd` source/runtime으로 고정하며 artifact v5 유지.
 - 로컬 전체 cache는 이전 source, current-source cache는 DEBUG10개임을 index 조사로 확인. G3 full support/worst-profile/실제 episode 재개 검증은 미실행이다. [서버 준비 및 합격 기준](docs/v22_g3_transition_20260927.md).

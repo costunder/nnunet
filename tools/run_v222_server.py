@@ -30,7 +30,7 @@ def launch_worker(command,output):
     return child
 
 
-def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,optimized=False,cache=None,resume=None,migrate_workspace=None,process_loader=False,feature_coordinates=None,training_objective=None):
+def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,optimized=False,cache=None,resume=None,migrate_workspace=None,process_loader=False,feature_coordinates=None,training_objective=None,storage_reference=None):
     """Delegate to existing verified entry points without changing model config."""
     run=lambda name,*args:[sys.executable,'-u',str(ROOT/name),*map(str,args)]
     if process_loader and not optimized:
@@ -58,7 +58,11 @@ def stages(medical,output,profile_batch,allocator_gb,edge_workspace_mib=64,*,opt
                 plan.append(('observations',run('tools/v1_server.py','observations','--medical-root',medical,'--output',output/'observations')))
             plan.append(('graph_DEBUG',gpu('run_v222_v1_l0.py','verify','--output',output/'graph_DEBUG')))
             if cache is None:
-                plan.append(('paired_cache',run('tools/v222_prepare_optimized.py','--index',output/'observations/index.json','--output',output/'paired_cache')))
+                if storage_reference is not None:
+                    plan.append(('storage_plan',run('tools/v22_cache_storage.py','--reference-cache',storage_reference,
+                        '--index',output/'observations/index.json','--output',output/'paired_cache','--report',output/'storage_plan.json')))
+                plan.append(('paired_cache',run('tools/v222_prepare_optimized.py','--index',output/'observations/index.json',
+                    '--output',output/'paired_cache','--storage-plan',output/'storage_plan.json')))
             index=cache if cache is not None else output/'paired_cache/index.json'
             review_args=['--feature-coordinates',feature_coordinates or 'stride4'] if process_loader else []
             if process_loader and training_objective!='observation_ce':
@@ -133,6 +137,7 @@ def main():
     p.add_argument('--feature-coordinates',choices=('legacy','stride4'),
                    help='Process runtime: stride4 for new training, saved coordinate policy for resume')
     p.add_argument('--cache',type=Path,help='Existing complete paired index; skips raw/paired preparation')
+    p.add_argument('--storage-reference-cache',type=Path,help='Existing cache index used only for measured storage estimates, never relabelled/reused')
     p.add_argument('--resume',type=Path,help='Rolling checkpoint with the same cache; resumes directly')
     p.add_argument('--migrate-workspace-mib',type=int,choices=(256,),help='Resume state with explicitly changed 256MiB execution workspace')
     p.add_argument('--edge-workspace-mib',type=int,choices=(64,256,512),
@@ -145,6 +150,13 @@ def main():
     if a.migrate_workspace_mib is not None and (not a.resume or a.runtime=='legacy'):
         raise ValueError('--migrate-workspace-mib requires optimized --resume')
     if a.resume and not a.cache:raise ValueError('--resume requires --cache')
+    if a.cache is None and a.storage_reference_cache is None:
+        raise ValueError('New full cache needs --storage-reference-cache for disk admission; nothing started')
+    if a.cache is None and a.runtime=='legacy':
+        raise ValueError('Use the guarded process/optimized preparation path for new caches; legacy implementation remains frozen')
+    if a.storage_reference_cache:
+        a.storage_reference_cache=a.storage_reference_cache.resolve()
+        if not a.storage_reference_cache.is_file():raise FileNotFoundError(a.storage_reference_cache)
     if a.resume and a.edge_workspace_mib is not None:raise ValueError('Resume inherits workspace; omit --edge-workspace-mib')
     if a.edge_workspace_mib is None:a.edge_workspace_mib=256 if a.runtime!='legacy' else 64
     if a.cache:a.cache=a.cache.resolve()
@@ -169,6 +181,7 @@ def main():
                  '--runtime',a.runtime,'--worker']
         if not a.resume:command+=['--edge-workspace-mib',str(a.edge_workspace_mib)]
         if a.cache:command+=['--cache',str(a.cache)]
+        if a.storage_reference_cache:command+=['--storage-reference-cache',str(a.storage_reference_cache)]
         if a.resume:command+=['--resume',str(a.resume)]
         if a.migrate_workspace_mib is not None:command+=['--migrate-workspace-mib',str(a.migrate_workspace_mib)]
         if a.feature_coordinates is not None:command+=['--feature-coordinates',a.feature_coordinates]
@@ -181,7 +194,8 @@ def main():
              HIERCP_TEST_FIXTURE=str(output/'graph_DEBUG/actual_graphs_DEBUG.pt'))
     plan=stages(medical,output,a.profile_batch,a.profile_allocator_gb,a.edge_workspace_mib,
                 optimized=a.runtime!='legacy',cache=a.cache,resume=a.resume,migrate_workspace=a.migrate_workspace_mib,
-                process_loader=a.runtime=='process',feature_coordinates=a.feature_coordinates,training_objective=a.training_objective)
+                process_loader=a.runtime=='process',feature_coordinates=a.feature_coordinates,training_objective=a.training_objective,
+                storage_reference=a.storage_reference_cache)
     write_new(output/'requested.json',dict(python=sys.executable,medical_root=str(medical),
         cuda_visible_devices=env.get('CUDA_VISIBLE_DEVICES'),conda_prefix=env.get('CONDA_PREFIX'),
         production_model_config_changed=False,production_batch='auto',gnn_epochs=40,

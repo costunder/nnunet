@@ -1,5 +1,7 @@
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
+**현재 최신은 별도 온라인 bridge와 저장량 admission 변경이다.** `docs/v22_online_bridge_storage_20260927.md`를 먼저 읽는다. 새 `tools/v22_online_rank_bank.py`/`v22_online_rank_adapter.py`/`v22_online_selection.py`/`train_v22_online_rank.py`, `custom_trainers/nnUNetTrainer_OnlineRankV22.py`, 캐시 준비 가드와 DEBUG8을 검토한다. core83/runtime20 학습 기준선은 유지했다. 실제 CT 추천과 synthetic native 최종 입력/RPC 검사는 분리돼 있으며 full-scale G3/G4/G5는 미완료다. 아래 '문서만 변경' 설명은 이전 전달본의 기록이다.
+
 **최신 상태: ea702fd 독립 검토에서 C01 해결·새 확정 버그 미재현을 확인했다.** 이후 변경은 문서/readiness 조사뿐이며 구현 source/runtime은 ea702fd 그대로다. `docs/v22_g3_transition_20260927.md`와 `validation/v222_r6/g3_baseline_ea702fd_20260927.json`에 현재 cache 상태와 다음 G3 기준을 기록했다. 추가 hash 수정을 요구하는 단계로 오인하지 않는다. G3 실행/전체 성능 검증은 아직 미완료다.
 
 **현재 우선 검토 대상은 C01 / artifact v5다.** `docs/v22_current_model_integrity_20260927.md`와 `validation/v222_r6/current_model_integrity_20260927_DEBUG.json`을 먼저 읽는다. 불변 CPU model snapshot의 parameter/buffer hash를 저장하고 모든 resume 단계에서 확인한다. 현재 optimization 모델과 best/reference/teacher를 같게 만드는 변경은 없다. 아래 v4/B01–B03는 이전 revision 기록이다. 실제 DEBUG·CPU fixture·미완료 G3/G4/G5를 구별한다.

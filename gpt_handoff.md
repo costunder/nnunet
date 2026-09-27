@@ -1,4 +1,11 @@
-## 2026-09-27 최신 — 독립 검토 종료, ea702fd 구현 고정, G3 준비
+## 2026-09-27 최신 — 별도 온라인 추천 연결 및 저장량 admission
+
+- [수정 및 검증 범위](docs/v22_online_bridge_storage_20260927.md). `tools/v22_online_rank_bank.py` → RPC/`RankedLoader` → 새 native trainer를 연결했다. 원점수 유지, 사후 eligible 최고점/None, 동일 PlacementSpec의 CT/mask/anchor 검사, 5개 RNG draw 유지. 기존 legacy bank 경로는 새 ranking 경로가 아니다.
+- 준비 실행기에 저장량 산정서를 요구한다. 기존 전체 cache 참조 크기 19.35GiB이며 최신 geometry 상한/전체 프로젝트 용량이 아니다. 새 전체 cache는 만들지 않았다.
+- 새 DEBUG8 + 관련 회귀56 통과. synthetic native 최종 입력 parity/RPC와 실제 CT full-model 후보3/support8 추천을 구분한다. 실제 CT에서 1·2위 제외 후 3위(index2)가 새 선택 계약을 통과했다. production 전체 native 통합/G3/G4/G5 완료는 아니다.
+- `ea702fd` core83/runtime20은 그대로다. pair 재가중/CE/모델/데이터 규모는 바꾸지 않았다. 아래 문서-only 기록은 이전 전달본에 대한 기록이다.
+
+## 2026-09-27 이전 — 독립 검토 종료, ea702fd 구현 고정, G3 준비
 
 - [검토 판정과 서버 준비 명령](docs/v22_g3_transition_20260927.md). 독립 검토에서 C01/B01–B03 수정 확인 및 새 확정 버그 미재현. 추가 hash 패치 없이 구현을 `ea702fd2b7b78faa855ff62a0f2488045a4d96da`의 source/runtime으로 고정한다. 이번에는 문서/readiness 기록만 변경했다.
 - 로컬 index 조사: 이전 전체 paired 14,102개는 source 불일치, 최신 source 일치 cache는 DEBUG 10개뿐. 현재 전체 production cache 준비 완료라고 말하지 않는다. 서버 cache는 직접 확인하지 않았다.

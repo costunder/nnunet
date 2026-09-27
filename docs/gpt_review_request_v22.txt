@@ -1,5 +1,7 @@
 # v2.2 독립 재검토 요청 — observed_rank_v1 오류 수정본
 
+이번 최신 수정은 docs/v22_online_bridge_storage_20260927.md의 온라인 bridge와 저장량 admission입니다. tools/v22_online_rank_bank.py → RPC → RankedLoader → nnUNetTrainer_250epochs_OnlineRankV22에서 raw 점수를 수정하지 않고 eligible 선택/None과 실제 PlacementSpec이 끝까지 보존되는지 검토해 주세요. proposal은 간 union을 쓰되 종양 주석 선제 필터를 제거했습니다. self-patient donor는 풀/난수 분모를 유지하고 no-placement 처리합니다. 실제 CT GNN 진단과 synthetic native 입력/RPC 테스트는 별개이며 전체 production 통합으로 과장하지 않았는지 확인해 주세요. cache storage 추정은 empirical이며 최신 geometry의 상한이 아닙니다. core83/runtime20 학습 코드와 loss는 그대로이며 아래 '문서만 변경'과 C01 우선 검토 요청은 이전 기록입니다.
+
 최신 상태: ea702fd 독립 검토에서 C01/B01–B03 수정이 확인됐고 새 확정 버그는 재현되지 않았습니다. 이번 후속 변경은 문서와 G3 준비 상태 기록이며 구현 source/runtime은 ea702fd로 고정했습니다. docs/v22_g3_transition_20260927.md와 validation/v222_r6/g3_baseline_ea702fd_20260927.json을 먼저 확인하세요. 아래 C01 수정 요청문은 직전 revision의 맥락입니다. 새로운 근거 없이 같은 hash 보강이나 연구 설계 변경을 반복하기보다 전체 support/다양한 worst-profile/실제 다른 next-batch episode 재개를 위한 G3 증거의 완전성을 판단해 주세요. 현재 G3 실행은 미완료입니다.
 
 현재 우선 대상은 C01 현재-model 무결성 / artifact v5입니다. docs/v22_current_model_integrity_20260927.md와 validation/v222_r6/current_model_integrity_20260927_DEBUG.json을 먼저 읽으세요. 이미 만든 불변 CPU payload.model 전체 state_dict의 hash 저장, 모든 resume 단계의 hash 누락/유한 parameter·buffer 변경 거부, 정상 optimization의 best/reference/teacher와 다른 현재 모델 허용, final-memory best 결속 유지가 핵심입니다. v4 checkpoint를 읽고 hash를 새로 붙여 검증했다고 취급하지 않는지도 확인하세요. 정상 다섯 단계 재개·실제 GPU loss/gradient/model/Adam/RNG·불변 snapshot 검사의 범위와 새 반례를 확인해 주세요. 아래 v4/B01–B03 설명은 이전 revision입니다. G3/G4/G5 미완료 상태는 유지합니다.

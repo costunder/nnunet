@@ -1,5 +1,7 @@
 # v2.2 독립 검토 종료와 G3 준비
 
+> 후속 변경: [온라인 bridge/저장량 admission](v22_online_bridge_storage_20260927.md). 이 문서의 ea702fd checkout 명령은 당시 고정 기준선 재현용이다. 최신 준비 실행기는 `--storage-plan`을 요구한다. 아래 과거 cache 준비 명령을 최신 실행 명령으로 그대로 사용하지 않는다.
+
 ## 현재 판정
 
 사용자가 제공한 `ea702fd2b7b78faa855ff62a0f2488045a4d96da` 독립 검토 텍스트 전체를 읽었다. C01과 이전 B01–B03은 해당 검토 범위에서 해결됐고 새 확정 버그는 재현되지 않았다. 이번에는 학습/runtime/모델/graph/추천 코드를 수정하지 않는다. **검증할 구현은 ea702fd의 core source + runtime hash로 고정한다.** 이후 문서 커밋은 구현 revision 변경과 구분한다.
