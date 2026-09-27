@@ -1,3 +1,11 @@
+## 2026-09-28 최신 — 로컬 통합 smoke 실제 완료
+
+- [같은 프로세스의 추천→CP→증강→학습→재개](docs/v22_integrated_smoke_20260928.md)를 실제5070Ti에서 통과했다. GNN5,550,806 parameters와 native102,350,575 parameters/batch2를 동시에 올렸고 GNN 호출 전에 실제 SGD momentum을 생성했다.
+- 새 검증 JSON: validation/v222_r6/integrated_smoke_20260928_DEBUG.json. 실제128후보/owner/RPC/raw-native oracle/표준 증강/CUDA train_step/epoch save-load/로더 재생성 경로다. 연속/재개 다음 입력과 model/optimizer/gradient/scaler/RNG exact, loss1.1939997673034668 동일.
+- 증강 후 CP 영향도 동일 난수 no-paste 대조로 확인: 학습 CT25,600 voxels, 추가 tumor target4,124 voxels. 대조 출력은 학습에 사용하지 않는다. 추가 대조 전후 학습 입력/모델 상태도 일치.
+- DEBUG support8와1 training case, validation liver_0, augmentation workers0, compile off. CP 설정80%는 유지하고 두 분기 검사를 위해 draw .1/.9를 지정했다. applied1/2 로그는 확률 변경이 아니다. 실제 전체 support 및 production admission/worker/compile G4, G3/G5는 서버에서 별도 검증한다.
+- peak allocated6.14GiB는 이 동시 실행에서 측정했다. core83/runtime20/online identity15는 불변. production cache 재생성이나 장기 로컬 학습 없음.
+
 ## 2026-09-28 최신 — S01 조건부 적용 조사와 CUDA 경계 검증
 
 - [설치본 확인/실제 GPU 결과](docs/v22_s01_installed_boundary_20260928.md). 로컬 부모의 on_epoch_end는 best/logger 결정 후 epoch 증가와 정상 반환이며 종료 분기가 없다. MRO와 함수 원문·hash를 installed_epoch_boundary_20260928.json에 포함했다. 서버 설치본은 별도 확인이 필요하다.

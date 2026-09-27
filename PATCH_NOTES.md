@@ -1,3 +1,9 @@
+## v2.2 — 로컬 GPU 한 프로세스 통합 smoke 완료 (2026-09-28)
+
+- 실제128후보 GNN/RPC/CP → 표준 증강 → native CUDA 학습 → checkpoint → 로더 재생성/다음 update 재개를 연결해 통과. nnU-Net SGD 상태를 먼저 생성해 두 모델과 optimizer가 함께 있을 때 검사했다.
+- 같은 증강의 no-paste 대조보다 학습 CT25,600 voxels/추가 종양 정답4,124 voxels 차이 확인. 재개 전후 입력/loss/model/SGD/gradient/scaler/RNG 일치. peak allocated6.14GiB.
+- [실행 조건과 증거](docs/v22_integrated_smoke_20260928.md). support8·1-case·augmentation worker0·compile off의 명시적 DEBUG. production CP80%/모델/graph/batch 불변. 전체 G3/G4/G5는 서버 범위.
+
 ## v2.2 — S01 로컬 설치본 확인 / CUDA epoch 경계 검사 (2026-09-28)
 
 - 로컬 실제 부모에는 S01의 SystemExit 종료 분기가 없음을 함수 원문/MRO로 확인. 해당하지 않는 production 종료 패치를 추가하지 않았다. 서버 설치본은 미확인.

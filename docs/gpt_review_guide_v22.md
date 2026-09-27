@@ -1,3 +1,5 @@
+최신 범위는 [한 프로세스 로컬 GPU 통합 smoke](v22_integrated_smoke_20260928.md)와 `validation/v222_r6/integrated_smoke_20260928_DEBUG.json`입니다. 이제 추천/CP와 native 학습을 분리된 검사로만 보고하지 않습니다. 다만 support8·명시적 DEBUG 입장·worker0·compile off이며 full-scale G4나 전체 성능 검증은 아닙니다.
+
 최신 검토 범위는 [S01 설치본 조사와 CUDA epoch 경계](v22_s01_installed_boundary_20260928.md)입니다. 설치 부모 함수 원문은 `validation/v222_r6/installed_epoch_boundary_20260928.json`, 실제 실행은 `validation/v222_r6/s01_GPU_boundary_20260928_DEBUG.json`에 있습니다. 로컬에는 조건부 종료 분기가 없고 production 코드는 c989ae1에서 변경하지 않았습니다. 서버/신호 종료 안전까지 입증한 것으로 해석하지 마세요.
 
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본

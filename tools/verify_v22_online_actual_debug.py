@@ -6,6 +6,7 @@ paste function is mocked. One event is not G3/G4 full-scale validation.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import threading
@@ -20,7 +21,12 @@ def main():
     parser.add_argument('--checkpoint',type=Path,required=True)
     parser.add_argument('--native',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--integrated-segmentation',action='store_true',help='DEBUG one-process GNN/CP/standard augmentation/CUDA train and epoch resume')
     args=parser.parse_args();root=args.output.resolve();root.mkdir(parents=True,exist_ok=False)
+    if args.integrated_segmentation:
+        n=json.loads(args.native.read_text())
+        os.environ.update(nnUNet_preprocessed=str(Path(n['preprocessed']).parent),nnUNet_raw=str(Path(n['raw']).parent),
+                          nnUNet_results=str(root/'nnUNet_results'),nnUNet_compile='false',nnUNet_wandb_enabled='false')
     import numpy as np
     import torch
     from hiercp_v222.contracts import read_json,sha,write_new
@@ -62,11 +68,21 @@ def main():
     owner.store=RawBankStore(root);owner.raw_ready={}
     bank=RankedBank.__new__(RankedBank);OnlineCPBank.__init__(bank,index)
     bank.identities={n:(recipient,i) for i,n in enumerate(names)}
+    integrated=None;integration_result=None
+    if args.integrated_segmentation:
+        from tools.v22_integrated_smoke_debug import IntegratedSmoke
+        integrated=IntegratedSmoke(root,native,index,bank,names,di,gpu_lock,args.checkpoint)
     # Observe actual model outputs and repeat under the same reviewed runtime.
     checks={};captured={}
     def checked_recommend(*a,**kw):
         from dataclasses import replace
+        records=a[1]
+        counts={key:[sum(r[side][key].values()) for r in records for side in ('source_local','target_local')]
+                for key in ('counts','edge_counts')}
+        checks['branch_graph_statistics']={k:dict(min=int(min(v)),max=int(max(v)),mean=float(np.mean(v)),branches=len(v)) for k,v in counts.items()}
+        checks['dense_patch_shapes']={side:list(records[0][side].shape) for side in ('source_patch','target_patch')}
         before=backend_state();first=recommend(*a,**kw)
+        print(json.dumps(dict(stage='actual_GNN_128_scored',CUDA_allocated=torch.cuda.memory_allocated())),flush=True)
         repeated=recommend(*a,**kw)
         changed=dict(kw,recipient_case=replace(kw['recipient_case'],label=np.where(kw['recipient_case'].label==2,1,kw['recipient_case'].label)))
         without=recommend(*a,**changed)
@@ -81,6 +97,7 @@ def main():
         with measurement,patch('tools.v22_online_rank_adapter.RankedEntryBuilder',return_value=owner),patch('tools.v22_rank_recommendation.recommend',checked_recommend):
             service=RankedMaterializationService(index,gpu_lock)
             print(json.dumps(dict(debug=True,stage='actual_owner_RPC_128_candidates',resources=snapshot(),support=len(memory['record_ids']),physical_batch=payload['physical_batch'])),flush=True)
+            if integrated is not None:integration_result=integrated.run()
             entry=bank._load(names[di])  # Missing receipt forces authenticated RPC -> actual owner.
             selected=bank.selected_index(entry)
             if selected is None:raise AssertionError('No actual valid paste selected; positive-paste path remains untested')
@@ -132,7 +149,8 @@ def main():
         score_checks=checks,selection=entry['_receipt']['selection'],raw_receipt=read_json(root/f'raw_receipts/{recipient}.json'),
         storage_written_bytes=sum(p.stat().st_size for p in root.rglob('*') if p.is_file()),
         seconds=time.perf_counter()-start,resources=measurement.report,cuda_peak_bytes=torch.cuda.max_memory_allocated(),
-        full_support=False,segmentation_optimizer_coexistence=False,full_training=False,full_evaluation=False)
+        full_support=False,segmentation_optimizer_coexistence=integrated is not None,
+        integrated_segmentation=integration_result,full_training=False,full_evaluation=False)
     write_new(root/'result.json',result)
     print(json.dumps(dict(result=str(root/'result.json'),bytes=result['storage_written_bytes'],seconds=result['seconds'])),flush=True)
 
