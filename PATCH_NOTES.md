@@ -1,4 +1,12 @@
-## v2.2 — 온라인 ranking 연결 / 저장량 admission (2026-09-27)
+## v2.2 — 온라인 F01/F02 / segmentation 재개 / native 저장 보호 (2026-09-27)
+
+- 설치본 우선 raw-engine 경로를 새 Bank의 명시적 로컬 구현으로 고정. owner load/recommend의 결정론 runtime 및 RNG/backend 정상·예외 복구, CUDA 초기화 전 workspace admission을 연결했다.
+- 새 native launcher에 명시적 epoch-boundary resume, 실제 checkpoint/실행 계약 결속, 매 epoch 저장 및 missing-checkpoint fresh fallback 거부를 추가했다.
+- native preparation/runtime·selected payload·checkpoint의 별도 저장량 추정/여유 검사. 대규모 graph/pair 캐시를 선생성하지 않았다.
+- 실제 CT 128후보 owner/RPC/native 최종 입력 DEBUG와 회귀 기록은 [상세 문서](docs/v22_online_review_fixes_20260927.md) 및 `validation/v222_r6/online_review_fixes_20260927_DEBUG.json`을 참조한다. full support/segmentation 공존과 전체 학습·효용은 별도 미검증이다.
+- core83/runtime20·학습 목적·production 규모·사용자 code.txt 보존.
+
+## v2.2 — 온라인 ranking 연결 / 저장량 admission (2026-09-27, 이전)
 
 - 별도 paired ranking bank/RPC/loader/native trainer를 연결했다. raw rank를 유지한 eligible 선택 또는 None을 소비하고, CT/mask/anchor/recipient/donor를 대조한다. legacy raw argmax 강제 경로는 변경하지 않고 새 진입점과 분리했다.
 - 후보 graph는 이벤트 중 메모리에서만 생성한다. 전체 training cache 준비에는 파일 크기 기반 산정서를 요구하며, source index·전체 개수·출력 경로·디스크 여유를 생성 전에 검사한다.

@@ -8,9 +8,10 @@ from custom_trainers.nnUNetTrainer_OnlinePairedCP import _nnUNetTrainer_250epoch
 from tools.v22_online_rank_bank import validate_catalog
 from tools.v22_online_rank_adapter import RankedMaterializationService,native_dataloaders
 from hiercp_v222.contracts import read_json
+from tools.v22_online_checkpoint import OnlineCheckpointMixin
 
 
-class nnUNetTrainer_250epochs_OnlineRankV22(PairedTrainerMixin,_nnUNetTrainer_250epochs_OnlineCP):
+class nnUNetTrainer_250epochs_OnlineRankV22(OnlineCheckpointMixin,PairedTrainerMixin,_nnUNetTrainer_250epochs_OnlineCP):
     required_paste_contract='onlinecp_raw_target_paste_v1'
     online_policy='hier_argmax'
 
@@ -19,6 +20,7 @@ class nnUNetTrainer_250epochs_OnlineRankV22(PairedTrainerMixin,_nnUNetTrainer_25
         if self.ranking_metadata.get('debug'):raise ValueError('DEBUG bank is not production')
         super().__init__(plans,configuration,fold,dataset_json,device)
         self.ranking_gpu_lock=threading.RLock();self.ranking_service=None
+        self.save_every=1  # Persist each completed epoch; does not alter training steps.
 
     def do_split(self):
         train,val=super().do_split()

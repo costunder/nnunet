@@ -1,4 +1,12 @@
-## 2026-09-27 최신 — 별도 온라인 추천 연결 및 저장량 admission
+## 2026-09-27 최신 — 온라인 F01/F02, segmentation 재개, native 저장 가드
+
+- [최신 수정 범위](docs/v22_online_review_fixes_20260927.md). 새 RankedBank가 검토된 로컬 engine만 사용하고, owner load/recommend를 공유 GPU lock과 frozen runtime으로 감싼다. CUDA workspace는 초기화 전에 설정하며 잘못된 초기화는 거부한다.
+- native launcher의 `--resume`/`--checkpoint`는 실제 checkpoint와 plans/split/GNN/bank/engine/seed/workers를 대조한다. 에포크마다 저장하고 완료된 경계부터 복구한다. 파일 누락 시 fresh fallback, 구형 segmentation checkpoint 재표시는 없다.
+- native runtime/preparation·selected payload·segmentation checkpoint 쓰기 전 추정량/80GiB reserve 검사. 전체 graph cache와 별도다. 실제 한 case 관측량으로 전체 경우를 확대하면 온라인만 약235GiB의 보수적 경험 추정이므로 작은 저장량이라고 주장하지 않는다.
+- 실제 CT 128후보/full GNN/support8 DEBUG의 owner→RPC→native 입력 검증 범위와 결과는 `validation/v222_r6/online_review_fixes_20260927_DEBUG.json`을 우선한다. 전체 support/segmentation 공존·효용은 미검증. 전체 cache/학습은 시작하지 않았다. 기존 사용자 code.txt 보존.
+- 아래 기록은 각 이전 revision의 상태이며 최신 판정과 혼동하지 않는다.
+
+## 2026-09-27 이전 — 별도 온라인 추천 연결 및 저장량 admission
 
 - [수정 및 검증 범위](docs/v22_online_bridge_storage_20260927.md). `tools/v22_online_rank_bank.py` → RPC/`RankedLoader` → 새 native trainer를 연결했다. 원점수 유지, 사후 eligible 최고점/None, 동일 PlacementSpec의 CT/mask/anchor 검사, 5개 RNG draw 유지. 기존 legacy bank 경로는 새 ranking 경로가 아니다.
 - 준비 실행기에 저장량 산정서를 요구한다. 기존 전체 cache 참조 크기 19.35GiB이며 최신 geometry 상한/전체 프로젝트 용량이 아니다. 새 전체 cache는 만들지 않았다.

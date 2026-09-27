@@ -1,5 +1,7 @@
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
+**현재 검토 대상은 F01/F02/O01/D02 수정본이다.** `docs/v22_online_review_fixes_20260927.md`와 `validation/v222_r6/online_review_fixes_20260927_DEBUG.json`부터 읽는다. 로컬 paste 구현 고정, owner의 scoped runtime, segmentation epoch 재개, 온라인 native 저장 admission이 새 변경이다. 실제 CT 128후보/support8 DEBUG와 전체 support 공존 G4를 구분한다. **아래 단락은 이전 revision별 기록이며 '최신/현재'라는 표현도 당시 시점을 의미한다.**
+
 **현재 최신은 별도 온라인 bridge와 저장량 admission 변경이다.** `docs/v22_online_bridge_storage_20260927.md`를 먼저 읽는다. 새 `tools/v22_online_rank_bank.py`/`v22_online_rank_adapter.py`/`v22_online_selection.py`/`train_v22_online_rank.py`, `custom_trainers/nnUNetTrainer_OnlineRankV22.py`, 캐시 준비 가드와 DEBUG8을 검토한다. core83/runtime20 학습 기준선은 유지했다. 실제 CT 추천과 synthetic native 최종 입력/RPC 검사는 분리돼 있으며 full-scale G3/G4/G5는 미완료다. 아래 '문서만 변경' 설명은 이전 전달본의 기록이다.
 
 **최신 상태: ea702fd 독립 검토에서 C01 해결·새 확정 버그 미재현을 확인했다.** 이후 변경은 문서/readiness 조사뿐이며 구현 source/runtime은 ea702fd 그대로다. `docs/v22_g3_transition_20260927.md`와 `validation/v222_r6/g3_baseline_ea702fd_20260927.json`에 현재 cache 상태와 다음 G3 기준을 기록했다. 추가 hash 수정을 요구하는 단계로 오인하지 않는다. G3 실행/전체 성능 검증은 아직 미완료다.

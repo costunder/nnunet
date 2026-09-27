@@ -1,44 +1,20 @@
-# v2.2 독립 재검토 요청 — observed_rank_v1 오류 수정본
+# v2.2 독립 재검토 요청 — 온라인 F01/F02/O01/D02 수정
 
-이번 최신 수정은 docs/v22_online_bridge_storage_20260927.md의 온라인 bridge와 저장량 admission입니다. tools/v22_online_rank_bank.py → RPC → RankedLoader → nnUNetTrainer_250epochs_OnlineRankV22에서 raw 점수를 수정하지 않고 eligible 선택/None과 실제 PlacementSpec이 끝까지 보존되는지 검토해 주세요. proposal은 간 union을 쓰되 종양 주석 선제 필터를 제거했습니다. self-patient donor는 풀/난수 분모를 유지하고 no-placement 처리합니다. 실제 CT GNN 진단과 synthetic native 입력/RPC 테스트는 별개이며 전체 production 통합으로 과장하지 않았는지 확인해 주세요. cache storage 추정은 empirical이며 최신 geometry의 상한이 아닙니다. core83/runtime20 학습 코드와 loss는 그대로이며 아래 '문서만 변경'과 C01 우선 검토 요청은 이전 기록입니다.
+우선 docs/v22_online_review_fixes_20260927.md와 validation/v222_r6/online_review_fixes_20260927_DEBUG.json을 읽어 주세요. manifest.json의 commit이 이번 제출본입니다. 과거 검토 기록의 최신/현재 표시는 각 당시 revision을 의미합니다.
 
-최신 상태: ea702fd 독립 검토에서 C01/B01–B03 수정이 확인됐고 새 확정 버그는 재현되지 않았습니다. 이번 후속 변경은 문서와 G3 준비 상태 기록이며 구현 source/runtime은 ea702fd로 고정했습니다. docs/v22_g3_transition_20260927.md와 validation/v222_r6/g3_baseline_ea702fd_20260927.json을 먼저 확인하세요. 아래 C01 수정 요청문은 직전 revision의 맥락입니다. 새로운 근거 없이 같은 hash 보강이나 연구 설계 변경을 반복하기보다 전체 support/다양한 worst-profile/실제 다른 next-batch episode 재개를 위한 G3 증거의 완전성을 판단해 주세요. 현재 G3 실행은 미완료입니다.
+현재 흐름은 paired v1 L0 → L1 관계 → L2 정렬 → 관측 종양 순위 학습입니다. 실제 추천에서는 donor를 고정한 128개 후보를 모델로 채점하고, 전체 paste mask의 주석 종양 겹침/경계/간 포함률 조건을 사후 적용해 유효 후보 중 최고점을 선택합니다. 아무 후보도 없으면 원본을 유지합니다. 종양 GT로 score나 rank를 덮어쓰면 오류입니다.
 
-현재 우선 대상은 C01 현재-model 무결성 / artifact v5입니다. docs/v22_current_model_integrity_20260927.md와 validation/v222_r6/current_model_integrity_20260927_DEBUG.json을 먼저 읽으세요. 이미 만든 불변 CPU payload.model 전체 state_dict의 hash 저장, 모든 resume 단계의 hash 누락/유한 parameter·buffer 변경 거부, 정상 optimization의 best/reference/teacher와 다른 현재 모델 허용, final-memory best 결속 유지가 핵심입니다. v4 checkpoint를 읽고 hash를 새로 붙여 검증했다고 취급하지 않는지도 확인하세요. 정상 다섯 단계 재개·실제 GPU loss/gradient/model/Adam/RNG·불변 snapshot 검사의 범위와 새 반례를 확인해 주세요. 아래 v4/B01–B03 설명은 이전 revision입니다. G3/G4/G5 미완료 상태는 유지합니다.
+이번에 검토할 실행 경계:
+1. RankedBank가 설치된 nnunetv2의 동명 raw engine을 참조하지 않고 실제 로컬 Store/apply를 사용하는지. 출력 경로/hash와 실제 호출 함수가 같은지.
+2. owner의 모델 load와 recommend가 shared GPU lock + reviewed frozen runtime을 사용하는지. 정상/예외에서 segmentation RNG/backend가 복구되는지. CUBLAS workspace를 CUDA 초기화 전에 설정하고 잘못된 초기화를 거부하는지.
+3. 실제 CT/128후보 → 실제 owner → 인증 RPC → native loader 최종 입력의 선택/CT/mask/anchor/좌표가 같은지. 기존 support8 DEBUG 초기화와 전체 support/segmentation 공존을 혼동하지 않는지.
+4. 새 native launcher --resume/--checkpoint가 실제 checkpoint를 선택·검증·로드하는지. plans/split/GNN/bank/engine/seed/workers/epoch 계약 불일치와 파일 누락을 거부하는지. epoch-boundary continuation을 mid-epoch exact로 과장하지 않는지.
+5. native preparation/runtime, selected pair payload, segmentation checkpoint의 저장량 추정과 reserve 검사가 실제 writer 전에 있는지. 공간 부족을 no-placement로 삼키는지. 온라인 데이터가 여전히 커질 수 있다는 한계와 empirical forecast를 명시하는지.
 
-직전 대상은 B01–B03 exact-resume 보강 / artifact v4입니다. docs/v22_resume_integrity_20260927.md와 validation/v222_r6/resume_integrity_20260927_DEBUG.json을 우선 읽고, tools/v22_resume_integrity.py 및 실제 호출 경로를 검증해 주세요. final-memory current model/best/buffer/prefix generation, frozen plan/teacher/support generation, 선언된 CUDA RNG 수·shape·dtype·content가 핵심입니다. 정상 optimization에서 best를 강제로 load하거나 plan을 재생성하거나 RNG를 reseed하지 않는지 확인하세요. 82회귀 및 실제 CT DEBUG의 다음 gradient/Adam/RNG 동일성·final-memory 경계·portable 복구와 손상10종 거부를 기록했습니다. earlier-best는 CPU fixture, 같은 episode 수치는 실제 CT batch 재사용 probe이며 다중 batch 전체 epoch 검증은 아닙니다. 이 한계를 포함해 새 반례를 찾아 주세요. 아래 v3/R01–R06는 이전 단계입니다. G3/G4/G5는 여전히 미완료입니다.
+GNN core83/runtime20은 ea702fd 기준을 보존했습니다. 기존 C01, best/final-memory, frozen plan, RNG, Adam, geometry/stride4/anchor/GT-independent tie 보호도 확인해 주세요. 기존 코드를 다시 설계하거나 모델/그래프/데이터/physical batch를 축소하는 수정은 하지 않았습니다.
 
-직전 대상은 아래 이전 수정에 더해 R01–R06를 보강한 artifact v3/content binding 수정본입니다. 정확한 commit은 manifest.json을 확인하세요. docs/v22_rereview_repairs_20260927.md 및 validation/v222_r6/rereview_repairs_20260927_DEBUG.json을 먼저 읽고 Adam mapping/hash·phase/best/cursor·calibration reuse·모든 후보 frame/content·workers0·invalid empty를 우선 재검증해 주세요. 72회귀, 실제 process 연속/중단재개 model·Adam·모든 RNG 동일, 실제2,368voxel raw paste 및 workers0/1/2/4/8 일치, 잘못된 calibration7종 process 거부를 기록했습니다. 전체규모/G3·native/G4·효용/G5는 여전히 미완료입니다.
+Pair 비균등 계수, detached reference, CE/rank, tumor appearance shortcut, fixed-donor contrast와 실제 CP 효용은 연구 위험으로 남습니다. 새 확정 결함과 별도 미검증 가설을 구분해 주세요. 전체 support·다양한 worst profile·segmentation optimizer 공존의 G3/G4, no-CP/valid-random-CP/proposed-CP의 G5는 완료되지 않았습니다.
 
-이전 단계는 6a054de의 실제 수정 및 cb3154c 전달 문서 정리본입니다. 당시 calibration list 오류, donor anchor 이동, 동점 순위, 외부 best 파일 의존 및 artifact/환자/placement 검증을 수정했습니다. 아래 이전 주장과 최신 주장을 구분하고 코드와 반례로 재검증해 주세요.
+01 요청 → 02 코드 지도 → 03_ACTIVE_PATH_CODE/03_ALL_CODE → 04 증거 순으로 확인해 주세요. ZIP source_tree는 실제 원본 바이트입니다. 원본 CT/cache/weights는 이 소스 묶음에 포함되지 않으므로 실행 기록을 독립 재실행했다고 표현하지 마세요.
 
-먼저 docs/v22_review_repairs_20260927.md와 validation/v222_r6/review_repairs_20260927_DEBUG.json을 읽으세요. 64회귀, 실제 process DEBUG 저장→재개→1epoch 완료, 외부 best 읽기 금지 복구 및 실제 CT 2,368 voxel footprint 검사를 했습니다. 전체 코호트/G3, native online CP/G4, 전체 성능/G5는 미완료입니다. 이전 physical32·전체 support 결과를 이번 geometry revision의 증거로 사용하지 마세요.
-
-재검토 핵심:
-- fresh/reuse calibration의 list schema, 잘못된 semantic key 충돌 처리.
-- spacing/회전/scale/mirror 후 explicit anchor와 graph→filter→raw paste의 동일 voxel 좌표. 이전 cache 재사용 차단.
-- GT 독립 단일 tie order와 Recall@k/MRR, CPU best의 불변성·run identity·단일 rolling 파일 복구.
-- resume/epoch/final별 누락·오염·held-out donor·owner/group/coverage·NaN·runtime 불일치 거부.
-- CT/간 union/후보/donor/support를 고정하고 종양 GT만 바꾼 score/rank 불변성. 결정론 runtime 대조군과 실제 native 최종 입력을 구별.
-- 기존 pair estimator는 유지했습니다. 비균등 가중·shortcut·고정 donor 목적·worst-batch calibration은 해결됐다고 가정하지 마세요.
-- 새 API의 원본 유지 처리가 native bank/RPC/trainer RNG까지 연결됐다고 오인하지 마세요.
-
-이 프로젝트는 donor 종양과 recipient 후보의 국소 CT 문맥을 paired v1 L0로 비교하고, L1 data–label 관계 및 L2 환자 간 정렬을 통해 CP 위치를 추천하려고 합니다.
-이번 변경은 실제 관측 종양을 상위로 학습하고, 실제 추천 시 모든 주석 종양과 paste footprint가 겹치는 후보를 제외하는 것입니다. GT로 점수를 올리거나 무조건 1위만 버리는 구현이면 오류입니다.
-
-02_PIPELINE_AND_CODE_MAP.md를 먼저 읽고 03_ACTIVE_PATH_CODE.txt, 03_ALL_CODE.txt 또는 ZIP의 source_tree에서 실제 호출 경로를 추적해 주세요. 검증 기록은 04_EVIDENCE_AND_HISTORY.txt에 있습니다. 문서 설명보다 실행 코드를 우선하고, 읽지 못한 파일이나 실행하지 않은 검사를 명시해 주세요. 과거 버전/미사용 경로를 현재 기본 실행으로 오인하지 마세요.
-
-특히 다음을 독립적으로 확인해 주세요.
-1. 새 server 기본 process → ranking trainer → loss/backward/optimizer/validation/checkpoint 경로가 실제 연결되어 있는가?
-2. 같은 CT의 관측 양성 대 미관측 비교 순위 목적이 의도와 맞는가? 미관측을 CP 불가 정답으로 취급하는 부분은 없는가? CE 보조 목적과 rank 목적의 충돌 가능성은?
-3. detached epoch L0 reference, live query 교체, batch에 한쪽 이상 포함된 pair, pair 중복 가중 및 무양성 CT 처리가 정확한가? 메모리 근사를 full-case end-to-end로 과장하는가?
-4. query 환자를 recipient/donor 양쪽 support에서 제외하는가? validation/test GT가 support·forward·점수·학습에 유입되는가? case ID만으로 실제 환자 독립성을 보장한다고 잘못 주장하는가?
-5. CNN stride4 좌표 수정, 그래프 batching, L1 T/F/U 관계와 L2 clustering/alignment 구현 및 gradient가 설명과 일치하는가?
-6. 관측 종양 본체를 보는 shortcut 및 위치마다 다른 donor 때문에 고정 donor 추천이 학습되지 않을 위험은? 이를 구분할 실험은?
-7. 모든 후보를 모델로 먼저 scoring한 뒤 실제 변환된 전체 paste mask로 모든 크기의 주석 종양 겹침·경계·간 포함률을 검사하는가? GT가 원래 score나 rank를 바꾸는가?
-8. rank validation의 Recall@k/MRR/동점/무양성 CT/best checkpoint 기준은 정확한가? 실행 성공을 추천 성능으로 제시하지 않는가?
-9. 새 objective와 좌표계를 이전 CE checkpoint에 조용히 적용하는가? exact resume, provenance, DEBUG artifact 거부, pause/resume 및 worker 소유권이 안전한가?
-10. nnU-Net 온라인 CP 연결은 아직 미완료라는 한계를 확인하고, 완료에 필요한 실제 호출 지점을 제시해 주세요. 기존 legacy score_candidates를 새 추천 API와 혼동하지 마세요.
-11. 모델·그래프·전체 데이터·physical batch를 임의 축소하지 않고 중복 계산/메모리/동기화/프로세스 병목을 개선할 수 있는가?
-
-답변 형식: 심각도 순으로 문제, 원본 파일:줄, 재현 조건, 영향, 최소 수정안, 필요한 검증을 제시해 주세요. 확정 버그 / 설계 위험 / 미검증 가설을 구분해 주세요. 전체 코드 중 확인한 범위와 미확인 범위를 명시하고, DEBUG 수치를 최종 연구 성능으로 해석하지 마세요.
+답변은 심각도별로 문제, 파일:줄, 재현 조건, 영향, 최소 수정, 필요한 검사 형식으로 작성하세요. 실제로 읽은 범위와 실행하지 않은 검사를 명시하세요. 단위 테스트/실제 CT DEBUG/전체 규모 검증/연구 성능을 구분해 주세요.

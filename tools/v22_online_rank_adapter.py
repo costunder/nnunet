@@ -28,6 +28,25 @@ class RankedMaterializationService(MaterializationService):
 
 
 class RankedBank(OnlineCPBank):
+    def _get_raw_store(self):
+        from custom_trainers.onlinecp_raw_bank import RawBankStore
+        if self._raw_store is None:self._raw_store=RawBankStore(self.root)
+        return self._raw_store
+
+    @staticmethod
+    def raw_apply_function():
+        from custom_trainers.onlinecp_raw_resampling import apply_candidate
+        return apply_candidate
+
+    @staticmethod
+    def paste_engine_identity():
+        import inspect
+        from custom_trainers.onlinecp_raw_bank import RawBankStore
+        function=RankedBank.raw_apply_function()
+        paths={name:Path(inspect.getfile(value)).resolve() for name,value in
+               (('store',RawBankStore),('apply',function))}
+        return {name:dict(path=str(path),sha256=sha(path)) for name,path in paths.items()}
+
     def __init__(self,index_path,cache_entries=64):
         super().__init__(index_path,cache_entries)
         validate_catalog(self.metadata)

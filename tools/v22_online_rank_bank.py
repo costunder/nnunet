@@ -35,6 +35,8 @@ def online_identity():
     names = ('tools/v22_online_selection.py', 'tools/v22_online_rank_bank.py',
         'tools/v22_online_rank_adapter.py', 'custom_trainers/nnUNetTrainer_OnlineRankV22.py',
         'tools/train_v22_online_rank.py',
+        'tools/v22_online_runtime.py', 'tools/v22_online_native.py',
+        'tools/v22_online_storage.py', 'tools/v22_online_checkpoint.py',
         'comparison_randomness.py', 'custom_trainers/nnUNetTrainer_OnlinePairedCP.py',
         'custom_trainers/onlinecp_raw_resampling.py', 'custom_trainers/onlinecp_raw_bank.py',
         'tools/online_raw_bank_preparation.py')
@@ -122,8 +124,7 @@ def proposal_centers(case, source, cfg, base, depth, donor):
 
 
 class RankedEntryBuilder(LegacyBuilder):
-    # Only the verified raw/native preparation method is inherited. Neither the
-    # legacy scorer, proposal prefilter nor argmax materializer is called.
+    # Legacy scorer, proposal prefilter and argmax materializer are never called.
     def __init__(self, index_path, gpu_lock):
         from tools.v22_rank_recommendation import load_checkpoint
         from hiercp.common import discover_cases
@@ -131,8 +132,10 @@ class RankedEntryBuilder(LegacyBuilder):
         from custom_trainers.onlinecp_raw_bank import RawBankStore
         self.path=Path(index_path).resolve(); self.root=self.path.parent
         self.meta=validate_catalog(read_json(self.path)); self.native=validate_native(read_json(self.meta['native_preparation']))
-        # Frozen scorer construction must not consume segmentation RNG state.
-        with gpu_lock,torch.random.fork_rng(devices=list(range(torch.cuda.device_count()))):
+        from tools.v22_online_runtime import scoring_runtime
+        from hiercp_v222.v1_cache import configuration
+        cfg,base=configuration()
+        with gpu_lock,scoring_runtime(base,cfg['seed']):
             self.network,self.memory,self.payload=load_checkpoint(self.meta['checkpoint'])
         if (self.payload['split'] != self.native['split'] or self.payload['donor_pool'] != self.meta['donor_pool']
                 or self.payload['identities'] != self.meta['identities']):
@@ -152,12 +155,16 @@ class RankedEntryBuilder(LegacyBuilder):
         # measured parallel waves. Avoid N simultaneous 128-graph RAM inventories.
         self.event_lock=threading.Lock()
 
+    def _native_case(self,case_id,raw):
+        from tools.v22_online_native import native_case
+        return native_case(self,case_id,raw)
+
     def materialize(self, recipient, donor_index):
         from hiercp_v222.v1_local import prepare_donor, pair_record
         from hiercp_v22.data import donor_in_target_spacing
         from hiercp_v222.placement import placement_spec
         from tools.v22_rank_recommendation import recommend
-        from tools.online_raw_bank_preparation import prepare_source_candidates
+        from tools.v22_online_native import selected_payload
         from hiercp.preparation_runtime import run_case_jobs
         if recipient not in self.meta['split']['outer_train'] or type(donor_index)!=int or not 0<=donor_index<len(self.meta['donor_pool']):
             raise ValueError('Recipient/donor outside training catalog')
@@ -187,21 +194,23 @@ class RankedEntryBuilder(LegacyBuilder):
                     run_case_jobs(tasks=list(range(len(centers))),function=graph,
                         commit=lambda r:records.__setitem__(*r),workers='auto',
                         report_path=self.root/f'resources/{recipient}_{donor_index}.json')
-                    with self.gpu_lock:
+                    from tools.v22_online_runtime import scoring_runtime,backend_state
+                    with self.gpu_lock,scoring_runtime(self.base,self.cfg['seed']):
+                        runtime=backend_state()
                         report=recommend(self.network,[records[i] for i in range(len(centers))],self.memory,
                             query_group=group,batch_size=self.payload['physical_batch'],workers=self.payload['workers'],
                             recipient_case=case,placements=placements,min_liver_coverage=self.base['generation']['min_liver_coverage'])
                     del records
                     selection=selection_from_report(report,placements);chosen=validate_selection(selection)
-                    value.update(status='ranked',selection=selection,proposal_audit=audit,diameter=diameter)
+                    value.update(status='ranked',selection=selection,proposal_audit=audit,diameter=diameter,
+                                 scorer_runtime=runtime)
                     if chosen is not None:
                         p=placements[chosen]
                         native,ref,digest,props=self._native_case(recipient,case)
                         mapped=np.stack([map_center(c,self.plans,props,native['metadata']['preprocessed_shape']) for c in centers])
-                        refs,digests,transport=prepare_source_candidates(self.root,recipient,donor_index+1,native,digest,
-                            p.image,p.mask,p.anchor,np.asarray([p.center]),self.plan['patch_size'])
+                        ref_selected,digest_selected,transport=selected_payload(self,recipient,donor_index+1,native,digest,p)
                         value.update(native_centers=mapped.tolist(),raw_case_reference=ref,raw_case_reference_sha256=digest,
-                            selected_payload=str(refs[0]),selected_payload_sha256=str(digests[0]),
+                            selected_payload=ref_selected,selected_payload_sha256=digest_selected,
                             placement=p.metadata(),transport_audit=transport)
             publish_receipt(receipt,value)
             return dict(relative=name)
