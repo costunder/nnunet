@@ -9,12 +9,15 @@ import csv
 import json
 import time
 import gc
+import uuid
 import numpy as np
 import psutil
 import torch
 from hiercp_v222 import v1_execution as ex
 from tools.v22_rank_objective import OBJECTIVE,configuration,RankingContext,forward_loss,ranking_metrics
 from tools.v22_ranking_steps import optimizer_step,evaluate
+from tools.v22_artifacts import ARTIFACT_CONTRACT,best_snapshot,validate_best,validate_artifact,validate_memory,tree_hash
+from hiercp_v222.placement import GEOMETRY_CONTRACT
 RESUME_FORMAT=ex.RESUME_FORMAT
 
 def calibrate(net,dataset,cfg,workers,root,memory=None):
@@ -85,7 +88,8 @@ def calibrate(net,dataset,cfg,workers,root,memory=None):
     return selected,reports
 
 
-def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=False):
+def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=False,debug_stop_after_step=None):
+    if debug_stop_after_step is not None and not debug:raise ValueError('DEBUG pause cannot limit production')
     from hiercp_v222.v1_training import groups,calibrate_workers,CHECKPOINT_FORMAT
     cfg,base=ex.configuration();ex.require_device('cuda');ex.configure_runtime(base,cfg['seed'])
     torch.set_num_threads(psutil.cpu_count(logical=False))
@@ -97,17 +101,21 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
         raise ValueError('Ranking trainer requires the corrected stride4 encoder adapter')
     optimizer=torch.optim.AdamW(net.parameters(),lr=base['training']['lr'],weight_decay=base['training']['weight_decay'],fused=base['training']['fused_optimizer'])
     settings=configuration()
+    loaded=torch.load(resume,map_location='cpu',weights_only=False) if resume else None
+    run_id=loaded['run_id'] if loaded is not None else uuid.uuid4().hex
     identity=dict(training_objective=OBJECTIVE,ranking_contract=settings,feature_coordinates='stride4',
+                  artifact_contract=ARTIFACT_CONTRACT,geometry_contract=GEOMETRY_CONTRACT,run_id=run_id,
                   support_task_contract='patient_group_v1',config=cfg,base=base,source_identity=ex.provenance(),cache_sha256=ex.sha(cache),debug=bool(debug))
     ex.write_new(root/'initialization.json',dict(**identity,parameters=sum(p.numel() for p in net.parameters()),
         train_samples=len(dataset),validation_samples=len(validation),subset=bool(debug),gpu=torch.cuda.get_device_name()))
-    loaded=None
     if resume:
-        loaded=torch.load(resume,map_location='cpu',weights_only=False)
+        validate_artifact(loaded,'resume',allow_debug=debug,identity=identity)
         if loaded['format']!=RESUME_FORMAT or any(loaded.get(k)!=v for k,v in identity.items()):
             raise ValueError('Resume source/cache/config mismatch; no silent state conversion')
         net.load_state_dict(loaded['model']);optimizer.load_state_dict(loaded['optimizer'])
         state=ex.tree_to(loaded['state'],'cuda')
+        if state.get('memory') is not None:
+            validate_memory(state['memory'],dataset.rows,dataset.meta['identities'],dataset.meta['split'],dataset.meta['donor_pool'])
         if bool(state['release_unused'])!=release_unused:raise ValueError('Resume must retain measured allocator policy')
         ex.write_new(root/'resume_from.json',dict(path=str(Path(resume).resolve()),sha256=ex.sha(resume),
             epoch=state['epoch']+1,step=state['step'],phase=state['phase'],next_batch=state['next_batch']))
@@ -118,6 +126,10 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
         if calibration:
             # Execution-only transfer changes permit use of previously measured physical batch.
             previous=Path(calibration);old=json.loads((previous/'training_started.json').read_text(encoding='utf-8'))
+            if old.get('artifact_contract')!=ARTIFACT_CONTRACT or old.get('geometry_contract')!=GEOMETRY_CONTRACT:
+                raise ValueError('Calibration geometry/artifact contract differs')
+            if old.get('source_identity')!=identity['source_identity'] or old.get('cache_sha256')!=identity['cache_sha256'] or old.get('gpu')!=torch.cuda.get_device_name():
+                raise ValueError('Calibration source/cache/device changed')
             if old.get('ranking_contract')!=settings:raise ValueError('Ranking needs matching loss calibration')
             if old['config']!=cfg or old['base']!=base or old['parameters']!=sum(p.numel() for p in net.parameters()):
                 raise ValueError('Calibration architecture mismatch')
@@ -133,7 +145,9 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
             state['workers']=calibrate_workers(dataset,ids,root)
             state['memory_batch'],_=calibrate(net,dataset,cfg,state['workers'],root)
             state['batch']=None
-    saver=ex.Saver(root,net,optimizer,identity)
+    saver=ex.Saver(root,net,optimizer,dict(identity,artifact_kind='resume'))
+    if loaded is not None and loaded.get('best_snapshot') is not None:
+        saver.identity['best_snapshot']=loaded['best_snapshot']
     if loaded is not None:ex.restore_rng(loaded['rng']);del loaded
     saver.save(state)
     report=dict(format=CHECKPOINT_FORMAT,**identity,parameters=sum(p.numel() for p in net.parameters()),
@@ -177,6 +191,9 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
             if bool((counts==0).any()):raise ValueError('Both observation classes required')
             weights=counts.sum()/(2*counts)
             order=list(groups(dataset,batch,cfg['seed'],state['epoch']))
+            if not (root/'pair_estimator_audit.json').exists():
+                from tools.v22_pair_audit import pair_audit
+                ex.write_new(root/'pair_estimator_audit.json',pair_audit(dataset.rows,order))
             expected={i for ids in order[:state['next_batch']] for i in ids}
             if set(state['seen'])!=expected:raise ValueError('Resume query coverage disagrees with saved batch cursor')
             loader=ex.PairLoader(dataset,workers);iterator=iter(loader.batches(order[state['next_batch']:],epoch=state['epoch']))
@@ -212,6 +229,8 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
                     with (root/'step_timings.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(progress)+'\n')
                     ex.emit(**progress)
                     if not (root/'first_optimizer_step.json').exists():ex.write_new(root/'first_optimizer_step.json',progress)
+                    if debug_stop_after_step is not None and state['step']==debug_stop_after_step:
+                        (root/'STOP_AFTER_BATCH').touch(exist_ok=False)
                     if stop():return root/'checkpoint_latest.pt'
             finally:loader.close()
             if set(state['seen'])!=set(range(len(dataset))) or len(state['seen'])!=len(dataset):raise RuntimeError('Incomplete/duplicate epoch')
@@ -232,26 +251,39 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
                 writer.writerow(flat)
             path=root/f'epoch_{state["epoch"]+1:03d}.pt'
             ex.save_torch_new(path,dict(format=CHECKPOINT_FORMAT,completed_epochs=state['epoch']+1,
+                artifact_kind='epoch',
                 state_dict=ex.tree_to(net.state_dict(),'cpu'),optimizer=ex.tree_to(optimizer.state_dict(),'cpu'),
                 epoch=state['epoch']+1,step=state['step'],**identity))
             ex.write_new(root/f'ranking_epoch_{state["epoch"]+1:03d}.json',net.ranking_validation_report)
             if metrics['ranking_pairwise_loss']<state['best']:
                 state['best']=metrics['ranking_pairwise_loss'];state['best_path']=str(path)
+                best=best_snapshot(net,state['epoch']+1,state['best'],identity)
+                saver.identity['best_snapshot']=best
+                state['best_snapshot_meta']={k:best[k] for k in ('epoch','metric','model_sha256')}
             state['epoch']+=1;ex.fresh_epoch(state);state['phase']='optimization'
             saver.save(state);ex.emit(stage='epoch_complete',**{k:v for k,v in row.items() if k!='clusters'})
             if stop():return root/'checkpoint_latest.pt'
     if state['phase']!='final_memory':
-        best=torch.load(state['best_path'],map_location='cpu',weights_only=False)
+        best=saver.identity.get('best_snapshot')
+        validate_best(best,identity)
         net.load_state_dict(best['state_dict']);state['selected_epoch']=best['epoch']
         state.update(phase='final_memory',memory_work=None,memory_next=0);saver.save(state)
     if not ex.encode_memory(net,dataset,state,saver,state['memory_batch'],state['workers'],release_unused):
         stop();return root/'checkpoint_latest.pt'
     payload=dict(format=CHECKPOINT_FORMAT,debug=bool(debug),completed_epochs=cfg['gnn_epochs'],selected_epoch=state['selected_epoch'],
+        artifact_contract=ARTIFACT_CONTRACT,artifact_kind='final',geometry_contract=GEOMETRY_CONTRACT,run_id=run_id,
         state_dict=ex.tree_to(net.state_dict(),'cpu'),config=cfg,base=base,split=dataset.meta['split'],identities=dataset.meta['identities'],
         memory=ex.tree_to(state['memory'],'cpu'),donor_pool=dataset.meta['donor_pool'],raw_records=dataset.meta['raw_records'],
         training_objective=OBJECTIVE,ranking_contract=settings,feature_coordinates='stride4',support_task_contract='patient_group_v1',
         source_identity=ex.provenance(),cache_sha256=ex.sha(cache),physical_batch=state['batch'],workers=state['workers'],
-        optimization_steps=state['step'],native_online_bank_integrated=False)
+        optimization_steps=state['step'],native_online_bank_integrated=False,
+        support_records=dataset.rows)
+    from tools.run_v222_process_runtime import runtime_identity
+    payload['execution_policy_runtime_sha256']=runtime_identity()
+    payload['selected_model_sha256']=tree_hash(payload['state_dict'])
+    payload['memory_model_sha256']=payload['selected_model_sha256']
+    payload['memory_sha256']=tree_hash(payload['memory'])
+    validate_artifact(payload,'final',allow_debug=debug)
     ex.save_torch_new(root/'checkpoint.pt',payload)
     ex.write_new(root/'training_complete.json',dict(debug=bool(debug),epochs=cfg['gnn_epochs'],selected_epoch=state['selected_epoch'],
         checkpoint_sha256=ex.sha(root/'checkpoint.pt'),segmentation_training_executed=False))

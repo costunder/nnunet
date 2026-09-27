@@ -83,7 +83,7 @@ def prepare_donor(case, source, organ, depth, base):
         rng=np.random.default_rng(base['seed']), ct_clip=tuple(base['ct_clip']))
 
 
-def pair_record(target, source, donor_spacing, prepared, center, organ, depth, base, *, donor_id):
+def pair_record(target, source, donor_spacing, prepared, center, organ, depth, base, *, donor_id, placement=None):
     """Build from actual donor + recipient; query tumor annotation is not a shape input.
 
     Source geometry is computed in donor mm. Only its footprint is regridded
@@ -93,10 +93,16 @@ def pair_record(target, source, donor_spacing, prepared, center, organ, depth, b
     gc = graph_config_from_dict(base['graph'])
     geometry._require_full_graph(gc)
     target_source, _ = donor_in_target_spacing(source, donor_spacing, target.spacing)
+    from .placement import placement_spec
+    expected=placement_spec(target,target_source,center,donor_id,
+        forward_mm=None if placement is None else placement.transform,graph_config=gc)
+    if placement is not None and expected.metadata()!=placement.metadata():
+        raise ValueError('Placement differs from actual donor/recipient transformation')
+    placement=expected
     prepared = replace(prepared, source_footprint=geometry.exact_source_footprint(target_source))
     spec = candidate_spec(target_source, center)
-    footprint, transform = geometry._transform_footprint(
-        prepared.source_footprint, spec, spacing=target.spacing, config=gc)
+    footprint=placement.mask
+    transform=np.asarray(placement.transform,dtype=np.float32)
     fields = geometry._patch_fields(target, spec.center, footprint, organ, depth,
         config=gc, erase_target=False, ct_clip=tuple(base['ct_clip']))
     # Genuine absence of deep parenchyma is not absence of the entire graph:
@@ -116,6 +122,7 @@ def pair_record(target, source, donor_spacing, prepared, center, organ, depth, b
     target_branch = branch(nodes, edges)
     target_branch['transform'] = torch.from_numpy(transform)
     return dict(format=RECORD_FORMAT, case_id=target.paths.case_id,
+        placement=placement.metadata(),
         donor_case_id=donor_id, component_id=int(source.component_id), center=list(map(int, center)),
         seed=base['seed'], graph_config=gc.to_dict(), center_masking=False,
         target_context_observed_absent=(len(nodes['target_context']['grid'])==0),

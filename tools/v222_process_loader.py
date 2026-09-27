@@ -23,6 +23,7 @@ _datasets = {}
 _loaders = {}
 _path = None
 _budget = None
+_debug_profile = False
 _pools = {}
 
 
@@ -32,16 +33,19 @@ def producer_layout(workers):
     return depth,workers//depth if workers else 0
 
 
-def initialize(path, cache_budget):
-    global _path, _budget
-    _path, _budget = path, cache_budget
+def initialize(path, cache_budget, debug_profile=False):
+    global _path, _budget, _debug_profile
+    _path, _budget, _debug_profile = path, cache_budget, debug_profile
 
 
 def produce(partition, row_ids, epoch, workers):
     if _path is None:
         raise RuntimeError('CPU producer was not initialized')
     if partition not in _datasets:
-        dataset = CachedPairDataset(_path, partition)
+        if _debug_profile:
+            from tools.v22_debug_profile import RepairDataset
+            dataset=RepairDataset(_path,partition)
+        else:dataset = CachedPairDataset(_path, partition)
         dataset.store.cache.budget = _budget
         dataset.budget = _budget
         _datasets[partition] = (dataset, {r['id']:i for i,r in enumerate(dataset.rows)})
@@ -70,12 +74,12 @@ class ProcessPairLoader:
             raise ValueError('Each loader must use one existing inner partition')
         self.dataset, self.workers, self.partition = dataset, workers, partitions[0]
         self.depth,self.decode_width = producer_layout(workers)
-        key = (str(dataset.path), self.depth)
+        key = (str(dataset.path), self.depth, bool(getattr(dataset,'debug_profile',False)))
         if key not in _pools:
             total_budget = int(snapshot()['available_memory_bytes'] * .20)
             _pools[key] = ProcessPoolExecutor(max_workers=self.depth,
                 mp_context=multiprocessing.get_context('spawn'), initializer=initialize,
-                initargs=(str(dataset.path), total_budget//self.depth))
+                initargs=(str(dataset.path), total_budget//self.depth, bool(getattr(dataset,'debug_profile',False))))
         self.pool = _pools[key]
         self.pending = deque()
         self.closed = False

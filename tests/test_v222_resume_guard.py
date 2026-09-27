@@ -12,6 +12,22 @@ ROOT=Path(__file__).resolve().parents[1]/'work'
 
 
 class GuardTests(unittest.TestCase):
+    def test_exact_windows_venv_parent_only(self):
+        import sys
+        from tools.v222_resume_guard import is_current_windows_redirector
+        executable=Path(sys.executable).resolve();cfg=executable.parent.parent/'pyvenv.cfg'
+        if not cfg.is_file():self.skipTest('Windows venv fixture not available')
+        settings=dict(line.split('=',1) for line in cfg.read_text().splitlines() if '=' in line)
+        home={k.strip():v.strip() for k,v in settings.items()}['home']
+        child=Mock();child.ppid.return_value=123;child.exe.return_value=str(Path(home)/'python.exe')
+        parent=Mock(pid=123);parent.exe.return_value=str(executable)
+        parent.cmdline.return_value=['venv','script.py','--output','new'];child.cmdline.return_value=['base','script.py','--output','new']
+        parent.cwd.return_value=child.cwd.return_value=str(ROOT)
+        with patch('tools.v222_resume_guard.psutil.Process',return_value=child):
+            self.assertTrue(is_current_windows_redirector(parent,999))
+            parent.cmdline.return_value=['venv','script.py','--output','old']
+            self.assertFalse(is_current_windows_redirector(parent,999))
+
     def test_live_recorded_source_worker_is_rejected(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             root=Path(tmp)

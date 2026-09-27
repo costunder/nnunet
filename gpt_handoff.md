@@ -1,4 +1,13 @@
-## 2026-09-27 최신 — 사용자 승인 관측 종양 순위 학습
+## 2026-09-27 최신 — 검토 후 코드 수정
+
+- [수정 기록](docs/v22_review_repairs_20260927.md)을 먼저 읽는다. 아래 기록은 이전 revision의 증거이며 이번 source의 검증으로 섞지 않는다.
+- calibration list, explicit donor anchor, GT 독립 동점 순위, self-contained CPU best checkpoint, 유형별 artifact/support 검증, recipient identity와 PlacementSpec 결속을 실제 코드에 반영했다.
+- 현재 geometry=`paired_explicit_anchor_symmetric_padding_v2`, artifact=`observed_rank_artifact_v2`. 이전 cache/checkpoint를 metadata만 바꿔 이어 사용 금지. 원본 CT/GT와 기존 결과는 보존. 새 전체 geometry graph 재생성 및 새 학습 필요.
+- 실제 process DEBUG train8/val2/full-model/1epoch: worker calibration, 첫 update durable pause, 재개·validation·best/final support 완료. 131/131 CT/GT 물리 header 일치. 세부 증거는 `validation/v222_r6/review_repairs_20260927_DEBUG.json`에 기록한다.
+- CE/L2/기존 pair estimator·모델 규모·production40epochs/seed42/CP80% 유지. G3 전체 support calibration, G4 native bank/RPC/adapter/trainer/nnU-Net 최종 입력, G5 전체 CP 성능 미완료. 새 API/raw paste 확인을 native online 완성으로 말하지 않는다.
+- 사용자 수정 `code.txt`와 기존 실험 결과는 건드리지 않았다. 이번 검증을 서버 전체학습으로 표현하지 않는다.
+
+## 2026-09-27 이전 — 사용자 승인 관측 종양 순위 학습
 
 - 사용자 합의: 실제 종양은 순위 학습의 양성이고 상위에 오도록 학습; 추천할 때 관측 종양과 겹치는 위치를 제외. `observed_rank_v1` 구현. 단순 top1 삭제/GT score boost 금지. [현재 상세 계약](docs/v22_observed_ranking_20260927.md), `config/v22_observed_ranking.json`.
 - Mean same-case pairwise logistic rank loss + 기존 observed-presence CE + L2 alignment. 미관측은 CP 불가능 정답이 아니다. 분류 CE는 관측 존재 보조학습. 참조 L0는 detached epoch memory, live rows는 현재 L0로 교체. Query group recipient/donor 양쪽 support 배제 유지. Full-case 최신 L0 역전파라고 설명하지 말 것. 모든원관측1회visit/전체graph 유지; 무양성 train19/84case는 기존보조/L2 유지하고 순위평가불가 별도집계.

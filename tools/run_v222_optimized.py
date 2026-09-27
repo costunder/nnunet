@@ -53,12 +53,17 @@ def main():
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--resume', type=Path)
+    parser.add_argument('--debug-profile',choices=['review_repair'],help='Explicit isolated one-epoch actual-CT repair validation only')
+    parser.add_argument('--debug-stop-after-step',type=int)
+    parser.add_argument('--calibration',type=Path)
     parser.add_argument('--workspace-mib', type=int, choices=(64, 256, 512))
     parser.add_argument('--migrate-workspace-mib',type=int,choices=(256,),
         help='Explicit resume migration: preserve saved state, use measured 256MiB chunks; future rounding may differ')
     # Kept explicit for resuming a prior allocation policy.
     parser.add_argument('--release-unused', action=argparse.BooleanOptionalAction, default=None)
     args = parser.parse_args()
+    if args.debug_stop_after_step is not None and (not args.debug_profile or args.debug_stop_after_step<1):
+        raise ValueError('Step-limited pause is only available in explicit repair DEBUG')
     if args.migrate_workspace_mib is not None and not args.resume:
         raise ValueError('--migrate-workspace-mib requires --resume')
     if args.output.exists():
@@ -79,7 +84,7 @@ def main():
         saved = torch.load(args.resume, weights_only=False, map_location='cpu')
         if (saved.get('format') != execution.RESUME_FORMAT or saved.get('source_identity') != provenance()
                 or saved.get('config') != cfg or saved.get('base') != base
-                or saved.get('cache_sha256') != sha(args.cache) or saved.get('debug') is not False):
+                or saved.get('cache_sha256') != sha(args.cache) or saved.get('debug') != bool(args.debug_profile)):
             raise ValueError('Resume requires an exact production model/cache/config identity')
         old_policy = saved.get('execution_policy')
         workspace, release = resume_policy(saved,args.resume,args.workspace_mib,args.release_unused,args.migrate_workspace_mib)
@@ -106,7 +111,9 @@ def main():
         json.dump(policy, stream, indent=2)
     print(json.dumps(dict(stage='optimized_execution', **policy)), flush=True)
     with installed(policy):
-        result = execution.train(args.cache, args.output, resume=args.resume, release_unused=release)
+        extra={'debug_stop_after_step':args.debug_stop_after_step} if args.debug_profile else {}
+        result = execution.train(args.cache, args.output, resume=args.resume, calibration=args.calibration,
+                                 release_unused=release,debug=bool(args.debug_profile),**extra)
     print(str(result), flush=True)
 
 

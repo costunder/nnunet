@@ -92,19 +92,22 @@ def forward_loss(net,query,support,plan,targets,weights,context,settings,*,indic
                      alignment_loss=output['alignment_loss'])
 
 
-def ranking_metrics(scores,observed,case_ids,top_k=(1,5,10)):
-    """Full-case ranking before annotation exclusion, with pessimistic ties."""
+def ranking_metrics(scores,observed,case_ids,top_k=(1,5,10),*,candidate_keys):
+    """Full-case ranking using a single GT-independent candidate order."""
+    from tools.v22_candidate_order import candidate_order
     scores=torch.as_tensor(scores,dtype=torch.float64);observed=torch.as_tensor(observed,dtype=torch.long)
     if len(case_ids)!=len(scores) or not torch.isfinite(scores).all():raise ValueError('Complete finite scores required')
     names=sorted(set(case_ids));case_tensor=torch.tensor([names.index(c) for c in case_ids])
     loss,pairs=rank_loss(scores,observed,case_tensor,torch.ones(len(scores),dtype=torch.bool))
+    order=candidate_order(scores.numpy(),candidate_keys)
     reports=[];all_ranks=[]
     for name in names:
         mask=torch.tensor([c==name for c in case_ids]);values=scores[mask];truth=observed[mask].bool()
         positives=values[truth]
         if not len(positives):
             reports.append(dict(case_id=name,eligible_observed=0,rank_evaluable=False));continue
-        ranks=(values[None,:]>=positives[:,None]).sum(1) # ties cannot improve rank using GT
+        indices=[int(i) for i in order if case_ids[int(i)]==name]
+        ranks=torch.tensor([rank for rank,i in enumerate(indices,1) if observed[i]==1])
         all_ranks.extend(ranks.tolist())
         reports.append(dict(case_id=name,eligible_observed=len(positives),rank_evaluable=True,
             observed_ranks=ranks.tolist(),first_observed_rank=int(ranks.min()),

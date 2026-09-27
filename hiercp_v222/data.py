@@ -63,6 +63,8 @@ def preflight_comparison_centers(paths, inventory, split, contract, cfg, root):
 
 def inspect_case(paths, maximum, comparison_cfg=None):
     case = load_case(paths)
+    from .placement import validate_grid
+    validate_grid(case)
     components, count = ndi.label(case.label == 2, structure=ndi.generate_binary_structure(3, 1))
     sizes = np.bincount(components.ravel(), minlength=count+1)
     boxes = ndi.find_objects(components)

@@ -87,6 +87,13 @@ def donor_in_target_spacing(source,donor_spacing,target_spacing):
     mask=ndi.map_coordinates(source.patch_mask.astype(np.uint8),coordinates,order=0,mode='constant',cval=0)>0
     image=ndi.map_coordinates(source.patch_image,coordinates,order=1,mode='nearest').astype(np.float32)
     if not mask.any(): raise ValueError('Real donor disappears at target spacing; no fabricated footprint')
+    # Retain the explicit transformed anchor in downstream midpoint-based APIs.
+    # Padding only: every already-resampled voxel retains its relative position.
+    radius=np.maximum(before,after)
+    padding=tuple((int(r-b),int(r-a)) for r,b,a in zip(radius,before,after))
+    mask=np.pad(mask,padding,mode='constant',constant_values=False)
+    image=np.pad(image,padding,mode='edge')
+    before=radius;new_shape=np.asarray(mask.shape)
     # build_candidate_pool only consumes the real resampled patch fields.
     return replace(source,patch_mask=mask,patch_image=image,voxel_count=int(mask.sum()),
                    anchor_center=tuple(map(int,before)),patch_slices=tuple(slice(0,int(s)) for s in new_shape)),mask

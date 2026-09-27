@@ -18,6 +18,8 @@ def load_checkpoint(path,*,device='cuda',allow_debug=False):
     from tools.v222_review_contracts import installed,resolve_feature_contract
     from tools.v22_rank_objective import resolve_objective,OBJECTIVE
     value=torch.load(path,map_location='cpu',weights_only=False)
+    from tools.v22_artifacts import validate_artifact
+    validate_artifact(value,'final',allow_debug=allow_debug)
     if resolve_objective(value)!=OBJECTIVE:raise ValueError('A ranking checkpoint is required')
     if value.get('debug',True) and not allow_debug:raise ValueError('DEBUG weights are not production weights')
     if value.get('source_identity')!=provenance():raise ValueError('Model/cache source identity changed')
@@ -27,13 +29,20 @@ def load_checkpoint(path,*,device='cuda',allow_debug=False):
     with installed('stride4'):network=model(value['config'],value['base']).to(device)
     network.load_state_dict(value['state_dict']);network.eval()
     network.local.dense_batch_size=value['physical_batch']
+    network.ranking_identities=value['identities']
+    network.ranking_split=value['split']
     return network,tree_to(value['memory'],device),value
 
 
-def rank_then_filter(scores,centers,footprint,anchor,recipient_label,*,min_liver_coverage):
+def rank_then_filter(scores,centers,footprint,anchor,recipient_label,*,min_liver_coverage,candidate_keys=None):
+    from tools.v22_candidate_order import candidate_order,candidate_key,TIE_POLICY
     scores=np.asarray(scores,dtype=np.float64);centers=np.asarray(centers)
     mask=np.asarray(footprint);anchor=np.asarray(anchor);label=np.asarray(recipient_label)
-    if scores.ndim!=1 or not len(scores) or not np.isfinite(scores).all():raise ValueError('Nonempty finite model scores required')
+    if scores.ndim!=1 or not np.isfinite(scores).all():raise ValueError('Finite model scores required')
+    if not len(scores):
+        if centers.size:raise ValueError('Empty scores with nonempty centers')
+        return dict(selected_index=None,keep_original=True,ranked_candidates=[],score_override=False,
+                    filter_after_model_scoring=True,tie_policy=TIE_POLICY)
     if centers.shape!=(len(scores),3) or not np.issubdtype(centers.dtype,np.integer):raise ValueError('Integer recipient voxel centers required')
     if len(np.unique(centers,axis=0))!=len(centers):raise ValueError('Duplicate candidate positions')
     if mask.ndim!=3 or mask.dtype!=bool or not mask.any() or label.ndim!=3:raise ValueError('Actual 3D boolean paste footprint and recipient label required')
@@ -46,7 +55,8 @@ def rank_then_filter(scores,centers,footprint,anchor,recipient_label,*,min_liver
     overlap=((labels==2)&inside).sum(1)
     coverage=(np.isin(labels,[1,2])&inside).mean(1)
     eligible=inside.all(1)&(overlap==0)&(coverage>=min_liver_coverage)
-    order=np.argsort(-scores,kind='stable');eligible_order=[int(i) for i in order if eligible[i]]
+    keys=candidate_keys if candidate_keys is not None else [candidate_key('recipient','donor',1,c) for c in centers]
+    order=candidate_order(scores,keys);eligible_order=[int(i) for i in order if eligible[i]]
     rows=[]
     for rank,i in enumerate(order,1):
         center_inside=bool(((centers[i]>=0)&(centers[i]<label.shape)).all())
@@ -61,19 +71,46 @@ def rank_then_filter(scores,centers,footprint,anchor,recipient_label,*,min_liver
             recommendation_rank=eligible_order.index(int(i))+1 if eligible[i] else None))
     return dict(selected_index=eligible_order[0] if eligible_order else None,
                 keep_original=not bool(eligible_order),ranked_candidates=rows,
+                tie_policy=TIE_POLICY,
                 score_override=False,filter_after_model_scoring=True)
 
 
 @torch.no_grad()
-def recommend(network,records,memory,*,query_group,batch_size,workers,recipient_label,
-              target_spacing_footprint,paste_anchor,min_liver_coverage):
+def recommend(network,records,memory,*,query_group,batch_size,workers,recipient_case,
+              placements,min_liver_coverage):
     """All supplied candidates use one actual donor and one recipient CT.
 
     Footprint must be the exact mask at recipient spacing after any transform,
     with the identical anchor used by actual CT/label paste. No dilation or
     arbitrary tumor-distance threshold is introduced.
     """
-    if network.training or batch_size<1 or workers<1 or not records:raise ValueError('Eval model and measured batch/workers required')
+    from tools.v22_candidate_order import record_key
+    from hiercp_v222.placement import PlacementSpec,validate_grid
+    if network.training or batch_size<1 or workers<1:raise ValueError('Eval model and measured batch/workers required')
+    identities=getattr(network,'ranking_identities',None)
+    split=getattr(network,'ranking_split',None)
+    if identities is None or split is None:raise ValueError('Verified ranking model identities/split required')
+    if not records:
+        if placements:raise ValueError('Placement/record count mismatch')
+        return dict(selected_index=None,keep_original=True,ranked_candidates=[],score_override=False,filter_after_model_scoring=True)
+    if len(placements)!=len(records) or not all(isinstance(p,PlacementSpec) for p in placements):
+        raise ValueError('One verified PlacementSpec per graph required')
+    recipient=records[0]['case_id']
+    if identities is None or recipient not in identities['cases']:raise ValueError('Recipient needs a verified identity manifest')
+    if query_group!=identities['cases'][recipient]['patient_group']:raise ValueError('Recipient/query group mismatch')
+    first=placements[0]
+    validate_grid(recipient_case)
+    if recipient_case.paths.case_id!=recipient or tuple(recipient_case.spacing)!=first.spacing or not np.array_equal(recipient_case.image_affine,np.asarray(first.affine)):
+        raise ValueError('Recipient native frame differs from graph/paste placement')
+    for record,placement in zip(records,placements):
+        if record.get('placement')!=placement.metadata():raise ValueError('Scored graph and paste placement differ')
+        if (record['case_id']!=placement.recipient or record['donor_case_id']!=placement.donor or
+            record['component_id']!=placement.component or tuple(record['center'])!=placement.center):
+            raise ValueError('Record/placement identity mismatch')
+        if placement.donor not in split['inner_train']:raise ValueError('Held-out donor in recommendation')
+        if identities['cases'][placement.donor]['patient_group']==query_group:raise ValueError('Self-patient CP donor')
+        if not np.array_equal(first.mask,placement.mask) or first.anchor!=placement.anchor:
+            raise ValueError('One CP event requires the same transformed donor footprint')
     if len({r['case_id'] for r in records})!=1 or len({(r['donor_case_id'],r['component_id']) for r in records})!=1:
         raise ValueError('One CP event must use a fixed recipient and donor component')
     support=grouped_support(memory,query_group);device=next(network.parameters()).device
@@ -89,5 +126,6 @@ def recommend(network,records,memory,*,query_group,batch_size,workers,recipient_
                 values.append(logits[:,1]-logits[:,0])
         scores=torch.cat(values).cpu().numpy()
     if len(scores)!=len(records):raise RuntimeError('Incomplete candidate scoring')
-    return rank_then_filter(scores,[r['center'] for r in records],target_spacing_footprint,paste_anchor,
-                            recipient_label,min_liver_coverage=min_liver_coverage)
+    return rank_then_filter(scores,[r['center'] for r in records],first.mask,first.anchor,
+                            recipient_case.label,min_liver_coverage=min_liver_coverage,
+                            candidate_keys=[record_key(r) for r in records])

@@ -58,8 +58,10 @@ def evaluate(net,dataset,memory,batch,workers,batch_complete=None):
     logits=torch.cat(pred);y=torch.tensor(truth);prob=logits.softmax(-1)[:,1].numpy()
     pos=int(y.sum());neg=len(y)-pos
     if not pos or not neg:raise ValueError('Both observed classes required')
-    metrics,report=ranking_metrics(logits[:,1]-logits[:,0],y,case_ids,configuration()['report_recall_at'])
-    net.ranking_validation_report=dict(before_observation_exclusion=True,tie_policy='pessimistic',cases=report,
+    from tools.v22_candidate_order import record_key,TIE_POLICY
+    metrics,report=ranking_metrics(logits[:,1]-logits[:,0],y,case_ids,configuration()['report_recall_at'],
+                                  candidate_keys=[record_key(dataset.rows[i]) for i in seen])
+    net.ranking_validation_report=dict(before_observation_exclusion=True,tie_policy=TIE_POLICY,cases=report,
         record_ids=[dataset.rows[i]['id'] for i in seen],scores=(logits[:,1]-logits[:,0]).tolist())
     return dict(**metrics,observation_cross_entropy=float(torch.nn.functional.cross_entropy(logits,y)),
         observation_accuracy=float((logits.argmax(-1)==y).float().mean()),

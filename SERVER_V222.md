@@ -1,5 +1,11 @@
 # v2.22 r6 서버 실행: 코드만 Git으로 이동
 
+## 2026-09-27 추가 수정 — 기존 geometry 캐시 재사용 중지
+
+이번 explicit anchor 수정은 graph geometry 계약을 바꾼다. **아래 과거 명령의 `--cache ...r6_scanfix...` 또는 이전 checkpoint를 새 코드에 그대로 넣어 실행하지 않는다.** 원본 CT/GT에서 새 geometry graph를 생성해야 한다. 이전 결과/가중치/cache는 보존하고, 새 계약의 checkpoint만 같은 계약에서 재개한다. provenance를 이름만 바꾸는 migration은 금지한다.
+
+[현재 수정·검증 범위](docs/v22_review_repairs_20260927.md): 로컬 실제 process/full-model DEBUG 저장·재개·완료는 확인했다. 새 geometry 전체 코호트/full support/A100 MIG calibration은 미실행이며 새 ranking의 native online CP/nnU-Net 연결도 미완료다. 따라서 아래 과거 full-run 명령을 이번 수정본의 전체 실험 승인으로 해석하지 않는다.
+
 ## 최신 v2.2 — 관측 종양 순위 학습 (2026-09-27)
 
 새 objective는 `observed_rank_v1`이다. 실제 관측 종양을 상위로 학습하고 추천 시 주석 종양과 실제 paste footprint가 겹치는 후보를 제외한다. [구현·검증·남은 한계](docs/v22_observed_ranking_20260927.md). Server runner의 새 기본 runtime은 process이며, 기존 checkpoint 재개는 saved objective를 유지한다.

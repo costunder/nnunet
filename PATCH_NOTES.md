@@ -1,4 +1,11 @@
-## v2.2 — 관측 종양 순위 학습 / 추천 시 종양 제외 (2026-09-27)
+## v2.2 — 추가 독립 검토의 실행·기하·artifact 오류 수정 (2026-09-27)
+
+- process calibration의 list→dict 예외, donor anchor 이동, 여러 양성 동점의 순위 오류를 수정했다. 그래프·전체 footprint 제외·raw paste는 동일 PlacementSpec을 확인한다.
+- 외부 epoch 파일 대신 rolling checkpoint 내부의 불변 CPU best snapshot을 사용한다. resume/epoch/final 유형과 support identity·coverage·모델 결속 검사를 추가했다.
+- geometry/artifact 계약을 새로 부여했다. **이전 geometry 캐시는 재생성해야 하며, 아래 이전 절의 캐시 재사용 설명은 이번 수정에 적용되지 않는다.** 기존 결과는 보존한다.
+- 실제 CT full-model process DEBUG의 fresh calibration→첫 update 저장→재개→1epoch→best/final support 완료, 131 CT/GT 물리 header 검사 및 관련 단위 검사. 전체 코호트 학습/새 native online CP 연결은 미완료다. [수정과 검증 범위](docs/v22_review_repairs_20260927.md).
+
+## v2.2 — 관측 종양 순위 학습 / 추천 시 종양 제외 (2026-09-27, 이전 상태)
 
 - 사용자 합의한 `observed_rank_v1` 구현. 관측 종양을 같은 CT의 미관측 후보보다 높게 두는 mean pairwise logistic loss를 기존 관측 CE/L2 정렬에 추가한다. 현재 batch에 양성이 없어도 detached epoch L0 reference와 live query 교체로 전체 same-case 비교를 제공한다. 기존 graph/model/모든 관측 유지.
 - 제외 전 순위 Recall@1/5/10, MRR, mean observed rank 및 무양성 case 집계. Best epoch는 ranking loss로 선택한다. 종양 점수/순위를 정답으로 강제하지 않는다.

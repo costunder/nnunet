@@ -77,6 +77,8 @@ def load_verified(info):
     if sha(paths.image_path)!=info['image_sha256'] or sha(paths.label_path)!=info['label_sha256']:
         raise ValueError(f'Original CT/mask changed: {info["case_id"]}')
     case=load_case(paths)
+    from .placement import validate_grid
+    validate_grid(case)
     organ=np.isin(case.label,[1,2])
     return case,organ,organ_depth_mm(organ,case.spacing)
 

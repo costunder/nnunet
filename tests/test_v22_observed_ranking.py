@@ -32,10 +32,10 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(int(count),0);self.assertEqual(float(empty.detach()),0)
 
     def test_metrics_do_not_force_positives_to_top_or_reward_ties(self):
-        metrics,rows=ranking_metrics([.1,.9,.8,.1],[1,0,0,0],['A','A','A','B'])
+        metrics,rows=ranking_metrics([.1,.9,.8,.1],[1,0,0,0],['A','A','A','B'],candidate_keys=['d','b','c','a'])
         self.assertEqual(rows[0]['observed_ranks'],[3]);self.assertEqual(metrics['ranking_recall_at_1'],0)
         self.assertEqual(metrics['ranking_cases_without_observed'],1)
-        metrics,rows=ranking_metrics([1.,1.,1.],[1,0,0],['A']*3)
+        metrics,rows=ranking_metrics([1.,1.,1.],[1,0,0],['A']*3,candidate_keys=['c','a','b'])
         self.assertEqual(rows[0]['observed_ranks'],[3])
 
     def test_complete_case_reference_not_only_minibatch(self):

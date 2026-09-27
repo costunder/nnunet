@@ -2,9 +2,28 @@
 import json
 from pathlib import Path
 import os
+import sys
 import psutil
 
 TRAINERS = {'run_v222_v1_l0.py', 'run_v222_optimized.py', 'run_v222_process_runtime.py'}
+
+
+def is_current_windows_redirector(process,own_pid):
+    """CPython venv launcher and its child represent one execution, not two.
+
+    Only the direct parent, exact argv/cwd, configured base interpreter and
+    current venv executable qualify. Other ancestors/source jobs remain blocked.
+    """
+    if os.name!='nt':return False
+    current=psutil.Process(own_pid)
+    if process.pid!=current.ppid():return False
+    executable=Path(sys.executable).resolve()
+    config=executable.parent.parent/'pyvenv.cfg'
+    if not config.is_file() or Path(process.exe()).resolve()!=executable:return False
+    settings=dict(line.split('=',1) for line in config.read_text().splitlines() if '=' in line)
+    settings={k.strip():v.strip() for k,v in settings.items()}
+    if 'home' not in settings or Path(current.exe()).resolve()!=(Path(settings['home'])/'python.exe').resolve():return False
+    return process.cmdline()[1:]==current.cmdline()[1:] and Path(process.cwd()).resolve()==Path(current.cwd()).resolve()
 
 
 def output_argument(command):
@@ -84,6 +103,8 @@ def assert_source_runs_idle(cache=None, resume=None, *, output=None):
                 if not trainer_output.is_absolute():
                     trainer_output = Path(process.cwd())/trainer_output
                 if trainer_output.resolve() in roots and process.status() != psutil.STATUS_ZOMBIE:
+                    if output is not None and trainer_output.resolve()==Path(output).resolve() and is_current_windows_redirector(process,own_pid):
+                        continue
                     blockers.append(dict(pid=process.pid,source=str(trainer_output.resolve()),kind='source trainer'))
             except psutil.NoSuchProcess:
                 continue # Process finished during this read-only snapshot.

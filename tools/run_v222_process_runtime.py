@@ -45,6 +45,7 @@ def runtime_identity():
            'tools/v222_resume_guard.py','tools/v222_review_contracts.py',
            'tools/v22_rank_objective.py','tools/v22_ranking_steps.py','tools/v22_ranking_training.py',
            'tools/v22_rank_recommendation.py','config/v22_observed_ranking.json')
+    paths+=('tools/v22_artifacts.py','tools/v22_candidate_order.py','tools/v22_runtime_receipts.py','tools/v22_pair_audit.py')
     return {**prior_identity(), **{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in paths}}
 
 
@@ -73,7 +74,11 @@ def main():
     guard.add_argument('--cache',type=Path)
     guard.add_argument('--resume',type=Path)
     guard.add_argument('--output',type=Path)
+    guard.add_argument('--debug-profile',choices=['review_repair'])
     known,_=guard.parse_known_args(remaining)
+    if known.debug_profile:
+        from tools.v22_debug_profile import installed as debug_installed
+    else:debug_installed=nullcontext
     assert_source_runs_idle(known.cache,known.resume,output=known.output)
     saved=None
     if known.resume:
@@ -97,10 +102,12 @@ def main():
         feature_sampling_semantics='CNN centers at input 0,4,...44' if feature_coordinates=='stride4' else 'preserved legacy endpoint correspondence')
 
     def save_model(path,value):
-        return original_save(path,dict(value,**semantics,execution_policy_runtime_sha256=runtime_identity()))
+        from tools.v22_runtime_receipts import with_semantics
+        return original_save(path,with_semantics(value,dict(semantics,execution_policy_runtime_sha256=runtime_identity())))
 
     def report(path, value):
-        value=dict(value,**semantics)
+        from tools.v22_runtime_receipts import with_semantics
+        value=with_semantics(value,semantics)
         if Path(path).name=='execution_contract.json':
             depth,width=producer.producer_layout(value['workers'])
             value=dict(value,worker_kind='CPU producer processes; decode threads split across producers',
@@ -124,12 +131,12 @@ def main():
         print(json.dumps(dict(stage='process_loader_execution',**policy)),flush=True)
         with original_install(policy),producer.installed(),support_snapshot.installed(),reviewed.installed(feature_coordinates), \
              patch.object(v1_execution,'write_new',report),patch.object(v1_execution,'save_torch_new',save_model), \
-             (patch.object(v1_execution,'train',ranking_train) if objective==rank_objective.OBJECTIVE else nullcontext()):
+             (patch.object(v1_execution,'train',ranking_train) if objective==rank_objective.OBJECTIVE else nullcontext()),debug_installed():
             yield
 
     with patch.object(base,'runtime_identity',runtime_identity), \
          patch.object(base,'resume_policy',validate_resume), \
-         patch.object(execution,'installed',install),patch.object(sys,'argv',[sys.argv[0],*remaining]):
+         patch.object(execution,'installed',install),patch.object(sys,'argv',[sys.argv[0],*remaining]),debug_installed():
         base.main()
 
 
