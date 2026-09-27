@@ -1,4 +1,11 @@
-## v2.2 — 온라인 F01/F02 / segmentation 재개 / native 저장 보호 (2026-09-27)
+## v2.2 — F03 native SGD 상태 보호 / U01 best 저장 / GPU 검증 (2026-09-28)
+
+- 새 segmentation checkpoint에 저장 시 불변 내용 hash와 실제 SGD parameter/state mapping·유한성·shape/dtype·GradScaler 검증 추가. 정상 unused parameter 예외를 유지하고 누락 상태를 0으로 만들지 않는다.
+- 실제 설치 부모의 latest→best 순서를 확인해 완료된 epoch/best 결정 후 저장하도록 변경. latest/best 사이 중단을 결속된 latest에서 복구하며 이전 best가 필요한데 없으면 오류.
+- RTX5070Ti에서 실제102M native nnU-Net·batch2×128³·SGD/GradScaler 다음 update의 model/momentum/gradient 차이0, RNG 일치. 최종 실행 loss도 bitwise 일치(일반적 CUDA CE 결정론 보장은 아님). 공유 tensor 별칭 보존으로 checkpoint 중복 복사 제거. 손상11종 및 best control/interruption 검사 통과. 회귀71개.
+- [실행 조건과 실패/한계](docs/v22_segmentation_gpu_review_20260928.md). GNN core83/runtime20 불변, full G3/G4/G5 미완료, 전체 캐시/학습 미실행.
+
+## v2.2 — 온라인 F01/F02 / segmentation 재개 / native 저장 보호 (2026-09-27, 이전)
 
 - 설치본 우선 raw-engine 경로를 새 Bank의 명시적 로컬 구현으로 고정. owner load/recommend의 결정론 runtime 및 RNG/backend 정상·예외 복구, CUDA 초기화 전 workspace admission을 연결했다.
 - 새 native launcher에 명시적 epoch-boundary resume, 실제 checkpoint/실행 계약 결속, 매 epoch 저장 및 missing-checkpoint fresh fallback 거부를 추가했다.

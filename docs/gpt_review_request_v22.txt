@@ -1,4 +1,8 @@
-# v2.2 독립 재검토 요청 — 온라인 F01/F02/O01/D02 수정
+# v2.2 독립 재검토 요청 — F03 native SGD 상태 / U01 best 순서 / CUDA 검증
+
+최신 검토는 docs/v22_segmentation_gpu_review_20260928.md와 validation/v222_r6/segmentation_GPU_review_20260928_DEBUG.json부터 시작해 주세요. tools/v22_seg_state.py와 tools/v22_online_checkpoint.py의 저장 시 불변 snapshot·내용 hash·SGD parameter mapping·정상 unused state·scaler 검증, 실제 부모 epoch 종료 후 latest/best 결정, 두 파일 사이 중단 복구를 확인해 주세요. 기존 GNN AdamW validator를 native SGD에 그대로 적용하지 않았습니다. 로컬 설치본의 실제102M native network, batch2×128³, CUDA autocast/SGD/GradScaler로 다음 update의 model/momentum/gradient 차이0과 RNG 일치를 확인했습니다. 최종 실행은 loss도 bitwise 일치했지만 이전 실행에는 허용오차 내 차이가 있었으므로 CUDA CE의 일반적 결정론 보장과 구분합니다. 공유 storage/view의 snapshot 별칭 보존과 불변성도 확인해 주세요. controlled best metric은 실제 성능이 아닙니다. 전체 GNN support/CP/표준 증강과의 공존 G4는 미완료입니다.
+
+아래 F01/F02와 온라인 연결 항목은 이전 revision 이후 유지해야 하는 회귀 범위입니다.
 
 우선 docs/v22_online_review_fixes_20260927.md와 validation/v222_r6/online_review_fixes_20260927_DEBUG.json을 읽어 주세요. manifest.json의 commit이 이번 제출본입니다. 과거 검토 기록의 최신/현재 표시는 각 당시 revision을 의미합니다.
 

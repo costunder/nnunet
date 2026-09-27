@@ -37,6 +37,7 @@ def online_identity():
         'tools/train_v22_online_rank.py',
         'tools/v22_online_runtime.py', 'tools/v22_online_native.py',
         'tools/v22_online_storage.py', 'tools/v22_online_checkpoint.py',
+        'tools/v22_seg_state.py',
         'comparison_randomness.py', 'custom_trainers/nnUNetTrainer_OnlinePairedCP.py',
         'custom_trainers/onlinecp_raw_resampling.py', 'custom_trainers/onlinecp_raw_bank.py',
         'tools/online_raw_bank_preparation.py')

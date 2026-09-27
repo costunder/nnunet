@@ -31,9 +31,8 @@ class OnlineReviewTests(unittest.TestCase):
             name='nnUNetTrainer_250epochs_OnlineRankV22'
             fold=results/native['dataset_name']/f'{name}__plans__3d_fullres'/'fold_0';fold.mkdir(parents=True)
             contract=run_contract(bank,meta,native,8,json.loads(plans.read_text()))
-            value=dict(online_run_contract=contract,trainer_name=name,current_epoch=10,network_weights={},optimizer_state={},logging={},grad_scaler_state=None,
-                _best_ema=None,init_args={},inference_allowed_mirroring_axes=None,
-                online_rng=dict(python=random.getstate(),numpy=np.random.get_state(),torch=torch.get_rng_state(),cuda=[]))
+            from test_v22_seg_state import make_value
+            value,_,_=make_value(contract)
             selected=fold/'checkpoint_latest.pth';torch.save(value,selected)
             trainer=SimpleNamespace(load_checkpoint=Mock())
             def execute(*a,**kw):
@@ -106,10 +105,8 @@ class OnlineReviewTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):choose_checkpoint(folder)
             with self.assertRaises(FileNotFoundError):choose_checkpoint(folder,Path(folder)/'missing.pth')
         expected=dict(epochs=250,seed=42,workers=8,plans={'a':1},split={'train':['a']},gnn_sha256='x',paste_engine={'a':'x'})
-        value=dict(online_run_contract=expected,trainer_name='nnUNetTrainer_250epochs_OnlineRankV22',current_epoch=10,
-            network_weights={},optimizer_state={},logging={},grad_scaler_state=None,
-            _best_ema=None,init_args={},inference_allowed_mirroring_axes=None,
-            online_rng=dict(python=random.getstate(),numpy=np.random.get_state(),torch=torch.get_rng_state(),cuda=[]))
+        from test_v22_seg_state import make_value
+        value,_,_=make_value(expected)
         validate_checkpoint(value,expected)
         for key in expected:
             bad=copy.deepcopy(value);bad['online_run_contract'][key]='changed'
@@ -122,9 +119,10 @@ class OnlineReviewTests(unittest.TestCase):
             def _online_contract(self):return dict(epochs=250,seed=42)
         owner=nnUNetTrainer_250epochs_OnlineRankV22()
         owner.local_rank=0;owner.disable_checkpointing=False;owner.is_ddp=False;owner.was_initialized=True
-        owner.network=torch.nn.Linear(4,2);owner.optimizer=torch.optim.Adam(owner.network.parameters())
+        owner.network=torch.nn.Linear(4,2);owner.optimizer=torch.optim.SGD(owner.network.parameters(),lr=.01,momentum=.99,nesterov=True)
         owner.network(torch.ones(3,4)).sum().backward();owner.optimizer.step();owner.optimizer.zero_grad()
         owner.grad_scaler=None;owner.current_epoch=9;owner._best_ema=.4;owner.my_init_kwargs={}
+        owner._online_new_best_pending=True
         owner.inference_allowed_mirroring_axes=(0,1,2);owner.ranking_gpu_lock=threading.RLock()
         log={'restored':None};owner.logger=SimpleNamespace(get_checkpoint=lambda:{'epoch':9},load_checkpoint=lambda x:log.update(restored=x))
         weights=copy.deepcopy(owner.network.state_dict());optim=copy.deepcopy(owner.optimizer.state_dict())

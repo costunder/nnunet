@@ -1,4 +1,11 @@
-## 2026-09-27 최신 — 온라인 F01/F02, segmentation 재개, native 저장 가드
+## 2026-09-28 최신 — native SGD 무결성 F03 / best lifecycle U01 / GPU 검증
+
+- [이번 수정과 GPU 검증](docs/v22_segmentation_gpu_review_20260928.md). 설치 nnU-Net의 SGD(momentum0.99/Nesterov)와 latest→best 순서를 직접 확인했다. 새 segmentation 상태의 불변 snapshot/hash, parameter/state coverage·shape/dtype·유한성·scaler 검사를 추가했다. 계약은 online_rank_epoch_resume_v2이며 v1 segmentation checkpoint에 hash를 새로 붙이지 않는다.
+- 부모 epoch lifecycle의 best 결정이 끝난 뒤 latest/best를 저장한다. 두 파일 사이 중단은 정상 latest에 결속된 현재 best 가중치에서 복구한다. 오래된 best가 필요하지만 없거나 다르면 오류다.
+- RTX5070Ti에서 실제 native102,350,575-parameter network·batch2·128³·CUDA SGD/GradScaler update 검증. 다음 model/momentum/gradient 최대 차이0, 상태 hash와 RNG 일치. 최종 실행은 loss도 bitwise 일치했다(일반적 CUDA CE 결정론 보장은 아님). CUDA peak allocated6.22GiB, reserved7.13GiB. 손상11종 거부와 실제 부모 best 순서/중단 복구 통과. 회귀71개.
+- DEBUG crop/짧은 epoch·compile off·별도 best control metric을 명시했다. production ranked owner 초기화와 full support 공존 G4, 전체 G3/G5는 미완료다. 기존 GNN103개 core/runtime hash·모델/loss/graph/production batch와 사용자 code.txt는 유지했다.
+
+## 2026-09-27 이전 — 온라인 F01/F02, segmentation 재개, native 저장 가드
 
 - [최신 수정 범위](docs/v22_online_review_fixes_20260927.md). 새 RankedBank가 검토된 로컬 engine만 사용하고, owner load/recommend를 공유 GPU lock과 frozen runtime으로 감싼다. CUDA workspace는 초기화 전에 설정하며 잘못된 초기화는 거부한다.
 - native launcher의 `--resume`/`--checkpoint`는 실제 checkpoint와 plans/split/GNN/bank/engine/seed/workers를 대조한다. 에포크마다 저장하고 완료된 경계부터 복구한다. 파일 누락 시 fresh fallback, 구형 segmentation checkpoint 재표시는 없다.
