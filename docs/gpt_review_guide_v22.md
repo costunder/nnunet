@@ -1,6 +1,8 @@
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
-**최신은 B01–B03 artifact v4 보강판이다.** `docs/v22_resume_integrity_20260927.md`와 `validation/v222_r6/resume_integrity_20260927_DEBUG.json`을 먼저 읽는다. final-memory model/best/prefix, frozen cluster teacher/plan, CUDA RNG의 완전성을 검사한다. 82회귀 및 실제 CT DEBUG의 gradient/Adam/RNG·경계 복구·portable 검증 범위를 확인한다. earlier-best는 CPU fixture, 같은 episode는 실제 CT batch 재사용 probe라는 제한을 명시했다. G3/G4/G5 미완료. 아래 R01–R06 설명은 이전 수정이며 최신 v4 기록을 우선한다.
+**현재 우선 검토 대상은 C01 / artifact v5다.** `docs/v22_current_model_integrity_20260927.md`와 `validation/v222_r6/current_model_integrity_20260927_DEBUG.json`을 먼저 읽는다. 불변 CPU model snapshot의 parameter/buffer hash를 저장하고 모든 resume 단계에서 확인한다. 현재 optimization 모델과 best/reference/teacher를 같게 만드는 변경은 없다. 아래 v4/B01–B03는 이전 revision 기록이다. 실제 DEBUG·CPU fixture·미완료 G3/G4/G5를 구별한다.
+
+**직전 B01–B03 artifact v4 보강판 기록:** `docs/v22_resume_integrity_20260927.md`와 `validation/v222_r6/resume_integrity_20260927_DEBUG.json`을 먼저 읽는다. final-memory model/best/prefix, frozen cluster teacher/plan, CUDA RNG의 완전성을 검사한다. 82회귀 및 실제 CT DEBUG의 gradient/Adam/RNG·경계 복구·portable 검증 범위를 확인한다. earlier-best는 CPU fixture, 같은 episode는 실제 CT batch 재사용 probe라는 제한을 명시했다. G3/G4/G5 미완료. 아래 R01–R06 설명은 이전 수정이며 최신 v4 기록을 우선한다.
 
 **이전 R01–R06 보강판 기록:** `docs/v22_rereview_repairs_20260927.md` 및 `validation/v222_r6/rereview_repairs_20260927_DEBUG.json`이 아래 이전 수정보다 우선한다. artifact=`observed_rank_artifact_v3`, graph binding=`paired_epoch_view_seed_content_v1`. Adam/cursor/calibration 검사는 `tools/v22_resume_state.py`, `tools/v22_calibration.py`, 내용 결속은 `hiercp_v222/record_binding.py`에 추가됐다. 72회귀·실제GPU model/Adam/RNG 재개·2,368voxel raw paste 검증은 해당 revision 증거이며 G3/G4/G5는 미완료다.
 

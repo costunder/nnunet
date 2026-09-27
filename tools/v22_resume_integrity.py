@@ -79,6 +79,9 @@ def start_memory(state,run_id,model):
 def seal_resume(payload):
     """Called only on an immutable CPU snapshot, after resume admission succeeds."""
     state=payload['state']
+    # Hash the already frozen full state_dict: parameters AND persistent buffers.
+    # This is the current checkpoint model, not best/reference/episode teacher.
+    payload['model_sha256']=tree_hash(payload['model'])
     payload['rng_sha256']=rng_hash(payload['rng'])
     payload['resume_integrity']={key:tree_hash(state.get(key)) for key in
         ('memory','memory_generation','memory_work','memory_work_generation','plan','plan_generation')}
@@ -121,6 +124,8 @@ def validate_plan(plan):
 
 def validate_integrity(value,rows):
     state=value['state'];manifest=value.get('resume_integrity')
+    if tree_hash(value['model'])!=value.get('model_sha256'):
+        raise ValueError('Current checkpoint model content hash missing or mismatched')
     keys=('memory','memory_generation','memory_work','memory_work_generation','plan','plan_generation')
     if not isinstance(manifest,dict) or set(manifest)!=set(keys):raise ValueError('Missing resume integrity manifest')
     for key in keys:

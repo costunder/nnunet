@@ -4,7 +4,7 @@ import json
 import math
 import torch
 
-ARTIFACT_CONTRACT='observed_rank_artifact_v4'
+ARTIFACT_CONTRACT='observed_rank_artifact_v5'
 
 
 def tree_hash(value):
@@ -83,7 +83,7 @@ def validate_artifact(value,kind,*,allow_debug=False,identity=None,resume_rows=N
     if kind not in ('resume','epoch','final'):raise ValueError('Unknown artifact type')
     required={'format','debug','config','base','artifact_contract','artifact_kind','geometry_contract',
               'source_identity','training_objective','ranking_contract','feature_coordinates','support_task_contract','run_id'}
-    required|=({'model','optimizer','rng','state','execution_policy'} if kind=='resume' else
+    required|=({'model','model_sha256','optimizer','rng','state','execution_policy'} if kind=='resume' else
                {'state_dict','completed_epochs','execution_policy_runtime_sha256'})
     if kind=='final':required|={'selected_epoch','memory','support_records','identities','split','donor_pool','raw_records',
                               'selected_model_sha256','memory_model_sha256','memory_sha256'}

@@ -51,6 +51,38 @@ class IntegrityTests(unittest.TestCase):
         value['model']['0.weight']+=1
         seal_resume(value);validate_integrity(value,[])
 
+    def test_current_model_parameter_buffer_and_missing_hash_in_every_phase(self):
+        for phase in ('initial_memory','optimization','refresh_memory','validation','final_memory'):
+            valid=self.fixture();valid['state']['phase']=phase
+            if phase!='final_memory':
+                valid['model']['0.weight']+=.4  # Valid current model != best/reference.
+                valid['model']['1.running_mean']+=.2
+            seal_resume(valid);validate_integrity(valid,[])
+            for mutation in ('parameter','floating_buffer','integer_buffer','missing_hash','wrong_hash'):
+                bad=copy.deepcopy(valid)
+                if mutation=='parameter':bad['model']['0.weight'][0,0]+=.125
+                elif mutation=='floating_buffer':bad['model']['1.running_mean'][0]+=.125
+                elif mutation=='integer_buffer':bad['model']['1.num_batches_tracked']+=1
+                elif mutation=='missing_hash':del bad['model_sha256']
+                else:bad['model_sha256']='0'*64
+                with self.subTest(phase=phase,mutation=mutation),self.assertRaisesRegex(ValueError,'Current checkpoint model'):
+                    validate_integrity(bad,[])
+
+    def test_sealed_model_snapshot_does_not_follow_live_parameter_or_buffer(self):
+        from tools.v222_runtime_execution import snapshot
+        net=torch.nn.Sequential(torch.nn.Linear(2,2),torch.nn.BatchNorm1d(2))
+        live=self.fixture();live['state']['phase']='optimization';live['model']=net.state_dict()
+        frozen=snapshot(live);seal_resume(frozen);digest=frozen['model_sha256']
+        with torch.no_grad():
+            net[0].weight.add_(.125);net[1].running_mean.add_(.25);net[1].num_batches_tracked.add_(1)
+        self.assertNotEqual(tree_hash(net.state_dict()),digest)
+        self.assertEqual(tree_hash(frozen['model']),digest)
+        validate_integrity(frozen,[])
+
+    def test_rehashing_changed_current_model_does_not_bypass_final_best_binding(self):
+        value=self.fixture();value['model']['0.weight'][0,0]+=.125;seal_resume(value)
+        with self.assertRaisesRegex(ValueError,'selected best'):validate_integrity(value,[])
+
     def plan(self):
         from hiercp_v222.clustering import fit_prototypes
         torch.manual_seed(4)

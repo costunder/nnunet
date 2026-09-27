@@ -1,4 +1,11 @@
-## 2026-09-27 최신 — B01–B03 exact-resume 무결성
+## 2026-09-27 최신 — C01 현재 모델 내용 hash / artifact v5
+
+- [최신 수정·범위](docs/v22_current_model_integrity_20260927.md), `validation/v222_r6/current_model_integrity_20260927_DEBUG.json` 우선. 이미 만든 불변 CPU snapshot의 전체 model(parameter·buffer) hash를 저장하고 모든 resume phase에서 복구 전에 확인한다.
+- optimization 현재 모델을 best/reference/teacher와 비교하지 않는다. final-memory best 검사는 별도로 유지한다. 모델·graph·loss·donor·production 규모 불변.
+- 86회귀 통과. 실제 CT DEBUG의 다섯 phase 정상 재개·final-memory 3경계·portable 복구 동일. 연속/재개 loss·전체 gradient·model·Adam·RNG 일치. C01 손상 10개와 기존 손상 10개 admission 거부. 같은 episode는 실제 batch 재사용 probe라는 제한 유지.
+- v4 이하 checkpoint를 읽고 hash를 붙여 exact resume하지 않는다. 동일 최신 core provenance/content-bound graph는 검증 후 재사용하며 calibration은 새 runtime에서 재측정한다. G3/G4/G5 미완료.
+
+## 2026-09-27 이전 — B01–B03 exact-resume 무결성
 
 - [최신 수정·범위](docs/v22_resume_integrity_20260927.md), `validation/v222_r6/resume_integrity_20260927_DEBUG.json` 우선. artifact v4: final-memory model/best/prefix generation, frozen plan/teacher/support, CUDA 논리 장치와 전체 RNG 검증.
 - 82회귀. 실제 CT 전체 모델 DEBUG 연속/재개 loss·전체 gradient·Adam·RNG 일치, final-memory 3경계 및 단일 rolling portable 복구, 10개 실제 artifact 손상 거부. 같은 episode는 실제 batch 재사용 수치 probe이며 다중 batch 전체 epoch로 표현하지 않는다. earlier-best 다중 epoch 조건은 CPU fixture로 확인했다.

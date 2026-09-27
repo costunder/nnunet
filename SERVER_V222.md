@@ -1,6 +1,10 @@
 # v2.22 r6 서버 실행: 코드만 Git으로 이동
 
-## 2026-09-27 최신 — artifact v4 exact-resume
+## 2026-09-27 최신 — artifact v5 / 현재 모델 hash
+
+[C01 수정](docs/v22_current_model_integrity_20260927.md)으로 모든 resume 단계의 저장 당시 현재 모델 parameter/buffer 내용을 확인한다. v4 이하 checkpoint에 새 hash를 붙여 당시 내용을 검증했다고 처리하지 않는다. 이전 결과는 보존한다. 모델·graph·geometry는 변경하지 않아 동일 최신 provenance/content-bound cache는 검증 후 재사용하며 calibration은 새 runtime에서 재측정한다. 아래 v4 설명과 과거 실행 명령은 이전 revision 기록이다. 최신 검사는 로컬 DEBUG이며 G3/G4/G5 완료가 아니다.
+
+## 2026-09-27 이전 — artifact v4 exact-resume
 
 [B01–B03 수정과 검증](docs/v22_resume_integrity_20260927.md): final-memory best/prefix, cluster teacher/plan, CUDA RNG 계약을 보강했다. **v3 checkpoint에 새 metadata/hash를 붙여 exact resume하지 않는다.** 기존 결과를 보존한다. 이번 tools 수정은 core graph를 바꾸지 않았으므로 동일 최신 provenance/content-bound cache는 검증 후 사용할 수 있다. runtime이 달라진 calibration은 재측정한다. 실제 검증은 로컬 DEBUG이며 새 전체 support/MIG G3·native G4·성능 G5 승인이 아니다.
 

@@ -9,6 +9,24 @@ from tools.v222_support_snapshot import AsyncSaver
 
 
 class FixedSnapshotTests(unittest.TestCase):
+    def test_current_artifact_writer_seals_immutable_full_model(self):
+        from tools.v22_artifacts import ARTIFACT_CONTRACT,tree_hash
+        with tempfile.TemporaryDirectory() as folder:
+            net=torch.nn.Sequential(torch.nn.Linear(2,2),torch.nn.BatchNorm1d(2))
+            opt=torch.optim.AdamW(net.parameters())
+            saver=AsyncSaver(Path(folder),net,opt,dict(debug=True,artifact_contract=ARTIFACT_CONTRACT))
+            try:
+                expected={k:t.clone() for k,t in net.state_dict().items()}
+                saver.save(dict(phase='optimization',epoch=0,step=0))
+                with torch.no_grad():
+                    net[0].weight.add_(.125);net[1].running_mean.add_(.25);net[1].num_batches_tracked.add_(1)
+                saver.flush()
+                saved=torch.load(Path(folder)/'checkpoint_latest.pt',map_location='cpu',weights_only=False)
+                self.assertEqual(saved['model_sha256'],tree_hash(expected))
+                self.assertEqual(saved['model_sha256'],tree_hash(saved['model']))
+                self.assertNotEqual(saved['model_sha256'],tree_hash(net.state_dict()))
+            finally:saver.close()
+
     def test_complete_checkpoint_state_and_fresh_weights_after_scope(self):
         with tempfile.TemporaryDirectory() as folder:
             net=torch.nn.Linear(3,2)

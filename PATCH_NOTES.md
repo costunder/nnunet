@@ -1,4 +1,11 @@
-## v2.2 — B01–B03 exact-resume 보강 / artifact v4 (2026-09-27)
+## v2.2 — C01 현재 모델 내용 검사 / artifact v5 (2026-09-27)
+
+- 모든 resume phase의 현재 model state_dict hash를 CPU snapshot에서 저장하고 복구 전에 검사한다. parameter와 persistent floating/integer buffer 포함. 추가 GPU 모델 복사 없음.
+- best/reference/teacher와 현재 optimization 모델이 다른 정상 상태는 허용한다. 별도 final-memory best 검사와 기존 B01–B03 유지. 과거 artifact 재표시 금지. 모델/graph/loss/donor/production 규모 불변.
+- [코드 변경과 검증 범위](docs/v22_current_model_integrity_20260927.md). G3/G4/G5는 별도 미완료 과제다.
+- 86회귀 통과, 실제 CT 전체 모델 DEBUG 다섯 phase 정상 재개·loss/gradient/model/Adam/RNG 동일성·손상 거부·portable 복구 확인. 전체 코호트 학습/성능 검증과 구분한다.
+
+## v2.2 — B01–B03 exact-resume 보강 / artifact v4 (2026-09-27, 이전)
 
 - final-memory 가중치·buffer를 embedded best와 결속하고 support prefix generation/hash를 확인한다. frozen cluster plan의 내용·teacher/support generation·내부 구조를 확인한다. 선언된 CUDA 장치 수/배열 및 Torch/NumPy/Python RNG 상태를 검사한다.
 - 정상 optimization의 stale reference/teacher를 유지한다. best 강제 load, plan 재생성, RNG reseed fallback 없음. 모델/loss/donor/production 규모 변경 없음.
