@@ -1,0 +1,3814 @@
+{
+  "debug": true,
+  "baseline_commit": "a2c98b6d0886611c81e760672e3f09375298e75c",
+  "verdict": "PASS_LOCAL_SHORT_T01_VALIDATION",
+  "original_T01_reproduced": [
+    {
+      "old_line": 143,
+      "empty": "passed",
+      "warmup_only": "passed",
+      "zero_effect": "rejected",
+      "positive": "passed"
+    },
+    {
+      "old_line": 165,
+      "empty": "passed",
+      "warmup_only": "passed",
+      "zero_effect": "rejected",
+      "positive": "passed"
+    }
+  ],
+  "production_identities_unchanged": {
+    "core83": {
+      "config/prompt_graph_v222_v1_l0.json": "b6205a175427d53bf23a72e7173adbaf5dbf9fa011c2df276d5158b2662ffd09",
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2",
+      "hiercp_v22/__init__.py": "acd6b333c88967319a0ed9e00a9286e6297f71f18d98ab528962980576626671",
+      "hiercp_v22/bank.py": "1c4b53155f9c55702b6b8d33de7839b10131fe51a8edffd9d013ad43f2f4945c",
+      "hiercp_v22/contracts.py": "2e420b3763e278faabec681b5edd91786b4c4bc064738258e47d7592ba9f47e4",
+      "hiercp_v22/data.py": "0fa999191f452f525233f8227e1bcb3a8ef989064d3d36f1ab0c566f0976f9a9",
+      "hiercp_v22/donors.py": "b3ba23a31904b1617b30abe1de1311cd593b37e1ccbc637ef929300ea03f51fa",
+      "hiercp_v22/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+      "hiercp_v22/features.py": "88ed491ac16290b50c19c461876b81a122dcb4590437079e6ab7a8ca661a8061",
+      "hiercp_v22/geometry.py": "5429c827bbb5360fedb22a3aff751733abffb6ab97cada0e704ffe6e45e97b17",
+      "hiercp_v22/local.py": "d37138ee5464950a8e9544c187502165e6732857f4f5234c0e289937be2f012d",
+      "hiercp_v22/migration.py": "07f1b82188c9fff4fee9c3c5f44e23224dff94b1ac0d209f1aef65dd94d86781",
+      "hiercp_v22/model.py": "801e9c8c3099070c1c80c7bb18f60a1b66415bfa171818ea68ecc91e470f6093",
+      "hiercp_v22/native_adapter.py": "913220629d5fd2bebaa66b3451aa5c24c683f486e2fd1481a617437b45905f2c",
+      "hiercp_v22/nnunet.py": "6dcd9749fa39b559241232cb19cb239dfdf4f37c67576d61e322e372c3b7cda6",
+      "hiercp_v22/nnUNetTrainer_OnlinePromptGraphV22.py": "a778b2fb8485b725400916215851dfce6ff9865026a504da78e8cb0f8b49ccd6",
+      "hiercp_v22/parallel.py": "44dba9a2cecbabb66017f9121b3608014d961a421075429438f277a88bc29fb9",
+      "hiercp_v22/resources.py": "005084a33f80a43d24031df590f3b74781979e7229b73f52b48a9b3fb0207f90",
+      "hiercp_v22/sample.py": "2bd7541094af140873bc0daa6237d5e8419129aa6d37ecb7171b8e56bee3f9ab",
+      "hiercp_v22/schema.py": "3f05b0d1ba0335c12bb4bbb1dcbe8b6f6f59be17549ee567da7e36419d20c8db",
+      "hiercp_v22/scoring.py": "b758715a6a5555086fe9872bb5ee70026a0f8e4d8e371a2eff48ef9cb2077c0d",
+      "hiercp_v22/spatial.py": "869b04bc4f7fed9b7ce7bdbe91c2d25b4e00566a81efdc009a55e4900fe55cb3",
+      "hiercp_v22/storage.py": "39229a40504dafef4cd89f13784e42361f41bc64ce7d93139ea115f0e8a0454a",
+      "hiercp_v22/training.py": "617b43960d03e273f48b242a203660fbcf45d0df398d78a9ca767017cb1f3eac",
+      "hiercp_v22/volumes.py": "ac4ed51ee58ff68efbbd69f2fb86f00bd8ff9a3264fe18f95ee97b7f18bd9c89",
+      "hiercp_v222/__init__.py": "79df44c676b02717da388d39306273f0e33dcc7205be3cd672274b52daddb1d6",
+      "hiercp_v222/bank.py": "c0aa8b9c4bcca48a9bd1c1febf28494a730c19df6fc4a3e97fd5a078d4b3908b",
+      "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+      "hiercp_v222/contracts.py": "21a54c95a01ecb211dff1b851d64341113d2aba6a7a2d0f992b8d6f169d77993",
+      "hiercp_v222/data.py": "1286e6f5ba6baa57f6e977840748eb4e8ca4a39edd0bdfe062219962a9cdbbb9",
+      "hiercp_v222/deterministic_sampling.py": "90e34002e2f58082cb9272c403650c02b7f7242253779d6f4017984c2f4c66c3",
+      "hiercp_v222/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+      "hiercp_v222/inputs.py": "adcbd2e7d64d996fbe89dd7251f3cefa4c0987a492ec6e41352d0df45ffd9dcf",
+      "hiercp_v222/l0_comparison.py": "2877c624274fe97b4b7c628ba4deeb525adb64ca39bf005e7c449288de78eed2",
+      "hiercp_v222/l0_graph_unet.py": "e5df0b2c7818c3213631224f8c53bc4ae5f7e93038b234bc41805c1c16701d22",
+      "hiercp_v222/migration.py": "54c7383901e668428e587ff7048ab9763633aa9ee629f54a319a90c6f4c930ff",
+      "hiercp_v222/model.py": "906d1eeb7982ed9f01801a22fdea72de68a82a7d24b061295e14489052af6920",
+      "hiercp_v222/native_adapter.py": "b55c1ff2584abd5c4e498ed38555c139821d72a1beee88c9c4536cb7a969b740",
+      "hiercp_v222/nnunet.py": "af882f55eee4c290995861726e9543225aadf608a57ec462a4af24d0b1401158",
+      "hiercp_v222/nnUNetTrainer_OnlinePromptGraphV222.py": "e4c51ee69442fef258149f30e1d05a6b9292999214d30f860560c6ab39e1114a",
+      "hiercp_v222/parallel.py": "90f3b6681fae7dd5dae2d705bd610af2576f0a5bd32143151fa64f12d985d228",
+      "hiercp_v222/placement.py": "bb9cae758b339de2ccc8d32d7a4f0b3b906bea499bc1e0e3db6ba6eb2588131c",
+      "hiercp_v222/record_binding.py": "13caac68634cf0774932b4dbefb96e675b6a5717d10c2bed0d9fa01264c80b0a",
+      "hiercp_v222/runtime.py": "a6597198bf3f558be9708df6fb0c6a41d9dbea1478cd398d6af3473ba6cd94f2",
+      "hiercp_v222/sampling.py": "17bebd68bd198744a8677fd611c8623656f209580b0f29e34660ed2f2ad7d6bf",
+      "hiercp_v222/scoring.py": "c1952f087c9f8961a1e081643eba495561a41a3e9bd7fc1491d11f329be9b7ae",
+      "hiercp_v222/training.py": "ff82cf35adbcee359da4dc0046f35b96434c4fcfea070588f2fea52bff34234a",
+      "hiercp_v222/v1_cache.py": "c473fef21ac60e6fce7401bc6cc34f1126c23e269dd66674ded485440b9220b7",
+      "hiercp_v222/v1_execution.py": "320c69f40ee386deac6d6989cae6c2d51fdacb5393768c316fbb4c73b65b390b",
+      "hiercp_v222/v1_local.py": "2bb724171ee0b8c8ae1892eebe6487db68f393a270d3d0708b2ad06417b0641d",
+      "hiercp_v222/v1_recovery.py": "09b684513d6d9a109de54484f4b4e82b655132c017da1107087695c6b42a9f5f",
+      "hiercp_v222/v1_training.py": "3c13a598d2352d2a854b94a1d38186fabf6ea4b1ff9b93ce0b24a2cbe51c1ea3",
+      "run_v222_v1_l0.py": "ef332ad54d58e06439df67b204d7e9ee3cb85fe8e10ecd1ab3e9877cd39fd961"
+    },
+    "runtime20": {
+      "tools/run_v222_optimized.py": "1655019dcc12e20e86d0170eb380a63f180da2503389d2aeed7e8ff468715ad0",
+      "tools/v222_runtime_cache.py": "aeeca2d5cc738a6f98107861eade686dd7c0e5decee52aaa41a004ea340749dd",
+      "tools/v222_runtime_execution.py": "d786a8b22f4a283cbd296727616105a89714c06da613f668c7442ccd94566568",
+      "tools/run_v222_process_runtime.py": "119eb055ca2963312a05395025920d636891f8da5f552235e750605b28c957c5",
+      "tools/v222_process_loader.py": "56ddbaa56f6b32f39c21212a300e0d7736ea2c58c6289c7152ff92c49dbae841",
+      "tools/v222_support_snapshot.py": "2993dc76513b0d588b5792e18faf6c9d804626a9eb4151494dcdd32f048e4bd8",
+      "tools/v222_resume_guard.py": "64397e86fa8d164176de433d1b3a1727100088364267a6e2ae724c68bea00ec5",
+      "tools/v222_review_contracts.py": "7d5d37e96474e8d45bac749601b4c6497bc2e4a3d9b80d488e53ba5fe9e63b44",
+      "tools/v22_rank_objective.py": "11adc325971bafc35d470fa0719c4a8e21e456219cf583969f3674a4999c268a",
+      "tools/v22_ranking_steps.py": "d490f6e0e6b2b2c7b9ca826ef1419ee25fb562d45ac74f56db9f73d05957f892",
+      "tools/v22_ranking_training.py": "4c3688fb1d46da86a0b0243c66de48b307cae5247047ac8d1ce3e6ce92010580",
+      "tools/v22_rank_recommendation.py": "9e28c3982f7a4f2d2324836023c675ef014bf76102fb82c24535ca792d72e64a",
+      "config/v22_observed_ranking.json": "9389f4238ee32c2dba4d264a0a1025dcd29f500a64c339060ae9c969275d1814",
+      "tools/v22_artifacts.py": "851bbae592013d16914fde0b91bf5ef1f533df0fca0dfcfe946ce94877b8aebf",
+      "tools/v22_candidate_order.py": "4454e2175792e7b9e09d3249f62cbd0478193ff9033962639cf270b8b57f552c",
+      "tools/v22_runtime_receipts.py": "93c94f7c99039369224cc46d256b2d8d5122ab2bb12b4fe24a1935a45917a66a",
+      "tools/v22_pair_audit.py": "1ff47de3f68942e956755a210743e312df2d719292f0826420decb8b18840021",
+      "tools/v22_resume_state.py": "628f41dd10a7d28493ed1c75f72d548967761c5c2b9b4c24be9d093377d7252d",
+      "tools/v22_calibration.py": "2a5d8fa8956b94419660f1ef7fbeee279bd62129aa7d07aab082eab982e2acda",
+      "tools/v22_resume_integrity.py": "deead455b5d33b1aeea7bdc2de456a0cf45077b987bb1369377e2da75c1788b8"
+    },
+    "online15": {
+      "tools/v22_online_selection.py": "7aef50cbf26e5359aa59f6c438879fc73d3652191066e0f7f46f75a52d9f085b",
+      "tools/v22_online_rank_bank.py": "63c9eb4f4f5dc7ae72ebbf61c98b6005df55a2cf72da6095deef904888419d45",
+      "tools/v22_online_rank_adapter.py": "4e3c6d844b1f29c3da08274c1f00a9af28f79127e2d83ba6d73c43bc2d203e98",
+      "custom_trainers/nnUNetTrainer_OnlineRankV22.py": "e444e8da91a5d3f914968a57a059bd7d7a4d0871b34fae3dc67d07a5b7aa75ec",
+      "tools/train_v22_online_rank.py": "7053c2a4b12c9979eb1fe9addad4486c94899ce62eec16b6c5de807e2c8d5a1d",
+      "tools/v22_online_runtime.py": "c4756cef4612c176269eb117e2ebb9cf3e67ac92a5e7a0161dbeaaaa8352b7a9",
+      "tools/v22_online_native.py": "cecc44f3d645ed8a3abe8331832d99b35e374020fb3f72783563a0040a6a620f",
+      "tools/v22_online_storage.py": "205f79950b0ee0fce8ac96448e5fdef1ed5bd230aca9e72093ffa004453cb887",
+      "tools/v22_online_checkpoint.py": "5df0106b422abc5480a0c364ede44b64240e36738ae3fe8bd5bae2c2aca19dda",
+      "tools/v22_seg_state.py": "03fc499b858cc7857c4820f774453bf2efeedbcfb22472dbcb89d2112855a033",
+      "comparison_randomness.py": "ad8f38c917c3663bea55bd281d916edd2279250fb9f843c5dc3c26aacfaceeb7",
+      "custom_trainers/nnUNetTrainer_OnlinePairedCP.py": "ec4b3934a0e05a2810dbab69a8a0f60e06754d4853aea465a3ee735b56008ed1",
+      "custom_trainers/onlinecp_raw_resampling.py": "49d1c06eed2d5f9ec535ab587e2789f7af7ef8c9d096c0706cc63a9292c318a2",
+      "custom_trainers/onlinecp_raw_bank.py": "0cf1249958de0bebece45501fc689844fb3e8a1ec1bd47f44d62a0cc790a7a6b",
+      "tools/online_raw_bank_preparation.py": "c4c8950d0ac7849c8a712f2993d0c75b80333d7e151941f3980c39f7918db150"
+    }
+  },
+  "review_text_sha256": "bf84919f7bd7e6e7462342632ad7bfe9fd24c421a9706d5f0e637d6f4ad957f6",
+  "review_read_characters": 12011,
+  "actual_one_process_integration": {
+    "debug": true,
+    "actual_CT": true,
+    "recipient": "liver_31",
+    "donor": "liver_73",
+    "component": 1,
+    "candidates": 128,
+    "support": 8,
+    "physical_batch": 2,
+    "model_parameters": 5550806,
+    "production_init_tested": false,
+    "initialization_exception": "Existing DEBUG checkpoint and old native metadata explicitly initialized; production continues to reject them",
+    "actual_owner": true,
+    "actual_RPC": true,
+    "actual_native_loader": true,
+    "actual_raw_native_oracle": true,
+    "final_native_CT_max_abs_error": 0.0,
+    "final_native_seg_exact": true,
+    "paste_engine": {
+      "store": {
+        "path": "D:\\AI project\\nnunet\\custom_trainers\\onlinecp_raw_bank.py",
+        "sha256": "0cf1249958de0bebece45501fc689844fb3e8a1ec1bd47f44d62a0cc790a7a6b"
+      },
+      "apply": {
+        "path": "D:\\AI project\\nnunet\\custom_trainers\\onlinecp_raw_resampling.py",
+        "sha256": "49d1c06eed2d5f9ec535ab587e2789f7af7ef8c9d096c0706cc63a9292c318a2"
+      }
+    },
+    "score_checks": {
+      "branch_graph_statistics": {
+        "counts": {
+          "min": 2769,
+          "max": 14169,
+          "mean": 7023.625,
+          "branches": 256
+        },
+        "edge_counts": {
+          "min": 212112,
+          "max": 1109343,
+          "mean": 469240.63671875,
+          "branches": 256
+        }
+      },
+      "dense_patch_shapes": {
+        "source_patch": [
+          1,
+          48,
+          48,
+          48
+        ],
+        "target_patch": [
+          1,
+          48,
+          48,
+          48
+        ]
+      },
+      "repeat_exact": true,
+      "annotation_score_rank_invariant": true,
+      "runtime": {
+        "deterministic": true,
+        "warn_only": false,
+        "matmul_tf32": false,
+        "cudnn_tf32": false,
+        "benchmark": false,
+        "cudnn_deterministic": true,
+        "cublas": ":4096:8"
+      }
+    },
+    "selection": {
+      "selection_contract": "observed_rank_native_selection_v1",
+      "recipient": "liver_31",
+      "donor": "liver_73",
+      "component": 1,
+      "centers": [
+        [
+          334,
+          320,
+          68
+        ],
+        [
+          298,
+          337,
+          58
+        ],
+        [
+          397,
+          186,
+          65
+        ],
+        [
+          363,
+          286,
+          73
+        ],
+        [
+          398,
+          247,
+          63
+        ],
+        [
+          352,
+          304,
+          70
+        ],
+        [
+          405,
+          240,
+          59
+        ],
+        [
+          341,
+          345,
+          71
+        ],
+        [
+          385,
+          283,
+          56
+        ],
+        [
+          271,
+          287,
+          73
+        ],
+        [
+          353,
+          259,
+          73
+        ],
+        [
+          382,
+          233,
+          63
+        ],
+        [
+          356,
+          308,
+          51
+        ],
+        [
+          416,
+          249,
+          45
+        ],
+        [
+          358,
+          277,
+          69
+        ],
+        [
+          344,
+          345,
+          56
+        ],
+        [
+          341,
+          287,
+          72
+        ],
+        [
+          369,
+          221,
+          72
+        ],
+        [
+          370,
+          323,
+          57
+        ],
+        [
+          394,
+          210,
+          47
+        ],
+        [
+          351,
+          307,
+          68
+        ],
+        [
+          395,
+          199,
+          68
+        ],
+        [
+          330,
+          205,
+          69
+        ],
+        [
+          394,
+          232,
+          66
+        ],
+        [
+          296,
+          376,
+          72
+        ],
+        [
+          411,
+          319,
+          64
+        ],
+        [
+          413,
+          203,
+          62
+        ],
+        [
+          290,
+          350,
+          63
+        ],
+        [
+          353,
+          307,
+          71
+        ],
+        [
+          383,
+          315,
+          60
+        ],
+        [
+          286,
+          326,
+          65
+        ],
+        [
+          276,
+          290,
+          70
+        ],
+        [
+          402,
+          257,
+          49
+        ],
+        [
+          279,
+          282,
+          64
+        ],
+        [
+          378,
+          340,
+          46
+        ],
+        [
+          353,
+          346,
+          54
+        ],
+        [
+          404,
+          306,
+          46
+        ],
+        [
+          395,
+          283,
+          62
+        ],
+        [
+          405,
+          277,
+          68
+        ],
+        [
+          364,
+          301,
+          48
+        ],
+        [
+          379,
+          262,
+          34
+        ],
+        [
+          386,
+          282,
+          65
+        ],
+        [
+          394,
+          336,
+          62
+        ],
+        [
+          348,
+          327,
+          59
+        ],
+        [
+          359,
+          337,
+          45
+        ],
+        [
+          375,
+          344,
+          60
+        ],
+        [
+          332,
+          318,
+          67
+        ],
+        [
+          360,
+          280,
+          72
+        ],
+        [
+          285,
+          320,
+          67
+        ],
+        [
+          309,
+          384,
+          72
+        ],
+        [
+          371,
+          270,
+          46
+        ],
+        [
+          329,
+          326,
+          66
+        ],
+        [
+          389,
+          268,
+          54
+        ],
+        [
+          269,
+          339,
+          69
+        ],
+        [
+          401,
+          313,
+          55
+        ],
+        [
+          313,
+          326,
+          56
+        ],
+        [
+          386,
+          253,
+          38
+        ],
+        [
+          251,
+          331,
+          72
+        ],
+        [
+          421,
+          202,
+          69
+        ],
+        [
+          341,
+          341,
+          51
+        ],
+        [
+          405,
+          304,
+          63
+        ],
+        [
+          375,
+          341,
+          42
+        ],
+        [
+          422,
+          279,
+          68
+        ],
+        [
+          357,
+          327,
+          59
+        ],
+        [
+          351,
+          272,
+          47
+        ],
+        [
+          276,
+          381,
+          64
+        ],
+        [
+          369,
+          307,
+          66
+        ],
+        [
+          408,
+          189,
+          62
+        ],
+        [
+          392,
+          256,
+          56
+        ],
+        [
+          423,
+          264,
+          61
+        ],
+        [
+          333,
+          302,
+          63
+        ],
+        [
+          327,
+          375,
+          56
+        ],
+        [
+          363,
+          340,
+          68
+        ],
+        [
+          274,
+          316,
+          66
+        ],
+        [
+          384,
+          313,
+          36
+        ],
+        [
+          379,
+          341,
+          60
+        ],
+        [
+          397,
+          269,
+          42
+        ],
+        [
+          372,
+          268,
+          36
+        ],
+        [
+          415,
+          308,
+          60
+        ],
+        [
+          422,
+          263,
+          60
+        ],
+        [
+          277,
+          373,
+          56
+        ],
+        [
+          423,
+          246,
+          50
+        ],
+        [
+          363,
+          225,
+          63
+        ],
+        [
+          417,
+          274,
+          63
+        ],
+        [
+          401,
+          196,
+          53
+        ],
+        [
+          269,
+          343,
+          72
+        ],
+        [
+          349,
+          347,
+          65
+        ],
+        [
+          329,
+          344,
+          42
+        ],
+        [
+          376,
+          310,
+          36
+        ],
+        [
+          302,
+          316,
+          65
+        ],
+        [
+          271,
+          332,
+          66
+        ],
+        [
+          411,
+          304,
+          61
+        ],
+        [
+          363,
+          267,
+          57
+        ],
+        [
+          341,
+          224,
+          62
+        ],
+        [
+          369,
+          285,
+          55
+        ],
+        [
+          309,
+          356,
+          72
+        ],
+        [
+          382,
+          238,
+          62
+        ],
+        [
+          402,
+          241,
+          53
+        ],
+        [
+          405,
+          228,
+          36
+        ],
+        [
+          279,
+          355,
+          62
+        ],
+        [
+          406,
+          235,
+          31
+        ],
+        [
+          361,
+          320,
+          48
+        ],
+        [
+          355,
+          247,
+          48
+        ],
+        [
+          336,
+          383,
+          60
+        ],
+        [
+          330,
+          261,
+          73
+        ],
+        [
+          419,
+          245,
+          69
+        ],
+        [
+          381,
+          310,
+          36
+        ],
+        [
+          380,
+          241,
+          41
+        ],
+        [
+          424,
+          229,
+          70
+        ],
+        [
+          302,
+          280,
+          66
+        ],
+        [
+          423,
+          293,
+          68
+        ],
+        [
+          284,
+          365,
+          69
+        ],
+        [
+          377,
+          335,
+          63
+        ],
+        [
+          400,
+          226,
+          61
+        ],
+        [
+          228,
+          379,
+          72
+        ],
+        [
+          416,
+          223,
+          42
+        ],
+        [
+          412,
+          225,
+          69
+        ],
+        [
+          344,
+          336,
+          56
+        ],
+        [
+          382,
+          321,
+          44
+        ],
+        [
+          368,
+          346,
+          66
+        ],
+        [
+          387,
+          351,
+          62
+        ],
+        [
+          377,
+          315,
+          72
+        ],
+        [
+          395,
+          265,
+          33
+        ],
+        [
+          410,
+          225,
+          35
+        ],
+        [
+          375,
+          336,
+          60
+        ],
+        [
+          368,
+          253,
+          66
+        ],
+        [
+          417,
+          238,
+          59
+        ],
+        [
+          274,
+          324,
+          65
+        ]
+      ],
+      "scores": [
+        0.4918677508831024,
+        0.3959313631057739,
+        0.4233383536338806,
+        0.45359209179878235,
+        0.288504421710968,
+        0.3879384398460388,
+        0.2478947937488556,
+        0.4599922299385071,
+        0.3160366415977478,
+        0.46464020013809204,
+        0.5103345513343811,
+        0.2922070026397705,
+        0.3287340998649597,
+        0.2508676052093506,
+        0.5031161308288574,
+        0.3669672906398773,
+        0.4879996180534363,
+        0.3515017032623291,
+        0.3191474974155426,
+        0.2660452127456665,
+        0.3459364175796509,
+        0.32686930894851685,
+        0.4298930764198303,
+        0.33900725841522217,
+        0.5077416896820068,
+        0.41530007123947144,
+        0.482056200504303,
+        0.4176931381225586,
+        0.31690913438796997,
+        0.2805776000022888,
+        0.465722918510437,
+        0.4817862808704376,
+        0.2811118960380554,
+        0.4550952911376953,
+        0.29446566104888916,
+        0.29313382506370544,
+        0.30341100692749023,
+        0.2637227475643158,
+        0.29568806290626526,
+        0.3554948568344116,
+        0.30211278796195984,
+        0.3478263318538666,
+        0.4131341874599457,
+        0.3255476951599121,
+        0.27827879786491394,
+        0.3610079884529114,
+        0.49597805738449097,
+        0.4942469000816345,
+        0.41925308108329773,
+        0.49782347679138184,
+        0.31151488423347473,
+        0.5304062962532043,
+        0.3055188059806824,
+        0.5194125771522522,
+        0.3729640245437622,
+        0.3235856890678406,
+        0.317775160074234,
+        0.5464783906936646,
+        0.42465636134147644,
+        0.34685346484184265,
+        0.44520920515060425,
+        0.2835789918899536,
+        0.3938237130641937,
+        0.2909362018108368,
+        0.2800132930278778,
+        0.4431631565093994,
+        0.35502731800079346,
+        0.4471816420555115,
+        0.3064248561859131,
+        0.4216881990432739,
+        0.48981261253356934,
+        0.41114774346351624,
+        0.30050337314605713,
+        0.505264401435852,
+        0.3289431929588318,
+        0.3802664577960968,
+        0.2735357880592346,
+        0.3027194142341614,
+        0.38302820920944214,
+        0.4112926125526428,
+        0.42928194999694824,
+        0.3667273223400116,
+        0.32620152831077576,
+        0.478324294090271,
+        0.35384470224380493,
+        0.49628549814224243,
+        0.41374027729034424,
+        0.3342024087905884,
+        0.3484829068183899,
+        0.4450807273387909,
+        0.4623931050300598,
+        0.42203211784362793,
+        0.34716030955314636,
+        0.4089297354221344,
+        0.39251548051834106,
+        0.5440875291824341,
+        0.3039852976799011,
+        0.27012428641319275,
+        0.27332407236099243,
+        0.4152991771697998,
+        0.3235383629798889,
+        0.3411175608634949,
+        0.2716004550457001,
+        0.43151625990867615,
+        0.5181328654289246,
+        0.41756585240364075,
+        0.3281906545162201,
+        0.2556614875793457,
+        0.4654243290424347,
+        0.5267046689987183,
+        0.4058847725391388,
+        0.4568217098712921,
+        0.37632453441619873,
+        0.24678081274032593,
+        0.5272573828697205,
+        0.3322410583496094,
+        0.37124204635620117,
+        0.35661834478378296,
+        0.29086947441101074,
+        0.37874722480773926,
+        0.4079245328903198,
+        0.40815088152885437,
+        0.3152429759502411,
+        0.27555012702941895,
+        0.3039429187774658,
+        0.40000128746032715,
+        0.40545013546943665,
+        0.47910672426223755
+      ],
+      "eligible": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "selected_index": 57,
+      "keep_original": false,
+      "score_override": false,
+      "filter_after_model_scoring": true,
+      "ranked_candidates": [
+        {
+          "index": 57,
+          "center": [
+            251,
+            331,
+            72
+          ],
+          "model_score": 0.5464783906936646,
+          "raw_rank": 1,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9505912162162162,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 1
+        },
+        {
+          "index": 95,
+          "center": [
+            309,
+            356,
+            72
+          ],
+          "model_score": 0.5440875291824341,
+          "raw_rank": 2,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 2
+        },
+        {
+          "index": 51,
+          "center": [
+            329,
+            326,
+            66
+          ],
+          "model_score": 0.5304062962532043,
+          "raw_rank": 3,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8724662162162162,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 3
+        },
+        {
+          "index": 114,
+          "center": [
+            228,
+            379,
+            72
+          ],
+          "model_score": 0.5272573828697205,
+          "raw_rank": 4,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9125844594594594,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 4
+        },
+        {
+          "index": 109,
+          "center": [
+            302,
+            280,
+            66
+          ],
+          "model_score": 0.5267046689987183,
+          "raw_rank": 5,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8800675675675675,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 5
+        },
+        {
+          "index": 53,
+          "center": [
+            269,
+            339,
+            69
+          ],
+          "model_score": 0.5194125771522522,
+          "raw_rank": 6,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9987331081081081,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 6
+        },
+        {
+          "index": 104,
+          "center": [
+            330,
+            261,
+            73
+          ],
+          "model_score": 0.5181328654289246,
+          "raw_rank": 7,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 7
+        },
+        {
+          "index": 10,
+          "center": [
+            353,
+            259,
+            73
+          ],
+          "model_score": 0.5103345513343811,
+          "raw_rank": 8,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 8
+        },
+        {
+          "index": 24,
+          "center": [
+            296,
+            376,
+            72
+          ],
+          "model_score": 0.5077416896820068,
+          "raw_rank": 9,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 9
+        },
+        {
+          "index": 73,
+          "center": [
+            274,
+            316,
+            66
+          ],
+          "model_score": 0.505264401435852,
+          "raw_rank": 10,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8673986486486487,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 10
+        },
+        {
+          "index": 14,
+          "center": [
+            358,
+            277,
+            69
+          ],
+          "model_score": 0.5031161308288574,
+          "raw_rank": 11,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9755067567567568,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 11
+        },
+        {
+          "index": 49,
+          "center": [
+            309,
+            384,
+            72
+          ],
+          "model_score": 0.49782347679138184,
+          "raw_rank": 12,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9907094594594594,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 12
+        },
+        {
+          "index": 85,
+          "center": [
+            269,
+            343,
+            72
+          ],
+          "model_score": 0.49628549814224243,
+          "raw_rank": 13,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 13
+        },
+        {
+          "index": 46,
+          "center": [
+            332,
+            318,
+            67
+          ],
+          "model_score": 0.49597805738449097,
+          "raw_rank": 14,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9890202702702703,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 14
+        },
+        {
+          "index": 47,
+          "center": [
+            360,
+            280,
+            72
+          ],
+          "model_score": 0.4942469000816345,
+          "raw_rank": 15,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 15
+        },
+        {
+          "index": 0,
+          "center": [
+            334,
+            320,
+            68
+          ],
+          "model_score": 0.4918677508831024,
+          "raw_rank": 16,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 16
+        },
+        {
+          "index": 70,
+          "center": [
+            333,
+            302,
+            63
+          ],
+          "model_score": 0.48981261253356934,
+          "raw_rank": 17,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8521959459459459,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 17
+        },
+        {
+          "index": 16,
+          "center": [
+            341,
+            287,
+            72
+          ],
+          "model_score": 0.4879996180534363,
+          "raw_rank": 18,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 18
+        },
+        {
+          "index": 26,
+          "center": [
+            413,
+            203,
+            62
+          ],
+          "model_score": 0.482056200504303,
+          "raw_rank": 19,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 19
+        },
+        {
+          "index": 31,
+          "center": [
+            276,
+            290,
+            70
+          ],
+          "model_score": 0.4817862808704376,
+          "raw_rank": 20,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.995777027027027,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 20
+        },
+        {
+          "index": 127,
+          "center": [
+            274,
+            324,
+            65
+          ],
+          "model_score": 0.47910672426223755,
+          "raw_rank": 21,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9058277027027027,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 21
+        },
+        {
+          "index": 83,
+          "center": [
+            417,
+            274,
+            63
+          ],
+          "model_score": 0.478324294090271,
+          "raw_rank": 22,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 22
+        },
+        {
+          "index": 30,
+          "center": [
+            286,
+            326,
+            65
+          ],
+          "model_score": 0.465722918510437,
+          "raw_rank": 23,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 107,
+          "liver_coverage": 0.984375,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 108,
+          "center": [
+            424,
+            229,
+            70
+          ],
+          "model_score": 0.4654243290424347,
+          "raw_rank": 24,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9590371621621622,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 23
+        },
+        {
+          "index": 9,
+          "center": [
+            271,
+            287,
+            73
+          ],
+          "model_score": 0.46464020013809204,
+          "raw_rank": 25,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9206081081081081,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 24
+        },
+        {
+          "index": 90,
+          "center": [
+            271,
+            332,
+            66
+          ],
+          "model_score": 0.4623931050300598,
+          "raw_rank": 26,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9421452702702703,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 25
+        },
+        {
+          "index": 7,
+          "center": [
+            341,
+            345,
+            71
+          ],
+          "model_score": 0.4599922299385071,
+          "raw_rank": 27,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 26
+        },
+        {
+          "index": 111,
+          "center": [
+            284,
+            365,
+            69
+          ],
+          "model_score": 0.4568217098712921,
+          "raw_rank": 28,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 27
+        },
+        {
+          "index": 33,
+          "center": [
+            279,
+            282,
+            64
+          ],
+          "model_score": 0.4550952911376953,
+          "raw_rank": 29,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9130067567567568,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 28
+        },
+        {
+          "index": 3,
+          "center": [
+            363,
+            286,
+            73
+          ],
+          "model_score": 0.45359209179878235,
+          "raw_rank": 30,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 29
+        },
+        {
+          "index": 67,
+          "center": [
+            408,
+            189,
+            62
+          ],
+          "model_score": 0.4471816420555115,
+          "raw_rank": 31,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 126,
+          "liver_coverage": 1.0,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 60,
+          "center": [
+            405,
+            304,
+            63
+          ],
+          "model_score": 0.44520920515060425,
+          "raw_rank": 32,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 30
+        },
+        {
+          "index": 89,
+          "center": [
+            302,
+            316,
+            65
+          ],
+          "model_score": 0.4450807273387909,
+          "raw_rank": 33,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 431,
+          "liver_coverage": 0.8741554054054054,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 65,
+          "center": [
+            276,
+            381,
+            64
+          ],
+          "model_score": 0.4431631565093994,
+          "raw_rank": 34,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.995777027027027,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 31
+        },
+        {
+          "index": 103,
+          "center": [
+            336,
+            383,
+            60
+          ],
+          "model_score": 0.43151625990867615,
+          "raw_rank": 35,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8859797297297297,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 32
+        },
+        {
+          "index": 22,
+          "center": [
+            330,
+            205,
+            69
+          ],
+          "model_score": 0.4298930764198303,
+          "raw_rank": 36,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8678209459459459,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 33
+        },
+        {
+          "index": 80,
+          "center": [
+            277,
+            373,
+            56
+          ],
+          "model_score": 0.42928194999694824,
+          "raw_rank": 37,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 34
+        },
+        {
+          "index": 58,
+          "center": [
+            421,
+            202,
+            69
+          ],
+          "model_score": 0.42465636134147644,
+          "raw_rank": 38,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9286317567567568,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 35
+        },
+        {
+          "index": 2,
+          "center": [
+            397,
+            186,
+            65
+          ],
+          "model_score": 0.4233383536338806,
+          "raw_rank": 39,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 36
+        },
+        {
+          "index": 91,
+          "center": [
+            411,
+            304,
+            61
+          ],
+          "model_score": 0.42203211784362793,
+          "raw_rank": 40,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9991554054054054,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 37
+        },
+        {
+          "index": 69,
+          "center": [
+            423,
+            264,
+            61
+          ],
+          "model_score": 0.4216881990432739,
+          "raw_rank": 41,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9991554054054054,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 38
+        },
+        {
+          "index": 48,
+          "center": [
+            285,
+            320,
+            67
+          ],
+          "model_score": 0.41925308108329773,
+          "raw_rank": 42,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 362,
+          "liver_coverage": 1.0,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 27,
+          "center": [
+            290,
+            350,
+            63
+          ],
+          "model_score": 0.4176931381225586,
+          "raw_rank": 43,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 39
+        },
+        {
+          "index": 105,
+          "center": [
+            419,
+            245,
+            69
+          ],
+          "model_score": 0.41756585240364075,
+          "raw_rank": 44,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 40
+        },
+        {
+          "index": 25,
+          "center": [
+            411,
+            319,
+            64
+          ],
+          "model_score": 0.41530007123947144,
+          "raw_rank": 45,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9231418918918919,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 41
+        },
+        {
+          "index": 99,
+          "center": [
+            279,
+            355,
+            62
+          ],
+          "model_score": 0.4152991771697998,
+          "raw_rank": 46,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 42
+        },
+        {
+          "index": 86,
+          "center": [
+            349,
+            347,
+            65
+          ],
+          "model_score": 0.41374027729034424,
+          "raw_rank": 47,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 43
+        },
+        {
+          "index": 42,
+          "center": [
+            394,
+            336,
+            62
+          ],
+          "model_score": 0.4131341874599457,
+          "raw_rank": 48,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9991554054054054,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 44
+        },
+        {
+          "index": 79,
+          "center": [
+            422,
+            263,
+            60
+          ],
+          "model_score": 0.4112926125526428,
+          "raw_rank": 49,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 45
+        },
+        {
+          "index": 71,
+          "center": [
+            327,
+            375,
+            56
+          ],
+          "model_score": 0.41114774346351624,
+          "raw_rank": 50,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9045608108108109,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 46
+        },
+        {
+          "index": 93,
+          "center": [
+            341,
+            224,
+            62
+          ],
+          "model_score": 0.4089297354221344,
+          "raw_rank": 51,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 47
+        },
+        {
+          "index": 121,
+          "center": [
+            377,
+            315,
+            72
+          ],
+          "model_score": 0.40815088152885437,
+          "raw_rank": 52,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 48
+        },
+        {
+          "index": 120,
+          "center": [
+            387,
+            351,
+            62
+          ],
+          "model_score": 0.4079245328903198,
+          "raw_rank": 53,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9776182432432432,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 49
+        },
+        {
+          "index": 110,
+          "center": [
+            423,
+            293,
+            68
+          ],
+          "model_score": 0.4058847725391388,
+          "raw_rank": 54,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9003378378378378,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 50
+        },
+        {
+          "index": 126,
+          "center": [
+            417,
+            238,
+            59
+          ],
+          "model_score": 0.40545013546943665,
+          "raw_rank": 55,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 51
+        },
+        {
+          "index": 125,
+          "center": [
+            368,
+            253,
+            66
+          ],
+          "model_score": 0.40000128746032715,
+          "raw_rank": 56,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 52
+        },
+        {
+          "index": 1,
+          "center": [
+            298,
+            337,
+            58
+          ],
+          "model_score": 0.3959313631057739,
+          "raw_rank": 57,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9480574324324325,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 53
+        },
+        {
+          "index": 62,
+          "center": [
+            422,
+            279,
+            68
+          ],
+          "model_score": 0.3938237130641937,
+          "raw_rank": 58,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 54
+        },
+        {
+          "index": 94,
+          "center": [
+            369,
+            285,
+            55
+          ],
+          "model_score": 0.39251548051834106,
+          "raw_rank": 59,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 134,
+          "liver_coverage": 0.9451013513513513,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 5,
+          "center": [
+            352,
+            304,
+            70
+          ],
+          "model_score": 0.3879384398460388,
+          "raw_rank": 60,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 55
+        },
+        {
+          "index": 78,
+          "center": [
+            415,
+            308,
+            60
+          ],
+          "model_score": 0.38302820920944214,
+          "raw_rank": 61,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9083614864864865,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 56
+        },
+        {
+          "index": 75,
+          "center": [
+            379,
+            341,
+            60
+          ],
+          "model_score": 0.3802664577960968,
+          "raw_rank": 62,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 57
+        },
+        {
+          "index": 119,
+          "center": [
+            368,
+            346,
+            66
+          ],
+          "model_score": 0.37874722480773926,
+          "raw_rank": 63,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 58
+        },
+        {
+          "index": 112,
+          "center": [
+            377,
+            335,
+            63
+          ],
+          "model_score": 0.37632453441619873,
+          "raw_rank": 64,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 59
+        },
+        {
+          "index": 54,
+          "center": [
+            401,
+            313,
+            55
+          ],
+          "model_score": 0.3729640245437622,
+          "raw_rank": 65,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 60
+        },
+        {
+          "index": 116,
+          "center": [
+            412,
+            225,
+            69
+          ],
+          "model_score": 0.37124204635620117,
+          "raw_rank": 66,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 61
+        },
+        {
+          "index": 15,
+          "center": [
+            344,
+            345,
+            56
+          ],
+          "model_score": 0.3669672906398773,
+          "raw_rank": 67,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9987331081081081,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 62
+        },
+        {
+          "index": 81,
+          "center": [
+            423,
+            246,
+            50
+          ],
+          "model_score": 0.3667273223400116,
+          "raw_rank": 68,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8762668918918919,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 63
+        },
+        {
+          "index": 45,
+          "center": [
+            375,
+            344,
+            60
+          ],
+          "model_score": 0.3610079884529114,
+          "raw_rank": 69,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 64
+        },
+        {
+          "index": 117,
+          "center": [
+            344,
+            336,
+            56
+          ],
+          "model_score": 0.35661834478378296,
+          "raw_rank": 70,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 65
+        },
+        {
+          "index": 39,
+          "center": [
+            364,
+            301,
+            48
+          ],
+          "model_score": 0.3554948568344116,
+          "raw_rank": 71,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9159628378378378,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 66
+        },
+        {
+          "index": 66,
+          "center": [
+            369,
+            307,
+            66
+          ],
+          "model_score": 0.35502731800079346,
+          "raw_rank": 72,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 67
+        },
+        {
+          "index": 84,
+          "center": [
+            401,
+            196,
+            53
+          ],
+          "model_score": 0.35384470224380493,
+          "raw_rank": 73,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9983108108108109,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 68
+        },
+        {
+          "index": 17,
+          "center": [
+            369,
+            221,
+            72
+          ],
+          "model_score": 0.3515017032623291,
+          "raw_rank": 74,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 69
+        },
+        {
+          "index": 88,
+          "center": [
+            376,
+            310,
+            36
+          ],
+          "model_score": 0.3484829068183899,
+          "raw_rank": 75,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8572635135135135,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 70
+        },
+        {
+          "index": 41,
+          "center": [
+            386,
+            282,
+            65
+          ],
+          "model_score": 0.3478263318538666,
+          "raw_rank": 76,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 71
+        },
+        {
+          "index": 92,
+          "center": [
+            363,
+            267,
+            57
+          ],
+          "model_score": 0.34716030955314636,
+          "raw_rank": 77,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 131,
+          "liver_coverage": 0.9864864864864865,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 59,
+          "center": [
+            341,
+            341,
+            51
+          ],
+          "model_score": 0.34685346484184265,
+          "raw_rank": 78,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9983108108108109,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 72
+        },
+        {
+          "index": 20,
+          "center": [
+            351,
+            307,
+            68
+          ],
+          "model_score": 0.3459364175796509,
+          "raw_rank": 79,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 73
+        },
+        {
+          "index": 101,
+          "center": [
+            361,
+            320,
+            48
+          ],
+          "model_score": 0.3411175608634949,
+          "raw_rank": 80,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 74
+        },
+        {
+          "index": 23,
+          "center": [
+            394,
+            232,
+            66
+          ],
+          "model_score": 0.33900725841522217,
+          "raw_rank": 81,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 75
+        },
+        {
+          "index": 87,
+          "center": [
+            329,
+            344,
+            42
+          ],
+          "model_score": 0.3342024087905884,
+          "raw_rank": 82,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9324324324324325,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 76
+        },
+        {
+          "index": 115,
+          "center": [
+            416,
+            223,
+            42
+          ],
+          "model_score": 0.3322410583496094,
+          "raw_rank": 83,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9383445945945946,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 77
+        },
+        {
+          "index": 74,
+          "center": [
+            384,
+            313,
+            36
+          ],
+          "model_score": 0.3289431929588318,
+          "raw_rank": 84,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9818412162162162,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 78
+        },
+        {
+          "index": 12,
+          "center": [
+            356,
+            308,
+            51
+          ],
+          "model_score": 0.3287340998649597,
+          "raw_rank": 85,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9974662162162162,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 79
+        },
+        {
+          "index": 106,
+          "center": [
+            381,
+            310,
+            36
+          ],
+          "model_score": 0.3281906545162201,
+          "raw_rank": 86,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9932432432432432,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 80
+        },
+        {
+          "index": 21,
+          "center": [
+            395,
+            199,
+            68
+          ],
+          "model_score": 0.32686930894851685,
+          "raw_rank": 87,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 81
+        },
+        {
+          "index": 82,
+          "center": [
+            363,
+            225,
+            63
+          ],
+          "model_score": 0.32620152831077576,
+          "raw_rank": 88,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 294,
+          "liver_coverage": 1.0,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 43,
+          "center": [
+            348,
+            327,
+            59
+          ],
+          "model_score": 0.3255476951599121,
+          "raw_rank": 89,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 82
+        },
+        {
+          "index": 55,
+          "center": [
+            313,
+            326,
+            56
+          ],
+          "model_score": 0.3235856890678406,
+          "raw_rank": 90,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9805743243243243,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 83
+        },
+        {
+          "index": 100,
+          "center": [
+            406,
+            235,
+            31
+          ],
+          "model_score": 0.3235383629798889,
+          "raw_rank": 91,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 84
+        },
+        {
+          "index": 18,
+          "center": [
+            370,
+            323,
+            57
+          ],
+          "model_score": 0.3191474974155426,
+          "raw_rank": 92,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 85
+        },
+        {
+          "index": 56,
+          "center": [
+            386,
+            253,
+            38
+          ],
+          "model_score": 0.317775160074234,
+          "raw_rank": 93,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 86
+        },
+        {
+          "index": 28,
+          "center": [
+            353,
+            307,
+            71
+          ],
+          "model_score": 0.31690913438796997,
+          "raw_rank": 94,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 87
+        },
+        {
+          "index": 8,
+          "center": [
+            385,
+            283,
+            56
+          ],
+          "model_score": 0.3160366415977478,
+          "raw_rank": 95,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 88
+        },
+        {
+          "index": 122,
+          "center": [
+            395,
+            265,
+            33
+          ],
+          "model_score": 0.3152429759502411,
+          "raw_rank": 96,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 89
+        },
+        {
+          "index": 50,
+          "center": [
+            371,
+            270,
+            46
+          ],
+          "model_score": 0.31151488423347473,
+          "raw_rank": 97,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 243,
+          "liver_coverage": 1.0,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 68,
+          "center": [
+            392,
+            256,
+            56
+          ],
+          "model_score": 0.3064248561859131,
+          "raw_rank": 98,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 90
+        },
+        {
+          "index": 52,
+          "center": [
+            389,
+            268,
+            54
+          ],
+          "model_score": 0.3055188059806824,
+          "raw_rank": 99,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 91
+        },
+        {
+          "index": 96,
+          "center": [
+            382,
+            238,
+            62
+          ],
+          "model_score": 0.3039852976799011,
+          "raw_rank": 100,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 92
+        },
+        {
+          "index": 124,
+          "center": [
+            375,
+            336,
+            60
+          ],
+          "model_score": 0.3039429187774658,
+          "raw_rank": 101,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 93
+        },
+        {
+          "index": 36,
+          "center": [
+            404,
+            306,
+            46
+          ],
+          "model_score": 0.30341100692749023,
+          "raw_rank": 102,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9607263513513513,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 94
+        },
+        {
+          "index": 77,
+          "center": [
+            372,
+            268,
+            36
+          ],
+          "model_score": 0.3027194142341614,
+          "raw_rank": 103,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9049831081081081,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 95
+        },
+        {
+          "index": 40,
+          "center": [
+            379,
+            262,
+            34
+          ],
+          "model_score": 0.30211278796195984,
+          "raw_rank": 104,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.8543074324324325,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 96
+        },
+        {
+          "index": 72,
+          "center": [
+            363,
+            340,
+            68
+          ],
+          "model_score": 0.30050337314605713,
+          "raw_rank": 105,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 97
+        },
+        {
+          "index": 38,
+          "center": [
+            405,
+            277,
+            68
+          ],
+          "model_score": 0.29568806290626526,
+          "raw_rank": 106,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 98
+        },
+        {
+          "index": 34,
+          "center": [
+            378,
+            340,
+            46
+          ],
+          "model_score": 0.29446566104888916,
+          "raw_rank": 107,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9742398648648649,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 99
+        },
+        {
+          "index": 35,
+          "center": [
+            353,
+            346,
+            54
+          ],
+          "model_score": 0.29313382506370544,
+          "raw_rank": 108,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 30,
+          "liver_coverage": 1.0,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 11,
+          "center": [
+            382,
+            233,
+            63
+          ],
+          "model_score": 0.2922070026397705,
+          "raw_rank": 109,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 100
+        },
+        {
+          "index": 63,
+          "center": [
+            357,
+            327,
+            59
+          ],
+          "model_score": 0.2909362018108368,
+          "raw_rank": 110,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 101
+        },
+        {
+          "index": 118,
+          "center": [
+            382,
+            321,
+            44
+          ],
+          "model_score": 0.29086947441101074,
+          "raw_rank": 111,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 102
+        },
+        {
+          "index": 4,
+          "center": [
+            398,
+            247,
+            63
+          ],
+          "model_score": 0.288504421710968,
+          "raw_rank": 112,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 103
+        },
+        {
+          "index": 61,
+          "center": [
+            375,
+            341,
+            42
+          ],
+          "model_score": 0.2835789918899536,
+          "raw_rank": 113,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9125844594594594,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 104
+        },
+        {
+          "index": 32,
+          "center": [
+            402,
+            257,
+            49
+          ],
+          "model_score": 0.2811118960380554,
+          "raw_rank": 114,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 105
+        },
+        {
+          "index": 29,
+          "center": [
+            383,
+            315,
+            60
+          ],
+          "model_score": 0.2805776000022888,
+          "raw_rank": 115,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 106
+        },
+        {
+          "index": 64,
+          "center": [
+            351,
+            272,
+            47
+          ],
+          "model_score": 0.2800132930278778,
+          "raw_rank": 116,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9180743243243243,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 107
+        },
+        {
+          "index": 44,
+          "center": [
+            359,
+            337,
+            45
+          ],
+          "model_score": 0.27827879786491394,
+          "raw_rank": 117,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 6,
+          "liver_coverage": 1.0,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 123,
+          "center": [
+            410,
+            225,
+            35
+          ],
+          "model_score": 0.27555012702941895,
+          "raw_rank": 118,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9826858108108109,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 108
+        },
+        {
+          "index": 76,
+          "center": [
+            397,
+            269,
+            42
+          ],
+          "model_score": 0.2735357880592346,
+          "raw_rank": 119,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 109
+        },
+        {
+          "index": 98,
+          "center": [
+            405,
+            228,
+            36
+          ],
+          "model_score": 0.27332407236099243,
+          "raw_rank": 120,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 110
+        },
+        {
+          "index": 102,
+          "center": [
+            355,
+            247,
+            48
+          ],
+          "model_score": 0.2716004550457001,
+          "raw_rank": 121,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 25,
+          "liver_coverage": 0.9277871621621622,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 97,
+          "center": [
+            402,
+            241,
+            53
+          ],
+          "model_score": 0.27012428641319275,
+          "raw_rank": 122,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 111
+        },
+        {
+          "index": 19,
+          "center": [
+            394,
+            210,
+            47
+          ],
+          "model_score": 0.2660452127456665,
+          "raw_rank": 123,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 371,
+          "liver_coverage": 0.8513513513513513,
+          "eligible": false,
+          "excluded_reasons": [
+            "observed_tumor_overlap"
+          ],
+          "recommendation_rank": null
+        },
+        {
+          "index": 37,
+          "center": [
+            395,
+            283,
+            62
+          ],
+          "model_score": 0.2637227475643158,
+          "raw_rank": 124,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 112
+        },
+        {
+          "index": 107,
+          "center": [
+            380,
+            241,
+            41
+          ],
+          "model_score": 0.2556614875793457,
+          "raw_rank": 125,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9607263513513513,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 113
+        },
+        {
+          "index": 13,
+          "center": [
+            416,
+            249,
+            45
+          ],
+          "model_score": 0.2508676052093506,
+          "raw_rank": 126,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 0.9987331081081081,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 114
+        },
+        {
+          "index": 6,
+          "center": [
+            405,
+            240,
+            59
+          ],
+          "model_score": 0.2478947937488556,
+          "raw_rank": 127,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 115
+        },
+        {
+          "index": 113,
+          "center": [
+            400,
+            226,
+            61
+          ],
+          "model_score": 0.24678081274032593,
+          "raw_rank": 128,
+          "observed_tumor_at_center": false,
+          "tumor_overlap_voxels": 0,
+          "liver_coverage": 1.0,
+          "eligible": true,
+          "excluded_reasons": [],
+          "recommendation_rank": 116
+        }
+      ]
+    },
+    "raw_receipt": {
+      "reference": "raw_cases/liver_31.json",
+      "sha256": "12a2f39bd6833e2e8d722b7e0d81db5aeafbb218db7b58cd3004c64ffc2ee8f0",
+      "native_sha256": "5c9f0999ae7d2a93d4ccec24f439c9563ae011f39dbb832de5ccc065abefe9d5",
+      "preparation_reference": "raw_preparation/liver_31.json",
+      "preparation_sha256": "7a629709ae38b724228c7cdf836457205ba15bf501bc582e41bb07958232721f",
+      "properties": {
+        "bbox_used_for_cropping": [
+          [
+            0,
+            91
+          ],
+          [
+            0,
+            512
+          ],
+          [
+            0,
+            512
+          ]
+        ],
+        "shape_after_cropping_and_before_resampling": [
+          91,
+          512,
+          512
+        ]
+      },
+      "baseline_ct_max_abs_error": 0.0,
+      "baseline_seg_exact": true,
+      "storage": [
+        {
+          "kind": "online_native_preparation",
+          "estimated_write_bytes": 287334928,
+          "free_before_bytes": 1596596232192,
+          "reserved_free_bytes": 85899345920
+        },
+        {
+          "kind": "online_native_combined",
+          "estimated_write_bytes": 1571134078,
+          "free_before_bytes": 1596596215808,
+          "reserved_free_bytes": 85899345920
+        },
+        {
+          "kind": "online_native_case",
+          "estimated_write_bytes": 1571134078,
+          "free_before_bytes": 1596596215808,
+          "reserved_free_bytes": 85899345920
+        },
+        {
+          "kind": "online_native_case",
+          "estimated_write_bytes": 716769256,
+          "free_before_bytes": 1596169121792,
+          "reserved_free_bytes": 85899345920
+        }
+      ],
+      "resources": {
+        "elapsed_seconds": 20.4019760999945,
+        "before": {
+          "rss_bytes": 3968208896,
+          "available_memory_bytes": 39841275904,
+          "host_total_memory_bytes": 68640653312,
+          "cpu_capacity": 16,
+          "cpu_affinity_cores": 16,
+          "cpu_allocation_cores": 16.0,
+          "process_cpu_seconds": 680.765625,
+          "cgroup": {
+            "locations_resolved": false,
+            "values": {},
+            "missing_files": [],
+            "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+          }
+        },
+        "after": {
+          "rss_bytes": 4163051520,
+          "available_memory_bytes": 40187838464,
+          "host_total_memory_bytes": 68640653312,
+          "cpu_capacity": 16,
+          "cpu_affinity_cores": 16,
+          "cpu_allocation_cores": 16.0,
+          "process_cpu_seconds": 700.734375,
+          "cgroup": {
+            "locations_resolved": false,
+            "values": {},
+            "missing_files": [],
+            "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+          }
+        },
+        "sampled_peak_rss_bytes": 5955321856,
+        "minimum_available_memory_bytes": 38381617152,
+        "average_cpu_cores": 0.9787654834085108,
+        "rss_sampling_interval_seconds": 0.1,
+        "monitor_samples": 192,
+        "monitor_cpu_seconds": 0.0,
+        "monitor_wall_seconds": 0.0646732997847721,
+        "status": "complete",
+        "error": null,
+        "sampling_error": null,
+        "final_snapshot_error": null
+      }
+    },
+    "storage_written_bytes": 2423823122,
+    "seconds": 232.12114360003034,
+    "resources": {
+      "elapsed_seconds": 232.07658949994948,
+      "before": {
+        "rss_bytes": 2050719744,
+        "available_memory_bytes": 42238451712,
+        "host_total_memory_bytes": 68640653312,
+        "cpu_capacity": 16,
+        "cpu_affinity_cores": 16,
+        "cpu_allocation_cores": 16.0,
+        "process_cpu_seconds": 13.703125,
+        "cgroup": {
+          "locations_resolved": false,
+          "values": {},
+          "missing_files": [],
+          "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+        }
+      },
+      "after": {
+        "rss_bytes": 6717661184,
+        "available_memory_bytes": 37624975360,
+        "host_total_memory_bytes": 68640653312,
+        "cpu_capacity": 16,
+        "cpu_affinity_cores": 16,
+        "cpu_allocation_cores": 16.0,
+        "process_cpu_seconds": 795.234375,
+        "cgroup": {
+          "locations_resolved": false,
+          "values": {},
+          "missing_files": [],
+          "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+        }
+      },
+      "sampled_peak_rss_bytes": 8164003840,
+      "minimum_available_memory_bytes": 36188307456,
+      "average_cpu_cores": 3.367557458871439,
+      "rss_sampling_interval_seconds": 0.1,
+      "monitor_samples": 2161,
+      "monitor_cpu_seconds": 0.09375,
+      "monitor_wall_seconds": 0.9388326004846022,
+      "status": "complete",
+      "error": null,
+      "sampling_error": null,
+      "final_snapshot_error": null
+    },
+    "cuda_peak_bytes": 6597423616,
+    "full_support": false,
+    "segmentation_optimizer_coexistence": true,
+    "integrated_segmentation": {
+      "debug": true,
+      "one_process": true,
+      "actual_production_train_step": true,
+      "standard_training_transforms": "ComposeTransforms( transforms = [SpatialTransform( patch_size = [128, 128, 128], patch_center_dist_from_border = [0, 0, 0], random_crop = False, p_elastic_deform = 0, elastic_deform_scale = (0, 0.2), elastic_deform_magnitude = (0, 0.2), p_rotation = 0.2, rotation = (-0.5235987755982988, 0.5235987755982988), p_rot_per_axis = 1, p_scaling = 0.2, scaling = (0.7, 1.4), p_synchronize_scaling_across_axes = 1, p_synchronize_def_scale_across_axes = 0, bg_style_seg_sampling = False, mode_seg = 'bilinear', border_mode_seg = 'constant', center_deformation = True, mode_image = 'bilinear', padding_mode_image = 'zeros', padding_value_seg = -1, padding_value_image = 0, align_corners = False, _grid_cache = {} ), RandomTransform(p=0.1, transform=GaussianNoiseTransform( noise_variance = (0, 0.1), p_per_channel = 1, synchronize_channels = True )), RandomTransform(p=0.2, transform=GaussianBlurTransform( blur_sigma = (0.5, 1.0), benchmark = True, synchronize_channels = False, synchronize_axes = False, p_per_channel = 0.5, benchmark_use_fft = {}, benchmark_num_runs = 9 )), RandomTransform(p=0.15, transform=MultiplicativeBrightnessTransform( multiplier_range = BGContrast(contrast_range=(0.75, 1.25)), synchronize_channels = False, p_per_channel = 1 )), RandomTransform(p=0.15, transform=ContrastTransform( contrast_range = BGContrast(contrast_range=(0.75, 1.25)), preserve_range = True, synchronize_channels = False, p_per_channel = 1.0 )), RandomTransform(p=0.25, transform=SimulateLowResolutionTransform( scale = (0.5, 1), synchronize_channels = False, synchronize_axes = True, ignore_axes = None, allowed_channels = None, p_per_channel = 0.5, upmodes = {1: 'linear', 2: 'bilinear', 3: 'trilinear'} )), RandomTransform(p=0.1, transform=GammaTransform( gamma = BGContrast(contrast_range=(0.7, 1.5)), p_invert_image = 1.0, synchronize_channels = False, p_per_channel = 1.0, p_retain_stats = 1.0 )), RandomTransform(p=0.3, transform=GammaTransform( gamma = BGContrast(contrast_range=(0.7, 1.5)), p_invert_image = 0.0, synchronize_channels = False, p_per_channel = 1.0, p_retain_stats = 1.0 )), MirrorTransform( allowed_axes = (0, 1, 2) ), RemoveLabelTransform( segmentation_channels = None, label_value = -1, set_to = 0 ), DownsampleSegForDSTransform( ds_scales = [[np.float64(1.0), np.float64(1.0), np.float64(1.0)], [np.float64(0.5), np.float64(0.5), np.float64(0.5)], [np.float64(0.25), np.float64(0.25), np.float64(0.25)], [np.float64(0.125), np.float64(0.125), np.float64(0.125)], [np.float64(0.0625), np.float64(0.0625), np.float64(0.0625)]] )] )",
+      "actual_epoch_loader_reset": true,
+      "actual_validation_case": "liver_0",
+      "batch_trace": [
+        {
+          "epoch": 0,
+          "keys": [
+            "liver_31",
+            "liver_31"
+          ],
+          "shape": [
+            2,
+            1,
+            128,
+            128,
+            128
+          ],
+          "cp_flags": [
+            1,
+            0
+          ],
+          "crop_support": [
+            4124,
+            0
+          ],
+          "schedule_tokens": [
+            10409827677615251048,
+            8069165359266689299
+          ],
+          "input_sha256": "caf0fcad1720ab3ff7861ae7386aa562f6133457a271e62c95161eb6c0f7c40c",
+          "target_shapes": [
+            [
+              2,
+              1,
+              128,
+              128,
+              128
+            ],
+            [
+              2,
+              1,
+              64,
+              64,
+              64
+            ],
+            [
+              2,
+              1,
+              32,
+              32,
+              32
+            ],
+            [
+              2,
+              1,
+              16,
+              16,
+              16
+            ],
+            [
+              2,
+              1,
+              8,
+              8,
+              8
+            ]
+          ]
+        },
+        {
+          "epoch": 1,
+          "keys": [
+            "liver_31",
+            "liver_31"
+          ],
+          "shape": [
+            2,
+            1,
+            128,
+            128,
+            128
+          ],
+          "cp_flags": [
+            1,
+            0
+          ],
+          "crop_support": [
+            4124,
+            0
+          ],
+          "schedule_tokens": [
+            10409827677615251048,
+            8069165359266689299
+          ],
+          "input_sha256": "3ac18ace8f7092fa9d4ee1f7331f1769ad987aff4804bb87f1f3422223847884",
+          "target_shapes": [
+            [
+              2,
+              1,
+              128,
+              128,
+              128
+            ],
+            [
+              2,
+              1,
+              64,
+              64,
+              64
+            ],
+            [
+              2,
+              1,
+              32,
+              32,
+              32
+            ],
+            [
+              2,
+              1,
+              16,
+              16,
+              16
+            ],
+            [
+              2,
+              1,
+              8,
+              8,
+              8
+            ]
+          ]
+        },
+        {
+          "epoch": 1,
+          "keys": [
+            "liver_31",
+            "liver_31"
+          ],
+          "shape": [
+            2,
+            1,
+            128,
+            128,
+            128
+          ],
+          "cp_flags": [
+            1,
+            0
+          ],
+          "crop_support": [
+            4124,
+            0
+          ],
+          "schedule_tokens": [
+            10409827677615251048,
+            8069165359266689299
+          ],
+          "input_sha256": "3ac18ace8f7092fa9d4ee1f7331f1769ad987aff4804bb87f1f3422223847884",
+          "target_shapes": [
+            [
+              2,
+              1,
+              128,
+              128,
+              128
+            ],
+            [
+              2,
+              1,
+              64,
+              64,
+              64
+            ],
+            [
+              2,
+              1,
+              32,
+              32,
+              32
+            ],
+            [
+              2,
+              1,
+              16,
+              16,
+              16
+            ],
+            [
+              2,
+              1,
+              8,
+              8,
+              8
+            ]
+          ]
+        }
+      ],
+      "standard_augmentation_counterfactual": [
+        {
+          "stage": "initial",
+          "role": "warmup",
+          "epoch": 0,
+          "batch": 0,
+          "sample": 0,
+          "augmented_CT_changed_voxels": 12029,
+          "augmented_target_added_tumor_voxels": 1804
+        },
+        {
+          "stage": "initial",
+          "role": "update",
+          "epoch": 0,
+          "batch": 1,
+          "sample": 0,
+          "augmented_CT_changed_voxels": 25600,
+          "augmented_target_added_tumor_voxels": 4124
+        },
+        {
+          "stage": "continuous",
+          "role": "warmup",
+          "epoch": 1,
+          "batch": 0,
+          "sample": 0,
+          "augmented_CT_changed_voxels": 25600,
+          "augmented_target_added_tumor_voxels": 4124
+        },
+        {
+          "stage": "continuous",
+          "role": "update",
+          "epoch": 1,
+          "batch": 1,
+          "sample": 0,
+          "augmented_CT_changed_voxels": 25600,
+          "augmented_target_added_tumor_voxels": 4124
+        },
+        {
+          "stage": "resumed",
+          "role": "warmup",
+          "epoch": 1,
+          "batch": 0,
+          "sample": 0,
+          "augmented_CT_changed_voxels": 25600,
+          "augmented_target_added_tumor_voxels": 4124
+        },
+        {
+          "stage": "resumed",
+          "role": "update",
+          "epoch": 1,
+          "batch": 1,
+          "sample": 0,
+          "augmented_CT_changed_voxels": 25600,
+          "augmented_target_added_tumor_voxels": 4124
+        }
+      ],
+      "CP_survives_training_augmentation": true,
+      "augmentation_coverage": {
+        "expected": [
+          [
+            "continuous",
+            1,
+            1,
+            0
+          ],
+          [
+            "initial",
+            0,
+            1,
+            0
+          ],
+          [
+            "resumed",
+            1,
+            1,
+            0
+          ]
+        ],
+        "observed": [
+          [
+            "continuous",
+            1,
+            1,
+            0
+          ],
+          [
+            "initial",
+            0,
+            1,
+            0
+          ],
+          [
+            "resumed",
+            1,
+            1,
+            0
+          ]
+        ],
+        "exact": true,
+        "warmup_records_excluded": 3
+      },
+      "optimizer_input_batches": [
+        {
+          "stage": "initial",
+          "role": "update",
+          "epoch": 0,
+          "batch": 1,
+          "cp_flags": [
+            1,
+            0
+          ]
+        },
+        {
+          "stage": "continuous",
+          "role": "update",
+          "epoch": 1,
+          "batch": 1,
+          "cp_flags": [
+            1,
+            0
+          ]
+        },
+        {
+          "stage": "resumed",
+          "role": "update",
+          "epoch": 1,
+          "batch": 1,
+          "cp_flags": [
+            1,
+            0
+          ]
+        }
+      ],
+      "completed_update_stages": [
+        "initial",
+        "continuous",
+        "resumed"
+      ],
+      "warm_loss": 1.507986307144165,
+      "integrated_loss": 1.321616530418396,
+      "continuous_loss": 1.1939997673034668,
+      "resumed_loss": 1.1939997673034668,
+      "next_input_exact": true,
+      "next_RNG_exact": true,
+      "next_state_exact": true,
+      "next_loss_exact": true,
+      "max_abs_differences": {
+        "model": 0.0,
+        "optimizer": 0.0,
+        "gradients": 0.0
+      },
+      "continuous_state_hash": "0ad377e5fa092666ec3449f5f392ee1b756eab3a6f44060fb71df7e2a1ac104e",
+      "resumed_state_hash": "0ad377e5fa092666ec3449f5f392ee1b756eab3a6f44060fb71df7e2a1ac104e",
+      "checkpoint_sha256": "f86d80980c7d4156afd57ba24a35391c5ee3e5e82cc8def8ca41103a3af0aa9f",
+      "model_parameters": 102350575,
+      "trainable_parameters": 102350575,
+      "physical_batch": 2,
+      "gradient_accumulation": 1,
+      "effective_batch": 2,
+      "production_constructor": false,
+      "DEBUG_constructor_admission": "Base OnlineCP constructor plus existing DEBUG catalog; production validators unchanged",
+      "augmentation_workers": 0,
+      "compile": false,
+      "full_support": false,
+      "full_training": false,
+      "full_evaluation": false
+    },
+    "full_training": false,
+    "full_evaluation": false
+  },
+  "actual_record_negative_mutations": {
+    "empty": {
+      "rejected": true,
+      "error": "CP augmentation coverage mismatch: missing=[('continuous', 1, 1, 0), ('initial', 0, 1, 0), ('resumed', 1, 1, 0)], unexpected=[]"
+    },
+    "warmup_only": {
+      "rejected": true,
+      "error": "CP augmentation coverage mismatch: missing=[('continuous', 1, 1, 0), ('initial', 0, 1, 0), ('resumed', 1, 1, 0)], unexpected=[]"
+    },
+    "missing_initial": {
+      "rejected": true,
+      "error": "CP augmentation coverage mismatch: missing=[('initial', 0, 1, 0)], unexpected=[]"
+    },
+    "missing_continuous": {
+      "rejected": true,
+      "error": "CP augmentation coverage mismatch: missing=[('continuous', 1, 1, 0)], unexpected=[]"
+    },
+    "missing_resumed": {
+      "rejected": true,
+      "error": "CP augmentation coverage mismatch: missing=[('resumed', 1, 1, 0)], unexpected=[]"
+    },
+    "duplicate": {
+      "rejected": true,
+      "error": "Duplicate CP augmentation observation"
+    },
+    "wrong_sample": {
+      "rejected": true,
+      "error": "CP augmentation coverage mismatch: missing=[('initial', 0, 1, 0)], unexpected=[('initial', 0, 1, 1)]"
+    },
+    "wrong_augmented_CT_changed_voxels": {
+      "rejected": true,
+      "error": "CP effect absent after standard augmentation"
+    },
+    "wrong_augmented_target_added_tumor_voxels": {
+      "rejected": true,
+      "error": "CP effect absent after standard augmentation"
+    }
+  },
+  "before_after_debug_fix_training_unchanged": true,
+  "source_sha256": {
+    "tools/v22_integrated_smoke_debug.py": "842d102b0f6b219c9dc77d1da3ac49e977fbdee3af9ee34e9c2b88c976cc3710",
+    "tests/test_v22_integrated_coverage_debug.py": "ecd96eb19b369f217a1fe618348debbcec865eaa0a70fde9fe90c2353883bd3e",
+    "tools/verify_v22_online_actual_debug.py": "08a70531dac871d17bb7395adbeb9d97c256136bb5d45b09472c905ad3fcf5ae"
+  },
+  "regression": {
+    "total": 89,
+    "new_coverage_tests": 18,
+    "prior_tests": 71,
+    "passed": true,
+    "log": {
+      "path": "work/v22_T01_regression_20260928.log",
+      "bytes": 13126,
+      "sha256": "d3f9d0c9cef7b087c0f23352859e1237265176359963d608e3fdb11f24ec4695"
+    }
+  },
+  "result_file": {
+    "path": "work/v22_integrated_T01_20260928_DEBUG/result.json",
+    "bytes": 82538,
+    "sha256": "e1cfea60a625e0a695b6126dbb8e6f86081944214d688eb4824d38b06d17b9bc"
+  },
+  "console_log": {
+    "path": "work/v22_integrated_T01_20260928_DEBUG.console.log",
+    "bytes": 91049,
+    "sha256": "65d803560bbf45659052f4558a71668021c3c0a0940c68231ca09cbbe95f1041"
+  },
+  "checkpoints": [
+    {
+      "path": "work/v22_integrated_T01_20260928_DEBUG/segmentation_DEBUG/checkpoint_best.pth",
+      "bytes": 819125151,
+      "sha256": "7d53c9c43033bf4ff5313c739947505483e80bb3f34923be29d15dddcdad56e8"
+    },
+    {
+      "path": "work/v22_integrated_T01_20260928_DEBUG/segmentation_DEBUG/checkpoint_latest.pth",
+      "bytes": 819125151,
+      "sha256": "f86d80980c7d4156afd57ba24a35391c5ee3e5e82cc8def8ca41103a3af0aa9f"
+    }
+  ],
+  "static_syntax_passed": true,
+  "full_support_G3": false,
+  "production_G4": false,
+  "efficacy_G5": false,
+  "server_training_started": false,
+  "limitations": [
+    "DEBUG support8 and one train case",
+    "production constructor/admission not tested",
+    "same trainer/process resume; owner/RPC/receipt retained",
+    "augmentation worker0; compile off",
+    "controlled CP/donor draws, not production scheduling",
+    "measurement excludes initialization and pre-GNN warm SGD update"
+  ]
+}

@@ -14,6 +14,7 @@ sys.path.insert(0,str(ROOT))
 
 REQUEST=(ROOT/'docs/gpt_review_request_v22.txt').read_text(encoding='utf-8')
 GUIDE=(ROOT/'docs/gpt_review_guide_v22.md').read_text(encoding='utf-8')
+GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_T01_coverage_review_20260928.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_integrated_smoke_20260928.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_s01_installed_boundary_20260928.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_segmentation_gpu_review_20260928.md').read_text(encoding='utf-8')
@@ -25,6 +26,7 @@ GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_review_repairs_20260927.md').read_text(enco
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_observed_ranking_20260927.md').read_text(encoding='utf-8')
 
 ACTIVE=[
+ 'tests/test_v22_integrated_coverage_debug.py',
  'tools/v22_integrated_smoke_debug.py',
  'tools/inspect_installed_epoch_boundary.py','tools/verify_v22_epoch_boundary_debug.py',
  'tools/v22_seg_state.py','tests/test_v22_seg_state.py','tools/verify_v22_segmentation_cuda_debug.py',
@@ -143,7 +145,8 @@ def main():
     frames=[frame(name,blobs[name]) for name in code_names]
     documents['03_ALL_CODE.txt']=header+''.join(frames)
     documents['03_ACTIVE_PATH_CODE.txt']=header+''.join(frame(name,blobs[name]) for name in ACTIVE)
-    evidence_names=[n for n in ('docs/v22_integrated_smoke_20260928.md','validation/v222_r6/integrated_smoke_20260928_DEBUG.json',
+    evidence_names=[n for n in ('docs/v22_T01_coverage_review_20260928.md','validation/v222_r6/T01_coverage_20260928_DEBUG.json',
+        'docs/v22_integrated_smoke_20260928.md','validation/v222_r6/integrated_smoke_20260928_DEBUG.json',
         'docs/v22_s01_installed_boundary_20260928.md','validation/v222_r6/installed_epoch_boundary_20260928.json','validation/v222_r6/s01_GPU_boundary_20260928_DEBUG.json',
         'docs/v22_segmentation_gpu_review_20260928.md','validation/v222_r6/segmentation_GPU_review_20260928_DEBUG.json',
         'docs/v22_online_review_fixes_20260927.md','validation/v222_r6/online_review_fixes_20260927_DEBUG.json',
@@ -178,7 +181,7 @@ def main():
                             index.append(f'  - `{name}:{method.lineno}` — `{node.name}.{method.name}`\n')
     documents['SYMBOL_INDEX.md']=''.join(index)
     metadata=dict(format='v22_gpt_review_source_snapshot_v1',generated_utc=datetime.now(timezone.utc).isoformat(),
-        base_commit=commit,review_release='v2.2 observed_rank_v1; one-process real GNN/CP/standard augmentation/native CUDA update/epoch resume DEBUG; production unchanged from c989ae1',
+        base_commit=commit,review_release='v2.2 observed_rank_v1; T01 exact stage/batch/sample DEBUG augmentation coverage and actual CUDA integration; production unchanged from c989ae1',
         source_scope='Tracked source plus explicitly selected current untracked source in named code/docs/config directories',
         excludes=['Current root code.txt (existing user file preserved)','CT/masks','work/cache/checkpoints','environments','Git database'],
         source_count=len(blobs),files=manifest,other_exclusions=excluded,
@@ -189,6 +192,7 @@ def main():
     documents['manifest.json']=json.dumps(metadata,ensure_ascii=False,indent=2)+'\n'
     documents['00_START_HERE.txt']=f'''GPT 교차 검증용 v2.2 계열 파일 묶음
 현재 대상: v2.2 observed_rank_v1 + stride4; paired v1 L0 + L1/L2
+최신 수정: T01 DEBUG 대조 누락 거부. 실제 optimizer 입력의 CP 샘플과 initial/continuous/resumed 대조 기록의 정확한 일치를 검사합니다. warmup은 제외합니다.
 최신 검증: 같은 프로세스의 실제 GNN 추천/RPC/CP/표준 증강/native CUDA 학습/epoch 재개 DEBUG. support8이며 전체 G3/G4/G5를 대체하지 않습니다.
 S01 조건부 종료 분기는 로컬 설치본에 없음. 서버 설치본은 별도 확인 필요.
 production 코드는 c989ae1 그대로이며 F03/U01 보호 유지. 실제 OS 신호 종료를 검증했다고 주장하지 않습니다.

@@ -1,4 +1,11 @@
-## 2026-09-28 최신 — 로컬 통합 smoke 실제 완료
+## 2026-09-28 최신 — T01 대조 누락 검출 수정 및 실제 GPU 재실행
+
+- 독립 검토문 전체를 읽고 T01을 재현했다. 이전 GPU 기록은 존재했으나 빈 목록/버려지는 warmup만으로 통과하는 판정이 불충분했다. 실제 optimizer input의 CP sample와 stage/epoch/batch/sample 대조 목록을 정확히 맞추도록 수정했다.
+- [최신 검토 기록](docs/v22_T01_coverage_review_20260928.md), `validation/v222_r6/T01_coverage_20260928_DEBUG.json`. 새18개 포함 회귀89개, 실제5070Ti 통합 재실행 통과. initial/continuous/resumed3개 대조, warmup3개 제외, actual-record 변조9조건 거부. 연속/재개 입력·state·RNG exact, 수정 전 성공 실행과 입력/loss/state 동일.
+- 측정232.12초, GPU peak allocated6.14GiB. full native102M/batch2×128³와 GNN5.55M 사용. support8/worker0/compile off/통제 draw/DEBUG admission/같은 프로세스 재개 한계 그대로다. production core83/runtime20/online15 불변, cache 재생성 불필요.
+- 로컬 짧은 검사의 판정은 PASS_LOCAL_SHORT_T01_VALIDATION. 전체 G3/G4/G5와 서버 설치본·OS 신호 안전을 완료로 승격하지 않는다. 서버 학습 시작하지 않음.
+
+## 2026-09-28 이전 기록 — 로컬 통합 smoke 실제 완료
 
 - [같은 프로세스의 추천→CP→증강→학습→재개](docs/v22_integrated_smoke_20260928.md)를 실제5070Ti에서 통과했다. GNN5,550,806 parameters와 native102,350,575 parameters/batch2를 동시에 올렸고 GNN 호출 전에 실제 SGD momentum을 생성했다.
 - 새 검증 JSON: validation/v222_r6/integrated_smoke_20260928_DEBUG.json. 실제128후보/owner/RPC/raw-native oracle/표준 증강/CUDA train_step/epoch save-load/로더 재생성 경로다. 연속/재개 다음 입력과 model/optimizer/gradient/scaler/RNG exact, loss1.1939997673034668 동일.

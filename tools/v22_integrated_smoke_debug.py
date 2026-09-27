@@ -15,6 +15,46 @@ import numpy as np
 import torch
 
 
+UPDATE_STAGES = ('initial', 'continuous', 'resumed')
+
+
+def validate_augmentation_coverage(batches, observations, required_stages):
+    """Match independent optimizer-input flags to observed CP effects exactly.
+
+    Warmup batches never satisfy update coverage. Stage disambiguates the two
+    epoch-1/batch-1 inputs produced by continuous execution and checkpoint resume.
+    """
+    expected = set()
+    batch_keys = set()
+    for batch in batches:
+        key = (batch['stage'], batch['epoch'], batch['batch'])
+        if batch['role'] != 'update' or key in batch_keys:
+            raise AssertionError('Duplicate or non-update optimizer batch')
+        batch_keys.add(key)
+        flags = batch['cp_flags']
+        if not flags or any(flag not in (0, 1) for flag in flags) or not any(flags):
+            raise AssertionError('DEBUG update must contain actual CP samples')
+        expected.update((*key, sample) for sample, flag in enumerate(flags) if flag)
+    if not expected or {key[0] for key in batch_keys} != set(required_stages):
+        raise AssertionError('Missing or unexpected optimizer update stage')
+    observed = set()
+    for row in observations:
+        if row['role'] == 'warmup':
+            continue
+        if row['role'] != 'update':
+            raise AssertionError('Unknown augmentation observation role')
+        key = (row['stage'], row['epoch'], row['batch'], row['sample'])
+        if key in observed:
+            raise AssertionError('Duplicate CP augmentation observation')
+        observed.add(key)
+        if not (row['augmented_CT_changed_voxels'] > 0 and row['augmented_target_added_tumor_voxels'] > 0):
+            raise AssertionError('CP effect absent after standard augmentation')
+    if observed != expected:
+        raise AssertionError(f'CP augmentation coverage mismatch: missing={sorted(expected-observed)}, unexpected={sorted(observed-expected)}')
+    return dict(expected=[list(key) for key in sorted(expected)], observed=[list(key) for key in sorted(observed)],
+                exact=True, warmup_records_excluded=sum(row['role'] == 'warmup' for row in observations))
+
+
 class IntegratedSmoke:
     def __init__(self,root,native,index,bank,names,donor_index,lock,checkpoint):
         from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
@@ -49,6 +89,8 @@ class IntegratedSmoke:
         self.training=self.dataset_class(self.directory,['liver_31'])
         self.validation=self.dataset_class(self.directory,[native['split']['outer_val'][0]])
         self.trace=[];self.augmentation_checks=[];self.contract=contract
+        self.update_batches=[];self.completed_stages=[]
+        self.capture_stage='initial';self.capture_role='warmup'
         self.rotation,self.dummy,self.initial_patch,self.mirrors=trainer.configure_rotation_dummyDA_mirroring_and_inital_patch_size()
         if self.dummy:raise AssertionError('True 3D transforms expected')
         self.shared=dict(is_cascaded=trainer.is_cascaded,foreground_labels=trainer.label_manager.foreground_labels,
@@ -72,8 +114,9 @@ class IntegratedSmoke:
         transform=trainer.get_training_transforms(patch,self.rotation,trainer._get_deep_supervision_scales(),self.mirrors,self.dummy,
                 use_mask_for_norm=trainer.configuration_manager.use_mask_for_norm,**self.shared)
         self.transform_description=repr(transform)
-        pending={}
+        pending={};capture={}
         def observed_transform(**sample):
+            sample_index=capture['sample_count'];capture['sample_count']+=1
             # The production transform receives the real pasted sample. A
             # no-paste counterfactual uses identical RNG only for verification;
             # its output never enters training and all RNG state is restored.
@@ -90,7 +133,7 @@ class IntegratedSmoke:
                     pending.clear()
                 changed=int(torch.count_nonzero(actual['image']!=original['image']))
                 added=int(torch.count_nonzero((actual['segmentation'][0]==2)&(original['segmentation'][0]!=2)))
-                self.augmentation_checks.append(dict(epoch=trainer.current_epoch,batch=loader.comparison_batch,
+                self.augmentation_checks.append(dict(**capture['identity'],sample=sample_index,
                      augmented_CT_changed_voxels=changed,augmented_target_added_tumor_voxels=added))
             return actual
         loader=RankedLoader.__new__(RankedLoader)
@@ -104,6 +147,7 @@ class IntegratedSmoke:
         loader._load_selected_source=lambda case,i:self.bank._load(self.names[i])
         apply=loader._apply_paste_to_crop
         def observe_paste(data,seg,*args):
+            if pending:raise AssertionError('Previous CP sample was not observed')
             pending.update(data=data.copy(),seg=seg.copy())
             return apply(data,seg,*args)
         loader._apply_paste_to_crop=observe_paste
@@ -114,6 +158,20 @@ class IntegratedSmoke:
             draws=iter([.1 if i==0 else .9,(self.di+.5)/len(self.names),.3,.4,.5])
             return SimpleNamespace(random=lambda:next(draws))
         loader._rng=debug_draws
+        generate=loader.generate_train_batch
+        def observed_batch():
+            if pending:raise AssertionError('Unobserved CP sample from previous batch')
+            # Capture the index before PairedLoaderMixin increments it. Return
+            # this identity with the actual batch consumed by train_step.
+            identity=dict(stage=self.capture_stage,role=self.capture_role,
+                          epoch=int(loader.comparison_epoch),batch=int(loader.comparison_batch))
+            capture.update(identity=identity,sample_count=0)
+            batch=generate()
+            if pending or capture['sample_count']!=len(batch['online_cp_applied']):
+                raise AssertionError('Incomplete per-sample transform observation')
+            batch['_DEBUG_augmentation_identity']=identity
+            return batch
+        loader.generate_train_batch=observed_batch
         val=PairedNativeLoader(self.validation,trainer.batch_size,patch,patch,trainer.label_manager,
                               transforms=self.val_transform,comparison_stage='validation')
         trainer._comparison_loaders=(loader,val);trainer._comparison_worker_counts=(0,0)
@@ -134,17 +192,27 @@ class IntegratedSmoke:
         if not torch.isfinite(batch['data']).all():raise AssertionError('Nonfinite augmented CT')
         self.trace.append(record);return record
 
+    def checked_train_step(self,batch,stage):
+        identity=batch['_DEBUG_augmentation_identity']
+        if (len(self.completed_stages)>=len(UPDATE_STAGES) or identity['stage']!=stage
+                or stage!=UPDATE_STAGES[len(self.completed_stages)]):
+            raise AssertionError('Optimizer update stage/order mismatch')
+        self.update_batches.append(dict(**identity,cp_flags=np.asarray(batch['online_cp_applied']).tolist()))
+        validate_augmentation_coverage(self.update_batches,self.augmentation_checks,
+                                      UPDATE_STAGES[:len(self.completed_stages)+1])
+        result=self.trainer.train_step(batch)
+        self.completed_stages.append(stage)
+        return result
+
     def run(self):
         from tools.v22_seg_state import snapshot,content_hash
         from tools.v22_online_checkpoint import file_hash
         trainer=self.trainer;self.setup_loaders()
         trainer.on_epoch_start();trainer.on_train_epoch_start()
+        self.capture_role='update'
         batch=next(trainer.dataloader_train);first=self.batch_record(batch)
-        if not all(r['augmented_CT_changed_voxels']>0 and r['augmented_target_added_tumor_voxels']>0
-                   for r in self.augmentation_checks if r['batch']==1):
-            raise AssertionError('CP effect did not survive standard augmentation in the training batch')
         before=content_hash(snapshot(trainer.network.state_dict()))
-        out=trainer.train_step(batch)
+        out=self.checked_train_step(batch,'initial')
         after=content_hash(snapshot(trainer.network.state_dict()))
         if before==after:raise AssertionError('Integrated CP update did not change model')
         trainer.on_train_epoch_end([out]);trainer.network.eval()
@@ -152,19 +220,21 @@ class IntegratedSmoke:
         checkpoint=Path(trainer.output_folder)/'checkpoint_latest.pth'
         print(json.dumps(dict(stage='integrated_CP_augmented_CUDA_update_saved',loss=float(out['loss']),input=first,
                              checkpoint=str(checkpoint))),flush=True)
-        def next_update():
-            trainer.on_train_epoch_start();batch=next(trainer.dataloader_train);record=self.batch_record(batch)
-            value=trainer.train_step(batch);torch.cuda.synchronize()
+        def next_update(stage):
+            self.capture_stage=stage;self.capture_role='warmup'
+            trainer.on_train_epoch_start()
+            self.capture_role='update'
+            batch=next(trainer.dataloader_train);record=self.batch_record(batch)
+            value=self.checked_train_step(batch,stage);torch.cuda.synchronize()
             state=snapshot(dict(model=trainer.network.state_dict(),optimizer=trainer.optimizer.state_dict(),
                     scaler=trainer.grad_scaler.state_dict(),gradients={n:p.grad for n,p in trainer.network.named_parameters() if p.grad is not None}))
             rng=dict(python=random.getstate(),numpy=np.random.get_state(),torch=torch.get_rng_state(),cuda=torch.cuda.get_rng_state_all())
             return dict(loss=float(value['loss']),input=record,state=state,state_hash=content_hash(state),rng_hash=content_hash(rng))
-        continuous=next_update();trainer.load_checkpoint(checkpoint)
+        continuous=next_update('continuous');trainer.load_checkpoint(checkpoint)
         self.setup_loaders()  # Recreate worker/loader state as in a fresh resume.
-        resumed=next_update()
-        if not all(r['augmented_CT_changed_voxels']>0 and r['augmented_target_added_tumor_voxels']>0
-                   for r in self.augmentation_checks if r['batch']==1):
-            raise AssertionError('CP effect absent from a next training batch')
+        resumed=next_update('resumed')
+        coverage=validate_augmentation_coverage(self.update_batches,self.augmentation_checks,UPDATE_STAGES)
+        if tuple(self.completed_stages)!=UPDATE_STAGES:raise AssertionError('Missing completed optimizer update')
         if continuous['input']!=resumed['input']:raise AssertionError('Resumed CP/standard augmentation batch differs')
         if continuous['rng_hash']!=resumed['rng_hash']:raise AssertionError('Resumed runtime RNG differs')
         differences={}
@@ -187,6 +257,7 @@ class IntegratedSmoke:
         return dict(debug=True,one_process=True,actual_production_train_step=True,standard_training_transforms=self.transform_description,
             actual_epoch_loader_reset=True,actual_validation_case=self.native['split']['outer_val'][0],batch_trace=self.trace,
             standard_augmentation_counterfactual=self.augmentation_checks,CP_survives_training_augmentation=True,
+            augmentation_coverage=coverage,optimizer_input_batches=self.update_batches,completed_update_stages=self.completed_stages,
             warm_loss=self.warm_loss,integrated_loss=float(out['loss']),continuous_loss=continuous['loss'],resumed_loss=resumed['loss'],
             next_input_exact=True,next_RNG_exact=True,next_state_exact=continuous['state_hash']==resumed['state_hash'],
             next_loss_exact=continuous['loss']==resumed['loss'],max_abs_differences=differences,

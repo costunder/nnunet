@@ -1,4 +1,14 @@
-# 최신 검토 — 실제 GNN/CP/표준 증강/native CUDA 학습/재개를 같은 프로세스로 연결
+# 최신 검토 — T01 DEBUG 대조 coverage 수정
+
+docs/v22_T01_coverage_review_20260928.md와 validation/v222_r6/T01_coverage_20260928_DEBUG.json부터 읽어 주세요. 원래 a2c98b6의 두 all 판정문으로 빈 목록/warmup-only 통과를 재현했습니다. tools/v22_integrated_smoke_debug.py의 validate_augmentation_coverage와 checked_train_step은 실제 optimizer 입력의 CP flags에서 기대 sample을 만들고, stage/epoch/batch/sample 대조 기록과 정확히 맞춥니다. warmup은 제외합니다. initial/continuous/resumed를 분리하고 train_step 전과 최종 반환 전에 검사합니다. tests/test_v22_integrated_coverage_debug.py의 음성 검사와 실제 호출 차단을 확인해 주세요.
+
+새18개 포함 회귀89개 및 실제 CT/CUDA 통합 재실행 통과. 세 update 대조 존재, 실제 GPU 기록을 변조한9조건 거부. 수정 전/후 batch trace·loss·state hash 동일, continuous/resumed 입력·model·SGD·gradient·scaler·RNG 일치. 실제 GPU tensor/CT bytes는 ZIP에 없으므로 로컬 실행 기록 대조와 독립 실행을 구분해 주세요.
+
+production core83/runtime20/online15는 불변입니다. support8/worker0/compile off/DEBUG admission/통제 CP draw/같은 process와 trainer 재개 한계도 그대로입니다. 서버 설치본·OS 신호, full-support G3, production 초기화·새 process·worker/compile G4, 효용 G5는 미검증입니다. 이 DEBUG 수정과 무관한 loss/graph/catalog 재설계나 cache 재생성은 하지 않았습니다. 기존 연구 위험도 해결됐다고 주장하지 않습니다.
+
+아래는 이전 검토 요청입니다.
+
+# 이전 검토 — 실제 GNN/CP/표준 증강/native CUDA 학습/재개를 같은 프로세스로 연결
 
 이전 누락이었던 한 프로세스 통합 smoke를 실행했습니다. docs/v22_integrated_smoke_20260928.md, validation/v222_r6/integrated_smoke_20260928_DEBUG.json, tools/v22_integrated_smoke_debug.py와 tools/verify_v22_online_actual_debug.py의 --integrated-segmentation 경로를 우선 검토해 주세요. 실제128후보 scoring과 RPC/CP, 표준 augmentation, native production train_step, epoch 저장/재개, 로더를 다시 만들어 생성한 다음 입력/update 비교입니다. 같은 증강 난수의 no-paste 대조로 실제 CP가 최종 CT와 tumor target에 남는지도 확인했습니다. 대조 출력은 학습하지 않으며 대조를 추가하기 전후 학습 입력/state hash도 같습니다.
 

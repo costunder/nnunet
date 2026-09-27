@@ -1,3 +1,10 @@
+## v2.2 — T01 DEBUG 대조 coverage 누락 수정 (2026-09-28)
+
+- 기존 `all([])` 통과를 원래 두 판정문으로 재현했다. 실제 optimizer 입력의 CP flags와 stage/epoch/batch/sample 대조 기록을 정확히 일치시키고 warmup·중복·누락을 거부한다. initial/continuous/resumed 각각 실제 train_step 호출 전에 검사한다.
+- 회귀89개(신규18개), 실제 CT/CUDA 통합 재실행 통과. 세 update 대조가 모두 존재하고 연속/재개 입력·상태·RNG 일치. 실제 결과 기록의 변조9조건도 거부했다. 수정 전 성공 실행과 입력/loss/state 동일.
+- production core83/runtime20/online15 불변. 모델/graph/loss/catalog/cache 변경 없음. full-support G3, production 초기화·worker·compile·새 프로세스 재개 G4, 효용 G5와 서버 설치본/신호 안전은 미검증으로 유지한다.
+- 상세: [T01 검토 및 검증](docs/v22_T01_coverage_review_20260928.md), `validation/v222_r6/T01_coverage_20260928_DEBUG.json`.
+
 ## v2.2 — 로컬 GPU 한 프로세스 통합 smoke 완료 (2026-09-28)
 
 - 실제128후보 GNN/RPC/CP → 표준 증강 → native CUDA 학습 → checkpoint → 로더 재생성/다음 update 재개를 연결해 통과. nnU-Net SGD 상태를 먼저 생성해 두 모델과 optimizer가 함께 있을 때 검사했다.
