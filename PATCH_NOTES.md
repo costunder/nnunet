@@ -1,4 +1,10 @@
-## v2.2 — C01 현재 모델 내용 검사 / artifact v5 (2026-09-27)
+## v2.2 — 독립 검토 종료 및 G3 준비 기록 (2026-09-27, 코드 변경 없음)
+
+- 사용자 제공 독립 검토에서 C01/B01–B03 수정 확인, 새 확정 버그 미재현. 구현은 `ea702fd` source/runtime으로 고정하며 artifact v5 유지.
+- 로컬 전체 cache는 이전 source, current-source cache는 DEBUG10개임을 index 조사로 확인. G3 full support/worst-profile/실제 episode 재개 검증은 미실행이다. [서버 준비 및 합격 기준](docs/v22_g3_transition_20260927.md).
+- 모델/학습/graph/추천 코드를 변경하거나 전체 학습을 시작하지 않았다. 문서 및 readiness 증거만 추가했다.
+
+## v2.2 — C01 현재 모델 내용 검사 / artifact v5 (2026-09-27, 이전 수정)
 
 - 모든 resume phase의 현재 model state_dict hash를 CPU snapshot에서 저장하고 복구 전에 검사한다. parameter와 persistent floating/integer buffer 포함. 추가 GPU 모델 복사 없음.
 - best/reference/teacher와 현재 optimization 모델이 다른 정상 상태는 허용한다. 별도 final-memory best 검사와 기존 B01–B03 유지. 과거 artifact 재표시 금지. 모델/graph/loss/donor/production 규모 불변.

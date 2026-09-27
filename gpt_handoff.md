@@ -1,4 +1,10 @@
-## 2026-09-27 최신 — C01 현재 모델 내용 hash / artifact v5
+## 2026-09-27 최신 — 독립 검토 종료, ea702fd 구현 고정, G3 준비
+
+- [검토 판정과 서버 준비 명령](docs/v22_g3_transition_20260927.md). 독립 검토에서 C01/B01–B03 수정 확인 및 새 확정 버그 미재현. 추가 hash 패치 없이 구현을 `ea702fd2b7b78faa855ff62a0f2488045a4d96da`의 source/runtime으로 고정한다. 이번에는 문서/readiness 기록만 변경했다.
+- 로컬 index 조사: 이전 전체 paired 14,102개는 source 불일치, 최신 source 일치 cache는 DEBUG 10개뿐. 현재 전체 production cache 준비 완료라고 말하지 않는다. 서버 cache는 직접 확인하지 않았다.
+- G3 full support/다양한 worst profiles/다른 next-batch episode 재개/coverage는 미완료. 기존 profile_DEBUG support6 또는 반복 batch probe로 대체하지 않는다. 서버 원본 CT로 준비하는 명령과 합격 기준을 문서에 기록했다. 전체 학습/원격 실행은 이번에 시작하지 않았다.
+
+## 2026-09-27 이전 — C01 현재 모델 내용 hash / artifact v5
 
 - [최신 수정·범위](docs/v22_current_model_integrity_20260927.md), `validation/v222_r6/current_model_integrity_20260927_DEBUG.json` 우선. 이미 만든 불변 CPU snapshot의 전체 model(parameter·buffer) hash를 저장하고 모든 resume phase에서 복구 전에 확인한다.
 - optimization 현재 모델을 best/reference/teacher와 비교하지 않는다. final-memory best 검사는 별도로 유지한다. 모델·graph·loss·donor·production 규모 불변.

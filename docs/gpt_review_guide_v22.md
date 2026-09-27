@@ -1,5 +1,7 @@
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
+**최신 상태: ea702fd 독립 검토에서 C01 해결·새 확정 버그 미재현을 확인했다.** 이후 변경은 문서/readiness 조사뿐이며 구현 source/runtime은 ea702fd 그대로다. `docs/v22_g3_transition_20260927.md`와 `validation/v222_r6/g3_baseline_ea702fd_20260927.json`에 현재 cache 상태와 다음 G3 기준을 기록했다. 추가 hash 수정을 요구하는 단계로 오인하지 않는다. G3 실행/전체 성능 검증은 아직 미완료다.
+
 **현재 우선 검토 대상은 C01 / artifact v5다.** `docs/v22_current_model_integrity_20260927.md`와 `validation/v222_r6/current_model_integrity_20260927_DEBUG.json`을 먼저 읽는다. 불변 CPU model snapshot의 parameter/buffer hash를 저장하고 모든 resume 단계에서 확인한다. 현재 optimization 모델과 best/reference/teacher를 같게 만드는 변경은 없다. 아래 v4/B01–B03는 이전 revision 기록이다. 실제 DEBUG·CPU fixture·미완료 G3/G4/G5를 구별한다.
 
 **직전 B01–B03 artifact v4 보강판 기록:** `docs/v22_resume_integrity_20260927.md`와 `validation/v222_r6/resume_integrity_20260927_DEBUG.json`을 먼저 읽는다. final-memory model/best/prefix, frozen cluster teacher/plan, CUDA RNG의 완전성을 검사한다. 82회귀 및 실제 CT DEBUG의 gradient/Adam/RNG·경계 복구·portable 검증 범위를 확인한다. earlier-best는 CPU fixture, 같은 episode는 실제 CT batch 재사용 probe라는 제한을 명시했다. G3/G4/G5 미완료. 아래 R01–R06 설명은 이전 수정이며 최신 v4 기록을 우선한다.
