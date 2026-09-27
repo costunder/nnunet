@@ -1,6 +1,8 @@
 # v2.2 독립 재검토 요청 — observed_rank_v1 오류 수정본
 
-이번 대상은 6a054de의 실제 수정 및 그 이후 전달 문서 정리본입니다. 정확한 기준 commit은 manifest.json을 확인하세요. 이전 검토에서 확인된 calibration list 오류, donor anchor 이동, 동점 순위, 외부 best 파일 의존 및 artifact/환자/placement 검증을 수정했습니다. 아래 주장을 승인하지 말고 실제 코드와 반례로 재검증해 주세요.
+최신 대상은 아래 이전 수정에 더해 R01–R06를 보강한 artifact v3/content binding 수정본입니다. 정확한 commit은 manifest.json을 확인하세요. docs/v22_rereview_repairs_20260927.md 및 validation/v222_r6/rereview_repairs_20260927_DEBUG.json을 먼저 읽고 Adam mapping/hash·phase/best/cursor·calibration reuse·모든 후보 frame/content·workers0·invalid empty를 우선 재검증해 주세요. 72회귀, 실제 process 연속/중단재개 model·Adam·모든 RNG 동일, 실제2,368voxel raw paste 및 workers0/1/2/4/8 일치, 잘못된 calibration7종 process 거부를 기록했습니다. 전체규모/G3·native/G4·효용/G5는 여전히 미완료입니다.
+
+이전 단계는 6a054de의 실제 수정 및 cb3154c 전달 문서 정리본입니다. 당시 calibration list 오류, donor anchor 이동, 동점 순위, 외부 best 파일 의존 및 artifact/환자/placement 검증을 수정했습니다. 아래 이전 주장과 최신 주장을 구분하고 코드와 반례로 재검증해 주세요.
 
 먼저 docs/v22_review_repairs_20260927.md와 validation/v222_r6/review_repairs_20260927_DEBUG.json을 읽으세요. 64회귀, 실제 process DEBUG 저장→재개→1epoch 완료, 외부 best 읽기 금지 복구 및 실제 CT 2,368 voxel footprint 검사를 했습니다. 전체 코호트/G3, native online CP/G4, 전체 성능/G5는 미완료입니다. 이전 physical32·전체 support 결과를 이번 geometry revision의 증거로 사용하지 마세요.
 

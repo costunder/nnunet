@@ -93,7 +93,7 @@ class ProcessOwnershipTests(unittest.TestCase):
         self.assertEqual(output_argument(['python','tools/run_v222_process_runtime.py','--output=/old/training']),'/old/training')
 
     def test_exact_parent_worker_allowed_but_source_parent_not_exempt(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             run=Path(tmp);(run/'worker.json').write_text(json.dumps(dict(pid=123,created_at=456)))
             parent=Mock(pid=123);parent.create_time.return_value=456;parent.status.return_value='running'
             parent.cmdline.return_value=['python','tools/run_v222_server.py','--worker','--output',str(run)]
@@ -108,7 +108,7 @@ class ProcessOwnershipTests(unittest.TestCase):
                     assert_source_runs_idle(run/'paired_cache/index.json',output=run/'training')
 
     def test_actual_parent_child_source_cache_admission(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);helper=root/'run_v222_server.py';run=root/'run';run.mkdir()
             child=(f'import sys;sys.path.insert(0,{str(ROOT)!r});'
                 'from tools.v222_resume_guard import assert_source_runs_idle;'
@@ -138,7 +138,7 @@ class CalibrationTests(unittest.TestCase):
                     yield Mock(graph=Mock(num_nodes=17,num_edges=51))
             def make(self,*args):raise AssertionError('Calibration must use production stream')
             def close(self):pass
-        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp,patch.object(producer,'ProcessPairLoader',Loader),patch.object(producer,'close_producers'):
+        with tempfile.TemporaryDirectory() as tmp,patch.object(producer,'ProcessPairLoader',Loader),patch.object(producer,'close_producers'):
             Loader.producer_count=4
             selected=producer.calibrate_workers(Mock(),[0,1],Path(tmp))
             self.assertIn(selected,(0,2,4,8))

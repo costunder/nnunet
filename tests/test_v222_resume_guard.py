@@ -13,7 +13,8 @@ ROOT=Path(__file__).resolve().parents[1]/'work'
 
 class GuardTests(unittest.TestCase):
     def test_exact_windows_venv_parent_only(self):
-        import sys
+        import sys,os
+        if os.name!='nt':self.skipTest('Windows redirector is Windows-only')
         from tools.v222_resume_guard import is_current_windows_redirector
         executable=Path(sys.executable).resolve();cfg=executable.parent.parent/'pyvenv.cfg'
         if not cfg.is_file():self.skipTest('Windows venv fixture not available')
@@ -29,7 +30,7 @@ class GuardTests(unittest.TestCase):
             self.assertFalse(is_current_windows_redirector(parent,999))
 
     def test_live_recorded_source_worker_is_rejected(self):
-        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             (root/'worker.json').write_text(json.dumps(dict(pid=123,created_at=456)))
             p=Mock(pid=123);p.create_time.return_value=456;p.status.return_value='running'
@@ -38,7 +39,7 @@ class GuardTests(unittest.TestCase):
                     assert_source_runs_idle(root/'paired_cache/index.json',root/'training/checkpoint_latest.pt')
 
     def test_pid_reuse_and_dead_worker_are_not_false_blockers(self):
-        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             (root/'worker.json').write_text(json.dumps(dict(pid=123,created_at=456)))
             reused=Mock(pid=123);reused.create_time.return_value=999
@@ -49,7 +50,7 @@ class GuardTests(unittest.TestCase):
                     self.assertTrue(assert_source_runs_idle(resume=root/'training/checkpoint_latest.pt')['source_runs_idle'])
 
     def test_orphan_trainer_with_exact_output_is_rejected(self):
-        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp).resolve()
             p=Mock(pid=123,info=dict(name='python3.10'))
             p.username.return_value='test-user';p.cwd.return_value=str(root)
@@ -63,7 +64,7 @@ class GuardTests(unittest.TestCase):
                         assert_source_runs_idle(resume=root/'training/checkpoint_latest.pt')
 
     def test_unrelated_python_and_other_user_are_not_touched(self):
-        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp).resolve();own=Mock();own.username.return_value='test-user'
             unrelated=Mock(pid=123,info=dict(name='python'));unrelated.username.return_value='test-user'
             unrelated.cmdline.return_value=['python','unrelated.py','--output',str(root/'training')]
@@ -75,7 +76,7 @@ class GuardTests(unittest.TestCase):
                 p.terminate.assert_not_called();p.kill.assert_not_called();p.send_signal.assert_not_called()
 
     def test_busy_source_never_launches_next_training_and_records_failure(self):
-        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             runner=Mock()
             with patch('tools.run_v222_server.assert_source_runs_idle',side_effect=RuntimeError('source still active')):
                 with self.assertRaisesRegex(RuntimeError,'source still active'):

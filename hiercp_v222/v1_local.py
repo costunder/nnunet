@@ -121,7 +121,7 @@ def pair_record(target, source, donor_spacing, prepared, center, organ, depth, b
     source_branch['footprint_voxels'] = int(source.voxel_count)
     target_branch = branch(nodes, edges)
     target_branch['transform'] = torch.from_numpy(transform)
-    return dict(format=RECORD_FORMAT, case_id=target.paths.case_id,
+    record=dict(format=RECORD_FORMAT, case_id=target.paths.case_id,
         placement=placement.metadata(),
         donor_case_id=donor_id, component_id=int(source.component_id), center=list(map(int, center)),
         seed=base['seed'], graph_config=gc.to_dict(), center_masking=False,
@@ -129,6 +129,8 @@ def pair_record(target, source, donor_spacing, prepared, center, organ, depth, b
         source_patch=torch.from_numpy(prepared.source_patch),
         target_patch=torch.from_numpy(fields.model_input),
         source_local=source_branch, target_local=target_branch)
+    from .record_binding import bind_record
+    return bind_record(record,target)
 
 
 def materialize(record, *, epoch=0, view=0):

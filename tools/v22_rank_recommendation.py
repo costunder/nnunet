@@ -4,6 +4,7 @@ This is the paired ranking/selection API. Native nnU-Net event integration is
 still separate; no synthetic score or annotation-based score override exists.
 """
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 import numpy as np
 import torch
 from tools.v222_review_contracts import grouped_support
@@ -86,23 +87,33 @@ def recommend(network,records,memory,*,query_group,batch_size,workers,recipient_
     """
     from tools.v22_candidate_order import record_key
     from hiercp_v222.placement import PlacementSpec,validate_grid
-    if network.training or batch_size<1 or workers<1:raise ValueError('Eval model and measured batch/workers required')
+    if network.training or type(batch_size)!=int or batch_size<1 or type(workers)!=int or workers<0:
+        raise ValueError('Eval model and measured nonnegative batch/worker policy required')
     identities=getattr(network,'ranking_identities',None)
     split=getattr(network,'ranking_split',None)
     if identities is None or split is None:raise ValueError('Verified ranking model identities/split required')
+    if recipient_case is None:raise ValueError('Explicit recipient CT required even for empty proposals')
+    validate_grid(recipient_case)
+    recipient=recipient_case.paths.case_id
+    if recipient not in identities['cases'] or query_group!=identities['cases'][recipient]['patient_group']:
+        raise ValueError('Recipient/query group mismatch')
+    if not np.isfinite(min_liver_coverage) or not 0<min_liver_coverage<=1:
+        raise ValueError('Finite liver coverage in (0,1] required')
     if not records:
         if placements:raise ValueError('Placement/record count mismatch')
         return dict(selected_index=None,keep_original=True,ranked_candidates=[],score_override=False,filter_after_model_scoring=True)
     if len(placements)!=len(records) or not all(isinstance(p,PlacementSpec) for p in placements):
         raise ValueError('One verified PlacementSpec per graph required')
-    recipient=records[0]['case_id']
-    if identities is None or recipient not in identities['cases']:raise ValueError('Recipient needs a verified identity manifest')
-    if query_group!=identities['cases'][recipient]['patient_group']:raise ValueError('Recipient/query group mismatch')
     first=placements[0]
-    validate_grid(recipient_case)
-    if recipient_case.paths.case_id!=recipient or tuple(recipient_case.spacing)!=first.spacing or not np.array_equal(recipient_case.image_affine,np.asarray(first.affine)):
-        raise ValueError('Recipient native frame differs from graph/paste placement')
+    from hiercp_v222.record_binding import recipient_binding,validate_record
+    binding=recipient_binding(recipient_case)
+    event={k:v for k,v in first.metadata().items() if k!='center'}
     for record,placement in zip(records,placements):
+        if placement.recipient!=recipient or tuple(recipient_case.spacing)!=placement.spacing or not np.array_equal(recipient_case.image_affine,np.asarray(placement.affine)):
+            raise ValueError('Recipient native frame differs from graph/paste placement')
+        if {k:v for k,v in placement.metadata().items() if k!='center'}!=event:
+            raise ValueError('Fixed CP event donor/transform/CT/mask/anchor/frame differs')
+        validate_record(record,binding)
         if record.get('placement')!=placement.metadata():raise ValueError('Scored graph and paste placement differ')
         if (record['case_id']!=placement.recipient or record['donor_case_id']!=placement.donor or
             record['component_id']!=placement.component or tuple(record['center'])!=placement.center):
@@ -118,10 +129,13 @@ def recommend(network,records,memory,*,query_group,batch_size,workers,recipient_
     with torch.autocast(device.type,enabled=device.type=='cuda',dtype=torch.bfloat16):
         state=network.prepare_support(*support)
         values=[]
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        # Training workers=0 means no decode threads. Keep graph GPU batching;
+        # only CPU materialization is serial for this explicit measured policy.
+        with (ThreadPoolExecutor(max_workers=workers) if workers else nullcontext()) as pool:
             for start in range(0,len(records),batch_size):
                 part=records[start:start+batch_size]
-                payload=collate(list(zip(pool.map(materialize,part),range(start,start+len(part))))).to(device)
+                mapped=pool.map(materialize,part) if pool is not None else map(materialize,part)
+                payload=collate(list(zip(mapped,range(start,start+len(part))))).to(device)
                 logits=network.predict_embeddings(network.local(payload),state)['logits'].float()
                 values.append(logits[:,1]-logits[:,0])
         scores=torch.cat(values).cpu().numpy()

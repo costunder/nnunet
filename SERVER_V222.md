@@ -1,5 +1,9 @@
 # v2.22 r6 서버 실행: 코드만 Git으로 이동
 
+## 2026-09-27 재검토 후 — artifact v3 / graph content binding
+
+[R01–R06 수정](docs/v22_rereview_repairs_20260927.md)으로 Adam·cursor·calibration 및 graph 내용 검증을 강화했다. 이전 artifact v2나 content binding이 없는 cache를 최신으로 재표시하지 않는다. 새 계약으로 생성한 동일 source/runtime의 checkpoint만 재개하며, calibration runtime이 다르면 재측정한다. 아래 명령들은 해당 과거 revision 기록이며 최신 전체 규모 검증/G4/G5가 완료됐다는 의미가 아니다.
+
 ## 2026-09-27 추가 수정 — 기존 geometry 캐시 재사용 중지
 
 이번 explicit anchor 수정은 graph geometry 계약을 바꾼다. **아래 과거 명령의 `--cache ...r6_scanfix...` 또는 이전 checkpoint를 새 코드에 그대로 넣어 실행하지 않는다.** 원본 CT/GT에서 새 geometry graph를 생성해야 한다. 이전 결과/가중치/cache는 보존하고, 새 계약의 checkpoint만 같은 계약에서 재개한다. provenance를 이름만 바꾸는 migration은 금지한다.

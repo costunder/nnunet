@@ -1,5 +1,7 @@
 # v2.2 현재 코드 검토 지도 — observed_rank_v1 검토 후 수정본
 
+**최신은 R01–R06 보강판이다.** `docs/v22_rereview_repairs_20260927.md` 및 `validation/v222_r6/rereview_repairs_20260927_DEBUG.json`이 아래 이전 수정보다 우선한다. artifact=`observed_rank_artifact_v3`, graph binding=`paired_epoch_view_seed_content_v1`. Adam/cursor/calibration 검사는 `tools/v22_resume_state.py`, `tools/v22_calibration.py`, 내용 결속은 `hiercp_v222/record_binding.py`에 추가됐다. 72회귀·실제GPU model/Adam/RNG 재개·2,368voxel raw paste 검증이 최신 증거이며 G3/G4/G5는 미완료다.
+
 이 파일은 현재 검토 경로의 지도다. ZIP manifest의 base_commit이 정확한 소스 기준이며, untracked로 표시된 보조/과거 소스는 GitHub 커밋에 포함되지 않을 수 있다. 현재 작업 중인 root code.txt는 사용자 파일이므로 변경하거나 포함하지 않는다. CT·마스크·그래프 캐시·가중치는 전달하지 않는다.
 
 ## 실행 경로와 버전 구분
@@ -25,7 +27,7 @@ donor는 inner-train에서 query 환자 그룹을 제외해 seed로 배정된다
 
 ## 최신 변경과 반드시 확인할 한계
 
-`docs/v22_review_repairs_20260927.md`가 최신 수정 명세다. geometry=`paired_explicit_anchor_symmetric_padding_v2`, artifact=`observed_rank_artifact_v2`. `hiercp_v222/placement.py`와 `hiercp_v22/data.py`가 explicit anchor/padding/CT·GT grid/변환 마스크를 다룬다. `tools/v22_artifacts.py`는 유형별 checkpoint와 CPU best/support 결속, `v22_candidate_order.py`는 GT 독립 동점, `v22_runtime_receipts.py`는 calibration schema를 다룬다.
+`docs/v22_review_repairs_20260927.md`는 이전 수정 명세다. geometry=`paired_explicit_anchor_symmetric_padding_v2`는 유지하며 artifact는 당시 v2에서 현재 v3로 보강했다. `hiercp_v222/placement.py`와 `hiercp_v22/data.py`가 explicit anchor/padding/CT·GT grid/변환 마스크를 다룬다. `tools/v22_artifacts.py`는 유형별 checkpoint와 CPU best/support 결속, `v22_candidate_order.py`는 GT 독립 동점, `v22_runtime_receipts.py`는 calibration schema를 다룬다.
 
 `docs/v22_observed_ranking_20260927.md`는 이전 목적 정의의 기록이며 캐시 재사용·이전 검증 수치는 최신 수정 명세로 대체한다. `tools/v22_rank_recommendation.py:recommend`는 동일 recipient/donor 후보를 모두 scoring한 뒤 PlacementSpec의 전체 mask로 paste 유효성만 검사한다. 새 API를 nnU-Net 온라인 CP 이벤트에 연결하는 부분은 아직 미완료다. 기존 legacy `v1_local.score_candidates`가 자동 변경됐다고 가정하지 않는다.
 

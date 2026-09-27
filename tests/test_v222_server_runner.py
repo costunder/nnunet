@@ -20,7 +20,7 @@ class ServerRunnerTests(unittest.TestCase):
 
     def test_failure_records_stage_and_does_not_start_training(self):
         (ROOT/'work').mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp);seen=[];env={'CUDA_VISIBLE_DEVICES':'existing-allocation'}
             def runner(command,**kwargs):
                 seen.append(command)
@@ -34,7 +34,7 @@ class ServerRunnerTests(unittest.TestCase):
 
     def test_sequential_success_has_stage_receipts(self):
         (ROOT/'work').mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=ROOT/'work') as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp);seen=[]
             def runner(command,**kwargs):
                 seen.append(command);return subprocess.CompletedProcess(command,0)

@@ -1,4 +1,10 @@
-## v2.2 — 추가 독립 검토의 실행·기하·artifact 오류 수정 (2026-09-27)
+## v2.2 — 재검토 R01–R06 검증 계약 보강 (2026-09-27)
+
+- Adam moment/순서/shape/유한값/step/hash 및 best·phase·cursor 일관성을 검증한다. artifact v3; 이전 checkpoint를 metadata만 바꿔 재개하지 않는다.
+- calibration reuse의 의미/runtime/실제 측정 목록을 검증한다. 모든 placement frame 및 recipient CT·간 union·graph payload를 결속하고 workers0·정상 empty/invalid 요청을 구분했다.
+- 실제 process 연속/재개 model·Adam·모든 RNG·support bitwise 일치, 실제 CT2,368voxel raw paste 및 workers0/1/2/4/8 동일성 확인. production 설계·규모 변경 없음. G3/G4/G5 미완료. [상세 기록](docs/v22_rereview_repairs_20260927.md).
+
+## v2.2 — 추가 독립 검토의 실행·기하·artifact 오류 수정 (2026-09-27, 이전 상태)
 
 - process calibration의 list→dict 예외, donor anchor 이동, 여러 양성 동점의 순위 오류를 수정했다. 그래프·전체 footprint 제외·raw paste는 동일 PlacementSpec을 확인한다.
 - 외부 epoch 파일 대신 rolling checkpoint 내부의 불변 CPU best snapshot을 사용한다. resume/epoch/final 유형과 support identity·coverage·모델 결속 검사를 추가했다.

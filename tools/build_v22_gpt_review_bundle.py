@@ -14,10 +14,13 @@ sys.path.insert(0,str(ROOT))
 
 REQUEST=(ROOT/'docs/gpt_review_request_v22.txt').read_text(encoding='utf-8')
 GUIDE=(ROOT/'docs/gpt_review_guide_v22.md').read_text(encoding='utf-8')
+GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_rereview_repairs_20260927.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_review_repairs_20260927.md').read_text(encoding='utf-8')
 GUIDE+='\n\n---\n\n'+(ROOT/'docs/v22_observed_ranking_20260927.md').read_text(encoding='utf-8')
 
 ACTIVE=[
+ 'hiercp_v222/record_binding.py','tools/v22_resume_state.py','tools/v22_calibration.py',
+ 'tests/test_v22_rereview.py','tools/verify_v22_rereview_continuation_debug.py','tools/verify_v22_calibration_rejection_debug.py',
  'hiercp_v222/placement.py','hiercp_v22/data.py','tools/v22_artifacts.py',
  'tools/v22_candidate_order.py','tools/v22_runtime_receipts.py','tools/v22_pair_audit.py',
  'tools/v22_debug_profile.py','tests/test_v22_review_repairs.py',
@@ -122,7 +125,8 @@ def main():
     frames=[frame(name,blobs[name]) for name in code_names]
     documents['03_ALL_CODE.txt']=header+''.join(frames)
     documents['03_ACTIVE_PATH_CODE.txt']=header+''.join(frame(name,blobs[name]) for name in ACTIVE)
-    evidence_names=[n for n in ('docs/v22_review_repairs_20260927.md',
+    evidence_names=[n for n in ('docs/v22_rereview_repairs_20260927.md','validation/v222_r6/rereview_repairs_20260927_DEBUG.json',
+        'docs/v22_review_repairs_20260927.md',
         'validation/v222_r6/review_repairs_20260927_DEBUG.json','docs/v22_review_intake_20260927.md',
         'docs/v22_observed_ranking_20260927.md','docs/v222_independent_review_response_20260927.md',
         'gpt_handoff.md','PATCH_NOTES.md','SERVER_V222.md','REFERENCES.md',
@@ -150,7 +154,7 @@ def main():
                             index.append(f'  - `{name}:{method.lineno}` — `{node.name}.{method.name}`\n')
     documents['SYMBOL_INDEX.md']=''.join(index)
     metadata=dict(format='v22_gpt_review_source_snapshot_v1',generated_utc=datetime.now(timezone.utc).isoformat(),
-        base_commit=commit,review_release='v2.2 observed_rank_v1 + stride4 + explicit anchor geometry v2 + artifact v2; reviewed fixes',
+        base_commit=commit,review_release='v2.2 observed_rank_v1 + stride4 + anchor geometry v2 + artifact v3 + graph content binding; R01-R06 repairs',
         source_scope='Tracked source plus explicitly selected current untracked source in named code/docs/config directories',
         excludes=['Current root code.txt (existing user file preserved)','CT/masks','work/cache/checkpoints','environments','Git database'],
         source_count=len(blobs),files=manifest,other_exclusions=excluded,
@@ -161,7 +165,7 @@ def main():
     documents['manifest.json']=json.dumps(metadata,ensure_ascii=False,indent=2)+'\n'
     documents['00_START_HERE.txt']=f'''GPT 교차 검증용 v2.2 계열 파일 묶음
 현재 대상: v2.2 observed_rank_v1 + stride4; paired v1 L0 + L1/L2
-최신 수정: explicit anchor geometry v2 / typed artifact v2 / portable CPU best snapshot.
+최신 수정: artifact v3 / Adam·cursor·calibration admission / graph content binding / workers0. Anchor geometry v2 유지.
 기존 geometry cache/checkpoint는 그대로 재사용할 수 없습니다. 최신 수정 기록을 먼저 읽으세요.
 관측 종양 순위 학습 → 모든 주석 종양과 paste 겹침 제외. 온라인 nnU-Net CP 통합은 미완료.
 기준 commit: {commit}

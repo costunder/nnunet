@@ -101,15 +101,17 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
         raise ValueError('Ranking trainer requires the corrected stride4 encoder adapter')
     optimizer=torch.optim.AdamW(net.parameters(),lr=base['training']['lr'],weight_decay=base['training']['weight_decay'],fused=base['training']['fused_optimizer'])
     settings=configuration()
+    from tools.v22_resume_state import optimizer_contract
     loaded=torch.load(resume,map_location='cpu',weights_only=False) if resume else None
     run_id=loaded['run_id'] if loaded is not None else uuid.uuid4().hex
     identity=dict(training_objective=OBJECTIVE,ranking_contract=settings,feature_coordinates='stride4',
                   artifact_contract=ARTIFACT_CONTRACT,geometry_contract=GEOMETRY_CONTRACT,run_id=run_id,
-                  support_task_contract='patient_group_v1',config=cfg,base=base,source_identity=ex.provenance(),cache_sha256=ex.sha(cache),debug=bool(debug))
+                  support_task_contract='patient_group_v1',config=cfg,base=base,source_identity=ex.provenance(),cache_sha256=ex.sha(cache),debug=bool(debug),
+                  optimizer_contract=optimizer_contract(net,optimizer))
     ex.write_new(root/'initialization.json',dict(**identity,parameters=sum(p.numel() for p in net.parameters()),
         train_samples=len(dataset),validation_samples=len(validation),subset=bool(debug),gpu=torch.cuda.get_device_name()))
     if resume:
-        validate_artifact(loaded,'resume',allow_debug=debug,identity=identity)
+        validate_artifact(loaded,'resume',allow_debug=debug,identity=identity,resume_rows=dataset.rows)
         if loaded['format']!=RESUME_FORMAT or any(loaded.get(k)!=v for k,v in identity.items()):
             raise ValueError('Resume source/cache/config mismatch; no silent state conversion')
         net.load_state_dict(loaded['model']);optimizer.load_state_dict(loaded['optimizer'])
@@ -124,18 +126,14 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
             best=float('inf'),best_path=None,release_unused=release_unused,training_calibrated=False)
         ex.fresh_epoch(state)
         if calibration:
-            # Execution-only transfer changes permit use of previously measured physical batch.
+            from tools.v22_calibration import validate_calibration
+            from tools.run_v222_process_runtime import runtime_identity
             previous=Path(calibration);old=json.loads((previous/'training_started.json').read_text(encoding='utf-8'))
-            if old.get('artifact_contract')!=ARTIFACT_CONTRACT or old.get('geometry_contract')!=GEOMETRY_CONTRACT:
-                raise ValueError('Calibration geometry/artifact contract differs')
-            if old.get('source_identity')!=identity['source_identity'] or old.get('cache_sha256')!=identity['cache_sha256'] or old.get('gpu')!=torch.cuda.get_device_name():
-                raise ValueError('Calibration source/cache/device changed')
-            if old.get('ranking_contract')!=settings:raise ValueError('Ranking needs matching loss calibration')
-            if old['config']!=cfg or old['base']!=base or old['parameters']!=sum(p.numel() for p in net.parameters()):
-                raise ValueError('Calibration architecture mismatch')
-            if old['train_samples']!=len(dataset) or old['val_samples']!=len(validation):raise ValueError('Calibration cohort mismatch')
-            for filename in ('loader_calibration.json','training_batch_calibration.json','memory_batch_calibration.json'):
-                ex.write_new(root/filename,json.loads((previous/filename).read_text(encoding='utf-8')))
+            reports={name:json.loads((previous/name).read_text(encoding='utf-8')) for name in
+                     ('loader_calibration.json','training_batch_calibration.json','memory_batch_calibration.json')}
+            validate_calibration(old,reports,identity=identity,parameters=sum(p.numel() for p in net.parameters()),
+                train_samples=len(dataset),val_samples=len(validation),gpu=torch.cuda.get_device_name(),runtime=runtime_identity())
+            for filename,content in reports.items():ex.write_new(root/filename,content)
             state.update(batch=old['physical_batch'],memory_batch=old['memory_physical_batch'],workers=old['workers'],training_calibrated=True)
             ex.write_new(root/'calibration_reuse.json',dict(previous=str(previous.resolve()),
                 scope='same full model/graphs/cohort and physical batch; consecutive execution timings recorded anew',
@@ -150,7 +148,9 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
         saver.identity['best_snapshot']=loaded['best_snapshot']
     if loaded is not None:ex.restore_rng(loaded['rng']);del loaded
     saver.save(state)
+    from tools.run_v222_process_runtime import runtime_identity
     report=dict(format=CHECKPOINT_FORMAT,**identity,parameters=sum(p.numel() for p in net.parameters()),
+        calibration_runtime_sha256=runtime_identity(),
         trainable_parameters=sum(p.numel() for p in net.parameters() if p.requires_grad),L0_parameters=sum(p.numel() for p in net.local.parameters()),
         physical_batch=state['batch'],effective_batch=state['batch'],gradient_accumulation=1,
         memory_physical_batch=state['memory_batch'],epochs=cfg['gnn_epochs'],train_samples=len(dataset),train_usage_ratio=1.,val_samples=len(validation),
@@ -253,6 +253,7 @@ def train(cache,output,*,resume=None,calibration=None,release_unused=True,debug=
             ex.save_torch_new(path,dict(format=CHECKPOINT_FORMAT,completed_epochs=state['epoch']+1,
                 artifact_kind='epoch',
                 state_dict=ex.tree_to(net.state_dict(),'cpu'),optimizer=ex.tree_to(optimizer.state_dict(),'cpu'),
+                optimizer_sha256=tree_hash(optimizer.state_dict()),
                 epoch=state['epoch']+1,step=state['step'],**identity))
             ex.write_new(root/f'ranking_epoch_{state["epoch"]+1:03d}.json',net.ranking_validation_report)
             if metrics['ranking_pairwise_loss']<state['best']:

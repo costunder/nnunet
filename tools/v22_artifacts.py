@@ -4,7 +4,7 @@ import json
 import math
 import torch
 
-ARTIFACT_CONTRACT='observed_rank_artifact_v2'
+ARTIFACT_CONTRACT='observed_rank_artifact_v3'
 
 
 def tree_hash(value):
@@ -71,7 +71,7 @@ def validate_memory(memory,rows,identities,split,donor_pool):
         if group==donor_group:raise ValueError('Self-patient donor in support')
 
 
-def validate_artifact(value,kind,*,allow_debug=False,identity=None):
+def validate_artifact(value,kind,*,allow_debug=False,identity=None,resume_rows=None):
     from hiercp_v222.v1_cache import provenance
     from hiercp_v222.contracts import validate_identities
     from hiercp_v222.placement import GEOMETRY_CONTRACT
@@ -87,6 +87,7 @@ def validate_artifact(value,kind,*,allow_debug=False,identity=None):
                {'state_dict','completed_epochs','execution_policy_runtime_sha256'})
     if kind=='final':required|={'selected_epoch','memory','support_records','identities','split','donor_pool','raw_records',
                               'selected_model_sha256','memory_model_sha256','memory_sha256'}
+    if kind in ('resume','epoch'):required|={'optimizer_contract','optimizer_sha256'}
     if not isinstance(value,dict) or not required<=value.keys():
         raise ValueError(f'Incomplete {kind} artifact: {sorted(required-set(value))}')
     if value.get('artifact_contract')!=ARTIFACT_CONTRACT or value.get('artifact_kind')!=kind:
@@ -130,10 +131,16 @@ def validate_artifact(value,kind,*,allow_debug=False,identity=None):
             if state['best_snapshot_meta']!={k:value['best_snapshot'][k] for k in ('epoch','metric','model_sha256')}:
                 raise ValueError('Best snapshot cursor mismatch')
         elif state.get('best_path') is not None:raise ValueError('External-only best checkpoint requires explicit migration')
+        from tools.v22_resume_state import validate_adam,validate_resume_state
+        validate_adam(value['optimizer'],value['optimizer_contract'],state['step'],value['optimizer_sha256'])
+        validate_resume_state(value,resume_rows)
         return value
     epochs=value.get('completed_epochs',0)
     if not isinstance(epochs,int) or not 1<=epochs<=value['config']['gnn_epochs']:raise ValueError('Invalid completed epoch')
-    if kind=='epoch':return value
+    if kind=='epoch':
+        from tools.v22_resume_state import validate_adam
+        validate_adam(value['optimizer'],value['optimizer_contract'],value['step'],value['optimizer_sha256'])
+        return value
     if epochs!=value['config']['gnn_epochs'] or not 1<=value.get('selected_epoch',0)<=epochs:raise ValueError('Incomplete final artifact')
     validate_identities(value['identities'],value['split'])
     validate_memory(value['memory'],value['support_records'],value['identities'],value['split'],value['donor_pool'])

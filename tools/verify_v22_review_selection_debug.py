@@ -29,7 +29,12 @@ def main(cache=None,checkpoint=None,output=None):
     source=next(s for s,_ in sources(donor,base['cache']['source_pad'],20) if s.component_id==component)
     prepared=prepare_donor(donor,source,dorgan,ddepth,base)
     transformed,_=donor_in_target_spacing(source,donor.spacing,target.spacing)
-    placements=[placement_spec(target,transformed,r['center'],donor_id) for r in rows]
+    # Additional explicit DEBUG positive-paste control. This is not a production
+    # proposal rule or a donor/position resampling policy.
+    interior=tuple(map(int,np.unravel_index(np.argmax(depth),depth.shape)))
+    centers=[tuple(r['center']) for r in rows]+[interior]
+    if len(set(centers))!=len(centers):raise ValueError('Distinct DEBUG paste-control center required')
+    placements=[placement_spec(target,transformed,c,donor_id) for c in centers]
     def graph(p):return pair_record(target,source,donor.spacing,prepared,p.center,organ,depth,base,donor_id=donor_id,placement=p)
     with ThreadPoolExecutor(max_workers=2) as pool:records=list(pool.map(graph,placements))
     network,memory,saved=load_checkpoint(checkpoint,allow_debug=True)
@@ -37,6 +42,11 @@ def main(cache=None,checkpoint=None,output=None):
     options=dict(query_group=group,batch_size=saved['physical_batch'],workers=saved['workers'],
                  placements=placements,min_liver_coverage=base['generation']['min_liver_coverage'])
     original=recommend(network,records,memory,recipient_case=target,**options)
+    worker_results={}
+    for workers in (0,1,2,4,8):
+        report=recommend(network,records,memory,recipient_case=target,**dict(options,workers=workers))
+        if report!=original:raise AssertionError(f'Recommendation differs with workers={workers}')
+        worker_results[str(workers)]=True
     repeated=recommend(network,records,memory,recipient_case=target,**options)
     changed=replace(target,label=np.where(target.label==2,1,target.label).astype(target.label.dtype))
     no_tumors=recommend(network,records,memory,recipient_case=changed,**options)
@@ -56,9 +66,13 @@ def main(cache=None,checkpoint=None,output=None):
         image,label=placements[selected].paste(target.image,target.label)
         expected=np.zeros(label.shape,bool);expected[tuple(placements[selected].coordinates().T)]=True
         if not np.array_equal((label==2)&(target.label!=2),expected):raise AssertionError('Paste attribution mismatch')
-        paste_audit=dict(actual_pasted_voxels=int(expected.sum()),exact_placement_voxels=True)
+        indices=tuple(placements[selected].coordinates().T)
+        if not np.array_equal(image[indices],placements[selected].image[placements[selected].mask]):raise AssertionError('Pasted CT values mismatch')
+        if not np.array_equal(image[~expected],target.image[~expected]) or not np.array_equal(label[~expected],target.label[~expected]):
+            raise AssertionError('Paste modified voxels outside selected footprint')
+        paste_audit=dict(actual_pasted_voxels=int(expected.sum()),exact_placement_voxels=True,exact_CT_values=True,unchanged_outside_footprint=True)
     else:
-        paste_audit=dict(noop=True,original_arrays_not_modified=True)
+        raise AssertionError('Explicit DEBUG valid paste control failed; no successful paste was tested')
     try:recommend(network,records,memory,recipient_case=target,**dict(options,query_group='wrong'))
     except ValueError:wrong_group_rejected=True
     else:raise AssertionError('Wrong query group accepted')
@@ -66,7 +80,8 @@ def main(cache=None,checkpoint=None,output=None):
     except ValueError:production_rejects_debug=True
     else:raise AssertionError('DEBUG artifact admitted for production')
     result=dict(debug=True,actual_CT=True,full_model=True,full_training=False,nnunet_preprocessing_tested=False,
-        recipient=recipient,donor=donor_id,component=component,candidates=2,support=len(memory['record_ids']),
+        recipient=recipient,donor=donor_id,component=component,candidates=len(records),support=len(memory['record_ids']),
+        workers_bitwise_identical=worker_results,extra_interior_center_is_DEBUG_control_only=True,
         footprint_voxels=int(placements[0].mask.sum()),
         annotation_score_rank_invariant=True,unchanged_input_bitwise_repeatable=True,
         deterministic_execution=base['runtime']['deterministic'],

@@ -1,4 +1,11 @@
-## 2026-09-27 최신 — 검토 후 코드 수정
+## 2026-09-27 최신 — 재검토 R01–R06 수정
+
+- [최신 수정 기록](docs/v22_rereview_repairs_20260927.md), `validation/v222_r6/rereview_repairs_20260927_DEBUG.json`을 먼저 읽는다. artifact는 v3이며 Adam mapping/hash·best/cursor admission을 추가했다.
+- calibration reuse는 동일 의미/source/runtime/실제 측정만 허용. recommendation은 모든 frame·동일 event·recipient CT/간 union/graph payload 결속을 검사. workers0 지원 및 invalid empty 거부. 모델/loss/donor/전체규모 불변.
+- 실제 process DEBUG 연속 대 중단재개 model·Adam·모든 RNG·support bitwise 동일. 원본 주석 그대로 실제2,368voxel raw paste 성공과 workers0/1/2/4/8 동일성 확인. 추가 valid center는 명시적 DEBUG 대조군이며 production proposal 변경 아님.
+- source/record binding이 바뀌어 이번 DEBUG graph를 factory로 재생성했다. 이전 cache/checkpoint 재표시 금지. G3전체규모·G4native온라인/최종nnU-Net입력·G5효용 미완료.
+
+## 2026-09-27 이전 — 검토 후 코드 수정
 
 - [수정 기록](docs/v22_review_repairs_20260927.md)을 먼저 읽는다. 아래 기록은 이전 revision의 증거이며 이번 source의 검증으로 섞지 않는다.
 - calibration list, explicit donor anchor, GT 독립 동점 순위, self-contained CPU best checkpoint, 유형별 artifact/support 검증, recipient identity와 PlacementSpec 결속을 실제 코드에 반영했다.
