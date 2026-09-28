@@ -5,6 +5,8 @@ preparation, support recomputation, production checkpoint writes or auto-resume.
 Default candidates disable the outer checkpoint of ONE L0 block each. The CNN
 and inner edge checkpoints, graph, physical batch, loss and weights are kept.
 The previous all-block policy remains opt-in for reproducibility, not default.
+The explicit static_reuse candidate keeps all checkpoints and only reuses fixed
+topology/reference inputs. Optional checkpoint-cost files are DEBUG-only.
 """
 import argparse
 from contextlib import contextmanager, nullcontext
@@ -23,6 +25,11 @@ sys.path.insert(0, str(ROOT))
 
 @contextmanager
 def execution_policy(net, name):
+    if name == 'static_reuse':
+        from tools.v22_static_reuse import installed_model
+        with installed_model(net):
+            yield
+        return
     selective = {f'no_outer_l0_block{i}': i for i in range(3)}
     if name not in ('baseline', 'no_outer_l0', *selective):
         raise ValueError('Unknown diagnostic execution policy')
@@ -87,6 +94,20 @@ def probe_batches(dataset, state, seed, count, *, profile_only=False):
     if len(selected) != count:
         raise ValueError('Too few remaining batches in this epoch; do not wrap or repeat batches')
     return selected
+
+
+def episode_support(net, state, group, support):
+    """Match production: select support once per group, including resumed groups."""
+    import torch
+    from tools.v222_review_contracts import grouped_support
+    if group != state['last_group']:
+        support = grouped_support(state['memory'], group)
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            state['plan'] = net.fit_support_clusters(*support)
+        state['last_group'] = group
+    elif support is None:
+        support = grouped_support(state['memory'], group)
+    return support
 
 
 def frozen(value):
@@ -164,13 +185,12 @@ compute probe, not a measurement of production loading/checkpoint serialization.
     return timings, evidence
 
 
-def run_policy(name, saved, dataset, order, reference, output, bar, *, operators=False):
+def run_policy(name, saved, dataset, order, reference, output, bar, *, operators=False, checkpoint_cost=False):
     import psutil
     import torch
     from hiercp_v222.v1_local import model
     from hiercp_v222.v1_execution import tree_to, restore_rng
     from tools.v222_process_loader import ProcessPairLoader, close_producers
-    from tools.v222_review_contracts import grouped_support
     from tools.v22_rank_objective import RankingContext, configuration
     state = tree_to(copy.deepcopy(saved['state']), 'cuda')
     base = saved['base']
@@ -182,6 +202,7 @@ def run_policy(name, saved, dataset, order, reference, output, bar, *, operators
                                  weight_decay=base['training']['weight_decay'],
                                  fused=base['training']['fused_optimizer'])
     optimizer.load_state_dict(copy.deepcopy(saved['optimizer']))
+    saver = None
     context = RankingContext(dataset, state['memory'])
     counts = torch.bincount(state['memory']['classes'], minlength=2).float()
     if bool((counts == 0).any()):
@@ -191,17 +212,24 @@ def run_policy(name, saved, dataset, order, reference, output, bar, *, operators
     rows, collected = [], []
     restore_rng(saved['rng'])
     try:
-        with execution_policy(net, name):
+        if checkpoint_cost:
+            from tools.v222_support_snapshot import AsyncSaver
+            from tools.v22_static_reuse import ReuseSaver
+            folder = output / (name + '_DEBUG_checkpoint')
+            folder.mkdir(exist_ok=False)
+            # Diagnostic files are explicitly rejected by production artifact admission.
+            saver_type = ReuseSaver if name == 'static_reuse' else AsyncSaver
+            saver = saver_type(folder, net, optimizer, dict(debug=True,
+                artifact_kind='debug_execution_snapshot', artifact_contract=saved['artifact_contract']))
+        from tools.v22_static_reuse import installed_reference
+        support = None
+        with execution_policy(net, name), (installed_reference(context) if name == 'static_reuse' else nullcontext()):
             for number, payload in enumerate(loader.batches(order, epoch=state['epoch'])):
                 ids = payload.indices.tolist()
                 if ids != order[number]:
                     raise RuntimeError('Probe batch order differs from production cursor')
                 group = dataset.rows[ids[0]]['patient_group']
-                support = grouped_support(state['memory'], group)
-                if group != state['last_group']:
-                    with torch.autocast('cuda', dtype=torch.bfloat16):
-                        state['plan'] = net.fit_support_clusters(*support)
-                    state['last_group'] = group
+                support = episode_support(net, state, group, support)
                 targets = torch.tensor([dataset.rows[i]['target'] for i in ids], device='cuda')
                 bar.set_description(f'{name} {number+1}/{len(order)}')
                 # Profile only baseline warm-up; measured A/B batches have no profiler.
@@ -216,6 +244,19 @@ def run_policy(name, saved, dataset, order, reference, output, bar, *, operators
                     (output/'baseline_operators_cpu.txt').write_text(
                         trace.key_averages().table(sort_by='self_cpu_time_total', row_limit=40),
                         encoding='utf-8')
+                if saver is not None:
+                    state['step'] += 1
+                    state['next_batch'] += 1
+                    start_save = time.perf_counter()
+                    receipt = saver.save(state)
+                    saver.flush()
+                    timing.update(checkpoint_snapshot_seconds=receipt['snapshot_seconds'],
+                                  checkpoint_writer_wait_seconds=receipt['writer_wait_seconds'],
+                                  checkpoint_request_seconds=receipt['seconds'],
+                                  checkpoint_full_flush_seconds=time.perf_counter()-start_save,
+                                  checkpoint_serialization_seconds=saver.committed['seconds'])
+                    if name == 'static_reuse':
+                        timing['static_checkpoint_reuse'] = saver.last_reuse_metrics
                 checks = None if reference is None else {
                     key: exact(evidence[key], reference[number][key]) for key in evidence}
                 row = dict(policy=name, batch_number=number+1, warmup=number == 0,
@@ -236,8 +277,17 @@ def run_policy(name, saved, dataset, order, reference, output, bar, *, operators
                 if saved['state']['release_unused']:
                     torch.cuda.empty_cache()
     finally:
-        loader.close()
-        close_producers()
+        try:
+            loader.close()
+            close_producers()
+        finally:
+            if saver is not None:
+                try:
+                    saver.close()
+                finally:
+                    # This diagnostic owns this exact saver. A closed registry
+                    # entry would otherwise retain its GPU model into candidate B.
+                    saver.instances.remove(saver)
     return rows, collected
 
 
@@ -248,11 +298,13 @@ def main(argv=None):
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--batches', type=int, default=3, help='Explicit DEBUG batches only; no production cap')
     p.add_argument('--candidates', nargs='+', choices=('no_outer_l0', 'no_outer_l0_block0',
-                   'no_outer_l0_block1', 'no_outer_l0_block2'),
+                   'no_outer_l0_block1', 'no_outer_l0_block2', 'static_reuse'),
                    default=['no_outer_l0_block2', 'no_outer_l0_block1', 'no_outer_l0_block0'])
     p.add_argument('--operators', action='store_true', help='Profile baseline warm-up operators; timing batches stay unprofiled')
     p.add_argument('--profile-only', action='store_true',
                    help='One next full production batch, baseline operators only; no candidates or speedup claim')
+    p.add_argument('--checkpoint-cost', action='store_true',
+                   help='Also time complete DEBUG snapshot/hash/serialization; synchronous flush is not pipeline-overlapped epoch time')
     a = p.parse_args(argv)
     if a.profile_only:
         a.batches, a.candidates, a.operators = 1, [], True
@@ -298,12 +350,15 @@ def main(argv=None):
                 checkpoint_sha256=before, cache_sha256=sha(a.cache),
                 source_identity=saved['source_identity'], runtime_sha256=saved['execution_policy']['runtime_sha256'],
                 tool_sha256=sha(Path(__file__)), torch_version=torch.__version__, gpu=torch.cuda.get_device_name(),
+                candidate_source_sha256=sha(ROOT/'tools/v22_static_reuse.py'),
                 device_total_bytes=torch.cuda.get_device_properties(0).total_memory,
                 free_bytes_at_start=torch.cuda.mem_get_info()[0], available_ram=psutil.virtual_memory().available,
                 epoch=saved['state']['epoch']+1, saved_step=saved['state']['step'],
                 physical_batch=saved['state']['batch'], workers=saved['state']['workers'],
                 full_support=len(dataset), workspace_mib=workspace, debug_batches=a.batches,
                 candidates=a.candidates, baseline_warmup_operator_profile=a.operators,
+                checkpoint_cost=a.checkpoint_cost,
+                checkpoint_timing_scope='separate fully flushed DEBUG snapshots; not overlapped pipeline step or epoch timing',
                 backward_intervals='before/after gradient reaches L0 output; shared autograd scheduling is not exclusive module attribution',
                 gradient_comparison='all trainable parameter gradients after production clipping',
                 timing_excludes='loading, cluster plan preparation, parity CPU copies, production checkpoint writing',
@@ -315,7 +370,8 @@ def main(argv=None):
           f"physical batch {info['physical_batch']} | no production writes", flush=True)
     results = []
     with installed('stride4'), tqdm(total=(1+len(a.candidates))*a.batches, unit='batch', dynamic_ncols=True) as bar:
-        baseline, reference = run_policy('baseline', saved, dataset, order, None, a.output, bar, operators=a.operators)
+        baseline, reference = run_policy('baseline', saved, dataset, order, None, a.output, bar,
+                                         operators=a.operators, checkpoint_cost=a.checkpoint_cost)
         if a.profile_only:
             if sha(a.checkpoint) != before:
                 raise RuntimeError('Source checkpoint changed during probe; profile invalid')
@@ -331,7 +387,8 @@ def main(argv=None):
             gc.collect()
             torch.cuda.empty_cache()
             try:
-                candidate, _ = run_policy(name, saved, dataset, order, reference, a.output, bar)
+                candidate, _ = run_policy(name, saved, dataset, order, reference, a.output, bar,
+                                          checkpoint_cost=a.checkpoint_cost)
             except torch.cuda.OutOfMemoryError as error:
                 # Keep only text; do not retain the failed autograd graph via traceback.
                 summary = dict(policy=name, candidate_rejected='OOM', error=str(error),

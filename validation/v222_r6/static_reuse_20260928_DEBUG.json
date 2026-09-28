@@ -1,0 +1,27 @@
+{
+  "debug": true,
+  "actual_CT": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_runtime_changed": false,
+  "epoch_speedup_verified": false,
+  "tests": {"passed": 31, "seconds": 4.128},
+  "cuda_equivalence": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "torch": "2.8.0+cu128",
+    "support_records": 11279,
+    "support_is_synthetic": true,
+    "L0": "explicit DEBUG linear fixture; not real CT L0",
+    "L1_L2": "configured 128D, four heads, original depths",
+    "consecutive_optimizer_updates": 2,
+    "bitwise_equal": ["loss", "all_preclip_gradients", "model", "Adam", "RNG", "evaluation_output"]
+  },
+  "component_timing": {
+    "scope": "L1/L2 + synthetic linear L0, not full pipeline",
+    "warmup_excluded": true,
+    "baseline_seconds": [0.07521120004821569, 0.0736635000212118, 0.09679650003090501],
+    "static_reuse_seconds": [0.08336629997938871, 0.08131869998760521, 0.07865609996952116],
+    "meaningful_improvement_claimed": false
+  },
+  "remaining": ["real CT and full saved-support update comparison", "MIG operator trace", "L0 compute/recomputation optimization", "whole-epoch elapsed cost including refresh and validation"]
+}

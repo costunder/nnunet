@@ -1,3 +1,10 @@
+## 2026-09-28 고정 상태 재사용 구현 — 3시간 병목 해결 미입증
+
+- [수정·검증 기록](docs/v22_static_reuse_20260928.md). `tools/v22_static_reuse.py`에 support 연결/mask, query 연결, 같은 CT의 epoch reference, 고정 memory/plan CPU snapshot/hash 재사용 구현. 학습된 L1/L2 출력·현재 모델 hash·매 batch 안전 저장은 유지한다.
+- 기존 production/core/cache 코드는 변경하지 않았다. 짧은 실제 update 도구에서 `--candidates static_reuse --checkpoint-cost`로 실행 후보를 비교한다. snapshot diagnostic은 DEBUG 전용이며 production resume 불가. 원본 checkpoint 변경/자동 재개 없음.
+- CUDA 합성11279 support/기존 L1·L2 규모에서 연속2update의 loss·전체 gradient·model·Adam·RNG 및 평가 출력 정확 일치. 관련31검사 통과(4.128초). 부분 시간은 원본81.89ms/후보81.11ms로 유의미한 개선 판정 없음. 실제 CT/MIG/epoch 개선은 미검증이다.
+- Basic CP/No-CP 및 모델·그래프·후보·support·batch·epoch 변경 없음. L0 재계산 병목은 남아 있으며 전체 최적화 완료로 보고하지 않는다.
+
 ## 2026-09-28 병목 미해결: 한 step 연산 진단
 
 - 모델/후보 수/support 축소는 미적용. 로컬 indexing 대체와 edge checkpoint RNG 저장 생략은 짧은 CUDA parity가 맞았으나 일관된 속도 개선 근거가 없어 미채택. production core/runtime/cache 변경 없음.

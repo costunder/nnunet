@@ -9,6 +9,26 @@ from tools.benchmark_v22_recompute_debug import execution_policy, exact, frozen,
 
 
 class ProbeTests(unittest.TestCase):
+    def test_support_selection_reuses_resumed_episode_and_refits_only_next_group(self):
+        from unittest.mock import Mock, patch
+        from contextlib import nullcontext
+        from tools.benchmark_v22_recompute_debug import episode_support
+        net = SimpleNamespace(fit_support_clusters=Mock(return_value='new_plan'))
+        state = dict(memory='full', last_group='A', plan='saved_plan')
+        first, second = (object(), object(), object()), (object(), object(), object())
+        with patch('tools.v222_review_contracts.grouped_support', side_effect=[first, second]) as select, \
+             patch('torch.autocast', return_value=nullcontext()):
+            support = episode_support(net, state, 'A', None)
+            self.assertIs(support, first)
+            self.assertIs(episode_support(net, state, 'A', support), first)
+            self.assertEqual(state['plan'], 'saved_plan')
+            net.fit_support_clusters.assert_not_called()
+            support = episode_support(net, state, 'B', support)
+            self.assertIs(support, second)
+            self.assertEqual(select.call_count, 2)
+            net.fit_support_clusters.assert_called_once_with(*second)
+            self.assertEqual(state['plan'], 'new_plan')
+
     def test_scope_restores_on_failure_and_preserves_cnn(self):
         local = SimpleNamespace(checkpoint_local_blocks=True, checkpoint_dense_encoder=True)
         net = SimpleNamespace(local=local)
