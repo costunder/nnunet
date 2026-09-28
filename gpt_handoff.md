@@ -1,4 +1,11 @@
-## 2026-09-28 최신 — T01 대조 누락 검출 수정 및 실제 GPU 재실행
+## 2026-09-28 최신 — 서버 준비 전용 명령
+
+- 사용자 서버 출력에서 GPU6 MIG9.5GiB/torch2.6.0+cu118/PyG2.7.0 및 scanfix cache 소스6개 불일치를 확인했다. donor anchor/placement/content binding이 바뀐 graph라 재표시하지 않는다. 설정/base는 동일하다.
+- 저장량 실측 graph16.59/shared0.54/donor2.22GiB, 전체 추정44.68GiB, 여유362.93GiB, reserve80GiB. 새 관측 생성 후 실제 개수로 admission한다.
+- 새 `tools/run_v22_server_prepare.py`는 기존 전체 CT 관측→저장량 검사→전체 graph 준비까지만 foreground tqdm으로 실행한다. 본학습 호출 없음. 단위검사4개 통과, 실제 서버 준비 완료 결과는 아직 받지 않았다.
+- [서버 준비 기록](docs/v22_server_prepare_20260928.md). core83/runtime20/online15는 그대로다. T01은 닫혔으며 G3/G4/G5는 미검증 상태 유지.
+
+## 2026-09-28 이전 — T01 대조 누락 검출 수정 및 실제 GPU 재실행
 
 - 독립 검토문 전체를 읽고 T01을 재현했다. 이전 GPU 기록은 존재했으나 빈 목록/버려지는 warmup만으로 통과하는 판정이 불충분했다. 실제 optimizer input의 CP sample와 stage/epoch/batch/sample 대조 목록을 정확히 맞추도록 수정했다.
 - [최신 검토 기록](docs/v22_T01_coverage_review_20260928.md), `validation/v222_r6/T01_coverage_20260928_DEBUG.json`. 새18개 포함 회귀89개, 실제5070Ti 통합 재실행 통과. initial/continuous/resumed3개 대조, warmup3개 제외, actual-record 변조9조건 거부. 연속/재개 입력·state·RNG exact, 수정 전 성공 실행과 입력/loss/state 동일.

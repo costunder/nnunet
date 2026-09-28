@@ -1,3 +1,10 @@
+## v2.2 — 서버 준비 전용 foreground 실행기 (2026-09-28)
+
+- 서버에서 확인된 기존 scanfix cache의 anchor/placement/content binding 불일치와 여유362.93GiB/추정44.68GiB/reserve80GiB를 기록했다.
+- `tools/run_v22_server_prepare.py`는 기존 전체 관측 생성→용량 admission→paired cache 생성까지만 호출하고 종료한다. tqdm 화면과 전체 로그를 제공한다. 본학습 자동 시작 없음.
+- orchestration 단위검사4개 통과. 기존 model/core83/runtime20/online15는 그대로다. 새 G3/G4 통과나 실제 전체 캐시 준비 완료를 주장하지 않는다.
+- [세부 기록](docs/v22_server_prepare_20260928.md).
+
 ## v2.2 — T01 DEBUG 대조 coverage 누락 수정 (2026-09-28)
 
 - 기존 `all([])` 통과를 원래 두 판정문으로 재현했다. 실제 optimizer 입력의 CP flags와 stage/epoch/batch/sample 대조 기록을 정확히 일치시키고 warmup·중복·누락을 거부한다. initial/continuous/resumed 각각 실제 train_step 호출 전에 검사한다.
