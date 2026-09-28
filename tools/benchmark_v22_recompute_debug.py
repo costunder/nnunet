@@ -2,11 +2,12 @@
 
 Reads full saved support/Adam/RNG and the next actual bucket batches. No cache
 preparation, support recomputation, production checkpoint writes or auto-resume.
-Only L0's outer activation checkpoint is disabled in the candidate; the CNN
+Default candidates disable the outer checkpoint of ONE L0 block each. The CNN
 and inner edge checkpoints, graph, physical batch, loss and weights are kept.
+The previous all-block policy remains opt-in for reproducibility, not default.
 """
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import copy
 import gc
 import json
@@ -14,6 +15,7 @@ from pathlib import Path
 import statistics
 import sys
 import time
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -21,17 +23,52 @@ sys.path.insert(0, str(ROOT))
 
 @contextmanager
 def execution_policy(net, name):
-    if name not in ('baseline', 'no_outer_l0'):
+    selective = {f'no_outer_l0_block{i}': i for i in range(3)}
+    if name not in ('baseline', 'no_outer_l0', *selective):
         raise ValueError('Unknown diagnostic execution policy')
     old = net.local.checkpoint_local_blocks
     if old is not True:
         raise ValueError('Expected the preserved outer L0 checkpoint baseline')
     try:
+        if name in selective:
+            if len(net.local.blocks) != 3:
+                raise ValueError('Selective policy requires the unchanged three-block L0')
+            selected = net.local.blocks[selective[name]]
+            original = net.local._run_local_block
+            def run(block, x, edges, attributes):
+                if block is selected:
+                    return block(x, edges, attributes)
+                return original(block, x, edges, attributes)
+            with patch.object(net.local, '_run_local_block', run):
+                yield
+            return
         if name == 'no_outer_l0':
             net.local.checkpoint_local_blocks = False
         yield
     finally:
         net.local.checkpoint_local_blocks = old
+
+
+@contextmanager
+def stage_events(local):
+    """GPU event intervals; gradient arrival is a boundary, not an exclusive L1/L2 attribution."""
+    import torch
+    stamps = {key: torch.cuda.Event(enable_timing=True) for key in ('begin', 'end', 'gradient')}
+    calls = []
+    def before(module, args):
+        stamps['begin'].record()
+    def after(module, args, output):
+        stamps['end'].record()
+        calls.append(1)
+        def gradient_arrives(gradient):
+            stamps['gradient'].record()
+        output.register_hook(gradient_arrives)
+    handles = [local.register_forward_pre_hook(before), local.register_forward_hook(after)]
+    try:
+        yield stamps, calls
+    finally:
+        for handle in handles:
+            handle.remove()
 
 
 def probe_batches(dataset, state, seed, count):
@@ -95,11 +132,12 @@ compute probe, not a measurement of production loading/checkpoint serialization.
     events[0].record()
     query = payload.cuda(non_blocking=True)
     events[1].record()
-    with torch.autocast('cuda', dtype=torch.bfloat16):
-        loss, parts = forward_loss(net, query, support, plan, targets, weights,
-                                   context, settings, indices=payload.indices.tolist())
-    events[2].record()
-    loss.backward()
+    with stage_events(net.local) as (stamps, calls):
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            loss, parts = forward_loss(net, query, support, plan, targets, weights,
+                                       context, settings, indices=payload.indices.tolist())
+        events[2].record()
+        loss.backward()
     events[3].record()
     torch.nn.utils.clip_grad_norm_(net.parameters(), clip, error_if_nonfinite=True)
     optimizer.step()
@@ -108,6 +146,13 @@ compute probe, not a measurement of production loading/checkpoint serialization.
     timings = {name: events[i].elapsed_time(events[i+1])/1000 for i, name in
                enumerate(('H2D_seconds', 'forward_seconds', 'backward_seconds', 'optimizer_seconds'))}
     timings.update(wall_compute_seconds=time.perf_counter()-began, **memory_metrics())
+    if len(calls) != 1:
+        raise RuntimeError('Expected exactly one live L0 forward per optimizer update')
+    timings.update(L0_forward_seconds=stamps['begin'].elapsed_time(stamps['end'])/1000,
+                   forward_outside_L0_seconds=(events[1].elapsed_time(stamps['begin'])+
+                                                stamps['end'].elapsed_time(events[2]))/1000,
+                   backward_before_L0_gradient_seconds=events[2].elapsed_time(stamps['gradient'])/1000,
+                   backward_after_L0_gradient_seconds=stamps['gradient'].elapsed_time(events[3])/1000)
     gradients = {name: p.grad for name, p in net.named_parameters() if p.requires_grad}
     if any(g is None or not bool(torch.isfinite(g).all()) for g in gradients.values()):
         raise RuntimeError('Missing or nonfinite parameter gradient')
@@ -117,7 +162,7 @@ compute probe, not a measurement of production loading/checkpoint serialization.
     return timings, evidence
 
 
-def run_policy(name, saved, dataset, order, reference, output, bar):
+def run_policy(name, saved, dataset, order, reference, output, bar, *, operators=False):
     import psutil
     import torch
     from hiercp_v222.v1_local import model
@@ -157,8 +202,15 @@ def run_policy(name, saved, dataset, order, reference, output, bar):
                     state['last_group'] = group
                 targets = torch.tensor([dataset.rows[i]['target'] for i in ids], device='cuda')
                 bar.set_description(f'{name} {number+1}/{len(order)}')
-                timing, evidence = update(net, optimizer, payload, support, state['plan'], context,
-                                          configuration(), targets, weights, base['training']['grad_clip'])
+                # Profile only baseline warm-up; measured A/B batches have no profiler.
+                profile = torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
+                    torch.profiler.ProfilerActivity.CUDA]) if operators and name == 'baseline' and number == 0 else nullcontext()
+                with profile as trace:
+                    timing, evidence = update(net, optimizer, payload, support, state['plan'], context,
+                                              configuration(), targets, weights, base['training']['grad_clip'])
+                if trace is not None:
+                    table = trace.key_averages().table(sort_by='self_cuda_time_total', row_limit=40)
+                    (output/'baseline_operators.txt').write_text(table, encoding='utf-8')
                 checks = None if reference is None else {
                     key: exact(evidence[key], reference[number][key]) for key in evidence}
                 row = dict(policy=name, batch_number=number+1, warmup=number == 0,
@@ -190,7 +242,13 @@ def main(argv=None):
     p.add_argument('--checkpoint', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--batches', type=int, default=3, help='Explicit DEBUG batches only; no production cap')
+    p.add_argument('--candidates', nargs='+', choices=('no_outer_l0', 'no_outer_l0_block0',
+                   'no_outer_l0_block1', 'no_outer_l0_block2'),
+                   default=['no_outer_l0_block2', 'no_outer_l0_block1', 'no_outer_l0_block0'])
+    p.add_argument('--operators', action='store_true', help='Profile baseline warm-up operators; timing batches stay unprofiled')
     a = p.parse_args(argv)
+    if len(set(a.candidates)) != len(a.candidates):
+        raise ValueError('Duplicate diagnostic candidates')
     from tools.v222_resume_guard import assert_source_runs_idle
     assert_source_runs_idle(a.cache, a.checkpoint)
     if a.output.exists():
@@ -235,32 +293,42 @@ def main(argv=None):
                 epoch=saved['state']['epoch']+1, saved_step=saved['state']['step'],
                 physical_batch=saved['state']['batch'], workers=saved['state']['workers'],
                 full_support=len(dataset), workspace_mib=workspace, debug_batches=a.batches,
+                candidates=a.candidates, baseline_warmup_operator_profile=a.operators,
+                backward_intervals='before/after gradient reaches L0 output; shared autograd scheduling is not exclusive module attribution',
                 gradient_comparison='all trainable parameter gradients after production clipping',
                 timing_excludes='loading, cluster plan preparation, parity CPU copies, production checkpoint writing',
                 scope='same next batches and saved full support; compute-only A/B, not full-epoch or worst-case admission')
     (a.output/'started.json').write_text(json.dumps(info, indent=2), encoding='utf-8')
     print(f"DEBUG comparison | saved step {info['saved_step']} | full support {len(dataset)} | "
           f"physical batch {info['physical_batch']} | no production writes", flush=True)
-    with installed('stride4'), tqdm(total=2*a.batches, unit='batch', dynamic_ncols=True) as bar:
-        baseline, reference = run_policy('baseline', saved, dataset, order, None, a.output, bar)
-        gc.collect()
-        torch.cuda.empty_cache()
-        try:
-            candidate, _ = run_policy('no_outer_l0', saved, dataset, order, reference, a.output, bar)
-        except torch.cuda.OutOfMemoryError as error:
-            result = dict(**info, candidate_rejected='OOM', error=str(error), eligible_for_further_validation=False)
-        else:
-            old = statistics.mean(row['wall_compute_seconds'] for row in baseline[1:])
-            new = statistics.mean(row['wall_compute_seconds'] for row in candidate[1:])
-            parity = all(all(row['comparisons'].values()) for row in candidate)
-            peak = max(row['peak_allocated'] for row in candidate)
-            memory_ok = peak < saved['config']['max_vram_fraction']*info['device_total_bytes']
-            result = dict(**info, baseline_mean_compute_seconds=old, candidate_mean_compute_seconds=new,
-                          speedup=old/new, candidate_peak_allocated=peak,
-                          all_loss_gradient_model_adam_rng_bitwise_equal=parity,
-                          measured_memory_budget_passed=memory_ok,
-                          eligible_for_further_validation=parity and memory_ok and new < old*.95,
-                          decision_rule='exact tested updates, configured VRAM budget, >5% compute gain; not production approval')
+    results = []
+    with installed('stride4'), tqdm(total=(1+len(a.candidates))*a.batches, unit='batch', dynamic_ncols=True) as bar:
+        baseline, reference = run_policy('baseline', saved, dataset, order, None, a.output, bar, operators=a.operators)
+        old = statistics.mean(row['wall_compute_seconds'] for row in baseline[1:])
+        for name in a.candidates:
+            gc.collect()
+            torch.cuda.empty_cache()
+            try:
+                candidate, _ = run_policy(name, saved, dataset, order, reference, a.output, bar)
+            except torch.cuda.OutOfMemoryError as error:
+                # Keep only text; do not retain the failed autograd graph via traceback.
+                summary = dict(policy=name, candidate_rejected='OOM', error=str(error),
+                               eligible_for_further_validation=False)
+            else:
+                new = statistics.mean(row['wall_compute_seconds'] for row in candidate[1:])
+                parity = all(all(row['comparisons'].values()) for row in candidate)
+                peak = max(row['peak_allocated'] for row in candidate)
+                memory_ok = peak < saved['config']['max_vram_fraction']*info['device_total_bytes']
+                summary = dict(policy=name, candidate_mean_compute_seconds=new, speedup=old/new,
+                               candidate_peak_allocated=peak, all_loss_gradient_model_adam_rng_bitwise_equal=parity,
+                               measured_memory_budget_passed=memory_ok,
+                               eligible_for_further_validation=parity and memory_ok and new < old*.95)
+            results.append(summary)
+            (a.output/f'{name}_result.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
+            bar.write(json.dumps(summary))
+    result = dict(**info, baseline_mean_compute_seconds=old, candidate_results=results,
+                  production_migration_approved=False,
+                  decision_rule='exact tested updates, configured VRAM budget, >5% compute gain; not production approval')
     if sha(a.checkpoint) != before:
         raise RuntimeError('Source checkpoint changed during probe; comparison invalid')
     (a.output/'result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')

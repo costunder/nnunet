@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import unittest
 import numpy as np
 import torch
-from tools.benchmark_v22_recompute_debug import execution_policy, exact, frozen, probe_batches
+from tools.benchmark_v22_recompute_debug import execution_policy, exact, frozen, probe_batches, stage_events
 
 
 class ProbeTests(unittest.TestCase):
@@ -45,6 +45,44 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(snapshot['rng'][0].tolist(), [0, 1, 2])
         self.assertFalse(exact(value, snapshot))
 
+    def test_selective_policy_bypasses_only_requested_block_and_restores(self):
+        from unittest.mock import Mock
+        blocks = [Mock(return_value=i) for i in range(3)]
+        original = Mock(return_value='checkpointed')
+        local = SimpleNamespace(checkpoint_local_blocks=True, checkpoint_dense_encoder=True,
+                                blocks=blocks, _run_local_block=original)
+        with execution_policy(SimpleNamespace(local=local), 'no_outer_l0_block1'):
+            self.assertEqual(local._run_local_block(blocks[0], {}, {}, {}), 'checkpointed')
+            self.assertEqual(local._run_local_block(blocks[1], {}, {}, {}), 1)
+            self.assertEqual(local._run_local_block(blocks[2], {}, {}, {}), 'checkpointed')
+            self.assertTrue(local.checkpoint_dense_encoder)
+            self.assertTrue(local.checkpoint_local_blocks)
+        self.assertIs(local._run_local_block, original)
+        self.assertEqual(original.call_count, 2)
+        self.assertEqual([b.call_count for b in blocks], [0, 1, 0])
+
+    @unittest.skipUnless(torch.cuda.is_available(), 'CUDA timing requires a GPU')
+    def test_cuda_stage_events_and_profiler_api(self):
+        local = torch.nn.Linear(128,128).cuda()
+        start, end = [torch.cuda.Event(enable_timing=True) for _ in range(2)]
+        data = torch.randn(8,128,device='cuda')
+        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
+                                                torch.profiler.ProfilerActivity.CUDA]) as trace:
+            with stage_events(local) as (stamps,calls):
+                value = local(data)
+                loss = value.square().mean()
+                start.record()
+                loss.backward()
+                end.record()
+                end.synchronize()
+            self.assertEqual(len(calls),1)
+            self.assertGreaterEqual(stamps['begin'].elapsed_time(stamps['end']),0)
+            self.assertGreaterEqual(start.elapsed_time(stamps['gradient']),0)
+            self.assertGreaterEqual(stamps['gradient'].elapsed_time(end),0)
+        self.assertFalse(local._forward_hooks)
+        self.assertFalse(local._forward_pre_hooks)
+        self.assertIn('aten::',trace.key_averages().table(sort_by='self_cuda_time_total',row_limit=5))
+
     @unittest.skipUnless(torch.cuda.is_available(), 'CUDA operator validation requires a GPU')
     def test_cuda_full_width_attention_checkpoint_parity(self):
         from hiercp.model import HeteroGATv2Block
@@ -58,25 +96,30 @@ class ProbeTests(unittest.TestCase):
             edges = {('a','to','b'): torch.stack((torch.arange(63)%17, torch.arange(63)%19)).cuda(),
                      ('b','to','a'): torch.stack((torch.arange(59)%19, torch.arange(59)%17)).cuda()}
             attrs = {key: None for key in edges}
-            block = HeteroGATv2Block(node_types=kinds, edge_types=tuple(edges), dim=128,
-                                     heads=4, edge_dim=None, dropout=.1).cuda().train()
+            blocks = torch.nn.ModuleList([HeteroGATv2Block(node_types=kinds, edge_types=tuple(edges), dim=128,
+                                     heads=4, edge_dim=None, dropout=.1) for _ in range(3)]).cuda().train()
             inputs = {'a': torch.randn(17,128,device='cuda'), 'b': torch.randn(19,128,device='cuda')}
-            local = SimpleNamespace(checkpoint_local_blocks=True, training=True)
+            from types import MethodType
+            local = SimpleNamespace(checkpoint_local_blocks=True, training=True, blocks=blocks)
+            local._run_local_block = MethodType(CTOnlyEncoder._run_local_block, local)
             net = SimpleNamespace(local=local)
             results = []
             # DEBUG-only small workspace forces multiple real edge chunks.
             with patch('hiercp.model.EDGE_ATTENTION_WORKSPACE_BYTES', 8*4*128*7):
-                for policy in ('baseline','no_outer_l0'):
-                    block.zero_grad(set_to_none=True)
+                for policy in ('baseline','no_outer_l0', 'no_outer_l0_block0', 'no_outer_l0_block1', 'no_outer_l0_block2'):
+                    blocks.zero_grad(set_to_none=True)
                     torch.manual_seed(913)
                     x = {key: value.detach().clone().requires_grad_() for key,value in inputs.items()}
                     with execution_policy(net,policy), torch.autocast('cuda',dtype=torch.bfloat16):
-                        out = CTOnlyEncoder._run_local_block(local,block,x,edges,attrs)
+                        out = x
+                        for block in blocks:
+                            out = local._run_local_block(block,out,edges,attrs)
                         loss = sum(value.float().square().mean() for value in out.values())
                     loss.backward()
-                    results.append(frozen(dict(out=out, gradients={k:p.grad for k,p in block.named_parameters()},
+                    results.append(frozen(dict(out=out, gradients={k:p.grad for k,p in blocks.named_parameters()},
                                                inputs={k:v.grad for k,v in x.items()}, rng=torch.cuda.get_rng_state())))
-            self.assertTrue(exact(results[0],results[1]))
+            for result in results[1:]:
+                self.assertTrue(exact(results[0],result))
         finally:
             torch.use_deterministic_algorithms(prior)
 

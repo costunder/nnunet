@@ -1,3 +1,9 @@
+## 2026-09-28 전체 재계산 해제 OOM 후 선택적 후보
+
+- 서버 사용자 결과: no_outer_l0는 saved step114/full support11279/batch32에서 첫 후보 batch OOM(allocated8.97GiB/process9.39GiB). 원본 유지. 사용자는 resume114 폴더에서 기존 정책으로 step169까지 진행했다. 병목 해결로 보고하지 않는다.
+- [후속 도구](docs/v22_recompute_probe_20260928.md): 기본값은 L0 세 블록 중 한 블록씩만 outer checkpoint 해제하는3개 독립 후보. baseline warm-up의 실제 operator profiler와 L0 forward/gradient 도착 전후 GPU timing 추가. 현재 원본 checkpoint를 읽고 같은 다음3batch를 비교한다. 자동 production 변경 없음.
+- 짧은 CUDA3층/128D/4head/dropout parity 및 profiler API 포함6검사 통과(6.292초). 실제 서버 속도 개선/메모리/전체 모델 parity는 미검증. core83/runtime20은 변경하지 않는다.
+
 ## 2026-09-28 서버 재계산 성능 비교 도구
 
 - 사용자 제공 step29–78 시간: step22.104초, forward6.199초, backward15.451초, peak allocated5.99GiB. 전체 연산 구간 병목이며 L0 단독이나 GPU 포화 증거는 아니다.
