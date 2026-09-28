@@ -1,4 +1,10 @@
-## 2026-09-28 최신 — 서버 준비 전용 명령
+## 2026-09-28 최신 — 준비 진행률 출력기의 실제 동시성 오류 수정
+
+- 서버 e3259ca 실행이 raw_inventory29/131에서 JSON Extra data로 실패. ProgressLog 공유 partial에 여러 스레드의 print 본문/줄바꿈이 섞인 원인이다. 실제 기존 소스+2스레드 barrier로 재현했다.
+- 스레드 객체별 partial과 완성 줄 원자적 전달로 수정. 신규 동시성4개 포함8개 단위검사 통과, 16스레드1600개 강제 조각 교차에서 로그 누락/중복/혼합 없음. GPU 재학습할 변경이 아니다.
+- 기존 실패 결과 보존. 새 work/v22_full_prepare_20260928_logfix에서 원본 관측부터 다시 준비한다. 전체 서버 캐시/G3/G4 완료는 아직 아니며 본학습 시작 없음.
+
+## 2026-09-28 이전 — 서버 준비 전용 명령
 
 - 사용자 서버 출력에서 GPU6 MIG9.5GiB/torch2.6.0+cu118/PyG2.7.0 및 scanfix cache 소스6개 불일치를 확인했다. donor anchor/placement/content binding이 바뀐 graph라 재표시하지 않는다. 설정/base는 동일하다.
 - 저장량 실측 graph16.59/shared0.54/donor2.22GiB, 전체 추정44.68GiB, 여유362.93GiB, reserve80GiB. 새 관측 생성 후 실제 개수로 admission한다.

@@ -28,7 +28,10 @@ class ProgressLog:
         from tools.watch_v222_server import Progress
         self.log, self.bar = log, bar
         self.state = Progress()
-        self.partial = ''
+        # print() writes its body and newline separately. A lock per write()
+        # does not make the complete print atomic across preparation workers.
+        # Use Thread objects rather than recyclable thread identifiers.
+        self.partials = {}
         self.lock = threading.RLock()
         self.last_refresh = 0.
         self.display_phase = None
@@ -45,11 +48,15 @@ class ProgressLog:
 
     def write(self, value):
         with self.lock:
-            self.log.write(value)
-            self.log.flush()
-            self.partial += value
-            while '\n' in self.partial:
-                line, self.partial = self.partial.split('\n', 1)
+            thread = threading.current_thread()
+            lines = (self.partials.pop(thread, '') + value).split('\n')
+            if lines[-1]:
+                self.partials[thread] = lines[-1]
+            for line in lines[:-1]:
+                # Publish complete lines atomically to both log and parser.
+                # Another worker's body can never join this worker's line.
+                self.log.write(line + '\n')
+                self.log.flush()
                 # Human-readable lines remain in console.log. Only JSON event
                 # lines drive the display; malformed events fail explicitly.
                 if not line.startswith('{'):
@@ -72,6 +79,14 @@ class ProgressLog:
 
     def flush(self):
         with self.lock:
+            self.log.flush()
+
+    def finish(self):
+        """Preserve unterminated text after all preparation workers unwind."""
+        with self.lock:
+            for value in self.partials.values():
+                self.log.write(value)
+            self.partials.clear()
             self.log.flush()
 
 
@@ -145,6 +160,8 @@ def main():
                 write_new(output/'preparation_failed.json', dict(type=type(error).__name__,error=str(error),
                           training_started=False,complete=False))
                 raise
+            finally:
+                progress.finish()
     print(json.dumps(result,ensure_ascii=False,indent=2),flush=True)
     return 0
 

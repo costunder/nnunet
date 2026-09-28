@@ -1,3 +1,9 @@
+## v2.2 — 서버 준비 병렬 stdout 줄 섞임 수정 (2026-09-28)
+
+- e3259ca의 raw_inventory29/131 실패를 두 스레드의 본문/줄바꿈 교차로 재현했다. write별 lock과 공유 partial buffer만으로 print 단위 분리가 되지 않았던 오류다.
+- 스레드 객체별 partial buffer와 완성 줄의 원자적 로그/parser 전달로 수정했다. 16스레드1600개 강제 교차 출력과 기존 검사 포함8개 통과. production model/core/runtime/online은 변경하지 않았다.
+- 실패 output 보존, 새 logfix output에서 관측부터 재실행. 본학습 호출 없음. 실제 서버 재실행 결과는 아직 미확인.
+
 ## v2.2 — 서버 준비 전용 foreground 실행기 (2026-09-28)
 
 - 서버에서 확인된 기존 scanfix cache의 anchor/placement/content binding 불일치와 여유362.93GiB/추정44.68GiB/reserve80GiB를 기록했다.

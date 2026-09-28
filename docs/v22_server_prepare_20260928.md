@@ -21,6 +21,16 @@
 
 이 명령의 완료는 **캐시 준비 완료**다. 전체 support G3, production 초기화/worker/compile/새 프로세스 재개 G4, 효용 G5 통과가 아니다. 장기 학습은 아직 시작하지 않는다. 이 실행기 추가 때문에 이미 최신 계약으로 생성된 cache를 다시 만들 필요는 없다.
 
+## 서버 병렬 출력 실패와 수정
+
+첫 서버 실행(e3259ca)은 raw_inventory 화면29/131에서 `JSONDecodeError: Extra data`로 실패했다. 모델/CT/graph 오류가 아니라 새 ProgressLog의 공유 partial buffer 오류다. `print()`는 본문과 줄바꿈을 서로 다른 write로 보내므로 write별 lock만으로 한 print의 원자성을 보장하지 못했다. 최초4개 검사는 단일 스레드만 다뤘고 이 조건을 놓쳤다.
+
+기존 e3259ca 원본 ProgressLog에 실제 두 스레드와 barrier를 적용해 두 JSON 본문이 줄바꿈 전에 합쳐지는 동일 `Extra data` 오류를 재현했다. 수정본은 스레드 객체별 미완성 버퍼를 유지하고 완성된 줄만 lock 안에서 로그와 parser에 함께 전달한다. Thread ID 재사용으로 다른 스레드의 조각을 물려받지 않도록 Thread 객체를 키로 쓴다. 종료 시 미완성 일반 텍스트도 보존한다. 실제 malformed event를 조용히 무시하지 않는다.
+
+수정 후 총8개 단위검사 통과: 기존4개에 정확한 서버 교차 출력, 16개 실제 스레드×100개의 강제 JSON 조각 교차(총1600개 로그의 내용/누락/중복 검사), 미완성 텍스트 보존, malformed event 명시적 실패를 추가했다. 로컬 CPU 동시성 검사이며 서버131case/전체 그래프 완료나 G3/G4 통과는 아니다. 출력 계층만 변경하고 기존 core83/runtime20/online15는 보존한다.
+
+실패한 `work/v22_full_prepare_20260928`은 그대로 보존한다. graph 생성 전 관측 단계에서 실패했으므로 새 `work/v22_full_prepare_20260928_logfix`에서 관측부터 다시 실행한다. 이미 처리된 case를 이어받는 exact resume라고 설명하지 않는다. 생성 중이던 기존 CPU 작업은 예외가 전파되기 전에 executor가 정리하며 별도 종료 신호는 보내지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

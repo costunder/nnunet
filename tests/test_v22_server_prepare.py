@@ -3,6 +3,8 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from unittest.mock import Mock, patch
 from tools.run_v22_server_prepare import prepare_only, ProgressLog, main
@@ -55,6 +57,54 @@ class PreparationTests(unittest.TestCase):
         sink.write(json.dumps(dict(stage='paired_cache',completed=7,total=11,case='case'))+'\n')
         self.assertEqual(bar.n,7);self.assertEqual(bar.total,11)
         self.assertTrue(log.getvalue().startswith(text))
+
+    def progress_sink(self):
+        from tqdm import tqdm
+        log=io.StringIO();bar=tqdm(file=io.StringIO(),disable=False)
+        self.addCleanup(bar.close)
+        return ProgressLog(log,bar),log
+
+    def test_two_bodies_before_newlines_reproduces_server_interleaving(self):
+        sink,log=self.progress_sink();barrier=threading.Barrier(2)
+        def emit(case):
+            sink.write(json.dumps(dict(stage='raw_case_started',case=case)))
+            barrier.wait(timeout=10)
+            sink.write('\n')
+            sink.flush()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(emit,['liver_1','liver_2']))
+        rows=[json.loads(line) for line in log.getvalue().splitlines()]
+        self.assertEqual({r['case'] for r in rows},{'liver_1','liver_2'})
+        self.assertEqual(len(rows),2)
+        self.assertEqual(sink.partials,{})
+
+    def test_fragmented_multithread_print_and_log_have_exact_coverage(self):
+        sink,log=self.progress_sink();barrier=threading.Barrier(16)
+        def emit(worker):
+            for step in range(100):
+                body=json.dumps(dict(stage='raw_case_started',case=f'{worker}:{step}'))
+                # Deliberately interleave JSON fragments, not just complete bodies.
+                sink.write(body[:13]);barrier.wait(timeout=15)
+                print(body[13:],file=sink,flush=True)
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            list(pool.map(emit,range(16)))
+        rows=[json.loads(line) for line in log.getvalue().splitlines()]
+        self.assertEqual(len(rows),1600)
+        self.assertEqual({r['case'] for r in rows},{f'{w}:{s}' for w in range(16) for s in range(100)})
+        self.assertEqual(sink.partials,{})
+
+    def test_finish_preserves_unterminated_text_without_premature_parsing(self):
+        sink,log=self.progress_sink()
+        sink.write('partial diagnostic');sink.flush()
+        self.assertEqual(log.getvalue(),'')
+        sink.finish();sink.finish()
+        self.assertEqual(log.getvalue(),'partial diagnostic')
+        self.assertEqual(sink.partials,{})
+
+    def test_malformed_complete_event_is_not_silently_swallowed(self):
+        sink,log=self.progress_sink()
+        with self.assertRaises(json.JSONDecodeError):sink.write('{broken}\n')
+        self.assertEqual(log.getvalue(),'{broken}\n')
 
 
 if __name__=='__main__':unittest.main()
