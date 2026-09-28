@@ -71,9 +71,11 @@ def stage_events(local):
             handle.remove()
 
 
-def probe_batches(dataset, state, seed, count):
+def probe_batches(dataset, state, seed, count, *, profile_only=False):
     from hiercp_v222.v1_training import groups
-    if count < 2:
+    if profile_only and count != 1:
+        raise ValueError('Operator-only diagnostic requires exactly one next full batch')
+    if not profile_only and count < 2:
         raise ValueError('At least one warm-up and one measured DEBUG batch required')
     if state['phase'] != 'optimization' or not state['training_calibrated']:
         raise ValueError('Pause during optimization, after full support and calibration')
@@ -211,6 +213,9 @@ def run_policy(name, saved, dataset, order, reference, output, bar, *, operators
                 if trace is not None:
                     table = trace.key_averages().table(sort_by='self_cuda_time_total', row_limit=40)
                     (output/'baseline_operators.txt').write_text(table, encoding='utf-8')
+                    (output/'baseline_operators_cpu.txt').write_text(
+                        trace.key_averages().table(sort_by='self_cpu_time_total', row_limit=40),
+                        encoding='utf-8')
                 checks = None if reference is None else {
                     key: exact(evidence[key], reference[number][key]) for key in evidence}
                 row = dict(policy=name, batch_number=number+1, warmup=number == 0,
@@ -246,7 +251,11 @@ def main(argv=None):
                    'no_outer_l0_block1', 'no_outer_l0_block2'),
                    default=['no_outer_l0_block2', 'no_outer_l0_block1', 'no_outer_l0_block0'])
     p.add_argument('--operators', action='store_true', help='Profile baseline warm-up operators; timing batches stay unprofiled')
+    p.add_argument('--profile-only', action='store_true',
+                   help='One next full production batch, baseline operators only; no candidates or speedup claim')
     a = p.parse_args(argv)
+    if a.profile_only:
+        a.batches, a.candidates, a.operators = 1, [], True
     if len(set(a.candidates)) != len(a.candidates):
         raise ValueError('Duplicate diagnostic candidates')
     from tools.v222_resume_guard import assert_source_runs_idle
@@ -276,7 +285,8 @@ def main(argv=None):
     validate_artifact(saved, 'resume', identity=identity, resume_rows=dataset.rows)
     if saved['cache_sha256'] != sha(a.cache):
         raise ValueError('Checkpoint/cache identity mismatch')
-    order = probe_batches(dataset, saved['state'], saved['config']['seed'], a.batches)
+    order = probe_batches(dataset, saved['state'], saved['config']['seed'], a.batches,
+                          profile_only=a.profile_only)
     validate_memory(saved['state']['memory'], dataset.rows, dataset.meta['identities'],
                     dataset.meta['split'], dataset.meta['donor_pool'])
     workspace = saved['execution_policy']['workspace_mib']
@@ -297,13 +307,25 @@ def main(argv=None):
                 backward_intervals='before/after gradient reaches L0 output; shared autograd scheduling is not exclusive module attribution',
                 gradient_comparison='all trainable parameter gradients after production clipping',
                 timing_excludes='loading, cluster plan preparation, parity CPU copies, production checkpoint writing',
-                scope='same next batches and saved full support; compute-only A/B, not full-epoch or worst-case admission')
+                scope=('one next full batch and saved full support; operator diagnosis only, no speedup validation'
+                       if a.profile_only else
+                       'same next batches and saved full support; compute-only A/B, not full-epoch or worst-case admission'))
     (a.output/'started.json').write_text(json.dumps(info, indent=2), encoding='utf-8')
     print(f"DEBUG comparison | saved step {info['saved_step']} | full support {len(dataset)} | "
           f"physical batch {info['physical_batch']} | no production writes", flush=True)
     results = []
     with installed('stride4'), tqdm(total=(1+len(a.candidates))*a.batches, unit='batch', dynamic_ncols=True) as bar:
         baseline, reference = run_policy('baseline', saved, dataset, order, None, a.output, bar, operators=a.operators)
+        if a.profile_only:
+            if sha(a.checkpoint) != before:
+                raise RuntimeError('Source checkpoint changed during probe; profile invalid')
+            result = dict(**info, baseline=baseline, production_migration_approved=False,
+                          speedup_validated=False)
+            (a.output/'result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+            bar.write('BASELINE DIAGNOSTIC ONLY: no production changes; no speedup validated.')
+            bar.write((a.output/'baseline_operators.txt').read_text(encoding='utf-8'))
+            bar.write('CPU operator table: ' + str(a.output/'baseline_operators_cpu.txt'))
+            return
         old = statistics.mean(row['wall_compute_seconds'] for row in baseline[1:])
         for name in a.candidates:
             gc.collect()

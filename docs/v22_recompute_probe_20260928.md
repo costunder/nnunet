@@ -52,6 +52,48 @@ python -u tools/benchmark_v22_recompute_debug.py \
 
 로컬 GPU는 RTX5070Ti이며 조회 시16GB 중5693MiB, utilization60%로 다른 작업이 사용 중이었다. 그 작업을 중단하거나 로컬 full-cohort benchmark를 실행하지 않았다. synthetic CUDA unit은 실제 CT capacity/속도 증거가 아니다. **서버 전체 support A/B, 모델 전체 gradient parity, 실제 개선율, production 전환은 아직 미검증이다.**
 
+## 2026-09-28 추가: 후보를 실행하지 않는 한 step profiler
+
+현재 병목은 해결되지 않았다. 표본/support 수를 줄이는 제안은 적용하지 않는다.
+로컬 RTX5070Ti에서 명시적 synthetic DEBUG 연산 검사만 수행했다. 32768 node,
+262144 edge, hidden128/head4, BF16, 결정론 설정을 사용했다. 이는 CT 전체 batch
+검증이나 MIG 성능 측정이 아니다. 조회 당시 다른 작업이 GPU5716MiB/63%를 사용했고,
+CPU16 logical, 가용 RAM35.79GiB였다. 다른 작업은 건드리지 않았다.
+
+- 일반 indexing을 index_select로 대체한 엣지 합산: 출력/feature gradient/attention
+  gradient는 6회 모두 bitwise 일치. warm-up 제외 baseline7.67–11.46ms,
+  후보9.71–12.39ms로 일관된 개선 없음. 후보 파일 제거, production 미적용.
+- 난수를 쓰지 않는 edge checkpoint의 RNG 보존을 생략한 검사: 출력/입력 및 parameter
+  gradient/RNG 일치. warm-up 제외 baseline29.37–34.22ms, 후보24.47–38.09ms.
+  공유 GPU에서 개선 확정 불가, production 미적용.
+- baseline attention profiler에서는 copy18.42%, multiply14.53%, add13.60%,
+  index_put11.63%, fill10.29%의 self CUDA 비중을 관측했다. 커널 행은 ATen 행과
+  겹치므로 합산하지 않는다. 서버 전체 모델의 연산 비중으로 외삽하지 않는다.
+
+`--profile-only`는 원본 optimization checkpoint의 **다음 full physical batch 하나**와
+전체 saved support를 사용한다. baseline forward/backward/clip/optimizer를 별도 모델에서
+실행하되 production checkpoint는 쓰지 않는다. 다른 후보/재계산 해제를 실행하지 않으며,
+GPU operator 표를 즉시 화면에 출력하고 CPU 표도 파일로 저장한다. cold/profile 오버헤드가
+있으므로 처리량 향상 판정에 사용하지 않는다. training이 실행 중이면 먼저 거부한다.
+
+현재 학습 뷰에서 Ctrl+C 후 **PAUSED 확인** 다음 실행한다. 기존 캐시를 다시 만들지 않는다.
+
+```bash
+conda activate nnunet &&
+cd /home/aicompetition06/Medical/HierCP-v22-e1e34bf &&
+git fetch origin codex/v222-server-r6 &&
+git switch --detach FETCH_HEAD &&
+python -u tools/benchmark_v22_recompute_debug.py \
+  --cache work/v22_full_prepare_20260928_logfix/paired_cache/index.json \
+  --checkpoint work/v22_gnn40_resume114_20260928/training/checkpoint_latest.pt \
+  --output work/v22_one_step_operators_20260928_DEBUG \
+  --profile-only
+```
+
+짧은 CUDA/단위검사6개 통과(6.338초). one-step cursor/epoch wrap/미완성 support 거부도
+검사했다. 실제 서버 profiler 실행, 전체 모델 후보 parity, 속도 개선, 전체 학습/평가는
+이 추가 작업에서 수행하지 않았다. core/runtime/cache contract 변경 없음.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

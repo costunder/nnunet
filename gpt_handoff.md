@@ -1,3 +1,8 @@
+## 2026-09-28 병목 미해결: 한 step 연산 진단
+
+- 모델/후보 수/support 축소는 미적용. 로컬 indexing 대체와 edge checkpoint RNG 저장 생략은 짧은 CUDA parity가 맞았으나 일관된 속도 개선 근거가 없어 미채택. production core/runtime/cache 변경 없음.
+- [기록 및 명령](docs/v22_recompute_probe_20260928.md)의 `--profile-only`는 PAUSED checkpoint 다음 full batch 하나+전체 saved support로 기존 학습 연산만 추적한다. GPU 표 화면 출력/CPU 표 저장, 원본 checkpoint 쓰기/자동 재개/후보 실행 없음. 6개 짧은 CUDA·단위검사 통과(6.338초). 실제 서버 trace와 병목 해결은 아직 미확인.
+
 ## 2026-09-28 전체 재계산 해제 OOM 후 선택적 후보
 
 - 서버 사용자 결과: no_outer_l0는 saved step114/full support11279/batch32에서 첫 후보 batch OOM(allocated8.97GiB/process9.39GiB). 원본 유지. 사용자는 resume114 폴더에서 기존 정책으로 step169까지 진행했다. 병목 해결로 보고하지 않는다.

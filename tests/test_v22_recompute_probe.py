@@ -34,6 +34,12 @@ class ProbeTests(unittest.TestCase):
             probe_batches(data, dict(state, phase='initial_memory'), 42, 3)
         with self.assertRaisesRegex(ValueError, 'At least'):
             probe_batches(data, state, 42, 1)
+        self.assertEqual(probe_batches(data, state, 42, 1, profile_only=True),
+                         list(groups(data, 3, 42, 2))[1:2])
+        with self.assertRaisesRegex(ValueError, 'exactly one'):
+            probe_batches(data, state, 42, 3, profile_only=True)
+        with self.assertRaisesRegex(ValueError, 'full support'):
+            probe_batches(data, dict(state, phase='initial_memory'), 42, 1, profile_only=True)
 
     def test_snapshot_does_not_alias_cpu_adam_or_numpy_rng(self):
         value = {'adam': torch.ones(3), 'rng': (np.arange(3), [torch.zeros(2)])}
