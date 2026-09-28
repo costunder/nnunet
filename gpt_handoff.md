@@ -1,3 +1,9 @@
+## 2026-09-28 서버 재계산 성능 비교 도구
+
+- 사용자 제공 step29–78 시간: step22.104초, forward6.199초, backward15.451초, peak allocated5.99GiB. 전체 연산 구간 병목이며 L0 단독이나 GPU 포화 증거는 아니다.
+- [재계산 비교](docs/v22_recompute_probe_20260928.md): 정지된 production checkpoint의 전체 support/Adam/RNG와 실제 다음3batch를 재사용해 L0 outer checkpoint만 끈 DEBUG 후보를 비교한다. original/candidate 모두 같은 시작 상태. 자동 production 전환 없음. 모델/core/runtime/cache 불변.
+- 짧은 CUDA operator parity 포함4검사 통과. 실제 서버 full-support 비교/개선율/전체 모델 parity는 아직 미검증. 사용자의 현재 본학습을 이 로컬 작업에서 중단하거나 수정하지 않았다.
+
 ## 2026-09-28 서버 GNN 실행 단계 정정
 
 - 사용자 제공 결과: `work/v22_full_prepare_20260928_logfix/paired_cache/index.json` 14,102 records 생성 완료. MIG 실제 CT DEBUG gradient/optimizer/resume 검사 통과. 서버에 직접 접속해 확인한 결과는 아니다.
