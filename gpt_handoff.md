@@ -1,4 +1,10 @@
-## 2026-09-28 최신 — 준비 진행률 출력기의 실제 동시성 오류 수정
+## 2026-09-28 서버 GNN 실행 단계 정정
+
+- 사용자 제공 결과: `work/v22_full_prepare_20260928_logfix/paired_cache/index.json` 14,102 records 생성 완료. MIG 실제 CT DEBUG gradient/optimizer/resume 검사 통과. 서버에 직접 접속해 확인한 결과는 아니다.
+- [현재 서버 실행 명령과 범위](docs/v22_server_gnn_start_20260928.md). 전체 epoch/validation/final support와 final GNN artifact가 필요한 후속 G4까지 모두 GNN 시작 전 조건으로 설명했던 순서를 정정했다. G3/G4를 통과로 재표시하지 않는다.
+- 기존 cache를 재사용하는 process launcher의 마지막 단계가 full ranking training인지 검사 추가. 실행/진행표시/중단 protocol 단위검사14 통과. core/runtime/model 변경 없음, 원격 본학습 시작 확인 없음. 아래 이전 캐시 준비 미완료 기록은 당시 상태다.
+
+## 2026-09-28 이전 — 준비 진행률 출력기의 실제 동시성 오류 수정
 
 - 서버 e3259ca 실행이 raw_inventory29/131에서 JSON Extra data로 실패. ProgressLog 공유 partial에 여러 스레드의 print 본문/줄바꿈이 섞인 원인이다. 실제 기존 소스+2스레드 barrier로 재현했다.
 - 스레드 객체별 partial과 완성 줄 원자적 전달로 수정. 신규 동시성4개 포함8개 단위검사 통과, 16스레드1600개 강제 조각 교차에서 로그 누락/중복/혼합 없음. GPU 재학습할 변경이 아니다.

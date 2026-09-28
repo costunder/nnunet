@@ -7,6 +7,23 @@ from tools.run_v222_server import stages,execute,ROOT
 
 
 class ServerRunnerTests(unittest.TestCase):
+    def test_prepared_cache_process_run_reaches_full_ranking_training(self):
+        cache=Path('/medical/prepared/paired_cache/index.json')
+        output=Path('/medical/gnn40')
+        plan=stages(Path('/medical'),output,32,9.0,256,
+                    optimized=True,process_loader=True,cache=cache,
+                    feature_coordinates='stride4',training_objective='observed_rank_v1')
+        self.assertEqual([name for name,_ in plan],
+                         ['resources','model_check','graph_DEBUG','profile_DEBUG','gnn_training'])
+        train=dict(plan)['gnn_training']
+        self.assertEqual(Path(train[2]),ROOT/'tools/run_v222_process_runtime.py')
+        for flag,value in (('--cache',str(cache)),('--output',str(output/'training')),
+                           ('--feature-coordinates','stride4'),
+                           ('--training-objective','observed_rank_v1'),('--workspace-mib','256')):
+            self.assertEqual(train[train.index(flag)+1],value)
+        for forbidden in ('--resume','--debug-profile','--debug-stop-after-step','--batch-size','--calibration'):
+            self.assertNotIn(forbidden,train)
+
     def test_pipeline_preserves_production_and_sets_only_debug_batch(self):
         plan=stages(Path('/medical'),Path('/output'),32,9.0)
         names=[name for name,_ in plan]
