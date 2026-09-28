@@ -7,6 +7,9 @@ and inner edge checkpoints, graph, physical batch, loss and weights are kept.
 The previous all-block policy remains opt-in for reproducibility, not default.
 The explicit static_reuse candidate keeps all checkpoints and only reuses fixed
 topology/reference inputs. Optional checkpoint-cost files are DEBUG-only.
+Explicit l0_direct_logit/l0_fused replace inner L0 logit checkpointing with
+streamed derivatives; l0_fused also fuses pointwise CUDA work and casts nodes
+once for L0 aggregation. Outer checkpoints and L1/L2 operators remain intact.
 """
 import argparse
 from contextlib import contextmanager, nullcontext
@@ -25,6 +28,11 @@ sys.path.insert(0, str(ROOT))
 
 @contextmanager
 def execution_policy(net, name):
+    if name in ('l0_direct_logit','l0_fused'):
+        from tools.v22_l0_logit_stream import installed
+        with installed(net.local, fused=name=='l0_fused', node_cast=name=='l0_fused'):
+            yield
+        return
     if name == 'static_reuse':
         from tools.v22_static_reuse import installed_model
         with installed_model(net):
@@ -298,7 +306,7 @@ def main(argv=None):
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--batches', type=int, default=3, help='Explicit DEBUG batches only; no production cap')
     p.add_argument('--candidates', nargs='+', choices=('no_outer_l0', 'no_outer_l0_block0',
-                   'no_outer_l0_block1', 'no_outer_l0_block2', 'static_reuse'),
+                   'no_outer_l0_block1', 'no_outer_l0_block2', 'static_reuse','l0_direct_logit','l0_fused'),
                    default=['no_outer_l0_block2', 'no_outer_l0_block1', 'no_outer_l0_block0'])
     p.add_argument('--operators', action='store_true', help='Profile baseline warm-up operators; timing batches stay unprofiled')
     p.add_argument('--profile-only', action='store_true',
@@ -351,6 +359,7 @@ def main(argv=None):
                 source_identity=saved['source_identity'], runtime_sha256=saved['execution_policy']['runtime_sha256'],
                 tool_sha256=sha(Path(__file__)), torch_version=torch.__version__, gpu=torch.cuda.get_device_name(),
                 candidate_source_sha256=sha(ROOT/'tools/v22_static_reuse.py'),
+                L0_candidate_source_sha256=sha(ROOT/'tools/v22_l0_logit_stream.py'),
                 device_total_bytes=torch.cuda.get_device_properties(0).total_memory,
                 free_bytes_at_start=torch.cuda.mem_get_info()[0], available_ram=psutil.virtual_memory().available,
                 epoch=saved['state']['epoch']+1, saved_step=saved['state']['step'],

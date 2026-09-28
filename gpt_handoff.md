@@ -1,3 +1,10 @@
+## 2026-09-28 L0 내부 연산 수정·실제 CT GPU 비교
+
+- [L0 수정·검증 및 서버 명령](docs/v22_l0_kernel_20260928.md). 내부 logit checkpoint를 직접 streamed backward로 교체, CUDA pointwise fusion, aggregation node cast 재사용을 구현했다. L0 인스턴스에만 적용하며 outer checkpoint/CNN/L1/L2/모델·그래프 규모 유지.
+- 실제 CT DEBUG8개/52666nodes/2761602edges/full-size L0에서 동일 상태3update 비교. 원본→후보→원본의 워밍업 제외 평균: 첫 비교1.146665→1.019554초(11.1%), 최종 범위 한정본1.209188→0.984409초(18.6%). 출력/loss/전체 gradient/model/Adam/RNG bitwise 일치. peak+2.13MiB. 관련12검사 통과9.175초.
+- 서버용 `--candidates l0_fused` 연결. core/runtime/cache와 본학습 기본 동작은 불변. 로컬 torch2.8/5070Ti, 초기화된 L0/squared-output 진단이다. 서버 torch2.6/MIG/full support/epoch 비용 검증 및 production 전환은 아직 아니다. 3시간 문제가 해결됐다고 보고하지 않는다.
+- 원시 측정은 `validation/v222_r6/l0_kernel_20260928_DEBUG.json`. 아래 ‘L0 미수정’은 이전 시점의 기록이다.
+
 ## 2026-09-28 고정 상태 재사용 구현 — 3시간 병목 해결 미입증
 
 - [수정·검증 기록](docs/v22_static_reuse_20260928.md). `tools/v22_static_reuse.py`에 support 연결/mask, query 연결, 같은 CT의 epoch reference, 고정 memory/plan CPU snapshot/hash 재사용 구현. 학습된 L1/L2 출력·현재 모델 hash·매 batch 안전 저장은 유지한다.
