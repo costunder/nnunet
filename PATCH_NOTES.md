@@ -1,3 +1,7 @@
+## v2.2 — epoch 비용 비교 범위 정정 및 독립 진단 (2026-09-30)
+
+- 이전8개 DEBUG GraphSAGE 비교와 full-support 서버 학습의 차이를 기록. production 변경 없이 저장된 다음update의 구간별 GPU 진단 도구 추가. 실제 CT 복제 상태 smoke 완료; 서버 epoch 개선 완료 아님. [기록](docs/region_epoch_timing_audit_20260930.md).
+
 ## v2.2 — support 시작 경로의 중복 계산·CPU 중복검사 수정 (2026-09-30)
 
 Actual-CT fresh-process smoke: 4 DEBUG updates; uninterrupted versus pause/resume model, optimizer, RNG and state hashes all match. Existing cache unchanged; full training not run.

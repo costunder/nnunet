@@ -1,3 +1,8 @@
+## 2026-09-30 — SAGE 절반 시간 주장 범위 정정
+
+- 서버 epoch1 step2/405=17.11s, GPU100%/2740MiB. 기존8-observation DEBUG 비교는 full support/batch32/저장 미측정이며 training stable_spmm와도 다른 경로. 전체epoch 절반 보장 금지.
+- 다음update 복제 진단 tools/profile_region_update_debug.py 추가. 실제CT checkpoint smoke 실행완료, 원본변경없음. 로컬 actualbatch2/support6 결과를 서버속도로 환산금지. 서버 기존 batch_calibration/execution_contract부터 읽고, 실행중 checkout 변경·동시GPU 진단 금지. [기록](docs/region_epoch_timing_audit_20260930.md).
+
 ## 2026-09-30 최신 — calibration support 경로 수정
 
 Actual-CT fresh-process smoke: 4 DEBUG updates; uninterrupted versus pause/resume model, optimizer, RNG and state hashes all match. Existing cache unchanged; full training not run.

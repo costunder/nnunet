@@ -1,0 +1,46 @@
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+                                                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+                                                forward         0.00%       0.000us         0.00%       0.000us       0.000us     533.328ms       939.09%     533.328ms     533.328ms             1
+                                                     L0         0.00%       0.000us         0.00%       0.000us       0.000us     315.918ms       556.27%     315.918ms     315.918ms             1
+                                    gradient_check_clip         0.00%       0.000us         0.00%       0.000us       0.000us     189.684ms       334.00%     189.684ms     189.684ms             1
+                                      SAGE_segmented_mm         0.00%       0.000us         0.00%       0.000us       0.000us     118.528ms       208.71%     118.528ms       1.013ms           117
+                                                    CNN         0.00%       0.000us         0.00%       0.000us       0.000us      62.867ms       110.70%      62.867ms      10.478ms             6
+                                          support_L1_L2         0.00%       0.000us         0.00%       0.000us       0.000us      51.698ms        91.03%      51.698ms      51.698ms             1
+                             aten::convolution_backward         0.32%       6.112ms         1.35%      25.656ms       1.604ms      25.305ms        44.56%      25.570ms       1.598ms            16
+                                  fine_feature_sampling         0.00%       0.000us         0.00%       0.000us       0.000us      22.780ms        40.11%      22.780ms       4.556ms             5
+                                         region_pooling         0.00%       0.000us         0.00%       0.000us       0.000us      19.569ms        34.46%      19.569ms       3.914ms             5
+                                          query_L1_rank         0.00%       0.000us         0.00%       0.000us       0.000us      15.117ms        26.62%      15.117ms      15.117ms             1
+_ZN5cudnn3cnn29wgrad2d_grouped_direct_kernelILb1ELb1...         0.00%       0.000us         0.00%       0.000us       0.000us      11.498ms        20.25%      11.498ms       1.916ms             6
+                       Runtime Triggered Module Loading         9.17%     174.079ms         9.17%     174.079ms       2.720ms       6.027ms        10.61%       6.027ms      94.169us            64
+_ZN5cudnn3cnn29dgrad2d_grouped_direct_kernelIfiffLb1...         0.00%       0.000us         0.00%       0.000us       0.000us       5.237ms         9.22%       5.237ms       1.309ms             4
+                                aten::cudnn_convolution         4.02%      76.230ms         5.96%     113.065ms       3.533ms       5.134ms         9.04%       5.331ms     166.586us            32
+_Z25implicit_convolveNd_sgemmIfLi3ELi1024ELi5ELi5ELi...         0.00%       0.000us         0.00%       0.000us       0.000us       5.059ms         8.91%       5.059ms     158.103us            32
+_Z26wgrad_alg1_nd_float_engineIffLi3ELi0ELi5ELi7ELi4...         0.00%       0.000us         0.00%       0.000us       0.000us       5.027ms         8.85%       5.027ms     502.683us            10
+                                            aten::fill_         2.01%      38.121ms         6.77%     128.454ms      21.246us       4.215ms         7.42%       4.216ms       0.697us          6046
+                              Optimizer.step#AdamW.step         0.00%       0.000us         0.00%       0.000us       0.000us       3.790ms         6.67%       3.790ms       3.790ms             1
+                                  Lazy Function Loading         0.35%       6.554ms         0.35%       6.554ms      55.076us       3.723ms         6.56%       3.723ms      31.290us           119
+_Z26dgrad_alg1_nd_float_engineIfLi3ELi128ELi6ELi7ELi...         0.00%       0.000us         0.00%       0.000us       0.000us       3.253ms         5.73%       3.253ms     325.346us            10
+_ZN2at6native29vectorized_elementwise_kernelILi4ENS0...         0.00%       0.000us         0.00%       0.000us       0.000us       3.149ms         5.54%       3.149ms       0.901us          3496
+                                    aten::_fused_adamw_         0.02%     319.538us         0.05%       1.021ms       1.021ms       2.612ms         4.60%      10.448ms      10.448ms             1
+_ZN2at6native52_GLOBAL__N__aed75f65_19_fused_adamw_i...         0.00%       0.000us         0.00%       0.000us       0.000us       2.612ms         4.60%       2.612ms     217.673us            12
+                                               aten::mm         1.47%      27.972ms         2.86%      54.287ms     108.573us       2.073ms         3.65%       2.074ms       4.148us           500
+                                 aten::_index_put_impl_         0.30%       5.740ms         2.60%      49.257ms     600.690us       2.021ms         3.56%       3.123ms      38.089us            82
+                                            aten::copy_         0.37%       7.097ms         1.31%      24.794ms      32.840us       1.512ms         2.66%       1.513ms       2.005us           755
+                                            aten::addmm         0.91%      17.174ms         1.37%      25.984ms     119.193us       1.209ms         2.13%       1.224ms       5.613us           218
+                                              aten::mul         0.72%      13.585ms         1.59%      30.083ms      34.578us       1.178ms         2.07%       1.180ms       1.356us           870
+                                              aten::all         0.52%       9.891ms         1.24%      23.488ms      41.352us     972.884us         1.71%       1.073ms       1.889us           568
+_ZN2at6native13reduce_kernelILi512ELi1ENS0_8ReduceOp...         0.00%       0.000us         0.00%       0.000us       0.000us     971.285us         1.71%     971.285us       2.163us           449
+                                aten::native_group_norm         0.23%       4.377ms         1.56%      29.660ms     926.887us     965.040us         1.70%       1.662ms      51.935us            32
+_ZN2at6native29vectorized_elementwise_kernelILi2ENS0...         0.00%       0.000us         0.00%       0.000us       0.000us     956.249us         1.68%     956.249us       0.758us          1262
+                                              aten::sum         0.35%       6.651ms         0.74%      14.022ms      42.620us     919.371us         1.62%     925.067us       2.812us           329
+_ZN2at6native18elementwise_kernelILi128ELi2EZNS0_22g...         0.00%       0.000us         0.00%       0.000us       0.000us     916.204us         1.61%     916.204us       6.591us           139
+_ZN2at6native58_GLOBAL__N__b5e1736e_20_group_norm_ke...         0.00%       0.000us         0.00%       0.000us       0.000us     778.735us         1.37%     778.735us      24.335us            32
+_ZN44_GLOBAL__N__516f300d_11_Indexing_cu_2a2c434e37i...         0.00%       0.000us         0.00%       0.000us       0.000us     668.652us         1.18%     668.652us      44.577us            15
+_ZN2at6native13reduce_kernelILi128ELi4ENS0_8ReduceOp...         0.00%       0.000us         0.00%       0.000us       0.000us     668.621us         1.18%     668.621us       4.004us           167
+_ZN7cutlass7Kernel2I41cutlass_80_simt_sgemm_64x64_8x...         0.00%       0.000us         0.00%       0.000us       0.000us     619.332us         1.09%     619.332us       5.630us           110
+                                           aten::gather         0.17%       3.318ms         0.40%       7.627ms      39.113us     590.091us         1.04%     592.779us       3.040us           195
+_ZN2at6native24vectorized_gather_kernelILi16ExEEvPcS...         0.00%       0.000us         0.00%       0.000us       0.000us     556.687us         0.98%     556.687us       3.163us           176
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+Self CPU time total: 1.897s
+Self CUDA time total: 56.792ms
