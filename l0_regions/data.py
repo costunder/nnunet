@@ -24,10 +24,16 @@ class VerifiedItem(dict):
         self._receipt_signature=signature(self)
 
 
+def scale_count(profile):
+    n=profile.get('region_scales',2)
+    if type(n)!=int or n not in (1,2):raise ValueError('Invalid region scale count')
+    return n
+
+
 def profile_status(item):
     limits=item['binding']['profile']['diagnostic_profile_from_original_NOT_VALIDATED']
     exceeded=False
-    for level in range(2):
+    for level in range(scale_count(item['binding']['profile'])):
         rs=item['scales'][level];audit=item['audit'][f'scale{level+1}']
         exceeded |= sum(len(r['mass']) for r in rs.values())>limits['nodes_total'][level]
         exceeded |= sum(e.shape[1] for e in item['edges'][level].values())>limits['directed_edges_total'][level]
@@ -55,7 +61,10 @@ def verify_receipt(item):
         if b[key]!=r[key]:raise ValueError('Record receipt mismatch')
     if b['view']['epoch']!=r['view_epoch'] or b['view']['index']!=r['view_index']:raise ValueError('View receipt mismatch')
     evidence=item['fine_graph_evidence']
-    if not evidence['stage1_quotient_verified'] or not evidence['stage2_quotient_verified']:raise ValueError('Missing quotient evidence')
+    if not evidence['stage1_quotient_verified']:raise ValueError('Missing quotient evidence')
+    if scale_count(b['profile'])==2:
+        if not evidence['stage2_quotient_verified']:raise ValueError('Missing quotient evidence')
+    elif evidence.get('stage2_status')!='REMOVED_BY_DESIGN':raise ValueError('Single-scale evidence required')
     if item['profile_exceeded']!=profile_status(item):raise ValueError('Incorrect profile flag')
 
 
@@ -66,7 +75,8 @@ def validate_item(item):
         return
     verify_receipt(item)
     if item['diagnostic_only'] is not True or item['training_ready'] is not False:raise ValueError('Diagnostic cache only')
-    if set(item['fine'])!=set(NT) or len(item['scales'])!=2 or len(item['edges'])!=2:raise ValueError('Invalid region schema')
+    levels=scale_count(item['binding']['profile'])
+    if set(item['fine'])!=set(NT) or len(item['scales'])!=levels or len(item['edges'])!=levels:raise ValueError('Invalid region schema')
     for key in ('source_patch','target_patch'):
         t=item[key]
         if t.shape!=(1,48,48,48) or not bool(torch.isfinite(t).all()):raise ValueError('Invalid raw CT')
@@ -84,8 +94,10 @@ def validate_item(item):
         elif bool((fine['shell']!=-1).any()):raise ValueError('Surface shell identity')
         previous=fine; mass=torch.ones(n,device=fine['grid'].device)
         lower=upper=fine['pos_mm']
-        for level in range(2):
+        for level in range(levels):
             r=item['scales'][level][role];p=previous['parent'];k=compact(p,len(mass))
+            required={'mass','shell','lower','upper','stable_id'} | ({'parent'} if level+1<levels else set())
+            if set(r)!=required:raise ValueError('Unexpected region fields or unused parent mapping')
             if len(r['mass'])!=k or r['mass'].shape!=(k,) or r['shell'].shape!=(k,) or r['shell'].dtype!=torch.long:raise ValueError('Coarse coverage')
             if not torch.equal(r['shell'][p],previous['shell']):raise ValueError('Mixed shell')
             expected=torch.zeros(k,device=mass.device).index_add(0,p,mass)
@@ -101,7 +113,7 @@ def validate_item(item):
             if e.numel() and bool((e<0).any()|(e[0]>=len(item['scales'][level][rel[0]]['mass'])).any()|(e[1]>=len(item['scales'][level][rel[2]]['mass'])).any()):raise ValueError('Edge outside region')
             if len(torch.unique(e.T,dim=0))!=e.shape[1]:raise ValueError('Duplicate quotient edge')
             if rel[0]==rel[2] and bool((e[0]==e[1]).any()):raise ValueError('Collapsed internal edge')
-    for rel in ET:
+    for rel in (ET if levels==2 else ()):
         expected=quotient(item['edges'][0][rel],item['scales'][0][rel[0]]['parent'],
             item['scales'][0][rel[2]]['parent'],same_type=rel[0]==rel[2])[0]
         if not torch.equal(expected,item['edges'][1][rel]):raise ValueError('Stage2 is not exact typed quotient')
@@ -159,22 +171,23 @@ def collate(items,indices):
     # Mixed partition models/views/profiles must not silently form one experiment.
     for key in ('cache_sha256','frozen_cnn_sha256','profile','view','feature_coordinates','feature_evidence','preparation_source_sha256'):
         if any(item['binding'][key]!=items[0]['binding'][key] for item in items):raise ValueError('Mixed partition contract')
-    offsets=[{k:[0] for k in NT} for _ in range(2)]
+    levels=scale_count(items[0]['binding']['profile'])
+    offsets=[{k:[0] for k in NT} for _ in range(levels)]
     for item in items:
-        for level in range(2):
+        for level in range(levels):
             for k in NT:offsets[level][k].append(offsets[level][k][-1]+len(item['scales'][level][k]['mass']))
-    fine={};regions=[{},{}];graphs=[HeteroData(),HeteroData()]
+    fine={};regions=[{} for _ in range(levels)];graphs=[HeteroData() for _ in range(levels)]
     for k in NT:
         fine[k]={name:torch.cat([item['fine'][k][name] for item in items]) for name in ('grid','shell','stable_id','pos_mm')}
         fine[k]['owner']=torch.cat([torch.full((len(item['fine'][k]['grid']),),i,dtype=torch.long) for i,item in enumerate(items)])
         fine[k]['parent']=torch.cat([item['fine'][k]['parent']+offsets[0][k][i] for i,item in enumerate(items)])
-        for level in range(2):
+        for level in range(levels):
             fields={name:torch.cat([item['scales'][level][k][name] for item in items]) for name in ('shell','mass','lower','upper','stable_id')}
             fields['owner']=torch.cat([torch.full((len(item['scales'][level][k]['mass']),),i,dtype=torch.long) for i,item in enumerate(items)])
-            if level==0:fields['parent']=torch.cat([item['scales'][0][k]['parent']+offsets[1][k][i] for i,item in enumerate(items)])
+            if level+1<levels:fields['parent']=torch.cat([item['scales'][0][k]['parent']+offsets[1][k][i] for i,item in enumerate(items)])
             regions[level][k]=SimpleNamespace(**fields)
             graphs[level][k].num_nodes=len(fields['mass'])
-    for level in range(2):
+    for level in range(levels):
         for rel in ET:
             graphs[level][rel].edge_index=torch.cat([item['edges'][level][rel]+torch.tensor([[offsets[level][rel[0]][i]],[offsets[level][rel[2]][i]]]) for i,item in enumerate(items)],1)
     sources=[];source_lookup={};source_indices=[]

@@ -1,0 +1,75 @@
+{
+  "status": "PASS_first_partition_equivalent_up_to_cluster_ID_permutation",
+  "debug": true,
+  "actual_ct": true,
+  "pairs": [
+    {
+      "record": "liver_66:19",
+      "fine_nodes": 7955,
+      "nodes": 1464,
+      "edges": 35047,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_66:1",
+      "fine_nodes": 4420,
+      "nodes": 691,
+      "edges": 17414,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_75:44",
+      "fine_nodes": 9087,
+      "nodes": 3856,
+      "edges": 97107,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_75:2",
+      "fine_nodes": 4716,
+      "nodes": 978,
+      "edges": 32839,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_72:84",
+      "fine_nodes": 5847,
+      "nodes": 903,
+      "edges": 33128,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_72:1",
+      "fine_nodes": 8014,
+      "nodes": 1277,
+      "edges": 34709,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_71:91",
+      "fine_nodes": 5501,
+      "nodes": 2969,
+      "edges": 79604,
+      "profile_exceeded": true
+    },
+    {
+      "record": "liver_71:0",
+      "fine_nodes": 7126,
+      "nodes": 1730,
+      "edges": 49201,
+      "profile_exceeded": true
+    }
+  ],
+  "largest_cluster": {
+    "record": "liver_72:84",
+    "role": "target_context",
+    "cluster": 229,
+    "fine_nodes": 2496,
+    "fraction_of_role": 0.7923809523809524,
+    "bbox_diagonal_mm": 75.23939514160156
+  },
+  "frozen_cnn_sha256": "f6a89b382e3ad3d3644cb0b504ad7f7fab625e8df2e4b714437327fee5ff3ee4",
+  "profile_quality_validated": false,
+  "training_ready": false,
+  "scope": "Cluster membership, mass/bounds/stable IDs, materialization and all 13 typed edges equal after canonical cluster relabeling; raw numeric cluster IDs need not match; no legacy cache promotion"
+}

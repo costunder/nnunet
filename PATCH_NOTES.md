@@ -1,3 +1,15 @@
+## v2.2 — 사용자 요청: 2차 병합 제거, 단일 region scale (2026-09-29)
+
+- 새 prepare 경로는 첫 partition과 첫13관계 quotient만 저장. reg-scale2·두 번째 그래프·두 scale 평균 제거. SAGE는1차 그래프에서 기존3층,128D 유지. Legacy2단계 진단 검사와 결과 보존.
+- 1차 병합은 원본 GPU merger/입력/목적식 그대로. 실제8pair의 구성원·mass/bbox·13관계가 cluster 번호 정규화 후 기존1차와 동일함을 대조. 2,496/3,150노드가75.24mm 한 영역에 모이는 품질 우려는 해결된 것으로 표시하지 않음.
+- 회귀27+신규4 GPU검사 및 실제DEBUG 학습/재개/3후보CP 검증. 1차 초기상한 위반은 여전히 strict 실행을 막음. 전체학습 준비 완료 아님. [상세](docs/region_single_scale_20260929.md).
+
+## v2.2 — 초기 partition admission 실패 근거 보존 (2026-09-29)
+
+- A6000 의존성 PASS 이후 준비 첫 batch의 초기 상한 차단을 확인. DEBUG 허용 경로와 strict 학습 경로의 차이를 해결하지 않은 서버 전달을 정정.
+- 위반 record·N/E·역할/shell·bbox/분산 및 전체 audit를 예외에서 보존하고 CLI/JSON으로 출력. 1차 차단 후 2차는 NOT_RUN. 기존 acceptance 및 무결성 검사는 그대로.
+- 8검사 PASS. 실제 CT DEBUG8pair를 GPU strict 경로로 실행해 8개 모두 초기 profile 차단을 재현. 이는 예상 차단/보고 검증이며 학습 허용 검증이 아님. [상세](docs/region_admission_failure_20260929.md).
+
 ## v2.2 — 서버 torch-scatter 누락 조기 검사 (2026-09-29)
 
 - 서버 첫 prepare batch에서 `torch_scatter` 미설치로 실패한 원인을 확인. CLI에서 캐시/체크포인트 읽기 및 출력 폴더 생성 전 필수 패키지와 실제 CUDA scatter/공식 pinned merge 커널을 검사하도록 수정. 자동 설치·CPU fallback 없음.

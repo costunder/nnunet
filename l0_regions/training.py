@@ -42,7 +42,8 @@ def hash_state(value):
 
 class TrainEncoder(RegionSAGEEncoder):
     def __init__(self,reference,*,budget,debug,contract):
-        super().__init__(reference,seed=42,resource_budget=budget,allow_unvalidated_profile=debug)
+        from .data import scale_count
+        super().__init__(reference,seed=42,resource_budget=budget,allow_unvalidated_profile=debug,levels=scale_count(contract['profile']))
         self.training_contract=copy.deepcopy(contract)
         for block in self.core.blocks:
             for conv in block.conv.convs.values():conv.stable_spmm=True

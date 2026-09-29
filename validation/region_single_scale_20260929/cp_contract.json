@@ -1,0 +1,15 @@
+{
+  "debug": true,
+  "status": "PASS",
+  "actual_CT": true,
+  "full_training": false,
+  "event_partition_batches": 1,
+  "repeated_event_repartitioned": false,
+  "resident_mutation_rejected": true,
+  "final_artifact_mutations_rejected": [
+    "state_dict",
+    "memory",
+    "frozen_cnn"
+  ],
+  "scope": "3 explicit DEBUG candidates; existing raw CP and complete mask oracle. Native segmentation update not run; cold official repartition repeatability not claimed."
+}

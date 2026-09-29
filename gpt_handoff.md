@@ -1,3 +1,19 @@
+## 2026-09-29 최신 — 사용자 승인 범위: 2차 partition 제거
+
+- 사용자는 2차축약 제거를 명시하고 1차 품질을 질문함. 새 CLI prepare는 single_profile/reg1만, CNN→고정1차집계→SAGE3층→단일readout→128D. L1/L2/loss/후보128/BasicCP/원본mask 변경 없음. 단일scale identity로 구분, 레거시2scale 진단과 결과는 보존.
+- 회귀27+신규single GPU4검사. 실제DEBUG train8/val2 준비·4update·검증·선택·새 프로세스 재개 exact. 실제3후보CP exactpaste 검사 수행. 최종 source 고정 후 결과는 `work/region_single_scale_final_20260929` 및 별도 CP 결과. 전체학습 아님.
+- 실제8pair 비교: raw cluster ID 일부 순서 차이, stable ID로 구성원/범위/mass/모든13관계 정규화하면 1차 결과 동일. cold partition bitwise 재현성을 주장하지 말것.
+- 1차N52666→13868/E2761602→379049. target_context 2496/3150이75.24mm bbox 영역 하나로 병합되는 사례는 여전히 있음. 공식호출/연결성/coverage 적합과 의미적 partition 품질을 구분. 품질 검증 완료나 잘못된 공식함수라고 단정하지 말것.
+- **1차 admission 차단은 남음.** 사용자는 연구학습 override 질문에 동의하지 않고 설명을 요구했다. 2차제거 승인이 상한 경고전환 승인인 것처럼 처리하지 말것. 동일 strict 서버명령 재요구 금지. [상세](docs/region_single_scale_20260929.md).
+
+## 2026-09-29 최신 — 서버 초기 profile 차단, 학습 미시작
+
+- A6000 CUDA/torch_scatter/공식 merge preflight는 PASS. 이후 prepare 첫 scale에서 미검증 초기 partition admission이 차단됨. 서버 실측 위반값은 기존 traceback에 없음. OOM/의존성 오류로 설명하지 말것.
+- 로컬 DEBUG에서는 상한 위반 허용, strict 서버에서는 차단한다는 알려진 차이를 해결하지 않고 실행 명령을 전달한 문제. 동일 strict 명령 재실행으로 해결된다고 하지 말것.
+- 이번 수정은 실패 record·N/E·상한·role/shell 전체 audit를 CLI와 admission_rejection.json에 보존하는 보고 수정뿐. 1차 실패 후 2차 NOT_RUN. acceptance/reg/min_size/모델/후보128/BasicCP/L1/L2/loss 변경 없음.
+- 신규4+기존preflight4검사 PASS. 실제 DEBUG CT8pair를 strict GPU 준비 경로로 확인: 모두 1차 profile 위반, N691–3856/E17414–97107, 최대CUDA 약281MiB. 학습/update/전체cohort 검사가 아님.
+- 미검증 상한의 위반을 계속 기록하면서 연구 학습만 허용하고 무결성·실제 자원 한도는 강제하는 변경안을 구체적으로 질문함. 아직 답변 없음. 무단 override를 구현하거나 DEBUG를 full 학습으로 승격하지 말것. [상세](docs/region_admission_failure_20260929.md).
+
 ## 2026-09-29 최신 — 서버 torch-scatter 누락 복구
 
 - 서버 `HierCP-regions-8580e59` 첫 prepare batch에서 torch_scatter가 없어 공식 merger import 오류. 원본 paired cache 문제/OOM/학습 실패로 오인하지 말것. prepare0/353에서 중단, GNN 미시작.

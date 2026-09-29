@@ -9,10 +9,9 @@ import torch
 from tqdm import tqdm
 from hiercp_v222.v1_cache import configuration, provenance
 from hiercp_v222.v1_local import V1LocalEncoder
-from l0_ezsp.config import load_profile
 from l0_ezsp.identity import load_cnn_only
 from .materialization import load_pairs
-from .preparation import binding, prepare, fixed_profile
+from .preparation import binding, prepare, single_profile
 from .data import load, save_new
 from tools.v22_artifacts import tree_hash
 from tools.v222_review_contracts import installed
@@ -58,12 +57,12 @@ def reference_from_checkpoint(checkpoint,debug):
     load_cnn_only(net,ckpt['model'])
     return net
 
-def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,reg2,view_epoch,budget,debug=False):
+def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget,debug=False):
     index=Path(index).resolve();output=Path(output).resolve();checkpoint=Path(checkpoint).resolve()
     if min(batch,workers)<1 or view_epoch<0:raise ValueError('Explicit positive preparation settings required')
     reference=reference_from_checkpoint(checkpoint,debug)
     frozen=copy.deepcopy(reference).eval().requires_grad_(False).cuda()
-    profile=fixed_profile(load_profile(reg_scale1=reg1,reg_scale2=reg2))
+    profile=single_profile(reg1)
     cfg,base=configuration();cache_hash=sha(index);checkpoint_hash=sha(checkpoint)
     output.mkdir(parents=True,exist_ok=False)
     # Only CNN initialization is copied, never GAT/optimizer/old support.

@@ -1,7 +1,8 @@
-"""Live CNN -> fixed pooling -> SAGE2 -> fixed pooling -> SAGE1 -> 128D.
+"""Single scale: live CNN -> fixed pooling -> SAGE3 -> readout -> 128D.
 
 Only the offline artifact contains partition decisions. No fine edge argument,
 no epoch-dependent resampling, no online partition/quotient construction.
+Explicit legacy two-scale construction remains available for diagnostic regression.
 """
 import copy
 import torch
@@ -13,12 +14,13 @@ from tools.v222_review_contracts import cnn_lattice,input_grid_to_feature_grid
 from l0_ezsp.ops import mass_mean
 from l0_ezsp.encoder import EZSPEncoder
 from l0_sage.encoder import MeanAdjacencyCache,MeanSAGEConv
-from .data import RegionBatch
+from .data import RegionBatch,scale_count
 
 
 def validate_batch(batch):
     if not isinstance(batch,RegionBatch) or len(batch)<1 or len(batch.bindings)!=len(batch):raise ValueError('Fixed region batch required')
-    if set(batch.fine)!=set(NT) or len(batch.regions)!=2 or len(batch.graphs)!=2:raise ValueError('Incomplete hierarchy')
+    levels=scale_count(batch.bindings[0]['profile'])
+    if set(batch.fine)!=set(NT) or len(batch.regions)!=levels or len(batch.graphs)!=levels:raise ValueError('Incomplete hierarchy')
     if batch.indices.shape!=(len(batch),) or len(torch.unique(batch.indices))!=len(batch):raise ValueError('Observation coverage')
     if len({b['record_id'] for b in batch.bindings})!=len(batch):raise ValueError('Duplicate record')
     if [b['dataset_index'] for b in batch.bindings]!=batch.indices.tolist():raise ValueError('Record/index mismatch')
@@ -33,14 +35,14 @@ def validate_batch(batch):
         if f['stable_id'].shape!=(n,) or f['stable_id'].dtype!=torch.long or len(torch.unique(torch.stack((f['owner'],f['stable_id']),1),dim=0))!=n:raise ValueError('Canonical coverage')
         if role!='target_context' and bool((torch.bincount(f['owner'],minlength=len(batch))==0).any()):raise ValueError('Role coverage')
         mass=torch.ones(n,device=f['grid'].device);parent=f['parent'];owner=f['owner'];shell=f['shell']
-        for level in range(2):
+        for level in range(levels):
             r=batch.regions[level][role]
             if parent.dtype!=torch.long or parent.shape!=mass.shape or bool(((parent<0)|(parent>=len(r.mass))).any()):raise ValueError('Assignment coverage')
             if not torch.equal(r.owner[parent],owner) or not torch.equal(r.shell[parent],shell):raise ValueError('Mixed pair/shell')
             if not torch.equal(torch.zeros_like(r.mass).index_add(0,parent,mass),r.mass) or not bool(torch.isfinite(r.mass).all()&(r.mass>0).all()):raise ValueError('Mass coverage')
             if batch.graphs[level][role].num_nodes!=len(r.mass):raise ValueError('Coarse graph coverage')
             owner=r.owner;shell=r.shell;mass=r.mass
-            if level==0:parent=r.parent
+            if level+1<levels:parent=r.parent
     for level,graph in enumerate(batch.graphs):
         if set(graph.edge_types)!=set(ET) or set(graph.node_types)!=set(NT):raise ValueError('Coarse schema')
         for rel in ET:
@@ -48,24 +50,26 @@ def validate_batch(batch):
             if e.dtype!=torch.long or e.ndim!=2 or e.shape[0]!=2 or (e.numel() and bool((e<0).any()|(e[0]>=graph[rel[0]].num_nodes).any()|(e[1]>=graph[rel[2]].num_nodes).any())):raise ValueError('Coarse edge endpoint')
             if not torch.equal(batch.regions[level][rel[0]].owner[e[0]],batch.regions[level][rel[2]].owner[e[1]]):raise ValueError('Cross-pair relation')
     from l0_ezsp.ops import quotient
-    for rel in ET:
+    for rel in (ET if levels==2 else ()):
         expected=quotient(batch.graphs[0][rel].edge_index,batch.regions[0][rel[0]].parent,
             batch.regions[0][rel[2]].parent,same_type=rel[0]==rel[2])[0]
         if not torch.equal(expected,batch.graphs[1][rel].edge_index):raise ValueError('Batch stage2 quotient mismatch')
 
 
 class RegionSAGEEncoder(nn.Module):
-    def __init__(self,reference,*,seed,resource_budget,allow_unvalidated_profile):
+    def __init__(self,reference,*,seed,resource_budget,allow_unvalidated_profile,levels=2):
         super().__init__()
         if resource_budget is None:raise ValueError('Explicit diagnostic resource budget required')
         self.resource_budget=resource_budget;self.allow_unvalidated_profile=allow_unvalidated_profile
-        self.adjacencies=[MeanAdjacencyCache(),MeanAdjacencyCache()]
+        if levels not in (1,2):raise ValueError('Unsupported region scales')
+        self.levels=levels
+        self.adjacencies=[MeanAdjacencyCache() for _ in range(levels)]
         with torch.random.fork_rng(devices=[]):
             self.core=copy.deepcopy(reference)
             torch.random.default_generator.manual_seed(seed)
             if len(self.core.blocks)!=3 or self.core.hidden_dim!=128:raise ValueError('Preserve 2+1 /128D')
             for i,block in enumerate(self.core.blocks):
-                block.conv=HeteroConv({e:MeanSAGEConv(128,relation=e,cache=self.adjacencies[0 if i<2 else 1]) for e in ET},aggr='sum')
+                block.conv=HeteroConv({e:MeanSAGEConv(128,relation=e,cache=self.adjacencies[0 if i<2 or levels==1 else 1]) for e in ET},aggr='sum')
         self.feature_lattice=cnn_lattice(self.core.dense_encoder)
 
     @property
@@ -81,6 +85,7 @@ class RegionSAGEEncoder(nn.Module):
         from .resident import check_verified
         self.resource_budget.check()
         check_verified(batch)
+        if len(batch.graphs)!=self.levels:raise ValueError('Region model scale mismatch')
         if batch.profile_exceeded and not self.allow_unvalidated_profile:raise ValueError('Unvalidated partition admission failed')
         source,target=self.core.encode_dense_maps(batch.source_patches,batch.source_index,batch.target_patches)
         shape,jump,origin=self.feature_lattice;x={}
@@ -91,14 +96,15 @@ class RegionSAGEEncoder(nn.Module):
             pooled,mass=mass_mean(fine,f['parent'],torch.ones(len(fine),device=fine.device))
             if not torch.equal(mass,batch.regions[0][role].mass):raise ValueError('Live pooling coverage')
             x[role]=self.core.project[role](pooled)
-        for i in range(2):self.adjacencies[i].prepare(batch.graphs[i])
-        e1=batch.graphs[0].edge_index_dict;e2=batch.graphs[1].edge_index_dict
-        for block in self.core.blocks[:2]:x=self.core._run_local_block(block,x,e1,{e:None for e in ET})
-        read1=EZSPEncoder._readout(self.core,x,batch.regions[0],len(batch))
-        x={role:mass_mean(x[role],r.parent,r.mass)[0] for role,r in batch.regions[0].items()}
-        x=self.core._run_local_block(self.core.blocks[2],x,e2,{e:None for e in ET})
-        read2=EZSPEncoder._readout(self.core,x,batch.regions[1],len(batch))
-        pooled={k:(v+read2[k])*.5 for k,v in read1.items()}
+        for i in range(self.levels):self.adjacencies[i].prepare(batch.graphs[i])
+        e1=batch.graphs[0].edge_index_dict
+        for block in self.core.blocks[:(3 if self.levels==1 else 2)]:x=self.core._run_local_block(block,x,e1,{e:None for e in ET})
+        pooled=EZSPEncoder._readout(self.core,x,batch.regions[0],len(batch))
+        if self.levels==2:
+            x={role:mass_mean(x[role],r.parent,r.mass)[0] for role,r in batch.regions[0].items()}
+            x=self.core._run_local_block(self.core.blocks[2],x,batch.graphs[1].edge_index_dict,{e:None for e in ET})
+            read2=EZSPEncoder._readout(self.core,x,batch.regions[1],len(batch))
+            pooled={k:(v+read2[k])*.5 for k,v in pooled.items()}
         sc=[pooled[f'source_context_c{i}'] for i in range(3)]
         tc=[pooled[f'target_context_c{i}'] for i in range(3)]
         core=self.core

@@ -25,7 +25,7 @@ class RegionPreflight(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             out=Path(directory)/'untouched'
             argv=['runner','prepare','--cache','missing.json','--output',str(out),'--partition-checkpoint','missing.pt',
-                '--prepare-batch','8','--workers','8','--reg-scale1','.02','--reg-scale2','.02','--view-epoch','0',
+                '--prepare-batch','8','--workers','8','--reg-scale1','.02','--view-epoch','0',
                 '--cuda-gib','6','--rss-gib','12']
             with patch('sys.argv',argv),patch.object(preflight,'check',side_effect=RuntimeError('missing dependency')),patch.object(runner,'prepare_cache') as prepare:
                 with self.assertRaisesRegex(RuntimeError,'missing dependency'):runner.main()

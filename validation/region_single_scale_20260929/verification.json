@@ -1,0 +1,8 @@
+{
+  "debug": true,
+  "regression_tests_passed": 27,
+  "single_scale_cuda_tests_passed": 4,
+  "full_training": false,
+  "profile_quality_validated": false,
+  "strict_training_blocked_at_scale1": true
+}

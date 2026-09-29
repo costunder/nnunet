@@ -15,7 +15,7 @@ from l0_ezsp.partition import Region, CoarseningConstraintError
 from l0_ezsp.ops import undirected, quotient, mass_mean
 from .materialization import verify_materialization
 
-PREPARATION_FILES=('l0_regions/preparation.py','l0_regions/data.py','l0_regions/materialization.py',
+PREPARATION_FILES=('l0_regions/preparation.py','l0_regions/admission_report.py','l0_regions/data.py','l0_regions/materialization.py',
     'l0_ezsp/partition.py','l0_ezsp/ops.py','l0_ezsp/data.py','l0_ezsp/backend.py',
     'l0_ezsp/encoder.py','tools/v222_review_contracts.py','tools/v22_artifacts.py',
     'l0_ezsp/config.py','l0_ezsp/validation.py','config/l0_ezsp_unresolved.json')
@@ -29,6 +29,10 @@ def preparation_fingerprint(root, core_source):
 
 def fixed_profile(original):
     result=validate(original)
+    return _fixed_profile(result)
+
+
+def _fixed_profile(result):
     result['document_type']='fixed_partition_diagnostic_profile_not_training_config'
     result['encoder_id']='fixed_region_sage_2_1_debug_v1'
     result['blockers']=['partition quality from the chosen checkpoint is unverified',
@@ -36,6 +40,26 @@ def fixed_profile(original):
         'production full-cohort/MIG cost and CP utility unverified']
     result['partition']['features']['scale2']='frozen_CNN32_mass_mean'
     result['graph_encoder']={'sage_layers':[2,1],'hidden':128,'readout':'mass-aware attention; equal two-scale mix','output_dim':128}
+    return result
+
+
+def single_profile(reg_scale1,sharding=None):
+    import math
+    from l0_ezsp.config import CONTRACT_PATH
+    if isinstance(reg_scale1,bool) or not isinstance(reg_scale1,(int,float)) or not math.isfinite(reg_scale1) or reg_scale1<0:
+        raise ValueError('Explicit finite nonnegative scale1 reg required')
+    if sharding is not None and (type(sharding)!=int or sharding<=1):raise ValueError('Invalid sharding')
+    result=_fixed_profile(json.loads(CONTRACT_PATH.read_text(encoding='utf-8')))
+    result['partition'].update(reg_scale1=float(reg_scale1),reg_scale2=None)
+    result['partition']['features']['scale2']='REMOVED'
+    result['partition']['reg_policy']='Only reg_scale1 is used; scale2 removed'
+    result['backend']['options']['sharding']=sharding
+    result['encoder_id']='fixed_region_sage_single_scale_v1'
+    result['region_scales']=1
+    result['blockers']=['partition quality from the chosen checkpoint is unverified',
+        'explicit scale1 reg and admission bounds remain uncalibrated',
+        'production full-cohort cost and CP utility unverified']
+    result['graph_encoder'].update(sage_layers=[3],readout='single-scale mass-aware attention')
     return result
 
 
@@ -55,7 +79,7 @@ def binding(*, record, dataset_index, cache_sha256, frozen_cnn_sha256, profile, 
         frozen_cnn_sha256=frozen_cnn_sha256, profile=profile,
         view=dict(epoch=view_epoch,index=view_index,policy='fixed materialized view; never overlaid onto epoch-resampled fine nodes'),
         feature_coordinates='stride4', feature_evidence=feature_evidence,
-        scale2_features='original-mass mean of frozen CNN32; not current SAGE128',
+        scale2_features=('REMOVED' if profile.get('region_scales')==1 else 'original-mass mean of frozen CNN32; not current SAGE128'),
         training_ready=False)
 
 
@@ -65,9 +89,12 @@ class OfflinePartition:
     timed=EZSPEncoder.timed
 
     def __init__(self, profile, resource_budget, *, allow_unvalidated_profile):
-        original=load_profile(reg_scale1=profile['partition']['reg_scale1'],reg_scale2=profile['partition']['reg_scale2'],
-            sharding=profile['backend']['options']['sharding'])
-        if fixed_profile(original)!=profile:raise ValueError('Unknown fixed partition contract')
+        if profile.get('region_scales')==1:
+            expected=single_profile(profile['partition']['reg_scale1'],profile['backend']['options']['sharding'])
+        else:
+            expected=fixed_profile(load_profile(reg_scale1=profile['partition']['reg_scale1'],reg_scale2=profile['partition']['reg_scale2'],
+                sharding=profile['backend']['options']['sharding']))
+        if expected!=profile:raise ValueError('Unknown fixed partition contract')
         self.profile=copy.deepcopy(profile)
         self.resource_budget=resource_budget
         self.allow_unvalidated_profile=allow_unvalidated_profile
@@ -111,9 +138,22 @@ only with the explicit untrained plumbing label; no production artifacts here.
         pos=meta['pos_mm']
         regions[role]=Region(node.batch,shell,torch.ones(len(node.batch),device=pos.device),pos,pos,meta['stable_id'],adj,w)
     runner=OfflinePartition(profile,budget,allow_unvalidated_profile=allow_unvalidated_profile)
-    first,r1,e1=runner._coarsen(features,regions,batch.graph.edge_index_dict,1,len(batch))
-    # No trainable GNN features enter either partition decision.
-    _,r2,e2=runner._coarsen(first,r1,e1,2,len(batch))
+    scales=profile.get('region_scales',2)
+    level=1
+    try:
+        first,r1,e1=runner._coarsen(features,regions,batch.graph.edge_index_dict,1,len(batch))
+        # No trainable GNN features enter either partition decision.
+        if scales==2:
+            level=2
+            _,r2,e2=runner._coarsen(first,r1,e1,2,len(batch))
+    except CoarseningConstraintError as exc:
+        # Structural failures retain their original classification and payload.
+        if str(exc)=='Fixed partition initial profile rejected; no repair/skip/fallback':
+            from .admission_report import rejection_report
+            exc.admission_report=rejection_report(runner,level,bindings,profile)
+        raise
+    if scales==1:
+        return _single_items(batch,bindings,runner,regions,r1,e1,cnn_hash,frozen_reference,budget)
     runner.last_audit['scale2_feature_basis']='frozen CNN32 pooled by original-node mass'
     # Independent quotient verification while fine edges are still available.
     for level,edges,parents,inputs in ((1,e1,runner.last_topology[1]['parents'],batch.graph.edge_index_dict),
@@ -174,6 +214,41 @@ only with the explicit untrained plumbing label; no production artifacts here.
         item['admission_scope']='per pair; separate conservative preparation batch status retained'
         seal_item(item)
         items.append(item)
+    if tree_hash(frozen_reference.dense_encoder.state_dict())!=cnn_hash:raise RuntimeError('Frozen CNN mutated')
+    budget.check()
+    return items,runner.last_audit
+
+
+def _single_items(batch,bindings,runner,regions,r1,e1,cnn_hash,frozen_reference,budget):
+    parents=runner.last_topology[1]['parents']
+    for rel in ET:
+        expected=quotient(batch.graph[rel].edge_index,parents[rel[0]],parents[rel[2]],same_type=rel[0]==rel[2])[0]
+        if not torch.equal(expected,e1[rel]):raise ValueError('Preparation quotient mismatch')
+    runner.last_audit['scale2']={'status':'REMOVED_BY_DESIGN'}
+    cpu=lambda t:t.detach().cpu()
+    items=[]
+    from .data import seal_item,profile_status
+    for i,identity in enumerate(bindings):
+        item=dict(binding=copy.deepcopy(identity),diagnostic_only=True,training_ready=False,
+            source_patch=cpu(batch.source_patches[batch.source_index[i]]),target_patch=cpu(batch.target_patches[i]),
+            fine={},scales=[{}],edges=[{}],audit=copy.deepcopy(runner.last_audit))
+        lookup={}
+        for role,r in r1.items():
+            ids=torch.where(r.owner==i)[0]
+            remap=torch.full_like(r.owner,-1);remap[ids]=torch.arange(len(ids),device=ids.device);lookup[role]=remap
+            item['scales'][0][role]={name:cpu(getattr(r,name)[ids]) for name in ('shell','mass','lower','upper','stable_id')}
+            fine=regions[role];mask=fine.owner==i
+            item['fine'][role]=dict(grid=cpu(batch.graph[role].grid[mask]),pos_mm=cpu(fine.lower[mask]),
+                shell=cpu(fine.shell[mask]),stable_id=cpu(fine.stable_id[mask]),parent=cpu(remap[parents[role][mask]]))
+        for rel,e in e1.items():
+            keep=r1[rel[0]].owner[e[0]]==i
+            item['edges'][0][rel]=cpu(torch.stack((lookup[rel[0]][e[0,keep]],lookup[rel[2]][e[1,keep]])))
+        item['materialization_receipt']=copy.deepcopy(batch.receipts[i]);item['preparation_pair_index']=i
+        item['fine_graph_evidence']=dict(materialized_batch_sha256=batch.materialized_sha256,
+            fine_edges_sha256=tree_hash(batch.graph.edge_index_dict),stage1_quotient_verified=True,stage2_status='REMOVED_BY_DESIGN')
+        item['preparation_batch_profile_exceeded']=runner.last_audit['scale1']['profile_exceeded']
+        item['profile_exceeded']=profile_status(item);item['admission_scope']='per pair; single-scale profile'
+        seal_item(item);items.append(item)
     if tree_hash(frozen_reference.dense_encoder.state_dict())!=cnn_hash:raise RuntimeError('Frozen CNN mutated')
     budget.check()
     return items,runner.last_audit
