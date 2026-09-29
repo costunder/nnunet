@@ -1,6 +1,7 @@
 """Foreground fixed-region GNN prepare/train and short local resume smoke.
 
-Full training rejects DEBUG weights/caches and all admission failures. This entry
+Full training rejects DEBUG weights/caches. Strict is the default; explicit
+research-report records uncalibrated profile violations without promoting them. This entry
 does not launch nnU-Net or alter Basic CP. SIGINT saves at the next batch boundary.
 """
 import argparse
@@ -12,6 +13,7 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import torch
 from l0_regions.training_data import Budget,prepare_cache,write_new
 from l0_regions.training import train,hash_state
+from l0_regions.profile_policy import POLICIES
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -29,6 +31,8 @@ def main():
     p.add_argument('--resume',type=Path)
     p.add_argument('--debug',action='store_true')
     p.add_argument('--debug-pause-step',type=int)
+    p.add_argument('--profile-policy',choices=POLICIES,default='strict',
+        help='research-report: train with recorded uncalibrated profile violations; integrity and resource checks remain mandatory')
     a=p.parse_args()
     if not torch.cuda.is_available():raise RuntimeError('CUDA required')
     if a.workers<1:raise ValueError('Positive explicit workers required')
@@ -48,16 +52,16 @@ def main():
     try:
         if a.mode=='prepare':
             result=prepare_cache(a.cache,a.partition_checkpoint,a.output,batch=a.prepare_batch,workers=a.workers,
-                reg1=a.reg_scale1,view_epoch=a.view_epoch,budget=budget,debug=a.debug)
+                reg1=a.reg_scale1,view_epoch=a.view_epoch,budget=budget,debug=a.debug,profile_policy=a.profile_policy)
         elif a.mode=='train':
             result=train(a.cache,a.output,workers=a.workers,resident_bytes=int(a.resident_gib*2**30),
-                candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step)
+                candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step,profile_policy=a.profile_policy)
             if (a.output/'training_complete.json').exists():
                 from l0_regions.final import export
                 export(result,a.cache,a.output/'checkpoint.pt')
         else:
             a.output.mkdir(parents=True,exist_ok=False)
-            common=['--workers',str(a.workers),'--cuda-gib',str(a.cuda_gib),'--rss-gib',str(a.rss_gib),'--debug']
+            common=['--workers',str(a.workers),'--cuda-gib',str(a.cuda_gib),'--rss-gib',str(a.rss_gib),'--debug','--profile-policy',a.profile_policy]
             def run(mode,*args):
                 subprocess.run([sys.executable,'-u',str(Path(__file__).resolve()),mode,*map(str,args),*common],check=True,cwd=ROOT)
             run('prepare','--cache',a.cache,'--output',a.output/'cache','--partition-checkpoint',a.partition_checkpoint,
@@ -71,7 +75,7 @@ def main():
             left=torch.load(a.output/'uninterrupted/checkpoint_latest.pt',map_location='cpu',weights_only=False)
             right=torch.load(a.output/'resumed/checkpoint_latest.pt',map_location='cpu',weights_only=False)
             comparisons={k:hash_state(left[k])==hash_state(right[k]) for k in ('model','optimizer','state','rng')}
-            report=dict(debug=True,full_training=False,production_ready=False,comparisons=comparisons,
+            report=dict(debug=True,full_training=False,production_ready=False,profile_policy=a.profile_policy,comparisons=comparisons,
                 status='PASS' if all(comparisons.values()) else 'FAIL',
                 epochs=left['identity']['epochs'],steps=left['state']['step'],
                 scope='Same training entry: full supplied DEBUG train/val, calibration, refresh, validation, best selection, final memory, fresh-process resume')

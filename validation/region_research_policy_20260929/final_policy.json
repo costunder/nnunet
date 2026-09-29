@@ -1,0 +1,11 @@
+{
+  "debug": true,
+  "status": "PASS",
+  "rejected": {
+    "policy": "Final model/profile policy mismatch",
+    "quality": "Partition quality must remain unverified",
+    "debug": "Final model/profile policy mismatch"
+  },
+  "full_training": false,
+  "scope": "Final artifact policy mismatch, false quality approval and DEBUG promotion rejected even after recomputing the content digest"
+}

@@ -1,0 +1,16 @@
+{
+  "debug": true,
+  "full_training": false,
+  "production_ready": false,
+  "profile_policy": "research-report",
+  "comparisons": {
+    "model": true,
+    "optimizer": true,
+    "state": true,
+    "rng": true
+  },
+  "status": "PASS",
+  "epochs": 1,
+  "steps": 4,
+  "scope": "Same training entry: full supplied DEBUG train/val, calibration, refresh, validation, best selection, final memory, fresh-process resume"
+}

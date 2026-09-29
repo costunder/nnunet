@@ -1,3 +1,10 @@
+## v2.2 — 명시적 research-report 학습 실행 (2026-09-29)
+
+- 현재 1차 그래프로 진행하라는 후속 지시에 따라 `--profile-policy research-report`를 prepare/train에 연결. 미검증 상한 위반은 per-pair audit/집계에 유지하고 실제 연구 학습을 허용. strict 기본 및 구조·원본mask·자원 검사 유지.
+- cache/model/resume/final/CP 추천까지 policy 결속. DEBUG 승격과 다른 policy의 resume 거부. 학습된 모델 품질이나 initial profile의 PASS를 의미하지 않음.
+- 회귀39 PASS, 실제DEBUG CT10개 위반기록 유지하면서4update·새 프로세스 exact resume PASS, 실제3후보CP2,368voxel exactpaste PASS. 최종policy/품질승인/DEBUG 변조 거부 확인.
+- 기존 서버 physical GPU2·batch32/48/64·workers16·CUDA40/RSS192/resident128GiB 설정으로 실행 명령 전달. [실행 계약](docs/region_research_execution_20260929.md).
+
 ## v2.2 — 사용자 요청: 2차 병합 제거, 단일 region scale (2026-09-29)
 
 - 새 prepare 경로는 첫 partition과 첫13관계 quotient만 저장. reg-scale2·두 번째 그래프·두 scale 평균 제거. SAGE는1차 그래프에서 기존3층,128D 유지. Legacy2단계 진단 검사와 결과 보존.

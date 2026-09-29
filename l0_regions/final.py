@@ -9,6 +9,7 @@ from hiercp_v22.donors import validate_pool
 from tools.v22_artifacts import validate_memory,tree_hash
 from .training import FORMAT as RESUME_FORMAT,hash_state,load_checkpoint
 from .training_data import RegionDataset,source_identity,sha,Budget
+from .profile_policy import validate_policy,allow_profile
 
 FORMAT='fixed_region_sage_final_v1'
 
@@ -22,7 +23,14 @@ def validate(value,*,allow_debug=False):
     from hiercp_v222.v1_cache import configuration,provenance
     cfg,base=configuration()
     if value['config']!=cfg or value['base']!=base or value['source_identity']!=provenance():raise ValueError('Region configuration/core source changed')
-    if not value['debug'] and value['region']['admission_failures']:raise ValueError('Rejected region profile forbidden')
+    policy=validate_policy(value['region'].get('profile_policy','strict'))
+    contract=value['state_dict']['local._extra_state']
+    if contract.get('profile_policy','strict')!=policy or contract['debug']!=value['debug']:
+        raise ValueError('Final model/profile policy mismatch')
+    if contract['profile']!=value['region']['profile'] or contract['frozen_cnn_sha256']!=value['region']['cnn_sha256']:
+        raise ValueError('Final partition/model contract mismatch')
+    if value['region']['admission_failures'] and not allow_profile(policy,value['debug']):raise ValueError('Rejected region profile forbidden')
+    if value.get('partition_quality_validated') is not False:raise ValueError('Partition quality must remain unverified')
     if value['completed_epochs']!=(1 if value['debug'] else cfg['gnn_epochs']):raise ValueError('Incomplete region training')
     if not 1<=value['selected_epoch']<=value['completed_epochs']:raise ValueError('Invalid selected epoch')
     if value['selected_model_sha256']!=hash_state(value['state_dict']) or value['memory_model_sha256']!=value['selected_model_sha256']:
@@ -39,7 +47,8 @@ def export(checkpoint,index,output):
     if saved.get('format')!=RESUME_FORMAT:raise ValueError('Region checkpoint required')
     # Validate both byte integrity and the currently installed runtime identity.
     saved=load_checkpoint(checkpoint,dict(saved['identity'],source=source_identity()))
-    state=saved['state'];debug=saved['identity']['debug'];ds=RegionDataset(index,'inner_train',debug)
+    state=saved['state'];debug=saved['identity']['debug']
+    policy=saved['identity'].get('profile_policy','strict');ds=RegionDataset(index,'inner_train',debug,policy)
     if saved['identity']['cache_sha256']!=sha(index) or state['phase']!='complete':raise ValueError('Complete matching region run required')
     m=ds.meta;raw_path=Path(m['original_cache'])
     if sha(raw_path)!=m['original_cache_sha256']:raise ValueError('Original observation inventory changed')
@@ -57,7 +66,8 @@ def export(checkpoint,index,output):
         selected_model_sha256=best['model_sha256'],memory_model_sha256=best['model_sha256'],
         physical_batch=state['batch'],workers=saved['identity']['workers'],resource_limits=saved['identity']['resource_limits'],
         candidate_cache_bytes=saved['identity']['resident_budget_bytes'],
-        support_records=ds.rows,region={k:m[k] for k in ('profile','view_epoch','cnn_sha256','admission_failures')},
+        support_records=ds.rows,region={k:m[k] for k in ('profile','view_epoch','cnn_sha256','admission_failures','profile_policy')},
+        partition_quality_validated=False,
         frozen_cnn=torch.load(ds.root/'frozen_cnn.pt',weights_only=True),
         **{k:original[k] for k in ('identities','split','donor_pool','raw_records')})
     value['content_sha256']=hash_state(value);validate(value,allow_debug=debug)

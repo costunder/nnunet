@@ -12,6 +12,7 @@ from .materialization import seal_materialization
 from .preparation import binding,prepare
 from .data import collate
 from .training import hash_state
+from .profile_policy import allow_profile
 
 
 class CandidateEncoder:
@@ -59,7 +60,7 @@ class CandidateEncoder:
                     rows=list(pool.map(one,ids)) if pool else list(map(one,ids))
                     fine=seal_materialization(fine_collate([r[0] for r in rows]),[r[1] for r in rows]).to('cuda')
                     items,_=prepare(fine,self.reference,profile,[r[2] for r in rows],self.budget,
-                        allow_unvalidated_profile=self.value['debug'])
+                        allow_unvalidated_profile=allow_profile(self.value['region'].get('profile_policy','strict'),self.value['debug']))
                     cpu=collate(items,ids)
                     from .resident import storage_bytes
                     if storage_bytes([*self.event_batches,cpu])>self.value['candidate_cache_bytes']:

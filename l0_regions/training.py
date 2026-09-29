@@ -28,6 +28,7 @@ from tools.v22_artifacts import tree_hash
 from .encoder import RegionSAGEEncoder
 from .resident import RegionResidentCache
 from .training_data import RegionDataset,sha,write_new,source_identity
+from .profile_policy import allow_profile,validate_policy
 
 FORMAT='fixed_region_sage_training_v1'
 
@@ -43,7 +44,8 @@ def hash_state(value):
 class TrainEncoder(RegionSAGEEncoder):
     def __init__(self,reference,*,budget,debug,contract):
         from .data import scale_count
-        super().__init__(reference,seed=42,resource_budget=budget,allow_unvalidated_profile=debug,levels=scale_count(contract['profile']))
+        super().__init__(reference,seed=42,resource_budget=budget,
+            allow_unvalidated_profile=allow_profile(contract.get('profile_policy','strict'),debug),levels=scale_count(contract['profile']))
         self.training_contract=copy.deepcopy(contract)
         for block in self.core.blocks:
             for conv in block.conv.convs.values():conv.stable_spmm=True
@@ -59,7 +61,7 @@ def make_model(ds,budget,debug):
     if tree_hash(weights)!=m['cnn_sha256']:raise ValueError('Frozen CNN contents differ')
     ref.dense_encoder.load_state_dict(weights,strict=True)
     contract=dict(format=FORMAT,debug=debug,profile=m['profile'],frozen_cnn_sha256=m['cnn_sha256'],
-                  view_epoch=m['view_epoch'],feature_coordinates='stride4')
+                  view_epoch=m['view_epoch'],feature_coordinates='stride4',profile_policy=m.get('profile_policy','strict'))
     return PromptGraphModel(m['config'],m['base'],{},local_encoder=TrainEncoder(ref,budget=budget,debug=debug,contract=contract)).cuda()
 
 class Loader:
@@ -168,10 +170,11 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict'):
+    validate_policy(profile_policy)
     if debug_pause_step is not None and not debug:raise ValueError('Pause step is DEBUG only')
     if not candidates or min(candidates)<1 or candidates!=sorted(set(candidates)):raise ValueError('Explicit increasing physical batch candidates required')
-    ds=RegionDataset(index,'inner_train',debug);val=RegionDataset(index,'inner_val',debug)
+    ds=RegionDataset(index,'inner_train',debug,profile_policy);val=RegionDataset(index,'inner_val',debug,profile_policy)
     root=Path(output).resolve();root.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(workers);net=make_model(ds,budget,debug)
     base=ds.meta['base'];cfg=ds.meta['config'];epochs=1 if debug else cfg['gnn_epochs']
@@ -179,7 +182,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     optimizer=torch.optim.AdamW(net.parameters(),lr=base['training']['lr'],weight_decay=base['training']['weight_decay'],fused=base['training']['fused_optimizer'])
     identity=dict(format=FORMAT,debug=debug,cache_sha256=sha(index),source=source_identity(),epochs=epochs,
         config=cfg,base=base,precision='FP32',workers=workers,candidates=candidates,
-        ranking=rank_config(),resident_budget_bytes=resident_bytes)
+        ranking=rank_config(),resident_budget_bytes=resident_bytes,profile_policy=profile_policy)
     identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
     if resume:
         saved=load_checkpoint(resume,identity);net.load_state_dict(saved['model']);optimizer.load_state_dict(saved['optimizer'])
@@ -192,15 +195,19 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     net.local.dense_batch_size=state['batch']
     write_new(root/'execution_contract.json',dict(**identity,train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
         physical_batch=state['batch'],effective_batch=state['batch'],accumulation=1,parameters=sum(p.numel() for p in net.parameters()),
-        layers=dict(L0=[2,1],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
+        layers=dict(L0=ds.meta['profile']['graph_encoder']['sage_layers'],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
         gpu=torch.cuda.get_device_name(),cpu_logical=psutil.cpu_count(),ram=psutil.virtual_memory()._asdict(),
         trainable_parameters=sum(p.numel() for p in net.parameters() if p.requires_grad),
         L0_parameters=sum(p.numel() for p in net.local.parameters()),input_shape=[state['batch'],1,48,48,48],
         graph_counts=[dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries],
         optimization_steps=sum(1 for _ in groups(ds,state['batch']))*epochs,
         actual_query_batch_sizes=[len(ids) for ids in groups(ds,state['batch'])],
-        scope='GNN only; separate final model format, online CP adapter not yet connected',
-        profile_exceeded=bool(ds.meta['admission_failures']),production_admitted=not debug))
+        scope='GNN only; final artifact connects to the existing CP recommendation adapter',
+        profile_exceeded=bool(ds.meta['admission_failures']),partition_quality_validated=False,
+        research_training=profile_policy=='research-report',production_admitted=not debug and profile_policy=='strict'))
+    print(json.dumps(dict(stage='region_training_policy',profile_policy=profile_policy,
+        profile_violating_records=ds.meta['admission_failures'],partition_quality_validated=False,
+        debug=debug,epochs=epochs)),flush=True)
     save_checkpoint(root,net,optimizer,state,identity)
     with pause_signal() as flag:
         def pause():
@@ -225,7 +232,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 if state['phase']=='final_memory':
                     if hash_state(net.state_dict())!=state['best']['model_sha256']:raise ValueError('Final memory is not bound to selected best model')
                     state['phase']='complete';save_checkpoint(root,net,optimizer,state,identity)
-                    write_new(root/'training_complete.json',dict(debug=debug,epochs=epochs,steps=state['step'],selected_epoch=state['selected_epoch'],checkpoint_sha256=sha(root/'checkpoint_latest.pt'),nnunet_training=False))
+                    write_new(root/'training_complete.json',dict(debug=debug,epochs=epochs,steps=state['step'],selected_epoch=state['selected_epoch'],checkpoint_sha256=sha(root/'checkpoint_latest.pt'),nnunet_training=False,profile_policy=profile_policy,partition_quality_validated=False))
                     return root/'checkpoint_latest.pt'
                 state['phase']='optimization' if state['phase']=='initial_memory' else 'validation'
                 save_checkpoint(root,net,optimizer,state,identity)

@@ -13,6 +13,7 @@ from l0_ezsp.identity import load_cnn_only
 from .materialization import load_pairs
 from .preparation import binding, prepare, single_profile
 from .data import load, save_new
+from .profile_policy import validate_policy,allow_profile,validate_cache_policy
 from tools.v22_artifacts import tree_hash
 from tools.v222_review_contracts import installed
 
@@ -57,7 +58,8 @@ def reference_from_checkpoint(checkpoint,debug):
     load_cnn_only(net,ckpt['model'])
     return net
 
-def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget,debug=False):
+def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget,debug=False,profile_policy='strict'):
+    validate_policy(profile_policy)
     index=Path(index).resolve();output=Path(output).resolve();checkpoint=Path(checkpoint).resolve()
     if min(batch,workers)<1 or view_epoch<0:raise ValueError('Explicit positive preparation settings required')
     reference=reference_from_checkpoint(checkpoint,debug)
@@ -71,7 +73,8 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
         original_cache=str(index),partition_checkpoint_sha256=checkpoint_hash,
         cnn_sha256=tree_hash(reference.dense_encoder.state_dict()),cnn_file_sha256=sha(output/'frozen_cnn.pt'),
         profile=profile,view_epoch=view_epoch,config=cfg,base=base,partitions={},admission_failures=0,
-        complete=False,full_training_admitted=False)
+        complete=False,full_training_admitted=False,research_training_admitted=False,profile_policy=profile_policy,
+        partition_quality_validated=False)
     write_new(output/'request.json',meta)
     total_bytes=0
     for part in ('inner_train','inner_val'):
@@ -85,8 +88,8 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
                 bindings=[binding(record=dict(ds.rows[i],donor_component=ds.record(i)['component_id']),dataset_index=i,
                     cache_sha256=cache_hash,frozen_cnn_sha256=meta['cnn_sha256'],profile=profile,view_epoch=view_epoch,
                     view_index=0,feature_evidence='checkpoint_partition_quality_unverified') for i in ids]
-                # DEBUG may measure rejected profiles, full training may not.
-                items,audit=prepare(fine,frozen,profile,bindings,budget,allow_unvalidated_profile=debug)
+                # Only uncalibrated profile bounds are advisory under explicit research policy.
+                items,audit=prepare(fine,frozen,profile,bindings,budget,allow_unvalidated_profile=allow_profile(profile_policy,debug))
                 paths=[output/f'{part}_{i:06d}.pt' for i in ids]
                 total_bytes+=sum(pool.map(lambda pair:save_new(*pair),zip(paths,items)))
                 for i,path,item in zip(ids,paths,items):
@@ -100,20 +103,24 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
         meta['partitions'][part]=rows
     if sha(index)!=cache_hash or sha(checkpoint)!=checkpoint_hash:raise ValueError('Preparation inputs changed')
     if meta['source_identity']!=source_identity(preparation=True):raise ValueError('Preparation sources changed')
-    if not debug and meta['admission_failures']:raise ValueError('Rejected pair cannot enter full training')
-    meta.update(complete=True,full_training_admitted=not debug,serialized_pt_bytes=total_bytes)
+    meta.update(complete=True,full_training_admitted=not debug and profile_policy=='strict' and not meta['admission_failures'],
+        research_training_admitted=not debug and profile_policy=='research-report',serialized_pt_bytes=total_bytes)
+    validate_cache_policy(meta,profile_policy,debug)
+    print(json.dumps(dict(stage='region_profile_report',profile_policy=profile_policy,
+        records=sum(len(rows) for rows in meta['partitions'].values()),profile_violating_records=meta['admission_failures'],
+        partition_quality_validated=False,production_ready=False)),flush=True)
     # This admission proves execution/receipt/profile checks, not CP efficacy.
     write_new(output/'index.json',meta)
     return output/'index.json'
 
 class RegionDataset:
-    def __init__(self,index,partition,debug):
+    def __init__(self,index,partition,debug,profile_policy='strict'):
         self.path=Path(index).resolve();self.root=self.path.parent
         self.meta=json.loads(self.path.read_text(encoding='utf-8'))
         m=self.meta
         if m.get('format')!=FORMAT or m.get('debug')!=debug or not m.get('complete'):raise ValueError('Cache mode/format/completion mismatch')
         if m['source_identity']!=source_identity(preparation=True):raise ValueError('Region preparation source identity changed')
-        if not debug and (not m['full_training_admitted'] or m['admission_failures']):raise ValueError('Full training admission failed')
+        validate_cache_policy(m,profile_policy,debug)
         if sha(self.root/'frozen_cnn.pt')!=m['cnn_file_sha256']:raise ValueError('CNN snapshot file changed')
         self.entries=m['partitions'][partition];self.rows=[v['row'] for v in self.entries]
         if not self.rows or len({r['id'] for r in self.rows})!=len(self.rows):raise ValueError('Missing/duplicate records')

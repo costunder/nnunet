@@ -1,3 +1,11 @@
+## 2026-09-29 최신 — 현재 1차 그래프 연구 학습 진행
+
+- 자동 심사로 초기 변경 시도가 거부됐고 중간 코드를 aa730c7 검증 상태로 복원했다. 이후 구체적 '현재 1차 그래프 그대로 학습' 제안에 사용자가 다시 '하라고' 명시해 진행 지시. 아래 과거 pending 상태를 현재 지시로 오인하거나 같은 승인 질문을 반복하지 말것.
+- `--profile-policy research-report`를 명시한 prepare/train 경로에서는 미검증 node/edge/role-shell/bbox/variance 상한을 기록하고 전체 연구 학습 진행. strict 기본 유지. 연결성/coverage/데이터/좌표/finite/edge index/원본mask/실제자원 오류는 계속 중단.
+- policy를 cache, 모델 extra_state, exact resume identity, final, CP 후보 준비에 결속. DEBUG/full 분리, 품질 미검증 및 위반 수치 보존. 기존 GAT의 exact resume 아님. 현재 region artifact로 새 학습.
+- 로컬 회귀39 및 실제DEBUG CT train8/val2 prepare→4update→검증→선택→fresh-process resume PASS. 위반10개 유지, model/optimizer/state/RNG exact. 실제3후보CP2,368voxel exactpaste 및 finalpolicy/품질/DEBUG 변조 거부 PASS. 근거 `validation/region_research_policy_20260929`. 서버전체학습은 사용자가 실행.
+- 물리GPU2, workers16, prepare batch32, reg1=.02, view0, CUDA40/RSS192/resident128GiB, train 후보32/48/64 및 기존 전체epoch. 새 출력 폴더 사용, foreground. 최종 명령은 pushed commit에 pin. [실행 상세](docs/region_research_execution_20260929.md).
+
 ## 2026-09-29 최신 — 사용자 승인 범위: 2차 partition 제거
 
 - 사용자는 2차축약 제거를 명시하고 1차 품질을 질문함. 새 CLI prepare는 single_profile/reg1만, CNN→고정1차집계→SAGE3층→단일readout→128D. L1/L2/loss/후보128/BasicCP/원본mask 변경 없음. 단일scale identity로 구분, 레거시2scale 진단과 결과는 보존.
