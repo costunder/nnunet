@@ -15,6 +15,23 @@ from l0_ezsp.ops import compact, reduce_bounds, quotient
 from tools.v22_artifacts import tree_hash
 
 
+def unique_edge_count(edge,source_count,target_count):
+    """Exact duplicate check using injective int64 keys after endpoint checks.
+
+    unique(dim=0) sorts/compares two-element rows at substantial CPU cost.
+    Preserve its result, including the general overflow-safe path. Never truncate
+    endpoints or hash them into a collision-prone fixed-size table.
+    """
+    if edge.dtype!=torch.long or edge.ndim!=2 or edge.shape[0]!=2:raise ValueError('Invalid edge shape/type')
+    if source_count<0 or target_count<0:raise ValueError('Invalid node counts')
+    if edge.numel() and bool((edge<0).any()|(edge[0]>=source_count).any()|(edge[1]>=target_count).any()):
+        raise ValueError('Edge endpoint outside range')
+    if not edge.numel():return 0
+    if source_count*target_count>torch.iinfo(torch.long).max:
+        return len(torch.unique(edge.T,dim=0))
+    return len(torch.unique(edge[0]*target_count+edge[1]))
+
+
 class VerifiedItem(dict):
     """Loader-verified immutable-by-contract view, guarded by tensor versions."""
     def __init__(self,item):
@@ -111,7 +128,7 @@ def validate_item(item):
         for rel,e in edges.items():
             if e.dtype!=torch.long or e.ndim!=2 or e.shape[0]!=2:raise ValueError('Invalid coarse edge')
             if e.numel() and bool((e<0).any()|(e[0]>=len(item['scales'][level][rel[0]]['mass'])).any()|(e[1]>=len(item['scales'][level][rel[2]]['mass'])).any()):raise ValueError('Edge outside region')
-            if len(torch.unique(e.T,dim=0))!=e.shape[1]:raise ValueError('Duplicate quotient edge')
+            if unique_edge_count(e,len(item['scales'][level][rel[0]]['mass']),len(item['scales'][level][rel[2]]['mass']))!=e.shape[1]:raise ValueError('Duplicate quotient edge')
             if rel[0]==rel[2] and bool((e[0]==e[1]).any()):raise ValueError('Collapsed internal edge')
     for rel in (ET if levels==2 else ()):
         expected=quotient(item['edges'][0][rel],item['scales'][0][rel[0]]['parent'],

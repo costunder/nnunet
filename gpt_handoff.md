@@ -1,3 +1,13 @@
+## 2026-09-30 최신 — calibration support 경로 수정
+
+Actual-CT fresh-process smoke: 4 DEBUG updates; uninterrupted versus pause/resume model, optimizer, RNG and state hashes all match. Existing cache unchanged; full training not run.
+
+- 서버 f07b13f에서 prepare14102 완료, 현재 calibration support43/353에5:09, 약6.96s/batch. 이전27b598b는 prepare 겹침 수정이며 support 병목을 해결한 것처럼 설명하면 안됨. RAM/CPU 전체자원 부족 증거없음; 로컬 함수단위검사에서 CPU unique_dim 확인.
+- 실제CT8 순차읽기 cProfile2.451s 중 typededge 중복검사104회의 unique_dim1.607s. 정확한1D 정수키검사로 교체, 범위·dtype·오버플로·중복검사 유지. runtime reader는 같은bytes를 hash하고 weights_only로 읽어 파일중복읽기 제거.
+- calibration CNN chunk를 최소 명시physical batch에 연결. 완전한support를 반환해 initial_memory 재계산 없이optimization으로 넘김. clone calibration 전후 원모델/support hash 동일성 보장. 이후 epoch/final refresh 유지.
+- f07b13f 완료cache를 train에서 읽기전용 직접수용(검토된소스 확인). **prepare 재실행·cache복사 불필요.** 다른runtime optimization checkpoint exact resume 승인 아님. 현재calibration 중인지 optimization 이미진입했는지 구분해서 안내.
+- 52검사 PASS. 실제CT8 동일batch8: warm1.694s→1.174~1.342s, embedding오차0. 서버시간으로 환산하지 말것. [상세](docs/region_support_runtime_20260930.md), evidence validation/region_support_runtime_20260930.
+
 ## 2026-09-30 최신 — 서버 prepare 저사용률 조사 및 겹침 실행
 
 - 사용자 PID3614482 확인 결과 prepare(batch32/workers16/reg.02/view0/research-report, CUDA40/RSS192). 45분 경과·누적평균CPU131%, A6000 GPU snapshot10%/6330MiB. 이 프로세스에서 학습 checkpoint가 병목이라고 설명하지 말것. 서버의 지배 구간은 아직 미측정.

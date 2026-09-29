@@ -1,0 +1,81 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "status": "PASS",
+  "full_training": false,
+  "cache_rebuilt": false,
+  "cache_preparation_revision": "f07b13f5cc656aa413fc1f89b4f66c0925158559",
+  "runs": [
+    {
+      "arm": "old_cold",
+      "cnn_chunk": 4,
+      "physical_batch": 8,
+      "seconds": 2.2486537999939173,
+      "batches": [
+        {
+          "records": 8,
+          "loader_wait_seconds": 1.348127199918963,
+          "h2d_validation_seconds": 0.20284039992839098,
+          "forward_seconds": 0.6975101000862196
+        }
+      ]
+    },
+    {
+      "arm": "new_warm",
+      "cnn_chunk": 8,
+      "physical_batch": 8,
+      "seconds": 1.173905499977991,
+      "batches": [
+        {
+          "records": 8,
+          "loader_wait_seconds": 0.9082640000851825,
+          "h2d_validation_seconds": 0.03736979991663247,
+          "forward_seconds": 0.22811760008335114
+        }
+      ]
+    },
+    {
+      "arm": "old_warm",
+      "cnn_chunk": 4,
+      "physical_batch": 8,
+      "seconds": 1.6935854000039399,
+      "batches": [
+        {
+          "records": 8,
+          "loader_wait_seconds": 1.3806977000785992,
+          "h2d_validation_seconds": 0.037447999930009246,
+          "forward_seconds": 0.2753024999983609
+        }
+      ]
+    },
+    {
+      "arm": "new_repeat",
+      "cnn_chunk": 8,
+      "physical_batch": 8,
+      "seconds": 1.3422649001004174,
+      "batches": [
+        {
+          "records": 8,
+          "loader_wait_seconds": 0.964559999993071,
+          "h2d_validation_seconds": 0.029367499984800816,
+          "forward_seconds": 0.3481885000364855
+        }
+      ]
+    }
+  ],
+  "max_abs_embedding_error": {
+    "old_cold": 0.0,
+    "new_warm": 0.0,
+    "old_warm": 0.0,
+    "new_repeat": 0.0
+  },
+  "calibration_support_passes": 1,
+  "returned_support_unchanged": true,
+  "initial_model_unchanged": true,
+  "support_records": 8,
+  "physical_batch": 8,
+  "workers": 8,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "peak_cuda_bytes": 311751680,
+  "scope": "Entire supplied DEBUG inner_train8, alternating local cold/warm; not A6000 batch32 or full-cohort throughput"
+}

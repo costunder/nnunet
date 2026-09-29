@@ -1,0 +1,1 @@
+{"stage": "calibration_support", "completed": 8, "total": 8, "physical_batch": 8, "cnn_chunk": 8, "loader_wait_seconds": 0.9263959999661893, "h2d_validation_seconds": 0.03052989998832345, "forward_seconds": 0.21164540003519505, "rss_bytes": 2018066432, "cuda_allocated_bytes": 88882176}

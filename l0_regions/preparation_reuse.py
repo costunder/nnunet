@@ -16,7 +16,8 @@ ROOT=Path(__file__).resolve().parents[1]
 COMPATIBLE_REVISIONS=('6be85aa836833d7a61d590a81d9d3eb41e267504',
                       '6d5f0dc9bbcdf5bd4261887848f439dbaac233d9',
                       '72be3cec8a8a5effaf2b318f692267901b1c93e3',
-                      'f07b13f5cc656aa413fc1f89b4f66c0925158559')
+                      'f07b13f5cc656aa413fc1f89b4f66c0925158559',
+                      '27b598b1ec5a8738737c477e1dd8a9953470fa70')
 
 
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -39,7 +40,8 @@ def verified_origin(identity,current):
     if identity==current:return 'same_preparation_source'
     if identity.get('core')!=current['core']:raise ValueError('Reuse core implementation differs')
     names=set(identity.get('preparation',{}))
-    reviewed={'l0_regions/preparation.py','l0_regions/training_data.py','l0_regions/preparation_reuse.py','l0_regions/preparation_runtime.py'}
+    reviewed={'l0_regions/preparation.py','l0_regions/training_data.py','l0_regions/preparation_reuse.py','l0_regions/preparation_runtime.py',
+              'l0_regions/data.py'}  # Exact duplicate-edge predicate optimization; no schema/check removed.
     if not names or names-set(current['preparation']):raise ValueError('Unknown reuse preparation file set')
     if any(identity['preparation'][name]!=current['preparation'][name] for name in names-reviewed):
         raise ValueError('Reuse partition/integrity implementation changed')

@@ -110,15 +110,35 @@ def metadata(ds,embeddings):
         classes=torch.tensor([r['target'] for r in ds.rows],device='cuda'))
 
 @torch.no_grad()
-def initial_memory(net,ds,loader,batch):
+def initial_memory(net,ds,loader,batch,timing_path=None):
     net.eval();parts=[]
-    for cpu in tqdm(loader.batches(contiguous(ds,batch)),total=(len(ds)+batch-1)//batch,desc='calibration support'):
-        parts.append(net.local(cpu.to('cuda')).float())
+    net.local.dense_batch_size=batch
+    order=contiguous(ds,batch);done=0;iterator=iter(loader.batches(order))
+    bar=tqdm(total=(len(ds)+batch-1)//batch,desc='calibration support')
+    while done<len(ds):
+        start=time.perf_counter();cpu=next(iterator);wait=time.perf_counter()-start
+        ids=cpu.indices.tolist()
+        if ids!=list(range(done,done+len(ids))):raise ValueError('Calibration support coverage/order changed')
+        torch.cuda.synchronize();start=time.perf_counter();query=cpu.to('cuda')
+        torch.cuda.synchronize();transfer=time.perf_counter()-start
+        start=time.perf_counter();embedding=net.local(query).float()
+        torch.cuda.synchronize();forward=time.perf_counter()-start
+        parts.append(embedding);done+=len(ids)
+        row=dict(stage='calibration_support',completed=done,total=len(ds),physical_batch=len(ids),
+            cnn_chunk=batch,loader_wait_seconds=wait,h2d_validation_seconds=transfer,forward_seconds=forward,
+            rss_bytes=psutil.Process().memory_info().rss,cuda_allocated_bytes=torch.cuda.memory_allocated())
+        if timing_path is not None:
+            with Path(timing_path).open('a',encoding='utf8') as stream:stream.write(json.dumps(row)+'\n')
+        bar.update();bar.set_postfix(wait_s=round(wait,2),transfer_s=round(transfer,2),forward_s=round(forward,2),cnn=batch)
+        del query
+    bar.close()
     return metadata(ds,torch.cat(parts))
 
-def calibrate(net,ds,loader,candidates,base,budget):
+def calibrate(net,ds,loader,candidates,base,budget,timing_path=None):
     # Complete support, graph-heaviest query group; clones leave train state intact.
-    memory=initial_memory(net,ds,loader,min(candidates))
+    initial_model_hash=hash_state(net.state_dict())
+    memory=initial_memory(net,ds,loader,min(candidates),timing_path)
+    initial_memory_hash=hash_state(memory)
     context=RankingContext(ds,memory);weights=torch.bincount(memory['classes'],minlength=2).float()
     if bool((weights==0).any()):raise ValueError('Both observed classes required')
     weights=weights.sum()/(2*weights)
@@ -155,7 +175,9 @@ def calibrate(net,ds,loader,candidates,base,budget):
         if not reports[-1]['accepted']:break
     accepted=[r for r in reports if r['accepted']]
     if not accepted:raise MemoryError('No full-graph batch admitted; no automatic model reduction')
-    return max(accepted,key=lambda r:r['graphs_per_second'])['configured_batch'],reports
+    if hash_state(net.state_dict())!=initial_model_hash:raise RuntimeError('Calibration mutated the model bound to support')
+    if hash_state(memory)!=initial_memory_hash:raise RuntimeError('Calibration mutated the reusable support')
+    return max(accepted,key=lambda r:r['graphs_per_second'])['configured_batch'],reports,memory
 
 @torch.no_grad()
 def evaluate(net,ds,loader,memory,batch):
@@ -188,9 +210,11 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         saved=load_checkpoint(resume,identity);net.load_state_dict(saved['model']);optimizer.load_state_dict(saved['optimizer'])
         state=tree_to(saved['state'],'cuda');restore_rng(saved['rng']);del saved
     else:
-        batch,report=calibrate(net,ds,loader,candidates,base,budget)
+        batch,report,memory=calibrate(net,ds,loader,candidates,base,budget,root/'support_timing.jsonl')
         write_new(root/'batch_calibration.json',report)
-        state=dict(epoch=0,step=0,phase='initial_memory',memory=None,memory_parts=[],memory_done=0,
+        # Calibration updated clones only. Its complete, ordered support belongs
+        # to this exact initial model; do not discard it and run another cohort pass.
+        state=dict(epoch=0,step=0,phase='optimization',memory=memory,memory_parts=[],memory_done=0,
             batch=batch,next_batch=0,plan=None,last_group=None,best=None,selected_epoch=None)
     net.local.dense_batch_size=state['batch']
     write_new(root/'execution_contract.json',dict(**identity,train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
@@ -202,6 +226,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         graph_counts=[dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries],
         optimization_steps=sum(1 for _ in groups(ds,state['batch']))*epochs,
         actual_query_batch_sizes=[len(ids) for ids in groups(ds,state['batch'])],
+        cache_preparation_revision=ds.preparation_revision,cache_rebuilt=False,
+        initial_support_policy='reuse full calibration support after verifying model unchanged',
         scope='GNN only; final artifact connects to the existing CP recommendation adapter',
         profile_exceeded=bool(ds.meta['admission_failures']),partition_quality_validated=False,
         research_training=profile_policy=='research-report',production_admitted=not debug and profile_policy=='strict'))

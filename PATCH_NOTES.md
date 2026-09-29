@@ -1,3 +1,11 @@
+## v2.2 — support 시작 경로의 중복 계산·CPU 중복검사 수정 (2026-09-30)
+
+Actual-CT fresh-process smoke: 4 DEBUG updates; uninterrupted versus pause/resume model, optimizer, RNG and state hashes all match. Existing cache unchanged; full training not run.
+
+- calibration support를 버리고 전체 초기support를 다시 만들던 계산 제거. clone 검사 전후 원본모델·support hash 동일성 확인 후 그대로 첫 optimization에 사용. CNN 내부chunk를 명시한 calibration physical batch에 연결.
+- cache payload 한 번 읽기, 동일 bytes hash/weights_only 역직렬화. CPU 중복edge검사를 정확한 int64 키 검사로 변경(범위·오버플로 검사 유지). 현재 f07b13f 완료cache를 복사·재준비 없이 읽기 허용, 검토된 출처만 수용.
+- 52검사 PASS. 실제CT8개 동일batch8 warm1.694초→1.174~1.342초, embedding 동일. 서버7초/batch·epoch 해결을 주장하지 않음. [상세](docs/region_support_runtime_20260930.md).
+
 ## v2.2 — 준비 단계 읽기·GPU·저장 겹침 및 계측 (2026-09-30)
 
 - 서버 PID3614482는 train이 아닌 prepare. 다음 CPU batch 하나와 이전 저장 하나를 GPU 준비와 겹치도록 변경. batch·그래프·공식 병합·reg·모델·무결성 검사 유지. 진행 막대와 JSONL에 구간별 시간 표시.

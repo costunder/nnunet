@@ -5,8 +5,27 @@ rejected. Callers must not bypass PyTorch version tracking with .data/raw storag
 """
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import io
+import json
 import torch
-from .data import load,collate
+from .data import VerifiedItem,collate
+
+
+def load(path,expected_binding):
+    """Deserialize the exact bytes just hashed, without a second file read.
+
+    All original binding, receipt and structural checks still run in VerifiedItem.
+    This runtime reader does not modify preparation or any stored cache record.
+    """
+    path=Path(path)
+    manifest=json.loads(path.with_suffix('.json').read_text(encoding='utf-8'))
+    if manifest['binding']!=expected_binding:raise ValueError('Different record/view/geometry/partition model')
+    raw=path.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!=manifest['sha256']:raise ValueError('Corrupt region cache')
+    item=torch.load(io.BytesIO(raw),map_location='cpu',weights_only=True)
+    if item['binding']!=expected_binding:raise ValueError('Cache identity mismatch')
+    return VerifiedItem(item)
 
 
 def signature(value):

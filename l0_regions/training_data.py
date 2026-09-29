@@ -212,7 +212,10 @@ class RegionDataset:
         self.meta=json.loads(self.path.read_text(encoding='utf-8'))
         m=self.meta
         if m.get('format')!=FORMAT or m.get('debug')!=debug or not m.get('complete'):raise ValueError('Cache mode/format/completion mismatch')
-        if m['source_identity']!=source_identity(preparation=True):raise ValueError('Region preparation source identity changed')
+        from .preparation_reuse import verified_origin
+        # Runtime-only training fixes can read a completed, reviewed cache in
+        # place. Do not rewrite its index/bindings or repeat offline preparation.
+        self.preparation_revision=verified_origin(m['source_identity'],source_identity(preparation=True))
         validate_cache_policy(m,profile_policy,debug)
         if sha(self.root/'frozen_cnn.pt')!=m['cnn_file_sha256']:raise ValueError('CNN snapshot file changed')
         self.entries=m['partitions'][partition];self.rows=[v['row'] for v in self.entries]
