@@ -22,7 +22,8 @@ def validate(value,*,allow_debug=False):
     if value['runtime_source']!=source_identity():raise ValueError('Region final runtime source changed')
     from hiercp_v222.v1_cache import configuration,provenance
     cfg,base=configuration()
-    if value['config']!=cfg or value['base']!=base or value['source_identity']!=provenance():raise ValueError('Region configuration/core source changed')
+    from .execution_upgrade import compatible_core
+    if value['config']!=cfg or value['base']!=base or not compatible_core(value['source_identity'],provenance()):raise ValueError('Region configuration/core source changed')
     policy=validate_policy(value['region'].get('profile_policy','strict'))
     contract=value['state_dict']['local._extra_state']
     if contract.get('profile_policy','strict')!=policy or contract['debug']!=value['debug']:

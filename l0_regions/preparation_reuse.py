@@ -17,7 +17,8 @@ COMPATIBLE_REVISIONS=('6be85aa836833d7a61d590a81d9d3eb41e267504',
                       '6d5f0dc9bbcdf5bd4261887848f439dbaac233d9',
                       '72be3cec8a8a5effaf2b318f692267901b1c93e3',
                       'f07b13f5cc656aa413fc1f89b4f66c0925158559',
-                      '27b598b1ec5a8738737c477e1dd8a9953470fa70')
+                      '27b598b1ec5a8738737c477e1dd8a9953470fa70',
+                      'b398b3d8c0044d883729b789e83d69c0ed841725')
 
 
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -38,7 +39,8 @@ def revision_identity(revision):
 
 def verified_origin(identity,current):
     if identity==current:return 'same_preparation_source'
-    if identity.get('core')!=current['core']:raise ValueError('Reuse core implementation differs')
+    from .execution_upgrade import compatible_core
+    if not compatible_core(identity.get('core',{}),current['core']):raise ValueError('Reuse core implementation differs')
     names=set(identity.get('preparation',{}))
     reviewed={'l0_regions/preparation.py','l0_regions/training_data.py','l0_regions/preparation_reuse.py','l0_regions/preparation_runtime.py',
               'l0_regions/data.py'}  # Exact duplicate-edge predicate optimization; no schema/check removed.
@@ -54,6 +56,27 @@ def binding_digest(identity):
     source=dict(identity['core'])
     source.update({k:v for k,v in identity['preparation'].items() if k!='l0_regions/training_data.py'})
     return hashlib.sha256(json.dumps(source,sort_keys=True).encode()).hexdigest()
+
+
+def verified_binding_sources(meta,current):
+    """Historical source receipts remain intact; only reviewed origins can mix."""
+    origins=[meta['source_identity']]
+    proof=meta.get('reused_preparation')
+    if proof:
+        if proof.get('format')!='verified_prepared_batch_reuse_v1' or proof.get('original_items_relabelled') is not False:
+            raise ValueError('Unknown reused preparation proof')
+        if proof.get('binding_source_sha256')!=binding_digest(proof['source_identity']):
+            raise ValueError('Reused binding source digest changed')
+        origins.append(proof['source_identity'])
+        origins.extend(proof.get('source_origins',[]))
+    allowed=set()
+    for origin in origins:
+        verified_origin(origin,current);allowed.add(binding_digest(origin))
+    for entries in meta['partitions'].values():
+        for entry in entries:
+            if entry['binding']['preparation_source_sha256'] not in allowed:
+                raise ValueError('Unreviewed record preparation source')
+    return frozenset(allowed)
 
 
 class PreparedReuse:

@@ -1,0 +1,18 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "status": "PASS",
+  "full_training": false,
+  "checkpointed_to_retained_final_hashes": {
+    "model": true,
+    "optimizer": true,
+    "rng": true,
+    "state": true
+  },
+  "all_numeric_state_close": true,
+  "support_rebuild": false,
+  "resumed_step": 1,
+  "completed_step": 4,
+  "f07b13f_pinned_source_manifest_accepted": true,
+  "f07b13f_check_scope": "Git manifest contract check; supplied server checkpoint not available locally"
+}

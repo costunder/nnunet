@@ -7,6 +7,7 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--cache',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--activation-storage',choices=('checkpointed','retained'),default='checkpointed')
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
     import torch
     from l0_regions.training import hash_state
@@ -16,7 +17,7 @@ def main():
         subprocess.run([sys.executable,'-u',str(ROOT/'tools/run_fixed_regions.py'),'train',
             '--debug','--profile-policy','research-report','--cache',str(a.cache),
             '--output',str(a.output/name),'--workers','8','--cuda-gib','6','--rss-gib','12',
-            '--resident-gib','4','--batch-candidates','8',*map(str,extra)],cwd=ROOT,check=True)
+            '--resident-gib','4','--batch-candidates','8','--activation-storage',a.activation_storage,*map(str,extra)],cwd=ROOT,check=True)
     run('uninterrupted')
     run('paused','--debug-pause-step','1')
     run('resumed','--resume',a.output/'paused/checkpoint_latest.pt')

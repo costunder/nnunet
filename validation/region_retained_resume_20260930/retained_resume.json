@@ -1,0 +1,19 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "status": "PASS",
+  "full_training": false,
+  "cache_rebuilt": false,
+  "cache_unchanged": true,
+  "checks": {
+    "model": true,
+    "optimizer": true,
+    "rng": true,
+    "state": true
+  },
+  "steps": 4,
+  "initial_support_records": 8,
+  "calibration_support_passes": 1,
+  "extra_initial_support_passes": 0,
+  "scope": "Actual f07b13f DEBUG train8/val2; full supplied DEBUG schedule, refresh/validation/best/final, fresh-process exact resume"
+}

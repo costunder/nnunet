@@ -1,3 +1,9 @@
+## 2026-09-30 — 실제 학습 retained activation + Mixed partition contract 복구
+
+- 서버 f07b13f step73 이후 mixed partition contract. reuse 원본출처보존과 collate 동일출처강제가 충돌. 검토된 origin digest set을 loader에 전달해 혼합 허용, CNN/profile/view/unknown source와 모든 무결성 검사는 유지. 기존tensor/receipt 재작성·재생성 없음. 실제 서로다른origin CT혼합 학습/val/final/별도프로세스resume PASS.
+- train --activation-storage retained가 CNN/L0/L1/L2 재계산을 실제로 끔. --resume-execution-upgrade는 검토된 소스+동일 cache/config/resources/candidates에만 적용, 기존model/Adam/RNG/support/plan/cursor/batch 보존. 실제old DEBUG step1→4 전환은 기존연속학습과 최종4종hash동일, support재생성0.
+- 기존서버경로/cache/checkpoint 그대로 사용, 새output에서 train만 실행. CUDA40/RSS192/resident128/worker16/candidates32 48 64 유지. A6000성능·peak미측정. 실행화면 step초/peakGiB와 update_timing.jsonl 추가. [기록](docs/region_retained_resume_20260930.md).
+
 ## 2026-09-30 — VRAM을 써서 재계산 제거, 실제 CT A/B
 
 - 사용자48GB 메모리활용 요구. tools/compare_region_memory_debug.py는 동일 saved nextupdate에서 CNN/L0/L1/L2 재계산을 제거하고 activation보관. 전체 loss/clippedgradient/Adam/model/RNG 대조 PASS. actualbatch2/support6 DEBUG에서 warm0.449→0.329s, peak254→384MiB; 서버fullsupport 개선값 아님. 256MiB workspace는 추가이득 없음.

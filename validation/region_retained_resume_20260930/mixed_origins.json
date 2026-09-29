@@ -1,0 +1,14 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "status": "PASS",
+  "partition_rebuilds": 0,
+  "actual_mixed_sources": 2,
+  "original_bindings_preserved": true,
+  "original_tensors_unchanged": true,
+  "unverified_mix_rejected": true,
+  "unknown_source_rejected": true,
+  "retained_fresh_process_resume": true,
+  "full_training": false,
+  "server_validation": false
+}

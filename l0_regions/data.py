@@ -180,14 +180,19 @@ class RegionBatch:
             [copy.copy(g).to(device,non_blocking=non_blocking) for g in self.graphs],copy.deepcopy(self.bindings),self.profile_exceeded,self.admission_flags))
 
 
-def collate(items,indices):
+def collate(items,indices,*,compatible_sources=None):
     if len(items)!=len(indices) or len(set(indices))!=len(indices) or not items:raise ValueError('Exact batch coverage')
     for item in items:validate_item(item)
     if len({it['binding']['record_id'] for it in items})!=len(items):raise ValueError('Duplicate actual record')
     if any(it['binding']['dataset_index']!=i for it,i in zip(items,indices)):raise ValueError('Wrong dataset index for record')
     # Mixed partition models/views/profiles must not silently form one experiment.
-    for key in ('cache_sha256','frozen_cnn_sha256','profile','view','feature_coordinates','feature_evidence','preparation_source_sha256'):
-        if any(item['binding'][key]!=items[0]['binding'][key] for item in items):raise ValueError('Mixed partition contract')
+    for key in ('cache_sha256','frozen_cnn_sha256','profile','view','feature_coordinates','feature_evidence'):
+        if any(item['binding'][key]!=items[0]['binding'][key] for item in items):raise ValueError('Mixed partition contract: '+key)
+    origins={item['binding']['preparation_source_sha256'] for item in items}
+    if compatible_sources is not None:
+        if not origins<=compatible_sources:raise ValueError('Unreviewed batch preparation source')
+    elif len(origins)>1:
+        raise ValueError('Mixed partition contract: unverified preparation sources')
     levels=scale_count(items[0]['binding']['profile'])
     offsets=[{k:[0] for k in NT} for _ in range(levels)]
     for item in items:

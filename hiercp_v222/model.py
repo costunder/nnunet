@@ -200,6 +200,7 @@ class PromptGraphModel(nn.Module):
     def __init__(self, cfg, base, contract, *, local_encoder=None):
         super().__init__()
         m = base['model']; d = m['hidden_dim']
+        self.checkpoint_support = True  # Execution policy; weights and equations are unchanged.
         self.dim = d; self.temperature = cfg['temperature']
         self.alignment_loss_weight = cfg['alignment_loss_weight']
         # Explicit injection supports L0 comparisons with exactly the same L1/L2.
@@ -241,7 +242,7 @@ class PromptGraphModel(nn.Module):
         for layer in self.l1:
             # Cache layer inputs, not outputs: query read is simultaneous with support messages.
             histories.append(x[n:])
-            x = checkpoint(layer, x, edges, features, use_reentrant=False) if self.training else layer(x, edges, features)
+            x = checkpoint(layer, x, edges, features, use_reentrant=False) if self.training and self.checkpoint_support else layer(x, edges, features)
         local_labels = x[n:]
         return histories, local_labels.reshape(p, 2, self.dim)
 
@@ -278,7 +279,7 @@ class PromptGraphModel(nn.Module):
         for layer, update in zip(self.l2, self.l2_updates):
             def run(value, layer=layer, update=update):
                 return update(value, layer(value, value, value, attn_mask=forbidden, need_weights=False)[0])
-            aligned = checkpoint(run, aligned, use_reentrant=False) if self.training else run(aligned)
+            aligned = checkpoint(run, aligned, use_reentrant=False) if self.training and self.checkpoint_support else run(aligned)
         labels = aligned[0].reshape(p, 2, self.dim)
         return dict(histories=histories, labels=labels, local_labels=local_labels,
                     cluster_plan=plan, alignment_loss=alignment_loss(labels,plan,self.temperature))

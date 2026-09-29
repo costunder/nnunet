@@ -1,3 +1,8 @@
+## v2.2 — 혼합 출처 batch 복구 및 A6000 activation 보관 실행 (2026-09-30)
+
+- 검토된 재사용·신규cache source의 혼합batch 수용, 원본 binding/검사 보존. 실제 CT 혼합 경로와 fresh-process resume 통과.
+- 실제 train의 retained activation 모드와 명시적 실행업그레이드 resume 추가. 전체support/step/batch 보존, prepare·초기support 재실행 없음. GPU peak·구간시간 기록. [검증 및 한계](docs/region_retained_resume_20260930.md).
+
 ## v2.2 — activation 보관 경로의 동일 update 비교 (2026-09-30)
 
 - 같은 CT·batch·support·loss로 재계산/보관 경로 GPU A/B 및 전체 gradient·update·RNG 비교 추가. 로컬 DEBUG update26.65% 감소, peak51.09% 증가. 서버 epoch 개선으로 환산 금지. [기록](docs/region_memory_execution_20260930.md).
