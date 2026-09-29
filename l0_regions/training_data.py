@@ -58,7 +58,7 @@ def reference_from_checkpoint(checkpoint,debug):
     load_cnn_only(net,ckpt['model'])
     return net
 
-def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget,debug=False,profile_policy='strict'):
+def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget,debug=False,profile_policy='strict',reuse_prepared=None):
     validate_policy(profile_policy)
     index=Path(index).resolve();output=Path(output).resolve();checkpoint=Path(checkpoint).resolve()
     if min(batch,workers)<1 or view_epoch<0:raise ValueError('Explicit positive preparation settings required')
@@ -75,21 +75,31 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
         profile=profile,view_epoch=view_epoch,config=cfg,base=base,partitions={},admission_failures=0,
         complete=False,full_training_admitted=False,research_training_admitted=False,profile_policy=profile_policy,
         partition_quality_validated=False)
+    from .preparation_reuse import PreparedReuse
+    reuse=PreparedReuse(reuse_prepared,meta,batch) if reuse_prepared is not None else None
+    if reuse:meta['reused_preparation']=reuse.provenance
     write_new(output/'request.json',meta)
-    total_bytes=0
+    total_bytes=0;new_records=0
     for part in ('inner_train','inner_val'):
         ds=dataset(index,part,debug);rows=[]
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            for start in tqdm(range(0,len(ds.rows),batch),desc='prepare '+part,unit='batch'):
+            progress=tqdm(range(0,len(ds.rows),batch),desc='prepare '+part,unit='batch')
+            for start in progress:
                 budget.check()
                 if psutil.disk_usage(str(output)).free<cfg['minimum_free_gb']*2**30:raise OSError('Disk reserve reached; partial files preserved')
                 ids=list(range(start,min(start+batch,len(ds.rows))))
-                fine=load_pairs(ds,ids,workers=workers,epoch=view_epoch,cache_path=index).to('cuda')
-                bindings=batch_bindings([dict(ds.rows[i],donor_component=ds.record(i)['component_id']) for i in ids],ids,
-                    cache_sha256=cache_hash,frozen_cnn_sha256=meta['cnn_sha256'],profile=profile,view_epoch=view_epoch,
-                    view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
-                # Only uncalibrated profile bounds are advisory under explicit research policy.
-                items,audit=prepare(fine,frozen,profile,bindings,budget,allow_unvalidated_profile=allow_profile(profile_policy,debug))
+                restored=reuse.restore(part,ids,ds,pool) if reuse else None
+                if restored is not None:
+                    items,audit=restored
+                else:
+                    fine=load_pairs(ds,ids,workers=workers,epoch=view_epoch,cache_path=index).to('cuda')
+                    bindings=batch_bindings([dict(ds.rows[i],donor_component=ds.record(i)['component_id']) for i in ids],ids,
+                        cache_sha256=cache_hash,frozen_cnn_sha256=meta['cnn_sha256'],profile=profile,view_epoch=view_epoch,
+                        view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
+                    # Only uncalibrated profile bounds are advisory under explicit research policy.
+                    items,audit=prepare(fine,frozen,profile,bindings,budget,allow_unvalidated_profile=allow_profile(profile_policy,debug))
+                    del fine
+                    new_records+=len(ids)
                 paths=[output/f'{part}_{i:06d}.pt' for i in ids]
                 total_bytes+=sum(pool.map(lambda pair:save_new(*pair),zip(paths,items)))
                 for i,path,item in zip(ids,paths,items):
@@ -99,10 +109,12 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
                         region_nodes=[sum(len(v['mass']) for v in layer.values()) for layer in item['scales']],
                         region_edges=[sum(e.shape[1] for e in edges.values()) for edges in item['edges']] ))
                 write_new(output/f'{part}_{start:06d}_audit.json',audit)
-                del fine,items
+                progress.set_postfix(reused=reuse.reused_records if reuse else 0,new=new_records)
+                del items
         meta['partitions'][part]=rows
     if sha(index)!=cache_hash or sha(checkpoint)!=checkpoint_hash:raise ValueError('Preparation inputs changed')
     if meta['source_identity']!=source_identity(preparation=True):raise ValueError('Preparation sources changed')
+    if reuse:meta['reused_preparation']=reuse.finish()
     meta.update(complete=True,full_training_admitted=not debug and profile_policy=='strict' and not meta['admission_failures'],
         research_training_admitted=not debug and profile_policy=='research-report',serialized_pt_bytes=total_bytes)
     validate_cache_policy(meta,profile_policy,debug)

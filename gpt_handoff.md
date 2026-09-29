@@ -1,3 +1,11 @@
+## 2026-09-29 최신 — 기존 완료분을 보존하는 준비 전환
+
+- 직전 '계속 기다려라/처음부터 재시작' 안내 후 사용자가 항의. 완료된 pair+batch audit를 검증해 재사용하는 `prepare --reuse-prepared` 구현. 아직 서버 작업/소스에는 적용하지 않음.
+- 현재서버6be85aa와6d5f0dc의 정확한 Git preparation hash 및 동일core/partition/integrity 소스만 호환. 모든record/view/파일/receipt/구조/admission 검사 유지. 완료batch audit가 있어야 wholebatch 재사용, 없는 미완성batch는 새폴더에서 준비. 원본 생성binding과출처 유지, hash바꿔치기 아님.
+- actualDEBUG train8완료+val2미완성 상황에서8개 무재계산/동일payload 재사용+2개 새준비 확인. 원본파일불변,7종 불일치/변조 거부. 회귀45 PASS, 새캐시 4update/support/val/final 연결 PASS. 서버전체학습은 실행하지 않음.
+- 서버가 아직prepare이면Ctrl+C한번 후 셸prompt까지 기다린 다음Git전환. 기존CP_RUN/cache를 OLD_REGION_CACHE로 보존하고 새출력에서reuse 준비→성공시에만train. 원래prepare batch32/worker16 및 자원/모델 설정 유지. 이미GNN학습중이면 이명령을optimizer재개로 사용하면안됨.
+- oldmerge RNG cursor 미저장이라 미완성분의 미래partition exact재현은 주장하지 않음. 이미이관된partial을다시이관하는연쇄재사용은현재명시적거부. [상세](docs/region_preparation_reuse_20260929.md).
+
 ## 2026-09-29 최신 — 준비 중복 작업 제거
 
 - 서버14/353,21.37s/batch 질문 후 반복 작업 제거 요청. 현재 실행 중 서버6be85aa checkout/프로세스는 수정하거나 중단하지 않음.

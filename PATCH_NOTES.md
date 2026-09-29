@@ -1,3 +1,9 @@
+## v2.2 — 완료된 준비 batch를 보존한 수정 버전 전환 (2026-09-29)
+
+- `prepare --reuse-prepared` 추가. 검토된6be85aa/6d5f0dc의 완료 batch를 원본binding·파일hash·진단·구조 검사 후 새폴더에 재사용. 미완성 batch만 준비. 생성버전 provenance를 새것으로 덮어쓰지 않음.
+- 기존규모/partition/profile/정답/모델 유지. 진행률에 reused/new 표시. 원본폴더 보존, 아직 학습 시작 전 prepare 전환용이며 optimizer 재개나 미래 partition RNG exact resume가 아님.
+- 실제CT DEBUG8개 재사용+2개 새 준비, 원본불변·7종 오류 거부·4update 학습 연결 및 기존45회귀 검사. [전환 계약](docs/region_preparation_reuse_20260929.md).
+
 ## v2.2 — 준비 과정의 반복 해시·진단 복제 제거 (2026-09-29)
 
 - 전체 fine edge hash와 소스 fingerprint를 batch당 한 번 계산. Pair별 전체 batch audit 중복 저장을 자체 role/shell 진단 + 전체 audit 한 번 저장으로 변경. Partition/그래프/학습 계약과 무결성 검사 유지.

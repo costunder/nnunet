@@ -29,6 +29,7 @@ def main():
     p.add_argument('--resident-gib',type=float)
     p.add_argument('--batch-candidates',type=int,nargs='+')
     p.add_argument('--resume',type=Path)
+    p.add_argument('--reuse-prepared',type=Path,help='Validate and reuse completed preparation batches in a new output directory')
     p.add_argument('--debug',action='store_true')
     p.add_argument('--debug-pause-step',type=int)
     p.add_argument('--profile-policy',choices=POLICIES,default='strict',
@@ -42,6 +43,7 @@ def main():
     if a.mode in ('train','smoke') and (not a.batch_candidates or not a.resident_gib or a.resident_gib<=0):
         raise ValueError('Explicit batch candidates and resident tensor budget required')
     if a.mode!='train' and (a.resume or a.debug_pause_step is not None):raise ValueError('Resume/pause only on train')
+    if a.reuse_prepared is not None and a.mode!='prepare':raise ValueError('Prepared-batch reuse only on prepare')
     from tools.v22_region_preflight import check
     check()  # Before any output directory, checkpoint read or graph materialization.
     budget=Budget(int(a.cuda_gib*2**30),int(a.rss_gib*2**30))
@@ -52,7 +54,7 @@ def main():
     try:
         if a.mode=='prepare':
             result=prepare_cache(a.cache,a.partition_checkpoint,a.output,batch=a.prepare_batch,workers=a.workers,
-                reg1=a.reg_scale1,view_epoch=a.view_epoch,budget=budget,debug=a.debug,profile_policy=a.profile_policy)
+                reg1=a.reg_scale1,view_epoch=a.view_epoch,budget=budget,debug=a.debug,profile_policy=a.profile_policy,reuse_prepared=a.reuse_prepared)
         elif a.mode=='train':
             result=train(a.cache,a.output,workers=a.workers,resident_bytes=int(a.resident_gib*2**30),
                 candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step,profile_policy=a.profile_policy)
