@@ -13,7 +13,7 @@ from tools.v22_artifacts import tree_hash
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    for key in ('old-prepared','cache','checkpoint','output'):p.add_argument('--'+key,type=Path,required=True)
+    for key in ('old-prepared','cache','output'):p.add_argument('--'+key,type=Path,required=True)
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(8);budget=Budget(6*2**30,12*2**30)
     torch.cuda.set_per_process_memory_fraction(budget.cuda_bytes/torch.cuda.get_device_properties(0).total_memory)
@@ -30,9 +30,11 @@ def main():
     calls=[]
     def counted(batch,*args,**kwargs):
         calls.append(len(batch));return prepare(batch,*args,**kwargs)
-    with patch('l0_regions.training_data.prepare',side_effect=counted):
-        index=prepare_cache(a.cache,a.checkpoint,a.output/'recovered',batch=8,workers=8,reg1=.02,view_epoch=0,
+    with patch('l0_regions.training_data.prepare',side_effect=counted), \
+         patch('l0_regions.training_data.reference_from_checkpoint',side_effect=OSError(116,'Stale file handle')) as parent:
+        index=prepare_cache(a.cache,None,a.output/'recovered',batch=8,workers=8,reg1=.02,view_epoch=0,
             budget=budget,debug=True,profile_policy='research-report',reuse_prepared=partial)
+    assert parent.call_count==0 and meta_flag(a.output/'recovered/index.json') is False
     if calls!=[2]:raise AssertionError('Completed train batch was recomputed, or validation was skipped')
     meta=json.loads(index.read_text());proof=meta['reused_preparation']
     assert proof['reused_records']==8 and proof['reused_batches']==1
@@ -67,12 +69,15 @@ def main():
     report=dict(debug=True,actual_CT=True,status='PASS',gpu=torch.cuda.get_device_name(0),
         peak_cuda_bytes=torch.cuda.max_memory_allocated(),physical_prepare_batch=8,workers=8,
         completed_records_reused=8,missing_records_prepared=2,partition_batch_calls=calls,
-        reused_item_content_exact=True,old_files_unchanged=True,rejections=rejected,
+        reused_item_content_exact=True,old_files_unchanged=True,rejections=rejected,original_checkpoint_open_calls=parent.call_count,
         original_revision=proof['revision'],all_profile_violations_retained=10,
         source=source_identity(preparation=True),full_training=False,production_ready=False,
         scope='Actual complete DEBUG train8/val2; completed train batch reused without materialize/partition; incomplete val batch regenerated')
     (a.output/'report.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report))
+
+
+def meta_flag(path):return json.loads(path.read_text())['original_checkpoint_reopened']
 
 
 if __name__=='__main__':main()

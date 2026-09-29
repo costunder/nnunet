@@ -38,8 +38,13 @@ def main():
     if not torch.cuda.is_available():raise RuntimeError('CUDA required')
     if a.workers<1:raise ValueError('Positive explicit workers required')
     if a.mode=='smoke' and not a.debug:raise ValueError('Smoke requires explicit --debug')
-    if a.mode in ('prepare','smoke') and any(x is None for x in (a.partition_checkpoint,a.prepare_batch,a.reg_scale1,a.view_epoch)):
-        raise ValueError('Explicit CNN snapshot, preparation batch, scale1 reg and fixed view required')
+    if a.mode in ('prepare','smoke'):
+        if any(x is None for x in (a.prepare_batch,a.reg_scale1,a.view_epoch)):
+            raise ValueError('Explicit preparation batch, scale1 reg and fixed view required')
+        if a.reuse_prepared is not None and a.partition_checkpoint is not None:
+            raise ValueError('Reuse loads the verified frozen CNN; omit --partition-checkpoint')
+        if a.reuse_prepared is None and a.partition_checkpoint is None:
+            raise ValueError('New preparation requires an explicit partition checkpoint')
     if a.mode in ('train','smoke') and (not a.batch_candidates or not a.resident_gib or a.resident_gib<=0):
         raise ValueError('Explicit batch candidates and resident tensor budget required')
     if a.mode!='train' and (a.resume or a.debug_pause_step is not None):raise ValueError('Resume/pause only on train')

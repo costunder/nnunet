@@ -1,6 +1,7 @@
 """Explicit fixed-view training cache; existing diagnostic receipts stay intact."""
 import copy
 import hashlib
+import io
 import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -58,14 +59,41 @@ def reference_from_checkpoint(checkpoint,debug):
     load_cnn_only(net,ckpt['model'])
     return net
 
+def reference_from_prepared(folder,debug):
+    """Load verified CNN bytes without reopening the historical parent checkpoint."""
+    from .preparation_reuse import verified_origin
+    folder=Path(folder).resolve();raw=(folder/'request.json').read_bytes()
+    origin=json.loads(raw)
+    cfg,base=configuration()
+    if origin.get('format')!=FORMAT or origin.get('debug')!=debug:raise ValueError('Prepared CNN mode/format mismatch')
+    if origin['config']!=cfg or origin['base']!=base:raise ValueError('Prepared CNN configuration mismatch')
+    verified_origin(origin['source_identity'],source_identity(preparation=True))
+    snapshot=(folder/'frozen_cnn.pt').read_bytes()
+    if hashlib.sha256(snapshot).hexdigest()!=origin['cnn_file_sha256']:raise ValueError('Prepared CNN file changed')
+    weights=torch.load(io.BytesIO(snapshot),map_location='cpu',weights_only=True)
+    if tree_hash(weights)!=origin['cnn_sha256']:raise ValueError('Prepared CNN contents differ')
+    torch.manual_seed(cfg['seed'])
+    with installed('stride4'):net=V1LocalEncoder(base)
+    net.dense_encoder.load_state_dict(weights,strict=True)
+    return net,origin,hashlib.sha256(raw).hexdigest()
+
+
 def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget,debug=False,profile_policy='strict',reuse_prepared=None):
     validate_policy(profile_policy)
-    index=Path(index).resolve();output=Path(output).resolve();checkpoint=Path(checkpoint).resolve()
+    index=Path(index).resolve();output=Path(output).resolve()
     if min(batch,workers)<1 or view_epoch<0:raise ValueError('Explicit positive preparation settings required')
-    reference=reference_from_checkpoint(checkpoint,debug)
+    if reuse_prepared is not None:
+        if checkpoint is not None:raise ValueError('Reuse loads the verified frozen CNN; omit --partition-checkpoint')
+        reference,origin,origin_request_hash=reference_from_prepared(reuse_prepared,debug)
+        checkpoint_hash=origin['partition_checkpoint_sha256']
+    else:
+        if checkpoint is None:raise ValueError('New preparation requires an explicit partition checkpoint')
+        checkpoint=Path(checkpoint).resolve()
+        reference=reference_from_checkpoint(checkpoint,debug)
+        checkpoint_hash=sha(checkpoint)
     frozen=copy.deepcopy(reference).eval().requires_grad_(False).cuda()
     profile=single_profile(reg1)
-    cfg,base=configuration();cache_hash=sha(index);checkpoint_hash=sha(checkpoint)
+    cfg,base=configuration();cache_hash=sha(index)
     output.mkdir(parents=True,exist_ok=False)
     # Only CNN initialization is copied, never GAT/optimizer/old support.
     with (output/'frozen_cnn.pt').open('xb') as f:torch.save(reference.dense_encoder.state_dict(),f)
@@ -74,10 +102,14 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
         cnn_sha256=tree_hash(reference.dense_encoder.state_dict()),cnn_file_sha256=sha(output/'frozen_cnn.pt'),
         profile=profile,view_epoch=view_epoch,config=cfg,base=base,partitions={},admission_failures=0,
         complete=False,full_training_admitted=False,research_training_admitted=False,profile_policy=profile_policy,
-        partition_quality_validated=False)
+        partition_quality_validated=False,cnn_load_basis='verified_prepared_snapshot' if reuse_prepared is not None else 'original_checkpoint',
+        original_checkpoint_reopened=reuse_prepared is None)
     from .preparation_reuse import PreparedReuse
     reuse=PreparedReuse(reuse_prepared,meta,batch) if reuse_prepared is not None else None
-    if reuse:meta['reused_preparation']=reuse.provenance
+    if reuse:
+        if reuse.request_hash!=origin_request_hash or reuse.frozen_hash!=origin['cnn_file_sha256']:
+            raise ValueError('Prepared CNN origin changed while initializing')
+        meta['reused_preparation']=reuse.provenance
     write_new(output/'request.json',meta)
     total_bytes=0;new_records=0
     for part in ('inner_train','inner_val'):
@@ -112,7 +144,7 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
                 progress.set_postfix(reused=reuse.reused_records if reuse else 0,new=new_records)
                 del items
         meta['partitions'][part]=rows
-    if sha(index)!=cache_hash or sha(checkpoint)!=checkpoint_hash:raise ValueError('Preparation inputs changed')
+    if sha(index)!=cache_hash or (reuse is None and sha(checkpoint)!=checkpoint_hash):raise ValueError('Preparation inputs changed')
     if meta['source_identity']!=source_identity(preparation=True):raise ValueError('Preparation sources changed')
     if reuse:meta['reused_preparation']=reuse.finish()
     meta.update(complete=True,full_training_admitted=not debug and profile_policy=='strict' and not meta['admission_failures'],

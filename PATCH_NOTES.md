@@ -1,3 +1,9 @@
+## v2.2 — reuse에서 원본 체크포인트 재읽기 제거 (2026-09-29)
+
+- 서버 원본checkpoint torch.load에서 Errno116 Stale file handle 발생. reuse 경로가 이미 저장한frozen CNN을 두고 원본을 다시읽던 의존성을 제거. 파일hash·내용hash·strict구조·설정/출처/DEBUG 검증 후 기존frozen_cnn.pt 사용.
+- `--reuse-prepared`에서는 `--partition-checkpoint` 생략. 원본checkpoint digest는 역사적 출처로 유지, 재읽지 않았음을 metadata에 명시. 새준비의 명시적checkpoint 요구는 유지.
+- 52회귀 PASS, 실제CT 완료8개/미완료2개 복구에서 원본loader호출0회. 원본불변 및 모든위반기록 유지. [상세](docs/region_frozen_cnn_reuse_20260929.md).
+
 ## v2.2 — 완료된 준비 batch를 보존한 수정 버전 전환 (2026-09-29)
 
 - `prepare --reuse-prepared` 추가. 검토된6be85aa/6d5f0dc의 완료 batch를 원본binding·파일hash·진단·구조 검사 후 새폴더에 재사용. 미완성 batch만 준비. 생성버전 provenance를 새것으로 덮어쓰지 않음.

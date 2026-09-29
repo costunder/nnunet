@@ -1,0 +1,13 @@
+{"stage": "region_dependency_preflight", "status": "PASS", "torch": "2.8.0+cu128", "cuda_build": "12.8", "torch_scatter": "2.1.2+pt28cu128", "torch_geometric": "2.6.1", "gpu": "NVIDIA GeForce RTX 5070 Ti", "cuda_visible_devices": null, "scope": "synthetic scatter/official merge CUDA kernel probe only", "training_started": false}
+
+prepare inner_train:   0%|          | 0/1 [00:00<?, ?batch/s]
+prepare inner_train:   0%|          | 0/1 [00:01<?, ?batch/s, new=0, reused=8]
+prepare inner_train: 100%|##########| 1/1 [00:01<00:00,  1.57s/batch, new=0, reused=8]
+prepare inner_train: 100%|##########| 1/1 [00:01<00:00,  1.57s/batch, new=0, reused=8]
+
+prepare inner_val:   0%|          | 0/1 [00:00<?, ?batch/s]
+prepare inner_val:   0%|          | 0/1 [00:00<?, ?batch/s, new=0, reused=10]
+prepare inner_val: 100%|##########| 1/1 [00:00<00:00,  3.67batch/s, new=0, reused=10]
+prepare inner_val: 100%|##########| 1/1 [00:00<00:00,  3.67batch/s, new=0, reused=10]
+{"stage": "region_profile_report", "profile_policy": "research-report", "records": 10, "profile_violating_records": 10, "partition_quality_validated": false, "production_ready": false}
+RESULT: D:\AI project\nnunet\work\region_frozen_reuse_cli_20260929\cache\index.json

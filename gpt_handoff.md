@@ -1,3 +1,10 @@
+## 2026-09-29 최신 — 서버 Errno116, 준비된 CNN 직접 재사용
+
+- 서버72be3ce에서 original checkpoint torch.load(mmap=True) 중 Stale file handle. 새output 생성/재사용 이전 실패, 셸prompt복귀. GPU/partition 오류로 설명하지 말것. 원격파일시스템 복구·세션조작 없음.
+- reuse는 기존request+frozen_cnn.pt를 source/config/debug/filehash/tensorhash/strictstate 검증 후 직접사용. BytesIO weights_only로읽고 원본checkpoint open/hash/mmap 전혀안함. 원본digest는 historical provenance, original_checkpoint_reopened=false 명시. 오류를 잡아 fallback하는 구현아님.
+- 재실행시 이전 OLD_REGION_CACHE(원래6be85aa준비폴더) 유지, 새output, --partition-checkpoint는 반드시빼기. prepare32/worker16/GPU2/자원/모델 모두같음. 새준비만 원본checkpoint필요.
+- 신규7 포함52회귀 PASS. actualDEBUG8완료+2미완료 복구 PASS, 원본loader가Errno116내도록패치했지만호출0회, 원본파일/8개payload동일. 장기학습/서버실행 없음. [상세](docs/region_frozen_cnn_reuse_20260929.md).
+
 ## 2026-09-29 최신 — 기존 완료분을 보존하는 준비 전환
 
 - 직전 '계속 기다려라/처음부터 재시작' 안내 후 사용자가 항의. 완료된 pair+batch audit를 검증해 재사용하는 `prepare --reuse-prepared` 구현. 아직 서버 작업/소스에는 적용하지 않음.
