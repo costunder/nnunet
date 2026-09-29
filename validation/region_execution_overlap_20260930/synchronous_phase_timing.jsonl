@@ -1,0 +1,4 @@
+{"phase": "optimization", "epoch": 1, "step": 4, "seconds": 4.294685599976219, "execution_pipeline": "synchronous", "completed_updates": 4, "starting_batch": 0, "includes_final_checkpoint_flush": true}
+{"phase": "refresh_memory", "epoch": 1, "step": 4, "seconds": 1.09267139993608, "execution_pipeline": "synchronous"}
+{"phase": "validation", "epoch": 1, "step": 4, "seconds": 0.3663687000516802, "execution_pipeline": "synchronous"}
+{"phase": "final_memory", "epoch": 2, "step": 4, "seconds": 1.115218700026162, "execution_pipeline": "synchronous"}

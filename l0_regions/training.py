@@ -122,8 +122,13 @@ def load_checkpoint(path,identity,*,allow_execution_upgrade=False,allow_cuda_bud
         return payload
     if payload.get('identity')!=identity:
         if not allow_execution_upgrade:raise ValueError('Not an exact region resume; GAT/DEBUG/profile/source changes forbidden')
-        from .execution_upgrade import verify_upgrade
-        revision=verify_upgrade(payload['identity'],identity,allow_cuda_budget_change=allow_cuda_budget_change)
+        if 'execution_pipeline' in identity:
+            if allow_cuda_budget_change:raise ValueError('Separate CUDA budget migration from pipeline upgrade')
+            from .execution_pipeline import verify_pipeline_upgrade
+            revision=verify_pipeline_upgrade(payload['identity'],identity)
+        else:
+            from .execution_upgrade import verify_upgrade
+            revision=verify_upgrade(payload['identity'],identity,allow_cuda_budget_change=allow_cuda_budget_change)
         payload['execution_upgrade']=dict(reviewed_revision=revision,
             original_identity=payload['identity'],step=payload['state']['step'],
             preserved=['model','optimizer','RNG','support','cluster plan','epoch','next batch','physical batch'],
@@ -230,10 +235,18 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20):
     validate_policy(profile_policy)
     from .support_episodes import PatientEpisodes,contract as support_contract
     support_policy=None if support_patients is None else support_contract(support_patients)
+    from .execution_pipeline import CheckpointPipeline,DeviceBatchCache,gradient_check_batched
+    from .sparse import workspace
+    if type(sage_workspace_bytes) is not int or sage_workspace_bytes<=0 or sage_workspace_bytes>=budget.cuda_bytes:raise ValueError('Sparse workspace must fit the explicit CUDA budget')
+    if execution_pipeline not in ('synchronous','overlapped'):raise ValueError('Unknown execution pipeline')
+    if execution_pipeline=='synchronous' and device_cache_bytes:raise ValueError('Device cache requires explicit overlapped pipeline')
+    if execution_pipeline=='synchronous' and sage_workspace_bytes!=64*2**20:raise ValueError('Explicit workspace change requires overlapped pipeline')
+    if execution_pipeline=='overlapped' and activation_storage!='retained':raise ValueError('Measured pipeline requires retained activations')
+    if execution_pipeline=='overlapped' and resume_support_minibatch:raise ValueError('Separate support learning migration from pipeline upgrade')
     if resume_support_minibatch and (not resume or support_policy is None or resume_execution_upgrade or resume_cuda_budget_change):
         raise ValueError('Support migration requires resume + explicit support patients, without execution/budget upgrade')
     if resume_cuda_budget_change and not resume_execution_upgrade:
@@ -253,6 +266,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         activation_storage=activation_storage)
     identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
     if support_policy is not None:identity['support_training']=support_policy
+    if execution_pipeline=='overlapped':identity['execution_pipeline']=dict(mode=execution_pipeline,device_cache_bytes=device_cache_bytes,sage_workspace_bytes=sage_workspace_bytes,
+        checkpoints='every update; immutable packed CPU snapshot; one ordered writer; flush on pause/phase/return',gradient_check='one finite decision per update')
     if resume:
         saved=load_checkpoint(resume,identity,allow_execution_upgrade=resume_execution_upgrade,
             allow_cuda_budget_change=resume_cuda_budget_change,allow_support_migration=resume_support_minibatch)
@@ -261,7 +276,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         state=tree_to(saved['state'],'cuda');restore_rng(saved['rng']);del saved
         if resume_support_minibatch:write_new(root/'support_migration.json',state['support_migration'])
     else:
-        batch,report,memory=calibrate(net,ds,loader,candidates,base,budget,root/'support_timing.jsonl',support_patients)
+        with workspace(sage_workspace_bytes):
+            batch,report,memory=calibrate(net,ds,loader,candidates,base,budget,root/'support_timing.jsonl',support_patients)
         write_new(root/'batch_calibration.json',report)
         # Calibration updated clones only. Its complete, ordered support belongs
         # to this exact initial model; do not discard it and run another cohort pass.
@@ -288,36 +304,46 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         activation_checkpointing=dict(CNN=net.local.core.checkpoint_dense_encoder,
             L0=net.local.core.checkpoint_local_blocks,L1_L2=net.checkpoint_support),
         physical_batch=state['batch'],resumed_step=state['step'],support_training=support_policy or 'full_support',
-        cuda_limit_gib=budget.cuda_bytes/2**30)),flush=True)
-    save_checkpoint(root,net,optimizer,state,identity)
-    with pause_signal() as flag:
+        cuda_limit_gib=budget.cuda_bytes/2**30,execution_pipeline=identity.get('execution_pipeline',dict(mode='synchronous')))),flush=True)
+    device_cache=DeviceBatchCache(device_cache_bytes,budget) if execution_pipeline=='overlapped' else None
+    checkpoint_io=CheckpointPipeline(root,execution_pipeline,save_checkpoint,hash_state,FORMAT)
+    with checkpoint_io,pause_signal() as flag,workspace(sage_workspace_bytes):
+        def save(wait=False):return checkpoint_io.save(net,optimizer,state,identity,wait=wait)
+        def phase_timing(name,start,**details):
+            with (root/'phase_timing.jsonl').open('a',encoding='utf8') as f:
+                f.write(json.dumps(dict(phase=name,epoch=state['epoch']+1,step=state['step'],seconds=time.perf_counter()-start,execution_pipeline=execution_pipeline,**details))+'\n')
+        save(wait=True)
         def pause():
             if flag['requested'] or (root/'STOP_AFTER_BATCH').exists() or (debug_pause_step is not None and state['step']>=debug_pause_step):
-                save_checkpoint(root,net,optimizer,state,identity)
+                save(wait=True)
                 write_new(root/'paused.json',dict(step=state['step'],phase=state['phase'],debug=debug))
                 print('PAUSED: checkpoint_latest.pt saved',flush=True);return True
             return False
         while True:
             budget.check()
             if state['phase'] in ('initial_memory','refresh_memory','final_memory'):
+                phase_start=time.perf_counter();phase_name=state['phase']
                 net.eval();done=state['memory_done'];order=list(contiguous(ds,state['batch']))
                 with torch.no_grad():
                     for cpu in tqdm(loader.batches([ids for ids in order if ids[0]>=done]),desc=state['phase'],total=sum(ids[0]>=done for ids in order)):
                         ids=cpu.indices.tolist()
                         if ids!=list(range(state['memory_done'],state['memory_done']+len(ids))):raise ValueError('Memory cursor mismatch')
                         state['memory_parts'].append(net.local(cpu.to('cuda')).detach().float())
-                        state['memory_done']+=len(ids);save_checkpoint(root,net,optimizer,state,identity)
+                        state['memory_done']+=len(ids);save()
                         if pause():return root/'checkpoint_latest.pt'
                 if state['memory_done']!=len(ds):raise ValueError('Incomplete support memory')
                 state['memory']=metadata(ds,torch.cat(state['memory_parts']));state['memory_parts']=[];state['memory_done']=0
                 if state['phase']=='final_memory':
                     if hash_state(net.state_dict())!=state['best']['model_sha256']:raise ValueError('Final memory is not bound to selected best model')
-                    state['phase']='complete';save_checkpoint(root,net,optimizer,state,identity)
+                    state['phase']='complete';save(wait=True)
+                    phase_timing(phase_name,phase_start)
                     write_new(root/'training_complete.json',dict(debug=debug,epochs=epochs,steps=state['step'],selected_epoch=state['selected_epoch'],checkpoint_sha256=sha(root/'checkpoint_latest.pt'),nnunet_training=False,profile_policy=profile_policy,partition_quality_validated=False))
                     return root/'checkpoint_latest.pt'
                 state['phase']='optimization' if state['phase']=='initial_memory' else 'validation'
-                save_checkpoint(root,net,optimizer,state,identity)
+                save(wait=True)
+                phase_timing(phase_name,phase_start)
             if state['phase']=='optimization':
+                optimization_start=time.perf_counter();starting_batch=state['next_batch']
                 net.train();order=list(groups(ds,state['batch'],cfg['seed'],state['epoch']))
                 counts=torch.bincount(state['memory']['classes'],minlength=2).float()
                 if bool((counts==0).any()):raise ValueError('Both observation classes required')
@@ -336,6 +362,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     budget.check();ids=cpu.indices.tolist()
                     if ids!=order[state['next_batch']]:raise ValueError('Saved query cursor mismatch')
                     group=ds.rows[ids[0]]['patient_group']
+                    support_start=time.perf_counter()
                     support=(support_for_recipient(state['memory'],group) if episodes is None else episodes.support(group))
                     support_records=len(support[0])
                     support_groups=(int(support[1].max())+1 if episodes is None else len(episodes.selections[group]['patients']))
@@ -343,24 +370,33 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                         net.eval()
                         with torch.no_grad():state['plan']=net.fit_support_clusters(*support)
                         net.train();state['last_group']=group
+                    support_preparation_seconds=time.perf_counter()-support_start
                     optimizer.zero_grad(set_to_none=True)
                     events=[torch.cuda.Event(enable_timing=True) for _ in range(5)]
-                    events[0].record();query=cpu.to('cuda');events[1].record()
+                    events[0].record();query=cpu.to('cuda') if device_cache is None else device_cache.get(cpu)
+                    if device_cache is not None:device_cache.activate(net,cpu)
+                    events[1].record()
                     loss,terms=forward_loss(net,query,support,state['plan'],state['memory']['classes'][ids],weights,context,rank_config(),indices=ids)
                     events[2].record()
                     if not torch.isfinite(loss):raise FloatingPointError('Nonfinite loss')
-                    loss.backward();events[3].record();gradient_check(net)
+                    loss.backward();events[3].record()
+                    (gradient_check if execution_pipeline=='synchronous' else gradient_check_batched)(net)
                     torch.nn.utils.clip_grad_norm_(net.parameters(),base['training']['grad_clip'],error_if_nonfinite=True);optimizer.step()
                     events[4].record();events[4].synchronize()
+                    if device_cache is not None:device_cache.remember(net,cpu)
                     state['next_batch']+=1;state['step']+=1
                     loss_value=float(loss.detach());peak=torch.cuda.max_memory_allocated()
                     del loss,terms,support,query
                     save_start=time.perf_counter()
-                    save_checkpoint(root,net,optimizer,state,identity)
+                    checkpoint_stats=save()
                     save_seconds=time.perf_counter()-save_start
+                    peak=torch.cuda.max_memory_allocated();budget.check()
                     row=dict(step=state['step'],epoch=state['epoch']+1,physical_batch=len(ids),
                         activation_storage=activation_storage,loss=loss_value,loader_wait_seconds=load_wait,
                         support_records=support_records,support_patients=support_groups,support_policy=support_policy,
+                        support_preparation_seconds=support_preparation_seconds,
+                        checkpoint_pipeline=checkpoint_stats,execution_pipeline=execution_pipeline,
+                        device_cache=None if device_cache is None else dict(bytes=device_cache.bytes,hits=device_cache.hits,misses=device_cache.misses,limit_bytes=device_cache.max_bytes),
                         transfer_seconds=events[0].elapsed_time(events[1])/1000,
                         forward_seconds=events[1].elapsed_time(events[2])/1000,
                         backward_seconds=events[2].elapsed_time(events[3])/1000,
@@ -371,9 +407,12 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     bar.set_postfix(step=state['step'],loss=round(loss_value,4),seconds=round(row['step_seconds'],2),peak_GiB=round(peak/2**30,2),support=f'{support_groups}p/{support_records}r')
                     if pause():return root/'checkpoint_latest.pt'
                     previous_end=time.perf_counter()
-                state['phase']='refresh_memory';save_checkpoint(root,net,optimizer,state,identity)
+                state['phase']='refresh_memory';save(wait=True)
+                phase_timing('optimization',optimization_start,completed_updates=len(order)-starting_batch,starting_batch=starting_batch,includes_final_checkpoint_flush=True)
             if state['phase']=='validation':
+                validation_start=time.perf_counter()
                 metrics,details=evaluate(net,val,val_loader,state['memory'],state['batch'])
+                phase_timing('validation',validation_start)
                 write_new(root/f"epoch_{state['epoch']+1:03d}.json",dict(metrics=metrics,cases=details,debug=debug))
                 score=metrics['ranking_pairwise_loss']
                 if state['best'] is None or score<state['best']['metric']:
@@ -381,6 +420,6 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 state.update(epoch=state['epoch']+1,next_batch=0,last_group=None,plan=None,phase='optimization')
                 if state['epoch']==epochs:
                     net.load_state_dict(state['best']['weights']);state['selected_epoch']=state['best']['epoch'];state['phase']='final_memory'
-                save_checkpoint(root,net,optimizer,state,identity)
+                save(wait=True)
                 if pause():return root/'checkpoint_latest.pt'
             if state['phase']=='complete':raise ValueError('Completed runs need no resume')

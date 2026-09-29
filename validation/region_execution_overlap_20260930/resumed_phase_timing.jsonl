@@ -1,0 +1,4 @@
+{"phase": "optimization", "epoch": 1, "step": 4, "seconds": 3.087697400012985, "execution_pipeline": "overlapped", "completed_updates": 3, "starting_batch": 1, "includes_final_checkpoint_flush": true}
+{"phase": "refresh_memory", "epoch": 1, "step": 4, "seconds": 1.8569145000074059, "execution_pipeline": "overlapped"}
+{"phase": "validation", "epoch": 1, "step": 4, "seconds": 0.39120039995759726, "execution_pipeline": "overlapped"}
+{"phase": "final_memory", "epoch": 2, "step": 4, "seconds": 0.9100904000224546, "execution_pipeline": "overlapped"}

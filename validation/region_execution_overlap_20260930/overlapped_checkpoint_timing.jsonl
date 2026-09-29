@@ -1,0 +1,11 @@
+{"step": 0, "phase": "optimization", "hash_seconds": 0.028045999933965504, "write_fsync_seconds": 0.037316199974156916, "checkpoint_bytes": 22732863}
+{"step": 1, "phase": "optimization", "hash_seconds": 0.4003308000974357, "write_fsync_seconds": 0.15934010001365095, "checkpoint_bytes": 68095503}
+{"step": 2, "phase": "optimization", "hash_seconds": 0.402202200028114, "write_fsync_seconds": 0.1656199999852106, "checkpoint_bytes": 68095503}
+{"step": 3, "phase": "optimization", "hash_seconds": 0.14501730003394186, "write_fsync_seconds": 0.16565370000898838, "checkpoint_bytes": 68095503}
+{"step": 4, "phase": "optimization", "hash_seconds": 0.07910079997964203, "write_fsync_seconds": 0.1444742000894621, "checkpoint_bytes": 68095503}
+{"step": 4, "phase": "refresh_memory", "hash_seconds": 0.07813529996201396, "write_fsync_seconds": 0.1438396000303328, "checkpoint_bytes": 68095503}
+{"step": 4, "phase": "refresh_memory", "hash_seconds": 0.1010364000685513, "write_fsync_seconds": 0.1488958999980241, "checkpoint_bytes": 68099916}
+{"step": 4, "phase": "validation", "hash_seconds": 0.0733455999288708, "write_fsync_seconds": 0.13005740009248257, "checkpoint_bytes": 68095503}
+{"step": 4, "phase": "final_memory", "hash_seconds": 0.1072273999452591, "write_fsync_seconds": 0.22879780002404004, "checkpoint_bytes": 90382261}
+{"step": 4, "phase": "final_memory", "hash_seconds": 0.14803529996424913, "write_fsync_seconds": 0.18526260007638484, "checkpoint_bytes": 90386611}
+{"step": 4, "phase": "complete", "hash_seconds": 0.0932293999940157, "write_fsync_seconds": 0.1905776000348851, "checkpoint_bytes": 90382261}

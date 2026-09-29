@@ -1,0 +1,14 @@
+test_all_patients_matches_original_support_and_gradient (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_complete_selected_patients_and_leakage (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_deterministic_epoch_schedule_and_resume (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_invalid_counts_no_silent_clamp (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_memory_binding_rejected (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_missing_support_class_fails (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_query_drop_duplicate_and_mixed_rejected (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_sparse_positive_support_class_coverage (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+test_unreviewed_migration_and_other_changes_rejected (test_region_support_episodes_debug.SupportEpisodesTests) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.018s
+
+OK

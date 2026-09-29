@@ -1,0 +1,18 @@
+{
+  "debug": true,
+  "full_training": false,
+  "checks": [
+    {
+      "test": "test_region_execution_pipeline_debug.py",
+      "returncode": 0
+    },
+    {
+      "test": "test_region_sparse_debug.py",
+      "returncode": 0
+    },
+    {
+      "test": "test_region_support_episodes_debug.py",
+      "returncode": 0
+    }
+  ]
+}

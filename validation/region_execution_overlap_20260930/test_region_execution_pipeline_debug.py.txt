@@ -1,0 +1,16 @@
+test_channels_last_snapshot_format (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_device_cache_lru_oversize_and_zero_budget (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_gradient_checks_and_no_mutation (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_snapshot_owns_cpu_storage (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_static_snapshot_reuse_and_version_invalidation (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_upgrade_rejects_learning_changes (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_workspace_forward_backward_exact_and_restored (test_region_execution_pipeline_debug.PipelineChecks) ... D:\AI project\nnunet\tests\test_region_execution_pipeline_debug.py:49: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\SparseCsrTensorImpl.cpp:55.)
+  a=torch.sparse_coo_tensor(e,torch.ones(1024,device=device),(64,64)).coalesce().to_sparse_csr()
+ok
+test_writer_failure_is_propagated (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+test_writer_is_immutable_ordered_and_content_verified (test_region_execution_pipeline_debug.PipelineChecks) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.503s
+
+OK

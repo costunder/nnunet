@@ -5,6 +5,17 @@ an individual longer row is processed intact. Backward multiplies by the stored
 transpose with the same segmented reduction, avoiding atomic scatter sums.
 """
 import torch
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+_WORKSPACE=ContextVar('region_sparse_workspace',default=64*2**20)
+
+@contextmanager
+def workspace(bytes_):
+    if type(bytes_) is not int or bytes_<=0:raise ValueError('Positive explicit sparse workspace required')
+    token=_WORKSPACE.set(bytes_)
+    try:yield
+    finally:_WORKSPACE.reset(token)
 
 
 def segmented_mm(matrix, x, workspace_bytes=64*2**20):
@@ -35,11 +46,12 @@ class SparseMean(torch.autograd.Function):
     @staticmethod
     def forward(ctx,matrix,transpose,x):
         ctx.save_for_backward(matrix,transpose)
-        return segmented_mm(matrix,x)
+        ctx.workspace_bytes=_WORKSPACE.get()
+        return segmented_mm(matrix,x,ctx.workspace_bytes)
     @staticmethod
     def backward(ctx,gradient):
         _,transpose=ctx.saved_tensors
-        return None,None,segmented_mm(transpose,gradient)
+        return None,None,segmented_mm(transpose,gradient,ctx.workspace_bytes)
 
 
 def stable_spmm(matrix,transpose,x):

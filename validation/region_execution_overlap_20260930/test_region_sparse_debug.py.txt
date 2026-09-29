@@ -1,0 +1,9 @@
+test_cpu (test_region_sparse_debug.StableSparse) ... D:\AI project\nnunet\l0_sage\encoder.py:20: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\SparseCsrTensorImpl.cpp:55.)
+  return matrix.to_sparse_csr(),degree
+ok
+test_cuda (test_region_sparse_debug.StableSparse) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.373s
+
+OK

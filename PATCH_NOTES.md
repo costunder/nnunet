@@ -1,3 +1,10 @@
+## v2.2 — 실행 병목 개선: 저장 overlap·검증된 GPU 캐시 (2026-09-30)
+
+- 환자 support16·query batch·CNN/L0/L1/L2·loss·전체 데이터 유지. 독립 CPU snapshot과 순차 비동기 hash/atomic 저장, 고정 memory/plan 복사 재사용, gradient 유한값 판정 동기화 통합.
+- 명시적 VRAM 한도 내 검증된 GPU 입력과 CSR/transpose 재사용. SAGE 작업 공간을 명시적으로 확대하며 그래프 행/edge 제거 없음.
+- 20개 단위/회귀 검사 및 실제 CT GPU DEBUG의 동기/수정·중단/재개 model/Adam/state/RNG 일치. 검토된 10287dd에서 진행 위치 보존 업그레이드 검증.
+- 작은 DEBUG optimization(마지막 저장 완료 포함) 4.295→3.551초. 서버 전체 epoch 개선율·최악 입력 메모리·partition 품질 검증 아님. [검증과 A6000 재개 명령](docs/region_execution_overlap_20260930.md).
+
 ## v2.2 — 환자 support 미니배치 학습 (2026-09-30)
 
 - 사용자 승인에 따라 매 update의 전체 support L1/L2를 명시적 환자 episode로 변경. 선택 환자의 적격 관측 전부 사용, query recipient/donor 양쪽 제외, 전체 query 순서와 batch·loss·후보128·L0 유지.

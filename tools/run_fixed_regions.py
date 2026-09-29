@@ -30,6 +30,9 @@ def main():
     p.add_argument('--batch-candidates',type=int,nargs='+')
     p.add_argument('--resume',type=Path)
     p.add_argument('--support-patients',type=int,help='Explicit patient minibatch count; retain every eligible observation of each selected patient')
+    p.add_argument('--execution-pipeline',choices=('synchronous','overlapped'),default='synchronous')
+    p.add_argument('--device-cache-gib',type=float,help='Explicit verified input GPU cache ceiling; included in --cuda-gib, not an extra allowance')
+    p.add_argument('--sage-workspace-mib',type=int,help='Explicit SAGE edge workspace; does not trim rows or graph edges')
     p.add_argument('--resume-support-minibatch',action='store_true',help='Explicit new learning policy from a pinned full-support checkpoint; preserve model/Adam/query cursor/batch')
     p.add_argument('--activation-storage',choices=('checkpointed','retained'),default='checkpointed',
         help='retained: keep CNN/L0/L1/L2 activations rather than recomputing; respect explicit CUDA budget')
@@ -43,6 +46,11 @@ def main():
     p.add_argument('--profile-policy',choices=POLICIES,default='strict',
         help='research-report: train with recorded uncalibrated profile violations; integrity and resource checks remain mandatory')
     a=p.parse_args()
+    if a.execution_pipeline=='overlapped' and (a.device_cache_gib is None or a.device_cache_gib<0):raise ValueError('Explicit nonnegative --device-cache-gib required')
+    if a.execution_pipeline=='synchronous' and a.device_cache_gib is not None:raise ValueError('Device cache requires overlapped pipeline')
+    if a.execution_pipeline=='overlapped' and (a.sage_workspace_mib is None or a.sage_workspace_mib<=0):raise ValueError('Explicit positive --sage-workspace-mib required')
+    if a.execution_pipeline=='synchronous' and a.sage_workspace_mib is not None:raise ValueError('Workspace option requires overlapped pipeline')
+    if a.mode!='train' and a.execution_pipeline!='synchronous':raise ValueError('Pipeline options apply to train only')
     if not torch.cuda.is_available():raise RuntimeError('CUDA required')
     if a.workers<1:raise ValueError('Positive explicit workers required')
     if a.mode=='smoke' and not a.debug:raise ValueError('Smoke requires explicit --debug')
@@ -78,7 +86,8 @@ def main():
                 candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step,profile_policy=a.profile_policy,
                 activation_storage=a.activation_storage,resume_execution_upgrade=a.resume_execution_upgrade,
                 resume_cuda_budget_change=a.resume_cuda_budget_change,support_patients=a.support_patients,
-                resume_support_minibatch=a.resume_support_minibatch)
+                resume_support_minibatch=a.resume_support_minibatch,execution_pipeline=a.execution_pipeline,
+                device_cache_bytes=int((a.device_cache_gib or 0)*2**30),sage_workspace_bytes=(a.sage_workspace_mib or 64)*2**20)
             if (a.output/'training_complete.json').exists():
                 from l0_regions.final import export
                 export(result,a.cache,a.output/'checkpoint.pt')

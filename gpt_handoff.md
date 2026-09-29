@@ -1,3 +1,11 @@
+## v2.2 — 실행 병목 개선·안전한 VRAM 재사용 (2026-09-30)
+
+`10287dd` patient_episode_v1의 학습 수식과 순서를 보존한다. `--execution-pipeline overlapped` + 명시적 `--device-cache-gib`/`--sage-workspace-mib`로 독립 packed CPU snapshot, 단일 순서 보장 hash/atomic writer, 고정 memory/plan 복사 재사용, gradient 검사 동기화 통합, 검증된 GPU batch 및 CSR/transpose LRU 재사용을 연결했다. 모델·support16·physical batch·후보128·전체 query·원본 mask는 변경하지 않았다. 캐시 퇴출은 sample 제외가 아니다.
+
+초기 실제 재개에서 Adam channels-last layout 오류를 발견해 snapshot 형식 보존을 수정했다. 이후 20개 단위/회귀 검사, 실제 CT GPU DEBUG train8/val2의 동기/수정 및 새 프로세스 pause/resume 최종 model/Adam/state/RNG 일치, pinned old checkpoint 업그레이드와 다음 update, topology 재사용 출력/gradient 일치·변조 거부를 통과했다. 원문 `validation/region_execution_overlap_20260930/`.
+
+작은 DEBUG optimization 전체 wall(마지막 저장 flush 포함) 4.295→3.551초. 서버 A6000 전체 epoch·최악 입력 peak는 미측정이다. 서버 설정은 기존 총 CUDA40GiB 안에서 GPU cache8GiB, SAGE workspace512MiB. saved physical batch 유지. `--resume-execution-upgrade`로 **방금 PAUSED 후 RESULT의 최신 checkpoint**를 사용한다. support 학습 정책을 다시 변경하지 않는다. prepare 재실행 없음. [구현·검증·명령·한계](docs/region_execution_overlap_20260930.md).
+
 ## v2.2 — 환자 support 미니배치 학습 (2026-09-30)
 
 사용자 승인으로 전체-support-per-update에서 patient_episode_v1로 변경했다. `--support-patients`는 명시적 필수 크기이며 생략 시 비교용 기존 full-support 경로다. 선택 환자의 적격 관측 전체를 사용하고 query 환자는 recipient/donor 양쪽에서 제외한다. 전체 query schedule·physical batch·L0·loss·후보128·Basic CP 불변. L1/L2는 선택 support에 대해 여전히 매 update gradient 계산한다. 전체 reference memory refresh는 epoch 단위 유지, validation/CP는 full support를 환자별 준비한다.
