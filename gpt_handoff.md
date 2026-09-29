@@ -1,3 +1,7 @@
+## 2026-09-30 — retained backward attribution diagnostic
+
+Fixed old profiler silently restoring checkpointed execution for retained saves. Added same-next-batch warmup/baseline/autograd attribution with complete saved support; verifies loss/all gradients/model/Adam parity and exact RNG, never writes production checkpoints. Four unit tests and short real CT GPU DEBUG passed. Diagnostic overhead is explicitly reported (local2.147x backward); no server speedup claimed. See docs/region_backward_attribution_20260930.md.
+
 ## 2026-09-30 — explicit A100 CUDA-budget resume
 
 Added --resume-cuda-budget-change with reviewed execution upgrade; keeps the saved batch, model/Adam/RNG/support/cursor and research contract. Only CUDA allocator budget may change (A6000 40 GiB -> previously assigned A100 MIG 8 GiB). 57 tests and actual-CT local GPU DEBUG resume passed; A100/full-scale fit remains unmeasured. No cache regeneration or long training. Details: docs/region_a100_migration_20260930.md.

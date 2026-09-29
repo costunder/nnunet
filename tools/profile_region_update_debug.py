@@ -52,7 +52,7 @@ def main():
     ds = RegionDataset(a.cache, 'inner_train', identity['debug'], identity['profile_policy'])
     if identity['base'] != ds.meta['base'] or identity['config'] != ds.meta['config']:
         raise ValueError('Checkpoint configuration differs from cache')
-    net = t.make_model(ds, budget, identity['debug'])
+    net = t.make_model(ds, budget, identity['debug'], identity.get('activation_storage', 'checkpointed'))
     net.load_state_dict(saved['model'], strict=True)
     optimizer = torch.optim.AdamW(net.parameters(), lr=ds.meta['base']['training']['lr'],
         weight_decay=ds.meta['base']['training']['weight_decay'],
@@ -148,6 +148,7 @@ def main():
         source_checkpoint_sha256=checkpoint_hash, runtime_source=source_identity(),
         saved_source=identity['source'], configured_batch=batch, actual_batch=len(ids),
         support_records=len(support[0]), total_memory_records=len(memory['record_ids']),
+        activation_storage=identity.get('activation_storage', 'checkpointed'),
         next_step=state['step'] + 1, records=[ds.rows[i]['id'] for i in ids],
         gpu=torch.cuda.get_device_name(), times=times, loss=float(loss.detach()),
         peak_cuda_bytes=torch.cuda.max_memory_allocated(), rss_bytes=psutil.Process().memory_info().rss,
