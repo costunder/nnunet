@@ -38,6 +38,7 @@ def main():
     digest=saved.pop('content_sha256',None)
     if t.hash_state(saved)!=digest or saved.get('format')!=t.FORMAT:raise ValueError('Checkpoint integrity/format mismatch')
     identity=saved['identity']
+    if 'support_training' in identity:raise ValueError('This diagnostic assumes full support; use compare_region_support_debug.py for patient episodes')
     if identity.get('activation_storage')!='retained':raise ValueError('This backward attribution requires the current retained execution; no silent policy change')
     if identity['cache_sha256']!=cache_hash or saved['state']['phase']!='optimization':raise ValueError('Matching cache and optimization checkpoint required')
     current={**identity,'source':source_identity()}

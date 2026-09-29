@@ -1,3 +1,10 @@
+## v2.2 — 환자 support 미니배치 학습 (2026-09-30)
+
+- 사용자 승인에 따라 매 update의 전체 support L1/L2를 명시적 환자 episode로 변경. 선택 환자의 적격 관측 전부 사용, query recipient/donor 양쪽 제외, 전체 query 순서와 batch·loss·후보128·L0 유지.
+- 기존 모델/Adam/RNG/진행 cursor를 보존하는 명시적 학습 정책 전환. 옛 cluster plan 및 best 선택 초기화, 전환 이력 저장. 캐시 재생성 없음; exact old-learning resume 아님.
+- 19개 단위/회귀 검사, 실제 CT GPU DEBUG 학습·validation·최종 export, fresh-process resume 일치, 모든 핵심 모듈 가중치 갱신 확인. 전체 서버 epoch 속도·정확도 검증 아님.
+- [검증·한계·서버 비교/학습 명령](docs/region_patient_support_20260930.md). 장기 학습은 시작하지 않음.
+
 ## 2026-09-30 — retained backward attribution diagnostic
 
 Fixed old profiler silently restoring checkpointed execution for retained saves. Added same-next-batch warmup/baseline/autograd attribution with complete saved support; verifies loss/all gradients/model/Adam parity and exact RNG, never writes production checkpoints. Four unit tests and short real CT GPU DEBUG passed. Diagnostic overhead is explicitly reported (local2.147x backward); no server speedup claimed. See docs/region_backward_attribution_20260930.md.

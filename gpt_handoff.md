@@ -1,3 +1,13 @@
+## v2.2 — 환자 support 미니배치 학습 (2026-09-30)
+
+사용자 승인으로 전체-support-per-update에서 patient_episode_v1로 변경했다. `--support-patients`는 명시적 필수 크기이며 생략 시 비교용 기존 full-support 경로다. 선택 환자의 적격 관측 전체를 사용하고 query 환자는 recipient/donor 양쪽에서 제외한다. 전체 query schedule·physical batch·L0·loss·후보128·Basic CP 불변. L1/L2는 선택 support에 대해 여전히 매 update gradient 계산한다. 전체 reference memory refresh는 epoch 단위 유지, validation/CP는 full support를 환자별 준비한다.
+
+`--resume-support-minibatch`는 pinned old region runtime의 optimization checkpoint를 새 학습 정책으로 전환한다. 모델/Adam/RNG/step/cursor/batch/memory 보존; 옛 cluster plan·best 초기화 및 이력 기록. 캐시 재생성 없고 exact old-learning resume가 아니다. 같은 실행 중 code checkout을 바꾸지 말 것. 새 정책으로 저장한 이후에는 같은 `--support-patients`와 일반 `--resume`만 사용한다.
+
+19개 단위/회귀 검사 및 실제 CT GPU DEBUG train8/val2, 새 프로세스 resume의 모델/Adam/state/RNG 일치, CNN/L0/L1/L2 실제 가중치 update 확인. DEBUG actual query2/support4 결과를 full batch32·전체 cohort 성능으로 외삽하지 말 것. `tools/compare_region_support_debug.py`는 같은 저장 query와 weights/Adam/RNG의 full/episode 비용을 짧게 비교하고 원본 checkpoint를 쓰지 않는다. **전체 epoch 속도 문제 해결·partition 품질·정확도는 아직 확인된 것이 아니다.**
+
+상세 설계·검증·실행 명령: [docs/region_patient_support_20260930.md](docs/region_patient_support_20260930.md). 검증 원문: `validation/region_patient_support_20260930/`. 장기 학습 자동 시작 없음.
+
 ## 2026-09-30 — retained backward attribution diagnostic
 
 Fixed old profiler silently restoring checkpointed execution for retained saves. Added same-next-batch warmup/baseline/autograd attribution with complete saved support; verifies loss/all gradients/model/Adam parity and exact RNG, never writes production checkpoints. Four unit tests and short real CT GPU DEBUG passed. Diagnostic overhead is explicitly reported (local2.147x backward); no server speedup claimed. See docs/region_backward_attribution_20260930.md.

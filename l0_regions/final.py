@@ -66,6 +66,8 @@ def export(checkpoint,index,output):
         completed_epochs=state['epoch'],selected_epoch=state['selected_epoch'],
         selected_model_sha256=best['model_sha256'],memory_model_sha256=best['model_sha256'],
         physical_batch=state['batch'],workers=saved['identity']['workers'],resource_limits=saved['identity']['resource_limits'],
+        support_training=saved['identity'].get('support_training',dict(policy='full_support')),
+        support_migration=state.get('support_migration'),
         candidate_cache_bytes=saved['identity']['resident_budget_bytes'],
         support_records=ds.rows,region={k:m[k] for k in ('profile','view_epoch','cnn_sha256','admission_failures','profile_policy')},
         partition_quality_validated=False,

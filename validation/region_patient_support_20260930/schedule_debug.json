@@ -1,0 +1,55 @@
+{
+  "policy": {
+    "policy": "patient_episode_v1",
+    "patients": 2,
+    "observations": "all eligible rows of selected patients",
+    "exclusion": "query patient on both recipient and donor sides",
+    "selection": "class-covered least-used patients; seeded epoch tie order",
+    "refresh": "one selection and frozen cluster plan per query-patient episode",
+    "evaluation": "full eligible inner-train support, once per query patient"
+  },
+  "epoch": 0,
+  "query_observations": 8,
+  "query_coverage": 1.0,
+  "support_unique_observations": 8,
+  "total_observations": 8,
+  "support_observation_coverage": 1.0,
+  "support_patient_episode_counts": {
+    "case:liver_72": 3,
+    "case:liver_71": 2,
+    "case:liver_75": 2,
+    "case:liver_66": 1
+  },
+  "episodes": {
+    "case:liver_71": {
+      "patients": [
+        "case:liver_72",
+        "case:liver_75"
+      ],
+      "records": 4
+    },
+    "case:liver_72": {
+      "patients": [
+        "case:liver_66",
+        "case:liver_71"
+      ],
+      "records": 4
+    },
+    "case:liver_75": {
+      "patients": [
+        "case:liver_71",
+        "case:liver_72"
+      ],
+      "records": 4
+    },
+    "case:liver_66": {
+      "patients": [
+        "case:liver_72",
+        "case:liver_75"
+      ],
+      "records": 4
+    }
+  },
+  "starting_query_batch": 0,
+  "coverage_scope": "complete deterministic epoch schedule; actual consumed prefix is checkpoint next_batch"
+}

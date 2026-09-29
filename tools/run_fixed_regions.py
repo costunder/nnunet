@@ -29,6 +29,8 @@ def main():
     p.add_argument('--resident-gib',type=float)
     p.add_argument('--batch-candidates',type=int,nargs='+')
     p.add_argument('--resume',type=Path)
+    p.add_argument('--support-patients',type=int,help='Explicit patient minibatch count; retain every eligible observation of each selected patient')
+    p.add_argument('--resume-support-minibatch',action='store_true',help='Explicit new learning policy from a pinned full-support checkpoint; preserve model/Adam/query cursor/batch')
     p.add_argument('--activation-storage',choices=('checkpointed','retained'),default='checkpointed',
         help='retained: keep CNN/L0/L1/L2 activations rather than recomputing; respect explicit CUDA budget')
     p.add_argument('--resume-execution-upgrade',action='store_true',
@@ -53,6 +55,7 @@ def main():
             raise ValueError('New preparation requires an explicit partition checkpoint')
     if a.mode in ('train','smoke') and (not a.batch_candidates or not a.resident_gib or a.resident_gib<=0):
         raise ValueError('Explicit batch candidates and resident tensor budget required')
+    if a.mode!='train' and (a.support_patients is not None or a.resume_support_minibatch):raise ValueError('Support learning policy options apply to train only')
     if a.mode!='train' and (a.resume or a.debug_pause_step is not None):raise ValueError('Resume/pause only on train')
     if a.mode!='train' and (a.resume_execution_upgrade or a.resume_cuda_budget_change or a.activation_storage!='checkpointed'):
         raise ValueError('Explicit retained activation/upgrade options apply to train mode only')
@@ -74,7 +77,8 @@ def main():
             result=train(a.cache,a.output,workers=a.workers,resident_bytes=int(a.resident_gib*2**30),
                 candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step,profile_policy=a.profile_policy,
                 activation_storage=a.activation_storage,resume_execution_upgrade=a.resume_execution_upgrade,
-                resume_cuda_budget_change=a.resume_cuda_budget_change)
+                resume_cuda_budget_change=a.resume_cuda_budget_change,support_patients=a.support_patients,
+                resume_support_minibatch=a.resume_support_minibatch)
             if (a.output/'training_complete.json').exists():
                 from l0_regions.final import export
                 export(result,a.cache,a.output/'checkpoint.pt')

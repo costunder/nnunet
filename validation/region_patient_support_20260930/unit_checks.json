@@ -1,0 +1,16 @@
+{
+  "total": 19,
+  "passed": 19,
+  "suites": {
+    "test_region_support_episodes_debug.py": 9,
+    "test_region_execution_upgrade_debug.py": 6,
+    "test_region_cuda_migration_debug.py": 4
+  },
+  "static_parse": true,
+  "pinned_release_identity_checks": [
+    "87eafa6",
+    "f36518c",
+    "d05e4e3"
+  ],
+  "full_training": false
+}

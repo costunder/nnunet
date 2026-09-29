@@ -44,6 +44,7 @@ def main():
     if t.hash_state(saved) != digest or saved['format'] != t.FORMAT:
         raise ValueError('Checkpoint content/format mismatch')
     identity = saved['identity']
+    if 'support_training' in identity:raise ValueError('This diagnostic assumes full support; use compare_region_support_debug.py for patient episodes')
     saved_rng = saved['rng']
     if identity['cache_sha256'] != sha(a.cache):
         raise ValueError('Different cache')
