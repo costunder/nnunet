@@ -15,7 +15,7 @@ from l0_ezsp.partition import Region, CoarseningConstraintError
 from l0_ezsp.ops import undirected, quotient, mass_mean
 from .materialization import verify_materialization
 
-PREPARATION_FILES=('l0_regions/preparation.py','l0_regions/preparation_reuse.py','l0_regions/admission_report.py','l0_regions/profile_policy.py','l0_regions/data.py','l0_regions/materialization.py',
+PREPARATION_FILES=('l0_regions/preparation.py','l0_regions/preparation_reuse.py','l0_regions/preparation_runtime.py','l0_regions/admission_report.py','l0_regions/profile_policy.py','l0_regions/data.py','l0_regions/materialization.py',
     'l0_ezsp/partition.py','l0_ezsp/ops.py','l0_ezsp/data.py','l0_ezsp/backend.py',
     'l0_ezsp/encoder.py','tools/v222_review_contracts.py','tools/v22_artifacts.py',
     'l0_ezsp/config.py','l0_ezsp/validation.py','config/l0_ezsp_unresolved.json')

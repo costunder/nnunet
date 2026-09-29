@@ -1,0 +1,10 @@
+{
+  "debug": true,
+  "epochs": 1,
+  "steps": 4,
+  "selected_epoch": 1,
+  "checkpoint_sha256": "35d9d88cb56f3f8f0f2bc8d73f4471254936ef9329c92ed060bedc6f8c6ae817",
+  "nnunet_training": false,
+  "profile_policy": "research-report",
+  "partition_quality_validated": false
+}

@@ -1,3 +1,11 @@
+## 2026-09-30 최신 — 서버 prepare 저사용률 조사 및 겹침 실행
+
+- 사용자 PID3614482 확인 결과 prepare(batch32/workers16/reg.02/view0/research-report, CUDA40/RSS192). 45분 경과·누적평균CPU131%, A6000 GPU snapshot10%/6330MiB. 이 프로세스에서 학습 checkpoint가 병목이라고 설명하지 말것. 서버의 지배 구간은 아직 미측정.
+- CPU 다음batch 하나와 이전저장 하나를 현재GPU 준비와 겹침. GPU 호출은 main thread 유지. tqdm load/wait/prepare/save 및 preparation_timing.jsonl 추가. 모델/그래프규모/partition/reg/L1L2/후보128/BasicCP/mask 유지.
+- 검토된 f07b13f/72be3ce/6d5f0dc/6be85aa와 현재소스의 반복 캐시재사용 지원. 각 item 원본binding·파일/내용hash·audit·구조 검사 보존. 현재 서버처럼 이미reuse중인 폴더도 다시reuse 가능. 원본GNN checkpoint 열지 않음. 저장실패/로드실패 정상완료 표시 없음.
+- 로컬56검사 PASS. 실제DEBUG train8/val2 batch4 비교: warm serial7.131s vs overlap6.401~6.493s(약9–10%). 동일partition의 cluster ID 순열은 기존serial반복에도 발생. stableID 정렬 후 CT/구성원/속성/모든typed edge 동일, rawbitwise cold재현 주장 금지. 실제 f07b13f 생성10개 재사용은 원본payload bitwise동일/재병합0/부모checkpoint열기0.
+- 현재실행중인 서버코드/프로세스 변경 없음. 진행중 checkout switch하면 source 검사가 실패하므로 실행중 교체 금지. 이 정도 로컬 개선만으로45분 진행 작업을 무조건 끊으라고 하지 말것. 서버2시간 문제가 해결됐다고 말하지 말것. [상세](docs/region_prepare_overlap_20260930.md), evidence validation/region_prepare_overlap_20260930.
+
 ## 2026-09-29 최신 — 서버 Errno116, 준비된 CNN 직접 재사용
 
 - 서버72be3ce에서 original checkpoint torch.load(mmap=True) 중 Stale file handle. 새output 생성/재사용 이전 실패, 셸prompt복귀. GPU/partition 오류로 설명하지 말것. 원격파일시스템 복구·세션조작 없음.

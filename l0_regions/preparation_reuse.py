@@ -1,41 +1,57 @@
 """Explicit, validated reuse of completed batches; never rewrite their provenance."""
 import copy
+import ast
 import hashlib
 import json
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 from .data import load
 from .preparation import PREPARATION_FILES, _binding
 from tools.v22_artifacts import tree_hash
 
 ROOT=Path(__file__).resolve().parents[1]
-# Both revisions use the identical single-scale partition/model/profile. The
-# latter only deduplicates receipts and packaging, independently GPU-tested.
+# Reviewed revisions share the single-scale partition/model/profile. Their
+# differences are packaging, verified recovery and frozen-CNN loading.
 COMPATIBLE_REVISIONS=('6be85aa836833d7a61d590a81d9d3eb41e267504',
-                      '6d5f0dc9bbcdf5bd4261887848f439dbaac233d9')
+                      '6d5f0dc9bbcdf5bd4261887848f439dbaac233d9',
+                      '72be3cec8a8a5effaf2b318f692267901b1c93e3',
+                      'f07b13f5cc656aa413fc1f89b4f66c0925158559')
 
 
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+@lru_cache(maxsize=len(COMPATIBLE_REVISIONS))
+def revision_identity(revision):
+    """Only immutable pinned Git blobs are cached, never live source files."""
+    def read(name):
+        return subprocess.check_output(['git','-c',f'safe.directory={ROOT.as_posix()}',
+            'show',f'{revision}:{name}'],cwd=ROOT)
+    source=read('l0_regions/preparation.py')
+    declarations=[node for node in ast.parse(source).body if isinstance(node,ast.Assign)
+        and any(isinstance(t,ast.Name) and t.id=='PREPARATION_FILES' for t in node.targets)]
+    names=set(ast.literal_eval(declarations[0].value))|{'l0_regions/training_data.py'}
+    return {name:hashlib.sha256(source if name=='l0_regions/preparation.py' else read(name)).hexdigest() for name in names}
+
+
 def verified_origin(identity,current):
     if identity==current:return 'same_preparation_source'
     if identity.get('core')!=current['core']:raise ValueError('Reuse core implementation differs')
-    names=set(PREPARATION_FILES)-{'l0_regions/preparation_reuse.py'}
-    names.add('l0_regions/training_data.py')
-    if set(identity.get('preparation',{}))!=names:raise ValueError('Unknown reuse preparation file set')
-    reviewed={'l0_regions/preparation.py','l0_regions/training_data.py'}
+    names=set(identity.get('preparation',{}))
+    reviewed={'l0_regions/preparation.py','l0_regions/training_data.py','l0_regions/preparation_reuse.py','l0_regions/preparation_runtime.py'}
+    if not names or names-set(current['preparation']):raise ValueError('Unknown reuse preparation file set')
     if any(identity['preparation'][name]!=current['preparation'][name] for name in names-reviewed):
         raise ValueError('Reuse partition/integrity implementation changed')
     for revision in COMPATIBLE_REVISIONS:
-        matches=True
-        for name in sorted(names):
-            raw=subprocess.check_output(['git','-c',f'safe.directory={ROOT.as_posix()}',
-                'show',f'{revision}:{name}'],cwd=ROOT)
-            if hashlib.sha256(raw).hexdigest()!=identity['preparation'][name]:
-                matches=False;break
-        if matches:return revision
+        if identity['preparation']==revision_identity(revision):return revision
     raise ValueError('Reuse preparation is not a reviewed compatible revision')
+
+
+def binding_digest(identity):
+    source=dict(identity['core'])
+    source.update({k:v for k,v in identity['preparation'].items() if k!='l0_regions/training_data.py'})
+    return hashlib.sha256(json.dumps(source,sort_keys=True).encode()).hexdigest()
 
 
 class PreparedReuse:
@@ -46,19 +62,32 @@ class PreparedReuse:
         for key in ('format','debug','original_cache_sha256','partition_checkpoint_sha256',
                     'cnn_sha256','profile','view_epoch','config','base','profile_policy','partition_quality_validated'):
             if self.request.get(key)!=expected[key]:raise ValueError('Reuse request mismatch: '+key)
-        if self.request.get('reused_preparation'):raise ValueError('Chained cross-version reuse requires separate review')
         revision=verified_origin(self.request['source_identity'],expected['source_identity'])
+        # Repeated interruption can leave original and newly created batches in
+        # the same folder. Retain each item's ORIGINAL reviewed binding source.
+        origins=[self.request['source_identity']]
+        proof=self.request.get('reused_preparation')
+        if proof:
+            if proof.get('format')!='verified_prepared_batch_reuse_v1' or proof.get('original_items_relabelled') is not False:
+                raise ValueError('Unknown chained reuse proof')
+            prior=proof.get('source_origins',[proof['source_identity']])
+            if not isinstance(prior,list) or not prior:raise ValueError('Missing reuse source origins')
+            if proof['binding_source_sha256']!=binding_digest(proof['source_identity']):
+                raise ValueError('Chained binding source digest changed')
+            origins.extend(prior)
+        self.allowed_sources={}
+        for origin in origins:
+            verified_origin(origin,expected['source_identity'])
+            self.allowed_sources[binding_digest(origin)]=origin
         self.frozen_hash=digest(self.folder/'frozen_cnn.pt')
         if self.frozen_hash!=self.request['cnn_file_sha256']:raise ValueError('Reuse CNN file changed')
         # This reproduces the source digest of the ORIGINAL item binding. Never
         # stamp the current preparation digest onto previously created tensors.
-        source=dict(self.request['source_identity']['core'])
-        source.update({k:v for k,v in self.request['source_identity']['preparation'].items()
-                       if k!='l0_regions/training_data.py'})
-        self.binding_sha=hashlib.sha256(json.dumps(source,sort_keys=True).encode()).hexdigest()
+        self.binding_sha=binding_digest(self.request['source_identity'])
         self.provenance=dict(format='verified_prepared_batch_reuse_v1',path=str(self.folder),
             request_sha256=self.request_hash,revision=revision,source_identity=self.request['source_identity'],
             binding_source_sha256=self.binding_sha,original_items_relabelled=False,
+            source_origins=list(self.allowed_sources.values()),
             exact_future_partition_rng_resume=False)
         self.batch=batch;self.used_audits={};self.reused_records=0;self.reused_batches=0
         # A completed audit is the old writer's final batch marker. Require
@@ -85,8 +114,11 @@ class PreparedReuse:
         if owners!=set(range(len(ids))):raise ValueError('Reuse batch coverage/size differs')
         def one(arg):
             position,i,path=arg
+            manifest=json.loads(path.with_suffix('.json').read_text(encoding='utf-8'))
+            origin_sha=manifest['binding']['preparation_source_sha256']
+            if origin_sha not in self.allowed_sources:raise ValueError('Unreviewed item binding source')
             row=dict(ds.rows[i],donor_component=ds.record(i)['component_id'])
-            binding=_binding(record=row,dataset_index=i,source_sha=self.binding_sha,
+            binding=_binding(record=row,dataset_index=i,source_sha=origin_sha,
                 cache_sha256=self.request['original_cache_sha256'],frozen_cnn_sha256=self.request['cnn_sha256'],
                 profile=self.request['profile'],view_epoch=self.request['view_epoch'],view_index=0,
                 feature_evidence='checkpoint_partition_quality_unverified')

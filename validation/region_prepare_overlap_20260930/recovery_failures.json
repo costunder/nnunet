@@ -1,0 +1,18 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "status": "PASS",
+  "full_training": false,
+  "legacy_chained_reused_records": 10,
+  "original_files_unchanged": true,
+  "reused_items_bitwise_equal": true,
+  "errors_propagated": [
+    "writer",
+    "prefetch",
+    "unknown_packaging_source",
+    "changed_partition_source"
+  ],
+  "false_completed_indices": 0,
+  "failed_batch_audit_markers": 0,
+  "original_checkpoint_reopened": false
+}

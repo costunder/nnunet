@@ -3,6 +3,7 @@ import copy
 import hashlib
 import io
 import json
+from time import perf_counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import psutil
@@ -112,37 +113,85 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
         meta['reused_preparation']=reuse.provenance
     write_new(output/'request.json',meta)
     total_bytes=0;new_records=0
+    from .preparation_runtime import prefetched
+    timing_path=output/'preparation_timing.jsonl'
+    run_started=perf_counter()
     for part in ('inner_train','inner_val'):
         ds=dataset(index,part,debug);rows=[]
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            progress=tqdm(range(0,len(ds.rows),batch),desc='prepare '+part,unit='batch')
-            for start in progress:
+        def load_request(ids):
+            if psutil.Process().memory_info().rss>budget.rss_bytes:raise MemoryError('Preparation lookahead RSS budget exceeded')
+            restored=reuse.restore(part,ids,ds,pool) if reuse else None
+            if restored is not None:
+                if psutil.Process().memory_info().rss>budget.rss_bytes:raise MemoryError('Preparation lookahead RSS budget exceeded')
+                return dict(restored=restored)
+            fine=load_pairs(ds,ids,workers=workers,epoch=view_epoch,cache_path=index)
+            # Donor identity was read and sealed by the loader; do not reopen
+            # every record solely to obtain the same component ID a second time.
+            records=[dict(ds.rows[i],donor_component=r['donor_component']) for i,r in zip(ids,fine.receipts)]
+            bindings=batch_bindings(records,ids,cache_sha256=cache_hash,frozen_cnn_sha256=meta['cnn_sha256'],
+                profile=profile,view_epoch=view_epoch,view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
+            if psutil.Process().memory_info().rss>budget.rss_bytes:raise MemoryError('Preparation lookahead RSS budget exceeded')
+            return dict(fine=fine,bindings=bindings)
+        def save_batch(ids,items,audit,timing):
+            start=perf_counter()
+            paths=[output/f'{part}_{i:06d}.pt' for i in ids]
+            size=sum(pool.map(lambda pair:save_new(*pair),zip(paths,items)))
+            result=[]
+            for i,path,item in zip(ids,paths,items):
+                result.append(dict(row=ds.rows[i],file=path.name,binding=item['binding'],profile_exceeded=item['profile_exceeded'],
+                    fine_nodes=sum(len(v['grid']) for v in item['fine'].values()),
+                    region_nodes=[sum(len(v['mass']) for v in layer.values()) for layer in item['scales']],
+                    region_edges=[sum(e.shape[1] for e in edges.values()) for edges in item['edges']]))
+            # Commit marker only after ALL verified item writes succeeded.
+            write_new(output/f'{part}_{ids[0]:06d}_audit.json',audit)
+            timing['save_seconds']=perf_counter()-start
+            return size,result,timing
+        with ThreadPoolExecutor(max_workers=workers) as pool, ThreadPoolExecutor(max_workers=1,thread_name_prefix='region-save') as writer:
+            requests=[list(range(start,min(start+batch,len(ds.rows)))) for start in range(0,len(ds.rows),batch)]
+            progress=tqdm(total=len(requests),desc='prepare '+part,unit='batch')
+            pending=None
+            def commit_saved(future):
+                nonlocal total_bytes
+                wait_start=perf_counter();size,result,timing=future.result()
+                timing['save_wait_seconds']=perf_counter()-wait_start
+                timing['elapsed_seconds']=perf_counter()-run_started
+                total_bytes+=size;rows.extend(result)
+                meta['admission_failures']+=sum(bool(r['profile_exceeded']) for r in result)
+                with timing_path.open('a',encoding='utf-8') as stream:stream.write(json.dumps(timing,allow_nan=False)+'\n')
+                progress.update()
+                progress.set_postfix(reused=reuse.reused_records if reuse else 0,new=new_records,
+                    load_s=round(timing['load_seconds'],2),wait_s=round(timing['load_wait_seconds'],2),
+                    prepare_s=round(timing['prepare_seconds'],2),save_s=round(timing['save_seconds'],2))
+            with prefetched(requests,load_request) as batches:
+              for ids,loaded,load_seconds,wait_seconds in batches:
                 budget.check()
                 if psutil.disk_usage(str(output)).free<cfg['minimum_free_gb']*2**30:raise OSError('Disk reserve reached; partial files preserved')
-                ids=list(range(start,min(start+batch,len(ds.rows))))
-                restored=reuse.restore(part,ids,ds,pool) if reuse else None
+                restored=loaded.get('restored')
+                prepare_seconds=0.;transfer_seconds=0.
                 if restored is not None:
                     items,audit=restored
                 else:
-                    fine=load_pairs(ds,ids,workers=workers,epoch=view_epoch,cache_path=index).to('cuda')
-                    bindings=batch_bindings([dict(ds.rows[i],donor_component=ds.record(i)['component_id']) for i in ids],ids,
-                        cache_sha256=cache_hash,frozen_cnn_sha256=meta['cnn_sha256'],profile=profile,view_epoch=view_epoch,
-                        view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
+                    start=perf_counter();fine=loaded.pop('fine').to('cuda')
+                    torch.cuda.synchronize();transfer_seconds=perf_counter()-start
                     # Only uncalibrated profile bounds are advisory under explicit research policy.
-                    items,audit=prepare(fine,frozen,profile,bindings,budget,allow_unvalidated_profile=allow_profile(profile_policy,debug))
+                    start=perf_counter()
+                    items,audit=prepare(fine,frozen,profile,loaded['bindings'],budget,allow_unvalidated_profile=allow_profile(profile_policy,debug))
+                    torch.cuda.synchronize();prepare_seconds=perf_counter()-start
                     del fine
                     new_records+=len(ids)
-                paths=[output/f'{part}_{i:06d}.pt' for i in ids]
-                total_bytes+=sum(pool.map(lambda pair:save_new(*pair),zip(paths,items)))
-                for i,path,item in zip(ids,paths,items):
-                    if item['profile_exceeded']:meta['admission_failures']+=1
-                    rows.append(dict(row=ds.rows[i],file=path.name,binding=item['binding'],profile_exceeded=item['profile_exceeded'],
-                        fine_nodes=sum(len(v['grid']) for v in item['fine'].values()),
-                        region_nodes=[sum(len(v['mass']) for v in layer.values()) for layer in item['scales']],
-                        region_edges=[sum(e.shape[1] for e in edges.values()) for edges in item['edges']] ))
-                write_new(output/f'{part}_{start:06d}_audit.json',audit)
-                progress.set_postfix(reused=reuse.reused_records if reuse else 0,new=new_records)
-                del items
+                # At most one previous CPU save overlaps the current GPU batch.
+                # Propagate its failure before scheduling another write.
+                if pending is not None:commit_saved(pending)
+                timing=dict(partition=part,indices=ids,physical_batch=len(ids),reused=restored is not None,
+                    load_seconds=load_seconds,load_wait_seconds=wait_seconds,h2d_seconds=transfer_seconds,
+                    prepare_seconds=prepare_seconds,
+                    official_merge_seconds=0. if restored is not None else sum(v['official_merge_seconds'] for v in audit['scale1']['roles'].values()),
+                    rss_bytes=psutil.Process().memory_info().rss,cuda_allocated_bytes=torch.cuda.memory_allocated(),
+                    scope='Overlapped spans; load/prepare/save cannot be summed for wall time')
+                pending=writer.submit(save_batch,ids,items,audit,timing)
+                del items,loaded
+            if pending is not None:commit_saved(pending)
+            progress.close()
         meta['partitions'][part]=rows
     if sha(index)!=cache_hash or (reuse is None and sha(checkpoint)!=checkpoint_hash):raise ValueError('Preparation inputs changed')
     if meta['source_identity']!=source_identity(preparation=True):raise ValueError('Preparation sources changed')

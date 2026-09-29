@@ -1,3 +1,9 @@
+## v2.2 — 준비 단계 읽기·GPU·저장 겹침 및 계측 (2026-09-30)
+
+- 서버 PID3614482는 train이 아닌 prepare. 다음 CPU batch 하나와 이전 저장 하나를 GPU 준비와 겹치도록 변경. batch·그래프·공식 병합·reg·모델·무결성 검사 유지. 진행 막대와 JSONL에 구간별 시간 표시.
+- f07b13f 등 검토 버전의 반복 재사용을 원본 binding 보존하에 지원. 완료 batch 재병합 없음, 원본 checkpoint 재읽기 없음. 로드/저장 실패 시 정상완료 index 생성 금지.
+- 56회귀 PASS. 실제 DEBUG train8/val2, 동일 batch4에서 warm serial7.131초→overlap6.401~6.493초(약9–10%). Cluster 번호를 정렬하면 모든 membership/typed edge/CT 동일. A6000 전체 시간·지속 사용률 개선은 미측정. [상세](docs/region_prepare_overlap_20260930.md).
+
 ## v2.2 — reuse에서 원본 체크포인트 재읽기 제거 (2026-09-29)
 
 - 서버 원본checkpoint torch.load에서 Errno116 Stale file handle 발생. reuse 경로가 이미 저장한frozen CNN을 두고 원본을 다시읽던 의존성을 제거. 파일hash·내용hash·strict구조·설정/출처/DEBUG 검증 후 기존frozen_cnn.pt 사용.

@@ -1,0 +1,100 @@
+{
+  "debug": true,
+  "full_training": false,
+  "production_ready": false,
+  "physical_batch": 8,
+  "indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "partition": "inner_train",
+  "workers": 8,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "cpu_logical": 16,
+  "rss_bytes": 1909526528,
+  "available_ram_bytes": 41291841536,
+  "peak_cuda_bytes": 294781952,
+  "serialized_bytes": 16496256,
+  "source_cache_sha256": "05230ff53542b632c4fc338f4380d5ed211d6a6804cefee7286fb32d4090e80f",
+  "cnn_sha256": "f6a89b382e3ad3d3644cb0b504ad7f7fab625e8df2e4b714437327fee5ff3ee4",
+  "timings": {
+    "cpu_collate": [
+      0.029577699955552816
+    ],
+    "materialization_hash": [
+      0.039584700018167496
+    ],
+    "cpu_load_materialize_collate_hash": [
+      0.6105910999467596
+    ],
+    "binding": [
+      0.05025149998255074
+    ],
+    "h2d": [
+      0.012243299977853894
+    ],
+    "input_validation": [
+      0.13166069996077567
+    ],
+    "gpu_materialization_hash_validation": [
+      0.043164199916645885
+    ],
+    "cnn": [
+      0.10368880000896752
+    ],
+    "partition_quotient_diagnostics": [
+      1.7746160000097007
+    ],
+    "quotient_recheck_packaging_receipts": [
+      0.2731459999922663
+    ],
+    "prepare_inclusive": [
+      2.407453599967994
+    ],
+    "save_validate_hash_write": [
+      0.698555100010708
+    ]
+  },
+  "whole_batch_seconds": 3.781607700046152,
+  "process_cpu_seconds": 15.796875,
+  "official_merge_seconds": 0.9919002999085933,
+  "fine_nodes": 52666,
+  "fine_edges": 2761602,
+  "region_nodes": [
+    1464,
+    691,
+    3856,
+    978,
+    903,
+    1277,
+    2969,
+    1730
+  ],
+  "region_edges": [
+    35047,
+    17414,
+    97107,
+    32839,
+    33128,
+    34709,
+    79604,
+    49201
+  ],
+  "tensor_payload_sha256": [
+    "9fc85ffd82c622ca06a24d6de560bfad5dc7a56f64e06a1f5fbf2db6bfb8ccee",
+    "20c1bfe2c7881ab9e5e7ceb1300759cb42f50b161371f41011bd1e9feb52f8c6",
+    "7508dd9bedbe16dd39cc6594c1489b3ef88423700ce52c833bf18e841db08676",
+    "82765e729211612c6eafd52af41a8481f8db75fb2ea6ec659215b1310bc8d02f",
+    "e65d7d11d4e885110291a0dc19ec6c582bc675e5b64f5bb9b6f6340642b37cf9",
+    "7f9a20858a6762b9ac15c636223822c1324cc2f720bac6d45ff5f94e0b94962c",
+    "692a27f3c2c108e5124524638d2e2099d9cba279cfb2070902524effdd9301b9",
+    "fd2d817e0b98048a2534daf91dccaf5148d745a7947b0bd538d12089f5715b87"
+  ],
+  "scope": "One explicit DEBUG batch; cold instrumented timings, inclusive nested spans. Not steady-state or server epoch throughput."
+}

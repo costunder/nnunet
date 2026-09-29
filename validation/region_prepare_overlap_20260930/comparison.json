@@ -1,0 +1,50 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "status": "PASS",
+  "full_training": false,
+  "production_ready": false,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "physical_batch": 4,
+  "workers": 8,
+  "seconds": {
+    "serial_cold": 8.44233470002655,
+    "overlap_warm": 6.493463699938729,
+    "overlap_repeat": 6.40098339994438,
+    "serial_warm": 7.1309750999789685
+  },
+  "comparisons": [
+    {
+      "arm": "serial_cold",
+      "records": 10,
+      "raw_tensor_exact_records": 10,
+      "partition_membership_and_typed_edges_exact_after_id_alignment": true
+    },
+    {
+      "arm": "overlap_warm",
+      "records": 10,
+      "raw_tensor_exact_records": 1,
+      "partition_membership_and_typed_edges_exact_after_id_alignment": true
+    },
+    {
+      "arm": "overlap_repeat",
+      "records": 10,
+      "raw_tensor_exact_records": 0,
+      "partition_membership_and_typed_edges_exact_after_id_alignment": true
+    },
+    {
+      "arm": "serial_warm",
+      "records": 10,
+      "raw_tensor_exact_records": 0,
+      "partition_membership_and_typed_edges_exact_after_id_alignment": true
+    }
+  ],
+  "recovery_new_batches": [
+    4,
+    2
+  ],
+  "chained_reused_records": 10,
+  "peak_cuda_bytes": 208183296,
+  "rss_bytes": 1990705152,
+  "scope": "Complete existing DEBUG train8/val2; same batch4 all arms; alternating serial/overlap. Not A6000 batch32/full-cohort throughput."
+}
