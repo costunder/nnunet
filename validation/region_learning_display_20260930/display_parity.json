@@ -1,0 +1,11 @@
+{
+  "debug": true,
+  "full_training": false,
+  "previous_8fadbd0_vs_monitor": {
+    "model": true,
+    "optimizer": true,
+    "state": true,
+    "rng": true
+  },
+  "unit_returncode": 0
+}

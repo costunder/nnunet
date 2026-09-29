@@ -241,6 +241,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     support_policy=None if support_patients is None else support_contract(support_patients)
     from .execution_pipeline import CheckpointPipeline,DeviceBatchCache,gradient_check_batched
     from .sparse import workspace
+    from .learning_monitor import LearningMonitor,validation_line
     if type(sage_workspace_bytes) is not int or sage_workspace_bytes<=0 or sage_workspace_bytes>=budget.cuda_bytes:raise ValueError('Sparse workspace must fit the explicit CUDA budget')
     if execution_pipeline not in ('synchronous','overlapped'):raise ValueError('Unknown execution pipeline')
     if execution_pipeline=='synchronous' and device_cache_bytes:raise ValueError('Device cache requires explicit overlapped pipeline')
@@ -355,6 +356,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     if not audit_path.exists():write_new(audit_path,dict(episodes.audit,starting_query_batch=state['next_batch'],
                         coverage_scope='complete deterministic epoch schedule; actual consumed prefix is checkpoint next_batch'))
                 bar=tqdm(loader.batches(order[state['next_batch']:]),initial=state['next_batch'],total=len(order),desc=f"epoch {state['epoch']+1}/{epochs}")
+                monitor=LearningMonitor(net)
+                tqdm.write('Learning display: avg20=recent mean loss; grad=before clipping; probe=modules with sampled weight changes/6. Validation follows each epoch; loss window resets on resume.')
                 previous_end=time.perf_counter()
                 for cpu in bar:
                     load_wait=time.perf_counter()-previous_end;step_start=time.perf_counter()
@@ -381,8 +384,10 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     if not torch.isfinite(loss):raise FloatingPointError('Nonfinite loss')
                     loss.backward();events[3].record()
                     (gradient_check if execution_pipeline=='synchronous' else gradient_check_batched)(net)
-                    torch.nn.utils.clip_grad_norm_(net.parameters(),base['training']['grad_clip'],error_if_nonfinite=True);optimizer.step()
+                    grad_norm=torch.nn.utils.clip_grad_norm_(net.parameters(),base['training']['grad_clip'],error_if_nonfinite=True)
+                    before=monitor.before_step();optimizer.step()
                     events[4].record();events[4].synchronize()
+                    health=monitor.after_step(loss,terms,grad_norm,before,optimizer.param_groups[0]['lr'])
                     if device_cache is not None:device_cache.remember(net,cpu)
                     state['next_batch']+=1;state['step']+=1
                     loss_value=float(loss.detach());peak=torch.cuda.max_memory_allocated()
@@ -392,6 +397,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     save_seconds=time.perf_counter()-save_start
                     peak=torch.cuda.max_memory_allocated();budget.check()
                     row=dict(step=state['step'],epoch=state['epoch']+1,physical_batch=len(ids),
+                        learning=health,
                         activation_storage=activation_storage,loss=loss_value,loader_wait_seconds=load_wait,
                         support_records=support_records,support_patients=support_groups,support_policy=support_policy,
                         support_preparation_seconds=support_preparation_seconds,
@@ -404,7 +410,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                         checkpoint_seconds=save_seconds,step_seconds=time.perf_counter()-step_start,
                         peak_cuda_bytes=peak,rss_bytes=psutil.Process().memory_info().rss)
                     with (root/'update_timing.jsonl').open('a',encoding='utf-8') as stream:stream.write(json.dumps(row)+'\n')
-                    bar.set_postfix(step=state['step'],loss=round(loss_value,4),seconds=round(row['step_seconds'],2),peak_GiB=round(peak/2**30,2),support=f'{support_groups}p/{support_records}r')
+                    bar.set_postfix(**monitor.postfix(health,state['step']),sec=round(row['step_seconds'],2),GiB=round(peak/2**30,2))
                     if pause():return root/'checkpoint_latest.pt'
                     previous_end=time.perf_counter()
                 state['phase']='refresh_memory';save(wait=True)
@@ -415,8 +421,10 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 phase_timing('validation',validation_start)
                 write_new(root/f"epoch_{state['epoch']+1:03d}.json",dict(metrics=metrics,cases=details,debug=debug))
                 score=metrics['ranking_pairwise_loss']
-                if state['best'] is None or score<state['best']['metric']:
+                improved=state['best'] is None or score<state['best']['metric']
+                if improved:
                     weights=tree_to(net.state_dict(),'cpu');state['best']=dict(weights=weights,metric=score,epoch=state['epoch']+1,model_sha256=hash_state(weights))
+                tqdm.write(validation_line(state['epoch']+1,metrics,state['best']['metric'],improved))
                 state.update(epoch=state['epoch']+1,next_batch=0,last_group=None,plan=None,phase='optimization')
                 if state['epoch']==epochs:
                     net.load_state_dict(state['best']['weights']);state['selected_epoch']=state['best']['epoch'];state['phase']='final_memory'

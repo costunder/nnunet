@@ -1,3 +1,10 @@
+## v2.2 — 학습 상태 표시 패치 (2026-09-30)
+
+- tqdm에 최근 최대20회 평균 loss·gradient norm·CNN/SAGE1/2/3/L1/L2 가중치 표본 변화·lr 표시. epoch 종료 validation rank loss/MRR/Recall@K/best를 화면 출력.
+- 표본 변화와 전체 parameter 검증, ranking과 segmentation Dice를 구분. 학습 구조·수식·순서·batch 유지. 8fadbd0에서 실행 업그레이드 재개 지원.
+- 11개 검사와 실제 CT GPU DEBUG 통과. 표시 전후 최종 model/Adam/state/RNG 일치, pause/resume 및 기존 checkpoint 업그레이드 검증.
+- [표시 해석·검증·적용](docs/region_learning_display_20260930.md).
+
 ## v2.2 — 실행 병목 개선: 저장 overlap·검증된 GPU 캐시 (2026-09-30)
 
 - 환자 support16·query batch·CNN/L0/L1/L2·loss·전체 데이터 유지. 독립 CPU snapshot과 순차 비동기 hash/atomic 저장, 고정 memory/plan 복사 재사용, gradient 유한값 판정 동기화 통합.

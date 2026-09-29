@@ -1,3 +1,7 @@
+## v2.2 — 화면에서 학습 상태 확인 (2026-09-30)
+
+표시 전용 LearningMonitor 연결: 현재/최근20회 평균 loss, clipping 이전 norm, 모듈별 고정 가중치 표본 변화, lr. epoch validation rank loss/MRR/Recall@K/best 출력. probe는 모듈당 한 weight tensor의 최대32개 원소이므로 전체 가중치 검증 또는 성능 향상으로 주장하지 않는다. 모델/loss/RNG/checkpoint state는 유지하고 recent loss 창만 재개 시 초기화. 8fadbd0 및10287dd의 검토된 실행 업그레이드 지원. [내용과 적용](docs/region_learning_display_20260930.md).
+
 ## v2.2 — 실행 병목 개선·안전한 VRAM 재사용 (2026-09-30)
 
 `10287dd` patient_episode_v1의 학습 수식과 순서를 보존한다. `--execution-pipeline overlapped` + 명시적 `--device-cache-gib`/`--sage-workspace-mib`로 독립 packed CPU snapshot, 단일 순서 보장 hash/atomic writer, 고정 memory/plan 복사 재사용, gradient 검사 동기화 통합, 검증된 GPU batch 및 CSR/transpose LRU 재사용을 연결했다. 모델·support16·physical batch·후보128·전체 query·원본 mask는 변경하지 않았다. 캐시 퇴출은 sample 제외가 아니다.

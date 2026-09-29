@@ -1,0 +1,29 @@
+{
+  "metrics": {
+    "ranking_pairwise_loss": 0.46436282992362976,
+    "ranking_pairs": 1,
+    "ranking_mrr": 1.0,
+    "ranking_mean_observed_rank": 1.0,
+    "ranking_evaluable_cases": 1,
+    "ranking_cases_without_observed": 0,
+    "ranking_recall_at_1": 1.0,
+    "ranking_recall_at_5": 1.0,
+    "ranking_recall_at_10": 1.0
+  },
+  "cases": [
+    {
+      "case_id": "liver_31",
+      "eligible_observed": 1,
+      "rank_evaluable": true,
+      "observed_ranks": [
+        1
+      ],
+      "first_observed_rank": 1,
+      "reciprocal_rank": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_5": 1.0,
+      "recall_at_10": 1.0
+    }
+  ],
+  "debug": true
+}
