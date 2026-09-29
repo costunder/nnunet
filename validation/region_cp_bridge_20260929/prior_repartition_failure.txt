@@ -1,0 +1,8 @@
+D:\AI project\nnunet\l0_sage\encoder.py:20: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\SparseCsrTensorImpl.cpp:55.)
+  return matrix.to_sparse_csr(),degree
+Traceback (most recent call last):
+  File "D:\AI project\nnunet\tools\verify_v22_review_selection_debug.py", line 94, in <module>
+    if __name__=='__main__':main()
+  File "D:\AI project\nnunet\tools\verify_v22_review_selection_debug.py", line 48, in main
+    if report!=original:raise AssertionError(f'Recommendation differs with workers={workers}')
+AssertionError: Recommendation differs with workers=0

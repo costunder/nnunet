@@ -88,9 +88,12 @@ class EZSPEncoder(V1LocalEncoder):
             violations={k:p.violations for k,p in parts.items() if p.violations}
             hard={k:[v for v in values if v not in ('bbox','variance','role_shell_nodes')] for k,values in violations.items()}
             if any(hard.values()):raise CoarseningConstraintError('Structural partition integrity failed',{'hard':hard})
+            def owner_mass(r):
+                # Weighted CUDA bincount rejects the reviewed deterministic
+                # scorer runtime. index_add keeps the exact same coverage sum.
+                return r.mass.new_zeros(graph_count).index_add(0,r.owner,r.mass)
             for k,p in parts.items():
-                if not torch.equal(torch.bincount(regions[k].owner,weights=regions[k].mass,minlength=graph_count),
-                                   torch.bincount(p.region.owner,weights=p.region.mass,minlength=graph_count)):
+                if not torch.equal(owner_mass(regions[k]),owner_mass(p.region)):
                     raise CoarseningConstraintError('Fine node mass coverage lost',stats)
             stats['violations']=violations;stats['total_budget_failed']=budget
             # Retained only until the next forward for inspection, never checkpointed.

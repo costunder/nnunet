@@ -50,6 +50,9 @@ def main():
         elif a.mode=='train':
             result=train(a.cache,a.output,workers=a.workers,resident_bytes=int(a.resident_gib*2**30),
                 candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step)
+            if (a.output/'training_complete.json').exists():
+                from l0_regions.final import export
+                export(result,a.cache,a.output/'checkpoint.pt')
         else:
             a.output.mkdir(parents=True,exist_ok=False)
             common=['--workers',str(a.workers),'--cuda-gib',str(a.cuda_gib),'--rss-gib',str(a.rss_gib),'--debug']

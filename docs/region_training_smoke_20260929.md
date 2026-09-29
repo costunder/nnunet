@@ -2,6 +2,20 @@
 
 2026-09-29. 사용자의 요청: 로컬 짧은 smoke → Git push → 사용자가 A6000 서버에서 실행. 장기 학습은 자동 시작하지 않았다.
 
+## 후속 연결 검사 r8
+
+관련 회귀59개 PASS, skip 없음. 전체 suite는 CP 실행 계약에 맞춰 CUDA 초기화 전에 `CUBLAS_WORKSPACE_CONFIG=:4096:8`을 설정한 독립 프로세스에서 실행했다. 최종 증거는 `validation/region_cp_bridge_20260929/`에 있으며 이전 실패도 보존했다.
+
+직전130beb4의 online CP 연결 누락을 구현했다. `l0_regions/final.py`가 완료된 GNN의 선택 모델·전체 support·고정 분할 CNN·split/donor/raw 증거를 봉인한 `checkpoint.pt`를 내보낸다. 기존 `v22_rank_recommendation` loader와 `v22_online_rank_bank` catalog가 이 형식을 분기해 읽는다. 새 후보 event는 frozen CNN으로 영역 계층을 준비하고 live 학습 완료 모델로 점수화한다. 기존 rank→eligibility→정확한 원본 mask paste 경로를 공유한다.
+
+실제 연동 중 deterministic CUDA 설정이 weighted bincount를 거부하는 오류를 발견했다. Adapter의 coverage 합계를 같은 index_add 수식으로 수정했다. 공식 pinned merge 함수는 수정하지 않았다.
+
+같은 event의 partition을 재실행했을 때 점수가 달라진 실패도 보존했다. 고정 분할 설계에 맞게 CT·donor·위치·변환·전체 record hash가 같은 한 event의 검증된 CPU hierarchy를 예산 안에서 재사용한다. 새 event는 준비를 다시 수행하고, 이전 event 캐시만 교체한다. 샘플이나 그래프를 버리지 않는다. 공식 GPU partition을 매번 재실행해도 bit-exact라는 주장은 하지 않는다.
+
+최종 `r8` 학습→저장→재개 smoke는 model/optimizer/state/RNG 모두 bit-exact PASS. 실제 CT3후보 DEBUG 검사에서는 support8개, 원본 mask2,368voxel, 후보 주석 변경 전후 점수/순위 일치, 반복 event 재분할0회, 올바른 후보 선택 및 footprint 밖 값 불변, 메모리·가중치·CNN·resident CT 변조 거부를 확인했다. Workers0/1/2/4/8 비교는 같은 고정 event 계층을 재사용한 조건이다. 새 데이터에서 각각 partition을 새로 만들어 비교한 것으로 확대 해석하지 않는다.
+
+이후 `train` 완료 시 `checkpoint_latest.pt`와 별도로 `checkpoint.pt`가 자동 생성된다. CP 연결의 실제 검증은 raw paste까지이며, 새 encoder를 넣은 전체128후보 RPC/native nnU-Net 학습 update는 이번 짧은 검사 범위에 포함하지 않았다. 전체 학습 및 partition admission 미통과 상태는 그대로다.
+
 ## 구현과 검사 결과
 
 - `tools/run_fixed_regions.py`: foreground prepare/train/smoke. 기존 GAT checkpoint는 CNN snapshot만 초기화하며 GAT optimizer/support를 새 SAGE의 exact resume로 취급하지 않는다.
@@ -28,7 +42,7 @@
 
 즉, smoke PASS만으로 현재 partition이 전체 학습에 admitted됐다고 표시하지 않는다. 현재 로컬 결과의 `production_ready=false`는 남은 이 조건을 반영한다. 서버의 기존 non-DEBUG CNN snapshot으로도 같은 초기 상한을 넘으면 준비 단계에서 멈춘다. 상한을 연구학습의 보고 항목으로 바꾸려면 기존 사용자 지시 변경의 명시적 승인이 필요하다.
 
-새 checkpoint는 GNN 학습용 별도 형식이다. **새 영역 encoder의 online CP/nnU-Net 최종 artifact 연결은 아직 구현되지 않았다.** 기존 Basic CP, 원본 mask 검사, 후보128, L1/L2, loss를 변경하지 않았다는 뜻이지 새 GNN의 결과를 기존 nnU-Net runner에 바로 넣을 수 있다는 뜻이 아니다.
+새 checkpoint는 영역 GNN 전용 형식이며 기존 scorer/catalog에 명시적으로 연결했다. Basic CP, 원본 mask 검사, 후보128, L1/L2, loss는 변경하지 않았다. 연결 구현과 짧은 실제 raw paste 검사를 전체 native nnU-Net 통합 검증 완료로 표현하지 않는다.
 
 ## A6000 실행 경로
 
@@ -98,6 +112,6 @@ python -u tools/run_fixed_regions.py train \
 - [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
 - [x] 디버그 설정과 최종 설정을 분리했다.
 - [x] dummy, placeholder, random fallback을 사용하지 않았다.
-- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. GNN 범위이며 online CP 연결은 미완료다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 새 최종 artifact의 CP scorer/catalog 연결 및 짧은 실제 raw paste 검사도 통과했다. 전체 native 학습 update는 이번에 실행하지 않았다.
 - [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
 - [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

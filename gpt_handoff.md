@@ -1,3 +1,10 @@
+## 2026-09-29 후속 — 영역 final artifact와 CP scorer/catalog 연결
+
+- 직전130beb4의 online CP 연결 누락 구현: `l0_regions/final.py`, `recommendation.py`, 기존 recommendation/bank dispatch. train 완료 시 final `checkpoint.pt`도 저장. 이전 GAT가중치로 relabel하지 않음.
+- 회귀59개 PASS. r8 smoke model/optimizer/state/RNG bit-exact. 실제 `work/region_CP_smoke_20260929_r3`에서3개 DEBUG 후보, support8, 원본mask2,368voxel exact paste 및 footprint 밖 불변, 주석 변경이 score/rank에 영향 없음, 변조 거부 PASS. 증거 `validation/region_cp_bridge_20260929/`.
+- CP deterministic 환경의 weighted bincount 오류를 adapter에서 동일 index_add coverage로 수정. 같은 event를 재partition했을 때 score 차이가 나던 실패 보존. 고정 hierarchy를한event만 CPU에 보관하고 같은 content hash면 재사용. Workers 비교는 그 cache-hit 조건이며 공식 cold partition 반복 bit-exact를 주장하지 않음.
+- 초기profile 위반 full 차단/DEBUG 승격 금지 유지. 새CP 연결 구현을 전체128후보/native segmentation update 통과라고 부르지 말것. 사용자에게 요청한 초기상한 정책 변경은 아직 승인 답변이 없음.
+
 ## 2026-09-29 현재 — 영역 SAGE 학습/재개 로컬 smoke
 
 - 사용자 요청은 로컬 짧은 smoke 후 Git push/서버 명령 전달. 장기 로컬/서버 학습 자동 시작 금지.

@@ -179,6 +179,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     identity=dict(format=FORMAT,debug=debug,cache_sha256=sha(index),source=source_identity(),epochs=epochs,
         config=cfg,base=base,precision='FP32',workers=workers,candidates=candidates,
         ranking=rank_config(),resident_budget_bytes=resident_bytes)
+    identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
     if resume:
         saved=load_checkpoint(resume,identity);net.load_state_dict(saved['model']);optimizer.load_state_dict(saved['optimizer'])
         state=tree_to(saved['state'],'cuda');restore_rng(saved['rng']);del saved

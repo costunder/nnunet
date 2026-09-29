@@ -1,3 +1,9 @@
+## v2.2 — 영역 최종 모델과 기존 CP 추천 연결 (2026-09-29)
+
+- 새 `checkpoint.pt`에 선택 모델·전체 support·고정 분할 CNN·split/donor/raw 근거 결속. 기존 scorer/catalog에서 명시적 형식 분기, 기존 rank/filter/paste 검사 공유.
+- 결정론적 CP 실행의 weighted bincount 오류를 같은 coverage 합계로 수정. 동일 event 고정 hierarchy를 명시적 RAM 예산 내 재사용, 변조 시 오류. 공식 merge 코드·reg·상한 유지.
+- 회귀59개 PASS. r8 학습/새 프로세스 재개 bit-exact PASS. 실제 CT3후보 raw CP에서2,368voxel 정확한 paste, 주석과 점수/순위 분리 및 변조 거부 PASS. 전체128후보/native 학습 검증 및 full admission을 의미하지 않음.
+
 ## v2.2 — 영역 SAGE foreground 학습과 재개 smoke (2026-09-29)
 
 - prepare/train/smoke, 기존 objective·L1/L2를 사용하는 GNN 학습·전체 support·validation·best/final-memory·안전한 pause/resume 연결.

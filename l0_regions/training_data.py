@@ -30,7 +30,8 @@ def source_identity(*,preparation=False):
         from .preparation import PREPARATION_FILES
         return dict(core=provenance(),preparation={name:sha(root/name) for name in (*PREPARATION_FILES,'l0_regions/training_data.py')})
     files=[*root.joinpath('l0_regions').glob('*.py'),root/'l0_sage/encoder.py',
-           root/'tools/run_fixed_regions.py',root/'tools/v22_rank_objective.py',root/'tools/v222_review_contracts.py']
+           root/'tools/run_fixed_regions.py',root/'tools/v22_rank_objective.py',root/'tools/v222_review_contracts.py',
+           root/'tools/v22_rank_recommendation.py',root/'tools/v22_online_rank_bank.py']
     return dict(core=provenance(),runtime={p.relative_to(root).as_posix():sha(p) for p in files})
 
 class Budget:

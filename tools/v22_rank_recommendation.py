@@ -19,6 +19,9 @@ def load_checkpoint(path,*,device='cuda',allow_debug=False):
     from tools.v222_review_contracts import installed,resolve_feature_contract
     from tools.v22_rank_objective import resolve_objective,OBJECTIVE
     value=torch.load(path,map_location='cpu',weights_only=False)
+    if value.get('format')=='fixed_region_sage_final_v1':
+        from l0_regions.final import load
+        return load(path,device=device,allow_debug=allow_debug)
     from tools.v22_artifacts import validate_artifact
     validate_artifact(value,'final',allow_debug=allow_debug)
     if resolve_objective(value)!=OBJECTIVE:raise ValueError('A ranking checkpoint is required')
@@ -125,6 +128,10 @@ def recommend(network,records,memory,*,query_group,batch_size,workers,recipient_
     if len({r['case_id'] for r in records})!=1 or len({(r['donor_case_id'],r['component_id']) for r in records})!=1:
         raise ValueError('One CP event must use a fixed recipient and donor component')
     support=grouped_support(memory,query_group);device=next(network.parameters()).device
+    if hasattr(network,'region_candidates'):
+        scores=network.region_candidates.scores(network,records,support,batch_size=batch_size,workers=workers)
+        return rank_then_filter(scores,[r['center'] for r in records],first.mask,first.anchor,
+            recipient_case.label,min_liver_coverage=min_liver_coverage,candidate_keys=[record_key(r) for r in records])
     # Labels and paste-overlap flags are deliberately not passed to this scorer.
     with torch.autocast(device.type,enabled=device.type=='cuda',dtype=torch.bfloat16):
         state=network.prepare_support(*support)

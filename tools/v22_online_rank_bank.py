@@ -69,7 +69,10 @@ def build_catalog(native_path, checkpoint, output):
     from hiercp_v22.donors import reject_cross_split_duplicates
     native = validate_native(read_json(native_path))
     payload = torch.load(checkpoint, map_location='cpu', weights_only=False)
-    validate_artifact(payload, 'final')
+    if payload.get('format')=='fixed_region_sage_final_v1':
+        from l0_regions.final import validate
+        validate(payload)
+    else:validate_artifact(payload, 'final')
     if native['split'] != payload['split']:
         raise ValueError('Native/GNN split mismatch')
     if set(native['planning_patient_ids']) != set(native['split']['outer_train']):
