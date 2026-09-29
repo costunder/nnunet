@@ -1,3 +1,9 @@
+## v2.2 — 준비 과정의 반복 해시·진단 복제 제거 (2026-09-29)
+
+- 전체 fine edge hash와 소스 fingerprint를 batch당 한 번 계산. Pair별 전체 batch audit 중복 저장을 자체 role/shell 진단 + 전체 audit 한 번 저장으로 변경. Partition/그래프/학습 계약과 무결성 검사 유지.
+- 동일 실제 CT8pair partition에서 포장0.6195→0.2468초, binding0.3089→0.0356초. 서버 전체 준비 시간 단축률은 미측정.
+- 45회귀 PASS, 실제DEBUG 4update·새 프로세스 exact resume·3후보 원본mask CP PASS. 실행 중 서버 checkout 변경 금지, 기존 fingerprint 자동 이관 없음. [상세](docs/region_preparation_dedup_20260929.md).
+
 ## v2.2 — 명시적 research-report 학습 실행 (2026-09-29)
 
 - 현재 1차 그래프로 진행하라는 후속 지시에 따라 `--profile-policy research-report`를 prepare/train에 연결. 미검증 상한 위반은 per-pair audit/집계에 유지하고 실제 연구 학습을 허용. strict 기본 및 구조·원본mask·자원 검사 유지.

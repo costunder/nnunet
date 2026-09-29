@@ -1,0 +1,61 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "physical_batch": 8,
+  "workers": 8,
+  "baseline_commit": "6be85aa",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "peak_cuda_bytes": 294781952,
+  "rss_bytes": 1938116608,
+  "results": {
+    "new": {
+      "seconds": [
+        0.24694430001545697,
+        0.2363354000262916,
+        0.25698199996259063
+      ],
+      "edge_hash_calls": [
+        1,
+        1,
+        1
+      ],
+      "verified_save_seconds": 0.6723301999736577,
+      "pair_pt_bytes": 16496128,
+      "embedded_audit_json_bytes": 58763,
+      "mean_packaging_seconds": 0.2467539000014464
+    },
+    "old": {
+      "seconds": [
+        0.582165600033477,
+        0.6273510000901297,
+        0.6488786999834701
+      ],
+      "edge_hash_calls": [
+        8,
+        8,
+        8
+      ],
+      "verified_save_seconds": 0.8067839000141248,
+      "pair_pt_bytes": 16761536,
+      "embedded_audit_json_bytes": 507296,
+      "mean_packaging_seconds": 0.6194651000356922
+    }
+  },
+  "binding_seconds": {
+    "old": [
+      0.31163700006436557,
+      0.3187946999678388,
+      0.29612149996683
+    ],
+    "new": [
+      0.035421599983237684,
+      0.03697230003308505,
+      0.03429320000577718
+    ]
+  },
+  "new_prepare_seconds": 2.28544939996209,
+  "equality": "all tensor payloads, assignments, edges, evidence, own-group diagnostics and admission flags equal on the same partition",
+  "scope": "warm alternating packaging with identical captured GPU partition; disk save once per side; full old/new pipeline and server speedup not measured",
+  "full_training": false,
+  "production_ready": false
+}

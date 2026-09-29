@@ -1,3 +1,11 @@
+## 2026-09-29 최신 — 준비 중복 작업 제거
+
+- 서버14/353,21.37s/batch 질문 후 반복 작업 제거 요청. 현재 실행 중 서버6be85aa checkout/프로세스는 수정하거나 중단하지 않음.
+- Single-scale 준비: whole fine-edge digest pair마다→batch 한 번; source fingerprint record마다→batch 한 번(전역cache 아님); 각 pair에 전체batch audit 복제→자체그룹 진단+batch audit hash, 원본전체 audit는 기존batch JSON에 한 번 저장. CP candidate 경로에도 binding 묶음 적용.
+- 동일 actualCT8pair partition old6be85aa/new 대조: tensor/identity/evidence/own-group/admission 동일. 포장0.6195→0.2468초; source확인0.3089→0.0356초. 서버batch32 전체21초 개선률 미측정; 이 수치로2시간 해결을 주장하지 말것.
+- 45회귀 PASS, 실제DEBUG train8/val2·4update·fresh-process model/optimizer/state/RNG exact resume PASS. 실제3후보CP2,368voxel exactmask PASS. Full training/nnUNet/서버실행 없음. Evidence validation/region_preparation_dedup_20260929.
+- 현재 서버 준비/연쇄학습은 기존pinned6be85aa로 계속. 실행 중 pull/switch하면 source check 실패. 이번 새소스에서 구regioncache/checkpoint를 그대로 재사용 가능하다고 하지 말것. 원본paired cache는 입력으로 재사용 가능. [상세](docs/region_preparation_dedup_20260929.md).
+
 ## 2026-09-29 최신 — 현재 1차 그래프 연구 학습 진행
 
 - 자동 심사로 초기 변경 시도가 거부됐고 중간 코드를 aa730c7 검증 상태로 복원했다. 이후 구체적 '현재 1차 그래프 그대로 학습' 제안에 사용자가 다시 '하라고' 명시해 진행 지시. 아래 과거 pending 상태를 현재 지시로 오인하거나 같은 승인 질문을 반복하지 말것.

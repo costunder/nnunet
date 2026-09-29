@@ -51,6 +51,14 @@ class SingleScale(unittest.TestCase):
         seal_item(item)
         with self.assertRaisesRegex(ValueError,'unused parent'):validate_item(item)
 
+    def test_compact_audit_cannot_hide_missing_groups_or_mutation(self):
+        item=copy.deepcopy(self.items[0])
+        role=next(r for r,s in item['audit']['scale1']['roles'].items() if s['group_diagnostics'])
+        item['audit']['scale1']['roles'][role]['group_diagnostics'].clear()
+        with self.assertRaisesRegex(ValueError,'receipt changed'):validate_item(item)
+        seal_item(item)
+        with self.assertRaisesRegex(ValueError,'cluster coverage'):validate_item(item)
+
     def test_all_three_sage_layers_and_cnn_update(self):
         local=RegionSAGEEncoder(self.f.reference,seed=42,resource_budget=self.f.budget,
             allow_unvalidated_profile=True,levels=1).cuda()

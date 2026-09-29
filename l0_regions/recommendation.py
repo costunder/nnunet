@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import torch
 from l0_ezsp.data import materialize,collate as fine_collate
 from .materialization import seal_materialization
-from .preparation import binding,prepare
+from .preparation import batch_bindings,prepare
 from .data import collate
 from .training import hash_state
 from .profile_policy import allow_profile
@@ -36,9 +36,7 @@ class CandidateEncoder:
                 shared_source=shared,center=row['center'],donor_case_id=row['donor_case_id'],
                 donor_component=row['donor_component'],view_epoch=epoch,view_index=0)
             fine=materialize(record,epoch=epoch,view=0)
-            b=binding(record=row,dataset_index=i,cache_sha256=event_hash,frozen_cnn_sha256=self.value['region']['cnn_sha256'],
-                profile=profile,view_epoch=epoch,view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
-            return (fine,i),receipt,b
+            return (fine,i),receipt,row
         outputs=[]
         with torch.autocast('cuda',enabled=False):
             state=network.prepare_support(*support)
@@ -59,7 +57,10 @@ class CandidateEncoder:
                     ids=list(range(start,min(start+batch_size,len(records))))
                     rows=list(pool.map(one,ids)) if pool else list(map(one,ids))
                     fine=seal_materialization(fine_collate([r[0] for r in rows]),[r[1] for r in rows]).to('cuda')
-                    items,_=prepare(fine,self.reference,profile,[r[2] for r in rows],self.budget,
+                    bindings=batch_bindings([r[2] for r in rows],ids,cache_sha256=event_hash,
+                        frozen_cnn_sha256=self.value['region']['cnn_sha256'],profile=profile,view_epoch=epoch,
+                        view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
+                    items,_=prepare(fine,self.reference,profile,bindings,self.budget,
                         allow_unvalidated_profile=allow_profile(self.value['region'].get('profile_policy','strict'),self.value['debug']))
                     cpu=collate(items,ids)
                     from .resident import storage_bytes

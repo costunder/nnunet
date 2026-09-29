@@ -1,0 +1,9 @@
+{
+  "debug": true,
+  "complete": true,
+  "admission_failures": 10,
+  "full_training_admitted": false,
+  "research_training_admitted": false,
+  "profile_policy": "research-report",
+  "partition_quality_validated": false
+}

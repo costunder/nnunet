@@ -63,15 +63,25 @@ def single_profile(reg_scale1,sharding=None):
     return result
 
 
-def binding(*, record, dataset_index, cache_sha256, frozen_cnn_sha256, profile, view_epoch, view_index, feature_evidence):
+def binding(**kwargs):
+    return batch_bindings([kwargs.pop('record')],[kwargs.pop('dataset_index')],**kwargs)[0]
+
+
+def batch_bindings(records,indices,**kwargs):
+    """One fresh source digest per bounded batch, never a process-global cache."""
+    if len(records)!=len(indices) or not records or len(set(indices))!=len(indices):raise ValueError('Exact binding batch coverage required')
+    from hiercp_v222.v1_cache import provenance
+    root=Path(__file__).resolve().parents[1]
+    source_sha=preparation_fingerprint(root,provenance())
+    return [_binding(record=r,dataset_index=i,source_sha=source_sha,**kwargs) for r,i in zip(records,indices)]
+
+
+def _binding(*, record, dataset_index, source_sha, cache_sha256, frozen_cnn_sha256, profile, view_epoch, view_index, feature_evidence):
     if type(dataset_index)!=int or dataset_index<0:raise ValueError('Dataset index required')
     if type(view_epoch)!=int or type(view_index)!=int or min(view_epoch,view_index)<0:
         raise ValueError('Explicit fixed nonnegative view epoch/index required')
     if feature_evidence not in ('untrained_plumbing_only','checkpoint_partition_quality_unverified'):
         raise ValueError('No implicit semantic feature approval')
-    from hiercp_v222.v1_cache import provenance
-    root=Path(__file__).resolve().parents[1]
-    source_sha=preparation_fingerprint(root,provenance())
     return dict(format='fixed_region_cache_receipt_v2', dataset_index=dataset_index, cache_sha256=cache_sha256,preparation_source_sha256=source_sha,
         record_id=record['id'], record_sha256=record['sha256'],
         shared_source=record['shared_source'], center=record['center'],
@@ -225,13 +235,15 @@ def _single_items(batch,bindings,runner,regions,r1,e1,cnn_hash,frozen_reference,
         expected=quotient(batch.graph[rel].edge_index,parents[rel[0]],parents[rel[2]],same_type=rel[0]==rel[2])[0]
         if not torch.equal(expected,e1[rel]):raise ValueError('Preparation quotient mismatch')
     runner.last_audit['scale2']={'status':'REMOVED_BY_DESIGN'}
+    edge_digest=tree_hash(batch.graph.edge_index_dict)
+    audits=pair_audits(runner.last_audit,len(batch))
     cpu=lambda t:t.detach().cpu()
     items=[]
     from .data import seal_item,profile_status
     for i,identity in enumerate(bindings):
         item=dict(binding=copy.deepcopy(identity),diagnostic_only=True,training_ready=False,
             source_patch=cpu(batch.source_patches[batch.source_index[i]]),target_patch=cpu(batch.target_patches[i]),
-            fine={},scales=[{}],edges=[{}],audit=copy.deepcopy(runner.last_audit))
+            fine={},scales=[{}],edges=[{}],audit=audits[i])
         lookup={}
         for role,r in r1.items():
             ids=torch.where(r.owner==i)[0]
@@ -245,10 +257,24 @@ def _single_items(batch,bindings,runner,regions,r1,e1,cnn_hash,frozen_reference,
             item['edges'][0][rel]=cpu(torch.stack((lookup[rel[0]][e[0,keep]],lookup[rel[2]][e[1,keep]])))
         item['materialization_receipt']=copy.deepcopy(batch.receipts[i]);item['preparation_pair_index']=i
         item['fine_graph_evidence']=dict(materialized_batch_sha256=batch.materialized_sha256,
-            fine_edges_sha256=tree_hash(batch.graph.edge_index_dict),stage1_quotient_verified=True,stage2_status='REMOVED_BY_DESIGN')
+            fine_edges_sha256=edge_digest,stage1_quotient_verified=True,stage2_status='REMOVED_BY_DESIGN')
         item['preparation_batch_profile_exceeded']=runner.last_audit['scale1']['profile_exceeded']
         item['profile_exceeded']=profile_status(item);item['admission_scope']='per pair; single-scale profile'
         seal_item(item);items.append(item)
     if tree_hash(frozen_reference.dense_encoder.state_dict())!=cnn_hash:raise RuntimeError('Frozen CNN mutated')
     budget.check()
     return items,runner.last_audit
+
+
+def pair_audits(audit,count):
+    """Keep each pair's full group evidence; full batch audit is saved once."""
+    digest=tree_hash(audit)
+    result=[dict(format='region_pair_audit_v1',batch_audit_sha256=digest,preparation_pair_index=i,
+        scale1=dict(roles={}),scale2=dict(status='REMOVED_BY_DESIGN')) for i in range(count)]
+    for role,stats in audit['scale1']['roles'].items():
+        for item in result:item['scale1']['roles'][role]={'group_diagnostics':[]}
+        for group in stats['group_diagnostics']:
+            owner=group['owner']
+            if type(owner)!=int or not 0<=owner<count:raise ValueError('Audit owner outside preparation batch')
+            result[owner]['scale1']['roles'][role]['group_diagnostics'].append(copy.deepcopy(group))
+    return result

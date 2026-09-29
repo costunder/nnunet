@@ -11,7 +11,7 @@ from hiercp_v222.v1_cache import configuration, provenance
 from hiercp_v222.v1_local import V1LocalEncoder
 from l0_ezsp.identity import load_cnn_only
 from .materialization import load_pairs
-from .preparation import binding, prepare, single_profile
+from .preparation import batch_bindings, prepare, single_profile
 from .data import load, save_new
 from .profile_policy import validate_policy,allow_profile,validate_cache_policy
 from tools.v22_artifacts import tree_hash
@@ -85,9 +85,9 @@ def prepare_cache(index,checkpoint,output,*,batch,workers,reg1,view_epoch,budget
                 if psutil.disk_usage(str(output)).free<cfg['minimum_free_gb']*2**30:raise OSError('Disk reserve reached; partial files preserved')
                 ids=list(range(start,min(start+batch,len(ds.rows))))
                 fine=load_pairs(ds,ids,workers=workers,epoch=view_epoch,cache_path=index).to('cuda')
-                bindings=[binding(record=dict(ds.rows[i],donor_component=ds.record(i)['component_id']),dataset_index=i,
+                bindings=batch_bindings([dict(ds.rows[i],donor_component=ds.record(i)['component_id']) for i in ids],ids,
                     cache_sha256=cache_hash,frozen_cnn_sha256=meta['cnn_sha256'],profile=profile,view_epoch=view_epoch,
-                    view_index=0,feature_evidence='checkpoint_partition_quality_unverified') for i in ids]
+                    view_index=0,feature_evidence='checkpoint_partition_quality_unverified')
                 # Only uncalibrated profile bounds are advisory under explicit research policy.
                 items,audit=prepare(fine,frozen,profile,bindings,budget,allow_unvalidated_profile=allow_profile(profile_policy,debug))
                 paths=[output/f'{part}_{i:06d}.pt' for i in ids]
