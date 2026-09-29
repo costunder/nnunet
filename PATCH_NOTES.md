@@ -1,3 +1,9 @@
+## v2.2 — 서버 torch-scatter 누락 조기 검사 (2026-09-29)
+
+- 서버 첫 prepare batch에서 `torch_scatter` 미설치로 실패한 원인을 확인. CLI에서 캐시/체크포인트 읽기 및 출력 폴더 생성 전 필수 패키지와 실제 CUDA scatter/공식 pinned merge 커널을 검사하도록 수정. 자동 설치·CPU fallback 없음.
+- 신규4검사 PASS(RTX5070Ti): 버전별 공식 wheel 페이지, 의존성 누락 오류, 출력/준비 이전 실패, 실제 CUDA 커널. 모델·partition·reg·admission·학습규모 변경 없음. 이번에는 모델 학습을 재실행하지 않음.
+- [서버 복구 절차](docs/region_scatter_dependency_20260929.md). 실패한 출력은 보존하고 새 폴더로 준비. 기존 paired cache 재사용.
+
 ## v2.2 — 실제 고정 partition 검사·시각화 (2026-09-29)
 
 - 저장된 실제8pair의 fine graph hash/CT/좌표/cluster coverage·연결성을 대조. N52,666→13,868→13,849, E2,761,602→379,049→378,284. 새 partition·모델·학습 설정 변경 없음.

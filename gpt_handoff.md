@@ -1,3 +1,10 @@
+## 2026-09-29 최신 — 서버 torch-scatter 누락 복구
+
+- 서버 `HierCP-regions-8580e59` 첫 prepare batch에서 torch_scatter가 없어 공식 merger import 오류. 원본 paired cache 문제/OOM/학습 실패로 오인하지 말것. prepare0/353에서 중단, GNN 미시작.
+- `tools/v22_region_preflight.py` 추가 및 runner 시작 시 의존성·실제 CUDA scatter/공식 pinned merge 검사. 출력 생성과 record materialization 이전 실패 확인. 4검사 로컬GPU PASS, 자동 패키지 설치/환경 교체 없음.
+- 사용자에게 현재 서버 torch/CUDA 조합으로 공식 PyG wheel만 설치하는 명령을 제공. --no-deps/--no-index/--only-binary로 torch 교체와 source build 방지. 재실행 출력은 `work/regions_scatterfix_20260929/`로 분리.
+- [설치·실행 절차](docs/region_scatter_dependency_20260929.md). CLI source hash 변경으로 이전 region 학습 artifact의 현재 source 일치는 새로 주장하지 말것. 기존 smoke는 기존 revision 증거로 보존. 이번 신규 검사는 시작 경로/커널만이며 모델 또는 full training 재실행 없음. 초기 profile 차단은 변경되지 않음.
+
 ## 2026-09-29 최신 — 실제 partition 시각화 및 Git 전달
 
 - 사용자는 직접 SSH 접속 대신 Git 전달 후 서버에서 직접 실행하는 방식을 선택했다. SSH 설치/설정/인증 변경 없음. 서버 Codex 설치 없음. 연결된 원격 셸이나 시작한 서버 학습 없음.

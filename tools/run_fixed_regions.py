@@ -38,6 +38,8 @@ def main():
     if a.mode in ('train','smoke') and (not a.batch_candidates or not a.resident_gib or a.resident_gib<=0):
         raise ValueError('Explicit batch candidates and resident tensor budget required')
     if a.mode!='train' and (a.resume or a.debug_pause_step is not None):raise ValueError('Resume/pause only on train')
+    from tools.v22_region_preflight import check
+    check()  # Before any output directory, checkpoint read or graph materialization.
     budget=Budget(int(a.cuda_gib*2**30),int(a.rss_gib*2**30))
     total=torch.cuda.get_device_properties(0).total_memory
     if budget.cuda_bytes>=total:raise ValueError('CUDA allocator budget must leave device headroom')
