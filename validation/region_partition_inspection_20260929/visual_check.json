@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "detail": "recipient 주변 문맥 · 1차 #229 · shell 2 · 원래 점 2,496개 · bbox 대각선 75.24 mm · 범위 52.2 × 43.4 × 32.5 mm · 초기 bbox 상한 초과",
+  "layout": {
+    "width": 332,
+    "scroll": 332
+  },
+  "checks": [
+    "8 records x 5 roles",
+    "actual 2496-node region and 75.24mm bbox",
+    "synchronized drag rotation",
+    "two scale selector",
+    "slice control",
+    "all edge rendering",
+    "mobile width",
+    "sandboxed inline decode/render/control"
+  ]
+}

@@ -1,3 +1,10 @@
+## v2.2 — 실제 고정 partition 검사·시각화 (2026-09-29)
+
+- 저장된 실제8pair의 fine graph hash/CT/좌표/cluster coverage·연결성을 대조. N52,666→13,868→13,849, E2,761,602→379,049→378,284. 새 partition·모델·학습 설정 변경 없음.
+- 3D 원본/1차/2차 비교, 실제 정규화 CT 단면, 영역 선택·bbox·모든 동일역할 edge 표시 추가. 8pair×5역할 및 회전/단면/모바일/inline 검사 PASS.
+- CUDA CNN batch8로 2차 시작 조건을 읽기 전용 재계산. 미검증 초기 상한과 품질 한계를 그대로 보고하며 정상 학습 승인으로 변경하지 않음. 사용자 서버 실행용 Git 전달; SSH 설정과 장기 학습은 수행하지 않음.
+- [검사 상세](docs/region_partition_inspection_20260929.md). 기존59검사·r8 CUDA 재개·실제 CP smoke의 소스16파일이 현재와 동일함을 확인.
+
 ## v2.2 — 영역 최종 모델과 기존 CP 추천 연결 (2026-09-29)
 
 - 새 `checkpoint.pt`에 선택 모델·전체 support·고정 분할 CNN·split/donor/raw 근거 결속. 기존 scorer/catalog에서 명시적 형식 분기, 기존 rank/filter/paste 검사 공유.

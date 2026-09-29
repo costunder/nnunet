@@ -1,0 +1,5 @@
+{
+  "tools/inspect_fixed_regions_visual.py": "ab4ce88a58e2a64e42042cc81584c68abbf404e2a4de4d4bc0da10cd34db3b63",
+  "tools/fixed-region-inspector.template.html": "a3c3de8504c3c27edbc722368f655ee46f7bac0957f379e7308af557a3b48af0",
+  "tools/check_fixed_region_visual.cjs": "3d98d98016905e347fb74cc3dfa57c8edb53cc44c934f8038731b8688ac170b6"
+}

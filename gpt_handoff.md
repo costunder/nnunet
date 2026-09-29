@@ -1,3 +1,13 @@
+## 2026-09-29 최신 — 실제 partition 시각화 및 Git 전달
+
+- 사용자는 직접 SSH 접속 대신 Git 전달 후 서버에서 직접 실행하는 방식을 선택했다. SSH 설치/설정/인증 변경 없음. 서버 Codex 설치 없음. 연결된 원격 셸이나 시작한 서버 학습 없음.
+- 로컬은 짧은 실행 검사만, 장기 학습은 사용자 서버에서 수행한다. 위치별 dense 추천 지도는 후속 아이디어로 보류. 현재 고정 partition + GraphSAGE, 후보128/L1/L2/loss/원본mask 유지.
+- 실제 r8 저장8pair의 원본 fine-view와 edge hash를 재현·대조하고 고정 CNN을 CUDA batch8로 한 번 인코딩해 읽기 전용 진단했다. N52,666→13,868→13,849, E2,761,602→379,049→378,284. 실제 전체 cluster 연결성 및 질량/경계 검증 통과. 이것은 partition 품질/CP 효용 통과가 아니다.
+- `liver_72:84` recipient context3,150개 중2,496개가75.24mm bbox 한 영역으로 병합됐다. 2차 시작 에너지 독립 재계산에서 가능 연결13/128,721, 2차 추가축약19nodes. 상한만 변경해도 이 구조가 바뀌지 않는다. 공식 GPU merge를 새로 실행한 기록은 아니다.
+- [실제 partition 검사](docs/region_partition_inspection_20260929.md), `tools/inspect_fixed_regions_visual.py` 및 실제좌표/CT단면 viewer 추가. 8pair×5역할·회전·단계·단면·모바일·inline 검사 PASS.
+- 최신 실행 코드16파일은 `validation/region_cp_bridge_20260929/source_sha256.json`과 동일함을 다시 확인했다. 기존59회귀/r8 CUDA 학습·재개/실제3후보 paste 결과를 현재 코드와 연결했으며 무변경 경로를 장기 재실행하지 않았다.
+- 미검증 초기상한에 대한 연구학습 허용 질문은 답변 미수신. 기존의 full admission 차단은 변경하지 않았다. 서버 전달을 전체 학습 준비 완료나 해당 gate 제거로 표현하지 말것. 실행 절차는 `docs/region_training_smoke_20260929.md`의 strict prepare/train이다.
+
 ## 2026-09-29 후속 — 영역 final artifact와 CP scorer/catalog 연결
 
 - 직전130beb4의 online CP 연결 누락 구현: `l0_regions/final.py`, `recommendation.py`, 기존 recommendation/bank dispatch. train 완료 시 final `checkpoint.pt`도 저장. 이전 GAT가중치로 relabel하지 않음.

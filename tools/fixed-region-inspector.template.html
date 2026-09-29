@@ -1,0 +1,90 @@
+<div id="fixed-region-inspector">
+<h3>실제 partition · 원본 → 1차 → 2차</h3>
+<div id="fri-scope" class="text-small"></div>
+<details><summary>8pair 전체 노드·연결 수 비교</summary><div id="fri-summary"></div></details>
+<div class="viz-controls">
+ <label class="form-label">실제 pair<select id="fri-pair" class="form-select"></select></label>
+ <label class="form-label">역할 · 각각의 국소 좌표계<select id="fri-role" class="form-select"></select></label>
+ <label class="form-label">Shell<select id="fri-shell" class="form-select"><option value="all">전체</option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></label>
+ <label class="form-label">연결 표시<select id="fri-edge" class="form-select"><option value="selected">선택 영역 내부·인접 연결</option><option value="all">해당 역할의 모든 연결</option><option value="none">점만</option></select></label>
+</div>
+<div class="text-small" id="fri-total"></div>
+<div class="fri-panels">
+ <section><h3 id="fri-head0">원본</h3><canvas id="fri-g0" role="img" aria-label="원본 실제 노드와 동일 역할 연결"></canvas><div id="fri-caption0" class="text-small"></div></section>
+ <section><h3 id="fri-head1">1차</h3><canvas id="fri-g1" role="img" aria-label="저장된 1차 대표 그래프"></canvas><div id="fri-caption1" class="text-small"></div></section>
+ <section><h3 id="fri-head2">2차</h3><canvas id="fri-g2" role="img" aria-label="저장된 2차 대표 그래프"></canvas><div id="fri-caption2" class="text-small"></div></section>
+</div>
+<div class="text-small">드래그: 동시 회전 · 휠: 확대 · 대표 노드 클릭: 영역 선택 · 모든 점 포함, force layout 없음 · 선은 실제 동일 역할 관계(방향은 생략)</div>
+<div class="viz-controls">
+ <label class="form-label">영역 단계<select id="fri-stage" class="form-select"><option value="0">1차</option><option value="1">2차</option></select></label>
+ <label class="form-label">Cluster ID<input id="fri-cluster" class="form-control" type="number" min="0" value="0"></label>
+ <button id="fri-largest" type="button" class="btn">가장 넓은 영역</button>
+ <label class="form-check"><input id="fri-box" class="form-check-input" type="checkbox" checked> Bbox 표시</label>
+</div>
+<div id="fri-detail" aria-live="polite" class="text-small tabular-nums"></div>
+<div class="fri-bottom">
+ <section><h3>실제 CT 패치 + 선택 영역의 원래 점</h3><canvas id="fri-ct" role="img" aria-label="모델 입력 CT 패치와 선택 cluster 원래 노드의 단면"></canvas>
+ <label class="form-label">패치 깊이 <span id="fri-zlabel"></span><input id="fri-z" class="form-range" type="range" min="0" max="47" value="24"></label>
+ <div id="fri-ctinfo" class="text-small"></div></section>
+ <section><h3>원래 점 → 대표 영역 대응</h3><div id="fri-stats"></div>
+ <div class="text-small">강조: 선택 영역 / 기본색: 나머지 노드. 대표점 위치는 원래 점들의 질량 평균. Bbox는 병합 영역의 범위이며 종양 경계가 아님.</div></section>
+</div>
+<style>
+#fixed-region-inspector{color:var(--foreground)}
+#fixed-region-inspector .fri-panels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#fixed-region-inspector .fri-bottom{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:16px}
+#fixed-region-inspector canvas{display:block;width:100%;height:300px;touch-action:none;border:1px solid var(--border);box-sizing:border-box}
+#fixed-region-inspector #fri-ct{height:280px}
+#fixed-region-inspector section{min-width:0}#fixed-region-inspector h3{font-weight:500}
+#fixed-region-inspector .viz-controls{margin-top:12px;margin-bottom:12px}
+#fixed-region-inspector #fri-detail{margin-top:10px;overflow-wrap:anywhere}
+@media(max-width:650px){#fixed-region-inspector .fri-panels,#fixed-region-inspector .fri-bottom{grid-template-columns:1fr}}
+</style>
+<script>
+(async()=>{
+const root=document.getElementById('fixed-region-inspector'),el=id=>root.querySelector('#fri-'+id);
+try {
+const bytes=Uint8Array.from(atob('__PAYLOAD__'),c=>c.charCodeAt(0));
+const data=JSON.parse(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+const labels={tumor_surface:'donor 종양 표면',source_context:'donor 주변 문맥',source_liver_surface:'donor 간 표면',target_context:'recipient 주변 문맥',target_liver_surface:'recipient 간 표면'};
+const num=x=>x.toLocaleString('en-US');
+let record,role,rv,yaw=.6,pitch=.35,zoom=1,selected=0,stage=0,projected=[],center,span,paintPending=false;
+const color=(name)=>{const v=document.createElement('span');v.style.color='var('+name+')';root.appendChild(v);const c=getComputedStyle(v).color;v.remove();return c;};
+let colors;function palette(){colors={fg:color('--foreground'),muted:color('--muted-foreground'),line:color('--border'),base:color('--viz-series-1'),hot:color('--viz-series-2'),other:color('--viz-series-3')};}
+el('scope').textContent=data.scope;
+el('summary').innerHTML='<table class="table table-sm"><thead><tr><th>Record</th><th>원본 N / E</th><th>1차 N / E</th><th>2차 N / E</th></tr></thead><tbody>'+data.summary.map(r=>'<tr><td>'+r.id+'</td>'+r.counts.map(c=>'<td>'+num(c[0])+' / '+num(c[1])+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+data.records.forEach((r,i)=>el('pair').add(new Option(r.id+' ← '+r.donor,i)));
+function setPair(){record=data.records[+el('pair').value];el('role').replaceChildren();Object.keys(record.roles).forEach(r=>el('role').add(new Option(labels[r],r)));el('role').value=record.roles.target_context?'target_context':Object.keys(record.roles)[0];setRole();}
+function setRole(){role=el('role').value;rv=record.roles[role];el('shell').value='all';el('shell').disabled=!role.includes('context');let mins=[Infinity,Infinity,Infinity],maxs=[-Infinity,-Infinity,-Infinity];rv.pos.forEach(p=>p.forEach((v,j)=>{mins[j]=Math.min(mins[j],v);maxs[j]=Math.max(maxs[j],v)}));center=mins.map((v,j)=>(v+maxs[j])/2);span=Math.max(...maxs.map((v,j)=>v-mins[j]),1);zoom=1;selectLargest();}
+function selectLargest(){const candidates=rv.clusters[stage].filter(c=>el('shell').value==='all'||c.shell===+el('shell').value);selected=candidates.reduce((a,b)=>b.bbox_mm>a.bbox_mm?b:a,candidates[0]||{id:0}).id;syncSelection(true);}
+function syncSelection(moveSlice=false){const cs=rv.clusters[stage];selected=Math.max(0,Math.min(cs.length-1,Math.trunc(selected)||0));el('cluster').value=selected;el('cluster').max=cs.length-1;if(moveSlice){const ids=rv.parents[stage].flatMap((p,i)=>p===selected?[i]:[]);if(ids.length){const zs=ids.map(i=>(rv.grid[i][2]+1)*23.5).sort((a,b)=>a-b);el('z').value=Math.round(zs[Math.floor(zs.length/2)])}}draw();}
+function visible(shell){return el('shell').value==='all'||shell===+el('shell').value;}
+function size(canvas){const w=canvas.clientWidth,h=canvas.clientHeight,dpr=devicePixelRatio||1;if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);return {ctx,w,h};}
+function project(p,w,h){const a=p.map((v,j)=>v-center[j]);let x=Math.cos(yaw)*a[0]+Math.sin(yaw)*a[2],z=-Math.sin(yaw)*a[0]+Math.cos(yaw)*a[2];const y=Math.cos(pitch)*a[1]-Math.sin(pitch)*z;z=Math.sin(pitch)*a[1]+Math.cos(pitch)*z;const s=Math.min(w,h)*.68*zoom/span;return [w/2+x*s,h/2-y*s,z];}
+function graph(level){const {ctx,w,h}=size(el('g'+level));const positions=level===0?rv.pos:rv.nodes[level-1],clusters=level===0?null:rv.clusters[level-1];
+ const p=positions.map(x=>project(x,w,h));projected[level]=p;
+ const marked=level===0?rv.parents[stage].map(v=>v===selected):positions.map((_,i)=>level-1===stage?i===selected:level===1?rv.parents[1][rv.parents[0].indexOf(i)]===selected:rv.parents[1][rv.parents[0].indexOf(selected)]===i);
+ const shown=positions.map((_,i)=>visible(level===0?rv.shell[i]:clusters[i].shell));
+ const mode=el('edge').value;let displayedEdges=0,eligibleEdges=0;ctx.lineWidth=.55;
+ if(mode!=='none'){ctx.strokeStyle=colors.line;ctx.globalAlpha=mode==='all'?.18:.48;ctx.beginPath();for(const [a,b] of rv.edges[level]){if(!shown[a]||!shown[b])continue;eligibleEdges++;if(mode==='selected'&&!(level===0?marked[a]&&marked[b]:marked[a]||marked[b]))continue;ctx.moveTo(p[a][0],p[a][1]);ctx.lineTo(p[b][0],p[b][1]);displayedEdges++;}ctx.stroke();ctx.globalAlpha=1;}
+ for(const hot of [false,true]){ctx.fillStyle=hot?colors.hot:colors.base;ctx.globalAlpha=hot?1:.40;ctx.beginPath();for(let i=0;i<p.length;i++){if(!shown[i]||marked[i]!==hot)continue;const radius=level===0?(hot?2.4:1.25):(hot?4.5:2);ctx.moveTo(p[i][0]+radius,p[i][1]);ctx.arc(p[i][0],p[i][1],radius,0,Math.PI*2);}ctx.fill();}ctx.globalAlpha=1;
+ const c=rv.clusters[stage][selected];if(c&&el('box').checked){const corners=[];for(let b=0;b<8;b++)corners.push(project(c.lower.map((v,j)=>(b>>j)&1?c.upper[j]:v),w,h));ctx.strokeStyle=colors.hot;ctx.lineWidth=1;ctx.beginPath();for(let b=0;b<8;b++)for(let j=0;j<3;j++){const t=b^(1<<j);if(t>b){ctx.moveTo(corners[b][0],corners[b][1]);ctx.lineTo(corners[t][0],corners[t][1]);}}ctx.stroke();}
+ ctx.strokeStyle=colors.fg;ctx.fillStyle=colors.fg;ctx.font='12px system-ui';ctx.lineWidth=1;const o=project(center,w,h);for(let j=0;j<3;j++){let endpoint=center.slice();endpoint[j]+=span*.19;const end=project(endpoint,w,h);const dx=end[0]-o[0],dy=end[1]-o[1];ctx.beginPath();ctx.moveTo(30,h-28);ctx.lineTo(30+dx,h-28+dy);ctx.stroke();ctx.fillText(['X','Y','Z'][j]+' mm',30+dx+2,h-28+dy-2);}
+ el('head'+level).textContent=['원본','1차','2차'][level]+' · '+num(positions.length)+' N';el('caption'+level).textContent='동일 역할 E '+num(rv.edges[level].length)+' · 표시 '+num(displayedEdges)+' · 노드 '+num(shown.filter(Boolean).length)+'/'+num(positions.length);
+}
+function ct(){const {ctx,w,h}=size(el('ct'));const z=+el('z').value,patch=record.patches[role.startsWith('target')?'target':'source'];const off=document.createElement('canvas');off.width=off.height=48;const o=off.getContext('2d'),img=o.createImageData(48,48);for(let i=0;i<2304;i++){const g=patch.voxels[z*2304+i];img.data.set([g,g,g,255],4*i)}o.putImageData(img,0,0);const side=Math.min(w,h),dx=(w-side)/2,dy=(h-side)/2;ctx.imageSmoothingEnabled=false;ctx.drawImage(off,dx,dy,side,side);let selectedCount=0;for(const hot of [false,true]){ctx.fillStyle=hot?colors.hot:colors.base;ctx.globalAlpha=hot?1:.5;ctx.beginPath();rv.grid.forEach((g,i)=>{if(!visible(rv.shell[i])||Math.abs((g[2]+1)*23.5-z)>.5||(rv.parents[stage][i]===selected)!==hot)return;const x=dx+((g[0]+1)*23.5+.5)*side/48,y=dy+((g[1]+1)*23.5+.5)*side/48,r=hot?3:1.5;ctx.moveTo(x+r,y);ctx.arc(x,y,r,0,Math.PI*2);if(hot)selectedCount++});ctx.fill();}ctx.globalAlpha=1;el('zlabel').textContent=z+' / 47';el('ctinfo').textContent='모델 입력 정규화 CT, HU 아님 · 표시 창 '+patch.window.map(x=>x.toFixed(2)).join('~')+' · 해당 단면 선택 점 '+selectedCount+' · grid의 Z축 단면';}
+function draw(){if(!rv)return;palette();[0,1,2].forEach(graph);ct();const c=rv.clusters[stage][selected];
+ el('total').textContent='Pair 전체 13종 관계: '+record.counts.map((x,i)=>['원본','1차','2차'][i]+' '+num(x[0])+'N / '+num(x[1])+'E').join(' → ');
+ el('detail').textContent=c?`${labels[role]} · ${stage+1}차 #${selected} · shell ${c.shell} · 원래 점 ${num(c.mass)}개 · bbox 대각선 ${c.bbox_mm.toFixed(2)} mm · 범위 ${c.extent_mm.map(x=>x.toFixed(1)).join(' × ')} mm · 초기 bbox 상한 ${c.bbox_exceeded?'초과':'이내'}`:'해당 역할 없음';
+ const k1=rv.nodes[0].length,k2=rv.nodes[1].length,joined=rv.clusters[1].filter(c=>c.stage1_children>1).length;
+ el('stats').innerHTML='<table class="table table-sm"><tbody><tr><td>1차 → 2차 영역 수</td><td>'+num(k1)+' → '+num(k2)+'</td></tr><tr><td>2차에서 둘 이상을 합친 영역</td><td>'+joined+'</td></tr><tr><td>2차 시작 시 에너지상 병합 가능 연결</td><td>'+rv.energies.admissible+' / '+num(rv.energies.count)+'</td></tr><tr><td>선택 영역의 원본 CNN 특징 분산</td><td>'+(c?c.cumulative_fine_variance.toFixed(4):'—')+'</td></tr><tr><td>공간 연결 검사</td><td>모든 저장 cluster 연결됨</td></tr></tbody></table>';
+}
+function schedule(){if(paintPending)return;paintPending=true;requestAnimationFrame(()=>{paintPending=false;draw()})}
+el('pair').onchange=setPair;el('role').onchange=setRole;el('shell').onchange=selectLargest;el('edge').onchange=draw;el('box').onchange=draw;el('z').oninput=ct;
+el('stage').onchange=()=>{stage=+el('stage').value;selectLargest()};el('cluster').onchange=()=>{selected=+el('cluster').value;syncSelection(true)};el('largest').onclick=selectLargest;
+for(let l=0;l<3;l++){const canvas=el('g'+l);let down=null,dragged=false;canvas.onpointerdown=e=>{down=[e.clientX,e.clientY];dragged=false;canvas.setPointerCapture(e.pointerId)};canvas.onpointermove=e=>{if(!down)return;const dx=e.clientX-down[0],dy=e.clientY-down[1];if(Math.abs(dx)+Math.abs(dy)>2)dragged=true;yaw+=dx*.008;pitch+=dy*.008;down=[e.clientX,e.clientY];schedule()};canvas.onpointerup=e=>{down=null;if(dragged||l===0)return;const b=canvas.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;let best=-1,d=144;projected[l].forEach((p,i)=>{if(!visible(rv.clusters[l-1][i].shell))return;const q=(p[0]-x)**2+(p[1]-y)**2;if(q<d){d=q;best=i}});if(best>=0){stage=l-1;el('stage').value=stage;selected=best;syncSelection(true)}};canvas.onwheel=e=>{e.preventDefault();zoom=Math.max(.5,Math.min(4,zoom*Math.exp(-e.deltaY*.001)));schedule()};}
+new ResizeObserver(schedule).observe(root);setPair();root.dataset.ready='true';
+}catch(e){root.dataset.error=e.message;const error=document.createElement('div');error.setAttribute('role','alert');error.textContent='시각화 오류: '+e.message;root.append(error);throw e;}
+})();
+</script>
+</div>
