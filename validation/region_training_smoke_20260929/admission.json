@@ -1,0 +1,126 @@
+{
+  "debug": true,
+  "admission_failures": 10,
+  "complete": true,
+  "full_training_admitted": false,
+  "profile": {
+    "document_type": "fixed_partition_diagnostic_profile_not_training_config",
+    "encoder_id": "fixed_region_sage_2_1_debug_v1",
+    "training_ready": false,
+    "blockers": [
+      "partition quality from the chosen checkpoint is unverified",
+      "both explicit reg values and admission bounds remain uncalibrated",
+      "production full-cohort/MIG cost and CP utility unverified"
+    ],
+    "backend": {
+      "repository": "drprojects/torch-graph-components",
+      "commit": "e3db9f352fae52dff416616742b3c7ff1378451d",
+      "path": "src/torch_graph_components/merge.py",
+      "function": "merge_components_by_contour_prior",
+      "git_blob_sha": "f37f803137e2cb28d17b75800e239a5b6406f778",
+      "options": {
+        "merge_only_small": false,
+        "min_size": 1,
+        "k": -1,
+        "P": null,
+        "reduce": "add",
+        "depth": 0,
+        "max_iterations": 32,
+        "verbose": false,
+        "sharding": null
+      },
+      "execution_option_note": "sharding null denotes no sharding; benchmark before selecting an explicit edge chunk."
+    },
+    "partition": {
+      "scope": [
+        "pair",
+        "role",
+        "existing_context_shell"
+      ],
+      "features": {
+        "dtype": "float32",
+        "metric": "l2_normalized",
+        "eps": 1e-08,
+        "scale1": "CNN32",
+        "scale2": "frozen_CNN32_mass_mean"
+      },
+      "cluster_decision_grad": false,
+      "pooled_feature_grad": true,
+      "initial_node_mass": 1,
+      "scale2_mass": "original_fine_node_count",
+      "merge_adjacency": "same_role_neighbors_unique_undirected",
+      "initial_edge_weight": 1.0,
+      "coarse_partition_edge_weight": "sum_of_unique_fine_adjacency_weights",
+      "reg_scale1": 0.02,
+      "reg_scale2": 0.02,
+      "reg_policy": "required finite nonnegative explicit values; null is an error for actual forward"
+    },
+    "diagnostic_profile_from_original_NOT_VALIDATED": {
+      "caps_by_role": {
+        "tumor_surface": [
+          128,
+          32
+        ],
+        "source_context_per_shell": [
+          128,
+          32
+        ],
+        "source_liver_surface": [
+          64,
+          16
+        ],
+        "target_context_per_shell": [
+          128,
+          32
+        ],
+        "target_liver_surface": [
+          64,
+          16
+        ]
+      },
+      "nodes_total": [
+        1024,
+        256
+      ],
+      "directed_edges_total": [
+        32768,
+        8192
+      ],
+      "bbox_surface_diagonal_mm": [
+        6,
+        12
+      ],
+      "bbox_context_diagonal_mm": [
+        10,
+        20
+      ],
+      "normalized_feature_sse_per_mass": [
+        0.05,
+        0.1
+      ],
+      "applied": "after official partition, before each scale GAT",
+      "violations": "explicit error, not repair, sample drop, fallback, or CP no-op"
+    },
+    "graph_encoder": {
+      "sage_layers": [
+        2,
+        1
+      ],
+      "hidden": 128,
+      "readout": "mass-aware attention; equal two-scale mix",
+      "output_dim": 128
+    },
+    "untouched": [
+      "Basic CP",
+      "L1/L2",
+      "rank/CE/alignment",
+      "CT/stride4/anchor",
+      "physical batch",
+      "full observations",
+      "128 recommendation candidates",
+      "patient-group support exclusion",
+      "full paste mask eligibility"
+    ]
+  },
+  "cnn_sha256": "f6a89b382e3ad3d3644cb0b504ad7f7fab625e8df2e4b714437327fee5ff3ee4"
+}

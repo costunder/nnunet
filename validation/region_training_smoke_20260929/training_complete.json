@@ -1,0 +1,8 @@
+{
+  "debug": true,
+  "epochs": 1,
+  "steps": 4,
+  "selected_epoch": 1,
+  "checkpoint_sha256": "91ec10bdfd8a462f65e5e6c78bb08a8bc9b2527a005cf189a0efc1341c701665",
+  "nnunet_training": false
+}

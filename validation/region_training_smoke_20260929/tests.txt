@@ -1,0 +1,51 @@
+test_changed_model_optimizer_cursor_rng_rejected (tests.test_region_training_contract_debug.RegionResumeContract) ... ok
+test_debug_cannot_resume_as_full (tests.test_region_training_contract_debug.RegionResumeContract) ... ok
+test_legacy_gat_cannot_resume (tests.test_region_training_contract_debug.RegionResumeContract) ... ok
+test_other_cache_and_runtime_cannot_resume (tests.test_region_training_contract_debug.RegionResumeContract) ... ok
+test_valid_round_trip (tests.test_region_training_contract_debug.RegionResumeContract) ... ok
+test_cpu (tests.test_region_sparse_debug.StableSparse) ... D:\AI project\nnunet\l0_sage\encoder.py:20: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\SparseCsrTensorImpl.cpp:55.)
+  return matrix.to_sparse_csr(),degree
+ok
+test_cuda (tests.test_region_sparse_debug.StableSparse) ... ok
+test_both_typed_quotients_have_exact_original_witnesses (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_cache_identity_and_tamper_rejected (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_duplicate_record_and_wrong_indices (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_failed_profile_not_normal_sample (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_invalid_coverage_and_edges_rejected (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_live_cnn_gradient_no_partition_in_update (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_materialized_record_view_and_content (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_missing_second_relation_even_with_resealed_receipt (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_missing_verification_rejected_at_all_boundaries (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_preparation_dependencies_isolated_bytes (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_profile_flag_cannot_override_audit (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_rebatch_output_and_no_fine_edges (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_resident_reuse_mutation_and_budget (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_valid_cold_hit_transfer_and_storage_accounting (tests.test_l0_regions_debug.FixedHierarchy) ... ok
+test_cache_invalidation_and_rng_preservation (tests.test_l0_sage_debug.Integration) ... ok
+test_empty_target_context_and_single_batch_equivalence (tests.test_l0_sage_debug.Integration) ... ok
+test_missing_coverage_rejected (tests.test_l0_sage_debug.Integration) ... ok
+test_unchanged_weights_coverage_cache_gradient_optimizer (tests.test_l0_sage_debug.Integration) ... ok
+test_cpu_mean_forward_all_gradients (tests.test_l0_sage_debug.Operator) ... ok
+test_cuda_mean_forward_all_gradients (tests.test_l0_sage_debug.Operator) ... ok
+test_relation_roots_and_block_residual_match_explicit_formula (tests.test_l0_sage_debug.Operator) ... ok
+test_live_mass_and_gradient (tests.test_l0_ezsp_debug.CPU) ... ok
+test_mass_attention (tests.test_l0_ezsp_debug.CPU) ... ok
+test_old_resume_rejected (tests.test_l0_ezsp_debug.CPU) ... ok
+test_required_reg (tests.test_l0_ezsp_debug.CPU) ... ok
+test_second_level_mass_and_boundary (tests.test_l0_ezsp_debug.CPU) ... ok
+test_typed_edges_and_witness (tests.test_l0_ezsp_debug.CPU) ... ok
+test_full_encoder_gradient_and_no_backward_repartition (tests.test_l0_ezsp_debug.GPU) ... ok
+test_official_chain_groups_repeat_and_bounds (tests.test_l0_ezsp_debug.GPU) ... ok
+test_shell_split_isolated_and_empty (tests.test_l0_ezsp_debug.GPU) ... ok
+test_group_excess_counts_weight_fine_nodes (tests.test_l0_ezsp_diagnostic_debug.DiagnosticTests) ... ok
+test_integrity_checks_are_not_bypassed (tests.test_l0_ezsp_diagnostic_debug.DiagnosticTests) ... ok
+test_profile_excess_does_not_change_partition_or_limits (tests.test_l0_ezsp_diagnostic_debug.DiagnosticTests) ... ok
+test_resource_budget_blocks (tests.test_l0_ezsp_diagnostic_debug.DiagnosticTests) ... ok
+test_metadata_schedule_matches_actual_grouping_not_global_ceil (tests.test_v22_cost_readonly_debug.CostBoundaries) ... ok
+test_partial_log_cannot_become_complete_epoch (tests.test_v22_cost_readonly_debug.CostBoundaries) ... ok
+test_phase_scope_and_invalid_sum (tests.test_v22_cost_readonly_debug.CostBoundaries) ... ok
+
+----------------------------------------------------------------------
+Ran 44 tests in 17.820s
+
+OK

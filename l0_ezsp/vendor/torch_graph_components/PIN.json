@@ -1,0 +1,25 @@
+{
+  "commit": "e3db9f352fae52dff416616742b3c7ff1378451d",
+  "files": {
+    "__init__.py": {
+      "sha256": "6c2f173ee8018b519061a8830f6100f8e187bb193c8224c62e03113666489558",
+      "git_blob": "2384f8e12ab5dbde36de310cf6855061818c49de"
+    },
+    "_deps.py": {
+      "sha256": "3fdb4446e83e07184f33844c59ac45bff824054c7ef43d22ca3b46aad6e89963",
+      "git_blob": "27630f6229228061ebf88d0fdeed20ae585e7219"
+    },
+    "merge.py": {
+      "sha256": "f3ae42ce6f0a69fb412155ef9be272fe4323d6b7b05fa9dfadc84065ef53ec77",
+      "git_blob": "f37f803137e2cb28d17b75800e239a5b6406f778"
+    },
+    "utils.py": {
+      "sha256": "f0284408905a3f13489ee81c1feaae743d19dc167bab49b18c2aa1443af86277",
+      "git_blob": "0870052efb34ad88e902db4b62d0828360110810"
+    },
+    "wcc.py": {
+      "sha256": "7d696861ef2d2187122283c4758f363659262a7dde03109151a3c8fbe009927b",
+      "git_blob": "7f0ffb0d112562e718b4b897945d2572bf8fc98c"
+    }
+  }
+}

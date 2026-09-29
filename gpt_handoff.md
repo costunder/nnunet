@@ -1,3 +1,67 @@
+## 2026-09-29 현재 — 영역 SAGE 학습/재개 로컬 smoke
+
+- 사용자 요청은 로컬 짧은 smoke 후 Git push/서버 명령 전달. 장기 로컬/서버 학습 자동 시작 금지.
+- [학습 연결 및 실행 절차](docs/region_training_smoke_20260929.md). `tools/run_fixed_regions.py` prepare/train/smoke, 전체 관측 support/refresh/validation/best/final-memory/foreground pause/resume.
+- 최종44회귀 PASS; `work/regions_training_smoke_20260929_r5/smoke_result.json` PASS. 실제 DEBUG train8/val2,4updates. 모델·optimizer·state·RNG가 연속 실행과 새 프로세스 재개 간 bit-exact. r3/r4 실패 보존. 허용오차를 느슨하게 만들어 통과시킨 것 아님.
+- 새 영역 학습만 고정 순서 CSR segment sum 사용: 기존 CSR 반복 fwd/gradient 차이를 실제 추적함. 같은 수식/노드/edge 유지, 자체 gradient 수식 CPU/GPU 대조. 이전 속도 자료를 새 커널의 성능으로 간주하지 말것.
+- **아직 full admission 아님**: 로컬10/10 unvalidated initial profile 위반. 사용자 기존 실패sample 금지 지시에 따라 full 모드 거부. DEBUG 승격/reg·상한 자동조정 금지. 새 영역 artifact를 online CP/nnU-Net이 직접 읽는 연결은 미완료.
+- 서버 CNN은 기존 기록의 step169 경로를 사용하며 로컬에서 확인한 것으로 말하지 말것. 기존 GAT optimizer/support를 SAGE exact resume로 쓸 수 없음. 새40epoch GNN 학습이며 BasicCP/L1L2/loss/후보128/원본mask 변경 없음.
+
+## 2026-09-29 R3 독립 검토 반영 — 검증 표시 누락·실제 batch 전환 비용
+
+- 최신: [R3 경계 수정과 비용](docs/l0_regions_r3_boundary_20260929.md). R3-B01 missing signature fail-closed, encoder 구조검사 재인증 제거. P3 25,925,496bytes는 .pt 파일 합계이며 실제8pair tensor23,254,500bytes로 분리.
+- GPU 포함37검사 통과. 동일GPU batch8/warmCSR update1.530→0.836초. 새 기존schedule 연속실행은 설정8이나4환자×2관측의 자연tail2, 양쪽 같은실제batch2에서RAM-hit step0.515→0.605초. Region H2D/검증0.101초+CSR0.066초. 속도문제 해결이라고 보고하지 말것.
+- 원시 `validation/l0_regions_r3_boundary_20260929/`; 2회 전체DEBUG스케줄, source snapshot 보존. 기존CNN step4, FP32/공유GPU. 2차축약/partition의미/전체cohort/MIG/CP효용 미검증. BasicCP/L1L2/loss/후보128/mask/reg/상한 유지, 장기학습 없음.
+
+## 2026-09-29 고정 영역 독립 검토 F01/F02/F03 수정
+
+- 최신 상세: [검증 경계 및 RAM 재사용 수정](docs/l0_fixed_regions_receipts_20260929.md). 준비 의존성 fingerprint, 실제 materialization receipt, 2차 exact quotient, per-pair admission 무결성을 보완. 기존 캐시/보고서 보존, 새 cache receipt v2 사용.
+- 최종 35개 회귀 통과. 실제 DEBUG8pair/FP32 동일 비교: update1.440→0.843초, 첫 검증/구성6.336초, RAM 재사용0.00431초. 다른 프로젝트 GPU 부하가 있었으므로 단독 GPU/서버epoch 속도 입증 아님. 소스 CT양쪽7개 확인, L0/L1L2 시간 및 누적 fine 분산 별도 기록.
+- 원시 보고서와 측정 당시 source ZIP: `validation/l0_fixed_regions_receipts_20260929/`. 상한/reg/min_size/구조 변경 없음, profile 위반 및 미미한2차축약 유지. Production 미승인, 장기학습/전체평가/push 미실행.
+
+## 2026-09-29 고정 영역 계층 + SAGE2/1 구현
+
+- [최신 기록](docs/l0_fixed_regions_20260929.md). 사용자가fineSAGE만으로중단하지말고 고정영역계층을준비하라고변경함. `l0_regions` 별도경로: frozen기존CNN32→사전1/2차partition·typedquotient; update는liveCNN집계→SAGE2→고정집계→SAGE1→두scale128D. 온라인병합/fineedge전송없음.
+- 기존CNNcheckpoint를찾는일을사용자에게되묻지말것. 서버기록경로는 `/home/aicompetition06/Medical/HierCP-v22-e1e34bf/work/v22_gnn40_resume114_20260928/training/checkpoint_latest.pt`, 마지막사용자로그step169. 로컬검사는 `work/v22_rereview_20260927_DEBUG/uninterrupted/checkpoint_latest.pt` step4/DEBUG를strictCNN-only load. 서버파일을로컬에서읽었다거나 step4를의미있는분할학습완성본으로말하지말것.
+- 실제8pair52,666N/2,761,602E→scale1 13,868N/379,049E→scale2 13,849N/378,284E. 2차는19node만추가감소, 초기bbox/분산/상한위반그대로. Reg0.02두값자동변경없음, 항상diagnostic/readyfalse, model checkpoint export금지.
+- 최종동일batch8/FP32/warmup1+교대3회 fineSAGE update1.376→regionSAGE0.614초;refresh0.458→0.192초. 준비·저장·최초읽기/H2D포함9.890초,8pair캐시23,947,998bytes. 반복디스크검사비용포함한fullcohort검증아님. 이전2.283/1.203과섞지말것.
+- 캐시record별재배치,checkpointCNN/record/sharedsource/center/transform(recordSHA)/fixedview/reg/pinnedbackend/sourcehash결속. 입력검사우회없음. 공식merge·기존EZ-SP/fineSAGE·BasicCP/L1L2/loss/후보128/mask/core불변.
+- 29검사통과+이후profileidentity정정관련6재검사. `validation/l0_fixed_regions_20260929/`. 실제CPU파일fixture권한실패기록도보존. 새공식ID는fixed_region_sage_2_1_debug_v1, 과거측정cache를새identity로재표시하지않음.
+- 구현된것은실제loss/update연결의별도DEBUG경로. Production cache loader/runner전환·MIG/BF16/fullsupport/전체학습·CP정확도검증은미완료. 장기학습자동시작금지.
+
+## 2026-09-29 GraphSAGE 관계·refresh·서버 비용 경계 감사
+
+- [최신 기록](docs/l0_sage_audit_20260929.md), 원시 보고서 `validation/l0_sage_audit_20260929/`. EZ-SP를 주력 경로에 추가하지 않고 adapter/결과 보존. GraphSAGE 우선 후보, production encoder와SAGE 소스는 이번에 변경하지 않음.
+- 관계별 mean·root13개와 기존 residual 유지 확인. 역할별 incoming root2/3/2/4/2는 독립 행렬이며 GAT와 동일 수식 아님. 명시적 block 수식/입력·root gradient 대조 통과, 임의 root 제거 없음.
+- 이미D^-1 A CSR→PyG fused spmm 사용. 실제8pair refresh 계측: SAGE integrity약18ms/CSR약19ms, graph blocks합계322ms(GAT181ms). CNN양쪽약10ms. CSR 준비만 주범이라 단정 불가. 별도 동기화 계측값이며 앞선 update2.283/1.203초와 섞지 말 것.
+- 이전 로컬 전체 metadata11,279/2,823개에서 physical32 query405update/validation100batch; memory32라면353batch. 사용자 서버22.104초가405update를 대표한다는 조건에 optimization149.20분. 서버 refresh/validation 및 SAGE epoch시간은미확인/null. 로컬8support/FP32/CNNchunk4를 서버fullsupport/BF16/chunk32에 단순 배속 환산 금지.
+- `tools/summarize_v22_cost_readonly.py`는 metadata/JSONL만 읽고 학습 없음. 실제 로컬 DEBUG로그 CLI 확인. `tools/profile_sage_refresh_debug.py`는 명시 예산 내 짧은 GPU forward 계측, checkpoint/ready 없음.
+- 전체23검사 통과/skip0, core hash·SAGE hash·EZ-SP 보존ZIP23파일 검증. 장기학습/전체평가/production전환 미실행, MIG/BF16/full-support/SAGE CP효용 미검증.
+
+## 2026-09-29 GAT / GraphSAGE 직접 비교 완료 — 별도 DEBUG
+
+- [현재 기록](docs/l0_gat_sage_comparison_20260929.md). `l0_sage/encoder.py`에 full-neighbor mean GraphSAGE 구현. 13relation×3층 conv만 교체,128D/CNN/readout/L1L2/loss 및 실제 graph 보존. 정적D^-1 A CSR을 batch당1회 생성·backward재사용. Sampling/coarsening/EZ-SP 교체 없음.
+- 실제 DEBUG8pair/52,666nodes/2,761,602edges,같은physical8/FP32. 교대순서 warmup1+측정3 각 arm. 전체update 평균 GAT2.283초/SAGE1.203초(47.3%단축); peak1.010/0.772GiB. Memory refresh는0.247/0.406초로 SAGE가 더 느렸음. 현재 서버epoch/CP정확도 결론 금지.
+- 모델전체params5,550,806/5,535,830. 공통310parameter 동일, 독립clone update 후 masterhash 보존. 가중치는 초기seed42이며 학습checkpoint 아님. Dataset은 DEBUG8개로 전체production규모 아님.
+- 새6+기존13=19검사 통과. PyG deepcopy CPU RNG 소비를 추가검사로 발견·수정; 최종 masterhash는 측정시점과 동일 확인. 실패기록과 최종기록 분리 보존. 원시수치 `validation/l0_gat_sage_20260929/report.json`, 최종검사 `verification_final.json`.
+- Production encoder/BasicCP/후보128/원본mask/기존결과 변경 없음. GraphSAGE는별도diagnostic checkpoint export금지. BF16/MIG/fullsupport/학습효용 미검증. 장기학습 미시작.
+
+## 2026-09-29 개별 pair 진단과 별도 전체 update 비용
+
+- [현재 기록](docs/l0_ezsp_diagnostics_20260929.md). 기존 adapter와9개 검사23파일은 `versions/v2.22/ezsp_before_diagnostics_20260929/adapter_and_9_tests.zip`+manifest 보존/검증. 프로파일 거부를 구현 오류/EZ-SP 자체 실패로 해석하지 않는다.
+- 8pair 압축전후 N/E, 역할/shell72행 CC·mass histogram·bbox/분산 초과 fine 비율·종료 상태·시간 기록. strict scale2 전부NOT_RUN. 별도 diagnostic-only full update의 scale2와 혼동 금지.
+- `tools/diagnose_l0_ezsp_pairs.py`: CUDA6GiB/RSS12GiB/180초 명시적 예산, same physical8, CPU master복제, 기존 observed_rank loss/L1L2/AdamW. hard integrity 유지. production 체크포인트/ready 생성 없음. 미검증상한·reg0.02·min_size1 자동수정 없음.
+- 13검사 통과. 짧은 실제 update 평균 기존2.649초/EZ-SP4.812초, 공식partition3.160초, peak평균1.007/0.498GiB. source 및 weights hash 보고. EZ-SP scale2/loss 반복차이 관측, 결정론 미보장. 성능/epoch 개선 입증 아님.
+- 사용자 GAT 대안 질문에 원논문 확인: 동일 graph의 mean GraphSAGE가 직접 encoder 비교 후보; GraphSAINT/Cluster-GCN은 sampling/mini-batch 방법으로 별도 축. 아직 encoder 교체하지 않았다. BasicCP/후보128/원본mask/production설정/장기학습 불변.
+
+## 2026-09-29 Reconciled EZ-SP adapter — 실제 admission 실패를 포함한 구현 기록
+
+- [현재 상세 기록](docs/l0_ezsp_adapter_20260929.md). 사용자 ZIP/정정/원본 실제 파일을 읽고 공식 `e3db9f352fae52dff416616742b3c7ff1378451d` merge를 변경 없이 vendoring했다. mutual-best/pair-only 대체 없음. 이전 ZIP 미수령 검토는 현재 상태가 아니다.
+- 별도 `l0_ezsp` 패키지에 data sidecar, pair/role/shell partition, post-partition admission, typed quotient, live mass 집계, CNN→merge→GAT2→merge→GAT1→두 scale readout→128D 구현. 명시적 공통 encoder 주입으로 기존 L1/L2/loss와 합성 gradient/optimizer 연결 검사. production runner/온라인 CP 기본 경로는 변경하지 않았다.
+- reg 두 값은 필수, 미정 설정 null 유지. 공식 GPU 검사와 원본 CPU 수학 참고 검사 분리.9개 단위 검사 통과. 실제 CT DEBUG1/8pair에서 reg0.02 초기화 feature는 bbox/분산/node/edge admission 실패. 따라서 실제 coarse GAT/backward·epoch 개선·production 승인은 없다.
+- 실제8pair 52,666nodes/2,761,602edges; scale1 partition 및 역할 검사1.612초, 거부까지1.728초. 새 full update 시간 아님. baseline 동일8pair 첫5.003초/다음2.633초의 짧은 측정이며 서버3시간 개선 근거로 사용 금지.
+- BasicCP/L1/L2/loss/physical batch/full observation/후보128/full paste mask/core cache hashes 보존. 장기 GNN/nnU-Net 학습 없음. source/reg/profile identity 없는 legacy load는 strict=False도 거부한다.
+
 ## 2026-09-28 L0 내부 연산 수정·실제 CT GPU 비교
 
 - [L0 수정·검증 및 서버 명령](docs/v22_l0_kernel_20260928.md). 내부 logit checkpoint를 직접 streamed backward로 교체, CUDA pointwise fusion, aggregation node cast 재사용을 구현했다. L0 인스턴스에만 적용하며 outer checkpoint/CNN/L1/L2/모델·그래프 규모 유지.

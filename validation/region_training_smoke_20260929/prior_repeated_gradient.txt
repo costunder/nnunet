@@ -1,0 +1,5 @@
+D:\AI project\nnunet\l0_sage\encoder.py:20: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\SparseCsrTensorImpl.cpp:55.)
+  return matrix.to_sparse_csr(),degree
+losses 2.0830345153808594 2.0830342769622803
+changed gradients 421
+[('local.core.dense_encoder.stem.block.3.weight', 7.525086402893066e-07), ('local.core.dense_encoder.stem.block.0.weight', 6.407499313354492e-07), ('local.core.dense_encoder.down1.0.weight', 4.172325134277344e-07), ('local.core.dense_encoder.down1.3.block.0.weight', 3.129243850708008e-07), ('local.core.dense_encoder.down1.3.block.3.weight', 2.980232238769531e-07), ('local.core.dense_encoder.down2.0.weight', 2.384185791015625e-07), ('label_seed', 1.9371509552001953e-07), ('local.core.project.tumor_surface.0.bias', 1.816079020500183e-07), ('local.core.final_fuse.4.weight', 1.564621925354004e-07), ('local.core.dense_encoder.down2.3.block.0.weight', 1.4901161193847656e-07)]

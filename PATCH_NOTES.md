@@ -1,3 +1,57 @@
+## v2.2 — 영역 SAGE foreground 학습과 재개 smoke (2026-09-29)
+
+- prepare/train/smoke, 기존 objective·L1/L2를 사용하는 GNN 학습·전체 support·validation·best/final-memory·안전한 pause/resume 연결.
+- 동일 CUDA CSR 곱의 반복 수치 차이를 추적하고 새 영역 학습에 고정 순서 sparse sum 도입. 노드/edge 및 수식 유지. Python/NumPy seed 및 sparse cache clone 수정.
+- CPU/GPU44검사 및 실제 CT DEBUG train8/val2 PASS. 4update 연속 실행과 step1 저장→새 프로세스 재개의 model/optimizer/state/RNG hash 모두 정확히 일치. 실패 r3/r4 기록 보존.
+- **전체 학습 승인 아님**: 로컬10/10 초기 partition 상한 위반은 full에서 차단. 새 artifact의 online CP/nnU-Net 연결도 미완료. 서버 실행 절차와 제한은 [검사 기록](docs/region_training_smoke_20260929.md).
+
+## v2.2 — R3 RAM 검증 표시 누락·메모리 단위 수정 (2026-09-29)
+
+- 같은 v2.2 버그 이력: R3-B01 누락 signature를 cache/to/encoder에서 오류로 처리, 현재 내용 자동 재인증 제거. P3 파일 bytes와 실제 retained tensor/RSS 구분.
+- 회귀37개 통과. 실제 CT warm batch8 update1.530→0.836초이나 기존 scheduler의 자연 tail2 연속 RAM-hit step은0.515→0.605초로 느림. 전송/검증·두 CSR 비용 포함; 서버epoch 개선/production 승인 아님.
+- 기존 결과·설계·초기profile 보존, 장기학습 없음. [상세와 측정 경계](docs/l0_regions_r3_boundary_20260929.md).
+
+## v2.2 — 고정 영역 검증 경계·RAM 재사용 수정 (2026-09-29)
+
+- F01 준비 hash 의존성 누락, F02 실제 record/view 연결 누락, F03 저장된 2차 quotient 검증 누락 수정. Admission flag 변조와 duplicate record/index 거부.
+- 명시적 RAM tensor 예산 내 병렬 검증 후 batch 재사용, mutation 감지 추가. L0/L1L2 시간·source CT수·누적 fine 분산 진단·측정 당시 소스 보존.
+- 35개 회귀 통과. 실제 DEBUG8pair update1.440→0.843초, RAM 재사용0.00431초. 공유 GPU 측정 한계·profile 위반 유지. Production 전환/장기학습 없음. [상세](docs/l0_fixed_regions_receipts_20260929.md).
+
+## v2.2 — 고정 영역 계층 + GraphSAGE2/1 DEBUG (2026-09-29)
+
+- 사용자 변경안에 따라 기존CNN snapshot으로 두 partition/typed quotient를 준비하고, 매update는 live CNN집계→SAGE2→고정집계→SAGE1→두scale128D를 실행하는 별도 `l0_regions` 구현. Fine edge는 학습 batch에 저장/전송하지 않음. 동적EZ-SP와fineSAGE 보존.
+- 기존 로컬 실제CT step4 checkpoint(strictCNN load)로8pair검사. Fine52,666N/2,761,602E→1차13,868N/379,049E→2차13,849N/378,284E. 2차 추가 압축 미미, 초기profile 위반 보존. Reg0.02/0.02 자동변경 없음.
+- 동일batch8/FP32/교대3회 최종 평균 fineSAGE1.376초→영역SAGE0.614초, refresh0.458→0.192초. 준비/저장/최초사용합계9.890초,8pair캐시23.95MB 별도 보고. CP효용/서버epoch/production준비 입증 아님.
+- 기존23+신규6=29검사 통과. 캐시identity/소스·checkpoint 결속, mass/typed quotient/gradient/optimizer/실패admission 검사. 장기학습/기본runner전환 없음. [상세 기록](docs/l0_fixed_regions_20260929.md).
+
+## v2.2 — GraphSAGE 관계·refresh·epoch 비용 감사 (2026-09-29)
+
+- EZ-SP와19개 이전 검사/측정 보존, GraphSAGE encoder/core 변경 없음. 관계별13개 root 변환과 역할별 residual 수식·gradient 대조 추가. 기존 fused CSR 재사용 확인.
+- 실제 DEBUG8pair refresh를 integrity/CSR/CNN/3개 graph block으로 분리. 계측한 cold GAT0.213초/SAGE0.389초 중 SAGE integrity0.0176초, CSR0.0186초, graph block합계0.322초. CSR 생성만으로 refresh 지연 설명 불가. 이전 update 배속과 다른 측정.
+- 이전 전체 metadata에서 query32=405update, memory32일 때353batch, validation query32=100batch 확인. 서버22.104초×405=149.20분은 optimization 조건부 환산, SAGE 서버epoch 예측 없음.
+- 읽기 전용 로그 집계 도구 및23검사 통과. 장기학습/production전환 없음. [상세 기록](docs/l0_sage_audit_20260929.md).
+
+## v2.2 — 동일 fine graph GraphSAGE 비교 (2026-09-29)
+
+- `l0_sage` 별도 DEBUG 경로. L0의13 relation×3층 convolution만 PyG mean/root GraphSAGE로 교체. CNN·128D·3층·readout·L1/L2·loss 유지, sampling/coarsening 없음. 공통 parameter310개 동일 검증.
+- 실제8pair/52,666nodes/2,761,602edges/batch8/FP32, 워밍업 제외 교대3회 평균 전체update2.283→1.203초(47.3%↓), peak1.010→0.772GiB. Memory refresh0.247→0.406초로 별도 보고. 서버epoch/CP효용 입증 아님.
+- CPU/CUDA 표준 mean 출력·gradient, 빈context, cache재사용·무효화, RNG, 기존 회귀 포함19개 통과. PyG deepcopy CPU RNG 소비 발견·수정. 기존 core/prod/EZ-SP 보존, 장기학습 없음.
+- [구현·검증·비교 범위](docs/l0_gat_sage_comparison_20260929.md).
+
+## v2.2 — 8pair 진단 / admission과 비용 실험 분리 (2026-09-29)
+
+- 현재 adapter·9개 결과23파일 ZIP/hash 보존.8pair/72개 role-shell의 CC, mass 분포, bbox/분산 초과 cluster·fine 비율, 종료 조건·시간·가중치 출처 기록. strict scale2는8개 모두 NOT_RUN.
+- 별도 자원 제한 diagnostic-only encoder에서 초기 프로파일 초과를 보고하고 cloned full update 비용 측정. hard integrity 검사 유지, reg/cap/min_size 자동변경 없음, checkpoint export 금지.
+- 13검사 통과. batch8/FP32 실제 DEBUG 평균 기존2.649초→EZ-SP4.812초, partition3.160초. 메모리 감소/속도 개선은 구분. 실제 scale2 반복차이 관측으로 결정론 미보장. 장기 학습 없음.
+- [상세·GraphSAGE 등 논문 비교](docs/l0_ezsp_diagnostics_20260929.md), [8pair 상세표](validation/l0_ezsp_diagnostics_20260929/pairs.md).
+
+## v2.2 — 공식 EZ-SP L0 adapter / production 미승인 (2026-09-29)
+
+- Reconciled ZIP 정정 우선. 지정 commit의 공식 contour-prior 병합, pair/role/shell 분리, 두 scale live mass 집계와 2+1 GAT/128D를 별도 `l0_ezsp` 패키지로 구현했다. pair-only/연쇄 금지는 폐기했다.
+- bbox·분산·node/edge 상한은 partition 후 admission. 실패 은폐/자동 fallback 없음. reg 두 값 필수, 기본값 없음. old exact resume 거부, production 기본 경로 불변.
+- 9개 CPU/CUDA 단위 검사와 원본 CPU 참고 검사 통과. 실제1/8pair 비용 측정은 reg0.02에서 scale1 admission 실패. 실제 full update 속도 개선이나 production 학습 가능 상태를 주장하지 않는다.
+- [구현·실제 수치·제한](docs/l0_ezsp_adapter_20260929.md). 장기 학습 자동 시작 없음.
+
 ## v2.2 — 서버 준비 병렬 stdout 줄 섞임 수정 (2026-09-28)
 
 - e3259ca의 raw_inventory29/131 실패를 두 스레드의 본문/줄바꿈 교차로 재현했다. write별 lock과 공유 partial buffer만으로 print 단위 분리가 되지 않았던 오류다.

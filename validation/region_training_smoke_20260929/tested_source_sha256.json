@@ -1,0 +1,13 @@
+{
+  "l0_regions/data.py": "834bdc97b428570cea0e7ac7a685ff7d9711c01ecc09cb5ec904c78cf8a27181",
+  "l0_regions/encoder.py": "c1f5a5f002f95bd4ae4fcf545c67a3fac5fd8b1f24c8e7c803e2d149ac4ab505",
+  "l0_regions/materialization.py": "761d2fad6fe82764d190405f752e9d6f8139a5816b0161d9465f16d78c522815",
+  "l0_regions/preparation.py": "b52e1185e5d8d0381a296b8e93d24f84756991cc7c0fe4d4f9896fffef66b10e",
+  "l0_regions/resident.py": "832c5622f9987c4961f785f4c9f6d4694e5d743b9d816ac163a2a6cba086c6b4",
+  "l0_regions/sparse.py": "681ba67720d6dcaeffe0a385d17a1d782802f5d6f70e6f04e96d7f372cb6fb4d",
+  "l0_regions/training.py": "342d3e26adbe8797f48c809e62c46de840e7421d6f4d10ae6cf3f57ea5ce6b95",
+  "l0_regions/training_data.py": "2860cc31abf39671f14223185d098cd8f5631a214ca5e00ba2bbcc0b721fa121",
+  "l0_regions/__init__.py": "73f897eb8a727afc2b0b55f277709e56ec38c1a9fc5a6bb10c6efdbe9a9f1ce1",
+  "l0_sage/encoder.py": "42a640aac444203c3e125563e0209448f87e4813a3af07a28ef68c484f167265",
+  "tools/run_fixed_regions.py": "f90df877ca55770e39d5a79490aae54a685df6818afcb2c2b7509b3fde13d581"
+}
