@@ -1,0 +1,163 @@
+{
+  "debug": true,
+  "full_training": false,
+  "production_ready": false,
+  "production_writes": false,
+  "checkpoint_unchanged": true,
+  "cache_rebuilt": false,
+  "status": "PASS",
+  "checkpoint_sha256": "67297e6cc2b6c7bd334dfe02456fb3ec6e2783872852c8bc2bd7c81e66b14665",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "configured_batch": 8,
+  "actual_batch": 2,
+  "total_memory_records": 8,
+  "support_records": 6,
+  "next_step": 2,
+  "parity": {
+    "checkpointed_64MiB": true,
+    "retained_64MiB": true,
+    "retained_explicit_workspace": true
+  },
+  "parity_rtol": 2e-05,
+  "parity_atol": 2e-06,
+  "scope": "Same saved next update, full saved support; timing excludes loading, plan fitting, parity checks and checkpoint saving; not an epoch estimate",
+  "rows": {
+    "checkpointed_64MiB": [
+      {
+        "trial": 0,
+        "warmup": true,
+        "whole_update_seconds": 0.8478028000099584,
+        "times": {
+          "forward": 0.4730691999429837,
+          "backward": 0.25745319994166493,
+          "check_clip": 0.10762979998253286,
+          "optimizer": 0.008444699924439192
+        },
+        "peak_cuda_bytes": 266543104,
+        "workspace_bytes": 67108864
+      },
+      {
+        "trial": 1,
+        "warmup": false,
+        "whole_update_seconds": 0.4419271999504417,
+        "times": {
+          "forward": 0.13911459990777075,
+          "backward": 0.19758709997404367,
+          "check_clip": 0.10033699998166412,
+          "optimizer": 0.004498400026932359
+        },
+        "peak_cuda_bytes": 266543104,
+        "workspace_bytes": 67108864
+      },
+      {
+        "trial": 2,
+        "warmup": false,
+        "whole_update_seconds": 0.45630009996239096,
+        "times": {
+          "forward": 0.12747289997059852,
+          "backward": 0.22240520000923425,
+          "check_clip": 0.10223800002131611,
+          "optimizer": 0.003819399978965521
+        },
+        "peak_cuda_bytes": 266543104,
+        "workspace_bytes": 67108864
+      }
+    ],
+    "retained_64MiB": [
+      {
+        "trial": 0,
+        "warmup": true,
+        "whole_update_seconds": 0.3231777000473812,
+        "times": {
+          "forward": 0.12306820007506758,
+          "backward": 0.10736819996964186,
+          "check_clip": 0.08860050002112985,
+          "optimizer": 0.0037972000427544117
+        },
+        "peak_cuda_bytes": 401994240,
+        "workspace_bytes": 67108864
+      },
+      {
+        "trial": 1,
+        "warmup": false,
+        "whole_update_seconds": 0.3347073000622913,
+        "times": {
+          "forward": 0.1370875999564305,
+          "backward": 0.10690260003320873,
+          "check_clip": 0.08664669992867857,
+          "optimizer": 0.0037181000225245953
+        },
+        "peak_cuda_bytes": 402708992,
+        "workspace_bytes": 67108864
+      },
+      {
+        "trial": 2,
+        "warmup": false,
+        "whole_update_seconds": 0.32412480004131794,
+        "times": {
+          "forward": 0.11996059992816299,
+          "backward": 0.10648870002478361,
+          "check_clip": 0.0935560999205336,
+          "optimizer": 0.003734499914571643
+        },
+        "peak_cuda_bytes": 402708992,
+        "workspace_bytes": 67108864
+      }
+    ],
+    "retained_explicit_workspace": [
+      {
+        "trial": 0,
+        "warmup": true,
+        "whole_update_seconds": 0.3622810000088066,
+        "times": {
+          "forward": 0.1477057000156492,
+          "backward": 0.11015409999527037,
+          "check_clip": 0.0986499999416992,
+          "optimizer": 0.005240999977104366
+        },
+        "peak_cuda_bytes": 402708992,
+        "workspace_bytes": 268435456
+      },
+      {
+        "trial": 1,
+        "warmup": false,
+        "whole_update_seconds": 0.3651604000478983,
+        "times": {
+          "forward": 0.13059620000422,
+          "backward": 0.11316890001762658,
+          "check_clip": 0.11726710002403706,
+          "optimizer": 0.003743199980817735
+        },
+        "peak_cuda_bytes": 402708992,
+        "workspace_bytes": 268435456
+      },
+      {
+        "trial": 2,
+        "warmup": false,
+        "whole_update_seconds": 0.3202110000420362,
+        "times": {
+          "forward": 0.11745010002050549,
+          "backward": 0.10677690000738949,
+          "check_clip": 0.09189119993243366,
+          "optimizer": 0.003733400022611022
+        },
+        "peak_cuda_bytes": 402708992,
+        "workspace_bytes": 268435456
+      }
+    ]
+  },
+  "summary": {
+    "checkpointed_64MiB": {
+      "update_mean_seconds": 0.44911364995641634,
+      "peak_cuda_bytes": 266543104
+    },
+    "retained_64MiB": {
+      "update_mean_seconds": 0.32941605005180463,
+      "peak_cuda_bytes": 402708992
+    },
+    "retained_explicit_workspace": {
+      "update_mean_seconds": 0.34268570004496723,
+      "peak_cuda_bytes": 402708992
+    }
+  }
+}

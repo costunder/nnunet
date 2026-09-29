@@ -1,3 +1,8 @@
+## 2026-09-30 — VRAM을 써서 재계산 제거, 실제 CT A/B
+
+- 사용자48GB 메모리활용 요구. tools/compare_region_memory_debug.py는 동일 saved nextupdate에서 CNN/L0/L1/L2 재계산을 제거하고 activation보관. 전체 loss/clippedgradient/Adam/model/RNG 대조 PASS. actualbatch2/support6 DEBUG에서 warm0.449→0.329s, peak254→384MiB; 서버fullsupport 개선값 아님. 256MiB workspace는 추가이득 없음.
+- 5검사 PASS, 원본cache/checkpoint불변. production기본값/실행중서버 변경 없음. [기록](docs/region_memory_execution_20260930.md).
+
 ## 2026-09-30 — SAGE 절반 시간 주장 범위 정정
 
 - 서버 epoch1 step2/405=17.11s, GPU100%/2740MiB. 기존8-observation DEBUG 비교는 full support/batch32/저장 미측정이며 training stable_spmm와도 다른 경로. 전체epoch 절반 보장 금지.

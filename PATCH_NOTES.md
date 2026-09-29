@@ -1,3 +1,7 @@
+## v2.2 — activation 보관 경로의 동일 update 비교 (2026-09-30)
+
+- 같은 CT·batch·support·loss로 재계산/보관 경로 GPU A/B 및 전체 gradient·update·RNG 비교 추가. 로컬 DEBUG update26.65% 감소, peak51.09% 증가. 서버 epoch 개선으로 환산 금지. [기록](docs/region_memory_execution_20260930.md).
+
 ## v2.2 — epoch 비용 비교 범위 정정 및 독립 진단 (2026-09-30)
 
 - 이전8개 DEBUG GraphSAGE 비교와 full-support 서버 학습의 차이를 기록. production 변경 없이 저장된 다음update의 구간별 GPU 진단 도구 추가. 실제 CT 복제 상태 smoke 완료; 서버 epoch 개선 완료 아님. [기록](docs/region_epoch_timing_audit_20260930.md).
