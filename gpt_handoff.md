@@ -1,3 +1,7 @@
+## 2026-09-30 — explicit A100 CUDA-budget resume
+
+Added --resume-cuda-budget-change with reviewed execution upgrade; keeps the saved batch, model/Adam/RNG/support/cursor and research contract. Only CUDA allocator budget may change (A6000 40 GiB -> previously assigned A100 MIG 8 GiB). 57 tests and actual-CT local GPU DEBUG resume passed; A100/full-scale fit remains unmeasured. No cache regeneration or long training. Details: docs/region_a100_migration_20260930.md.
+
 ## 2026-09-30 — 실제 학습 retained activation + Mixed partition contract 복구
 
 - 서버 f07b13f step73 이후 mixed partition contract. reuse 원본출처보존과 collate 동일출처강제가 충돌. 검토된 origin digest set을 loader에 전달해 혼합 허용, CNN/profile/view/unknown source와 모든 무결성 검사는 유지. 기존tensor/receipt 재작성·재생성 없음. 실제 서로다른origin CT혼합 학습/val/final/별도프로세스resume PASS.

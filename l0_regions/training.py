@@ -102,7 +102,9 @@ def save_checkpoint(root,net,optimizer,state,identity):
     payload['content_sha256']=hash_state(payload)
     atomic_torch(root/'checkpoint_latest.pt',payload)
 
-def load_checkpoint(path,identity,*,allow_execution_upgrade=False):
+def load_checkpoint(path,identity,*,allow_execution_upgrade=False,allow_cuda_budget_change=False):
+    if allow_cuda_budget_change and not allow_execution_upgrade:
+        raise ValueError('CUDA budget migration requires explicit execution upgrade')
     payload=torch.load(path,map_location='cpu',weights_only=False)
     digest=payload.pop('content_sha256',None)
     if payload.get('format')!=FORMAT:raise ValueError('Not an exact region resume; GAT/DEBUG/profile/source changes forbidden')
@@ -110,11 +112,14 @@ def load_checkpoint(path,identity,*,allow_execution_upgrade=False):
     if payload.get('identity')!=identity:
         if not allow_execution_upgrade:raise ValueError('Not an exact region resume; GAT/DEBUG/profile/source changes forbidden')
         from .execution_upgrade import verify_upgrade
-        revision=verify_upgrade(payload['identity'],identity)
+        revision=verify_upgrade(payload['identity'],identity,allow_cuda_budget_change=allow_cuda_budget_change)
         payload['execution_upgrade']=dict(reviewed_revision=revision,
             original_identity=payload['identity'],step=payload['state']['step'],
             preserved=['model','optimizer','RNG','support','cluster plan','epoch','next batch','physical batch'],
-            activation_storage=identity['activation_storage'],exact_old_runtime_replay=False)
+            activation_storage=identity['activation_storage'],exact_old_runtime_replay=False,
+            cuda_budget_change=dict(authorized=allow_cuda_budget_change,
+                previous_bytes=payload['identity']['resource_limits']['cuda_bytes'],
+                current_bytes=identity['resource_limits']['cuda_bytes']))
     return payload
 
 def metadata(ds,embeddings):
@@ -207,8 +212,10 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False):
     validate_policy(profile_policy)
+    if resume_cuda_budget_change and not resume_execution_upgrade:
+        raise ValueError('CUDA budget migration requires explicit execution upgrade')
     if resume_execution_upgrade and not resume:raise ValueError('Execution upgrade requires a saved checkpoint')
     if debug_pause_step is not None and not debug:raise ValueError('Pause step is DEBUG only')
     if not candidates or min(candidates)<1 or candidates!=sorted(set(candidates)):raise ValueError('Explicit increasing physical batch candidates required')
@@ -224,7 +231,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         activation_storage=activation_storage)
     identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
     if resume:
-        saved=load_checkpoint(resume,identity,allow_execution_upgrade=resume_execution_upgrade)
+        saved=load_checkpoint(resume,identity,allow_execution_upgrade=resume_execution_upgrade,
+            allow_cuda_budget_change=resume_cuda_budget_change)
         net.load_state_dict(saved['model']);optimizer.load_state_dict(saved['optimizer'])
         if saved.get('execution_upgrade'):write_new(root/'execution_upgrade.json',saved['execution_upgrade'])
         state=tree_to(saved['state'],'cuda');restore_rng(saved['rng']);del saved

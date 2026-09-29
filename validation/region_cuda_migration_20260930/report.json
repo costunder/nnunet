@@ -1,0 +1,20 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "full_training": false,
+  "A100_tested": false,
+  "cache_rebuilt": false,
+  "checks": {
+    "model": true,
+    "optimizer": true,
+    "rng": true,
+    "state": true
+  },
+  "steps": 4,
+  "cuda_budget_before": 6442450944,
+  "cuda_budget_after": 8589934592,
+  "reviewed_87eafa6_manifest": "87eafa6",
+  "manifest_cuda_migration": "40 to 8 GiB",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "scope": "RTX5070Ti DEBUG train8/val2; saved step1 through step4, refresh, validation, export; bitwise state comparison on same local GPU, not cross-GPU parity"
+}

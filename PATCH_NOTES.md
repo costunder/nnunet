@@ -1,3 +1,7 @@
+## 2026-09-30 — explicit A100 CUDA-budget resume
+
+Added --resume-cuda-budget-change with reviewed execution upgrade; keeps the saved batch, model/Adam/RNG/support/cursor and research contract. Only CUDA allocator budget may change (A6000 40 GiB -> previously assigned A100 MIG 8 GiB). 57 tests and actual-CT local GPU DEBUG resume passed; A100/full-scale fit remains unmeasured. No cache regeneration or long training. Details: docs/region_a100_migration_20260930.md.
+
 ## v2.2 — 혼합 출처 batch 복구 및 A6000 activation 보관 실행 (2026-09-30)
 
 - 검토된 재사용·신규cache source의 혼합batch 수용, 원본 binding/검사 보존. 실제 CT 혼합 경로와 fresh-process resume 통과.

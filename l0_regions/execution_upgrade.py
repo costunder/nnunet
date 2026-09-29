@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[1]
 MODEL='hiercp_v222/model.py'
 OLD_MODEL='906d1eeb7982ed9f01801a22fdea72de68a82a7d24b061295e14489052af6920'
 REVIEWED_MODEL='53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d'
-REVISIONS=('f07b13f5cc656aa413fc1f89b4f66c0925158559',
+REVISIONS=('87eafa6', 'f07b13f5cc656aa413fc1f89b4f66c0925158559',
            '2526466', 'ba87e71', 'b398b3d8c0044d883729b789e83d69c0ed841725')
 
 
@@ -26,7 +26,18 @@ def blob_hash(revision,path):
     return hashlib.sha256(value).hexdigest()
 
 
-def verify_upgrade(previous,current):
+def verify_upgrade(previous,current,*,allow_cuda_budget_change=False):
+    # Explicit device migration changes only the allocator ceiling, never batch,
+    # model, dataset, precision, RAM budget or saved optimization state.
+    if allow_cuda_budget_change:
+        before=previous.get('resource_limits',{});after=current.get('resource_limits',{})
+        if set(before)!=set(after) or 'cuda_bytes' not in before:
+            raise ValueError('CUDA budget migration requires matching resource fields')
+        if any(before[k]!=after[k] for k in before if k!='cuda_bytes'):
+            raise ValueError('CUDA budget migration cannot change other resource limits')
+        for value in (before['cuda_bytes'],after['cuda_bytes']):
+            if type(value) is not int or value<=0:raise ValueError('Positive integer CUDA byte limits required')
+        previous={**previous,'resource_limits':dict(after)}
     old={k:v for k,v in previous.items() if k not in ('source','activation_storage')}
     new={k:v for k,v in current.items() if k not in ('source','activation_storage')}
     if old!=new:raise ValueError('Execution upgrade changes dataset/config/precision/resources/batch candidates')

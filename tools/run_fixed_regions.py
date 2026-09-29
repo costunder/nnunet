@@ -33,6 +33,8 @@ def main():
         help='retained: keep CNN/L0/L1/L2 activations rather than recomputing; respect explicit CUDA budget')
     p.add_argument('--resume-execution-upgrade',action='store_true',
         help='Explicit reviewed execution-only continuation; keep saved model/Adam/RNG/support/cursor/batch')
+    p.add_argument('--resume-cuda-budget-change',action='store_true',
+        help='Explicit GPU migration: change only CUDA allocator budget; preserve saved batch and training state')
     p.add_argument('--reuse-prepared',type=Path,help='Validate and reuse completed preparation batches in a new output directory')
     p.add_argument('--debug',action='store_true')
     p.add_argument('--debug-pause-step',type=int)
@@ -52,9 +54,11 @@ def main():
     if a.mode in ('train','smoke') and (not a.batch_candidates or not a.resident_gib or a.resident_gib<=0):
         raise ValueError('Explicit batch candidates and resident tensor budget required')
     if a.mode!='train' and (a.resume or a.debug_pause_step is not None):raise ValueError('Resume/pause only on train')
-    if a.mode!='train' and (a.resume_execution_upgrade or a.activation_storage!='checkpointed'):
+    if a.mode!='train' and (a.resume_execution_upgrade or a.resume_cuda_budget_change or a.activation_storage!='checkpointed'):
         raise ValueError('Explicit retained activation/upgrade options apply to train mode only')
     if a.reuse_prepared is not None and a.mode!='prepare':raise ValueError('Prepared-batch reuse only on prepare')
+    if a.resume_cuda_budget_change and not (a.resume and a.resume_execution_upgrade):
+        raise ValueError('CUDA budget migration requires --resume and --resume-execution-upgrade')
     from tools.v22_region_preflight import check
     check()  # Before any output directory, checkpoint read or graph materialization.
     budget=Budget(int(a.cuda_gib*2**30),int(a.rss_gib*2**30))
@@ -69,7 +73,8 @@ def main():
         elif a.mode=='train':
             result=train(a.cache,a.output,workers=a.workers,resident_bytes=int(a.resident_gib*2**30),
                 candidates=a.batch_candidates,budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step,profile_policy=a.profile_policy,
-                activation_storage=a.activation_storage,resume_execution_upgrade=a.resume_execution_upgrade)
+                activation_storage=a.activation_storage,resume_execution_upgrade=a.resume_execution_upgrade,
+                resume_cuda_budget_change=a.resume_cuda_budget_change)
             if (a.output/'training_complete.json').exists():
                 from l0_regions.final import export
                 export(result,a.cache,a.output/'checkpoint.pt')
