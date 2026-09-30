@@ -9,16 +9,31 @@ CNN preparation, training, exact-resume and final-artifact validation code.
 
 Use `--gpu 6` with `CP_GPU=6` in the shell. Before importing PyTorch, the runner
 queries `nvidia-smi -L` and resolves physical GPU 6 to its current GPU UUID or,
-when that device has one MIG instance, its current MIG UUID. No UUID is hardcoded
-and no second MIG-number variable is required. For multiple MIG instances, the
-existing allocation must identify exactly one of that GPU's instances; ambiguous
-selection is rejected rather than choosing an arbitrary instance. The numeric
+when that device has one MIG instance, its current MIG UUID. No second MIG-number
+variable is required. For multiple instances, a unique current environment
+allocation takes precedence. If it is absent, an explicit host/user/physical-GPU
+allocation from `config/server_gpu_allocations.json` is checked against the live
+parent GPU UUID and MIG UUID. This is stored allocation evidence, not automatic
+scheduling or a generic first/free-MIG fallback. Ambiguous selection or a stale
+record is rejected rather than choosing an arbitrary instance. The numeric
 index refers to the current host/container's nvidia-smi inventory, so use the
 server host when intending to select its physical device index.
 
-Seven synthetic inventory tests passed (including changed MIG UUID and ambiguous
-allocation rejection), and physical GPU 0 was selected and exposed to CUDA on the
-local RTX5070Ti. No actual remote A100/MIG execution is claimed by these tests.
+The initial seven tests missed the known server's seven-instance configuration:
+`--gpu 6` failed before opening the experiment on ece-agpu16. The user's earlier
+inventory explicitly identifies the assigned MIG under GPU 6, and their CUDA
+output confirms successful use. That existing allocation is now recorded for
+that host and account only. It is never transferred to another host or account.
+If MIG is recreated and its UUID changes, current explicit allocation can select
+the new instance; otherwise the stale record requires updating from new allocation
+evidence. A physical number alone cannot establish ownership of one of seven slices.
+
+Twelve selection tests now cover seven-instance resolution, host/account isolation,
+stale parent/MIG refusal and current-allocation priority. These are synthetic
+selection checks, not remote A100 training. The earlier actual RTX5070Ti selection
+check remains valid; no new remote A100/MIG execution is claimed.
+All 24 selection and experiment/checkpoint orchestration tests passed together.
+Resolution against the original user-provided seven-instance inventory also passed.
 The runner's GPU argument does not change the checkpoint's training contract.
 
 ## Behavior

@@ -136,7 +136,7 @@ def run_experiment(a,request,execute=foreground):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--gpu',type=int,help='Physical nvidia-smi GPU number; resolve its current single/allocated MIG automatically')
+    p.add_argument('--gpu',type=int,help='Physical nvidia-smi GPU number; resolve current or recorded allocation against live MIG inventory')
     p.add_argument('--experiment',type=Path,required=True,help='Stable run root; reuse exactly this path to resume')
     p.add_argument('--cache',type=Path,required=True,help='Original observation inventory, unchanged on every invocation')
     p.add_argument('--margin-mm',type=float,required=True)

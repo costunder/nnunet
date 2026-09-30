@@ -1,0 +1,12 @@
+{
+  "allocations": [
+    {
+      "host": "ece-agpu16",
+      "user": "aicompetition06",
+      "physical_index": 6,
+      "gpu_uuid": "GPU-61e3c3e1-8496-bc2c-4b0e-a254d5082a84",
+      "mig_uuid": "MIG-774a3cc0-0169-5e18-b5d9-fe1b7a1d6ce7",
+      "evidence": "User-provided nvidia-smi inventory and successful CUDA 1g.10gb execution; recorded in gpt_handoff.md and docs/region_a100_migration_20260930.md. Verify both identifiers against live inventory; never substitute another instance."
+    }
+  ]
+}
