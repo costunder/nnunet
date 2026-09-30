@@ -80,6 +80,12 @@ def make_model(ds,budget,debug,activation_storage='checkpointed'):
     if activation_storage not in ('checkpointed','retained'):raise ValueError('Unknown activation storage')
     m=ds.meta;configure_runtime(m['base'],m['config']['seed'])
     random.seed(m['config']['seed']);np.random.seed(m['config']['seed'])
+    if 'local_cnn' in m:
+        from l0_local_cnn.model import LocalCNN
+        local=LocalCNN(m['local_cnn'],checkpointing=activation_storage=='checkpointed',budget=budget,dropout=m['base']['model']['dropout'])
+        net=PromptGraphModel(m['config'],m['base'],{},local_encoder=local).cuda()
+        net.checkpoint_support=activation_storage=='checkpointed'
+        return net
     with installed('stride4'):ref=V1LocalEncoder(m['base'])
     weights=torch.load(ds.root/'frozen_cnn.pt',map_location='cpu',weights_only=True)
     if tree_hash(weights)!=m['cnn_sha256']:raise ValueError('Frozen CNN contents differ')
@@ -265,7 +271,7 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False,learning_policy=None):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False,learning_policy=None,local_cnn=False):
     validate_policy(profile_policy)
     from .support_episodes import PatientEpisodes,contract as support_contract
     support_policy=None if support_patients is None else support_contract(support_patients)
@@ -287,7 +293,13 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     if not candidates or min(candidates)<1 or candidates!=sorted(set(candidates)):raise ValueError('Explicit increasing physical batch candidates required')
     if resume_without_coarsening and (not resume or fine_cache is None or resume_execution_upgrade or resume_cuda_budget_change or resume_support_minibatch):
         raise ValueError('Coarsening removal requires fine cache + original checkpoint, with no other migration')
-    if fine_cache is None:
+    if local_cnn:
+        if fine_cache is not None or resume_without_coarsening or resume_execution_upgrade or resume_support_minibatch:raise ValueError('Local CNN is a new architecture; only matching local CNN resume allowed')
+        from l0_local_cnn.data import Dataset as CNNDataset,Loader as CNNLoader
+        from l0_regions.donor_learning import POLICY
+        if learning_policy!=POLICY:raise ValueError('Local CNN retains same-donor live ranking')
+        ds=CNNDataset(index,'inner_train',debug);val=CNNDataset(index,'inner_val',debug)
+    elif fine_cache is None:
         ds=RegionDataset(index,'inner_train',debug,profile_policy);val=RegionDataset(index,'inner_val',debug,profile_policy)
     else:
         from .fine_graph import FineDataset,FineLoader,MODE
@@ -296,11 +308,13 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
             if learning_policy!=POLICY or resume_without_coarsening or resume_support_minibatch:raise ValueError('Explicit new learning policy; no old-model transition')
             from .donor_data import DonorDataset as FineDataset,DonorLoader as FineLoader
         ds=FineDataset(index,'inner_train',debug,profile_policy,fine_cache);val=FineDataset(index,'inner_val',debug,profile_policy,fine_cache)
-    if learning_policy is not None and fine_cache is None:raise ValueError('Same-donor learning requires regenerated fine cache')
+    if learning_policy is not None and fine_cache is None and not local_cnn:raise ValueError('Same-donor learning requires regenerated fine cache')
     root=Path(output).resolve();root.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(workers);net=make_model(ds,budget,debug,activation_storage)
     base=ds.meta['base'];cfg=ds.meta['config'];epochs=1 if debug else cfg['gnn_epochs']
-    if fine_cache is None:
+    if local_cnn:
+        loader=CNNLoader(ds,workers,resident_bytes,budget.rss_bytes);val_loader=CNNLoader(val,workers,resident_bytes,budget.rss_bytes,store=loader.store)
+    elif fine_cache is None:
         loader=Loader(ds,workers,resident_bytes);val_loader=Loader(val,workers,resident_bytes)
     else:
         loader=FineLoader(ds,workers,resident_bytes,rss_limit=budget.rss_bytes);val_loader=FineLoader(val,workers,resident_bytes,store=loader.store,rss_limit=budget.rss_bytes)
@@ -310,6 +324,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         ranking=rank_config(ds),resident_budget_bytes=resident_bytes,profile_policy=profile_policy,
         activation_storage=activation_storage)
     identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
+    if local_cnn:identity.update(local_cnn=ds.meta['local_cnn'],graph_representation=ds.meta['local_cnn']['architecture'])
     if fine_cache is not None:identity.update(graph_representation=MODE,fine_cache_sha256=sha(fine_cache))
     if learning_policy is not None:identity['learning_policy']=learning_policy
     if support_policy is not None:identity['support_training']=support_policy
@@ -341,11 +356,11 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     if learning_policy is not None:write_new(root/'learning_schedule.json',ranking_context(ds,state['memory'],state['batch']).audit)
     write_new(root/'execution_contract.json',dict(**{k:v for k,v in identity.items() if k!='graph_representation'},train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
         physical_batch=state['batch'],effective_batch=state['batch'],accumulation=1,parameters=sum(p.numel() for p in net.parameters()),
-        layers=dict(L0=ds.meta['profile']['graph_encoder']['sage_layers'],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
+        layers=dict(L0=8 if local_cnn else ds.meta['profile']['graph_encoder']['sage_layers'],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
         gpu=torch.cuda.get_device_name(),cpu_logical=psutil.cpu_count(),ram=psutil.virtual_memory()._asdict(),
         trainable_parameters=sum(p.numel() for p in net.parameters() if p.requires_grad),
-        L0_parameters=sum(p.numel() for p in net.local.parameters()),input_shape=[state['batch'],1,48,48,48],
-        graph_counts=[dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries] if fine_cache is None else
+        L0_parameters=sum(p.numel() for p in net.local.parameters()),input_shape='native donor bbox + explicit margin; padded unique CT crops [V,1,X,Y,Z]' if local_cnn else [state['batch'],1,48,48,48],
+        graph_counts=[] if local_cnn else [dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries] if fine_cache is None else
             [dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],edge_upper_bound=e['row']['bounds']['edges'],scope='fixed-view node counts from original receipt; exact fine edges logged per consumed batch') for e in ds.entries],
         graph_representation=identity.get('graph_representation','fixed_regions'),
         optimization_steps=sum(1 for _ in groups(ds,state['batch']))*epochs,
@@ -353,14 +368,14 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         cache_preparation_revision=ds.preparation_revision,cache_rebuilt=False,
         initial_support_policy='rebuild full support after explicit graph transition' if resume_without_coarsening else 'reuse saved memory or verified calibration support',
         scope='GNN only; final artifact connects to the existing CP recommendation adapter',
-        profile_exceeded=bool(ds.meta['admission_failures']) if fine_cache is None else None,partition_quality_validated=False,
-        research_training=profile_policy=='research-report',production_admitted=not debug and profile_policy=='strict'))
+        profile_exceeded=bool(ds.meta['admission_failures']) if fine_cache is None and not local_cnn else None,partition_quality_validated=False,
+        research_training=local_cnn or profile_policy=='research-report',production_admitted=not local_cnn and not debug and profile_policy=='strict'))
     print(json.dumps(dict(stage='region_training_policy',profile_policy=profile_policy,
-        profile_violating_records=ds.meta['admission_failures'] if fine_cache is None else None,partition_quality_validated=False,
-        graph_representation=identity.get('graph_representation','fixed_regions'),coarsening_enabled=fine_cache is None,
+        profile_violating_records=ds.meta['admission_failures'] if fine_cache is None and not local_cnn else None,partition_quality_validated=False,
+        graph_representation=identity.get('graph_representation','fixed_regions'),coarsening_enabled=fine_cache is None and not local_cnn,
         debug=debug,epochs=epochs,activation_storage=activation_storage,
-        activation_checkpointing=dict(CNN=net.local.core.checkpoint_dense_encoder,
-            L0=net.local.core.checkpoint_local_blocks,L1_L2=net.checkpoint_support),
+        activation_checkpointing=dict(CNN=net.local.cnn.checkpointing if local_cnn else net.local.core.checkpoint_dense_encoder,
+            L0=False if local_cnn else net.local.core.checkpoint_local_blocks,L1_L2=net.checkpoint_support),
         physical_batch=state['batch'],resumed_step=state['step'],support_training=support_policy or 'full_support',
         cuda_limit_gib=budget.cuda_bytes/2**30,execution_pipeline=identity.get('execution_pipeline',dict(mode='synchronous')))),flush=True)
     device_cache=DeviceBatchCache(device_cache_bytes,budget) if execution_pipeline=='overlapped' else None
@@ -447,7 +462,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                         coverage_scope='complete deterministic epoch schedule; actual consumed prefix is checkpoint next_batch'))
                 bar=tqdm(loader.batches(order[state['next_batch']:]),initial=state['next_batch'],total=len(order),desc=f"epoch {state['epoch']+1}/{epochs}")
                 monitor=LearningMonitor(net)
-                tqdm.write('Learning display: avg20=recent mean loss; grad=before clipping; probe=modules with sampled weight changes/6. Validation follows each epoch; loss window resets on resume.')
+                tqdm.write(f'Learning display: avg20=recent mean loss; grad=before clipping; probe=modules with sampled weight changes/{len(monitor.probes)}. Validation follows each epoch; loss window resets on resume.')
                 previous_end=time.perf_counter()
                 for cpu in bar:
                     load_wait=time.perf_counter()-previous_end;step_start=time.perf_counter()

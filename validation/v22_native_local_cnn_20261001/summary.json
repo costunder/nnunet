@@ -1,0 +1,23 @@
+{
+  "debug": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_validated": false,
+  "actual_CT": true,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "train_records": 8,
+  "val_records": 2,
+  "resume_exact": {
+    "model": true,
+    "optimizer": true,
+    "state": true,
+    "rng": true
+  },
+  "external_CT_NaN_difference": 0.0,
+  "external_CT_gradient_zero": true,
+  "parameters": 1125718,
+  "L0_parameters": 293332,
+  "unit_regression_tests_passed": 35,
+  "git_only_export_tests_passed": 27,
+  "publication_scope": "Verification summary only; case identifiers, CT coordinates, raw inputs, local paths and checkpoints are not included. Full diagnostic report remains local."
+}

@@ -19,6 +19,9 @@ def load_checkpoint(path,*,device='cuda',allow_debug=False):
     from tools.v222_review_contracts import installed,resolve_feature_contract
     from tools.v22_rank_objective import resolve_objective,OBJECTIVE
     value=torch.load(path,map_location='cpu',weights_only=False)
+    if value.get('format')=='native_local_cnn_final_v1':
+        from l0_local_cnn.artifact import load
+        return load(path,device=device,allow_debug=allow_debug)
     if value.get('format')=='fixed_region_sage_final_v1':
         from l0_regions.final import load
         return load(path,device=device,allow_debug=allow_debug)

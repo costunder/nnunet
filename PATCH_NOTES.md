@@ -1,3 +1,11 @@
+## v2.2 — 국소 CNN L0 및 실행 시 범위 선택 (2026-10-01)
+
+- 사용자 승인: donor/recipient 국소 native CT → 공유 3D CNN8(12/24/32) → masked multi-scale readout → paired128D. L0 그래프·축약·탐색을 사용하지 않는다. 기존 구현/결과 보존.
+- `tools/run_local_cnn.py run --margin-mm ...` 필수 범위 입력. 전체 관측/후보128, same-donor live loss, L1/L2 및 CP 원본 mask 검사 유지. 범위별 새 출력·체크포인트 계약, 다른 범위 resume 거부.
+- 그래프 준비 없이 raw/crop RAM 재사용·batch donor 중복 제거. 실제 CT DEBUG 학습/refresh/validation/final export 확인. 전체 성능 검증이나 장기 학습 완료가 아님.
+- [구조·실행·검증 범위](docs/v22_native_local_cnn_20261001.md).
+- 최종 단위/회귀35개 및 실제 CT DEBUG exact resume·간 밖 입력 독립성·원본 mask CP 선택 통과. L0 293,332 / 전체1,125,718 parameters. 5/10/20mm 및 physical32/48/64 실제 입력 경로 확인; 전체 성능/epoch 속도 검증 아님.
+
 ## v2.2 — 전체 학습 기준점·재개 이력 전달본 (2026-09-30)
 
 - 같은 donor/live-gradient 학습 계약과 전체 규모는 유지. 학습 전 전체 validation 및 epoch별 초기 대비 MRR/R@1/rank loss 변화 기록, checkpoint-bound CSV 재개 추가.

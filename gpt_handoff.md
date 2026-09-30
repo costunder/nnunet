@@ -1,3 +1,9 @@
+## 현재 결정 — v2.2 국소 CNN L0 (2026-10-01)
+
+최종 검증 기록: 단위/회귀35개 통과. 실제 CT DEBUG model/optimizer/state/RNG exact resume, 간 밖 NaN 출력 차이0 및 gradient0, 실제 CP 두 후보 full-mask 필터 통과. `work/local_cnn_DEBUG_20261001_verify_r2/report.json` 참조. L0 293,332 / 전체1,125,718 parameters. physical32/48/64는 실제 CT 후보와 DEBUG support의 짧은 비용 검사이므로 전체 학습 속도로 사용하지 않는다.
+
+사용자가 국소3D CNN L0 진행을 승인했고 실행 시 범위 입력을 요청했다. `tools/run_local_cnn.py run --margin-mm <각 면 여유 mm>`로 별도 실행한다. donor occupied bbox를 후보에 이동한 native organ-only crop, 공유8conv12/24/32, 각scale masked mean 및 paired fusion128D. L0 graph/EZ-SP/exploration은 이 실행에 없다. L1/L2·same-donor live 비교·전체 관측·후보128·Basic CP·최종 원본 mask 검사는 유지한다. 새로운 모델이므로 GAT/SAGE checkpoint exact resume는 금지하며 범위는 모델/inventory/checkpoint에 결속한다. 상세 `docs/v22_native_local_cnn_20261001.md`. 실제 CT DEBUG train8/val2,4update 및 final export 확인; 전체 학습/서버 실행/git push/품질 검증 완료로 표현하지 않는다. 이전 exploration·CNN control 문단은 과거 기록이다.
+
 ## 최신 전달 — 전체 학습 초기 기준점 / 재개 이력 (2026-09-30)
 
 `same_donor_live_v1`의 전체 규모·모델·loss·support 조건 유지. calibration 초기 train memory를 재사용해 optimizer update 전 전체 validation을 기록하고, 매 epoch 초기 대비 MRR/R@1/rank loss 및 `validation_history.csv`를 출력한다. baseline/history는 checkpoint state에 포함돼 정확 재개한다. 초기 validation은 best 선택에 포함하지 않고 학습 epoch들 중 기존 MRR 우선 선택을 유지한다.

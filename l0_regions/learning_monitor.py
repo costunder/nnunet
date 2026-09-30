@@ -9,6 +9,7 @@ class LearningMonitor:
         prefixes={'CNN':'local.core.dense_encoder','SAGE1':'local.core.blocks.0.conv',
                   'SAGE2':'local.core.blocks.1.conv','SAGE3':'local.core.blocks.2.conv',
                   'L1':'l1','L2':'l2'}
+        prefixes=getattr(net.local,'monitor_prefixes',prefixes)
         params=list(net.named_parameters());self.probes={}
         for label,prefix in prefixes.items():
             selected=next(((n,p) for n,p in params if n.startswith(prefix+'.') and p.requires_grad and p.ndim>=2),None)

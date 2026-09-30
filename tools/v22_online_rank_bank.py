@@ -69,7 +69,10 @@ def build_catalog(native_path, checkpoint, output):
     from hiercp_v22.donors import reject_cross_split_duplicates
     native = validate_native(read_json(native_path))
     payload = torch.load(checkpoint, map_location='cpu', weights_only=False)
-    if payload.get('format')=='fixed_region_sage_final_v1':
+    if payload.get('format')=='native_local_cnn_final_v1':
+        from l0_local_cnn.artifact import validate
+        validate(payload)
+    elif payload.get('format')=='fixed_region_sage_final_v1':
         from l0_regions.final import validate
         validate(payload)
     else:validate_artifact(payload, 'final')
@@ -187,7 +190,8 @@ class RankedEntryBuilder(LegacyBuilder):
                 with self.volumes.pair(recipient,donor) as (target,donor_data):
                     case=target['case'];dc=donor_data['case'];collection=donor_data['sources']
                     pos=[c for c,_ in collection.entries].index(row['component_id']);source,diameter=collection[pos]
-                    prepared=prepare_donor(dc,source,donor_data['organ'],donor_data['depth'],self.base)
+                    cnn_local=self.payload.get('format')=='native_local_cnn_final_v1'
+                    prepared=None if cnn_local else prepare_donor(dc,source,donor_data['organ'],donor_data['depth'],self.base)
                     transformed,_=donor_in_target_spacing(source,dc.spacing,case.spacing)
                     centers,audit=proposal_centers(case,transformed,self.cfg,self.base,target['depth'],donor)
                     placements=[placement_spec(case,transformed,c,donor) for c in centers]
@@ -195,15 +199,21 @@ class RankedEntryBuilder(LegacyBuilder):
                     def graph(i):
                         p=placements[i]
                         return i,pair_record(case,source,dc.spacing,prepared,p.center,target['organ'],target['depth'],self.base,donor_id=donor,placement=p)
-                    run_case_jobs(tasks=list(range(len(centers))),function=graph,
-                        commit=lambda r:records.__setitem__(*r),workers='auto',
-                        report_path=self.root/f'resources/{recipient}_{donor_index}.json')
+                    if not cnn_local:
+                        run_case_jobs(tasks=list(range(len(centers))),function=graph,
+                            commit=lambda r:records.__setitem__(*r),workers='auto',
+                            report_path=self.root/f'resources/{recipient}_{donor_index}.json')
                     from tools.v22_online_runtime import scoring_runtime,backend_state
                     with self.gpu_lock,scoring_runtime(self.base,self.cfg['seed']):
                         runtime=backend_state()
-                        report=recommend(self.network,[records[i] for i in range(len(centers))],self.memory,
-                            query_group=group,batch_size=self.payload['physical_batch'],workers=self.payload['workers'],
-                            recipient_case=case,placements=placements,min_liver_coverage=self.base['generation']['min_liver_coverage'])
+                        if cnn_local:
+                            from l0_local_cnn.recommendation import recommend as cnn_recommend
+                            report=cnn_recommend(self.network,self.memory,self.payload,case,dc,source,placements,
+                                batch_size=self.payload['physical_batch'],workers=self.payload['workers'])
+                        else:
+                            report=recommend(self.network,[records[i] for i in range(len(centers))],self.memory,
+                                query_group=group,batch_size=self.payload['physical_batch'],workers=self.payload['workers'],
+                                recipient_case=case,placements=placements,min_liver_coverage=self.base['generation']['min_liver_coverage'])
                     del records
                     selection=selection_from_report(report,placements);chosen=validate_selection(selection)
                     value.update(status='ranked',selection=selection,proposal_audit=audit,diameter=diameter,

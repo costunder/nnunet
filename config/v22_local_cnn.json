@@ -1,0 +1,12 @@
+{
+  "architecture": "paired_native_local_cnn_v1",
+  "margin_mm": 10.0,
+  "channels": [12, 24, 32],
+  "convolutions": [2, 3, 3],
+  "hidden_dim": 128,
+  "readout": "organ_masked_mean_each_scale",
+  "fusion": "donor_target_difference_product",
+  "input": "native_spacing_organ_only",
+  "initialization": "fresh_seed42",
+  "learning_policy": "same_donor_live_v1"
+}
