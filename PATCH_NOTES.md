@@ -1,3 +1,9 @@
+## v2.2 — 서버 학습 부진 읽기 전용 진단 (2026-10-01)
+
+- 제공된 0~17epoch 기록과 일치하는 실험 탐색, 해당 checkpoint 무결성/입력/source 검사 후 L0/L1 표현 차이·L2 prototype·동일 query의 episode/full support·loss별 CNN/L1/L2 gradient 측정. 기존 실험·가중치·optimizer 변경 없음.
+- 단위/GPU 연산9검사 및 실제CT DEBUG 전체 진단 경로 통과. 서버17epoch 가중치의 주원인은 아직 판정하지 않았고, 별도30mm OOM 수정도 아님.
+- [범위·측정·해석 한계](docs/local_cnn_learning_diagnosis_20261001.md).
+
 ## v2.2 — 실험별 checkpoint 재개 실행기 (2026-10-01)
 
 - GPU6/MIG7개 선택 실패 수정: 기존 사용자 서버 출력에서 확인된 host·계정·물리GPU·MIG 할당을 설정으로 연결하고 현재 inventory와 대조한다. 현재 명시적 할당 우선, 오래된 UUID를 다른 slice로 대체하지 않음. 입력은 `--gpu 6` 하나. 12개 선택 검사 통과; 원격 실행 미검증, 학습·checkpoint 계약 불변.
