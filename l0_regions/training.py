@@ -335,6 +335,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         # to this exact initial model; do not discard it and run another cohort pass.
         state=dict(epoch=0,step=0,phase='optimization',memory=memory,memory_parts=[],memory_done=0,
             batch=batch,next_batch=0,plan=None,last_group=None,best=None,selected_epoch=None)
+        if learning_policy is not None:
+            state.update(phase='initial_validation',initial_validation=None,validation_history=[])
     net.local.dense_batch_size=state['batch']
     if learning_policy is not None:write_new(root/'learning_schedule.json',ranking_context(ds,state['memory'],state['batch']).audit)
     write_new(root/'execution_contract.json',dict(**{k:v for k,v in identity.items() if k!='graph_representation'},train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
@@ -369,6 +371,9 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
             with (root/'phase_timing.jsonl').open('a',encoding='utf8') as f:
                 f.write(json.dumps(dict(phase=name,epoch=state['epoch']+1,step=state['step'],seconds=time.perf_counter()-start,execution_pipeline=execution_pipeline,**details))+'\n')
         save(wait=True)
+        if learning_policy is not None:
+            from .ranking_history import measurement,write_history,progress_line
+            write_history(root,state['validation_history'])
         def pause():
             if flag['requested'] or (root/'STOP_AFTER_BATCH').exists() or (debug_pause_step is not None and state['step']>=debug_pause_step):
                 save(wait=True)
@@ -377,6 +382,23 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
             return False
         while True:
             budget.check()
+            if state['phase']=='initial_validation':
+                # Calibration support already belongs to the unchanged initial
+                # model. Reuse it, and keep diagnostic evaluation out of RNG flow.
+                if fine_cache is not None:
+                    loader.release_batches();val_loader.retain_batches=False
+                baseline_start=time.perf_counter();saved_rng=rng_state()
+                try:metrics,details=evaluate(net,val,val_loader,state['memory'],state['batch'])
+                finally:restore_rng(saved_rng)
+                state['initial_validation']=metrics
+                state['validation_history']=[measurement(0,0,metrics,metrics)]
+                state['phase']='optimization'
+                write_new(root/'validation_initial.json',dict(metrics=metrics,cases=details,debug=debug,
+                    scope='Before optimizer updates; same full validation candidates as subsequent epochs'))
+                save(wait=True);write_history(root,state['validation_history'])
+                phase_timing('initial_validation',baseline_start)
+                tqdm.write(validation_line(0,metrics,metrics['ranking_mrr'],False)+' | INITIAL baseline; no optimizer updates')
+                if pause():return root/'checkpoint_latest.pt'
             if state['phase'] in ('initial_memory','refresh_memory','final_memory'):
                 if fine_cache is not None:
                     if device_cache is not None:device_cache.clear()
@@ -498,6 +520,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     from .donor_learning import selection
                     key=selection(metrics);score=metrics['ranking_mrr']
                     improved=state['best'] is None or key>tuple(state['best']['selection_key'])
+                    row=measurement(state['epoch']+1,state['step'],metrics,state['initial_validation'])
+                    state['validation_history'].append(row)
                 if improved:
                     weights=tree_to(net.state_dict(),'cpu');state['best']=dict(weights=weights,metric=score,epoch=state['epoch']+1,model_sha256=hash_state(weights))
                     if learning_policy is not None:state['best']['selection_key']=list(key)
@@ -506,5 +530,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 if state['epoch']==epochs:
                     net.load_state_dict(state['best']['weights']);state['selected_epoch']=state['best']['epoch'];state['phase']='final_memory'
                 save(wait=True)
+                if learning_policy is not None:
+                    write_history(root,state['validation_history']);tqdm.write(progress_line(row))
                 if pause():return root/'checkpoint_latest.pt'
             if state['phase']=='complete':raise ValueError('Completed runs need no resume')

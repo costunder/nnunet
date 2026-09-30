@@ -1,3 +1,9 @@
+## v2.2 — 전체 학습 기준점·재개 이력 전달본 (2026-09-30)
+
+- 같은 donor/live-gradient 학습 계약과 전체 규모는 유지. 학습 전 전체 validation 및 epoch별 초기 대비 MRR/R@1/rank loss 변화 기록, checkpoint-bound CSV 재개 추가.
+- 실제 CT DEBUG 세 종류 재개 exact 검사 및 단위/회귀27개 통과. 초기 평가 추가 전후 model/optimizer/RNG도 exact 동일.
+- A6000 foreground 실행은 `tools/run_same_donor_a6000.sh`. 새 donor 기하 준비 후 새 GNN 학습, 기존 결과 보존. 전체 성능 향상이나 서버 전체 규모 통과를 주장하지 않음.
+
 ## v2.2 — 같은 donor / live 순위 학습 및 RSS 관리 (2026-09-30)
 
 - `same_donor_live_v1`을 별도 학습 계약으로 추가. case별 label-independent train donor 고정, donor 의존 기하 재생성. 전체 observation·미관측128·미축약 SAGE3·L1/L2 유지.

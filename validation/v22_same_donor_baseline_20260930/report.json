@@ -1,0 +1,37 @@
+{
+  "debug": true,
+  "full_training": false,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "actual_train": 8,
+  "actual_validation": 2,
+  "fresh_process_resume_exact": {
+    "resumed": {
+      "model": true,
+      "optimizer": true,
+      "state": true,
+      "rng": true
+    },
+    "refresh_resumed": {
+      "model": true,
+      "optimizer": true,
+      "state": true,
+      "rng": true
+    },
+    "baseline_resumed": {
+      "model": true,
+      "optimizer": true,
+      "state": true,
+      "rng": true
+    }
+  },
+  "refresh_cursor": 2,
+  "final_candidate_scores": [
+    0.04721134901046753,
+    -0.012347817420959473
+  ],
+  "all_modules_updated": true,
+  "peak_cuda_bytes": 1040447488,
+  "peak_rss_bytes": 2692718592,
+  "mean_update_seconds": 0.7894220750022214,
+  "scope": "actual DEBUG CT; no full batch32/server admission or accuracy improvement claim"
+}

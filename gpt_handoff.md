@@ -1,3 +1,13 @@
+## 최신 전달 — 전체 학습 초기 기준점 / 재개 이력 (2026-09-30)
+
+`same_donor_live_v1`의 전체 규모·모델·loss·support 조건 유지. calibration 초기 train memory를 재사용해 optimizer update 전 전체 validation을 기록하고, 매 epoch 초기 대비 MRR/R@1/rank loss 및 `validation_history.csv`를 출력한다. baseline/history는 checkpoint state에 포함돼 정확 재개한다. 초기 validation은 best 선택에 포함하지 않고 학습 epoch들 중 기존 MRR 우선 선택을 유지한다.
+
+27개 단위/회귀 + 실제 CT GPU 전 경로 통과. optimization/refresh/초기validation 후 세 종류 fresh-process resume의 model/Adam/state/RNG exact 동일. 초기 기준점 평가 도입 전후 기존 DEBUG 실행의 model/Adam/RNG도 exact 동일. `validation/v22_same_donor_baseline_20260930/` 참조. Windows에서 A6000 전체규모/시간/최종성능 검증한 것은 아님.
+
+`tools/run_same_donor_a6000.sh`: 할당 A6000 UUID와 알려진 서버 캐시 경로를 사용해 새 donor-dependent graph 준비 후 foreground 전체 학습. 예전 donor 캐시 재사용 또는 오래된 checkpoint 자동 resume 금지. fine cache 준비에는 실제 비용이 있으며 축약 partition 준비는 하지 않는다. 학습11279/검증2823,후보128,physical32,40epoch,533update/epoch 유지.
+
+작은32update DEBUG에서 train은 개선됐지만 검증1case는 악화됐다. 일반화 성능 통과로 쓰지 말 것. 곡선 `docs/v22_same_donor_learning_curve_DEBUG_20260930.md`와 원시 보고서 보존. 전체 학습/nnU-Net은 로컬에서 자동시작하지 않았다.
+
 ## 현재 수정 — same_donor_live_v1 (2026-09-30)
 
 사용자가 학습 조건 진단 후 수정 요청. `--learning-policy same_donor_live_v1`은 새 학습 계약이며 기존 checkpoint exact resume가 아니다. donor를 case별 고정하여 원본 CT에서 기하를 재생성하고, 모든 P/U 조합을 physical32 tile로 비교하며 양쪽 최신 CNN gradient를 전달한다. 관측 반복 CE 역수 보정, global class normalization, MRR 우선 best. L1/L2/support/BasicCP/원본mask/128후보/전체관측/미축약 SAGE 규모 보존. 초기 CNN은 기존 frozen snapshot, SAGE/L1/L2/Adam 새 초기화.

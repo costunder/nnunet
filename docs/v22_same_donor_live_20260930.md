@@ -1,5 +1,15 @@
 # v2.2 — 같은 donor / 현재 특징 순위 학습 수정
 
+## 전체 학습 실행 전달본 — 초기 검증 기준점 추가
+
+`tools/run_same_donor_a6000.sh`는 기존 서버 경로와 할당 A6000 UUID를 사용해 새 donor 기하 준비 → 초기 전체 validation → 전체 GNN 학습을 foreground로 실행한다. 기존 학습을 종료하거나 서버 설정을 변경하지 않는다. `conda activate nnunet` 후 저장소에서 `bash tools/run_same_donor_a6000.sh`로 실행한다. 원래 CNN snapshot만 초기화에 사용하며 SAGE/L1/L2/Adam은 새 학습이다. 기존 checkpoint를 자동 검색하거나 옛 objective를 resume하지 않는다.
+
+학습 시작 전 calibration에서 이미 만든 초기 train support를 재사용해 전체 validation 기준점을 기록한다. 검증을 위한 추가 full-support 재생성은 없다. 이후 각 epoch의 MRR·R@1·rank loss를 기준점과 비교해 출력하고 `validation_history.csv`에 저장한다. 이력과 기준점은 checkpoint에 결속돼 resume 시 이어진다. 초기 평가는 진단이며 best는 기존대로 학습 epoch 중 MRR→R@1→rank loss로 선택한다. 자동 early stopping이나 성능 통과 판정은 추가하지 않았다.
+
+검사: 단위/회귀27개 통과. 실제 CT GPU DEBUG에서 initialization→4update→refresh→validation→final export→CP candidate scoring 통과. optimization/refresh/initial validation 후 세 종류 중단·재개가 model/optimizer/state/RNG exact 일치. 초기 검증 추가 전후의 기존 DEBUG 연속 실행도 model/optimizer/RNG가 exact 일치했다. 결과는 `validation/v22_same_donor_baseline_20260930/`에 보존한다. Bash launcher는 구성·명령을 정적으로 검토했으며 Windows에서 Linux 서버 전체 실행은 수행하지 않았다.
+
+앞선32update 작은 표본 검사는 train R@1 25%→100%, validation 한 case R@1 100%→0%였다. 이는 전체 성능 개선 증명이 아니며, 전체 학습으로 확인할 사항을 남긴다. [원시 곡선 해석](v22_same_donor_learning_curve_DEBUG_20260930.md). 본 전달본은 새 architecture나 hyperparameter 탐색을 추가하지 않는다.
+
 ## 이번 변경
 
 사용자가 로컬 비교에서 드러난 학습 조건 불일치를 고치도록 요청했다. 새 학습 정책 이름은 `same_donor_live_v1`이다. 기존 `observed_rank_v1` 및 결과는 보존한다. 새 정책은 명시적 CLI 옵션으로 선택하며, 기존 학습 checkpoint의 exact resume로 진입할 수 없다.

@@ -1,0 +1,8 @@
+{
+  "scope": "same actual CT DEBUG before/after initial validation addition",
+  "model_exact": true,
+  "optimizer_exact": true,
+  "rng_exact": true,
+  "maximum_model_absolute_difference": 0.0,
+  "full_training": false
+}

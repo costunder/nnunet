@@ -14,9 +14,9 @@ def main():
         '--profile-policy','research-report','--workers','4','--cuda-gib','8','--rss-gib','24','--resident-gib','4',
         '--batch-candidates','2','--support-patients','2','--activation-storage','retained','--execution-pipeline','overlapped',
         '--device-cache-gib','1','--sage-workspace-mib','64']
-    def run(name,*extra,refresh_pause=False):
+    def run(name,*extra,refresh_pause=False,baseline_pause=False):
         command=[sys.executable,'-B','-u','tools/run_fixed_regions.py']
-        if refresh_pause:
+        if refresh_pause or baseline_pause:
             code="""from l0_regions.execution_pipeline import CheckpointPipeline
 from tools.run_fixed_regions import main
 save=CheckpointPipeline.save
@@ -28,12 +28,17 @@ def pause_refresh(self,net,optimizer,state,identity,**kw):
 CheckpointPipeline.save=pause_refresh
 main()
 """
+            if baseline_pause:
+                code=code.replace("state['phase']=='refresh_memory' and state['memory_done']==2",
+                    "state['phase']=='optimization' and state['step']==0 and state.get('initial_validation') is not None")
             command=[sys.executable,'-B','-u','-c',code]
         subprocess.run(command+common+['--output',str(a.output/name),*map(str,extra)],cwd=ROOT,check=True)
     run('full');run('paused','--debug-pause-step','1');run('resumed','--resume',a.output/'paused/checkpoint_latest.pt')
     run('refresh_paused',refresh_pause=True);run('refresh_resumed','--resume',a.output/'refresh_paused/checkpoint_latest.pt')
+    run('baseline_paused',baseline_pause=True);run('baseline_resumed','--resume',a.output/'baseline_paused/checkpoint_latest.pt')
     def load(name):return torch.load(a.output/name/'checkpoint_latest.pt',map_location='cpu',weights_only=False)
-    full=load('full');parity={name:{k:hash_state(full[k])==hash_state(load(name)[k]) for k in ('model','optimizer','state','rng')} for name in ('resumed','refresh_resumed')}
+    full=load('full');parity={name:{k:hash_state(full[k])==hash_state(load(name)[k]) for k in ('model','optimizer','state','rng')} for name in ('resumed','refresh_resumed','baseline_resumed')}
+    if [r['epoch'] for r in full['state']['validation_history']]!=[0,1]:raise AssertionError('Missing initial/epoch validation')
     stopped=load('refresh_paused')
     if stopped['state']['phase']!='refresh_memory' or stopped['state']['memory_done']!=2:raise AssertionError('Wrong interruption scope')
     if not all(all(v.values()) for v in parity.values()):raise AssertionError(parity)
