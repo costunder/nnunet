@@ -1,3 +1,9 @@
+## v2.2 — 국소 CNN 기준점 검사 버그 수정 (2026-10-01)
+
+- bbox 중심이 간 마스크 밖에 있는 정상 donor/관측을 잘못 거부하던 검사 수정. 기준점·crop·관측·원본 paste mask 불변, 간 밖 CT 차단 유지. 비교 중심 label1 및 관측 component/anchor 결속 검사 유지.
+- 전체105케이스/14,102관측 주석 검사, 38개 단위/회귀, 실제 실패32pair의 10/20/30mm CUDA forward와 실제 pair 역전파 통과. 전체 학습·성능·MIG 최대규모 검증 아님.
+- [원인·수정·검증·공유 checkout 실행](docs/local_cnn_anchor_fix_20261001.md).
+
 ## v2.2 — 국소 CNN L0 및 실행 시 범위 선택 (2026-10-01)
 
 - 사용자 승인: donor/recipient 국소 native CT → 공유 3D CNN8(12/24/32) → masked multi-scale readout → paired128D. L0 그래프·축약·탐색을 사용하지 않는다. 기존 구현/결과 보존.

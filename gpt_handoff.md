@@ -1,3 +1,7 @@
+## 현재 수정 — 국소 CNN bbox 기준점 검사 (2026-10-01)
+
+서버 calibration 29/353에서 donor bbox midpoint가 배경이라는 이유로 정상 입력이 거부됐다. 동일30번째32pair로 재현 및 수정. 기준점/관측/paste mask 불변, 간 밖 CT는 계속 차단하고 comparison label1·관측 anchor 결속을 검사한다. 38개 단위/회귀, 전체105케이스14,102관측 주석 검사, 실제 실패batch32의10/20/30mm CUDA forward와 실제pair gradient/optimizer 통과. 전체 학습·MIG worst-case 보장 아님. 공유 checkout을 다른 학습이 쓰는 동안 switch하지 말고 별도 checkout에서 새 출력으로 실행. 실패는 optimizer 전이므로 재개할 학습 update 없음. 상세 docs/local_cnn_anchor_fix_20261001.md.
+
 ## 현재 결정 — v2.2 국소 CNN L0 (2026-10-01)
 
 최종 검증 기록: 단위/회귀35개 통과. 실제 CT DEBUG model/optimizer/state/RNG exact resume, 간 밖 NaN 출력 차이0 및 gradient0, 실제 CP 두 후보 full-mask 필터 통과. `work/local_cnn_DEBUG_20261001_verify_r2/report.json` 참조. L0 293,332 / 전체1,125,718 parameters. physical32/48/64는 실제 CT 후보와 DEBUG support의 짧은 비용 검사이므로 전체 학습 속도로 사용하지 않는다.

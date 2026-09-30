@@ -93,7 +93,10 @@ class CropStore:
         def add(case,center,offset_lo,offset_hi):
             v=self.raw.cache[case];spacing=v['spacing'];center=np.asarray(center)
             if center.shape!=(3,) or not np.isfinite(center).all() or not np.equal(center,np.round(center)).all():raise ValueError('Native integer center required')
-            if ((center<0)|(center>=v['organ'].shape)).any() or not v['organ'][tuple(center.astype(int))]:raise ValueError('Center outside liver')
+            if ((center<0)|(center>=v['organ'].shape)).any():raise ValueError(f'Crop anchor outside CT: {case}, {center.tolist()}')
+            # An occupied-mask bbox midpoint can lie in background for a concave
+            # component. It defines placement, not organ membership. Mask the
+            # complete crop below; never move the anchor or discard the record.
             lo=np.maximum(center.astype(int)+np.floor((offset_lo-margin)/spacing+.5).astype(int),0)
             hi=np.minimum(center.astype(int)+np.ceil((offset_hi+margin)/spacing+.5).astype(int),v['ct'].shape)
             key=(case,*map(int,lo),*map(int,hi))
@@ -109,10 +112,11 @@ class CropStore:
                     _,old=self.cache.popitem(last=False);self.bytes-=old[0].nbytes+old[1].nbytes
                 if size+self.raw_bytes()<=self.limit:self.cache[key]=item;self.bytes+=size
             lookup[key]=len(volumes);volumes.append(item)
-            audit.append(dict(case=case,origin=lo.tolist(),shape=list(item[0].shape),spacing=spacing.tolist(),extent_mm=((hi-lo)*spacing).tolist()))
+            audit.append(dict(case=case,origin=lo.tolist(),shape=list(item[0].shape),spacing=spacing.tolist(),extent_mm=((hi-lo)*spacing).tolist(),anchor_in_organ=bool(v['organ'][tuple(center.astype(int))])))
             return lookup[key]
         for row in rows:
             anchor,lo,hi=self.donor_bounds(row)
+            self.validate_observation(row)
             dids.append(add(row['donor_case_id'],anchor,lo,hi));rids.append(add(row['case_id'],row['center'],lo,hi))
         shape=np.max([v[0].shape for v in volumes],0);x=np.zeros((len(volumes),1,*shape),np.float32);m=np.zeros_like(x,dtype=bool)
         for i,(image,mask) in enumerate(volumes):
@@ -120,6 +124,20 @@ class CropStore:
         tensors=[torch.from_numpy(x),torch.from_numpy(m),torch.tensor(dids),torch.tensor(rids),torch.tensor(indices)]
         if torch.cuda.is_available():tensors=[t.pin_memory() for t in tensors]
         batch=LocalBatch(*tensors,audit).validate();self.raw.check();return batch
+
+    def validate_observation(self,row):
+        """Keep observation provenance separate from the crop's spatial anchor."""
+        if 'target' not in row:return  # Online candidates retain the final full-mask placement filter.
+        v=self.raw.cache[row['case_id']];center=np.asarray(row['center'])
+        if center.shape!=(3,) or not np.isfinite(center).all() or not np.equal(center,np.round(center)).all():
+            raise ValueError('Native integer observation center required')
+        if ((center<0)|(center>=v['organ'].shape)).any():raise ValueError('Observation outside CT')
+        if row['target']==0:
+            if v['lab'][tuple(center.astype(int))]!=1:raise ValueError('Comparison center must be annotated liver')
+        elif row['target']==1:
+            matches=[p for p in self.raw.raw[row['case_id']]['positives'] if p['component']==row['component'] and np.array_equal(p['center'],center)]
+            if len(matches)!=1:raise ValueError('Observed tumor anchor differs from original annotation record')
+        else:raise ValueError('Unknown observation target')
 
 class Loader:
     def __init__(self,ds,workers,resident_bytes,rss_limit,store=None):

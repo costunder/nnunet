@@ -1,0 +1,23 @@
+{
+  "debug": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "scope": "Full observation anchor audit, reported 32-pair batch L0 forwards, one actual background-anchor pair gradient per FOV",
+  "cases": 105,
+  "records": 14102,
+  "counts": {
+    "target1_label2": 652,
+    "target1_label1": 7,
+    "target0_label1": 13440,
+    "target1_label0": 3
+  },
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "tests_passed": 38,
+  "physical_batch": 32,
+  "margins_checked": [
+    10,
+    20,
+    30
+  ],
+  "all_actual_pair_backward_optimizer_passed": true
+}
