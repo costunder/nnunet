@@ -1,3 +1,7 @@
+## 현재 실행 안내 정정 — 축약 제거는 새 학습 (2026-09-30)
+
+사용자가 최근 checkpoint는 축약 그래프로 학습된 것이라고 지적했다. 현재 기본 명령은 `tools/run_fixed_regions.py train --fine-cache ...`이며 **--resume을 사용하지 않는다**。 기존 CNN 시작 snapshot/seed42 유지, SAGE/L1/L2/Adam 새 초기화, step0/40epoch, physical32/support16 유지. 최근 region weights에서 계속 학습하는 명령을 축약 유무 비교로 안내하지 말 것. 자동 latest checkpoint 선택은 배포하지 않았다. 기존 입력 전환 기능은 별도 명시적 계속 학습용으로만 남긴다. [실행 명령](docs/v22_uncoarsened_sage_20260930.md).
+
 ## v2.2 — 그래프 축약 제거 (2026-09-30)
 
 사용자가 축약 제거를 요청했다. `l0_regions/fine_graph.py`는 기존 paired cache의 같은 fixed view를 materialize해 원본 fine nodes/13종 edge를 SAGE3에 전달한다. EZ-SP partition, mass_mean, quotient를 호출하지 않는다. CNN/L1/L2/loss/support 정책/후보128/Basic CP/full mask 불변. Region index는 observation/view/초기 CNN lineage 검증만 담당하며 기존 region tensor를 읽지 않는다.

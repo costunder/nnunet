@@ -16,7 +16,9 @@ CNN 12/24/32채널, 48³ 입력, SAGE 3층·128D·residual·LayerNorm, L1/L2, lo
 
 원본 paired cache의 소스 검증은 유지한다. 이미 검토된 `hiercp_v222/model.py`의 특정 두 hash 사이 실행 변경만 기존 `compatible_core` 규칙으로 인정한다. graph/geometry 변경, record/view/hash 변조, 잘못된 edge, nonfinite, coverage 누락은 거부한다.
 
-## 이어서 학습할 때
+## 기존 checkpoint를 명시적으로 전환할 때만 사용하는 별도 기능
+
+**현재 축약 제거 비교에는 아래 전환 기능을 사용하지 않는다.** 최근 region checkpoint는 축약 그래프에서 학습된 weights이므로, 현재 실행 안내는 기존 실험과 같은 초기화에서 step0으로 시작한다. 이전에 최근 checkpoint 재개를 기본 명령으로 제공한 안내는 철회한다.
 
 `--resume-without-coarsening`은 일반적인 동일 조건 재개가 아니라 **입력 그래프 변경을 명시한 계속 학습**이다.
 
@@ -46,25 +48,27 @@ RTX5070Ti에서 실제 CT DEBUG train8/val2를 사용했다. 학습 query schedu
 
 ## A6000 서버 실행
 
-기존 실행 화면에서 Ctrl+C 한 번 후 `PAUSED`와 `RESULT`를 기다린다. 그 RESULT의 최신 checkpoint를 입력한다. 과거 step73 경로를 재사용하지 않는다. 학습이 종료되기 전에 checkout을 바꾸지 않는다.
+기존 학습이 실행 중이면 Ctrl+C 후 `PAUSED`를 기다린다. 경로를 묻는 `read` 프롬프트에만 머물러 있다면 Ctrl+C 한 번으로 입력 대기를 취소한다. 학습이 종료되기 전에 checkout을 바꾸지 않는다.
 
-아래 launcher는 checkpoint의 workers, physical batch, 후보 batch 목록, support 환자 수, precision, activation 정책과 CUDA/RAM/GPU cache/workspace 설정을 그대로 이어받는다. 첫 화면에 saved step과 실제 명령을 출력한다. `--print-command`를 추가하면 학습 없이 명령만 확인한다.
+아래는 **resume 없는 새 학습**이다. 기존 시작 CNN snapshot과 seed42를 사용하고 SAGE/L1/L2 및 Adam을 새로 초기화한다. region 학습이 진행된 최신 checkpoint의 weights/Adam을 가져오지 않는다. 기존 실험 physical batch32를 유지하기 위해 calibration 후보를32로 고정하며, query 환자별 마지막 잔여 batch는 기존 schedule 그대로다. support16, workers16, CUDA40/RSS192/resident128/GPU cache8GiB와 workspace512MiB를 유지한다. 40epoch 전체를 새 실행으로 진행한다.
 
 ```bash
 cd /home/aicompetition06/Medical/HierCP-regions-8580e59 &&
-read -r -p "방금 PAUSED 후 RESULT checkpoint 경로: " CP_RESUME &&
-test -f "$CP_RESUME" &&
 git fetch origin codex/v222-server-r6 &&
 git switch --detach FETCH_HEAD &&
 CUDA_VISIBLE_DEVICES=GPU-73681bb7-5393-5774-9afb-99b5590083c9 \
-python -u tools/run_uncoarsened_sage.py \
+python -u tools/run_fixed_regions.py train \
+  --profile-policy research-report \
   --cache work/regions_frozen_reuse_20260929_230052/cache/index.json \
   --fine-cache /home/aicompetition06/Medical/HierCP-v22-e1e34bf/work/v22_full_prepare_20260928_logfix/paired_cache/index.json \
-  --resume "$CP_RESUME" \
-  --output "work/v22_fine_sage_$(date +%Y%m%d_%H%M%S)"
+  --support-patients 16 --activation-storage retained \
+  --execution-pipeline overlapped --device-cache-gib 8 --sage-workspace-mib 512 \
+  --workers 16 --cuda-gib 40 --rss-gib 192 --resident-gib 128 \
+  --batch-candidates 32 \
+  --output "work/v22_fine_sage_fresh_$(date +%Y%m%d_%H%M%S)"
 ```
 
-처음 전환의 `initial_memory`는 새 그래프의 support embedding 계산이다. EZ-SP prepare를 다시 실행하는 단계가 아니다. Ctrl+C는 기존 foreground save-and-pause 방식으로 동작한다.
+처음의 calibration support는 초기 모델의 새 그래프 support embedding 계산이다. EZ-SP prepare를 다시 실행하는 단계가 아니다. 검증된 calibration memory를 첫 epoch에 재사용한다. Ctrl+C는 기존 foreground save-and-pause 방식으로 동작한다. 새 학습 경로 자체는 앞선 실제 CT GPU smoke의 uninterrupted/paused/resumed 검사에서 실행했다. 서버 전체 batch32의 fit/속도는 미측정 상태다.
 
 ## 작업 완료 체크리스트
 

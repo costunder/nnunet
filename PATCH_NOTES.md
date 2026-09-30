@@ -1,3 +1,9 @@
+## v2.2 — 축약 제거 비교의 시작 조건 정정 (2026-09-30)
+
+- 최신 region checkpoint는 축약 그래프 학습 weights이다. 해당 weights를 fine graph에 이어 학습하도록 안내했던 기본 실행 명령을 철회한다.
+- 현재 비교는 resume 없이 기존 CNN 시작 snapshot/seed와 새 SAGE/L1/L2/Adam으로 step0부터 시작한다. 기존 physical32 유지, support16·나머지 실행 설정 유지. 장기 학습 자동 실행 없음.
+- [수정한 서버 명령](docs/v22_uncoarsened_sage_20260930.md). 자동 latest checkpoint 선택 기능은 배포하지 않았다.
+
 ## v2.2 — 그래프 축약 제거 경로 (2026-09-30)
 
 - 사용자 요청으로 original sampled fine graph → CNN → GraphSAGE3 → 128D → 기존 L1/L2 경로 추가. EZ-SP/영역 평균/quotient를 학습·검증·최종 scoring에서 사용하지 않는다. 기존 축약 구현과 결과 보존.
