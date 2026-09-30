@@ -14,7 +14,7 @@
 
 로컬 전체 inventory 집계: train 11,279 / validation 2,823, train P/U 67,456쌍 모두 보존. physical batch32에서 **533 update/epoch**, 15,989개 query 제시(반복 포함), 실제 batch 평균30.0·최대32·마지막 잔여 최소5. 기존405 update보다 많다. 전체 데이터 수를 늘리거나 줄인 것이 아니라 live 양쪽 비교에 필요한 반복이며 CE 반복 보정이 적용된다. 40epoch이면21,320 update이다.
 
-현재 정책은 case당 고정 donor 하나다. 전체527개 donor pool을 그대로 선택 대상으로 두며 이 seed/전체 recipient 구성에서는97개 서로 다른 donor가 선택된다. **527개 모두를 실제 학습에 사용했다고 표현하지 않는다.** donor 다양성 감소는 이 고정 조건 비교의 제한이며, epoch별 donor 교체/다중 donor episode를 검증 없이 추가하지 않았다. 새 학습이 정확도를 개선했다는 전체 평가 결과는 아직 없다.
+현재 정책은 case당 고정 donor 하나다. 전체527개 donor pool을 그대로 선택 대상으로 두며 이 seed/전체 recipient 구성에서는97개 서로 다른 donor가 선택된다(train에81개, validation에21개, 중복5개). **527개 모두를 실제 학습에 사용했다고 표현하지 않는다.** donor 다양성 감소는 이 고정 조건 비교의 제한이며, epoch별 donor 교체/다중 donor episode를 검증 없이 추가하지 않았다. 새 학습이 정확도를 개선했다는 전체 평가 결과는 아직 없다.
 
 관측 양성은 실제 종양 위치의 대리 목표다. 외부 donor를 이식했을 때의 최적 자리 정답으로 승격하지 않는다. 현재 raw CT 입력·종양 주석 사용 규칙 및 CP 최종 overlap 제외는 유지한다.
 
