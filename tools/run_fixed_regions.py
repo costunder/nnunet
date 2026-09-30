@@ -29,6 +29,8 @@ def main():
     p.add_argument('--resident-gib',type=float)
     p.add_argument('--batch-candidates',type=int,nargs='+')
     p.add_argument('--resume',type=Path)
+    p.add_argument('--fine-cache',type=Path,help='Original paired graph index: remove coarsening, retain fixed view and all original sampled edges')
+    p.add_argument('--resume-without-coarsening',action='store_true',help='Explicit graph change preserving weights/Adam/cursor, rebuilding full support and resetting cluster plan/best')
     p.add_argument('--support-patients',type=int,help='Explicit patient minibatch count; retain every eligible observation of each selected patient')
     p.add_argument('--execution-pipeline',choices=('synchronous','overlapped'),default='synchronous')
     p.add_argument('--device-cache-gib',type=float,help='Explicit verified input GPU cache ceiling; included in --cuda-gib, not an extra allowance')
@@ -46,6 +48,7 @@ def main():
     p.add_argument('--profile-policy',choices=POLICIES,default='strict',
         help='research-report: train with recorded uncalibrated profile violations; integrity and resource checks remain mandatory')
     a=p.parse_args()
+    if a.mode!='train' and (a.fine_cache is not None or a.resume_without_coarsening):raise ValueError('Fine graph options apply to train')
     if a.execution_pipeline=='overlapped' and (a.device_cache_gib is None or a.device_cache_gib<0):raise ValueError('Explicit nonnegative --device-cache-gib required')
     if a.execution_pipeline=='synchronous' and a.device_cache_gib is not None:raise ValueError('Device cache requires overlapped pipeline')
     if a.execution_pipeline=='overlapped' and (a.sage_workspace_mib is None or a.sage_workspace_mib<=0):raise ValueError('Explicit positive --sage-workspace-mib required')
@@ -71,7 +74,7 @@ def main():
     if a.resume_cuda_budget_change and not (a.resume and a.resume_execution_upgrade):
         raise ValueError('CUDA budget migration requires --resume and --resume-execution-upgrade')
     from tools.v22_region_preflight import check
-    check()  # Before any output directory, checkpoint read or graph materialization.
+    if a.fine_cache is None:check()  # Fine SAGE never requires an official merge kernel.
     budget=Budget(int(a.cuda_gib*2**30),int(a.rss_gib*2**30))
     total=torch.cuda.get_device_properties(0).total_memory
     if budget.cuda_bytes>=total:raise ValueError('CUDA allocator budget must leave device headroom')
@@ -87,10 +90,11 @@ def main():
                 activation_storage=a.activation_storage,resume_execution_upgrade=a.resume_execution_upgrade,
                 resume_cuda_budget_change=a.resume_cuda_budget_change,support_patients=a.support_patients,
                 resume_support_minibatch=a.resume_support_minibatch,execution_pipeline=a.execution_pipeline,
-                device_cache_bytes=int((a.device_cache_gib or 0)*2**30),sage_workspace_bytes=(a.sage_workspace_mib or 64)*2**20)
+                device_cache_bytes=int((a.device_cache_gib or 0)*2**30),sage_workspace_bytes=(a.sage_workspace_mib or 64)*2**20,
+                fine_cache=a.fine_cache,resume_without_coarsening=a.resume_without_coarsening)
             if (a.output/'training_complete.json').exists():
                 from l0_regions.final import export
-                export(result,a.cache,a.output/'checkpoint.pt')
+                export(result,a.cache,a.output/'checkpoint.pt',fine_cache=a.fine_cache)
         else:
             a.output.mkdir(parents=True,exist_ok=False)
             common=['--workers',str(a.workers),'--cuda-gib',str(a.cuda_gib),'--rss-gib',str(a.rss_gib),'--debug','--profile-policy',a.profile_policy]

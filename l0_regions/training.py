@@ -63,7 +63,11 @@ def make_model(ds,budget,debug,activation_storage='checkpointed'):
     ref.dense_encoder.load_state_dict(weights,strict=True)
     contract=dict(format=FORMAT,debug=debug,profile=m['profile'],frozen_cnn_sha256=m['cnn_sha256'],
                   view_epoch=m['view_epoch'],feature_coordinates='stride4',profile_policy=m.get('profile_policy','strict'))
-    net=PromptGraphModel(m['config'],m['base'],{},local_encoder=TrainEncoder(ref,budget=budget,debug=debug,contract=contract)).cuda()
+    encoder=TrainEncoder
+    if m.get('graph_representation'):
+        from .fine_graph import FineTrainEncoder,MODE
+        contract['graph_representation']=MODE;encoder=FineTrainEncoder
+    net=PromptGraphModel(m['config'],m['base'],{},local_encoder=encoder(ref,budget=budget,debug=debug,contract=contract)).cuda()
     if activation_storage=='retained':
         net.local.core.checkpoint_dense_encoder=False
         net.local.core.checkpoint_local_blocks=False
@@ -235,7 +239,7 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False):
     validate_policy(profile_policy)
     from .support_episodes import PatientEpisodes,contract as support_contract
     support_policy=None if support_patients is None else support_contract(support_patients)
@@ -255,23 +259,38 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     if resume_execution_upgrade and not resume:raise ValueError('Execution upgrade requires a saved checkpoint')
     if debug_pause_step is not None and not debug:raise ValueError('Pause step is DEBUG only')
     if not candidates or min(candidates)<1 or candidates!=sorted(set(candidates)):raise ValueError('Explicit increasing physical batch candidates required')
-    ds=RegionDataset(index,'inner_train',debug,profile_policy);val=RegionDataset(index,'inner_val',debug,profile_policy)
+    if resume_without_coarsening and (not resume or fine_cache is None or resume_execution_upgrade or resume_cuda_budget_change or resume_support_minibatch):
+        raise ValueError('Coarsening removal requires fine cache + original checkpoint, with no other migration')
+    if fine_cache is None:
+        ds=RegionDataset(index,'inner_train',debug,profile_policy);val=RegionDataset(index,'inner_val',debug,profile_policy)
+    else:
+        from .fine_graph import FineDataset,FineLoader,MODE
+        ds=FineDataset(index,'inner_train',debug,profile_policy,fine_cache);val=FineDataset(index,'inner_val',debug,profile_policy,fine_cache)
     root=Path(output).resolve();root.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(workers);net=make_model(ds,budget,debug,activation_storage)
     base=ds.meta['base'];cfg=ds.meta['config'];epochs=1 if debug else cfg['gnn_epochs']
-    loader=Loader(ds,workers,resident_bytes);val_loader=Loader(val,workers,resident_bytes)
+    if fine_cache is None:
+        loader=Loader(ds,workers,resident_bytes);val_loader=Loader(val,workers,resident_bytes)
+    else:
+        loader=FineLoader(ds,workers,resident_bytes);val_loader=FineLoader(val,workers,resident_bytes,store=loader.store)
     optimizer=torch.optim.AdamW(net.parameters(),lr=base['training']['lr'],weight_decay=base['training']['weight_decay'],fused=base['training']['fused_optimizer'])
     identity=dict(format=FORMAT,debug=debug,cache_sha256=sha(index),source=source_identity(),epochs=epochs,
         config=cfg,base=base,precision='FP32',workers=workers,candidates=candidates,
         ranking=rank_config(),resident_budget_bytes=resident_bytes,profile_policy=profile_policy,
         activation_storage=activation_storage)
     identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
+    if fine_cache is not None:identity.update(graph_representation=MODE,fine_cache_sha256=sha(fine_cache))
     if support_policy is not None:identity['support_training']=support_policy
     if execution_pipeline=='overlapped':identity['execution_pipeline']=dict(mode=execution_pipeline,device_cache_bytes=device_cache_bytes,sage_workspace_bytes=sage_workspace_bytes,
         checkpoints='every update; immutable packed CPU snapshot; one ordered writer; flush on pause/phase/return',gradient_check='one finite decision per update')
     if resume:
-        saved=load_checkpoint(resume,identity,allow_execution_upgrade=resume_execution_upgrade,
-            allow_cuda_budget_change=resume_cuda_budget_change,allow_support_migration=resume_support_minibatch)
+        if resume_without_coarsening:
+            from .fine_graph import transition
+            saved,receipt=transition(resume,identity,net)
+            write_new(root/'fine_graph_transition.json',receipt)
+        else:
+            saved=load_checkpoint(resume,identity,allow_execution_upgrade=resume_execution_upgrade,
+                allow_cuda_budget_change=resume_cuda_budget_change,allow_support_migration=resume_support_minibatch)
         net.load_state_dict(saved['model']);optimizer.load_state_dict(saved['optimizer'])
         if saved.get('execution_upgrade'):write_new(root/'execution_upgrade.json',saved['execution_upgrade'])
         state=tree_to(saved['state'],'cuda');restore_rng(saved['rng']);del saved
@@ -285,22 +304,25 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         state=dict(epoch=0,step=0,phase='optimization',memory=memory,memory_parts=[],memory_done=0,
             batch=batch,next_batch=0,plan=None,last_group=None,best=None,selected_epoch=None)
     net.local.dense_batch_size=state['batch']
-    write_new(root/'execution_contract.json',dict(**identity,train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
+    write_new(root/'execution_contract.json',dict(**{k:v for k,v in identity.items() if k!='graph_representation'},train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
         physical_batch=state['batch'],effective_batch=state['batch'],accumulation=1,parameters=sum(p.numel() for p in net.parameters()),
         layers=dict(L0=ds.meta['profile']['graph_encoder']['sage_layers'],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
         gpu=torch.cuda.get_device_name(),cpu_logical=psutil.cpu_count(),ram=psutil.virtual_memory()._asdict(),
         trainable_parameters=sum(p.numel() for p in net.parameters() if p.requires_grad),
         L0_parameters=sum(p.numel() for p in net.local.parameters()),input_shape=[state['batch'],1,48,48,48],
-        graph_counts=[dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries],
+        graph_counts=[dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries] if fine_cache is None else
+            [dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],edge_upper_bound=e['row']['bounds']['edges'],scope='fixed-view node counts from original receipt; exact fine edges logged per consumed batch') for e in ds.entries],
+        graph_representation=identity.get('graph_representation','fixed_regions'),
         optimization_steps=sum(1 for _ in groups(ds,state['batch']))*epochs,
         actual_query_batch_sizes=[len(ids) for ids in groups(ds,state['batch'])],
         cache_preparation_revision=ds.preparation_revision,cache_rebuilt=False,
-        initial_support_policy='reuse full calibration support after verifying model unchanged',
+        initial_support_policy='rebuild full support after explicit graph transition' if resume_without_coarsening else 'reuse saved memory or verified calibration support',
         scope='GNN only; final artifact connects to the existing CP recommendation adapter',
-        profile_exceeded=bool(ds.meta['admission_failures']),partition_quality_validated=False,
+        profile_exceeded=bool(ds.meta['admission_failures']) if fine_cache is None else None,partition_quality_validated=False,
         research_training=profile_policy=='research-report',production_admitted=not debug and profile_policy=='strict'))
     print(json.dumps(dict(stage='region_training_policy',profile_policy=profile_policy,
-        profile_violating_records=ds.meta['admission_failures'],partition_quality_validated=False,
+        profile_violating_records=ds.meta['admission_failures'] if fine_cache is None else None,partition_quality_validated=False,
+        graph_representation=identity.get('graph_representation','fixed_regions'),coarsening_enabled=fine_cache is None,
         debug=debug,epochs=epochs,activation_storage=activation_storage,
         activation_checkpointing=dict(CNN=net.local.core.checkpoint_dense_encoder,
             L0=net.local.core.checkpoint_local_blocks,L1_L2=net.checkpoint_support),
@@ -397,6 +419,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     save_seconds=time.perf_counter()-save_start
                     peak=torch.cuda.max_memory_allocated();budget.check()
                     row=dict(step=state['step'],epoch=state['epoch']+1,physical_batch=len(ids),
+                        fine_graph_counts=None if fine_cache is None else dict(nodes=cpu.graph.sampled_counts.tolist(),edges=cpu.graph.relation_edge_counts.tolist()),
                         learning=health,
                         activation_storage=activation_storage,loss=loss_value,loader_wait_seconds=load_wait,
                         support_records=support_records,support_patients=support_groups,support_policy=support_policy,

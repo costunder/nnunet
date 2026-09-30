@@ -1,3 +1,11 @@
+## v2.2 — 그래프 축약 제거 (2026-09-30)
+
+사용자가 축약 제거를 요청했다. `l0_regions/fine_graph.py`는 기존 paired cache의 같은 fixed view를 materialize해 원본 fine nodes/13종 edge를 SAGE3에 전달한다. EZ-SP partition, mass_mean, quotient를 호출하지 않는다. CNN/L1/L2/loss/support 정책/후보128/Basic CP/full mask 불변. Region index는 observation/view/초기 CNN lineage 검증만 담당하며 기존 region tensor를 읽지 않는다.
+
+`tools/run_uncoarsened_sage.py`가 선택한 checkpoint의 batch/support/자원/실행 설정을 상속한다. 처음 region→fine 전환은 weight/Adam/RNG/cursor 보존, memory/plan/best 무효화와 전체 fine support rebuild를 명시한다. old-learning exact resume나 fresh ablation으로 표시하지 않는다. 이후 fine resume는 exact이며 실제 CT로 검증했다. 기존 결과/캐시 보존, 준비 캐시 재생성 없음.
+
+27개 단위/회귀 및 RTX5070Ti 실제 CT DEBUG(train8/val2) 통과. 8pair N52,666/E2,761,602 유지, 기존 fine SAGE와 출력/gradient exact, pause/resume 최종 model/Adam/state/RNG 일치, 전환 시 전체 weight/Adam/RNG/epoch/step/batch/query cursor 보존. 최종 artifact 및 후보2개 scoring까지 연결. 실제 query batch2/memory8 검사를 서버batch32·전체128CP·전체성능 검증으로 확대 해석하지 않는다. 서버 장기 학습 미시작. [상세 및 실행 명령](docs/v22_uncoarsened_sage_20260930.md).
+
 ## v2.2 — 화면에서 학습 상태 확인 (2026-09-30)
 
 표시 전용 LearningMonitor 연결: 현재/최근20회 평균 loss, clipping 이전 norm, 모듈별 고정 가중치 표본 변화, lr. epoch validation rank loss/MRR/Recall@K/best 출력. probe는 모듈당 한 weight tensor의 최대32개 원소이므로 전체 가중치 검증 또는 성능 향상으로 주장하지 않는다. 모델/loss/RNG/checkpoint state는 유지하고 recent loss 창만 재개 시 초기화. 8fadbd0 및10287dd의 검토된 실행 업그레이드 지원. [내용과 적용](docs/region_learning_display_20260930.md).

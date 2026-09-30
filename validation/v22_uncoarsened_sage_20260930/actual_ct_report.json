@@ -1,0 +1,33 @@
+{
+  "debug": true,
+  "full_training": false,
+  "nnunet_training": false,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "resume_parity": {
+    "model": true,
+    "optimizer": true,
+    "state": true,
+    "rng": true
+  },
+  "graph_transition_preserved": {
+    "optimizer": true,
+    "rng": true,
+    "all_weight_tensors": true,
+    "epoch": true,
+    "step": true,
+    "batch": true,
+    "next_batch": true
+  },
+  "reference_fine_sage_output_gradient_exact": true,
+  "merge_and_pool_calls_forbidden": true,
+  "original_edges_unchanged": true,
+  "fine_nodes": 52666,
+  "fine_edges": 2761602,
+  "actual_pairs": 8,
+  "candidate_smoke_count": 2,
+  "candidate_scores": [
+    -0.4144074022769928,
+    0.011553645133972168
+  ],
+  "scope": "Actual DEBUG train8/val2, no full server batch32 admission or CP quality claim"
+}

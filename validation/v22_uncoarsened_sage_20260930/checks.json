@@ -1,0 +1,22 @@
+{
+  "debug": true,
+  "syntax_files": 7,
+  "syntax_status": "PASS",
+  "unit_regression_tests": 27,
+  "unit_status": "PASS",
+  "unit_seconds": 4.225,
+  "command": ".venv/Scripts/python.exe -B -m unittest tests.test_uncoarsened_sage_debug tests.test_l0_sage_debug tests.test_region_execution_pipeline_debug tests.test_region_learning_monitor_debug -v",
+  "actual_ct_report": "actual_ct_report.json",
+  "full_training_started": false,
+  "server_batch32_validated": false,
+  "full_cp128_integration_validated_in_this_change": false,
+  "quality_improvement_validated": false,
+  "prior_failed_debug_attempts_preserved": [
+    "work/uncoarsened_sage_DEBUG_20260930",
+    "work/uncoarsened_sage_DEBUG_20260930_r2"
+  ],
+  "resolved_during_debug": [
+    "Use pinned graph-neutral model provenance compatibility while retaining geometry and data integrity checks",
+    "Unpack CanonicalStore record and avoid duplicate graph_representation keyword in execution report"
+  ]
+}

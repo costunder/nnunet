@@ -30,6 +30,7 @@ def validate(value,*,allow_debug=False):
         raise ValueError('Final model/profile policy mismatch')
     if contract['profile']!=value['region']['profile'] or contract['frozen_cnn_sha256']!=value['region']['cnn_sha256']:
         raise ValueError('Final partition/model contract mismatch')
+    if contract.get('graph_representation')!=value['region'].get('graph_representation'):raise ValueError('Final graph representation mismatch')
     if value['region']['admission_failures'] and not allow_profile(policy,value['debug']):raise ValueError('Rejected region profile forbidden')
     if value.get('partition_quality_validated') is not False:raise ValueError('Partition quality must remain unverified')
     if value['completed_epochs']!=(1 if value['debug'] else cfg['gnn_epochs']):raise ValueError('Incomplete region training')
@@ -42,14 +43,21 @@ def validate(value,*,allow_debug=False):
     return value
 
 
-def export(checkpoint,index,output):
+def export(checkpoint,index,output,*,fine_cache=None):
     """Only completed region runs; never relabel a GAT or DEBUG artifact."""
     saved=torch.load(checkpoint,map_location='cpu',weights_only=False)
     if saved.get('format')!=RESUME_FORMAT:raise ValueError('Region checkpoint required')
     # Validate both byte integrity and the currently installed runtime identity.
     saved=load_checkpoint(checkpoint,dict(saved['identity'],source=source_identity()))
     state=saved['state'];debug=saved['identity']['debug']
-    policy=saved['identity'].get('profile_policy','strict');ds=RegionDataset(index,'inner_train',debug,policy)
+    policy=saved['identity'].get('profile_policy','strict')
+    if fine_cache is None:
+        if saved['identity'].get('graph_representation'):raise ValueError('Fine export requires original graph index')
+        ds=RegionDataset(index,'inner_train',debug,policy)
+    else:
+        from .fine_graph import FineDataset,MODE
+        if saved['identity'].get('graph_representation')!=MODE or saved['identity'].get('fine_cache_sha256')!=sha(fine_cache):raise ValueError('Fine export source mismatch')
+        ds=FineDataset(index,'inner_train',debug,policy,fine_cache)
     if saved['identity']['cache_sha256']!=sha(index) or state['phase']!='complete':raise ValueError('Complete matching region run required')
     m=ds.meta;raw_path=Path(m['original_cache'])
     if sha(raw_path)!=m['original_cache_sha256']:raise ValueError('Original observation inventory changed')
@@ -73,6 +81,9 @@ def export(checkpoint,index,output):
         partition_quality_validated=False,
         frozen_cnn=torch.load(ds.root/'frozen_cnn.pt',weights_only=True),
         **{k:original[k] for k in ('identities','split','donor_pool','raw_records')})
+    if fine_cache is not None:
+        value['region']['graph_representation']=MODE
+        value['fine_graph_transition']=state.get('fine_graph_transition')
     value['content_sha256']=hash_state(value);validate(value,allow_debug=debug)
     output=Path(output)
     if output.exists():raise FileExistsError('Existing final artifact preserved')
@@ -92,11 +103,18 @@ def load(path,*,device='cuda',allow_debug=False):
     with installed('stride4'):reference=V1LocalEncoder(value['base'])
     reference.dense_encoder.load_state_dict(value['frozen_cnn'],strict=True)
     contract=value['state_dict']['local._extra_state']
-    network=PromptGraphModel(value['config'],value['base'],{},local_encoder=TrainEncoder(reference,
+    encoder=TrainEncoder
+    if value['region'].get('graph_representation'):
+        from .fine_graph import FineTrainEncoder
+        encoder=FineTrainEncoder
+    network=PromptGraphModel(value['config'],value['base'],{},local_encoder=encoder(reference,
         budget=budget,debug=value['debug'],contract=contract)).cuda()
     network.load_state_dict(value['state_dict'],strict=True);network.eval()
     network.local.dense_batch_size=value['physical_batch']
     network.ranking_identities=value['identities'];network.ranking_split=value['split']
     from .recommendation import CandidateEncoder
-    network.region_candidates=CandidateEncoder(value,reference,budget)
+    if value['region'].get('graph_representation'):
+        from .fine_graph import FineCandidateEncoder
+        network.region_candidates=FineCandidateEncoder(value,budget)
+    else:network.region_candidates=CandidateEncoder(value,reference,budget)
     return network,tree_to(value['memory'],'cuda'),value

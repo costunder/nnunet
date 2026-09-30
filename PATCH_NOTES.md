@@ -1,3 +1,10 @@
+## v2.2 — 그래프 축약 제거 경로 (2026-09-30)
+
+- 사용자 요청으로 original sampled fine graph → CNN → GraphSAGE3 → 128D → 기존 L1/L2 경로 추가. EZ-SP/영역 평균/quotient를 학습·검증·최종 scoring에서 사용하지 않는다. 기존 축약 구현과 결과 보존.
+- 원본 paired cache 재사용. 기존 가중치·Adam·진행 위치·batch 보존 전환, graph-dependent memory/plan/best 재계산 및 이력 기록. 동일 학습 exact resume로 표시하지 않음.
+- 27개 검사와 실제 CT GPU DEBUG 통과. 실제8pair 52,666nodes/2,761,602edges 보존, fine SAGE 출력/gradient 및 새 경로 pause/resume exact 일치.
+- 서버 설정은 최신 checkpoint에서 상속하는 launcher 제공. full batch32/전체 epoch 성능 및 정확도 미검증, 장기 학습 미실행. [구현·검사·실행 명령](docs/v22_uncoarsened_sage_20260930.md).
+
 ## v2.2 — 학습 상태 표시 패치 (2026-09-30)
 
 - tqdm에 최근 최대20회 평균 loss·gradient norm·CNN/SAGE1/2/3/L1/L2 가중치 표본 변화·lr 표시. epoch 종료 validation rank loss/MRR/Recall@K/best를 화면 출력.
