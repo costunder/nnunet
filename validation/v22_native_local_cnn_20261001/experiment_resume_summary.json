@@ -1,0 +1,15 @@
+{
+  "debug": true,
+  "full_training": false,
+  "actual_CT": true,
+  "updates": 4,
+  "exact_resume": {
+    "model": true,
+    "optimizer": true,
+    "state": true,
+    "rng": true
+  },
+  "completed_rerun_did_not_start_training": true,
+  "attempts": 2,
+  "orchestration_tests_passed": 12
+}

@@ -1,3 +1,7 @@
+## 현재 실행 — 국소 CNN 실험별 자동 재개 (2026-10-01)
+
+`tools/run_local_cnn_experiment.py --experiment <고정 경로>`로 최초 실행과 같은 실험의 checkpoint 재개를 연결했다. 기존 time-stamped run 명령은 새 학습만 시작하므로 재개용으로 안내하지 않는다. 전체 latest 검색 없음, 이전 attempt 보존, source/FOV/data/settings 결속, 동일실험 잠금, 완료시 재학습 없음. 기존 수동 run 인계는 정확한 root와 PAUSED/complete 표시 필요. 12 orchestration unit 및 실제CT DEBUG4update의 중단·새프로세스 재개가 model/optimizer/state/RNG exact 일치; 완료후 재실행도 학습하지 않음. 모델/학습 core 변경 없음, 전체학습 미실행. docs/local_cnn_experiment_resume_20261001.md 참조.
+
 ## 현재 수정 — 국소 CNN bbox 기준점 검사 (2026-10-01)
 
 서버 calibration 29/353에서 donor bbox midpoint가 배경이라는 이유로 정상 입력이 거부됐다. 동일30번째32pair로 재현 및 수정. 기준점/관측/paste mask 불변, 간 밖 CT는 계속 차단하고 comparison label1·관측 anchor 결속을 검사한다. 38개 단위/회귀, 전체105케이스14,102관측 주석 검사, 실제 실패batch32의10/20/30mm CUDA forward와 실제pair gradient/optimizer 통과. 전체 학습·MIG worst-case 보장 아님. 공유 checkout을 다른 학습이 쓰는 동안 switch하지 말고 별도 checkout에서 새 출력으로 실행. 실패는 optimizer 전이므로 재개할 학습 update 없음. 상세 docs/local_cnn_anchor_fix_20261001.md.
