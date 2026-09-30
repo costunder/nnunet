@@ -1,6 +1,6 @@
 """One named local-CNN experiment: first run, exact resume, exclusive ownership.
 
-GPU selection stays in CUDA_VISIBLE_DEVICES. No global latest-checkpoint search,
+Optional --gpu resolves the physical GPU/MIG before importing PyTorch. No global latest-checkpoint search,
 checkpoint migration, detached worker, or overwrite of prior training attempts.
 """
 import argparse
@@ -136,6 +136,7 @@ def run_experiment(a,request,execute=foreground):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--gpu',type=int,help='Physical nvidia-smi GPU number; resolve its current single/allocated MIG automatically')
     p.add_argument('--experiment',type=Path,required=True,help='Stable run root; reuse exactly this path to resume')
     p.add_argument('--cache',type=Path,required=True,help='Original observation inventory, unchanged on every invocation')
     p.add_argument('--margin-mm',type=float,required=True)
@@ -146,6 +147,9 @@ def main():
     p.add_argument('--support-patients',type=int,required=True)
     p.add_argument('--debug',action='store_true');p.add_argument('--debug-pause-step',type=int)
     a=p.parse_args()
+    if a.gpu is not None:
+        from tools.local_cnn_device import select
+        select(a.gpu)
     from l0_local_cnn.model import validate_config
     from l0_regions.training_data import sha,source_identity
     cfg=json.loads(a.config.read_text());cfg['margin_mm']=a.margin_mm;validate_config(cfg)

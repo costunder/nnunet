@@ -1,5 +1,6 @@
 ## v2.2 — 실험별 checkpoint 재개 실행기 (2026-10-01)
 
+- `--gpu <물리 번호>` 추가: 실행 시 현재 GPU/MIG UUID를 조회해 PyTorch import 전에 선택. UUID 하드코딩·별도 MIG 변수 불필요. 여러 MIG에서 할당이 불명확하면 임의 선택하지 않는다. 합성7검사 및 실제 로컬 GPU/CUDA 선택 확인; 원격 MIG 실행 미검증.
 - 시간별 새 `run`만 안내하던 실행 명령을 보완. `run_local_cnn_experiment.py --experiment <고정 경로>`는 같은 실험의 저장된 checkpoint를 재개하고 이전 attempt를 보존한다.
 - FOV·입력·runtime·실행 설정 결속, 동시 실행 잠금, 완료 시 재학습 금지. 전역 latest 검색이나 누락 checkpoint의 무단 새 학습 전환 없음. 모델·학습 수식 변경 없음.
 - [사용법·기존 실행 인계·잠금·검증 범위](docs/local_cnn_experiment_resume_20261001.md).

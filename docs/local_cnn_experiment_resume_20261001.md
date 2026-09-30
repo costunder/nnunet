@@ -5,6 +5,22 @@ implement repeatable checkpoint selection. `tools/run_local_cnn_experiment.py`
 adds a stable `--experiment` root while delegating to the existing, unchanged
 CNN preparation, training, exact-resume and final-artifact validation code.
 
+## GPU number selection
+
+Use `--gpu 6` with `CP_GPU=6` in the shell. Before importing PyTorch, the runner
+queries `nvidia-smi -L` and resolves physical GPU 6 to its current GPU UUID or,
+when that device has one MIG instance, its current MIG UUID. No UUID is hardcoded
+and no second MIG-number variable is required. For multiple MIG instances, the
+existing allocation must identify exactly one of that GPU's instances; ambiguous
+selection is rejected rather than choosing an arbitrary instance. The numeric
+index refers to the current host/container's nvidia-smi inventory, so use the
+server host when intending to select its physical device index.
+
+Seven synthetic inventory tests passed (including changed MIG UUID and ambiguous
+allocation rejection), and physical GPU 0 was selected and exposed to CUDA on the
+local RTX5070Ti. No actual remote A100/MIG execution is claimed by these tests.
+The runner's GPU argument does not change the checkpoint's training contract.
+
 ## Behavior
 
 - First invocation prepares `inventory/index.json` and trains in `attempts/0001`.

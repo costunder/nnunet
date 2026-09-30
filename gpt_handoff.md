@@ -1,3 +1,7 @@
+## GPU 선택 — 물리 번호 한 개 (2026-10-01)
+
+실행 명령은 CP_GPU=6 및 --gpu "$CP_GPU"로 선택한다. run_local_cnn_experiment.py가 torch import 전에 현재 nvidia-smi inventory에서 GPU 또는 단일/할당된 MIG를 조회한다. UUID 수동입력·CP_MIG_DEVICE 변수 없음. 여러 MIG가 있고 현재 할당으로 하나를 특정할 수 없으면 임의선택 거부. 합성7검사, 실제 로컬 GPU/CUDA 선택, 완료된 실제CT DEBUG 실험의 재학습 없는 확인 통과. 원격MIG 실제 실행 미검증. 학습/checkpoint 계약 불변.
+
 ## 현재 실행 — 국소 CNN 실험별 자동 재개 (2026-10-01)
 
 `tools/run_local_cnn_experiment.py --experiment <고정 경로>`로 최초 실행과 같은 실험의 checkpoint 재개를 연결했다. 기존 time-stamped run 명령은 새 학습만 시작하므로 재개용으로 안내하지 않는다. 전체 latest 검색 없음, 이전 attempt 보존, source/FOV/data/settings 결속, 동일실험 잠금, 완료시 재학습 없음. 기존 수동 run 인계는 정확한 root와 PAUSED/complete 표시 필요. 12 orchestration unit 및 실제CT DEBUG4update의 중단·새프로세스 재개가 model/optimizer/state/RNG exact 일치; 완료후 재실행도 학습하지 않음. 모델/학습 core 변경 없음, 전체학습 미실행. docs/local_cnn_experiment_resume_20261001.md 참조.
