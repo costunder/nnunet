@@ -1,0 +1,15 @@
+{
+  "policy": "same_donor_live_v1",
+  "unique_observations": 8,
+  "query_presentations": 8,
+  "optimization_steps": 4,
+  "physical_batch": 2,
+  "actual_batch_sizes": [
+    2,
+    2,
+    2,
+    2
+  ],
+  "ranking_pairs": 4,
+  "zero_positive_cases": 0
+}

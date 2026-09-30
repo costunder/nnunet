@@ -77,13 +77,21 @@ class FineDataset:
 
 
 class FineLoader:
-    def __init__(self,ds,workers,resident_bytes,store=None):
+    def __init__(self,ds,workers,resident_bytes,store=None,rss_limit=None):
         from tools.v222_runtime_cache import CanonicalStore
         self.ds=ds;self.workers=workers
         self.store=store or CanonicalStore(ds.raw.root,resident_bytes)
         if self.store.cache.budget!=resident_bytes:raise ValueError('Shared RAM cache budget differs')
         ds.raw.store=self.store;ds.raw.budget=resident_bytes
+        self.rss_limit=rss_limit;self.retain_batches=True;self.last_ram_report=None
+    def guard(self):
+        from .ram_pressure import guard
+        self.last_ram_report=guard(self.store.cache,self.rss_limit)
+    def release_batches(self):
+        from .ram_pressure import trim
+        return trim(self.store.cache,prefixes=('uncoarsened_bound_batch','same_donor_bound_batch'))
     def get(self,ids):
+        self.guard()
         identities=[]
         for i in ids:
             r=self.ds.rows[i]
@@ -96,7 +104,7 @@ class FineLoader:
             batch=load_pairs(self.ds.raw,ids,workers=self.workers,epoch=self.ds.meta['view_epoch'],cache_path=self.ds.original_path)
             verify_materialization(batch,[self.ds.entries[i]['binding'] for i in ids])
             return verified(batch)
-        value=self.store.cache.get(key,build);check_verified(value)
+        value=self.store.cache.get(key,build) if self.retain_batches else build();check_verified(value)
         return value
     def batches(self,order):
         with ThreadPoolExecutor(max_workers=1) as pool:

@@ -1,3 +1,11 @@
+## v2.2 — 같은 donor / live 순위 학습 및 RSS 관리 (2026-09-30)
+
+- `same_donor_live_v1`을 별도 학습 계약으로 추가. case별 label-independent train donor 고정, donor 의존 기하 재생성. 전체 observation·미관측128·미축약 SAGE3·L1/L2 유지.
+- 모든 P/U 조합을 physical batch에 타일링하고 양쪽 CNN에 gradient 전달. 반복 관측 CE 역수 보정 및 epoch 기준 class 정규화. best는 MRR→R@1→rank loss. 기존 objective의 exact resume와 분리.
+- CPU/GPU batch cache 단계별 해제, refresh 중복 batch 보관 제거, RSS 기반 immutable cache 퇴출과 memory cursor/RSS 로그.
+- 실제 CT GPU DEBUG에서 모델 전 경로, 최종 scoring, optimization 및 refresh 중단/재개 model/Adam/state/RNG exact 일치. 전체 목록에서533 update/epoch; 고정 donor97개 선택(pool527)은 명시적 제한. 정확도/전체 서버시간/RSS 개선 검증 완료로 주장하지 않음.
+- [변경·검증·서버 명령](docs/v22_same_donor_live_20260930.md). 장기 학습 미실행.
+
 ## v2.2 — 축약 제거 비교의 시작 조건 정정 (2026-09-30)
 
 - 최신 region checkpoint는 축약 그래프 학습 weights이다. 해당 weights를 fine graph에 이어 학습하도록 안내했던 기본 실행 명령을 철회한다.

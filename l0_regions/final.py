@@ -38,6 +38,10 @@ def validate(value,*,allow_debug=False):
     if value['selected_model_sha256']!=hash_state(value['state_dict']) or value['memory_model_sha256']!=value['selected_model_sha256']:
         raise ValueError('Final memory/best model mismatch')
     if value['region']['cnn_sha256']!=tree_hash(value['frozen_cnn']):raise ValueError('Frozen partition CNN changed')
+    if value.get('learning_policy'):
+        from .donor_learning import POLICY,configuration,validate_rows
+        if value['learning_policy']!=POLICY or value.get('ranking_contract')!=configuration():raise ValueError('Same-donor ranking contract changed')
+        validate_rows(value['support_records'])
     validate_identities(value['identities'],value['split']);validate_pool(value['donor_pool'],value['split'])
     validate_memory(value['memory'],value['support_records'],value['identities'],value['split'],value['donor_pool'])
     return value
@@ -56,6 +60,8 @@ def export(checkpoint,index,output,*,fine_cache=None):
         ds=RegionDataset(index,'inner_train',debug,policy)
     else:
         from .fine_graph import FineDataset,MODE
+        if saved['identity'].get('learning_policy'):
+            from .donor_data import DonorDataset as FineDataset
         if saved['identity'].get('graph_representation')!=MODE or saved['identity'].get('fine_cache_sha256')!=sha(fine_cache):raise ValueError('Fine export source mismatch')
         ds=FineDataset(index,'inner_train',debug,policy,fine_cache)
     if saved['identity']['cache_sha256']!=sha(index) or state['phase']!='complete':raise ValueError('Complete matching region run required')
@@ -84,6 +90,9 @@ def export(checkpoint,index,output,*,fine_cache=None):
     if fine_cache is not None:
         value['region']['graph_representation']=MODE
         value['fine_graph_transition']=state.get('fine_graph_transition')
+    if saved['identity'].get('learning_policy'):
+        value['learning_policy']=saved['identity']['learning_policy'];value['ranking_contract']=saved['identity']['ranking']
+        value['best_selection_key']=best['selection_key']
     value['content_sha256']=hash_state(value);validate(value,allow_debug=debug)
     output=Path(output)
     if output.exists():raise FileExistsError('Existing final artifact preserved')

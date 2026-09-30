@@ -116,7 +116,7 @@ class PipelineChecks(unittest.TestCase):
     def test_upgrade_rejects_learning_changes(self):
         old=dict(batch=32,support_training={'patients':16},source={'core':{},'runtime':{'l0_regions/training.py':'old'}})
         new=dict(old,execution_pipeline={'mode':'overlapped'},source={'core':{},'runtime':{'l0_regions/training.py':'new','l0_regions/execution_pipeline.py':'new'}})
-        with patch('l0_regions.execution_upgrade.blob_hash',return_value='old'):
+        with patch('l0_regions.execution_upgrade.blob_hash',side_effect=lambda revision,path:'unknown' if revision=='4389182' else 'old'):
             self.assertEqual(verify_pipeline_upgrade(old,new),'10287dd')
             for key,value in [('batch',16),('support_training',{'patients':8})]:
                 with self.assertRaises(ValueError):verify_pipeline_upgrade(old,dict(new,**{key:value}))

@@ -18,11 +18,11 @@ import torch
 from tqdm import tqdm
 from hiercp_v222.model import PromptGraphModel
 from hiercp_v222.v1_local import V1LocalEncoder, support_for_recipient
-from hiercp_v222.v1_training import groups, contiguous, gradient_check
+from hiercp_v222.v1_training import groups as legacy_groups, contiguous, gradient_check
 from hiercp_v222.v1_execution import atomic_torch, rng_state, restore_rng, tree_to
 from hiercp_v222.training import configure_runtime
 from tools.v222_review_contracts import installed
-from tools.v22_rank_objective import RankingContext,forward_loss,ranking_metrics,configuration as rank_config
+from tools.v22_rank_objective import RankingContext,forward_loss as legacy_forward_loss,ranking_metrics,configuration as legacy_rank_config
 from tools.v22_candidate_order import record_key
 from tools.v22_artifacts import tree_hash
 from .encoder import RegionSAGEEncoder
@@ -31,6 +31,29 @@ from .training_data import RegionDataset,sha,write_new,source_identity
 from .profile_policy import allow_profile,validate_policy
 
 FORMAT='fixed_region_sage_training_v1'
+
+def groups(ds,batch,seed=None,epoch=0):
+    if ds.meta.get('learning_policy'):
+        from .donor_learning import groups as live_groups
+        return live_groups(ds,batch,seed,epoch)
+    return legacy_groups(ds,batch,seed,epoch)
+
+def rank_config(ds=None):
+    if ds is not None and ds.meta.get('learning_policy'):
+        from .donor_learning import configuration
+        return configuration()
+    return legacy_rank_config()
+
+def ranking_context(ds,memory,batch):
+    if ds.meta.get('learning_policy'):
+        from .donor_learning import LiveContext
+        return LiveContext(ds,batch)
+    return RankingContext(ds,memory)
+
+def forward_loss(net,query,support,plan,targets,weights,context,settings,*,indices):
+    from .donor_learning import LiveContext,forward_loss as live_loss
+    fn=live_loss if isinstance(context,LiveContext) else legacy_forward_loss
+    return fn(net,query,support,plan,targets,weights,context,settings,indices=indices)
 
 def hash_state(value):
     def canonical(v):
@@ -180,14 +203,16 @@ def calibrate(net,ds,loader,candidates,base,budget,timing_path=None,support_pati
     initial_model_hash=hash_state(net.state_dict())
     memory=initial_memory(net,ds,loader,min(candidates),timing_path)
     initial_memory_hash=hash_state(memory)
-    context=RankingContext(ds,memory);weights=torch.bincount(memory['classes'],minlength=2).float()
+    weights=torch.bincount(memory['classes'],minlength=2).float()
     if bool((weights==0).any()):raise ValueError('Both observed classes required')
     weights=weights.sum()/(2*weights)
     group=max(memory['patient_groups'],key=lambda g:sum(r['bounds']['edges'] for r in ds.rows if r['patient_group']==g))
     ids=sorted([i for i,r in enumerate(ds.rows) if r['patient_group']==group],key=lambda i:ds.rows[i]['bounds']['edges'],reverse=True)
     reports=[];seen=set()
     for cap in candidates:
-        selected=ids[:cap]
+        context=ranking_context(ds,memory,cap)
+        selected=(max(list(groups(ds,cap)),key=lambda xs:sum(ds.rows[i]['bounds']['edges'] for i in xs)) if ds.meta.get('learning_policy') else ids[:cap])
+        group=ds.rows[selected[0]]['patient_group']
         if len(selected) in seen:continue
         from l0_sage.encoder import MeanAdjacencyCache
         # Sparse CSR storages cannot be deep-copied. They are execution caches,
@@ -198,7 +223,7 @@ def calibrate(net,ds,loader,candidates,base,budget,timing_path=None,support_pati
             support=support_for_recipient(memory,group)
         else:
             from .support_episodes import PatientEpisodes
-            episodes=PatientEpisodes(ds.rows,list(groups(ds,cap,ds.meta['config']['seed'],0)),
+            episodes=PatientEpisodes(ds.rows,list(legacy_groups(ds,cap,ds.meta['config']['seed'],0)),
                 support_patients,ds.meta['config']['seed'],0).bind(memory)
             support=episodes.support(group)
         plan=clone.fit_support_clusters(*support)
@@ -207,7 +232,7 @@ def calibrate(net,ds,loader,candidates,base,budget,timing_path=None,support_pati
             torch.cuda.reset_peak_memory_stats()
             for trial in range(3):
                 optimizer.zero_grad(set_to_none=True);torch.cuda.synchronize();start=time.perf_counter()
-                loss,_=forward_loss(clone,query,support,plan,memory['classes'][selected],weights,context,rank_config(),indices=selected)
+                loss,_=forward_loss(clone,query,support,plan,memory['classes'][selected],weights,context,rank_config(ds),indices=selected)
                 loss.backward();gradient_check(clone)
                 torch.nn.utils.clip_grad_norm_(clone.parameters(),base['training']['grad_clip'],error_if_nonfinite=True);optimizer.step()
                 torch.cuda.synchronize()
@@ -229,7 +254,8 @@ def calibrate(net,ds,loader,candidates,base,budget,timing_path=None,support_pati
 @torch.no_grad()
 def evaluate(net,ds,loader,memory,batch):
     net.eval();seen=[];scores=[];truth=[];cases=[];last=None
-    order=list(groups(ds,batch))
+    # Evaluation observes each candidate once, including in the live-pair policy.
+    order=list(legacy_groups(ds,batch))
     for cpu in tqdm(loader.batches(order),total=len(order),desc='validation'):
         ids=cpu.indices.tolist();group=ds.rows[ids[0]]['patient_group']
         if group!=last:state=net.prepare_support(*support_for_recipient(memory,group));last=group
@@ -239,7 +265,7 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False,learning_policy=None):
     validate_policy(profile_policy)
     from .support_episodes import PatientEpisodes,contract as support_contract
     support_policy=None if support_patients is None else support_contract(support_patients)
@@ -265,21 +291,27 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         ds=RegionDataset(index,'inner_train',debug,profile_policy);val=RegionDataset(index,'inner_val',debug,profile_policy)
     else:
         from .fine_graph import FineDataset,FineLoader,MODE
+        if learning_policy is not None:
+            from .donor_learning import POLICY
+            if learning_policy!=POLICY or resume_without_coarsening or resume_support_minibatch:raise ValueError('Explicit new learning policy; no old-model transition')
+            from .donor_data import DonorDataset as FineDataset,DonorLoader as FineLoader
         ds=FineDataset(index,'inner_train',debug,profile_policy,fine_cache);val=FineDataset(index,'inner_val',debug,profile_policy,fine_cache)
+    if learning_policy is not None and fine_cache is None:raise ValueError('Same-donor learning requires regenerated fine cache')
     root=Path(output).resolve();root.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(workers);net=make_model(ds,budget,debug,activation_storage)
     base=ds.meta['base'];cfg=ds.meta['config'];epochs=1 if debug else cfg['gnn_epochs']
     if fine_cache is None:
         loader=Loader(ds,workers,resident_bytes);val_loader=Loader(val,workers,resident_bytes)
     else:
-        loader=FineLoader(ds,workers,resident_bytes);val_loader=FineLoader(val,workers,resident_bytes,store=loader.store)
+        loader=FineLoader(ds,workers,resident_bytes,rss_limit=budget.rss_bytes);val_loader=FineLoader(val,workers,resident_bytes,store=loader.store,rss_limit=budget.rss_bytes)
     optimizer=torch.optim.AdamW(net.parameters(),lr=base['training']['lr'],weight_decay=base['training']['weight_decay'],fused=base['training']['fused_optimizer'])
     identity=dict(format=FORMAT,debug=debug,cache_sha256=sha(index),source=source_identity(),epochs=epochs,
         config=cfg,base=base,precision='FP32',workers=workers,candidates=candidates,
-        ranking=rank_config(),resident_budget_bytes=resident_bytes,profile_policy=profile_policy,
+        ranking=rank_config(ds),resident_budget_bytes=resident_bytes,profile_policy=profile_policy,
         activation_storage=activation_storage)
     identity['resource_limits']=dict(cuda_bytes=budget.cuda_bytes,rss_bytes=budget.rss_bytes)
     if fine_cache is not None:identity.update(graph_representation=MODE,fine_cache_sha256=sha(fine_cache))
+    if learning_policy is not None:identity['learning_policy']=learning_policy
     if support_policy is not None:identity['support_training']=support_policy
     if execution_pipeline=='overlapped':identity['execution_pipeline']=dict(mode=execution_pipeline,device_cache_bytes=device_cache_bytes,sage_workspace_bytes=sage_workspace_bytes,
         checkpoints='every update; immutable packed CPU snapshot; one ordered writer; flush on pause/phase/return',gradient_check='one finite decision per update')
@@ -304,6 +336,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         state=dict(epoch=0,step=0,phase='optimization',memory=memory,memory_parts=[],memory_done=0,
             batch=batch,next_batch=0,plan=None,last_group=None,best=None,selected_epoch=None)
     net.local.dense_batch_size=state['batch']
+    if learning_policy is not None:write_new(root/'learning_schedule.json',ranking_context(ds,state['memory'],state['batch']).audit)
     write_new(root/'execution_contract.json',dict(**{k:v for k,v in identity.items() if k!='graph_representation'},train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
         physical_batch=state['batch'],effective_batch=state['batch'],accumulation=1,parameters=sum(p.numel() for p in net.parameters()),
         layers=dict(L0=ds.meta['profile']['graph_encoder']['sage_layers'],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
@@ -345,14 +378,23 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         while True:
             budget.check()
             if state['phase'] in ('initial_memory','refresh_memory','final_memory'):
+                if fine_cache is not None:
+                    if device_cache is not None:device_cache.clear()
+                    loader.release_batches();loader.retain_batches=False
                 phase_start=time.perf_counter();phase_name=state['phase']
                 net.eval();done=state['memory_done'];order=list(contiguous(ds,state['batch']))
                 with torch.no_grad():
                     for cpu in tqdm(loader.batches([ids for ids in order if ids[0]>=done]),desc=state['phase'],total=sum(ids[0]>=done for ids in order)):
+                        memory_started=time.perf_counter()
                         ids=cpu.indices.tolist()
                         if ids!=list(range(state['memory_done'],state['memory_done']+len(ids))):raise ValueError('Memory cursor mismatch')
                         state['memory_parts'].append(net.local(cpu.to('cuda')).detach().float())
                         state['memory_done']+=len(ids);save()
+                        with (root/'memory_timing.jsonl').open('a',encoding='utf8') as stream:
+                            stream.write(json.dumps(dict(phase=state['phase'],completed=state['memory_done'],total=len(ds),
+                                seconds=time.perf_counter()-memory_started,rss_bytes=psutil.Process().memory_info().rss,
+                                input_cache=None if fine_cache is None else loader.store.cache.report(),
+                                ram_guard=None if fine_cache is None else loader.last_ram_report))+'\n')
                         if pause():return root/'checkpoint_latest.pt'
                 if state['memory_done']!=len(ds):raise ValueError('Incomplete support memory')
                 state['memory']=metadata(ds,torch.cat(state['memory_parts']));state['memory_parts']=[];state['memory_done']=0
@@ -366,14 +408,18 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 save(wait=True)
                 phase_timing(phase_name,phase_start)
             if state['phase']=='optimization':
+                if fine_cache is not None:loader.retain_batches=True
                 optimization_start=time.perf_counter();starting_batch=state['next_batch']
                 net.train();order=list(groups(ds,state['batch'],cfg['seed'],state['epoch']))
                 counts=torch.bincount(state['memory']['classes'],minlength=2).float()
                 if bool((counts==0).any()):raise ValueError('Both observation classes required')
-                weights=counts.sum()/(2*counts);context=RankingContext(ds,state['memory'])
+                weights=counts.sum()/(2*counts);context=ranking_context(ds,state['memory'],state['batch'])
                 episodes=None
                 if support_policy is not None:
-                    episodes=PatientEpisodes(ds.rows,order,support_patients,cfg['seed'],state['epoch']).bind(state['memory'])
+                    # Support selection still visits each observation once; query
+                    # repeats required by exact live P/U tiling do not alter it.
+                    episode_order=list(legacy_groups(ds,state['batch'],cfg['seed'],state['epoch']))
+                    episodes=PatientEpisodes(ds.rows,episode_order,support_patients,cfg['seed'],state['epoch']).bind(state['memory'])
                     audit_path=root/f"support_epoch_{state['epoch']+1:03d}.json"
                     if not audit_path.exists():write_new(audit_path,dict(episodes.audit,starting_query_batch=state['next_batch'],
                         coverage_scope='complete deterministic epoch schedule; actual consumed prefix is checkpoint next_batch'))
@@ -401,7 +447,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     events[0].record();query=cpu.to('cuda') if device_cache is None else device_cache.get(cpu)
                     if device_cache is not None:device_cache.activate(net,cpu)
                     events[1].record()
-                    loss,terms=forward_loss(net,query,support,state['plan'],state['memory']['classes'][ids],weights,context,rank_config(),indices=ids)
+                    loss,terms=forward_loss(net,query,support,state['plan'],state['memory']['classes'][ids],weights,context,rank_config(ds),indices=ids)
                     events[2].record()
                     if not torch.isfinite(loss):raise FloatingPointError('Nonfinite loss')
                     loss.backward();events[3].record()
@@ -439,15 +485,23 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 state['phase']='refresh_memory';save(wait=True)
                 phase_timing('optimization',optimization_start,completed_updates=len(order)-starting_batch,starting_batch=starting_batch,includes_final_checkpoint_flush=True)
             if state['phase']=='validation':
+                if fine_cache is not None:
+                    if device_cache is not None:device_cache.clear()
+                    loader.release_batches();val_loader.retain_batches=False
                 validation_start=time.perf_counter()
                 metrics,details=evaluate(net,val,val_loader,state['memory'],state['batch'])
                 phase_timing('validation',validation_start)
                 write_new(root/f"epoch_{state['epoch']+1:03d}.json",dict(metrics=metrics,cases=details,debug=debug))
                 score=metrics['ranking_pairwise_loss']
                 improved=state['best'] is None or score<state['best']['metric']
+                if learning_policy is not None:
+                    from .donor_learning import selection
+                    key=selection(metrics);score=metrics['ranking_mrr']
+                    improved=state['best'] is None or key>tuple(state['best']['selection_key'])
                 if improved:
                     weights=tree_to(net.state_dict(),'cpu');state['best']=dict(weights=weights,metric=score,epoch=state['epoch']+1,model_sha256=hash_state(weights))
-                tqdm.write(validation_line(state['epoch']+1,metrics,state['best']['metric'],improved))
+                    if learning_policy is not None:state['best']['selection_key']=list(key)
+                tqdm.write(validation_line(state['epoch']+1,metrics,state['best']['metric'],improved)+(' | best metric=MRR, tie=R@1, rank_loss' if learning_policy is not None else ''))
                 state.update(epoch=state['epoch']+1,next_batch=0,last_group=None,plan=None,phase='optimization')
                 if state['epoch']==epochs:
                     net.load_state_dict(state['best']['weights']);state['selected_epoch']=state['best']['epoch'];state['phase']='final_memory'

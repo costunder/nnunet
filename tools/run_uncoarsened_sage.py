@@ -17,6 +17,7 @@ def arguments(saved,*,cache,fine_cache,resume,output):
         '--resident-gib',str(identity['resident_budget_bytes']/2**30),
         '--batch-candidates',*map(str,identity['candidates']),'--activation-storage',identity['activation_storage']]
     if identity.get('graph_representation') is None:args+=['--resume-without-coarsening']
+    if identity.get('learning_policy'):args+=['--learning-policy',identity['learning_policy']]
     if 'support_training' in identity:args+=['--support-patients',str(identity['support_training']['patients'])]
     if 'execution_pipeline' in identity:
         execution=identity['execution_pipeline']

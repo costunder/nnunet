@@ -30,6 +30,7 @@ def main():
     p.add_argument('--batch-candidates',type=int,nargs='+')
     p.add_argument('--resume',type=Path)
     p.add_argument('--fine-cache',type=Path,help='Original paired graph index: remove coarsening, retain fixed view and all original sampled edges')
+    p.add_argument('--learning-policy',choices=('same_donor_live_v1',),help='New same-donor/live-ranking run; requires rebuilt geometry cache')
     p.add_argument('--resume-without-coarsening',action='store_true',help='Explicit graph change preserving weights/Adam/cursor, rebuilding full support and resetting cluster plan/best')
     p.add_argument('--support-patients',type=int,help='Explicit patient minibatch count; retain every eligible observation of each selected patient')
     p.add_argument('--execution-pipeline',choices=('synchronous','overlapped'),default='synchronous')
@@ -91,7 +92,7 @@ def main():
                 resume_cuda_budget_change=a.resume_cuda_budget_change,support_patients=a.support_patients,
                 resume_support_minibatch=a.resume_support_minibatch,execution_pipeline=a.execution_pipeline,
                 device_cache_bytes=int((a.device_cache_gib or 0)*2**30),sage_workspace_bytes=(a.sage_workspace_mib or 64)*2**20,
-                fine_cache=a.fine_cache,resume_without_coarsening=a.resume_without_coarsening)
+                fine_cache=a.fine_cache,resume_without_coarsening=a.resume_without_coarsening,learning_policy=a.learning_policy)
             if (a.output/'training_complete.json').exists():
                 from l0_regions.final import export
                 export(result,a.cache,a.output/'checkpoint.pt',fine_cache=a.fine_cache)

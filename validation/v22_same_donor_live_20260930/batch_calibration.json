@@ -1,0 +1,9 @@
+[
+  {
+    "configured_batch": 2,
+    "actual_batch": 2,
+    "accepted": true,
+    "graphs_per_second": 3.558215835494293,
+    "peak_bytes": 1061577216
+  }
+]

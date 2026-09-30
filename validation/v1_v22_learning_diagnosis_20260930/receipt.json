@@ -1,0 +1,14 @@
+{
+  "debug": true,
+  "production_code_modified": false,
+  "training_started": false,
+  "source_revision": "4389182",
+  "source_files": {
+    "tools/audit_v1_v22_learning_debug.py": "e295730cf3d87efd85fe58ef808276248c511a96318bc139b44705a77813fd40",
+    "docs/v1_v22_learning_diagnosis_20260930.md": "e5d0b050b580b64c770258cc8f1322ef106fb26f989017b96b733c58665c5388",
+    "hiercp_v222/v1_cache.py": "c473fef21ac60e6fce7401bc6cc34f1126c23e269dd66674ded485440b9220b7",
+    "hiercp_v222/v1_training.py": "3c13a598d2352d2a854b94a1d38186fabf6ea4b1ff9b93ce0b24a2cbe51c1ea3",
+    "tools/v22_rank_objective.py": "11adc325971bafc35d470fa0719c4a8e21e456219cf583969f3674a4999c268a",
+    "l0_regions/training.py": "aa65a717cc95ca0600891b120f637c36215273c454ef40f830f0ce7ad0337e1d"
+  }
+}

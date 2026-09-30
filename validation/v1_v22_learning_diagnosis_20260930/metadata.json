@@ -1,0 +1,2986 @@
+{
+  "debug": true,
+  "training_started": false,
+  "weights_updated": false,
+  "server_weights_available": false,
+  "resources": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "free_total_cuda": [
+      15740174336,
+      17094344704
+    ],
+    "cpu": 16,
+    "ram_available": 50120216576,
+    "workers": 8
+  },
+  "inventory": {
+    "inner_train": {
+      "records": 11279,
+      "positives": 527,
+      "cases": [
+        {
+          "case": "liver_1",
+          "n": 139,
+          "positive": 11,
+          "random_first_positive_mrr": 0.22053841617220027,
+          "donor_mismatched_pairs": 1405,
+          "ranking_pairs": 1408
+        },
+        {
+          "case": "liver_2",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_5",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_6",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 638,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_7",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 639,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_9",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 639,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_10",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 639,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_15",
+          "n": 134,
+          "positive": 6,
+          "random_first_positive_mrr": 0.14862552715601418,
+          "donor_mismatched_pairs": 764,
+          "ranking_pairs": 768
+        },
+        {
+          "case": "liver_18",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 638,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_20",
+          "n": 134,
+          "positive": 6,
+          "random_first_positive_mrr": 0.14862552715601418,
+          "donor_mismatched_pairs": 767,
+          "ranking_pairs": 768
+        },
+        {
+          "case": "liver_21",
+          "n": 130,
+          "positive": 2,
+          "random_first_positive_mrr": 0.06897040834520891,
+          "donor_mismatched_pairs": 255,
+          "ranking_pairs": 256
+        },
+        {
+          "case": "liver_23",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_24",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_27",
+          "n": 136,
+          "positive": 8,
+          "random_first_positive_mrr": 0.17988746498693797,
+          "donor_mismatched_pairs": 1023,
+          "ranking_pairs": 1024
+        },
+        {
+          "case": "liver_28",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_30",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_32",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_36",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_39",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_40",
+          "n": 140,
+          "positive": 12,
+          "random_first_positive_mrr": 0.23279515530473782,
+          "donor_mismatched_pairs": 1533,
+          "ranking_pairs": 1536
+        },
+        {
+          "case": "liver_41",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_43",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_45",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_46",
+          "n": 176,
+          "positive": 48,
+          "random_first_positive_mrr": 0.4883996416943895,
+          "donor_mismatched_pairs": 6133,
+          "ranking_pairs": 6144
+        },
+        {
+          "case": "liver_47",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_49",
+          "n": 148,
+          "positive": 20,
+          "random_first_positive_mrr": 0.31473842719962136,
+          "donor_mismatched_pairs": 2558,
+          "ranking_pairs": 2560
+        },
+        {
+          "case": "liver_51",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 638,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_52",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 126,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_55",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_56",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_57",
+          "n": 130,
+          "positive": 2,
+          "random_first_positive_mrr": 0.06897040834520891,
+          "donor_mismatched_pairs": 255,
+          "ranking_pairs": 256
+        },
+        {
+          "case": "liver_58",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 639,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_59",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_60",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_62",
+          "n": 130,
+          "positive": 2,
+          "random_first_positive_mrr": 0.06897040834520891,
+          "donor_mismatched_pairs": 256,
+          "ranking_pairs": 256
+        },
+        {
+          "case": "liver_64",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_65",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_66",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 638,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_68",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_69",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 127,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_71",
+          "n": 132,
+          "positive": 4,
+          "random_first_positive_mrr": 0.11257263101688869,
+          "donor_mismatched_pairs": 510,
+          "ranking_pairs": 512
+        },
+        {
+          "case": "liver_72",
+          "n": 131,
+          "positive": 3,
+          "random_first_positive_mrr": 0.09200523083842412,
+          "donor_mismatched_pairs": 384,
+          "ranking_pairs": 384
+        },
+        {
+          "case": "liver_73",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 127,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_74",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_75",
+          "n": 131,
+          "positive": 3,
+          "random_first_positive_mrr": 0.09200523083842412,
+          "donor_mismatched_pairs": 384,
+          "ranking_pairs": 384
+        },
+        {
+          "case": "liver_76",
+          "n": 130,
+          "positive": 2,
+          "random_first_positive_mrr": 0.06897040834520891,
+          "donor_mismatched_pairs": 256,
+          "ranking_pairs": 256
+        },
+        {
+          "case": "liver_78",
+          "n": 140,
+          "positive": 12,
+          "random_first_positive_mrr": 0.23279515530473782,
+          "donor_mismatched_pairs": 1530,
+          "ranking_pairs": 1536
+        },
+        {
+          "case": "liver_80",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 127,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_81",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_83",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_85",
+          "n": 130,
+          "positive": 2,
+          "random_first_positive_mrr": 0.06897040834520891,
+          "donor_mismatched_pairs": 256,
+          "ranking_pairs": 256
+        },
+        {
+          "case": "liver_86",
+          "n": 130,
+          "positive": 2,
+          "random_first_positive_mrr": 0.06897040834520891,
+          "donor_mismatched_pairs": 253,
+          "ranking_pairs": 256
+        },
+        {
+          "case": "liver_87",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_88",
+          "n": 134,
+          "positive": 6,
+          "random_first_positive_mrr": 0.14862552715601418,
+          "donor_mismatched_pairs": 767,
+          "ranking_pairs": 768
+        },
+        {
+          "case": "liver_91",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_92",
+          "n": 137,
+          "positive": 9,
+          "random_first_positive_mrr": 0.19416171927818843,
+          "donor_mismatched_pairs": 1148,
+          "ranking_pairs": 1152
+        },
+        {
+          "case": "liver_93",
+          "n": 152,
+          "positive": 24,
+          "random_first_positive_mrr": 0.3479238216710233,
+          "donor_mismatched_pairs": 3063,
+          "ranking_pairs": 3072
+        },
+        {
+          "case": "liver_94",
+          "n": 140,
+          "positive": 12,
+          "random_first_positive_mrr": 0.23279515530473782,
+          "donor_mismatched_pairs": 1533,
+          "ranking_pairs": 1536
+        },
+        {
+          "case": "liver_95",
+          "n": 134,
+          "positive": 6,
+          "random_first_positive_mrr": 0.14862552715601418,
+          "donor_mismatched_pairs": 767,
+          "ranking_pairs": 768
+        },
+        {
+          "case": "liver_97",
+          "n": 134,
+          "positive": 6,
+          "random_first_positive_mrr": 0.14862552715601418,
+          "donor_mismatched_pairs": 765,
+          "ranking_pairs": 768
+        },
+        {
+          "case": "liver_100",
+          "n": 138,
+          "positive": 10,
+          "random_first_positive_mrr": 0.20768371385177137,
+          "donor_mismatched_pairs": 1277,
+          "ranking_pairs": 1280
+        },
+        {
+          "case": "liver_101",
+          "n": 143,
+          "positive": 15,
+          "random_first_positive_mrr": 0.26651051127170294,
+          "donor_mismatched_pairs": 1918,
+          "ranking_pairs": 1920
+        },
+        {
+          "case": "liver_103",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 126,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_104",
+          "n": 137,
+          "positive": 9,
+          "random_first_positive_mrr": 0.19416171927818843,
+          "donor_mismatched_pairs": 1149,
+          "ranking_pairs": 1152
+        },
+        {
+          "case": "liver_105",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_106",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_107",
+          "n": 132,
+          "positive": 4,
+          "random_first_positive_mrr": 0.11257263101688869,
+          "donor_mismatched_pairs": 512,
+          "ranking_pairs": 512
+        },
+        {
+          "case": "liver_108",
+          "n": 187,
+          "positive": 59,
+          "random_first_positive_mrr": 0.5327110465361745,
+          "donor_mismatched_pairs": 7532,
+          "ranking_pairs": 7552
+        },
+        {
+          "case": "liver_111",
+          "n": 135,
+          "positive": 7,
+          "random_first_positive_mrr": 0.16475447304004126,
+          "donor_mismatched_pairs": 892,
+          "ranking_pairs": 896
+        },
+        {
+          "case": "liver_112",
+          "n": 132,
+          "positive": 4,
+          "random_first_positive_mrr": 0.11257263101688869,
+          "donor_mismatched_pairs": 510,
+          "ranking_pairs": 512
+        },
+        {
+          "case": "liver_114",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_116",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_117",
+          "n": 199,
+          "positive": 71,
+          "random_first_positive_mrr": 0.572509980808678,
+          "donor_mismatched_pairs": 9072,
+          "ranking_pairs": 9088
+        },
+        {
+          "case": "liver_118",
+          "n": 137,
+          "positive": 9,
+          "random_first_positive_mrr": 0.19416171927818843,
+          "donor_mismatched_pairs": 1150,
+          "ranking_pairs": 1152
+        },
+        {
+          "case": "liver_120",
+          "n": 135,
+          "positive": 7,
+          "random_first_positive_mrr": 0.16475447304004126,
+          "donor_mismatched_pairs": 894,
+          "ranking_pairs": 896
+        },
+        {
+          "case": "liver_121",
+          "n": 131,
+          "positive": 3,
+          "random_first_positive_mrr": 0.09200523083842412,
+          "donor_mismatched_pairs": 384,
+          "ranking_pairs": 384
+        },
+        {
+          "case": "liver_122",
+          "n": 151,
+          "positive": 23,
+          "random_first_positive_mrr": 0.340005943136485,
+          "donor_mismatched_pairs": 2938,
+          "ranking_pairs": 2944
+        },
+        {
+          "case": "liver_123",
+          "n": 131,
+          "positive": 3,
+          "random_first_positive_mrr": 0.09200523083842412,
+          "donor_mismatched_pairs": 383,
+          "ranking_pairs": 384
+        },
+        {
+          "case": "liver_124",
+          "n": 140,
+          "positive": 12,
+          "random_first_positive_mrr": 0.23279515530473782,
+          "donor_mismatched_pairs": 1532,
+          "ranking_pairs": 1536
+        },
+        {
+          "case": "liver_125",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_126",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 127,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_127",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_129",
+          "n": 131,
+          "positive": 3,
+          "random_first_positive_mrr": 0.09200523083842412,
+          "donor_mismatched_pairs": 384,
+          "ranking_pairs": 384
+        },
+        {
+          "case": "liver_130",
+          "n": 150,
+          "positive": 22,
+          "random_first_positive_mrr": 0.3318455925998859,
+          "donor_mismatched_pairs": 2811,
+          "ranking_pairs": 2816
+        }
+      ],
+      "batches": [
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 3,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 6,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 11,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 12,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 7
+        },
+        {
+          "count": 32,
+          "positive": 9
+        },
+        {
+          "count": 32,
+          "positive": 10
+        },
+        {
+          "count": 32,
+          "positive": 11
+        },
+        {
+          "count": 32,
+          "positive": 6
+        },
+        {
+          "count": 16,
+          "positive": 5
+        },
+        {
+          "count": 12,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 6,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 6
+        },
+        {
+          "count": 32,
+          "positive": 5
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 5
+        },
+        {
+          "count": 22,
+          "positive": 3
+        },
+        {
+          "count": 6,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 4,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 5
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 10,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 3,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 2,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 6
+        },
+        {
+          "count": 23,
+          "positive": 6
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 12
+        },
+        {
+          "count": 27,
+          "positive": 5
+        },
+        {
+          "count": 32,
+          "positive": 8
+        },
+        {
+          "count": 32,
+          "positive": 14
+        },
+        {
+          "count": 32,
+          "positive": 10
+        },
+        {
+          "count": 32,
+          "positive": 10
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 2,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 6,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 5,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 5,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 15,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 2,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 2,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 6,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 8,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 3,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 12,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 5
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 2,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 7,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 20,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 5
+        },
+        {
+          "count": 32,
+          "positive": 5
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 7,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 3,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 6
+        },
+        {
+          "count": 32,
+          "positive": 7
+        },
+        {
+          "count": 32,
+          "positive": 6
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 24,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 9,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 4,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 9,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 4,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 2,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 12,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 9,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 7,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 12
+        },
+        {
+          "count": 32,
+          "positive": 10
+        },
+        {
+          "count": 32,
+          "positive": 14
+        },
+        {
+          "count": 32,
+          "positive": 8
+        },
+        {
+          "count": 32,
+          "positive": 7
+        },
+        {
+          "count": 32,
+          "positive": 17
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 3,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        }
+      ],
+      "all_negative_batches": 224,
+      "batches_total": 405,
+      "zero_positive_cases": 19,
+      "weighted_CE_positive_mass_per_epoch": 108.53958183645592,
+      "weighted_CE_negative_mass_per_epoch": 296.4604181635443,
+      "weighting_scope": "sum of per-batch weighted-mean coefficients, not measured model gradient magnitude",
+      "random_permutation_expectation": {
+        "mrr": 0.14477472264567806,
+        "recall_at_1": 0.006561445588618537,
+        "recall_at_5": 0.03280722794309269,
+        "recall_at_10": 0.06561445588618538
+      },
+      "donor_mismatch_ratio": 0.9977911527514232,
+      "ranking_pairs": 67456
+    },
+    "inner_val": {
+      "records": 2823,
+      "positives": 135,
+      "cases": [
+        {
+          "case": "liver_3",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_4",
+          "n": 159,
+          "positive": 31,
+          "random_first_positive_mrr": 0.3975387357720922,
+          "donor_mismatched_pairs": 3963,
+          "ranking_pairs": 3968
+        },
+        {
+          "case": "liver_11",
+          "n": 133,
+          "positive": 5,
+          "random_first_positive_mrr": 0.13131729253050947,
+          "donor_mismatched_pairs": 639,
+          "ranking_pairs": 640
+        },
+        {
+          "case": "liver_16",
+          "n": 137,
+          "positive": 9,
+          "random_first_positive_mrr": 0.19416171927818843,
+          "donor_mismatched_pairs": 1151,
+          "ranking_pairs": 1152
+        },
+        {
+          "case": "liver_17",
+          "n": 132,
+          "positive": 4,
+          "random_first_positive_mrr": 0.11257263101688869,
+          "donor_mismatched_pairs": 510,
+          "ranking_pairs": 512
+        },
+        {
+          "case": "liver_19",
+          "n": 134,
+          "positive": 6,
+          "random_first_positive_mrr": 0.14862552715601418,
+          "donor_mismatched_pairs": 768,
+          "ranking_pairs": 768
+        },
+        {
+          "case": "liver_22",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_25",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_26",
+          "n": 135,
+          "positive": 7,
+          "random_first_positive_mrr": 0.16475447304004126,
+          "donor_mismatched_pairs": 892,
+          "ranking_pairs": 896
+        },
+        {
+          "case": "liver_31",
+          "n": 136,
+          "positive": 8,
+          "random_first_positive_mrr": 0.17988746498693797,
+          "donor_mismatched_pairs": 1022,
+          "ranking_pairs": 1024
+        },
+        {
+          "case": "liver_34",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_38",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_54",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_70",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 128,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_77",
+          "n": 129,
+          "positive": 1,
+          "random_first_positive_mrr": 0.042177511864912164,
+          "donor_mismatched_pairs": 127,
+          "ranking_pairs": 128
+        },
+        {
+          "case": "liver_84",
+          "n": 136,
+          "positive": 8,
+          "random_first_positive_mrr": 0.17988746498693797,
+          "donor_mismatched_pairs": 1023,
+          "ranking_pairs": 1024
+        },
+        {
+          "case": "liver_99",
+          "n": 141,
+          "positive": 13,
+          "random_first_positive_mrr": 0.24451153645010898,
+          "donor_mismatched_pairs": 1661,
+          "ranking_pairs": 1664
+        },
+        {
+          "case": "liver_102",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        },
+        {
+          "case": "liver_109",
+          "n": 155,
+          "positive": 27,
+          "random_first_positive_mrr": 0.3703486193294017,
+          "donor_mismatched_pairs": 3452,
+          "ranking_pairs": 3456
+        },
+        {
+          "case": "liver_110",
+          "n": 140,
+          "positive": 12,
+          "random_first_positive_mrr": 0.23279515530473782,
+          "donor_mismatched_pairs": 1532,
+          "ranking_pairs": 1536
+        },
+        {
+          "case": "liver_115",
+          "n": 128,
+          "positive": 0,
+          "random_first_positive_mrr": null,
+          "donor_mismatched_pairs": 0,
+          "ranking_pairs": 0
+        }
+      ],
+      "batches": [
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 7,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 8
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 31,
+          "positive": 7
+        },
+        {
+          "count": 32,
+          "positive": 8
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 13,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 6,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 4,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 9,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 8,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 8,
+          "positive": 0
+        },
+        {
+          "count": 12,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 7
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 5,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 2
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 1
+        },
+        {
+          "count": 1,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 27,
+          "positive": 6
+        },
+        {
+          "count": 32,
+          "positive": 8
+        },
+        {
+          "count": 32,
+          "positive": 4
+        },
+        {
+          "count": 32,
+          "positive": 3
+        },
+        {
+          "count": 32,
+          "positive": 6
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        },
+        {
+          "count": 32,
+          "positive": 0
+        }
+      ],
+      "all_negative_batches": 51,
+      "batches_total": 100,
+      "zero_positive_cases": 5,
+      "weighted_CE_positive_mass_per_epoch": 29.678312928585484,
+      "weighted_CE_negative_mass_per_epoch": 70.32168707141456,
+      "weighting_scope": "sum of per-batch weighted-mean coefficients, not measured model gradient magnitude",
+      "random_permutation_expectation": {
+        "mrr": 0.16045551119852622,
+        "recall_at_1": 0.006916297296622248,
+        "recall_at_5": 0.03458148648311123,
+        "recall_at_10": 0.06916297296622247
+      },
+      "donor_mismatch_ratio": 0.9983796296296297,
+      "ranking_pairs": 17280
+    },
+    "source": {
+      "path": "work\\v222_v1_recovered2_training_20260924\\cache\\index.json",
+      "sha256": "4e711671eaf0c92859230a71ac6bd6a716a68bf7ed439337b3ed27deaa9561c3",
+      "scope": "local full paired inventory; server bounds/weights were not downloaded"
+    }
+  },
+  "v1_archive": {
+    "sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "cache": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "samples_per_case": 2,
+      "total_candidates": 8,
+      "candidate_pool_size": 128,
+      "easy_fraction": 0.34,
+      "inter_fraction": 0.33,
+      "intra_fraction": 0.33,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original"
+    },
+    "training": {
+      "val_fraction": 0.2,
+      "epochs": 40,
+      "batch_size": "auto",
+      "batch_size_candidates": "powers_of_two_to_cohort",
+      "batch_calibration_repeats": 3,
+      "batch_calibration_max_vram_fraction": 0.9,
+      "num_workers": "auto",
+      "num_worker_candidates": [
+        0,
+        2,
+        4,
+        8
+      ],
+      "loader_calibration_batches": 8,
+      "lr": 0.0001,
+      "weight_decay": 0.0001,
+      "amp": true,
+      "grad_clip": 5.0,
+      "easy_epochs": 8,
+      "inter_epochs": 18,
+      "intra_epochs": 28,
+      "model_mine_start_epoch": 29,
+      "semi_hard_low_percentile": 0.7,
+      "semi_hard_high_percentile": 0.95,
+      "cross_entropy_weight": 1.0,
+      "pairwise_weight": 1.0,
+      "ordinal_weight": 0.2,
+      "mined_weight": 0.5,
+      "consistency_weight": 0.1,
+      "fixed_validation_epoch": 29,
+      "checkpoint_metric_precision": 8,
+      "gradient_accumulation_steps": 1,
+      "target_effective_batch_size": null,
+      "fused_optimizer": true,
+      "pin_memory": true,
+      "prefetch_factor": 1,
+      "persistent_workers": true,
+      "cuda_prefetch": false
+    }
+  }
+}

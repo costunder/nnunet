@@ -1,3 +1,13 @@
+## 현재 수정 — same_donor_live_v1 (2026-09-30)
+
+사용자가 학습 조건 진단 후 수정 요청. `--learning-policy same_donor_live_v1`은 새 학습 계약이며 기존 checkpoint exact resume가 아니다. donor를 case별 고정하여 원본 CT에서 기하를 재생성하고, 모든 P/U 조합을 physical32 tile로 비교하며 양쪽 최신 CNN gradient를 전달한다. 관측 반복 CE 역수 보정, global class normalization, MRR 우선 best. L1/L2/support/BasicCP/원본mask/128후보/전체관측/미축약 SAGE 규모 보존. 초기 CNN은 기존 frozen snapshot, SAGE/L1/L2/Adam 새 초기화.
+
+전체 inventory 예상533 update/epoch(기존405), query제시15,989/unique11,279. 전체pool527을 선택 대상으로 유지하나 case고정 선택으로 실제donor97개: donor 다양성 제한을 숨기지 않는다. 이 진단 수정이 정확도 향상을 증명하지 않는다. 예전 v1 점수와 다른 후보 문제를 직접 비교하지 말 것.
+
+RSS 초과 대응: phase 전환에서 fine CPU/GPU batch 참조 해제, refresh/val collated batch 비보관, 실제RSS 기반 LRU 회수, 로그 추가. 서버192GiB 전체규모 재현은 아직 없으며 이를 해결 완료로 단정하지 않는다. RTX5070Ti 실제CT DEBUG8/2에서 전 경로/최종score/두 종류 fresh-process pause-resume exact(model/Adam/state/RNG) 확인. 모델6개모듈 갱신 확인. 전체 학습은 자동시작하지 않음.
+
+[상세·실행 명령](docs/v22_same_donor_live_20260930.md), `tools/verify_same_donor_debug.py`, `validation/v22_same_donor_live_20260930/`. `tools/prepare_same_donor.py`는 이전 그래프의 donor ID만 바꾸지 않고 기하를 새 폴더에 다시 만든다. 이전 결과/학습/캐시 보존.
+
 ## 현재 실행 안내 정정 — 축약 제거는 새 학습 (2026-09-30)
 
 사용자가 최근 checkpoint는 축약 그래프로 학습된 것이라고 지적했다. 현재 기본 명령은 `tools/run_fixed_regions.py train --fine-cache ...`이며 **--resume을 사용하지 않는다**。 기존 CNN 시작 snapshot/seed42 유지, SAGE/L1/L2/Adam 새 초기화, step0/40epoch, physical32/support16 유지. 최근 region weights에서 계속 학습하는 명령을 축약 유무 비교로 안내하지 말 것. 자동 latest checkpoint 선택은 배포하지 않았다. 기존 입력 전환 기능은 별도 명시적 계속 학습용으로만 남긴다. [실행 명령](docs/v22_uncoarsened_sage_20260930.md).

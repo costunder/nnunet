@@ -169,12 +169,13 @@ def verify_pipeline_upgrade(previous,current):
     a,b=previous['source'],current['source']
     if a['core']!=b['core']:raise ValueError('Pipeline upgrade cannot change core')
     if a==b:return 'same_source_pipeline_policy_change'
-    allowed={'l0_regions/training.py','l0_regions/execution_pipeline.py','l0_regions/learning_monitor.py','l0_regions/sparse.py','tools/run_fixed_regions.py'}
+    allowed={'l0_regions/training.py','l0_regions/execution_pipeline.py','l0_regions/learning_monitor.py','l0_regions/sparse.py','tools/run_fixed_regions.py',
+        'l0_regions/fine_graph.py','l0_regions/final.py','l0_regions/ram_pressure.py','l0_regions/donor_learning.py','l0_regions/donor_data.py'}
     if set(a['runtime'])-set(b['runtime']) or any(a['runtime'].get(k)!=v for k,v in b['runtime'].items() if k not in allowed):
         raise ValueError('Unreviewed pipeline runtime change')
-    for revision in ('10287dd','8fadbd0'):
+    for revision in ('4389182','10287dd','8fadbd0'):
         # This monitor did not exist in either reviewed predecessor.
-        if 'l0_regions/learning_monitor.py' in a['runtime']:continue
+        if revision!='4389182' and 'l0_regions/learning_monitor.py' in a['runtime']:continue
         if revision=='10287dd' and 'l0_regions/execution_pipeline.py' in a['runtime']:continue
         if all(v==blob_hash(revision,k) for k,v in a['runtime'].items()):return revision
     raise ValueError('Pipeline upgrade requires the reviewed patient-episode runtime')

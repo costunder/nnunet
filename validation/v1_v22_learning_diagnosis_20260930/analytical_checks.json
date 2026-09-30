@@ -1,0 +1,44 @@
+{
+  "debug": true,
+  "synthetic_null_reference_not_predictions": true,
+  "null_repetitions": 10000,
+  "seed": 42,
+  "formula_verified_exhaustively": "N=2..8; every positive count; all label combinations",
+  "null": {
+    "mrr": {
+      "mean": 0.16057706416360007,
+      "interval_95": [
+        0.0746589365296008,
+        0.2806898272295534
+      ]
+    },
+    "recall_at_1": {
+      "mean": 0.0068970370370370375,
+      "interval_95": [
+        0.0,
+        0.022222222222222223
+      ]
+    },
+    "recall_at_5": {
+      "mean": 0.03468740740740741,
+      "interval_95": [
+        0.007407407407407408,
+        0.06666666666666667
+      ]
+    },
+    "recall_at_10": {
+      "mean": 0.06911407407407408,
+      "interval_95": [
+        0.02962962962962963,
+        0.1111111111111111
+      ]
+    }
+  },
+  "v1_archive_matches_current": {
+    "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+    "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+    "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+    "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+    "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5"
+  }
+}
