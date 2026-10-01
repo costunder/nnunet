@@ -1,0 +1,2606 @@
+{
+  "schema": "local_cnn_alignment_schedule_audit_v1",
+  "status": "PASS",
+  "diagnostic_only": true,
+  "production_loss_changed": false,
+  "observed_scope": "complete exact epoch schedule; no CT/model execution",
+  "epoch_field": 22,
+  "seed": 42,
+  "physical_batch": 32,
+  "optimization_steps": 533,
+  "patient_group_count": 84,
+  "case_count": 84,
+  "unique_observations": 11279,
+  "query_presentations": 15989,
+  "alignment_contract": {
+    "confirmed_current": "optimizer-step-weighted support alignment",
+    "intended_choice": "UNRESOLVED: audit does not choose step-weighted or group-balanced",
+    "current_per_tile_multiplier": 1.0,
+    "group_balanced_formula": "S / (G * K_g)",
+    "hypothetical_correction_applied": false,
+    "interpretation": "Weights are coefficient mass in an epoch step mean. Model/dropout and alignment losses may change between tiles; this is not a sum of identical frozen scalar losses."
+  },
+  "tile_count_distribution": {
+    "minimum": 4,
+    "maximum": 38,
+    "mean": 6.345238095238095,
+    "distinct_counts": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      13,
+      14,
+      24,
+      31,
+      38
+    ],
+    "all_groups_equal": false,
+    "minimum_current_to_equal_ratio": 0.6303939962476548,
+    "maximum_current_to_equal_ratio": 5.988742964352721
+  },
+  "observation_presentation_distribution": {
+    "minimum": 1,
+    "maximum": 8,
+    "all_observations_present": true
+  },
+  "actual_batch_size_counts": {
+    "5": 18,
+    "10": 10,
+    "13": 2,
+    "15": 5,
+    "16": 2,
+    "20": 8,
+    "22": 3,
+    "24": 1,
+    "25": 8,
+    "28": 1,
+    "30": 6,
+    "32": 469
+  },
+  "normalization": {
+    "ranking_pairs_expected": 67456,
+    "ranking_pairs_unique": 67456,
+    "ranking_pairs_scheduled": 67456,
+    "ranking_pairs_repeated": 0,
+    "ranking_pairs_missing": 0,
+    "ranking_global_pair_mean_verified": true,
+    "observation_ce_global_balanced_mean_verified": true,
+    "observation_ce_step_mean_class_mass": {
+      "0": 0.4999999999999213,
+      "1": 0.5000000000000061
+    },
+    "maximum_observation_ce_weight_error": 1.0842021724855044e-19
+  },
+  "patient_groups": [
+    {
+      "patient_group": "case:liver_1",
+      "case_ids": [
+        "liver_1"
+      ],
+      "observations": 139,
+      "positive_count": 11,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 7,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.013133208255159476,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 1.103189493433396,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.9064625850340136
+    },
+    {
+      "patient_group": "case:liver_10",
+      "case_ids": [
+        "liver_10"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_100",
+      "case_ids": [
+        "liver_100"
+      ],
+      "observations": 138,
+      "positive_count": 10,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_101",
+      "case_ids": [
+        "liver_101"
+      ],
+      "observations": 143,
+      "positive_count": 15,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 8,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0150093808630394,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 1.2607879924953096,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.7931547619047619
+    },
+    {
+      "patient_group": "case:liver_103",
+      "case_ids": [
+        "liver_103"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_104",
+      "case_ids": [
+        "liver_104"
+      ],
+      "observations": 137,
+      "positive_count": 9,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_105",
+      "case_ids": [
+        "liver_105"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_106",
+      "case_ids": [
+        "liver_106"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_107",
+      "case_ids": [
+        "liver_107"
+      ],
+      "observations": 132,
+      "positive_count": 4,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_108",
+      "case_ids": [
+        "liver_108"
+      ],
+      "observations": 187,
+      "positive_count": 59,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 31,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.058161350844277676,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 4.885553470919325,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.20468509984639016
+    },
+    {
+      "patient_group": "case:liver_111",
+      "case_ids": [
+        "liver_111"
+      ],
+      "observations": 135,
+      "positive_count": 7,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_112",
+      "case_ids": [
+        "liver_112"
+      ],
+      "observations": 132,
+      "positive_count": 4,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_114",
+      "case_ids": [
+        "liver_114"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_116",
+      "case_ids": [
+        "liver_116"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_117",
+      "case_ids": [
+        "liver_117"
+      ],
+      "observations": 199,
+      "positive_count": 71,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 38,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.07129455909943715,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 5.988742964352721,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.16697994987468673
+    },
+    {
+      "patient_group": "case:liver_118",
+      "case_ids": [
+        "liver_118"
+      ],
+      "observations": 137,
+      "positive_count": 9,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_120",
+      "case_ids": [
+        "liver_120"
+      ],
+      "observations": 135,
+      "positive_count": 7,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_121",
+      "case_ids": [
+        "liver_121"
+      ],
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_122",
+      "case_ids": [
+        "liver_122"
+      ],
+      "observations": 151,
+      "positive_count": 23,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 14,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.02626641651031895,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 2.206378986866792,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.4532312925170068
+    },
+    {
+      "patient_group": "case:liver_123",
+      "case_ids": [
+        "liver_123"
+      ],
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_124",
+      "case_ids": [
+        "liver_124"
+      ],
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 7,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.013133208255159476,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 1.103189493433396,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.9064625850340136
+    },
+    {
+      "patient_group": "case:liver_125",
+      "case_ids": [
+        "liver_125"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_126",
+      "case_ids": [
+        "liver_126"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_127",
+      "case_ids": [
+        "liver_127"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_129",
+      "case_ids": [
+        "liver_129"
+      ],
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_130",
+      "case_ids": [
+        "liver_130"
+      ],
+      "observations": 150,
+      "positive_count": 22,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 13,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.024390243902439025,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 2.048780487804878,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.4880952380952381
+    },
+    {
+      "patient_group": "case:liver_15",
+      "case_ids": [
+        "liver_15"
+      ],
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_18",
+      "case_ids": [
+        "liver_18"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_2",
+      "case_ids": [
+        "liver_2"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_20",
+      "case_ids": [
+        "liver_20"
+      ],
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_21",
+      "case_ids": [
+        "liver_21"
+      ],
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_23",
+      "case_ids": [
+        "liver_23"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_24",
+      "case_ids": [
+        "liver_24"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_27",
+      "case_ids": [
+        "liver_27"
+      ],
+      "observations": 136,
+      "positive_count": 8,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_28",
+      "case_ids": [
+        "liver_28"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_30",
+      "case_ids": [
+        "liver_30"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_32",
+      "case_ids": [
+        "liver_32"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_36",
+      "case_ids": [
+        "liver_36"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_39",
+      "case_ids": [
+        "liver_39"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_40",
+      "case_ids": [
+        "liver_40"
+      ],
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 7,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.013133208255159476,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 1.103189493433396,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.9064625850340136
+    },
+    {
+      "patient_group": "case:liver_41",
+      "case_ids": [
+        "liver_41"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_43",
+      "case_ids": [
+        "liver_43"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_45",
+      "case_ids": [
+        "liver_45"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_46",
+      "case_ids": [
+        "liver_46"
+      ],
+      "observations": 176,
+      "positive_count": 48,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 24,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0450281425891182,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 3.782363977485929,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.26438492063492064
+    },
+    {
+      "patient_group": "case:liver_47",
+      "case_ids": [
+        "liver_47"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_49",
+      "case_ids": [
+        "liver_49"
+      ],
+      "observations": 148,
+      "positive_count": 20,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 13,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.024390243902439025,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 2.048780487804878,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.4880952380952381
+    },
+    {
+      "patient_group": "case:liver_5",
+      "case_ids": [
+        "liver_5"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_51",
+      "case_ids": [
+        "liver_51"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_52",
+      "case_ids": [
+        "liver_52"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_55",
+      "case_ids": [
+        "liver_55"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_56",
+      "case_ids": [
+        "liver_56"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_57",
+      "case_ids": [
+        "liver_57"
+      ],
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_58",
+      "case_ids": [
+        "liver_58"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_59",
+      "case_ids": [
+        "liver_59"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_6",
+      "case_ids": [
+        "liver_6"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_60",
+      "case_ids": [
+        "liver_60"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_62",
+      "case_ids": [
+        "liver_62"
+      ],
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_64",
+      "case_ids": [
+        "liver_64"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_65",
+      "case_ids": [
+        "liver_65"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_66",
+      "case_ids": [
+        "liver_66"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_68",
+      "case_ids": [
+        "liver_68"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_69",
+      "case_ids": [
+        "liver_69"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_7",
+      "case_ids": [
+        "liver_7"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_71",
+      "case_ids": [
+        "liver_71"
+      ],
+      "observations": 132,
+      "positive_count": 4,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_72",
+      "case_ids": [
+        "liver_72"
+      ],
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_73",
+      "case_ids": [
+        "liver_73"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_74",
+      "case_ids": [
+        "liver_74"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_75",
+      "case_ids": [
+        "liver_75"
+      ],
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_76",
+      "case_ids": [
+        "liver_76"
+      ],
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_78",
+      "case_ids": [
+        "liver_78"
+      ],
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 7,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.013133208255159476,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 1.103189493433396,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.9064625850340136
+    },
+    {
+      "patient_group": "case:liver_80",
+      "case_ids": [
+        "liver_80"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_81",
+      "case_ids": [
+        "liver_81"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_83",
+      "case_ids": [
+        "liver_83"
+      ],
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_85",
+      "case_ids": [
+        "liver_85"
+      ],
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_86",
+      "case_ids": [
+        "liver_86"
+      ],
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_87",
+      "case_ids": [
+        "liver_87"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_88",
+      "case_ids": [
+        "liver_88"
+      ],
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_9",
+      "case_ids": [
+        "liver_9"
+      ],
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_91",
+      "case_ids": [
+        "liver_91"
+      ],
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 4,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.0075046904315197,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.6303939962476548,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.5863095238095237
+    },
+    {
+      "patient_group": "case:liver_92",
+      "case_ids": [
+        "liver_92"
+      ],
+      "observations": 137,
+      "positive_count": 9,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 6,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.01125703564727955,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.9455909943714822,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.0575396825396826
+    },
+    {
+      "patient_group": "case:liver_93",
+      "case_ids": [
+        "liver_93"
+      ],
+      "observations": 152,
+      "positive_count": 24,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 14,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.02626641651031895,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 2.206378986866792,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.4532312925170068
+    },
+    {
+      "patient_group": "case:liver_94",
+      "case_ids": [
+        "liver_94"
+      ],
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 7,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.013133208255159476,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 1.103189493433396,
+      "hypothetical_group_balanced_per_tile_multiplier": 0.9064625850340136
+    },
+    {
+      "patient_group": "case:liver_95",
+      "case_ids": [
+        "liver_95"
+      ],
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    },
+    {
+      "patient_group": "case:liver_97",
+      "case_ids": [
+        "liver_97"
+      ],
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles_per_patient_group": 5,
+      "schedule_episode_count": 1,
+      "current_alignment_step_mean_weight": 0.009380863039399626,
+      "equal_group_step_mean_weight": 0.011904761904761904,
+      "current_to_equal_group_weight_ratio": 0.7879924953095685,
+      "hypothetical_group_balanced_per_tile_multiplier": 1.269047619047619
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "liver_1",
+      "patient_group": "case:liver_1",
+      "observations": 139,
+      "positive_count": 11,
+      "unobserved_count": 128,
+      "tiles": 7,
+      "query_presentations": 205,
+      "expected_ranking_pairs": 1408,
+      "scheduled_ranking_pairs": 1408,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1408,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.013133208255159476
+    },
+    {
+      "case_id": "liver_10",
+      "patient_group": "case:liver_10",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_100",
+      "patient_group": "case:liver_100",
+      "observations": 138,
+      "positive_count": 10,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 188,
+      "expected_ranking_pairs": 1280,
+      "scheduled_ranking_pairs": 1280,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1280,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_101",
+      "patient_group": "case:liver_101",
+      "observations": 143,
+      "positive_count": 15,
+      "unobserved_count": 128,
+      "tiles": 8,
+      "query_presentations": 248,
+      "expected_ranking_pairs": 1920,
+      "scheduled_ranking_pairs": 1920,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1920,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0150093808630394
+    },
+    {
+      "case_id": "liver_103",
+      "patient_group": "case:liver_103",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_104",
+      "patient_group": "case:liver_104",
+      "observations": 137,
+      "positive_count": 9,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 182,
+      "expected_ranking_pairs": 1152,
+      "scheduled_ranking_pairs": 1152,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1152,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_105",
+      "patient_group": "case:liver_105",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_106",
+      "patient_group": "case:liver_106",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_107",
+      "patient_group": "case:liver_107",
+      "observations": 132,
+      "positive_count": 4,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 148,
+      "expected_ranking_pairs": 512,
+      "scheduled_ranking_pairs": 512,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 512,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_108",
+      "patient_group": "case:liver_108",
+      "observations": 187,
+      "positive_count": 59,
+      "unobserved_count": 128,
+      "tiles": 31,
+      "query_presentations": 973,
+      "expected_ranking_pairs": 7552,
+      "scheduled_ranking_pairs": 7552,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 7552,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.058161350844277676
+    },
+    {
+      "case_id": "liver_111",
+      "patient_group": "case:liver_111",
+      "observations": 135,
+      "positive_count": 7,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 170,
+      "expected_ranking_pairs": 896,
+      "scheduled_ranking_pairs": 896,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 896,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_112",
+      "patient_group": "case:liver_112",
+      "observations": 132,
+      "positive_count": 4,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 148,
+      "expected_ranking_pairs": 512,
+      "scheduled_ranking_pairs": 512,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 512,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_114",
+      "patient_group": "case:liver_114",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_116",
+      "patient_group": "case:liver_116",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_117",
+      "patient_group": "case:liver_117",
+      "observations": 199,
+      "positive_count": 71,
+      "unobserved_count": 128,
+      "tiles": 38,
+      "query_presentations": 1194,
+      "expected_ranking_pairs": 9088,
+      "scheduled_ranking_pairs": 9088,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 9088,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.07129455909943715
+    },
+    {
+      "case_id": "liver_118",
+      "patient_group": "case:liver_118",
+      "observations": 137,
+      "positive_count": 9,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 182,
+      "expected_ranking_pairs": 1152,
+      "scheduled_ranking_pairs": 1152,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1152,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_120",
+      "patient_group": "case:liver_120",
+      "observations": 135,
+      "positive_count": 7,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 170,
+      "expected_ranking_pairs": 896,
+      "scheduled_ranking_pairs": 896,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 896,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_121",
+      "patient_group": "case:liver_121",
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 143,
+      "expected_ranking_pairs": 384,
+      "scheduled_ranking_pairs": 384,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 384,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_122",
+      "patient_group": "case:liver_122",
+      "observations": 151,
+      "positive_count": 23,
+      "unobserved_count": 128,
+      "tiles": 14,
+      "query_presentations": 426,
+      "expected_ranking_pairs": 2944,
+      "scheduled_ranking_pairs": 2944,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 2944,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.02626641651031895
+    },
+    {
+      "case_id": "liver_123",
+      "patient_group": "case:liver_123",
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 143,
+      "expected_ranking_pairs": 384,
+      "scheduled_ranking_pairs": 384,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 384,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_124",
+      "patient_group": "case:liver_124",
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles": 7,
+      "query_presentations": 212,
+      "expected_ranking_pairs": 1536,
+      "scheduled_ranking_pairs": 1536,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1536,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.013133208255159476
+    },
+    {
+      "case_id": "liver_125",
+      "patient_group": "case:liver_125",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_126",
+      "patient_group": "case:liver_126",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_127",
+      "patient_group": "case:liver_127",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_129",
+      "patient_group": "case:liver_129",
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 143,
+      "expected_ranking_pairs": 384,
+      "scheduled_ranking_pairs": 384,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 384,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_130",
+      "patient_group": "case:liver_130",
+      "observations": 150,
+      "positive_count": 22,
+      "unobserved_count": 128,
+      "tiles": 13,
+      "query_presentations": 414,
+      "expected_ranking_pairs": 2816,
+      "scheduled_ranking_pairs": 2816,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 2816,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.024390243902439025
+    },
+    {
+      "case_id": "liver_15",
+      "patient_group": "case:liver_15",
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 158,
+      "expected_ranking_pairs": 768,
+      "scheduled_ranking_pairs": 768,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 768,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_18",
+      "patient_group": "case:liver_18",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_2",
+      "patient_group": "case:liver_2",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_20",
+      "patient_group": "case:liver_20",
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 158,
+      "expected_ranking_pairs": 768,
+      "scheduled_ranking_pairs": 768,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 768,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_21",
+      "patient_group": "case:liver_21",
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 138,
+      "expected_ranking_pairs": 256,
+      "scheduled_ranking_pairs": 256,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 256,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_23",
+      "patient_group": "case:liver_23",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_24",
+      "patient_group": "case:liver_24",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_27",
+      "patient_group": "case:liver_27",
+      "observations": 136,
+      "positive_count": 8,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 176,
+      "expected_ranking_pairs": 1024,
+      "scheduled_ranking_pairs": 1024,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1024,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_28",
+      "patient_group": "case:liver_28",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_30",
+      "patient_group": "case:liver_30",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_32",
+      "patient_group": "case:liver_32",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_36",
+      "patient_group": "case:liver_36",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_39",
+      "patient_group": "case:liver_39",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_40",
+      "patient_group": "case:liver_40",
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles": 7,
+      "query_presentations": 212,
+      "expected_ranking_pairs": 1536,
+      "scheduled_ranking_pairs": 1536,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1536,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.013133208255159476
+    },
+    {
+      "case_id": "liver_41",
+      "patient_group": "case:liver_41",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_43",
+      "patient_group": "case:liver_43",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_45",
+      "patient_group": "case:liver_45",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_46",
+      "patient_group": "case:liver_46",
+      "observations": 176,
+      "positive_count": 48,
+      "unobserved_count": 128,
+      "tiles": 24,
+      "query_presentations": 768,
+      "expected_ranking_pairs": 6144,
+      "scheduled_ranking_pairs": 6144,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 6144,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0450281425891182
+    },
+    {
+      "case_id": "liver_47",
+      "patient_group": "case:liver_47",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_49",
+      "patient_group": "case:liver_49",
+      "observations": 148,
+      "positive_count": 20,
+      "unobserved_count": 128,
+      "tiles": 13,
+      "query_presentations": 404,
+      "expected_ranking_pairs": 2560,
+      "scheduled_ranking_pairs": 2560,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 2560,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.024390243902439025
+    },
+    {
+      "case_id": "liver_5",
+      "patient_group": "case:liver_5",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_51",
+      "patient_group": "case:liver_51",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_52",
+      "patient_group": "case:liver_52",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_55",
+      "patient_group": "case:liver_55",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_56",
+      "patient_group": "case:liver_56",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_57",
+      "patient_group": "case:liver_57",
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 138,
+      "expected_ranking_pairs": 256,
+      "scheduled_ranking_pairs": 256,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 256,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_58",
+      "patient_group": "case:liver_58",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_59",
+      "patient_group": "case:liver_59",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_6",
+      "patient_group": "case:liver_6",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_60",
+      "patient_group": "case:liver_60",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_62",
+      "patient_group": "case:liver_62",
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 138,
+      "expected_ranking_pairs": 256,
+      "scheduled_ranking_pairs": 256,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 256,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_64",
+      "patient_group": "case:liver_64",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_65",
+      "patient_group": "case:liver_65",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_66",
+      "patient_group": "case:liver_66",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_68",
+      "patient_group": "case:liver_68",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_69",
+      "patient_group": "case:liver_69",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_7",
+      "patient_group": "case:liver_7",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_71",
+      "patient_group": "case:liver_71",
+      "observations": 132,
+      "positive_count": 4,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 148,
+      "expected_ranking_pairs": 512,
+      "scheduled_ranking_pairs": 512,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 512,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_72",
+      "patient_group": "case:liver_72",
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 143,
+      "expected_ranking_pairs": 384,
+      "scheduled_ranking_pairs": 384,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 384,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_73",
+      "patient_group": "case:liver_73",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_74",
+      "patient_group": "case:liver_74",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_75",
+      "patient_group": "case:liver_75",
+      "observations": 131,
+      "positive_count": 3,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 143,
+      "expected_ranking_pairs": 384,
+      "scheduled_ranking_pairs": 384,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 384,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_76",
+      "patient_group": "case:liver_76",
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 138,
+      "expected_ranking_pairs": 256,
+      "scheduled_ranking_pairs": 256,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 256,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_78",
+      "patient_group": "case:liver_78",
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles": 7,
+      "query_presentations": 212,
+      "expected_ranking_pairs": 1536,
+      "scheduled_ranking_pairs": 1536,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1536,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.013133208255159476
+    },
+    {
+      "case_id": "liver_80",
+      "patient_group": "case:liver_80",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_81",
+      "patient_group": "case:liver_81",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_83",
+      "patient_group": "case:liver_83",
+      "observations": 129,
+      "positive_count": 1,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 133,
+      "expected_ranking_pairs": 128,
+      "scheduled_ranking_pairs": 128,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 128,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_85",
+      "patient_group": "case:liver_85",
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 138,
+      "expected_ranking_pairs": 256,
+      "scheduled_ranking_pairs": 256,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 256,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_86",
+      "patient_group": "case:liver_86",
+      "observations": 130,
+      "positive_count": 2,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 138,
+      "expected_ranking_pairs": 256,
+      "scheduled_ranking_pairs": 256,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 256,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_87",
+      "patient_group": "case:liver_87",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_88",
+      "patient_group": "case:liver_88",
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 158,
+      "expected_ranking_pairs": 768,
+      "scheduled_ranking_pairs": 768,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 768,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_9",
+      "patient_group": "case:liver_9",
+      "observations": 133,
+      "positive_count": 5,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 153,
+      "expected_ranking_pairs": 640,
+      "scheduled_ranking_pairs": 640,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 640,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_91",
+      "patient_group": "case:liver_91",
+      "observations": 128,
+      "positive_count": 0,
+      "unobserved_count": 128,
+      "tiles": 4,
+      "query_presentations": 128,
+      "expected_ranking_pairs": 0,
+      "scheduled_ranking_pairs": 0,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 0,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.0075046904315197
+    },
+    {
+      "case_id": "liver_92",
+      "patient_group": "case:liver_92",
+      "observations": 137,
+      "positive_count": 9,
+      "unobserved_count": 128,
+      "tiles": 6,
+      "query_presentations": 182,
+      "expected_ranking_pairs": 1152,
+      "scheduled_ranking_pairs": 1152,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1152,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.01125703564727955
+    },
+    {
+      "case_id": "liver_93",
+      "patient_group": "case:liver_93",
+      "observations": 152,
+      "positive_count": 24,
+      "unobserved_count": 128,
+      "tiles": 14,
+      "query_presentations": 432,
+      "expected_ranking_pairs": 3072,
+      "scheduled_ranking_pairs": 3072,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 3072,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.02626641651031895
+    },
+    {
+      "case_id": "liver_94",
+      "patient_group": "case:liver_94",
+      "observations": 140,
+      "positive_count": 12,
+      "unobserved_count": 128,
+      "tiles": 7,
+      "query_presentations": 212,
+      "expected_ranking_pairs": 1536,
+      "scheduled_ranking_pairs": 1536,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 1536,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.013133208255159476
+    },
+    {
+      "case_id": "liver_95",
+      "patient_group": "case:liver_95",
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 158,
+      "expected_ranking_pairs": 768,
+      "scheduled_ranking_pairs": 768,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 768,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    },
+    {
+      "case_id": "liver_97",
+      "patient_group": "case:liver_97",
+      "observations": 134,
+      "positive_count": 6,
+      "unobserved_count": 128,
+      "tiles": 5,
+      "query_presentations": 158,
+      "expected_ranking_pairs": 768,
+      "scheduled_ranking_pairs": 768,
+      "repeated_ranking_pairs": 0,
+      "unique_ranking_pairs": 768,
+      "missing_ranking_pairs": 0,
+      "current_alignment_step_mean_weight": 0.009380863039399626
+    }
+  ],
+  "inventory_provenance": {
+    "path": "work/v222_v1_recovered2_training_20260924/cache/index.json",
+    "sha256": "4e711671eaf0c92859230a71ac6bd6a716a68bf7ed439337b3ed27deaa9561c3",
+    "reconstruction": "current same-donor assignment over preserved local full paired metadata",
+    "independent_server_native_inventory": false
+  }
+}

@@ -145,6 +145,26 @@ def _case_lines(case: dict, reasons: dict[str, set[str]]) -> list[str]:
             compact.append(f"s={_num(_get(row, 'message_scale'))} {values}")
         for start in range(0, len(compact), 2):
             lines.append("  Sweep std/gap/win/loss: " + " | ".join(compact[start:start + 2]))
+    ff_sweep = _as_list(_get(probe, "query_ff_scale_sweep", "reports"))
+    for start in range(0, len(ff_sweep), 2):
+        compact = []
+        for row in ff_sweep[start:start+2]:
+            stats = _get(row, "score")
+            values = "/".join(_metric(_get(stats, key)) for key in (
+                "score_std", "mean_positive_minus_unobserved", "pair_win_rate", "mean_pairwise_loss"))
+            compact.append(f"ff={_num(_get(row, 'ff_scale'))} {values}")
+        lines.append("  L1_2 FF-only std/gap/win/loss: " + " | ".join(compact))
+    for layer in _as_list(_get(probe, "attention_sensitivity", "layers")):
+        values = ["/".join(_metric(_get(head, key)) for key in (
+            "candidate_weight_variance_mean", "mean_pairwise_cosine", "mean_pairwise_jensen_shannon", "entropy_mean"))
+            for head in _as_list(_get(layer, "per_head"))]
+        lines.append(f"  Attention L1_{_text(_get(layer, 'layer'))} head var/cos/JS/entropy: " + " | ".join(values))
+    for row in _as_list(_get(case, "fusion_identity_bypass", "branches")):
+        stats = _get(row, "score")
+        values = "/".join(_metric(_get(stats, key)) for key in (
+            "score_std", "mean_positive_minus_unobserved", "pair_win_rate", "mean_pairwise_loss"))
+        lines.append(f"  Fusion {_text(_get(row, 'branch'))} lambda={_text(_get(row, 'fusion_scale'))} "
+                     f"std/gap/win/loss={values}; support+query re-encoded")
     return lines
 
 
@@ -174,6 +194,16 @@ def _shadow_lines(report: dict) -> list[str]:
     lines.append("  Shadow verified: Adam-state=" + _flag(_get(shadow, "optimizer_state_reused"))
                  + " gradient-sum=" + _flag(_get(shadow, "decomposition_full_backward_verified"))
                  + " shared-forward=" + _flag(_get(shadow, "same_forward_realization_for_all_branches")))
+    history = _get(shadow, "history_isolation", "modules")
+    if isinstance(history, dict):
+        for module in ("CNN", "readout_fusion", "L1", "L2", "global"):
+            row = _get(history, module)
+            values = "/".join(_num(_get(row, key)) for key in ("history_delta_norm", "ratio_to_full_delta_norm"))
+            lines.append(f"  Adam history {module}: norm/full-ratio={values} "
+                         f"cos(full,history)={_num(_get(row, 'vs_full_delta', 'cosine'))} "
+                         f"norm(full-history)={_num(_get(row, 'delta_full_minus_history', 'delta_norm'))} "
+                         f"norm(rank-history)={_num(_get(row, 'delta_ranking_minus_history', 'delta_norm'))}")
+        lines.append("  Adam history uses explicit zero gradients and weight decay; nonlinear contrasts, not additive attribution.")
     return lines
 
 
@@ -200,6 +230,32 @@ def format_summary(report: dict) -> str:
             else:
                 lines.extend(_case_lines(case, reasons))
     lines.extend(_shadow_lines(report))
+    audit = _get(report, "alignment_schedule_audit")
+    if isinstance(audit, dict):
+        dist = _get(audit, "tile_count_distribution")
+        lines.append(f"ALIGNMENT audit: groups={_text(_get(audit, 'patient_group_count'))} "
+                     f"tiles={_text(_get(audit, 'optimization_steps'))} "
+                     f"K_g min/max={_text(_get(dist, 'minimum'))}/{_text(_get(dist, 'maximum'))} "
+                     f"current/equal-group min/max={_metric(_get(dist, 'minimum_current_to_equal_ratio'))}/"
+                     f"{_metric(_get(dist, 'maximum_current_to_equal_ratio'))}; production loss unchanged")
+    encoding = _get(report, "fusion_support_reencoding")
+    if isinstance(encoding, dict):
+        lines.append(f"FUSION full-support union: records={_text(_get(encoding, 'required_unique_support_records'))} "
+                     f"new/reused={_text(_get(encoding, 'newly_encoded_records'))}/"
+                     f"{_text(_get(encoding, 'reused_query_trace_records'))} "
+                     f"seconds={_metric(_get(encoding, 'elapsed_seconds'))}; CNN outputs shared across lambdas")
+    direct = _get(report, "direct_scalar_head")
+    if isinstance(direct, dict):
+        lines.append(f"DIRECT HEAD: diagnostic updates={_text(_get(direct, 'head_optimizer_updates'))}; "
+                     f"CNN updates={_text(_get(direct, 'cnn_updates'))}; fresh head/Adam, frozen recipient features, rank-only")
+        for split in ("train", "validation"):
+            values = []
+            for phase in ("before", "after"):
+                stats = _get(direct, phase, split, "metrics")
+                values.append("/".join(_metric(_get(stats, key)) for key in (
+                    "ranking_mrr", "pair_win_rate", "ranking_pairwise_loss")))
+            lines.append(f"  Direct {split} MRR/win/loss before -> after: " + " -> ".join(values))
+        lines.append("  Short frozen-feature control; train fit alone is not CP validity or proof of the original failure cause.")
     lines.append("Preserved: weights=" + _flag(_get(report, "weights_unchanged"))
                  + " saved-payload=" + _flag(_get(report, "shadow_update", "saved_payload_unchanged"))
                  + " support-plan=" + _flag(_get(report, "shadow_update", "support_plan_unchanged"))

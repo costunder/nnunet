@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from tools.local_cnn_l1_probe import candidate_signal, probe_l1, _relation_stages
+from tools.local_cnn_l1_probe import candidate_signal, probe_l1, _relation_stages, _attention_signal
 
 
 class L1ProbeChecks(unittest.TestCase):
@@ -60,6 +60,81 @@ class L1ProbeChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'eval'):
             probe_l1(net, query, state, 3, [1])
 
+    def test_ff_zero_intervenes_only_second_residual_add(self):
+        from hiercp_v222.model import RelationLayer
+        torch.manual_seed(335)
+        layer = RelationLayer(128, 4, .1).eval()
+        source, query = torch.randn(6, 128), torch.randn(3, 128)
+        baseline = _relation_stages(layer, source, query, 1.)
+        probe = _relation_stages(layer, source, query, 1., ff_scale=0.)
+        for name in ('input', 'raw_message', 'projected_message', 'scaled_message',
+                     'residual_add', 'residual_norm', 'ff_output'):
+            torch.testing.assert_close(probe[name], baseline[name])
+        torch.testing.assert_close(probe['second_add'], probe['residual_norm'])
+        torch.testing.assert_close(probe['final_norm'], layer.update.final(probe['residual_norm']))
+        self.assertGreater(float((probe['final_norm']-baseline['final_norm']).detach().abs().max()), .01)
+
+    def test_ff_explicit_scales_required(self):
+        net, query, state = self.model('cpu')
+        for scales in ([], [0, .5], [1, 1], [1, float('nan')], [1, -1]):
+            with self.assertRaisesRegex(ValueError, 'FF scale'):
+                probe_l1(net, query, state, 3, [1], ff_scales=scales)
+
+    def test_attention_complete_pairs_matches_direct_definition(self):
+        torch.manual_seed(419)
+        weights = torch.randn(5, 3, 2).softmax(1)
+        report = _attention_signal(weights, 2)
+        self.assertEqual(report['distinct_candidate_pairs'], 10)
+        self.assertTrue(report['all_candidates_and_support_labels_included'])
+        for head, row in enumerate(report['per_head']):
+            p = weights[:, :, head]
+            expected_cos, expected_js = [], []
+            for i in range(5):
+                for j in range(i+1, 5):
+                    expected_cos.append(torch.nn.functional.cosine_similarity(p[i], p[j], dim=0))
+                    mean = (p[i]+p[j])/2
+                    expected_js.append(((p[i]*(p[i]/mean).log()).sum()
+                                        +(p[j]*(p[j]/mean).log()).sum())/2)
+            self.assertAlmostEqual(row['mean_pairwise_cosine'], float(torch.stack(expected_cos).mean()), places=6)
+            self.assertAlmostEqual(row['mean_pairwise_jensen_shannon'], float(torch.stack(expected_js).mean()), places=6)
+            torch.testing.assert_close(torch.tensor(row['variance_over_candidates_per_support_label']), p.var(0, unbiased=False))
+            self.assertAlmostEqual(row['entropy_mean'], float(-(p*p.log()).sum(-1).mean()), places=6)
+        unchanged = _attention_signal(weights, 5)
+        for a, b in zip(report['per_head'], unchanged['per_head']):
+            self.assertAlmostEqual(a['mean_pairwise_jensen_shannon'], b['mean_pairwise_jensen_shannon'], places=6)
+        single = _attention_signal(weights[:1], 2)
+        self.assertEqual(single['distinct_candidate_pairs'], 0)
+        self.assertIsNone(single['per_head'][0]['mean_pairwise_cosine'])
+        self.assertIsNone(single['per_head'][0]['mean_pairwise_jensen_shannon'])
+
+    def test_cuda_attention_additive_cancellation_and_nonlinear_sensitivity(self):
+        if not torch.cuda.is_available():
+            self.skipTest('CUDA required for attention scoring checks')
+        from hiercp_v222.model import RelationLayer
+        layer = RelationLayer(128, 4, .1).cuda().eval()
+        with torch.no_grad():
+            layer.q.weight.zero_(); layer.k.weight.zero_()
+            layer.q.weight[0, 0] = 1.; layer.k.weight[0, 0] = 1.
+            layer.attn[0].weight.zero_(); layer.attn[0].bias.zero_()
+            layer.attn[0].weight[0, 0] = 1.
+            layer.attn[0].weight[0, layer.width] = 1.
+            layer.attn[2].weight.zero_(); layer.attn[2].bias.zero_()
+            layer.attn[2].weight[0, 0] = 1.
+        source, query = torch.zeros(2, 128, device='cuda'), torch.zeros(2, 128, device='cuda')
+        source[:, 0] = torch.tensor([-1., 1.], device='cuda')
+        query[:, 0] = torch.tensor([2., 4.], device='cuda')
+        same = _relation_stages(layer, source, query, 1., include_attention=True)['_attention_weights']
+        signal = _attention_signal(same, 1)
+        self.assertGreater(float((query[0]-query[1]).abs().max()), 1)
+        self.assertLess(signal['per_head'][0]['candidate_weight_variance_max'], 1e-12)
+        self.assertAlmostEqual(signal['per_head'][0]['mean_pairwise_cosine'], 1., places=6)
+        query[:, 0] = torch.tensor([-2., 2.], device='cuda')
+        different = _relation_stages(layer, source, query, 1., include_attention=True)['_attention_weights']
+        signal = _attention_signal(different, 1)
+        self.assertGreater(signal['per_head'][0]['candidate_weight_variance_mean'], 1e-3)
+        self.assertGreater(signal['per_head'][0]['mean_pairwise_jensen_shannon'], 1e-3)
+        self.assertLess(signal['per_head'][0]['mean_pairwise_cosine'], .99)
+
     def test_cuda_parity_all_stages_and_weights_unchanged(self):
         if not torch.cuda.is_available():
             self.skipTest('CUDA required for diagnostic operator parity')
@@ -69,12 +144,32 @@ class L1ProbeChecks(unittest.TestCase):
         histories = [value.clone() for value in state['histories']]
         labels = state['labels'].clone()
         truth = torch.tensor([1, 0, 0, 1, 0, 0, 0], device='cuda')
-        report = probe_l1(net, query, state, 3, [0., .25, .5, 1.], truth)
+        report = probe_l1(net, query, state, 3, [0., .25, .5, 1.], truth,
+                          ff_scales=[0., .25, .5, 1.])
         self.assertTrue(report['production_scale_parity_passed'])
         self.assertTrue(report['shared_label_seed']['first_history_matches_shared_seed'])
         self.assertEqual(report['physical_batch'], 3)
         self.assertEqual(report['candidates'], 7)
         self.assertEqual(len(report['message_scale_sweep']), 4)
+        ff = report['query_ff_scale_sweep']
+        self.assertTrue(ff['production_ff_scale_parity_passed'])
+        self.assertEqual(ff['target_layers'], [2])
+        baseline = report['message_scale_sweep'][-1]
+        for row in ff['reports']:
+            self.assertEqual(row['message_scale'], 1)
+            self.assertEqual(row['layers'][0]['ff_scale'], 1)
+            self.assertEqual(row['layers'][1]['ff_scale'], row['ff_scale'])
+            for stage, values in row['layers'][0]['stages'].items():
+                for key, value in values.items():
+                    reference = baseline['layers'][0]['stages'][stage][key]
+                    if isinstance(value, float):
+                        self.assertAlmostEqual(value, reference, delta=1e-7+abs(reference)*2e-5)
+                    else:
+                        self.assertEqual(value, reference)
+        self.assertLess(ff['reports'][-1]['production_logit_max_abs_difference'], 2e-6)
+        self.assertEqual(report['attention_sensitivity']['layers'][0]['candidates'], 7)
+        self.assertEqual(report['attention_sensitivity']['layers'][0]['distinct_candidate_pairs'], 21)
+        self.assertEqual(len(report['attention_sensitivity']['layers'][0]['per_head']), 4)
         for scale in report['message_scale_sweep']:
             self.assertEqual(len(scale['layers']), 2)
             for layer in scale['layers']:

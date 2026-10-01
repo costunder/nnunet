@@ -119,6 +119,85 @@ class Checks(unittest.TestCase):
         self.assertEqual(report['branches']['alignment']['modules']['readout_fusion']['delta_norm'], 0)
         self.assertTrue(all(n.startswith('local.') for n in report['branches']['alignment']['unused_gradient_parameters']))
         self.assertGreater(budget.checks, 4)
+        self.assertEqual(report['cloned_optimizer_steps'], 4)
+        self.assertNotIn('history_isolation', report)
+
+    def test_history_only_matches_real_zero_grad_saved_adam_and_preserves_inputs(self):
+        saved, query, support, plan, data, context = fixture(UnitModel, 8, 'cpu')
+        digest = hash_state(saved)
+        input_digest = hash_state(dict(support=support, plan=plan))
+        caller_digest = hash_state(rng_state())
+        report = shadow_update(UnitModel, saved, query, support, plan, data, list(range(4)),
+                               context, UnitBudget(), include_history_only=True)
+        self.assertEqual(hash_state(saved), digest)
+        self.assertEqual(hash_state(dict(support=support, plan=plan)), input_digest)
+        self.assertEqual(hash_state(rng_state()), caller_digest)
+        self.assertEqual(report['cloned_optimizer_steps'], 5)
+        branch = report['branches']['history_only']
+        self.assertTrue(branch['explicit_zero_gradients'])
+        self.assertEqual(branch['unused_gradient_parameters'], [])
+        self.assertEqual(branch['gradient_norm_before_clip'], 0)
+        self.assertEqual(branch['clipping_factor'], 1)
+        self.assertEqual(branch['adam_step_after_min'], 2)
+        direct = UnitModel().train();direct.load_state_dict(saved['model'])
+        optimizer = torch.optim.AdamW(direct.parameters(), lr=.01, weight_decay=.013, fused=False)
+        optimizer.load_state_dict(copy.deepcopy(saved['optimizer']))
+        old = [p.detach().clone() for p in direct.parameters()]
+        for parameter in direct.parameters():
+            parameter.grad = torch.zeros_like(parameter)
+        optimizer.step()
+        delta = torch.cat([(p.detach() - initial).flatten() for p, initial in zip(direct.parameters(), old)])
+        self.assertAlmostEqual(float(delta.norm()), branch['modules']['global']['delta_norm'], places=6)
+        self.assertGreater(branch['modules']['CNN']['delta_norm'], 0)
+        self.assertGreater(branch['modules']['readout_fusion']['delta_norm'], 0)
+        # None would suppress exactly the history/decay behavior this branch
+        # measures; verify it is observably different from explicit zero.
+        skipped = UnitModel().train();skipped.load_state_dict(saved['model'])
+        skipped_optimizer = torch.optim.AdamW(skipped.parameters(), lr=.01, weight_decay=.013, fused=False)
+        skipped_optimizer.load_state_dict(copy.deepcopy(saved['optimizer']))
+        skipped_optimizer.zero_grad(set_to_none=True);skipped_optimizer.step()
+        self.assertEqual(float(torch.cat([(p.detach() - initial).flatten()
+                                         for p, initial in zip(skipped.parameters(), old)]).norm()), 0)
+
+        # Current full derivatives must use the production clip when comparing
+        # their (1-beta1) contribution to the saved first moment.
+        full = UnitModel().train();full.load_state_dict(saved['model']);restore_rng(saved['rng'])
+        full_optimizer = torch.optim.AdamW(full.parameters(), lr=.01, weight_decay=.013, fused=False)
+        full_optimizer.load_state_dict(copy.deepcopy(saved['optimizer']))
+        sum(objective_terms(full, query, support, plan, data, list(range(4)), context, configuration()).values()).backward()
+        torch.nn.utils.clip_grad_norm_(full.parameters(), .5, error_if_nonfinite=True)
+        old_moment = torch.cat([full_optimizer.state[p]['exp_avg'].flatten() for p in full.parameters()])
+        current = torch.cat([p.grad.flatten() for p in full.parameters()]) * (1 - full_optimizer.param_groups[0]['betas'][0])
+        audit = report['history_isolation']['saved_moment_comparison']['modules']['global']
+        self.assertAlmostEqual(float(old_moment.norm()), audit['saved_exp_avg_norm'], places=6)
+        self.assertAlmostEqual(float(current.norm()), audit['current_gradient_contributions']['full']['norm'], places=6)
+        full_optimizer.step()
+        full_delta = torch.cat([(p.detach() - initial).flatten() for p, initial in zip(full.parameters(), old)])
+        self.assertAlmostEqual(float((full_delta - delta).norm()),
+            report['history_isolation']['modules']['global']['delta_full_minus_history']['delta_norm'], places=6)
+        rank = UnitModel().train();rank.load_state_dict(saved['model']);restore_rng(saved['rng'])
+        rank_optimizer = torch.optim.AdamW(rank.parameters(), lr=.01, weight_decay=.013, fused=False)
+        rank_optimizer.load_state_dict(copy.deepcopy(saved['optimizer']))
+        objective_terms(rank, query, support, plan, data, list(range(4)), context, configuration())['ranking'].backward()
+        torch.nn.utils.clip_grad_norm_(rank.parameters(), .5, error_if_nonfinite=True);rank_optimizer.step()
+        rank_delta = torch.cat([(p.detach() - initial).flatten() for p, initial in zip(rank.parameters(), old)])
+        self.assertAlmostEqual(float((rank_delta - delta).norm()),
+            report['history_isolation']['modules']['global']['delta_ranking_minus_history']['delta_norm'], places=6)
+        self.assertTrue(report['history_isolation']['includes_weight_decay'])
+        self.assertIn('not an additive decomposition', report['history_isolation']['note'])
+
+    def test_history_branch_rejects_unused_trainable_parameter_instead_of_hiding_it(self):
+        class UnusedModel(UnitModel):
+            def __init__(self):
+                super().__init__()
+                self.unused = nn.Parameter(torch.ones(3))
+        saved, query, support, plan, data, context = fixture(UnusedModel, 8, 'cpu')
+        digest, before = hash_state(saved), hash_state(rng_state())
+        with self.assertRaisesRegex(RuntimeError, 'Gradient path failure: missing'):
+            shadow_update(UnusedModel, saved, query, support, plan, data, list(range(4)),
+                          context, UnitBudget(), include_history_only=True)
+        self.assertEqual(hash_state(saved), digest)
+        self.assertEqual(hash_state(rng_state()), before)
 
     def test_full_update_matches_production_loss_and_saved_adam_state(self):
         factory = UnitModel
@@ -200,7 +279,7 @@ class Checks(unittest.TestCase):
         saved=dict(model=copy.deepcopy(model.state_dict()),optimizer=copy.deepcopy(optimizer.state_dict()),
                    rng=copy.deepcopy(rng_state()),state=dict(batch=4,step=1),identity=dict(precision='FP32',
                    ranking=configuration(),base=dict(training=dict(grad_clip=.5))))
-        report=shadow_update(factory,saved,query,support,plan,data,list(range(4)),context,UnitBudget())
+        report=shadow_update(factory,saved,query,support,plan,data,list(range(4)),context,UnitBudget(),include_history_only=True)
         self.assertIn('local.cnn.weight',report['saved_parameter_layouts_restored'])
         direct=factory().train();_preserve_parameter_layouts(direct,saved['model']);direct.load_state_dict(saved['model'])
         direct_optimizer=torch.optim.AdamW(direct.parameters(),lr=.01,weight_decay=.013,fused=True)
@@ -214,6 +293,20 @@ class Checks(unittest.TestCase):
         self.assertAlmostEqual(float(norm),report['branches']['full']['gradient_norm_before_clip'],places=5)
         self.assertAlmostEqual(float(delta.norm()),report['branches']['full']['modules']['global']['delta_norm'],places=6)
         self.assertEqual(report['branches']['full']['adam_step_after_min'],2)
+        # CUDA fused Adam must also preserve channels-last Conv3D strides on
+        # explicit-zero history derivatives and reuse the saved moments.
+        history=factory().train();_preserve_parameter_layouts(history,saved['model']);history.load_state_dict(saved['model'])
+        history_optimizer=torch.optim.AdamW(history.parameters(),lr=.01,weight_decay=.013,fused=True)
+        history_optimizer.load_state_dict(copy.deepcopy(saved['optimizer']))
+        for parameter in history.parameters():
+            parameter.grad=torch.zeros_like(parameter,memory_format=torch.preserve_format)
+        history_optimizer.step()
+        history_delta=torch.cat([(p.detach()-initial).flatten() for p,initial in zip(history.parameters(),old)])
+        self.assertAlmostEqual(float(history_delta.norm()),report['branches']['history_only']['modules']['global']['delta_norm'],places=6)
+        self.assertAlmostEqual(float((delta-history_delta).norm()),
+            report['history_isolation']['modules']['global']['delta_full_minus_history']['delta_norm'],places=6)
+        self.assertEqual(report['branches']['history_only']['adam_step_after_min'],2)
+        self.assertTrue(report['saved_payload_unchanged'])
 
 
 if __name__ == '__main__':

@@ -1,0 +1,119 @@
+{
+  "schema": "local_cnn_counterfactual_debug_receipt_v1",
+  "status": "PASS",
+  "scope": "Mechanical unit/CUDA and actual CT DEBUG verification; NOT trained server epoch22 inference or final evaluation",
+  "unit_tests": {
+    "passed": 68,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 2.941,
+    "modules": [
+      "test_local_cnn_learning_diagnosis",
+      "test_local_cnn_l0_probe",
+      "test_local_cnn_l1_probe",
+      "test_local_cnn_shadow_probe",
+      "test_local_cnn_alignment_audit",
+      "test_local_cnn_fusion_probe",
+      "test_local_cnn_direct_head_probe",
+      "test_local_cnn_diagnosis_summary"
+    ]
+  },
+  "actual_ct_debug": {
+    "report": "work/local_cnn_counterfactual_direct_DEBUG_20261001/report.json",
+    "report_file_sha256": "f4842f38bcd77297aca105bd4b906390dc61c0f1b35f20f620532d5a8fd3204b",
+    "checkpoint_content_sha256": "e52135adf0f67adf8dccb1a94039531bde0d35f00c554f2b28dac3753b1359da",
+    "epoch_field": 0,
+    "step": 1,
+    "physical_batch": 2,
+    "parameters": 1125718,
+    "selected_query_cases": [
+      {
+        "split": "train",
+        "case": "liver_66",
+        "records": 2
+      },
+      {
+        "split": "validation",
+        "case": "liver_31",
+        "records": 2
+      }
+    ],
+    "full_support": {
+      "required_unique_support_records": 8,
+      "newly_encoded_records": 6,
+      "reused_query_trace_records": 2,
+      "physical_batch": 2,
+      "smaller_batches": "only final remainder within each same-donor case",
+      "elapsed_seconds": 26.086060900008306,
+      "loader_wait_seconds": 26.046787700033747,
+      "transfer_seconds": 0.0075625000754371285,
+      "l0_basis_seconds": 0.026960999937728047,
+      "cpu_vector_copy_seconds": 0.002245499868877232,
+      "complete": true,
+      "cached_vectors": "detached recipient and Fuse output only; 2 x 128D per record",
+      "cnn_passes": "one per missing physical batch, shared by all lambda branches",
+      "l0_basis_timing_scope": "CNN, masked pooling, projection and original fusion; synchronized CUDA wall time",
+      "support_policy": "full eligible inner-train support, query excluded on recipient and donor sides",
+      "production_checkpoint_written": false
+    },
+    "peak_cuda_gib": 0.2353973388671875,
+    "rss_bytes": 7304523776,
+    "execution": {
+      "precision": "FP32",
+      "torch_version": "2.8.0+cu128",
+      "cuda_build": "12.8",
+      "model": "paired native local CNN + data-label L1 + clustered L2",
+      "parameters": 1125718,
+      "trainable_parameters": 1125718,
+      "local_cnn": {
+        "architecture": "paired_native_local_cnn_v1",
+        "margin_mm": 10.0,
+        "channels": [
+          12,
+          24,
+          32
+        ],
+        "convolutions": [
+          2,
+          3,
+          3
+        ],
+        "hidden_dim": 128,
+        "readout": "organ_masked_mean_each_scale",
+        "fusion": "donor_target_difference_product",
+        "input": "native_spacing_organ_only",
+        "initialization": "fresh_seed42",
+        "learning_policy": "same_donor_live_v1"
+      },
+      "L1_layers": 2,
+      "L2_layers": 2,
+      "hidden_dim": 128,
+      "heads": 4,
+      "train_observations": 8,
+      "validation_observations": 2,
+      "gradient_accumulation": 1,
+      "data_parallel_workers": 1,
+      "effective_batch": 2,
+      "gpus_visible": 1,
+      "gpu_total_bytes": 17094344704,
+      "cuda_budget_bytes": 12884901888,
+      "rss_budget_bytes": 34359738368,
+      "resident_bytes": 8589934592,
+      "workers": 4,
+      "cpu_logical": 16,
+      "ram_available_bytes": 48099069952,
+      "debug_checkpoint": true,
+      "case_subset_explicit": true
+    },
+    "production_updates": 0,
+    "cloned_adam_steps": 5,
+    "diagnostic_head_updates": 8,
+    "weights_unchanged": true,
+    "payload_support_plan_unchanged": true,
+    "rng_preserved": true
+  },
+  "production_model_loss_changed": false,
+  "full_training_started": false,
+  "full_evaluation": false,
+  "trained_server_counterfactuals_executed": false
+}

@@ -1,3 +1,11 @@
+## v2.2 — epoch22 검토 반영과 원인 분리 진단 (2026-10-01)
+
+- 두 번째 query L1 FFN만 scale sweep하고 head별 전체 후보 attention weight의 분산·cosine·JS·entropy를 측정한다. Scale1 production parity, support/L2 고정.
+- Fusion `r+λ·Fuse`는 query와 전체 유효 support를 함께 재인코딩하고 λ별 plan을 새로 fit한다. 한 번의 CNN 결과를 모든 λ가 공유하며 기존 saved memory와 혼합하지 않는다.
+- Saved AdamW moments와 explicit zero gradient를 사용한 history-only 다섯 번째 복제 branch, 전체 P×U schedule의 alignment coefficient mass 감사 추가. Production loss는 자동 변경하지 않는다.
+- v1 scalar head 계열의 별도 frozen-recipient direct-head 대조 추가. 명시한 진단 step만 새 head를 학습하며 원본 CNN/scorer/optimizer/checkpoint는 보존한다.
+- 단위·CUDA68개 및 실제 CT DEBUG 통합 검사 통과. 서버22epoch 모델의 후속 probe와 전체 학습/성능 개선은 미검증. [검토·계산 범위·기록](docs/local_cnn_counterfactual_review_20261001.md).
+
 ## v2.2 — 진단 콘솔 요약과 저장된 결과 재열람 (2026-10-01)
 
 - 긴 deep JSON을 터미널에 모두 출력하던 기본 경로를 짧은 요약으로 변경. 전체 상세 JSON 저장과 계산 경로는 유지하며, `--verbose-console`으로 기존 상세 출력을 선택한다.

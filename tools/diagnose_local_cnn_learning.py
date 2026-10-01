@@ -1,4 +1,4 @@
-"""Read-only, GPU learning diagnosis. No optimizer, training or checkpoint writes.
+"""Read-only GPU diagnosis; cloned optimizer probes, no production writes.
 
 Explicit diagnostic case count; all candidates in each selected case are retained.
 Measures trained representations and support sensitivity, not a new trained model.
@@ -189,6 +189,14 @@ def diagnose(a):
     net=make_model(ds,budget,identity['debug'],'retained');net.load_state_dict(saved['model']);net.eval()
     memory=tree_to(state['memory'],'cuda');batch=state['batch']
     if memory['record_ids']!=[r['id'] for r in ds.rows]:raise ValueError('Saved memory order differs from train inventory')
+    if memory.get('donor_groups')!=[r['donor_group'] for r in ds.rows]:raise ValueError('Saved memory donor binding differs from train inventory')
+    saved_owners=memory['owners'].detach().cpu().tolist()
+    saved_classes=memory['classes'].detach().cpu().tolist()
+    if len(saved_owners)!=len(ds) or len(saved_classes)!=len(ds):raise ValueError('Saved memory metadata coverage differs')
+    for i,row in enumerate(ds.rows):
+        owner=saved_owners[i]
+        if not 0<=owner<len(memory['patient_groups']) or memory['patient_groups'][owner]!=row['patient_group'] or saved_classes[i]!=row['target']:
+            raise ValueError('Saved memory original ownership/class binding differs')
     counts=identity.get('support_training',{}).get('patients')
     episodes=None
     if counts:
@@ -197,7 +205,8 @@ def diagnose(a):
     context=LiveContext(ds,batch)
     loader=Loader(ds,a.workers,int(a.resident_gib*2**30),budget.rss_bytes)
     vl=Loader(val,a.workers,int(a.resident_gib*2**30),budget.rss_bytes,store=loader.store)
-    result=dict(diagnostic_only=True,training_started=False,optimizer_updates=0,full_evaluation=False,
+    result=dict(diagnostic_only=True,training_started=False,production_training_started=False,
+        diagnostic_head_training_started=False,optimizer_updates=0,full_evaluation=False,
         checkpoint_content_sha256=saved['content_sha256'],run=str(root),epoch=state['epoch'],step=state['step'],phase=state['phase'],
         margin_mm=identity['local_cnn']['margin_mm'],gpu=torch.cuda.get_device_name(),physical_batch=batch,
         cases_per_split=a.cases_per_split,memory_scope='saved epoch reference; NOT re-encoded current full cohort',
@@ -228,6 +237,11 @@ def diagnose(a):
             scope='Read-only representation traces and query-message counterfactuals; one cloned next optimizer tile',
             local_roi='Diagnostic feature readout only; production CT/mask/FOV unchanged',
             production_optimizer_updates=0)
+        from tools.local_cnn_alignment_audit import audit_alignment_schedule
+        result['alignment_schedule_audit']=audit_alignment_schedule(
+            ds,batch,ds.meta['config']['seed'],state['epoch'])
+        result['deep_probe_contract'].update(ff_scales=getattr(a,'ff_scales',None),
+            history_only=getattr(a,'history_only',False),fusion_scales=getattr(a,'fusion_scales',None))
         request=shadow_request(ds,state)
         result['shadow_update_request']=request
         if request['status']=='RUN':
@@ -243,7 +257,8 @@ def diagnose(a):
             q=loader.get(ids).to('cuda')
             print(f"SHADOW ONLY | next batch {request['next_batch']+1}/{request['total_batches']} | records={len(ids)} | {plan_scope}",flush=True)
             result['shadow_update']=shadow_update(lambda:make_model(ds,budget,identity['debug'],'retained'),
-                saved,q,support,plan,ds.rows,ids,context,budget)
+                saved,q,support,plan,ds.rows,ids,context,budget,
+                include_history_only=getattr(a,'history_only',False))
             result['shadow_update']['plan_scope']=plan_scope
             shadow=result['shadow_update']
             if verbose_console:
@@ -253,6 +268,13 @@ def diagnose(a):
                         clipping_factor=stats['clipping_factor'],modules=stats['modules'])),flush=True)
             del q,plan,support
         else:print('SHADOW NOT_RUN: '+request['reason'],flush=True)
+    fusion_scales=getattr(a,'fusion_scales',None)
+    fusion_queries=[]
+    direct_steps=getattr(a,'direct_head_steps',None)
+    direct_cases={'train':[],'validation':[]}
+    if fusion_scales:
+        from tools.local_cnn_fusion_probe import BasisBank
+        fusion_bank=BasisBank(ds.rows)
     for split,data,reader in [('train',ds,loader),('validation',val,vl)]:
         names=sorted({r['case_id'] for r in data.rows if r['target']==1})
         if len(names)<a.cases_per_split:raise ValueError('Requested diagnostic cases exceed available positive cases')
@@ -274,6 +296,9 @@ def diagnose(a):
                             if value is None:l0_unavailable.add(key)
                             else:l0_parts.setdefault(key,[]).append(value)
                         l0_reports.append(report);parts.append(output.detach());del output,stages
+                        if fusion_scales and split=='train':
+                            fusion_bank.add(slice_ids,l0_parts['project_recipient'][-1],
+                                            l0_parts['fusion_output'][-1])
                     else:parts.append(net.local(q).detach())
                     del q
                 embeddings=torch.cat(parts);truth=torch.tensor([r['target'] for r in rows],device='cuda')
@@ -289,8 +314,16 @@ def diagnose(a):
                         if key in l0_unavailable else dict(status='MEASURED',candidates=len(ids),**spread(torch.cat(l0_parts[key])))
                         for key in sorted(l0_keys)},batches=l0_reports)
                     state_full=net.prepare_support(*full)
-                    item['l1_substages_and_message_sweep']=probe_l1(net,embeddings,state_full,batch,a.message_scales,truth=truth)
+                    item['l1_substages_and_message_sweep']=probe_l1(net,embeddings,state_full,batch,a.message_scales,
+                        truth=truth,ff_scales=getattr(a,'ff_scales',None))
                     del state_full
+                    if fusion_scales:
+                        fusion_queries.append(dict(item=item,group=group,truth=truth,
+                            recipient=torch.cat(l0_parts['project_recipient']),fused=embeddings))
+                    if direct_steps is not None:
+                        direct_cases[split].append(dict(case_id=name,donor_case_id=rows[0]['donor_case_id'],
+                            features=torch.cat(l0_parts['project_recipient']),truth=truth,
+                            record_ids=[row['id'] for row in rows],candidate_keys=[record_key(row) for row in rows]))
                 if split=='train':
                     old=memory['embeddings'][ids]
                     item['memory_drift']=dict(mean_l2=float((old-embeddings).norm(dim=1).mean()),old=spread(old),current=spread(embeddings))
@@ -328,6 +361,43 @@ def diagnose(a):
                         score=sweep['score'],layers=[dict(layer=layer['layer'],
                             normalized_variance={key:stats['normalized_centered_energy'] for key,stats in layer['stages'].items()})
                             for layer in sweep['layers']])),flush=True)
+    if direct_steps is not None:
+        from tools.local_cnn_direct_head_probe import probe_direct_head
+        print(f'DIRECT HEAD DIAGNOSTIC | {direct_steps} updates of a separate scalar head; '
+              'CNN and original scoring path remain frozen; explicit selected cases only',flush=True)
+        result['direct_scalar_head']=probe_direct_head(direct_cases['train'],direct_cases['validation'],
+            steps=direct_steps,physical_batch=batch,seed=ds.meta['config']['seed'],
+            lr=a.direct_head_lr,hidden_dim=net.dim,budget=budget)
+        result['diagnostic_head_training_started']=True
+        result['training_started']=True
+        result['training_scope']='new diagnostic scalar head only; production model and optimizer are untouched'
+        result['direct_scalar_head']['feature_source']='current snapshot recipient project before paired fusion'
+        result['direct_scalar_head']['checkpoint_content_sha256']=saved['content_sha256']
+        result['direct_scalar_head']['original_scoring_cases']=[dict(split=row['split'],case_id=row['case_id'],
+            score=row['full_support']['score'],metrics=row['full_support']['metrics']) for row in result['cases']]
+        del direct_cases
+    if fusion_scales:
+        from tools.local_cnn_fusion_probe import support_indices,encode_missing,probe_fusion
+        required=set()
+        for case in fusion_queries:
+            case['support_indices']=support_indices(ds.rows,case['group'])
+            required.update(case['support_indices'])
+        print(f'FUSION DIAGNOSTIC | re-encode complete support union of {len(required)} records once; '
+              'all lambda branches share CNN outputs; no training/checkpoint writes',flush=True)
+        result['fusion_support_reencoding']=encode_missing(net.local,loader,fusion_bank,required,batch,budget)
+        for case in fusion_queries:
+            indices=case['support_indices'];recipient,fused=fusion_bank.get(indices,'cuda')
+            ids=torch.tensor(indices,device='cuda',dtype=torch.long)
+            used=torch.unique(memory['owners'][ids],sorted=True)
+            mapping=torch.full((len(memory['patient_groups']),),-1,device='cuda',dtype=torch.long)
+            mapping[used]=torch.arange(len(used),device='cuda')
+            owners=mapping[memory['owners'][ids]];classes=memory['classes'][ids]
+            case['item']['fusion_identity_bypass']=probe_fusion(net,case['recipient'],case['fused'],
+                recipient,fused,owners,classes,scales=fusion_scales,batch=batch,truth=case['truth'],
+                support_record_ids=[ds.rows[i]['id'] for i in indices],query_group=case['group'])
+            budget.check();del ids,recipient,fused,owners,classes
+        result['fusion_support_reencoding']['production_checkpoint_written']=False
+        del fusion_bank,fusion_queries
     result['peak_cuda_gib']=torch.cuda.max_memory_allocated()/2**30
     result['rss_bytes']=psutil.Process().memory_info().rss
     result['weights_unchanged']=hash_state(net.state_dict())==result['model_sha256']
@@ -337,7 +407,7 @@ def diagnose(a):
     if not verbose_console:
         from tools.summarize_local_cnn_diagnosis import format_summary
         print(format_summary(result),flush=True)
-    print(f'REPORT: {a.output}\nNo training/checkpoint changes. This sampled diagnosis is not full evaluation.',flush=True)
+    print(f'REPORT: {a.output}\nNo production training/checkpoint changes. This sampled diagnosis is not full evaluation.',flush=True)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -354,6 +424,11 @@ def main():
     p.add_argument('--deep',action='store_true',help='Explicit extra read-only traces and cloned next-update diagnostic')
     p.add_argument('--anchor-radius-mm',type=float,help='Required with --deep; read-only local feature ROI radius, never changes production FOV')
     p.add_argument('--message-scales',nargs='+',type=float,help='Required with --deep; explicit query-only message counterfactuals, including baseline 1')
+    p.add_argument('--ff-scales',nargs='+',type=float,help='Optional explicit query layer-2 FFN sweep with message scale 1; must include 1')
+    p.add_argument('--history-only',action='store_true',help='Add cloned AdamW zero-gradient saved-moment branch; no production update')
+    p.add_argument('--fusion-scales',nargs='+',type=float,help='Explicit r+lambda*Fuse sweep; re-encodes ALL eligible train support once, then shares vectors across lambdas')
+    p.add_argument('--direct-head-steps',type=int,help='Explicit short DIAGNOSTIC updates for a separate scalar head on frozen recipient features; never production training')
+    p.add_argument('--direct-head-lr',type=float,help='Required together with --direct-head-steps; no implicit diagnostic learning rate')
     a=p.parse_args()
     if a.cases_per_split<1 or a.workers<2 or not 0<a.resident_gib<a.rss_gib:raise ValueError('Explicit valid diagnostic resources required')
     import math
@@ -362,7 +437,18 @@ def main():
             raise ValueError('Deep diagnostic requires a positive explicit anchor ROI radius')
         if not a.message_scales or len(set(a.message_scales))!=len(a.message_scales) or 1. not in a.message_scales or any(not math.isfinite(v) or v<0 for v in a.message_scales):
             raise ValueError('Deep diagnostic requires unique nonnegative message scales including production baseline 1')
-    elif a.anchor_radius_mm is not None or a.message_scales is not None:
+        if a.ff_scales is not None and (not a.ff_scales or len(set(a.ff_scales))!=len(a.ff_scales) or 1. not in a.ff_scales or any(not math.isfinite(v) or v<0 for v in a.ff_scales)):
+            raise ValueError('FF diagnostic requires unique nonnegative scales including baseline 1')
+        if a.fusion_scales is not None:
+            from tools.local_cnn_fusion_probe import validate_scales
+            validate_scales(a.fusion_scales)
+        if (a.direct_head_steps is None)!=(a.direct_head_lr is None):
+            raise ValueError('Direct-head diagnostic needs both explicit steps and learning rate')
+        if a.direct_head_steps is not None and (a.direct_head_steps<1 or not math.isfinite(a.direct_head_lr) or a.direct_head_lr<=0):
+            raise ValueError('Positive explicit direct-head diagnostic steps and learning rate required')
+    elif (a.anchor_radius_mm is not None or a.message_scales is not None
+          or a.ff_scales is not None or a.history_only or a.fusion_scales is not None
+          or a.direct_head_steps is not None or a.direct_head_lr is not None):
         raise ValueError('Additional probe options require explicit --deep')
     from tools.local_cnn_device import select
     select(a.gpu)

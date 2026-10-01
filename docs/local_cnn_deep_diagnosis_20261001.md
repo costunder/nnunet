@@ -158,6 +158,76 @@ scale0의 pairwise loss는 0.6932707로 scale1의 0.6931957보다 크다.
 support/plan·RNG 보존과 production update0을 확인했다. 새 요약 출력은
 loss 차이를 7 유효숫자로 보존하고 step/개수를 반올림하지 않는다.
 
+## 저장된 서버 결과의 전체 요약 수신 (2026-10-01)
+
+사용자 첨부 `59733fa6-b65b-41b5-a5b8-654f321212ad`의 요약 전체를 읽었다.
+이는 앞서 잘린 동일 deep JSON을 reader로 다시 읽은 결과다. 새 진단을
+실행한 것이 아니다. 저장 상태의 epoch 필드는22, step11872, margin10mm,
+physical batch32이며 checkpoint content SHA256은
+`d397703cc5d21eaa6a899c62c8313ab5e53fa7fc5b580e6b6bdfac9a7c287e02`다.
+epoch 필드를 화면 학습 epoch로 임의 변환하지 않는다. 원본 서버 JSON과
+가중치는 여전히 로컬 미수신이며 이번 증거는 그 보고서의 텍스트 요약이다.
+
+| 사례 | fusion input→output 정규화 분산 감소 | L0→마지막 L1 감소 | pair win | MRR |
+|---|---:|---:|---:|---:|
+| train liver_1 | 약120배 | 약8160배 | 0.5028409 | 0.07142857 |
+| train liver_49 | 약91배 | 약8140배 | 0.5136719 | 0.2 |
+| validation liver_109 | 약39배 | 약7870배 | 0.6498843 | 0.5 |
+| validation liver_3 | 약43배 | 약7700배 | 0.0390625 | 0.008064516 |
+
+비율은 요약에 표시된 반올림된 분산값으로 계산한 근사치다. 정확도·암 정보
+손실률이 아니며 다른 case/전체 evaluation으로 일반화하지 않는다.
+CNN map 내부 공간 분산은 nonzero이고, 후보의 recipient mean/project에도
+차이가 있다. 이것으로 종양 추천에 유효한 영상 특징이 학습됐다고 입증하지는
+못하지만 CNN 입력·모든 출력이 상수라는 설명과는 다르다.
+
+가장 강한 공통 수축은 paired fusion과 L1 둘째 query 층이다. 첫 L1 출력은
+입력 정규화 분산의11.7~12.0%, 둘째 출력은0.105~0.108%다. 둘째 층의
+residual_norm→second_add(FFN 잔차합)에도 큰 수축이 나타난다. 이미 residual이
+구현되어 있으므로 'residual 추가'만을 수정안으로 제시하지 않는다.
+정규화 분산만으로 raw 후보 차이의 상쇄와 공통 norm 증가를 구분할 수 없다.
+원본 JSON의 raw centered/common energy와 norm을 우선 대조해야 한다.
+
+메시지 scale0에서 score std는 약2.55배 커지지만 pair win은 네 사례에서
+거의 그대로다. 특히 liver_3은 모든 scale에서0.0390625이고 scale0 loss는
+더 크다. 따라서 message gate만 약화하면 순위 학습을 해결한다는 주장은
+지지되지 않는다. scale0도 FFN·두 norm을 유지한다.
+
+첫 query L1은 shared class seed의 반복을 읽고 둘째 query L1에서 한 번
+support 문맥을 읽은 label 상태를 읽는다(model.py의 synchronous histories).
+첫 메시지의 후보 분산은 약1e-14로 사실상 공통 신호다. 다만 shared seed여도
+query-dependent attention은 가능하다. additive MLP의 활성 구간이 동일하면
+query 항이 softmax에서 상쇄될 수 있다는 가설은 별도 확인이 필요하다.
+support history를 입력 대신 출력으로 바꾸는 행위는 전파 순서 변경이다.
+
+복제 Adam에서 full-vs-ranking update cosine은 모듈별0.998~1이다. 이것으로
+보조 loss가 무해하다고 결론 내리지 않는다. 네 분기 모두 step11872의 같은
+Adam moment를 물려받아 ranking-only에도 과거 full objective의 이력이 있다.
+현재 -ranking gradient와 full delta의 cosine은 global0.0566,
+readout/fusion-0.0795이고, readout의 CE-vs-rank raw gradient cosine은-0.183이다.
+한 tile의 방향 차이는 확인되지만 장기 원인/모든 step의 성질은 아니다.
+clip factor는 네 분기 모두1이라 이번 tile에서는 gradient clipping이
+수축/갱신 부진의 원인이 아니다. backward 분해·원본 weights/payload/plan/RNG
+보존은 true이며 production update0이다.
+
+다음 수정 우선순위는 query FFN을 포함한 L1 후보 표현 보존, paired fusion,
+국소 readout 순서다. 메시지 강도·loss weight·CNN 크기를 먼저 임의 변경하거나
+계속40epoch 학습하면 해결된다고 주장하지 않는다. FFN fixed-weight 대조와
+raw centered/common energy, saved Adam moment 영향 분리를 근거로 구체적인
+변경 수식을 정해야 한다. 이번 결과 수신에서는 production 코드를 수정하거나
+학습을 재개하지 않았다.
+
+## epoch22 독립 검토 후속 구현
+
+상세 A~E 첨부를 전부 읽고 query layer2 FFN scale·attention weight sensitivity·
+동일 support/query fusion identity bypass·zero-gradient saved-Adam history
+probe를 추가했다. 전체 epoch alignment multiplicity도 감사한다. Production
+loss/architecture는 유지한다. 사용자 후속 제안에 따라 fusion 이전 recipient
+특징의 별도 scalar-head 진단도 추가했다. 단위/CUDA68개와 실제 CT DEBUG
+통합 검사 통과; 서버 가중치의 후속 원인 판정은 아직 실행하지 않았다.
+새 패치의 우선순위는 fusion→query FFN→attention이며 fixed-weight 순위 반응을
+확인한 후에 정한다. [정확한 계약과 검증 기록](local_cnn_counterfactual_review_20261001.md).
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

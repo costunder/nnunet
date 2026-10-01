@@ -1,7 +1,8 @@
 """Read-only AdamW counterfactuals on one copied, scheduled training update.
 
-All four branches start from the same model, optimizer moments and train-mode
-dropout realization. They are diagnostics, never training outputs or checkpoints.
+All branches start from the same model, optimizer moments and train-mode dropout
+realization. The optional fifth branch uses explicit zero derivatives to isolate
+saved AdamW history and weight decay. No branch is a training output/checkpoint.
 """
 import copy
 import time
@@ -119,12 +120,52 @@ def _steps(optimizer):
     return [float(state['step']) for state in optimizer.state.values() if 'step' in state]
 
 
-def shadow_update(factory, saved, query, support, plan, rows, indices, context, budget):
+def _moment_comparison(optimizer, named, vectors, grouped, clip):
+    """Saved first moment and the actual clipped current-gradient contribution."""
+    beta1 = optimizer.param_groups[0]['betas'][0]
+    averages = []
+    uninitialized = []
+    for name, parameter in named:
+        state = optimizer.state.get(parameter, {})
+        average = state.get('exp_avg')
+        if average is None:
+            # AdamW initializes an absent state to exactly zero on its first
+            # connected step; this is not an invented fallback derivative.
+            if state:
+                raise ValueError(f'Saved AdamW state lacks exp_avg: {name}')
+            uninitialized.append(name)
+            average = torch.zeros_like(parameter)
+        if average.shape != parameter.shape or not bool(torch.isfinite(average).all()):
+            raise ValueError(f'Saved AdamW first moment is invalid: {name}')
+        averages.append(average.detach().reshape(-1))
+    saved_average = torch.cat(averages)
+    contributions = {}
+    for branch, vector in vectors.items():
+        scale = min(1., float(clip / (vector.norm() + 1e-6)))
+        contributions[branch] = vector * scale * (1. - beta1)
+    reports = {}
+    for label, positions in grouped.items():
+        old = saved_average[positions]
+        old_norm = float(old.norm())
+        reports[label] = dict(saved_exp_avg_norm=old_norm,
+            beta1_saved_exp_avg_norm=float((beta1 * old).norm()),
+            current_gradient_contributions={branch: dict(norm=float(value[positions].norm()),
+                ratio_to_saved_exp_avg=(float(value[positions].norm()) / old_norm if old_norm else None),
+                vs_saved_exp_avg=direction(old, value[positions]))
+                for branch, value in contributions.items()})
+    return dict(beta1=beta1, modules=reports, uninitialized_parameter_names=uninitialized,
+                gradient_contribution='(1-beta1) * current gradient after production clipping')
+
+
+def shadow_update(factory, saved, query, support, plan, rows, indices, context, budget,
+                  *, include_history_only=False):
     """Real AdamW steps on a fresh clone; restores caller RNG even after failure.
 
     factory must construct the exact model in retained FP32 execution. query and
     support are the next scheduled physical tile and its original support/plan.
     No forward labels, schedule, observation or candidate counts are changed.
+    include_history_only adds a copied AdamW step with a real zero tensor for
+    every trainable parameter; None would skip moment/decay and is forbidden.
     """
     caller_rng = rng_state()
     saved_digest = hash_state(saved)
@@ -189,12 +230,17 @@ def shadow_update(factory, saved, query, support, plan, rows, indices, context, 
         # one clone remain while independent optimizer branches are measured.
         branch_reports = {}
         deltas = {}
-        for branch in BRANCHES:
+        moment_comparison = None
+        branch_names = BRANCHES + (('history_only',) if include_history_only else ())
+        for branch in branch_names:
             net.load_state_dict(saved['model'], strict=True)
             restore_rng(saved['rng'])
             optimizer = _optimizer(net, saved)
             optimizer.zero_grad(set_to_none=True)
-            grads = all_gradients[branch]
+            if include_history_only and moment_comparison is None:
+                moment_comparison = _moment_comparison(optimizer, named, vectors, grouped, clip)
+            grads = (tuple(torch.zeros_like(parameter) for parameter in parameters)
+                     if branch == 'history_only' else all_gradients[branch])
             missing = []
             for (name, parameter), gradient in zip(named, grads):
                 if gradient is None:
@@ -206,7 +252,7 @@ def shadow_update(factory, saved, query, support, plan, rows, indices, context, 
             present = [parameter.grad for parameter in parameters if parameter.grad is not None]
             if not present or not bool(torch.stack([torch.isfinite(g).all() for g in present]).all()):
                 raise FloatingPointError(f'Empty or nonfinite gradients in shadow {branch}')
-            if branch == 'full':
+            if branch in ('full', 'history_only'):
                 gradient_check_batched(net)
             before_steps = _steps(optimizer)
             norm = torch.nn.utils.clip_grad_norm_(parameters, clip, error_if_nonfinite=True)
@@ -225,7 +271,7 @@ def shadow_update(factory, saved, query, support, plan, rows, indices, context, 
                 per_module[label] = dict(delta_norm=float(d.norm()),
                     vs_negative_ranking_gradient=direction(-vectors['ranking'][positions], d))
             after_steps = _steps(optimizer)
-            branch_reports[branch] = dict(weighted_loss=losses[branch], gradient_norm_before_clip=float(norm),
+            branch_reports[branch] = dict(weighted_loss=(0. if branch == 'history_only' else losses[branch]), gradient_norm_before_clip=float(norm),
                 clipping_factor=min(1., float(clip / (norm + 1e-6))), modules=per_module,
                 unused_gradient_parameters=missing, unused_gradient_policy='None; no AdamW decay/moment update',
                 adam_state_entries=len(optimizer.state),
@@ -234,15 +280,34 @@ def shadow_update(factory, saved, query, support, plan, rows, indices, context, 
                 adam_step_after_min=min(after_steps) if after_steps else None,
                 adam_step_after_max=max(after_steps) if after_steps else None,
                 optimizer_seconds=seconds)
+            if branch == 'history_only':
+                branch_reports[branch]['explicit_zero_gradients'] = True
+                branch_reports[branch]['zero_gradient_parameter_count'] = len(parameters)
             budget.check()
             del optimizer
-        for branch in BRANCHES[:-1]:
+        for branch in [key for key in branch_names if key != 'full']:
             branch_reports[branch]['vs_full_update'] = {
                 label: dict(direction(deltas['full'][positions], deltas[branch][positions]),
                             delta_difference_norm=float((deltas[branch] - deltas['full'])[positions].norm()))
                 for label, positions in grouped.items()
             }
-        result = dict(diagnostic_only=True, production_optimizer_updates=0, cloned_optimizer_steps=4,
+        history = None
+        if include_history_only:
+            history = {}
+            for label, positions in grouped.items():
+                old = deltas['history_only'][positions]
+                rank = deltas['ranking'][positions]
+                full_delta = deltas['full'][positions]
+                full_norm, rank_norm = float(full_delta.norm()), float(rank.norm())
+                history[label] = dict(history_delta_norm=float(old.norm()),
+                    ratio_to_full_delta_norm=(float(old.norm()) / full_norm if full_norm else None),
+                    ratio_to_ranking_delta_norm=(float(old.norm()) / rank_norm if rank_norm else None),
+                    vs_full_delta=direction(full_delta, old), vs_ranking_delta=direction(rank, old),
+                    delta_full_minus_history=dict(delta_norm=float((full_delta - old).norm()),
+                        vs_negative_ranking_gradient=direction(-vectors['ranking'][positions], full_delta - old)),
+                    delta_ranking_minus_history=dict(delta_norm=float((rank - old).norm()),
+                        vs_negative_ranking_gradient=direction(-vectors['ranking'][positions], rank - old)))
+        result = dict(diagnostic_only=True, production_optimizer_updates=0, cloned_optimizer_steps=len(branch_names),
             train_mode=True, dropout_enabled=True, precision='FP32', activation_storage='retained',
             physical_batch=len(indices), configured_physical_batch=saved['state']['batch'],
             saved_step=saved['state']['step'], losses=losses, gradients=gradients,
@@ -250,6 +315,10 @@ def shadow_update(factory, saved, query, support, plan, rows, indices, context, 
             optimizer_state_reused=True, same_forward_realization_for_all_branches=True,
             saved_parameter_layouts_restored=restored_layouts,
             direction_note='Delta includes saved Adam moments, epsilon and weight decay; gradient conflict alone does not determine its direction')
+        if include_history_only:
+            result['history_isolation'] = dict(modules=history, saved_moment_comparison=moment_comparison,
+                explicit_zero_gradients=True, includes_weight_decay=True,
+                note='AdamW uses a nonlinear second-moment denominator. Delta subtraction is a counterfactual contrast, not an additive decomposition or a percentage attribution.')
         budget.check()
     finally:
         restore_rng(caller_rng)

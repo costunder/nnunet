@@ -61,6 +61,25 @@ def fixture():
 
 
 class SummaryTests(unittest.TestCase):
+    def test_counterfactual_results_are_visible_without_claiming_training_improvement(self):
+        report=fixture();case=report['cases'][0]
+        probe=case['l1_substages_and_message_sweep']
+        score=dict(score_std=.003,mean_positive_minus_unobserved=.0001,pair_win_rate=.51,mean_pairwise_loss=.693118)
+        probe['query_ff_scale_sweep']=dict(reports=[dict(ff_scale=0,score=score),dict(ff_scale=1,score=score)])
+        probe['attention_sensitivity']=dict(layers=[dict(layer=2,per_head=[dict(candidate_weight_variance_mean=1e-17,
+            mean_pairwise_cosine=1.,mean_pairwise_jensen_shannon=1e-15,entropy_mean=3.)])])
+        case['fusion_identity_bypass']=dict(branches=[dict(branch='recipient_residual',fusion_scale=0,score=score)])
+        report['alignment_schedule_audit']=dict(patient_group_count=84,optimization_steps=533,
+            tile_count_distribution=dict(minimum=4,maximum=38,minimum_current_to_equal_ratio=.63,maximum_current_to_equal_ratio=5.99))
+        report['shadow_update']['history_isolation']=dict(modules={'global':dict(history_delta_norm=.02,
+            ratio_to_full_delta_norm=.9,vs_full_delta=dict(cosine=.99),
+            delta_full_minus_history=dict(delta_norm=.002),delta_ranking_minus_history=dict(delta_norm=.001))})
+        text=format_summary(report)
+        for value in ('L1_2 FF-only','ff=0','Attention L1_2','1e-17','support+query re-encoded',
+                      'K_g min/max=4/38','production loss unchanged','Adam history global','nonlinear contrasts'):
+            self.assertIn(value,text)
+        self.assertNotIn('accuracy improved',text)
+
     def test_four_cases_fit_compact_output_without_metric_omission(self):
         report = fixture()
         report["cases"] = [copy.deepcopy(report["cases"][0]) for _ in range(4)]
