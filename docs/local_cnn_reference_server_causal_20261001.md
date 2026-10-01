@@ -1,5 +1,10 @@
 # v2.2 — 실제 학습 대상·objective 방향의 서버 결과
 
+이후 학습된 A6000의 **동일 pre-forward BN finite 결과**를 추가 수신했다.
+최신 판단·이미 수행된 직접 head·v1과 현재 정답의 차이는
+[2026-10-02 서버 기록](local_cnn_finite_server_20261002.md)에 연결한다.
+아래 원래 결과와 당시 미검증 범위는 역사적 기록으로 보존한다.
+
 사용자 `786be592` 첨부 전문을 보존했다. 실행 commit `70c8c5f`, 물리 GPU3
 RTX A6000, 기존 m10 실험의 latest checkpoint를 읽은 독립 clone 진단이다.
 이번 콘솔에는 snapshot epoch·step·hash가 없다. 이전 epoch39 결과와 같은

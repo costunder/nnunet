@@ -1,0 +1,40 @@
+{
+  "scope": "new actual A6000 server console preservation and code/evidence reconciliation; no new model execution",
+  "source_console_sha256": "0823ba7c05b6f372995b0406750a9757199da0b33bb6fa79e8ac21a156cc2b9c",
+  "transcription_sha256": "c1ca81fdde4255ddfdc12eb53a3b42cac4603d9e6bde8c4c640b1da0d7fcbd25",
+  "complete_timeline_rows": 10,
+  "complete_native_updates": 8,
+  "finite_readouts": 24,
+  "module_rows": 32,
+  "exact_full_shadow_actual_parity": 8,
+  "raw_server_JSON_received": false,
+  "production_files_unchanged": 121,
+  "user_dirty_files_unchanged": {
+    "REFERENCES.md": "41070efe9735a43f74634e2b760b008bc2f0a9de96ec804e6f07ae8a502fde92",
+    "code.txt": "7d471ef0344c11bc55786cf585747d08a9945beb691bc0de461d54502212c64d",
+    "gpt_handoff.md": "fcbc74398f89ca071215b6ab38c24720dd85e030df628dfd7339fced7fd1e990"
+  },
+  "original_direct_head_result_preserved": {
+    "path": "validation/local_cnn_interaction_20261001/server_epoch27_transcription.json",
+    "sha256": "ead98ccb6641de92c93f347b3f8004c0c8bfd9f668e43c4391595bfe86ad4251",
+    "snapshot": {
+      "run": "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42",
+      "report_path": "/home/aicompetition06/Medical/experiments/counterfactual_20261001_122757/report.json",
+      "epoch_field": 27,
+      "step": 14924,
+      "phase": "refresh_memory",
+      "margin_mm": 10.0,
+      "physical_batch": 32,
+      "checkpoint_content_sha256": "62fda7c8dffd542d51c3f6c4cc752de703ac44712e6f722c5dd150b70c0b699b",
+      "completed_epoch_interpretation": "unavailable: epoch field is preserved without display/zero-index reinterpretation"
+    },
+    "already_executed_updates": 100,
+    "not_new_snapshot_identity": true
+  },
+  "new_model_or_probe_implementation": false,
+  "new_unit_or_smoke_execution": false,
+  "production_checkpoint_written": false,
+  "long_training_started": false,
+  "production_ready": false,
+  "causal_maincause_resolved": false
+}
