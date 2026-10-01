@@ -1,0 +1,34 @@
+test_case_recalls_are_printed_inline_from_saved_metrics (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_cli_prints_all_once_and_new_output_matches_preserving_input (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_every_rank_and_case_is_printed_without_cap (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_existing_output_collision_preserves_both_files (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_formatter_does_not_mutate_dictionary (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_gradient_individual_not_run_status_and_reason_are_preserved (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_gradient_outer_not_run_status_and_reason_are_preserved (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_missing_and_null_updates_are_unavailable_explicit_empty_is_zero (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_module_loads_and_formats_without_torch_or_model_access (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_not_evaluable_tile_remains_distinct_from_case_ranking (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_not_run_and_reasons_propagate (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_numeric_bool_is_not_accepted_as_measurement (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_old_update_report_preserves_before_after_every_case (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_only_actual_batch_does_not_invent_configuration (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_real_debug_exact_stored_energies_metrics_and_alignment (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_real_debug_report_covers_every_branch_mode_split_case_and_rank (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_reject_nan_inf_even_in_unformatted_metadata (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_reject_nonobject_and_incorrect_scope (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_cli_prints_once_preserves_json_and_uses_new_output_only (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_has_no_update_cap_and_distinguishes_missing_updates (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_loss_not_run_propagates_without_fabricating_count (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_missing_and_not_run_are_preserved (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_preserves_every_real_branch_split_case_score_and_trace (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_prints_every_old_update_and_all_stored_terms (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_rejects_wrong_scope_and_numeric_bool (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_signal_mode_uses_stored_prototype_statistics_without_invention (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_source_as_output_collision_cannot_overwrite_json (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_unavailable_is_not_synthesized_as_zero (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+test_update_schema_physical_batch_does_not_invent_actual_batch (tests.test_summarize_local_cnn_reference.SavedReferenceSummaryTest) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.096s
+
+OK

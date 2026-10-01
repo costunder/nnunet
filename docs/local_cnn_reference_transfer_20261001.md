@@ -195,6 +195,74 @@ case별 R@1/5/10과 gradient NOT_RUN 사유도 표시한다. Production source12
 `saved_summary_unit_log.txt`에 기록했다. 이 검사는 JSON 출력 검증이며 새 GPU
 smoke나 서버 성능 검증이 아니다.
 
+## 저장된 전체 case 요약 수신: epoch39 / step21320
+
+사용자가 `3eb0402` 요약기로 읽은 전체 콘솔을 추가로 제공했다. Snapshot은
+epoch39/step21320, phase=refresh_memory다. 첫 deterministic tile은 P0/U32였고,
+ranking pair/loss/query gradient는 모두0이다. 이 tile에서 빈 P×U 합이0인 것은
+정상이며, 전체 학습의 ranking gradient가 끊겼다는 증거로 사용하지 않는다.
+이전 최초 콘솔에는 없던 이 정보가 새 요약에서 확인됐다. 원본 서버 JSON은 여전히
+로컬 미수신이며, 수신한 **요약 원문**과 분석을 별도로 보존했다.
+
+| 경로 | train MRR | train pair-win | validation MRR | validation pair-win | liver_3 종양 순위 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| legacy | 0.121795 | 0.495716 | 0.541667 | 0.643973 | 12 |
+| raw_columns | 0.109649 | 0.495212 | 0.505102 | 0.452288 | 98 |
+| affine_relations | 0.266667 | 0.512349 | 0.504902 | 0.382254 | 102 |
+| affine_relations_zero_out_bias | 0.196429 | 0.535786 | 0.507353 | 0.606027 | 68 |
+
+Reference의 normalized energy 회복은 **일관된 순위 개선으로 이어지지 않았다.**
+Bias0의 train pair-win은 높아졌지만 validation MRR/pair-win 및 단일 양성
+case에서는 legacy보다 낮다. 이 reference는 zero-update 전이 대조이며 새 L1을
+학습 완료한 모델이 아니다. 즉시 전이 성능으로 PRODIGY 자체의 학습 가능성을
+판정하거나 production L1을 자동 교체하지 않는다.
+
+현재 MRR는 각 case의 **첫 관측 종양 순위의 역수**를 case별 평균한다. 모든
+branch에서 liver_109는 관측 종양27개 중 첫 종양이1위라 MRR=1이다. 그 case의
+R@1은1/27=0.037037이다. Liver_3의 종양은1개뿐이며 reference에서는68~102위다.
+따라서 validation MRR 약0.5를 후보 정확도50%로 읽으면 안 된다. Validation
+pair-win도 liver_109의3456쌍이 전체3584쌍의96.43%를 차지하므로 case별 결과를
+함께 봐야 한다. 같은 N/P의 무작위 순서에서 기대되는 first-positive MRR는
+두 train case 평균 약0.267638, 두 validation case 평균 약0.206263이다.
+이는 조합식으로 계산한 비교 기준이며 실제 모델 실행 결과나 모집단 검정이 아니다.
+
+표시된 모든 pairwise loss는 ln2=0.69314718056에서 약-1.73e-6~+6.16e-8 이내다.
+Pairwise loss 개선은 매우 작지만, 이 평균만으로 모든 점수 차이가 작다거나
+모든 후보가 동점이라고 단정하지 않는다. 특히 단일 양성 liver_3의 순위와 strict
+pair-win을 대조하면 exact P/U tie는 최소 legacy1/raw5/affine5/bias0 3개가
+존재한다. 전체 tie율이나 FP32 반올림의 영향 크기는 저장된 score 통계로 확인한다.
+
+원문은 `server_fixed_saved_summary_original.txt`, 전사는
+`server_fixed_saved_summary_analysis.json`에 저장했다. 네 branch/두 split/전체
+16case 행과 모든 observed rank를 보존했고, 무작위 기준 및 tie 하한은 **계산된
+비교 값**으로 표시했다. Production 모델·loss·mask·가중치는 변경하지 않았다.
+
+다음 확인도 새 GPU 학습이 필요 없다. 동일 서버 JSON에 이미 저장된 case별
+score_std/min/max, positive-minus-unobserved, exact_tie_rate, 전체 case의 L0/L1
+stage energy/norm을 읽는다. 이전4-update JSON에는 매 update의 ranking_pairs와
+ranking_loss가 있으므로, 그4회에서 ranking 신호가 실제 들어갔는지도 확인할 수
+있다. 고정 P0 tile만으로 이전4회 모두 ranking=0이라고 추정하지 않는다.
+
+이를 위한 stdlib `--signals` 출력 검사를 추가했고 CPU 검사29개가 통과했다.
+기존 기본 요약은 byte 단위로 그대로다. 고정/update JSON 모두에서 저장된
+score6항목, case별 stage energy/norm, 기록된 prototype cosine(없는 reference는
+unavailable), fixed query ranking pair/gradient와 이전 **모든** update의
+rank pair/loss/CE/alignment를 출력한다. 새 점수나 순위를 계산하지 않는다.
+검사 결과는 `saved_signal_checks.json`, 로그는 `saved_signal_unit_log.txt`다.
+입력 JSON·이전 증거·production121파일 hash가 보존됐으며 새 GPU 실행은 없다.
+
+원본 JSON 두 개의 추가 신호를 한 번에 읽는 명령은 다음과 같다.
+
+```bash
+cd /home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba &&
+git fetch origin codex/v222-server-r6 &&
+git checkout --detach FETCH_HEAD &&
+python -u tools/summarize_local_cnn_reference.py \
+  /home/aicompetition06/Medical/experiments/reference_fixed_20261001_185138.json --signals &&
+python -u tools/summarize_local_cnn_reference.py \
+  /home/aicompetition06/Medical/experiments/reference_l1_20261001_173620.json --signals
+```
+
 기존 결과를 읽는 명령은 다음과 같다. Production 모델이나 기존 결과를 바꾸지
 않고 새 summarizer만 설치한다. GPU 선택 입력은 필요 없는 파일 읽기 명령이다.
 

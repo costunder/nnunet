@@ -11,7 +11,7 @@ import types
 import unittest
 from unittest.mock import patch
 
-from tools.summarize_local_cnn_reference import format_summary, main, read_summary
+from tools.summarize_local_cnn_reference import format_signals, format_summary, main, read_summary
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -261,7 +261,119 @@ class SavedReferenceSummaryTest(unittest.TestCase):
         with patch.dict(sys.modules, forbidden):
             module = runpy.run_path(str(ROOT / 'tools/summarize_local_cnn_reference.py'), run_name='saved_only_test')
             summary = module['format_summary'](fixture())
+            signals = module['format_signals'](fixture())
         self.assertIn('No model execution', summary)
+        self.assertIn('No model execution, score reranking or metric recomputation', signals)
+
+    def test_signal_mode_preserves_every_real_branch_split_case_score_and_trace(self):
+        report = json.loads(FIXED_REPORT.read_text(encoding='utf-8'))
+        signals = format_signals(report)
+        for branch in report['comparison']['branches']:
+            self.assertIn('BRANCH ' + branch['branch'], signals)
+            self.assertIn('ranking_pairs=' + str(branch['per_loss_query_gradient']['ranking_pairs']), signals)
+            for split in ('train', 'validation'):
+                self.assertIn('initial_full_case_evaluation ' + split, signals)
+                for case in branch['initial_full_case_evaluation'][split]['cases']:
+                    self.assertIn('case=' + case['case_id'], signals)
+                    for key in ('score_std', 'score_min', 'score_max', 'mean_positive_minus_unobserved', 'exact_tie_rate', 'comparisons'):
+                        self.assertIn(key + '=' + str(case['score'][key]), signals)
+                    for stage in case['trace']['stages']:
+                        self.assertIn(stage['stage'] + '(raw=' + str(stage['centered_energy'])
+                                      + ',normalized=' + str(stage['normalized_centered_energy'])
+                                      + ',mean_norm=' + str(stage['mean_norm']) + ')', signals)
+        self.assertEqual(signals.count('    case='), 8)
+        self.assertEqual(signals.count('      trace '), 8)
+
+    def test_signal_mode_uses_stored_prototype_statistics_without_invention(self):
+        report = json.loads(FIXED_REPORT.read_text(encoding='utf-8'))
+        signals = format_signals(report)
+        case_trace = report['comparison']['branches'][0]['initial_full_case_evaluation']['train']['cases'][0]['trace']
+        prototype = '/'.join(str(case_trace['prototype_cross_class_cosine_' + key]) for key in ('min', 'max', 'mean'))
+        self.assertIn('prototype_cosine min/max/mean=' + prototype, signals)
+        self.assertIn('prototype_cosine min/max/mean=unavailable/unavailable/unavailable', signals)
+
+    def test_signal_mode_prints_every_old_update_and_all_stored_terms(self):
+        report = json.loads(OLD_REPORT.read_text(encoding='utf-8'))
+        signals = format_signals(report)
+        total = 0
+        for branch in report['comparison']['branches']:
+            for update in branch['updates']:
+                total += 1
+                expected = 'update step=' + str(update['step']) + ' | ' + ' | '.join(
+                    key + '=' + str(update['terms'][key])
+                    for key in ('ranking_pairs', 'ranking_loss', 'observation_auxiliary_loss', 'alignment_loss'))
+                self.assertIn(expected, signals)
+        self.assertEqual(signals.count('  update step='), total)
+        self.assertEqual(signals.count('    case='), 8)
+
+    def test_signal_mode_missing_and_not_run_are_preserved(self):
+        report = fixture()
+        branch = report['comparison']['branches'][0]
+        branch['per_loss_query_gradient'] = {'status': 'NOT_RUN', 'reason': 'explicit memory limit'}
+        branch['initial_full_case_evaluation'] = {
+            'train': {'status': 'NOT_RUN', 'reason': 'not evaluated'},
+            'validation': {'cases': [{'case_id': 'missing', 'trace': {'stages': None}},
+                                     {'case_id': 'blocked', 'score': {'status': 'NOT_RUN', 'reason': 'saved failure'},
+                                      'trace': {'status': 'NOT_RUN', 'reason': 'not measured'}}]}}
+        signals = format_signals(report)
+        self.assertIn('query gradients | NOT_RUN | explicit memory limit', signals)
+        self.assertIn('train: NOT_RUN | not evaluated', signals)
+        self.assertIn('score_std=unavailable', signals)
+        self.assertIn('trace unavailable | prototype_cosine min/max/mean=unavailable/unavailable/unavailable', signals)
+        self.assertIn('score_status=NOT_RUN | saved failure', signals)
+        self.assertIn('trace=NOT_RUN | not measured', signals)
+        self.assertNotIn('score_std=0', signals)
+
+    def test_signal_mode_loss_not_run_propagates_without_fabricating_count(self):
+        report = fixture()
+        losses = report['comparison']['branches'][0]['per_loss_query_gradient']['losses']
+        losses['ranking'] = {'status': 'NOT_RUN', 'reason': 'no positive pairs'}
+        signals = format_signals(report)
+        self.assertIn('ranking_pairs=unavailable', signals)
+        self.assertIn('ranking:NOT_RUN | no positive pairs', signals)
+
+    def test_signal_mode_has_no_update_cap_and_distinguishes_missing_updates(self):
+        report = fixture()
+        report['comparison'].pop('fixed_weight')
+        updates = [{'step': i, 'terms': {'ranking_pairs': 10, 'ranking_loss': i / 100,
+                                        'observation_auxiliary_loss': 0.5, 'alignment_loss': 0.01}}
+                   for i in range(75)]
+        report['comparison']['branches'] = [{'branch': 'all_steps', 'updates': updates},
+                                           {'branch': 'missing'}, {'branch': 'null', 'updates': None},
+                                           {'branch': 'empty', 'updates': []}]
+        signals = format_signals(report)
+        self.assertEqual(signals.count('  update step='), 75)
+        self.assertIn('update step=74', signals)
+        self.assertEqual(signals.count('updates: unavailable'), 2)
+        self.assertEqual(signals.count('updates: [] (stored empty list)'), 1)
+
+    def test_signal_cli_prints_once_preserves_json_and_uses_new_output_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'report.json'
+            target = Path(directory) / 'signals.txt'
+            source.write_text(json.dumps(fixture(), indent=2), encoding='utf-8')
+            before = source.read_bytes()
+            expected = read_summary(source, signals=True)
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                main([str(source), '--signals', '--output', str(target)])
+            self.assertEqual(stdout.getvalue(), expected)
+            self.assertEqual(target.read_text(encoding='utf-8'), expected)
+            self.assertEqual(source.read_bytes(), before)
+            with self.assertRaises(FileExistsError):
+                main([str(source), '--signals', '--output', str(target)])
+            self.assertEqual(target.read_text(encoding='utf-8'), expected)
+
+    def test_signal_mode_rejects_wrong_scope_and_numeric_bool(self):
+        report = fixture()
+        report['comparison']['diagnostic_only'] = False
+        with self.assertRaisesRegex(ValueError, 'diagnostic-only'):
+            format_signals(report)
+        report = fixture()
+        report['comparison']['branches'][0]['initial_full_case_evaluation'] = {
+            'train': {'cases': [{'case_id': 'invalid', 'score': {'score_std': True}}]}}
+        with self.assertRaisesRegex(ValueError, 'finite number'):
+            format_signals(report)
 
 
 if __name__ == '__main__':

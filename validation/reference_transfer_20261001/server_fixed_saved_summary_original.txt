@@ -1,0 +1,81 @@
+
+(nnunet) aicompetition06@ece-a6gpu8:~/Medical/HierCP-diagnosis-2ce11ba$ cd /home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba &&
+git fetch origin codex/v222-server-r6 &&
+git checkout --detach 3eb0402 &&
+python -u tools/summarize_local_cnn_reference.py \
+  /home/aicompetition06/Medical/experiments/reference_fixed_20261001_185138.json
+remote: Enumerating objects: 17, done.
+remote: Counting objects: 100% (17/17), done.
+remote: Compressing objects: 100% (9/9), done.
+remote: Total 17 (delta 8), reused 17 (delta 8), pack-reused 0 (from 0)
+Unpacking objects: 100% (17/17), 20.54 KiB | 382.00 KiB/s, done.
+From https://github.com/costunder/nnunet
+ * branch            codex/v222-server-r6 -> FETCH_HEAD
+   f803c45..3eb0402  codex/v222-server-r6 -> origin/codex/v222-server-r6
+Previous HEAD position was f803c45 Record server raw reference comparison and confirmed GPU3 command
+HEAD is now at 3eb0402 Print all saved reference L1 case rankings without GPU recomputation
+SAVED REFERENCE L1 DIAGNOSTIC SUMMARY | No model execution, optimizer update or metric recomputation.
+Scope: normalized-energy spread and exact tile scores are diagnostics; full-case selected-case rankings are separate; not full accuracy or CP efficacy.
+run=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42 | checkpoint=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt
+snapshot | epoch=39 | step=21320 | phase=refresh_memory | tile saved_next=False | schedule_position=0 | actual_batch=32 | configured_batch=32 | P=unavailable | U=unavailable
+tile selection=first deterministic complete-schedule tile; no saved next optimization tile available in this phase
+
+BRANCH legacy
+  mode=eval_fresh | normalized_energy L0=8.213201141415993e-08 -> L1_1=3.766634115720535e-09(ratio=0.04586073141112858) -> L1_2=2.509537282840979e-12(ratio=0.0006662545938208068) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=8.213201141415993e-08 -> L1_1=3.766634115720535e-09(ratio=0.04586073141112858) -> L1_2=2.509537282840979e-12(ratio=0.0006662545938208068) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=8.213201141415993e-08 -> L1_1=3.766634115720535e-09(ratio=0.04586073141112858) -> L1_2=2.509537282840979e-12(ratio=0.0006662545938208068) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  query gradients | ranking:dep=True,norm=0.0,loss=0.0 | observation_ce:dep=True,norm=5.0922943046316504e-05,loss=0.26997286081314087 | alignment:dep=False,norm=none (no query dependency),loss=0.11241542547941208
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.12179487179487179 | pair-win=0.4957157219609907 | rank_loss=0.6931467652320862 | R@1=0.0 | R@5=0.0 | R@10=0.03225806451612903
+    case=liver_1 | records=139 | retained=True | MRR=0.16666666666666666 | pair-win=0.5546875 | rank_loss=0.693146288394928 | R@1=0.0 | R@5=0.0 | R@10=0.09090909090909091 | observed_ranks=[6, 25, 27, 30, 53, 62, 63, 76, 106, 113, 124]
+    case=liver_49 | records=148 | retained=True | MRR=0.07692307692307693 | pair-win=0.4632812440395355 | rank_loss=0.6931468844413757 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[13, 16, 37, 41, 48, 53, 55, 57, 62, 69, 76, 86, 87, 89, 99, 105, 113, 118, 130, 143]
+  validation aggregate | MRR=0.5416666666666666 | pair-win=0.6439732377018247 | rank_loss=0.6931470036506653 | R@1=0.03571428571428571 | R@5=0.14285714285714285 | R@10=0.17857142857142858
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.6342592835426331 | rank_loss=0.6931469440460205 | R@1=0.037037037037037035 | R@5=0.14814814814814814 | R@10=0.18518518518518517 | observed_ranks=[1, 2, 3, 5, 10, 12, 16, 18, 19, 26, 37, 46, 48, 49, 51, 55, 62, 64, 93, 98, 108, 112, 114, 121, 138, 142, 145]
+    case=liver_3 | records=129 | retained=True | MRR=0.08333333333333333 | pair-win=0.90625 | rank_loss=0.693146824836731 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[12]
+
+BRANCH raw_columns
+  mode=eval_fresh | normalized_energy L0=8.213201141415993e-08 -> L1_1=6.636113880631456e-08(ratio=0.8079814150865127) -> L1_2=1.648463587855531e-08(ratio=0.2484079715188179) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=8.213201141415993e-08 -> L1_1=2.0194900116621284e-06(ratio=24.58834231489379) -> L1_2=3.628561898949556e-06(ratio=1.7967714016882368) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=8.213201141415993e-08 -> L1_1=7.829923021063223e-08(ratio=0.9533338933561426) -> L1_2=2.1639657177274785e-08(ratio=0.27637126340913043) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  query gradients | ranking:dep=True,norm=0.0,loss=0.0 | observation_ce:dep=True,norm=0.010214581154286861,loss=0.47603821754455566 | alignment:dep=True,norm=0.000225552124902606,loss=1.089996099472046
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.10964912280701754 | pair-win=0.49521171565978755 | rank_loss=0.6931471228599548 | R@1=0.0 | R@5=0.0 | R@10=0.03225806451612903
+    case=liver_1 | records=139 | retained=True | MRR=0.05263157894736842 | pair-win=0.4644886553287506 | rank_loss=0.6931471824645996 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[19, 26, 41, 43, 46, 73, 96, 100, 102, 121, 123]
+    case=liver_49 | records=148 | retained=True | MRR=0.16666666666666666 | pair-win=0.5121093988418579 | rank_loss=0.6931470632553101 | R@1=0.0 | R@5=0.0 | R@10=0.05 | observed_ranks=[6, 13, 15, 16, 30, 36, 42, 43, 50, 54, 60, 77, 78, 81, 92, 102, 114, 124, 129, 145]
+  validation aggregate | MRR=0.5051020408163265 | pair-win=0.4522879442998341 | rank_loss=0.6931471824645996 | R@1=0.03571428571428571 | R@5=0.07142857142857142 | R@10=0.07142857142857142
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.46151620149612427 | rank_loss=0.6931472420692444 | R@1=0.037037037037037035 | R@5=0.07407407407407407 | R@10=0.07407407407407407 | observed_ranks=[1, 2, 13, 18, 19, 23, 26, 28, 40, 43, 46, 47, 54, 68, 69, 74, 90, 99, 117, 130, 135, 136, 137, 139, 140, 153, 155]
+    case=liver_3 | records=129 | retained=True | MRR=0.01020408163265306 | pair-win=0.203125 | rank_loss=0.6931472420692444 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[98]
+
+BRANCH affine_relations
+  mode=eval_fresh | normalized_energy L0=8.213201141415993e-08 -> L1_1=6.637163352252173e-08(ratio=0.8081091937202814) -> L1_2=1.620642464672528e-08(ratio=0.24417697420730186) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=8.213201141415993e-08 -> L1_1=2.0134866645094007e-06(ratio=24.515248437739665) -> L1_2=3.4056463391607394e-06(ratio=1.6914173802042773) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=8.213201141415993e-08 -> L1_1=7.830912096551401e-08(ratio=0.9534543184463294) -> L1_2=2.1234388469792975e-08(ratio=0.27116111390324804) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  query gradients | ranking:dep=True,norm=0.0,loss=0.0 | observation_ce:dep=True,norm=0.0076036108657717705,loss=0.4947201609611511 | alignment:dep=True,norm=7.761517917970195e-05,loss=0.6925430297851562
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.26666666666666666 | pair-win=0.5123488133953463 | rank_loss=0.6931470632553101 | R@1=0.0 | R@5=0.06451612903225806 | R@10=0.0967741935483871
+    case=liver_1 | records=139 | retained=True | MRR=0.2 | pair-win=0.5 | rank_loss=0.6931471228599548 | R@1=0.0 | R@5=0.09090909090909091 | R@10=0.09090909090909091 | observed_ranks=[5, 22, 26, 38, 51, 66, 88, 106, 109, 110, 128]
+    case=liver_49 | records=148 | retained=True | MRR=0.3333333333333333 | pair-win=0.5191406607627869 | rank_loss=0.6931470632553101 | R@1=0.0 | R@5=0.05 | R@10=0.1 | observed_ranks=[3, 10, 15, 16, 24, 32, 38, 42, 52, 61, 62, 67, 77, 86, 100, 105, 113, 116, 125, 144]
+  validation aggregate | MRR=0.5049019607843137 | pair-win=0.3822544664144516 | rank_loss=0.6931471824645996 | R@1=0.03571428571428571 | R@5=0.03571428571428571 | R@10=0.07142857142857142
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.39004629850387573 | rank_loss=0.6931472420692444 | R@1=0.037037037037037035 | R@5=0.037037037037037035 | R@10=0.07407407407407407 | observed_ranks=[1, 9, 15, 23, 28, 38, 51, 53, 54, 56, 67, 78, 84, 94, 95, 97, 104, 108, 110, 111, 117, 123, 127, 129, 133, 153, 154]
+    case=liver_3 | records=129 | retained=True | MRR=0.00980392156862745 | pair-win=0.171875 | rank_loss=0.6931472420692444 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[102]
+
+BRANCH affine_relations_zero_out_bias
+  mode=eval_fresh | normalized_energy L0=8.213201141415993e-08 -> L1_1=8.393773498482915e-08(ratio=1.021985624600908) -> L1_2=6.070684577252905e-08(ratio=0.7232366442041969) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=8.213201141415993e-08 -> L1_1=7.154364084271947e-06(ratio=87.10810755863824) -> L1_2=4.7352994442917407e-05(ratio=6.618756591800739) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=8.213201141415993e-08 -> L1_1=1.0700524200046857e-07(ratio=1.3028445323332283) -> L1_2=8.120884587015098e-08(ratio=0.758923996170163) | tile_status=NOT_EVALUABLE | The unchanged tile has only one observation class | pair-win=unavailable | observed=0 | candidates=32
+  query gradients | ranking:dep=True,norm=0.0,loss=0.0 | observation_ce:dep=True,norm=0.010601682588458061,loss=0.5430467128753662 | alignment:dep=True,norm=0.0004843673959840089,loss=1.3511221408843994
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.19642857142857142 | pair-win=0.5357863210862682 | rank_loss=0.6931460499763489 | R@1=0.0 | R@5=0.03225806451612903 | R@10=0.06451612903225806
+    case=liver_1 | records=139 | retained=True | MRR=0.25 | pair-win=0.5326704978942871 | rank_loss=0.6931454539299011 | R@1=0.0 | R@5=0.09090909090909091 | R@10=0.09090909090909091 | observed_ranks=[4, 21, 24, 29, 64, 66, 81, 99, 102, 106, 122]
+    case=liver_49 | records=148 | retained=True | MRR=0.14285714285714285 | pair-win=0.5375000238418579 | rank_loss=0.6931464076042175 | R@1=0.0 | R@5=0.0 | R@10=0.05 | observed_ranks=[7, 13, 21, 22, 25, 26, 34, 38, 52, 63, 78, 80, 97, 98, 102, 108, 113, 117, 120, 141]
+  validation aggregate | MRR=0.5073529411764706 | pair-win=0.6060267771993365 | rank_loss=0.6931467056274414 | R@1=0.03571428571428571 | R@5=0.17857142857142858 | R@10=0.21428571428571427
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.6116898059844971 | rank_loss=0.6931466460227966 | R@1=0.037037037037037035 | R@5=0.18518518518518517 | R@10=0.2222222222222222 | observed_ranks=[1, 2, 3, 4, 5, 10, 11, 20, 27, 32, 34, 40, 41, 45, 48, 57, 74, 75, 96, 112, 121, 122, 133, 138, 142, 143, 149]
+    case=liver_3 | records=129 | retained=True | MRR=0.014705882352941176 | pair-win=0.453125 | rank_loss=0.6931469440460205 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[68]
+
+Stored flags | preserved=True | checkpoint_written=False | training_started=False | ready=False | full_training=False | full_evaluation=False
+Limitations: Multiple reference operator and initialization changes remain; no single-factor causal attribution | One same-tile BN pass is neither validated calibration nor trained running statistics | Tile pair-win/spread are diagnostic values, not full-case MRR or CP accuracy | A detached-query gradient probe does not independently measure CNN parameter gradients
+(nnunet) aicompetition06@ece-a6gpu8:~/Medical/HierCP-diagnosis-2ce11ba$

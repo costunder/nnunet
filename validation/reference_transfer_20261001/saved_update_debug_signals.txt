@@ -1,0 +1,34 @@
+SAVED REFERENCE L1 SIGNALS | No model execution, score reranking or metric recomputation.
+Scope: original saved selected-case signals; not full accuracy or CP efficacy.
+snapshot | epoch=1 | step=4 | phase=complete
+run=D:\AI project\nnunet\work\local_cnn_experiment_resume_DEBUG_20261001\resumed | checkpoint=D:\AI project\nnunet\work\local_cnn_experiment_resume_DEBUG_20261001\resumed\attempts\0002\checkpoint_latest.pt
+BRANCH legacy
+  before train | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_66 | records=2 | score_std=0.01690274477005005 | score_min=0.0035918056964874268 | score_max=0.037397295236587524 | mean_positive_minus_unobserved=0.0338054895401001 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.2021787464618683,normalized=0.011619677767157555,mean_norm=4.152251720428467) -> L1_1(raw=1.5048103332519531,normalized=0.011758202686905861,mean_norm=11.312807083129883) -> L1_2(raw=1.4188480377197266,normalized=0.011085787788033485,mean_norm=11.313179016113281) | prototype_cosine min/max/mean=0.9206636548042297/0.9206636548042297/0.9206636548042297
+  before validation | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_31 | records=2 | score_std=0.0013620629906654358 | score_min=0.10192421078681946 | score_max=0.10464833676815033 | mean_positive_minus_unobserved=0.0027241259813308716 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.03273624926805496,normalized=0.0021197893656790257,mean_norm=3.9177517890930176) -> L1_1(raw=0.2656363248825073,normalized=0.002075442811474204,mean_norm=11.313276290893555) -> L1_2(raw=0.2529762387275696,normalized=0.0019765745382755995,mean_norm=11.313142776489258) | prototype_cosine min/max/mean=0.9219520092010498/0.9219520092010498/0.9219520092010498
+  after train | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_66 | records=2 | score_std=0.007224604487419128 | score_min=0.2594718337059021 | score_max=0.27392104268074036 | mean_positive_minus_unobserved=0.014449208974838257 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.18800924718379974,normalized=0.010510941967368126,mean_norm=4.209949970245361) -> L1_1(raw=1.3325999975204468,normalized=0.010414200834929943,mean_norm=11.311935424804688) -> L1_2(raw=1.3010928630828857,normalized=0.010167288593947887,mean_norm=11.31231689453125) | prototype_cosine min/max/mean=0.9024704694747925/0.9024704694747925/0.9024704694747925
+  after validation | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_31 | records=2 | score_std=0.008676066994667053 | score_min=0.22998809814453125 | score_max=0.24734023213386536 | mean_positive_minus_unobserved=-0.017352133989334106 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.030552564188838005,normalized=0.001853839959949255,mean_norm=4.059250831604004) -> L1_1(raw=0.2210102081298828,normalized=0.0017270913813263178,mean_norm=11.312238693237305) -> L1_2(raw=0.2332586944103241,normalized=0.00182280910667032,mean_norm=11.31223201751709) | prototype_cosine min/max/mean=0.9040523767471313/0.9040523767471313/0.9040523767471313
+  update step=1 | ranking_pairs=1.0 | ranking_loss=0.5677810311317444 | observation_auxiliary_loss=0.6385975480079651 | alignment_loss=0.5060056447982788
+  update step=2 | ranking_pairs=1.0 | ranking_loss=0.6417836546897888 | observation_auxiliary_loss=0.6671862602233887 | alignment_loss=0.5200440883636475
+BRANCH reference
+  before train | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_66 | records=2 | score_std=0.004289388656616211 | score_min=-0.004133462905883789 | score_max=0.004445314407348633 | mean_positive_minus_unobserved=-0.008578777313232422 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.2021787464618683,normalized=0.011619677767157555,mean_norm=4.152251720428467) -> L1_1(raw=0.06253649294376373,normalized=0.00566755048930645,mean_norm=3.311612844467163) -> L1_2(raw=0.06281515955924988,normalized=0.002049557399004698,mean_norm=5.490698337554932) | prototype_cosine min/max/mean=unavailable/unavailable/unavailable
+  before validation | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_31 | records=2 | score_std=0.00023317337036132812 | score_min=0.03144383430480957 | score_max=0.03191018104553223 | mean_positive_minus_unobserved=-0.00046634674072265625 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.03273624926805496,normalized=0.0021197893656790257,mean_norm=3.9177517890930176) -> L1_1(raw=0.012191311456263065,normalized=0.0009445600444450974,mean_norm=3.576030731201172) -> L1_2(raw=0.012094155885279179,normalized=0.00027471722569316626,mean_norm=6.585663795471191) | prototype_cosine min/max/mean=unavailable/unavailable/unavailable
+  after train | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_66 | records=2 | score_std=0.006894111633300781 | score_min=0.0027108192443847656 | score_max=0.016499042510986328 | mean_positive_minus_unobserved=-0.013788223266601562 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.2824205160140991,normalized=0.015558743849396706,mean_norm=4.25093936920166) -> L1_1(raw=0.11037881672382355,normalized=0.00964648649096489,mean_norm=3.365687131881714) -> L1_2(raw=0.1264970451593399,normalized=0.0041681574657559395,mean_norm=5.50771427154541) | prototype_cosine min/max/mean=unavailable/unavailable/unavailable
+  after validation | scope=all candidates of explicitly selected cases; not full validation or CP efficacy
+    case=liver_31 | records=2 | score_std=0.0001424551010131836 | score_min=0.059743642807006836 | score_max=0.0600285530090332 | mean_positive_minus_unobserved=-0.0002849102020263672 | exact_tie_rate=0.0 | comparisons=1
+      trace L0(raw=0.061936236917972565,normalized=0.0035651037469506264,mean_norm=4.134659767150879) -> L1_1(raw=0.028972897678613663,normalized=0.0021117664873600006,mean_norm=3.682959794998169) -> L1_2(raw=0.03314414620399475,normalized=0.0007265604217536747,mean_norm=6.698794841766357) | prototype_cosine min/max/mean=unavailable/unavailable/unavailable
+  update step=1 | ranking_pairs=1.0 | ranking_loss=0.6925931572914124 | observation_auxiliary_loss=0.6987842321395874 | alignment_loss=0.47409385442733765
+  update step=2 | ranking_pairs=1.0 | ranking_loss=0.6015583276748657 | observation_auxiliary_loss=0.649534285068512 | alignment_loss=0.4267335832118988

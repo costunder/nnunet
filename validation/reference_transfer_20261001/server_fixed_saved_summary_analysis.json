@@ -1,0 +1,712 @@
+{
+  "format": "reference_saved_server_summary_transcription_v1",
+  "source_sha256": "425feb83c875a6f887f714cb80c3e2725741aa6f8571b29657ba3adf14a96962",
+  "source": "user-pasted complete saved JSON summary; original server JSON not received",
+  "server_report": "/home/aicompetition06/Medical/experiments/reference_fixed_20261001_185138.json",
+  "server_summary_reader_commit": "3eb040278ef3000bc443ad34a7d4c8953aafe2eb",
+  "snapshot": {
+    "epoch": 39,
+    "step": 21320,
+    "phase": "refresh_memory"
+  },
+  "fixed_tile": {
+    "positive": 0,
+    "unobserved": 32,
+    "ranking_pairs": 0,
+    "ranking_gradient_norm": 0.0,
+    "selection": "first deterministic complete-schedule tile; not exact next optimization update"
+  },
+  "branches": [
+    {
+      "branch": "legacy",
+      "splits": {
+        "train": {
+          "metrics": {
+            "MRR": 0.12179487179487179,
+            "pair-win": 0.4957157219609907,
+            "rank_loss": 0.6931467652320862,
+            "R@1": 0.0,
+            "R@5": 0.0,
+            "R@10": 0.03225806451612903
+          },
+          "cases": [
+            {
+              "case_id": "liver_1",
+              "records": 139,
+              "all_candidates_retained": true,
+              "observed_count": 11,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                6,
+                25,
+                27,
+                30,
+                53,
+                62,
+                63,
+                76,
+                106,
+                113,
+                124
+              ],
+              "metrics": {
+                "MRR": 0.16666666666666666,
+                "pair-win": 0.5546875,
+                "rank_loss": 0.693146288394928,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.09090909090909091
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.2205384161722003
+            },
+            {
+              "case_id": "liver_49",
+              "records": 148,
+              "all_candidates_retained": true,
+              "observed_count": 20,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                13,
+                16,
+                37,
+                41,
+                48,
+                53,
+                55,
+                57,
+                62,
+                69,
+                76,
+                86,
+                87,
+                89,
+                99,
+                105,
+                113,
+                118,
+                130,
+                143
+              ],
+              "metrics": {
+                "MRR": 0.07692307692307693,
+                "pair-win": 0.4632812440395355,
+                "rank_loss": 0.6931468844413757,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.0
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.31473842719962136
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.26763842168591084,
+          "derived_comparison_weights": {
+            "liver_1": 0.3548387096774194,
+            "liver_49": 0.6451612903225806
+          }
+        },
+        "validation": {
+          "metrics": {
+            "MRR": 0.5416666666666666,
+            "pair-win": 0.6439732377018247,
+            "rank_loss": 0.6931470036506653,
+            "R@1": 0.03571428571428571,
+            "R@5": 0.14285714285714285,
+            "R@10": 0.17857142857142858
+          },
+          "cases": [
+            {
+              "case_id": "liver_109",
+              "records": 155,
+              "all_candidates_retained": true,
+              "observed_count": 27,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                1,
+                2,
+                3,
+                5,
+                10,
+                12,
+                16,
+                18,
+                19,
+                26,
+                37,
+                46,
+                48,
+                49,
+                51,
+                55,
+                62,
+                64,
+                93,
+                98,
+                108,
+                112,
+                114,
+                121,
+                138,
+                142,
+                145
+              ],
+              "metrics": {
+                "MRR": 1.0,
+                "pair-win": 0.6342592835426331,
+                "rank_loss": 0.6931469440460205,
+                "R@1": 0.037037037037037035,
+                "R@5": 0.14814814814814814,
+                "R@10": 0.18518518518518517
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.3703486193294017
+            },
+            {
+              "case_id": "liver_3",
+              "records": 129,
+              "all_candidates_retained": true,
+              "observed_count": 1,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                12
+              ],
+              "metrics": {
+                "MRR": 0.08333333333333333,
+                "pair-win": 0.90625,
+                "rank_loss": 0.693146824836731,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.0
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.042177511864912184,
+              "derived_minimum_positive_unobserved_exact_ties": 1
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.20626306559715696,
+          "derived_comparison_weights": {
+            "liver_109": 0.9642857142857143,
+            "liver_3": 0.03571428571428571
+          }
+        }
+      }
+    },
+    {
+      "branch": "raw_columns",
+      "splits": {
+        "train": {
+          "metrics": {
+            "MRR": 0.10964912280701754,
+            "pair-win": 0.49521171565978755,
+            "rank_loss": 0.6931471228599548,
+            "R@1": 0.0,
+            "R@5": 0.0,
+            "R@10": 0.03225806451612903
+          },
+          "cases": [
+            {
+              "case_id": "liver_1",
+              "records": 139,
+              "all_candidates_retained": true,
+              "observed_count": 11,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                19,
+                26,
+                41,
+                43,
+                46,
+                73,
+                96,
+                100,
+                102,
+                121,
+                123
+              ],
+              "metrics": {
+                "MRR": 0.05263157894736842,
+                "pair-win": 0.4644886553287506,
+                "rank_loss": 0.6931471824645996,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.0
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.2205384161722003
+            },
+            {
+              "case_id": "liver_49",
+              "records": 148,
+              "all_candidates_retained": true,
+              "observed_count": 20,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                6,
+                13,
+                15,
+                16,
+                30,
+                36,
+                42,
+                43,
+                50,
+                54,
+                60,
+                77,
+                78,
+                81,
+                92,
+                102,
+                114,
+                124,
+                129,
+                145
+              ],
+              "metrics": {
+                "MRR": 0.16666666666666666,
+                "pair-win": 0.5121093988418579,
+                "rank_loss": 0.6931470632553101,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.05
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.31473842719962136
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.26763842168591084,
+          "derived_comparison_weights": {
+            "liver_1": 0.3548387096774194,
+            "liver_49": 0.6451612903225806
+          }
+        },
+        "validation": {
+          "metrics": {
+            "MRR": 0.5051020408163265,
+            "pair-win": 0.4522879442998341,
+            "rank_loss": 0.6931471824645996,
+            "R@1": 0.03571428571428571,
+            "R@5": 0.07142857142857142,
+            "R@10": 0.07142857142857142
+          },
+          "cases": [
+            {
+              "case_id": "liver_109",
+              "records": 155,
+              "all_candidates_retained": true,
+              "observed_count": 27,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                1,
+                2,
+                13,
+                18,
+                19,
+                23,
+                26,
+                28,
+                40,
+                43,
+                46,
+                47,
+                54,
+                68,
+                69,
+                74,
+                90,
+                99,
+                117,
+                130,
+                135,
+                136,
+                137,
+                139,
+                140,
+                153,
+                155
+              ],
+              "metrics": {
+                "MRR": 1.0,
+                "pair-win": 0.46151620149612427,
+                "rank_loss": 0.6931472420692444,
+                "R@1": 0.037037037037037035,
+                "R@5": 0.07407407407407407,
+                "R@10": 0.07407407407407407
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.3703486193294017
+            },
+            {
+              "case_id": "liver_3",
+              "records": 129,
+              "all_candidates_retained": true,
+              "observed_count": 1,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                98
+              ],
+              "metrics": {
+                "MRR": 0.01020408163265306,
+                "pair-win": 0.203125,
+                "rank_loss": 0.6931472420692444,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.0
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.042177511864912184,
+              "derived_minimum_positive_unobserved_exact_ties": 5
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.20626306559715696,
+          "derived_comparison_weights": {
+            "liver_109": 0.9642857142857143,
+            "liver_3": 0.03571428571428571
+          }
+        }
+      }
+    },
+    {
+      "branch": "affine_relations",
+      "splits": {
+        "train": {
+          "metrics": {
+            "MRR": 0.26666666666666666,
+            "pair-win": 0.5123488133953463,
+            "rank_loss": 0.6931470632553101,
+            "R@1": 0.0,
+            "R@5": 0.06451612903225806,
+            "R@10": 0.0967741935483871
+          },
+          "cases": [
+            {
+              "case_id": "liver_1",
+              "records": 139,
+              "all_candidates_retained": true,
+              "observed_count": 11,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                5,
+                22,
+                26,
+                38,
+                51,
+                66,
+                88,
+                106,
+                109,
+                110,
+                128
+              ],
+              "metrics": {
+                "MRR": 0.2,
+                "pair-win": 0.5,
+                "rank_loss": 0.6931471228599548,
+                "R@1": 0.0,
+                "R@5": 0.09090909090909091,
+                "R@10": 0.09090909090909091
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.2205384161722003
+            },
+            {
+              "case_id": "liver_49",
+              "records": 148,
+              "all_candidates_retained": true,
+              "observed_count": 20,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                3,
+                10,
+                15,
+                16,
+                24,
+                32,
+                38,
+                42,
+                52,
+                61,
+                62,
+                67,
+                77,
+                86,
+                100,
+                105,
+                113,
+                116,
+                125,
+                144
+              ],
+              "metrics": {
+                "MRR": 0.3333333333333333,
+                "pair-win": 0.5191406607627869,
+                "rank_loss": 0.6931470632553101,
+                "R@1": 0.0,
+                "R@5": 0.05,
+                "R@10": 0.1
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.31473842719962136
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.26763842168591084,
+          "derived_comparison_weights": {
+            "liver_1": 0.3548387096774194,
+            "liver_49": 0.6451612903225806
+          }
+        },
+        "validation": {
+          "metrics": {
+            "MRR": 0.5049019607843137,
+            "pair-win": 0.3822544664144516,
+            "rank_loss": 0.6931471824645996,
+            "R@1": 0.03571428571428571,
+            "R@5": 0.03571428571428571,
+            "R@10": 0.07142857142857142
+          },
+          "cases": [
+            {
+              "case_id": "liver_109",
+              "records": 155,
+              "all_candidates_retained": true,
+              "observed_count": 27,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                1,
+                9,
+                15,
+                23,
+                28,
+                38,
+                51,
+                53,
+                54,
+                56,
+                67,
+                78,
+                84,
+                94,
+                95,
+                97,
+                104,
+                108,
+                110,
+                111,
+                117,
+                123,
+                127,
+                129,
+                133,
+                153,
+                154
+              ],
+              "metrics": {
+                "MRR": 1.0,
+                "pair-win": 0.39004629850387573,
+                "rank_loss": 0.6931472420692444,
+                "R@1": 0.037037037037037035,
+                "R@5": 0.037037037037037035,
+                "R@10": 0.07407407407407407
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.3703486193294017
+            },
+            {
+              "case_id": "liver_3",
+              "records": 129,
+              "all_candidates_retained": true,
+              "observed_count": 1,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                102
+              ],
+              "metrics": {
+                "MRR": 0.00980392156862745,
+                "pair-win": 0.171875,
+                "rank_loss": 0.6931472420692444,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.0
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.042177511864912184,
+              "derived_minimum_positive_unobserved_exact_ties": 5
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.20626306559715696,
+          "derived_comparison_weights": {
+            "liver_109": 0.9642857142857143,
+            "liver_3": 0.03571428571428571
+          }
+        }
+      }
+    },
+    {
+      "branch": "affine_relations_zero_out_bias",
+      "splits": {
+        "train": {
+          "metrics": {
+            "MRR": 0.19642857142857142,
+            "pair-win": 0.5357863210862682,
+            "rank_loss": 0.6931460499763489,
+            "R@1": 0.0,
+            "R@5": 0.03225806451612903,
+            "R@10": 0.06451612903225806
+          },
+          "cases": [
+            {
+              "case_id": "liver_1",
+              "records": 139,
+              "all_candidates_retained": true,
+              "observed_count": 11,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                4,
+                21,
+                24,
+                29,
+                64,
+                66,
+                81,
+                99,
+                102,
+                106,
+                122
+              ],
+              "metrics": {
+                "MRR": 0.25,
+                "pair-win": 0.5326704978942871,
+                "rank_loss": 0.6931454539299011,
+                "R@1": 0.0,
+                "R@5": 0.09090909090909091,
+                "R@10": 0.09090909090909091
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.2205384161722003
+            },
+            {
+              "case_id": "liver_49",
+              "records": 148,
+              "all_candidates_retained": true,
+              "observed_count": 20,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                7,
+                13,
+                21,
+                22,
+                25,
+                26,
+                34,
+                38,
+                52,
+                63,
+                78,
+                80,
+                97,
+                98,
+                102,
+                108,
+                113,
+                117,
+                120,
+                141
+              ],
+              "metrics": {
+                "MRR": 0.14285714285714285,
+                "pair-win": 0.5375000238418579,
+                "rank_loss": 0.6931464076042175,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.05
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.31473842719962136
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.26763842168591084,
+          "derived_comparison_weights": {
+            "liver_1": 0.3548387096774194,
+            "liver_49": 0.6451612903225806
+          }
+        },
+        "validation": {
+          "metrics": {
+            "MRR": 0.5073529411764706,
+            "pair-win": 0.6060267771993365,
+            "rank_loss": 0.6931467056274414,
+            "R@1": 0.03571428571428571,
+            "R@5": 0.17857142857142858,
+            "R@10": 0.21428571428571427
+          },
+          "cases": [
+            {
+              "case_id": "liver_109",
+              "records": 155,
+              "all_candidates_retained": true,
+              "observed_count": 27,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                10,
+                11,
+                20,
+                27,
+                32,
+                34,
+                40,
+                41,
+                45,
+                48,
+                57,
+                74,
+                75,
+                96,
+                112,
+                121,
+                122,
+                133,
+                138,
+                142,
+                143,
+                149
+              ],
+              "metrics": {
+                "MRR": 1.0,
+                "pair-win": 0.6116898059844971,
+                "rank_loss": 0.6931466460227966,
+                "R@1": 0.037037037037037035,
+                "R@5": 0.18518518518518517,
+                "R@10": 0.2222222222222222
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.3703486193294017
+            },
+            {
+              "case_id": "liver_3",
+              "records": 129,
+              "all_candidates_retained": true,
+              "observed_count": 1,
+              "unobserved_count": 128,
+              "observed_ranks": [
+                68
+              ],
+              "metrics": {
+                "MRR": 0.014705882352941176,
+                "pair-win": 0.453125,
+                "rank_loss": 0.6931469440460205,
+                "R@1": 0.0,
+                "R@5": 0.0,
+                "R@10": 0.0
+              },
+              "derived_uniform_random_first_positive_expected_MRR": 0.042177511864912184,
+              "derived_minimum_positive_unobserved_exact_ties": 3
+            }
+          ],
+          "derived_uniform_random_expected_case_mean_MRR": 0.20626306559715696,
+          "derived_comparison_weights": {
+            "liver_109": 0.9642857142857143,
+            "liver_3": 0.03571428571428571
+          }
+        }
+      }
+    }
+  ],
+  "ln2": 0.6931471805599453,
+  "derived_baseline_definition": "Uniform random ordering of the same N candidates with P observed: E[1/R_first]=sum_r C(N-r,P-1)/C(N,P)/r. Analytic comparator only, not a measured model result.",
+  "derived_tie_definition": "For P=1, at least N-first_rank-strict_positive_wins exact P/U ties must lie below the positive; more ties may lie before it.",
+  "production_training_started": false,
+  "production_source_changed": false,
+  "original_server_json_received": false,
+  "reference_trained_in_fixed_run": false
+}

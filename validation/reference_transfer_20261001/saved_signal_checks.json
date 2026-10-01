@@ -1,0 +1,44 @@
+{
+  "scope": "CPU saved JSON signals only; no model/GPU/optimizer or new score calculation",
+  "tests": 29,
+  "passed": 29,
+  "errors": 0,
+  "failures": 0,
+  "reads": [
+    {
+      "source": "validation/reference_transfer_20261001/native_ct_report.json",
+      "source_sha256": "e73ffae61ba605a9f4473a66a880cf8ee30a1ece52ff43537ecc8da926f04735",
+      "input_preserved": true,
+      "output": "saved_fixed_debug_signals.txt",
+      "output_sha256": "1a4dd2c0430b7c25fdc08e8d066b8f3a69fd55903ab50a4710ea255e7b924884",
+      "lines": 36,
+      "branches": 4,
+      "case_rows": 8,
+      "update_rows": 0,
+      "site_packages_disabled": true
+    },
+    {
+      "source": "validation/reference_l1_20261001/native_ct_report.json",
+      "source_sha256": "e7603980c7325ef603ef387b821ef0729ba9cfe8644eddf19e44a44587d6152e",
+      "input_preserved": true,
+      "output": "saved_update_debug_signals.txt",
+      "output_sha256": "bbbb3abb68e27c3d66582c920381c3aacd982d0fcedfaafb12024d21a94ab9b3",
+      "lines": 34,
+      "branches": 2,
+      "case_rows": 8,
+      "update_rows": 4,
+      "site_packages_disabled": true
+    }
+  ],
+  "default_summary_output_unchanged": true,
+  "production_files_verified": 121,
+  "production_source_unchanged": true,
+  "prior_evidence_preserved": true,
+  "server_summary_transcription_received": true,
+  "original_server_JSON_received": false,
+  "production_training_started": false,
+  "production_checkpoint_written": false,
+  "production_ready": false,
+  "full_training": false,
+  "full_evaluation": false
+}

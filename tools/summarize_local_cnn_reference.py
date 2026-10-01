@@ -256,19 +256,165 @@ def format_summary(report: dict) -> str:
     return '\n'.join(lines) + '\n'
 
 
-def read_summary(path: str | Path) -> str:
+def _case_signals(lines: list[str], value: Any, label: str, path: str) -> None:
+    evaluation = _object(value, path)
+    if not evaluation:
+        lines.append(f'  {label}: {UNAVAILABLE}')
+        return
+    stopped = _status(evaluation)
+    if stopped:
+        lines.append(f'  {label}: {stopped}')
+        return
+    for split in ('train', 'validation'):
+        group_path = path + '.' + split
+        group = _object(evaluation.get(split), group_path)
+        stopped = _status(group)
+        if not group or stopped:
+            lines.append(f'  {label} {split}: {stopped or UNAVAILABLE}')
+            continue
+        lines.append(f'  {label} {split} | scope={_show(evaluation.get("scope"))}')
+        cases = _list(group.get('cases'), group_path + '.cases')
+        if group.get('cases') is None:
+            lines.append('    cases: ' + UNAVAILABLE)
+        elif not cases:
+            lines.append('    cases: [] (stored empty list)')
+        for index, item in enumerate(cases):
+            case_path = f'{group_path}.cases[{index}]'
+            case = _object(item, case_path)
+            stopped = _status(case)
+            if stopped:
+                lines.append('    case=' + _show(case.get('case_id')) + ' | ' + stopped)
+                continue
+            score = _object(case.get('score'), case_path + '.score')
+            score_stopped = _status(score)
+            fields = ('score_std', 'score_min', 'score_max',
+                      'mean_positive_minus_unobserved', 'exact_tie_rate', 'comparisons')
+            signals = ' | '.join(key + '=' + _number(score.get(key), case_path + '.score.' + key) for key in fields)
+            lines.append('    case=' + _show(case.get('case_id'))
+                         + ' | records=' + _number(case.get('records'), case_path + '.records')
+                         + (' | score_status=' + score_stopped if score_stopped else '')
+                         + ' | ' + signals)
+            trace = _object(case.get('trace'), case_path + '.trace')
+            trace_stopped = _status(trace)
+            if trace_stopped:
+                lines.append('      trace=' + trace_stopped)
+                continue
+            stages = _list(trace.get('stages'), case_path + '.trace.stages')
+            stage_signals = []
+            for stage_index, stage_item in enumerate(stages):
+                stage_path = f'{case_path}.trace.stages[{stage_index}]'
+                stage = _object(stage_item, stage_path)
+                stage_stopped = _status(stage)
+                if stage_stopped:
+                    stage_signals.append(_show(stage.get('stage')) + ':' + stage_stopped)
+                    continue
+                stage_signals.append(_show(stage.get('stage'))
+                                     + '(raw=' + _number(stage.get('centered_energy'), stage_path + '.centered_energy')
+                                     + ',normalized=' + _number(stage.get('normalized_centered_energy'), stage_path + '.normalized_centered_energy')
+                                     + ',mean_norm=' + _number(stage.get('mean_norm'), stage_path + '.mean_norm') + ')')
+            if trace.get('stages') is None:
+                stage_signals.append(UNAVAILABLE)
+            elif not stages:
+                stage_signals.append('[] (stored empty list)')
+            prototype = '/'.join(_number(trace.get('prototype_cross_class_cosine_' + key), case_path + '.trace.prototype_' + key) for key in ('min', 'max', 'mean'))
+            lines.append('      trace ' + ' -> '.join(stage_signals) + ' | prototype_cosine min/max/mean=' + prototype)
+
+
+def _gradient_signals(branch: dict, path: str) -> str:
+    gradient = _object(branch.get('per_loss_query_gradient'), path + '.per_loss_query_gradient')
+    stopped = _status(gradient)
+    if stopped:
+        return '  query gradients | ' + stopped
+    parts = ['ranking_pairs=' + _number(gradient.get('ranking_pairs'), path + '.gradient.ranking_pairs')]
+    losses = _object(gradient.get('losses'), path + '.gradient.losses')
+    for name in ('ranking', 'observation_ce', 'alignment'):
+        loss = _object(losses.get(name), path + '.gradient.losses.' + name)
+        stopped = _status(loss)
+        if stopped:
+            parts.append(name + ':' + stopped)
+            continue
+        dependency = loss.get('query_embedding_dependency')
+        norm = _number(loss.get('query_embedding_gradient_norm'), path + '.gradient.' + name + '.norm')
+        if dependency is False and loss.get('query_embedding_gradient_norm') is None:
+            norm = 'none (no query dependency)'
+        parts.append(name + ':status=' + _show(loss.get('status'))
+                     + ',loss=' + _number(loss.get('weighted_loss'), path + '.gradient.' + name + '.weighted_loss')
+                     + ',dep=' + _boolean(dependency, path + '.gradient.' + name + '.dependency')
+                     + ',norm=' + norm)
+    return '  query gradients | ' + ' | '.join(parts)
+
+
+def format_signals(report: dict) -> str:
+    """Format stored per-case score/spread signals; never recompute scores."""
+    if not isinstance(report, dict):
+        raise ValueError('report: expected JSON object')
+    _finite_json(report)
+    if report.get('format') != FORMAT:
+        raise ValueError('Unsupported reference comparison report format')
+    comparison = _object(report.get('comparison'), 'comparison')
+    if comparison.get('diagnostic_only') is not True:
+        raise ValueError('Expected an explicitly diagnostic-only comparison')
+    snapshot = _object(report.get('snapshot'), 'snapshot')
+    lines = ['SAVED REFERENCE L1 SIGNALS | No model execution, score reranking or metric recomputation.',
+             'Scope: original saved selected-case signals; not full accuracy or CP efficacy.',
+             'snapshot | epoch=' + _number(snapshot.get('epoch'), 'snapshot.epoch')
+             + ' | step=' + _number(snapshot.get('step'), 'snapshot.step')
+             + ' | phase=' + _show(snapshot.get('phase')),
+             'run=' + _show(report.get('run')) + ' | checkpoint=' + _show(report.get('checkpoint'))]
+    branches = _list(comparison.get('branches'), 'comparison.branches')
+    if not branches:
+        lines.append('branches: ' + UNAVAILABLE)
+    for index, item in enumerate(branches):
+        path = f'comparison.branches[{index}]'
+        branch = _object(item, path)
+        lines.append('BRANCH ' + _show(branch.get('branch')))
+        stopped = _status(branch)
+        if stopped:
+            lines.append('  status=' + stopped)
+            continue
+        if comparison.get('fixed_weight') is True or 'modes' in branch:
+            lines.append(_gradient_signals(branch, path))
+            _case_signals(lines, branch.get('initial_full_case_evaluation'), 'initial_full_case_evaluation', path + '.initial_full_case_evaluation')
+        else:
+            _case_signals(lines, branch.get('before'), 'before', path + '.before')
+            _case_signals(lines, branch.get('after'), 'after', path + '.after')
+            updates = _list(branch.get('updates'), path + '.updates')
+            if branch.get('updates') is None:
+                lines.append('  updates: ' + UNAVAILABLE)
+            elif not updates:
+                lines.append('  updates: [] (stored empty list)')
+            for update_index, update_value in enumerate(updates):
+                update_path = f'{path}.updates[{update_index}]'
+                update = _object(update_value, update_path)
+                stopped = _status(update)
+                prefix = '  update step=' + _number(update.get('step'), update_path + '.step')
+                if stopped:
+                    lines.append(prefix + ' | ' + stopped)
+                    continue
+                terms = _object(update.get('terms'), update_path + '.terms')
+                stopped = _status(terms)
+                if stopped:
+                    lines.append(prefix + ' | terms=' + stopped)
+                    continue
+                keys = ('ranking_pairs', 'ranking_loss', 'observation_auxiliary_loss', 'alignment_loss')
+                lines.append(prefix + ' | ' + ' | '.join(key + '=' + _number(terms.get(key), update_path + '.terms.' + key) for key in keys))
+    return '\n'.join(lines) + '\n'
+
+
+def read_summary(path: str | Path, *, signals: bool = False) -> str:
     """Read a saved JSON report without changing its bytes."""
     with Path(path).open('r', encoding='utf-8-sig') as source:
         report = json.load(source)
-    return format_summary(report)
+    return format_signals(report) if signals else format_summary(report)
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('report', type=Path)
     parser.add_argument('--output', type=Path, help='Optional NEW text file; existing files are never overwritten')
+    parser.add_argument('--signals', action='store_true', help='Print saved per-case score, spread and loss signals instead of the default summary')
     args = parser.parse_args(argv)
-    summary = read_summary(args.report)
+    summary = read_summary(args.report, signals=args.signals)
     if args.output is not None:
         with args.output.open('x', encoding='utf-8', newline='\n') as target:
             target.write(summary)
