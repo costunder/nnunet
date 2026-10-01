@@ -3,7 +3,7 @@ import csv,json,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 import torch
-from tools.diagnose_local_cnn_learning import history_matches,find_run,read_history,score_summary,spread,checkpoint_for,trace_head
+from tools.diagnose_local_cnn_learning import history_matches,find_run,read_history,score_summary,spread,checkpoint_for,trace_head,shadow_request
 
 FIELDS=['epoch','ranking_pairwise_loss','ranking_mrr','ranking_recall_at_1','ranking_recall_at_5','ranking_recall_at_10']
 class Checks(unittest.TestCase):
@@ -49,6 +49,30 @@ class Checks(unittest.TestCase):
         x=torch.tensor([[1.,2.],[2.,4.]])
         r=spread(x);self.assertGreater(r['centered_energy'],0)
         self.assertLess(r['normalized_centered_energy'],1e-12)
+    def test_shadow_uses_saved_next_tile_and_plan(self):
+        from types import SimpleNamespace
+        from l0_regions.donor_learning import groups
+        rows=[dict(id=f'row{i}',case_id='case',patient_group='patient',donor_case_id='donor',
+              donor_component=1,donor_group='other',target=target,bounds=dict(edges=i))
+              for i,target in enumerate([1,0,0,0,0])]
+        ds=SimpleNamespace(rows=rows,meta=dict(config=dict(seed=42)))
+        order=list(groups(ds,3,42,2))
+        state=dict(batch=3,epoch=2,phase='optimization',next_batch=1,last_group='patient',plan={'saved':True})
+        request=shadow_request(ds,state)
+        self.assertEqual(request['indices'],order[1]);self.assertTrue(request['use_saved_plan'])
+        state['last_group']=None
+        self.assertFalse(shadow_request(ds,state)['use_saved_plan'])
+        state.update(last_group='patient',plan=None)
+        with self.assertRaisesRegex(ValueError,'frozen cluster plan'):shadow_request(ds,state)
+    def test_shadow_no_substituted_tile_after_phase_or_schedule_end(self):
+        from types import SimpleNamespace
+        rows=[dict(id=f'row{i}',case_id='case',patient_group='patient',donor_case_id='donor',
+              donor_component=1,donor_group='other',target=i,bounds=dict(edges=i)) for i in (0,1)]
+        ds=SimpleNamespace(rows=rows,meta=dict(config=dict(seed=42)))
+        state=dict(batch=2,epoch=0,phase='complete',next_batch=0,last_group=None,plan=None)
+        self.assertEqual(shadow_request(ds,state)['status'],'NOT_RUN')
+        state.update(phase='optimization',next_batch=1)
+        self.assertEqual(shadow_request(ds,state)['status'],'NOT_RUN')
     def test_cuda_head_trace_matches_production(self):
         from hiercp_v222.model import PromptGraphModel
         if not torch.cuda.is_available():self.skipTest('CUDA operator parity requires GPU')

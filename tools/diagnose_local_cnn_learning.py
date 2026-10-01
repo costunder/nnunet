@@ -133,7 +133,25 @@ def gradient_probe(net,embedding,support,rows,indices,context,query=None):
             cos[a+' vs '+b][name]=float(torch.dot(x,y)/den) if den>0 else None
     return dict(losses=reports,gradient_cosines=cos,query_rows=len(indices),cnn_backward=query is not None,
         scope='eval-mode derivative with actual epoch loss coefficients; no optimizer',
+        cluster_plan_scope='refitted with current weights; NOT saved production episode plan',
+        clipping=False,adam_step=False,
         dropout_note='Dropout disabled to isolate deterministic gradients; not a replay of the stochastic training update')
+
+def shadow_request(ds, state):
+    """Use the next actual saved tile; never silently choose a nicer P/U tile."""
+    from l0_regions.donor_learning import groups
+    order=list(groups(ds,state['batch'],ds.meta['config']['seed'],state['epoch']))
+    if state['phase']!='optimization':
+        return dict(status='NOT_RUN',reason='Snapshot is not in optimization; no next production optimizer update is defined',phase=state['phase'])
+    cursor=state['next_batch']
+    if not 0<=cursor<len(order):
+        return dict(status='NOT_RUN',reason='Saved optimization schedule is exhausted; no batch was substituted',next_batch=cursor,total_batches=len(order))
+    ids=order[cursor];group=ds.rows[ids[0]]['patient_group']
+    cached=state['last_group']==group
+    if cached and state['plan'] is None:raise ValueError('Saved active episode lacks its frozen cluster plan')
+    return dict(status='RUN',indices=ids,group=group,use_saved_plan=cached,
+                next_batch=cursor,total_batches=len(order),
+                class_counts={str(c):sum(ds.rows[i]['target']==c for i in ids) for c in (0,1)})
 
 def diagnose(a):
     import torch
@@ -149,7 +167,10 @@ def diagnose(a):
     from tools.v22_candidate_order import record_key
     if a.output.exists():raise FileExistsError(a.output)
     root=run_root(a.run) if a.run else find_run(a.medical_root,read_history(a.match_history))
-    cp=checkpoint_for(root);print(f'DIAGNOSTIC ONLY | run={root}\ncheckpoint={cp}',flush=True)
+    cp=checkpoint_for(root) if a.checkpoint is None else a.checkpoint.resolve()
+    if a.checkpoint is not None and (not cp.is_relative_to(root) or not cp.is_file()):
+        raise ValueError('Explicit diagnostic checkpoint must be an existing file within the matched experiment')
+    print(f'DIAGNOSTIC ONLY | run={root}\ncheckpoint={cp}',flush=True)
     saved=torch.load(cp,map_location='cpu',weights_only=False)
     if saved['identity']['source']!=source_identity():raise ValueError('Checkpoint runtime source differs; use matching code for diagnosis')
     # Verify this single loaded snapshot, even when another process atomically replaces latest.
@@ -181,22 +202,87 @@ def diagnose(a):
         margin_mm=identity['local_cnn']['margin_mm'],gpu=torch.cuda.get_device_name(),physical_batch=batch,
         cases_per_split=a.cases_per_split,memory_scope='saved epoch reference; NOT re-encoded current full cohort',
         model_sha256=hash_state(saved['model']),cases=[])
+    import psutil
+    result['execution']=dict(precision=identity['precision'],torch_version=torch.__version__,cuda_build=torch.version.cuda,
+        model='paired native local CNN + data-label L1 + clustered L2',
+        parameters=sum(p.numel() for p in net.parameters()),trainable_parameters=sum(p.numel() for p in net.parameters() if p.requires_grad),
+        local_cnn=identity['local_cnn'],L1_layers=len(net.l1),L2_layers=len(net.l2),hidden_dim=net.dim,
+        heads=ds.meta['base']['model']['heads'],train_observations=len(ds),validation_observations=len(val),
+        gradient_accumulation=1,data_parallel_workers=1,effective_batch=batch,
+        gpus_visible=torch.cuda.device_count(),gpu_total_bytes=total,cuda_budget_bytes=budget.cuda_bytes,
+        rss_budget_bytes=budget.rss_bytes,resident_bytes=int(a.resident_gib*2**30),workers=a.workers,
+        cpu_logical=psutil.cpu_count(),ram_available_bytes=psutil.virtual_memory().available,
+        debug_checkpoint=identity['debug'],case_subset_explicit=True)
+    print('SNAPSHOT execution: '+json.dumps(dict(epoch=state['epoch'],step=state['step'],phase=state['phase'],**result['execution'])),flush=True)
+    if a.deep:
+        from tools.local_cnn_l0_probe import trace_local_cnn
+        from tools.local_cnn_l1_probe import probe_l1
+        result['deep_probe_contract']=dict(anchor_radius_mm=a.anchor_radius_mm,message_scales=a.message_scales,
+            scope='Read-only representation traces and query-message counterfactuals; one cloned next optimizer tile',
+            local_roi='Diagnostic feature readout only; production CT/mask/FOV unchanged',
+            production_optimizer_updates=0)
+        request=shadow_request(ds,state)
+        result['shadow_update_request']=request
+        if request['status']=='RUN':
+            from tools.local_cnn_shadow_probe import shadow_update
+            ids=request['indices'];group=request['group']
+            support=support_for_recipient(memory,group) if episodes is None else episodes.support(group)
+            if request['use_saved_plan']:
+                plan=tree_to(state['plan'],'cuda')
+                plan_scope='saved frozen production episode plan'
+            else:
+                with torch.no_grad():plan=net.fit_support_clusters(*support)
+                plan_scope='new episode fit at snapshot weights, as production requires before the next tile'
+            q=loader.get(ids).to('cuda')
+            print(f"SHADOW ONLY | next batch {request['next_batch']+1}/{request['total_batches']} | records={len(ids)} | {plan_scope}",flush=True)
+            result['shadow_update']=shadow_update(lambda:make_model(ds,budget,identity['debug'],'retained'),
+                saved,q,support,plan,ds.rows,ids,context,budget)
+            result['shadow_update']['plan_scope']=plan_scope
+            shadow=result['shadow_update']
+            print('SHADOW train-mode gradient directions: '+json.dumps(shadow['gradients']),flush=True)
+            for branch,stats in shadow['branches'].items():
+                print('SHADOW Adam '+branch+': '+json.dumps(dict(gradient_norm_before_clip=stats['gradient_norm_before_clip'],
+                    clipping_factor=stats['clipping_factor'],modules=stats['modules'])),flush=True)
+            del q,plan,support
+        else:print('SHADOW NOT_RUN: '+request['reason'],flush=True)
     for split,data,reader in [('train',ds,loader),('validation',val,vl)]:
         names=sorted({r['case_id'] for r in data.rows if r['target']==1})
         if len(names)<a.cases_per_split:raise ValueError('Requested diagnostic cases exceed available positive cases')
         chosen=[names[(i*len(names))//a.cases_per_split] for i in range(a.cases_per_split)]
         for name in chosen:
             ids=[i for i,r in enumerate(data.rows) if r['case_id']==name];rows=[data.rows[i] for i in ids]
-            group=rows[0]['patient_group'];parts=[]
+            group=rows[0]['patient_group'];parts=[];l0_parts={};l0_reports=[];l0_unavailable=set()
             with torch.no_grad():
                 for start in tqdm(range(0,len(ids),batch),desc=f'DIAGNOSTIC {split} {name}'):
-                    q=reader.get(ids[start:start+batch]).to('cuda');parts.append(net.local(q).detach());del q
+                    slice_ids=ids[start:start+batch]
+                    q=reader.get(slice_ids).to('cuda')
+                    if a.deep:
+                        native_rows=[data.rows[i] for i in slice_ids]
+                        output,stages,report=trace_local_cnn(net.local,q,
+                            recipient_centers_native=[r['center'] for r in native_rows],
+                            donor_centers_native=[reader.store.donor_bounds(r)[0] for r in native_rows],
+                            anchor_radius_mm=a.anchor_radius_mm)
+                        for key,value in stages.items():
+                            if value is None:l0_unavailable.add(key)
+                            else:l0_parts.setdefault(key,[]).append(value)
+                        l0_reports.append(report);parts.append(output.detach());del output,stages
+                    else:parts.append(net.local(q).detach())
+                    del q
                 embeddings=torch.cat(parts);truth=torch.tensor([r['target'] for r in rows],device='cuda')
                 full=support_for_recipient(memory,group)
                 scores,trace=trace_head(net,embeddings,full,batch)
                 metrics,details=ranking_metrics(scores.cpu(),truth.cpu(),[name]*len(ids),candidate_keys=[record_key(r) for r in rows])
                 item=dict(split=split,case_id=name,records=len(ids),positives=int(truth.sum()),all_case_candidates_retained=True,
                     full_support=dict(trace=trace,score=score_summary(scores,truth),metrics=metrics),observed_ranks=details[0]['observed_ranks'])
+                if a.deep:
+                    l0_keys=set(l0_parts)|l0_unavailable
+                    item['l0_substages']=dict(stages={key:
+                        dict(status='NOT_RUN',reason='At least one candidate ROI has no supported feature cells; no reduced candidate variance was reported',candidates=len(ids))
+                        if key in l0_unavailable else dict(status='MEASURED',candidates=len(ids),**spread(torch.cat(l0_parts[key])))
+                        for key in sorted(l0_keys)},batches=l0_reports)
+                    state_full=net.prepare_support(*full)
+                    item['l1_substages_and_message_sweep']=probe_l1(net,embeddings,state_full,batch,a.message_scales,truth=truth)
+                    del state_full
                 if split=='train':
                     old=memory['embeddings'][ids]
                     item['memory_drift']=dict(mean_l2=float((old-embeddings).norm(dim=1).mean()),old=spread(old),current=spread(embeddings))
@@ -218,9 +304,21 @@ def diagnose(a):
                   +f" | cross-class prototype cosine={t['prototype_cross_class_cosine_mean']:.6g}",flush=True)
             if 'training_support_eval' in item:
                 short=item['training_support_eval']['score']
-                print(f"Same query/support A-B: episode loss={short['mean_pairwise_loss']:.6g}, full loss={item['full_support']['score']['mean_pairwise_loss']:.6g}",flush=True)
+                print(f"Same query/support A-B: episode_pairwise_loss={short['mean_pairwise_loss']:.6g}, full_pairwise_loss={item['full_support']['score']['mean_pairwise_loss']:.6g}",flush=True)
                 print('Per-loss gradients: '+json.dumps(item['gradient_probe']['losses']),flush=True)
+                print('Eval-only gradient cosines: '+json.dumps(item['gradient_probe']['gradient_cosines']),flush=True)
+                print('Saved memory vs current L0: '+json.dumps(item['memory_drift']),flush=True)
+            if a.deep:
+                print('L0 substage normalized variance: '+json.dumps({key:
+                    stats['normalized_centered_energy'] if stats['status']=='MEASURED' else 'NOT_RUN'
+                    for key,stats in item['l0_substages']['stages'].items()}),flush=True)
+                for sweep in item['l1_substages_and_message_sweep']['message_scale_sweep']:
+                    print('L1 message counterfactual: '+json.dumps(dict(message_scale=sweep['message_scale'],
+                        score=sweep['score'],layers=[dict(layer=layer['layer'],
+                            normalized_variance={key:stats['normalized_centered_energy'] for key,stats in layer['stages'].items()})
+                            for layer in sweep['layers']])),flush=True)
     result['peak_cuda_gib']=torch.cuda.max_memory_allocated()/2**30
+    result['rss_bytes']=psutil.Process().memory_info().rss
     result['weights_unchanged']=hash_state(net.state_dict())==result['model_sha256']
     if not result['weights_unchanged']:raise AssertionError('Diagnostic changed model weights')
     a.output.parent.mkdir(parents=True,exist_ok=True)
@@ -230,6 +328,7 @@ def diagnose(a):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--run',type=Path)
+    p.add_argument('--checkpoint',type=Path,help='Optional explicitly bound snapshot within --run; no training resume')
     p.add_argument('--medical-root',type=Path,default=Path('/home/aicompetition06/Medical'))
     p.add_argument('--match-history',type=Path,default=ROOT/'validation/local_cnn_learning_diagnosis_20261001/server_history.csv')
     p.add_argument('--gpu',type=int,required=True);p.add_argument('--output',type=Path,required=True)
@@ -237,8 +336,19 @@ def main():
     p.add_argument('--workers',type=int,required=True)
     for key in ('cuda-gib','rss-gib','resident-gib'):p.add_argument('--'+key,type=float,required=True)
     p.add_argument('--allow-debug',action='store_true')
+    p.add_argument('--deep',action='store_true',help='Explicit extra read-only traces and cloned next-update diagnostic')
+    p.add_argument('--anchor-radius-mm',type=float,help='Required with --deep; read-only local feature ROI radius, never changes production FOV')
+    p.add_argument('--message-scales',nargs='+',type=float,help='Required with --deep; explicit query-only message counterfactuals, including baseline 1')
     a=p.parse_args()
     if a.cases_per_split<1 or a.workers<2 or not 0<a.resident_gib<a.rss_gib:raise ValueError('Explicit valid diagnostic resources required')
+    import math
+    if a.deep:
+        if a.anchor_radius_mm is None or not math.isfinite(a.anchor_radius_mm) or a.anchor_radius_mm<=0:
+            raise ValueError('Deep diagnostic requires a positive explicit anchor ROI radius')
+        if not a.message_scales or len(set(a.message_scales))!=len(a.message_scales) or 1. not in a.message_scales or any(not math.isfinite(v) or v<0 for v in a.message_scales):
+            raise ValueError('Deep diagnostic requires unique nonnegative message scales including production baseline 1')
+    elif a.anchor_radius_mm is not None or a.message_scales is not None:
+        raise ValueError('Additional probe options require explicit --deep')
     from tools.local_cnn_device import select
     select(a.gpu)
     diagnose(a)

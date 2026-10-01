@@ -1,3 +1,10 @@
+## v2.2 — 학습 부진 세부 진단과 복제 Adam 대조 (2026-10-01)
+
+- 독립 GPT 검토 반영: eval derivative와 실제 training update를 구분하고 episode/full pairwise metric 출력 이름 수정. gradient cosine·memory drift 및 snapshot 실행 조건을 표시한다.
+- L0 CNN map/mean/project/fusion, L1 message/residual/LayerNorm/FFN 세부 trace와 explicit message scale 대조 추가. 원래 후보/간 mask/physical batch 보존; production model/loss 변경 없음.
+- 저장된 실제 다음 tile·episode plan·RNG·AdamW moments를 사용한 rank/CE/alignment/full 복제 update. gradient layout과 unused=None 보존, 원본 payload/support/weights 불변 검사. checkpoint를 저장하거나 장기 학습을 시작하지 않음.
+- 30개 단위/GPU 검사 및 실제CT DEBUG 통합 진단 통과. 실제 서버 가중치의 추가 원인 판정은 미실행; 30mm/MIG OOM 수정 아님. [범위와 기록](docs/local_cnn_deep_diagnosis_20261001.md).
+
 ## v2.2 — 서버 학습 부진 읽기 전용 진단 (2026-10-01)
 
 - 제공된 0~17epoch 기록과 일치하는 실험 탐색, 해당 checkpoint 무결성/입력/source 검사 후 L0/L1 표현 차이·L2 prototype·동일 query의 episode/full support·loss별 CNN/L1/L2 gradient 측정. 기존 실험·가중치·optimizer 변경 없음.
