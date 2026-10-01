@@ -1,0 +1,82 @@
+{
+  "format": "reference_fixed_server_console_transcription_v1",
+  "source": "User-provided rounded console; complete server JSON is not available locally",
+  "commit": "f803c45",
+  "checkpoint": "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt",
+  "server_report": "/home/aicompetition06/Medical/experiments/reference_fixed_20261001_185138.json",
+  "server_report_received": false,
+  "snapshot_epoch": null,
+  "snapshot_step": null,
+  "physical_GPU": 3,
+  "GPU": "NVIDIA RTX A6000",
+  "configured_physical_batch": 32,
+  "actual_tile_batch": 32,
+  "tile_position": 0,
+  "complete_schedule_tiles": 533,
+  "saved_next_optimization_tile": false,
+  "optimizer_updates": 0,
+  "tile_pair_win_status": "NOT_EVALUABLE",
+  "tile_observed_count": null,
+  "tile_class_reason": "Fixed helper reports NOT_EVALUABLE for a single-class tile; which class is not printed",
+  "normalized_centered_energy_L0": 8.213e-8,
+  "branches": [
+    {
+      "branch": "legacy",
+      "eval_fresh_L1_1": 3.767e-9,
+      "eval_fresh_L1_2": 2.510e-12,
+      "train_joint_L1_1": 3.767e-9,
+      "train_joint_L1_2": 2.510e-12,
+      "eval_after_one_pass_L1_1": 3.767e-9,
+      "eval_after_one_pass_L1_2": 2.510e-12,
+      "alignment_query_dependency": false,
+      "alignment_query_gradient_norm": null
+    },
+    {
+      "branch": "raw_columns",
+      "eval_fresh_L1_1": 6.636e-8,
+      "eval_fresh_L1_2": 1.648e-8,
+      "train_joint_L1_1": 2.019e-6,
+      "train_joint_L1_2": 3.629e-6,
+      "eval_after_one_pass_L1_1": 7.830e-8,
+      "eval_after_one_pass_L1_2": 2.164e-8,
+      "alignment_query_dependency": true,
+      "alignment_query_gradient_norm": 0.000225552124902606
+    },
+    {
+      "branch": "affine_relations",
+      "eval_fresh_L1_1": 6.637e-8,
+      "eval_fresh_L1_2": 1.621e-8,
+      "train_joint_L1_1": 2.013e-6,
+      "train_joint_L1_2": 3.406e-6,
+      "eval_after_one_pass_L1_1": 7.831e-8,
+      "eval_after_one_pass_L1_2": 2.123e-8,
+      "alignment_query_dependency": true,
+      "alignment_query_gradient_norm": 0.00007761517917970195
+    },
+    {
+      "branch": "affine_relations_zero_out_bias",
+      "eval_fresh_L1_1": 8.394e-8,
+      "eval_fresh_L1_2": 6.071e-8,
+      "train_joint_L1_1": 7.154e-6,
+      "train_joint_L1_2": 4.735e-5,
+      "eval_after_one_pass_L1_1": 1.070e-7,
+      "eval_after_one_pass_L1_2": 8.121e-8,
+      "alignment_query_dependency": true,
+      "alignment_query_gradient_norm": 0.0004843673959840089
+    }
+  ],
+  "selected_train_cases": ["liver_1", "liver_49"],
+  "selected_validation_cases": ["liver_109", "liver_3"],
+  "full_case_metrics_received": false,
+  "accuracy_improvement_established": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_checkpoint_written": false,
+  "limitations": [
+    "Normalized centered energy is not accuracy, amplitude or biological-information retention",
+    "Legacy L1 adds large shrinkage on one tile; this does not isolate FFN as sole cause or exclude L0 fusion",
+    "Reference changes multiple operator components and fresh initialization statistics",
+    "Single-class tile has no P x U ranking comparison; no alternative tile was substituted",
+    "Existing server JSON contains selected full-case evaluation, but console omitted those metrics"
+  ]
+}

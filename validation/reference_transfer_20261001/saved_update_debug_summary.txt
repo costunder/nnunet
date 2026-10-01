@@ -1,0 +1,35 @@
+SAVED REFERENCE L1 DIAGNOSTIC SUMMARY | No model execution, optimizer update or metric recomputation.
+Scope: normalized-energy spread and exact tile scores are diagnostics; full-case selected-case rankings are separate; not full accuracy or CP efficacy.
+run=D:\AI project\nnunet\work\local_cnn_experiment_resume_DEBUG_20261001\resumed | checkpoint=D:\AI project\nnunet\work\local_cnn_experiment_resume_DEBUG_20261001\resumed\attempts\0002\checkpoint_latest.pt
+snapshot | epoch=1 | step=4 | phase=complete | tile saved_next=unavailable | schedule_position=unavailable | actual_batch=unavailable | configured_batch=unavailable | P=unavailable | U=unavailable
+tile selection=unavailable
+
+BRANCH legacy
+  optimizer=fresh AdamW; no saved moments reused
+  stored_updates=2 | requested_steps=2
+  before | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=1.0 | pair-win=1.0 | rank_loss=0.6763873100280762 | R@1=1.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=1.0 | pair-win=1.0 | rank_loss=0.6763873100280762 | R@1=1.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[1]
+  validation aggregate | MRR=1.0 | pair-win=1.0 | rank_loss=0.691785991191864 | R@1=1.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=1.0 | pair-win=1.0 | rank_loss=0.691785991191864 | R@1=1.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[1]
+  after | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=1.0 | pair-win=1.0 | rank_loss=0.6859486699104309 | R@1=1.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=1.0 | pair-win=1.0 | rank_loss=0.6859486699104309 | R@1=1.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[1]
+  validation aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.7018608450889587 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.7018608450889587 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+
+BRANCH reference
+  optimizer=fresh AdamW; no saved moments reused
+  stored_updates=2 | requested_steps=2
+  before | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.697445809841156 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.697445809841156 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+  validation aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.6933804154396057 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.6933804154396057 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+  after | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.7000650763511658 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.7000650763511658 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+  validation aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.6932896375656128 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.6932896375656128 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+
+Stored flags | preserved=True | checkpoint_written=False | training_started=False | ready=False | full_training=False | full_evaluation=False

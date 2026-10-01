@@ -1,0 +1,56 @@
+SAVED REFERENCE L1 DIAGNOSTIC SUMMARY | No model execution, optimizer update or metric recomputation.
+Scope: normalized-energy spread and exact tile scores are diagnostics; full-case selected-case rankings are separate; not full accuracy or CP efficacy.
+run=D:\AI project\nnunet\work\local_cnn_experiment_resume_DEBUG_20261001\resumed | checkpoint=D:\AI project\nnunet\work\local_cnn_experiment_resume_DEBUG_20261001\resumed\attempts\0002\checkpoint_latest.pt
+snapshot | epoch=1 | step=4 | phase=complete | tile saved_next=False | schedule_position=0 | actual_batch=2 | configured_batch=2 | P=unavailable | U=unavailable
+tile selection=first deterministic complete-schedule tile; no saved next optimization tile available in this phase
+
+BRANCH legacy
+  mode=eval_fresh | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00030093928216956556(ratio=0.9946117874471971) -> L1_2=0.00031228995067067444(ratio=1.0377174705119196) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00030093928216956556(ratio=0.9946117874471971) -> L1_2=0.00031228995067067444(ratio=1.0377174705119196) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00030093928216956556(ratio=0.9946117874471971) -> L1_2=0.00031228995067067444(ratio=1.0377174705119196) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  query gradients | ranking:dep=True,norm=0.37789860367774963,loss=0.695321798324585 | observation_ce:dep=True,norm=0.1887550801038742,loss=0.6942741870880127 | alignment:dep=False,norm=none (no query dependency),loss=0.5165362358093262
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=1.0 | pair-win=1.0 | rank_loss=0.6763873100280762 | R@1=1.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=1.0 | pair-win=1.0 | rank_loss=0.6763873100280762 | R@1=1.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[1]
+  validation aggregate | MRR=1.0 | pair-win=1.0 | rank_loss=0.691785991191864 | R@1=1.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=1.0 | pair-win=1.0 | rank_loss=0.691785991191864 | R@1=1.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[1]
+
+BRANCH raw_columns
+  mode=eval_fresh | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00016847264487296343(ratio=0.5568062675135905) -> L1_2=7.556869240943342e-05(ratio=0.4485517068151681) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=0.0003025695914402604 -> L1_1=0.003165122587233782(ratio=10.460808609905223) -> L1_2=0.005270638037472963(ratio=1.6652239817603198) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00019392906688153744(ratio=0.6409403732821147) -> L1_2=9.566528024151921e-05(ratio=0.4933003689434387) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  query gradients | ranking:dep=True,norm=4.101590156555176,loss=0.7055813074111938 | observation_ce:dep=True,norm=2.039353370666504,loss=0.6998515129089355 | alignment:dep=True,norm=0.0488787442445755,loss=0.4687921404838562
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.697445809841156 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.697445809841156 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+  validation aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.6933804154396057 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.6933804154396057 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+
+BRANCH affine_relations
+  mode=eval_fresh | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00016859694733284414(ratio=0.5572170902247857) -> L1_2=7.566334534203634e-05(ratio=0.44878241592750634) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00317961722612381(ratio=10.508713750739211) -> L1_2=0.0053156903013587(ratio=1.6718019570673046) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00019407644867897034(ratio=0.6414274737760254) -> L1_2=9.579718607710674e-05(ratio=0.4936054154389888) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  query gradients | ranking:dep=True,norm=4.116996765136719,loss=0.7058161497116089 | observation_ce:dep=True,norm=2.0467686653137207,loss=0.6999953985214233 | alignment:dep=True,norm=0.04886162653565407,loss=0.468766450881958
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.6974771022796631 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.6974771022796631 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+  validation aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.6933794617652893 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.6933794617652893 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+
+BRANCH affine_relations_zero_out_bias
+  mode=eval_fresh | normalized_energy L0=0.0003025695914402604 -> L1_1=0.00025216134963557124(ratio=0.8333995112835328) -> L1_2=0.00025439629098400474(ratio=1.00886314001596) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=train_joint_batch_statistics_dropout_disabled | normalized_energy L0=0.0003025695914402604 -> L1_1=0.004664544016122818(ratio=15.416433601007752) -> L1_2=0.006178345065563917(ratio=1.3245335544500607) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  mode=eval_after_one_same_tile_bn_pass | normalized_energy L0=0.0003025695914402604 -> L1_1=0.0002876384533010423(ratio=0.9506522183272138) -> L1_2=0.00030864859581924975(ratio=1.0730435804986693) | tile_status=MEASURED | pair-win=0.0 | observed=1 | candidates=2
+  query gradients | ranking:dep=True,norm=3.2348709106445312,loss=0.695178747177124 | observation_ce:dep=True,norm=1.618679404258728,loss=0.7220498323440552 | alignment:dep=True,norm=0.04319876804947853,loss=0.24454236030578613
+  gradient_scope=query L0-output derivatives; CNN parameters are not recomputed here
+  initial_full_case_evaluation (separate from physical tile) | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=1.0 | pair-win=1.0 | rank_loss=0.6827462315559387 | R@1=1.0 | R@5=1.0 | R@10=1.0
+    case=liver_66 | records=2 | retained=True | MRR=1.0 | pair-win=1.0 | rank_loss=0.6827462315559387 | R@1=1.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[1]
+  validation aggregate | MRR=0.5 | pair-win=0.0 | rank_loss=0.703253984451294 | R@1=0.0 | R@5=1.0 | R@10=1.0
+    case=liver_31 | records=2 | retained=True | MRR=0.5 | pair-win=0.0 | rank_loss=0.703253984451294 | R@1=0.0 | R@5=1.0 | R@10=1.0 | observed_ranks=[2]
+
+Stored flags | preserved=True | checkpoint_written=False | training_started=False | ready=False | full_training=False | full_evaluation=False
+Limitations: Multiple reference operator and initialization changes remain; no single-factor causal attribution | One same-tile BN pass is neither validated calibration nor trained running statistics | Tile pair-win/spread are diagnostic values, not full-case MRR or CP accuracy | A detached-query gradient probe does not independently measure CNN parameter gradients

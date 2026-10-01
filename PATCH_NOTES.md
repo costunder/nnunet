@@ -4,6 +4,7 @@
 - 같은 native CT tile·L0·support에서 optimizer 없이 eval-fresh/joint train BN/한 pass 후 eval의 세 모드를 비교. 후보 표현 단계별 에너지, 실제 degree/bias, 원래 loss coefficient별 query gradient를 저장한다.
 - Joint BN의 support alignment→query gradient 경로는 기존 loss 공식 보존과 별개로 명시. 단위/회귀34개와 실제 CT physical32·전체133관측 smoke 및 zero-update CLI 통과. Production121파일·이전 증거 보존, DEBUG 분산 회복을 정확도 개선으로 선언하지 않음. 장기 학습·production 기본 모델·CP·후보128·원본 mask 변경 없음. [검토 반영과 실행](docs/local_cnn_reference_transfer_20261001.md).
 - 이전6a02e9b의 서버4-update 콘솔 수신: reference validation MRR .50510→.25394, pair-win .45229→.48661. 개선 근거 없음; 전체 JSON/epoch/step 미수신 범위 명시. 최근 host의 실제 GPU3 선택 성공을 실행 안내에 반영하고 신규 고정 비교와 기록을 분리한다.
+- f803c45 서버 고정 비교 수신: 같은 tile에서 legacy L1 energy 약32,721배 수축, affine+bias0는 L0대비 약73.92% energy 유지. 단일 class tile의 NOT_EVALUABLE 보존, 정확도 개선으로 해석하지 않음. 이미 저장한 전체 case MRR·pair-win·모든 observed rank를 읽는 stdlib 요약기 및 미래 콘솔 연결 추가. 기존 JSON 재계산·GPU/학습 실행 없음.
 
 ## v2.2 — 공식 기본 L1 대조 경로 (2026-10-01)
 

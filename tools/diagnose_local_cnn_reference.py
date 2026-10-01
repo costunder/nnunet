@@ -136,6 +136,7 @@ def diagnose(a):
             selection=('exact saved next optimization tile' if is_next else
                 'first deterministic complete-schedule tile; no saved next optimization tile available in this phase'),
             saved_phase=state['phase'], saved_next_batch=cursor, actual_batch=len(ids),
+            positive_count=int((truth==1).sum()), unobserved_count=int((truth==0).sum()),
             original_physical_batch=batch, input_tensor_shape=list(query.images.shape),
             input_sha256=hash_state({k:v for k,v in vars(query).items() if k!='_verified_signature'}),
             support_record_ids=records, query_group=group)
@@ -181,24 +182,8 @@ def diagnose(a):
     a.output.parent.mkdir(parents=True, exist_ok=True)
     with a.output.open('x', encoding='utf-8') as handle:
         json.dump(report, handle, ensure_ascii=False, indent=2, allow_nan=False)
-    if a.fixed_only:
-        for branch in comparison['branches']:
-            for row in branch['modes']:
-                energy = [row['L0']['normalized_centered_energy']] + [
-                    layer['stages']['output']['normalized_centered_energy'] for layer in row['layers']]
-                print(f"{branch['branch']} | {row['mode']} | normalized energy "
-                      + ' -> '.join(f'{value:.4g}' for value in energy)
-                      + f" | tile pair-win={row['score'].get('pair_win_rate', row['score']['status'])}", flush=True)
-            route = branch['per_loss_query_gradient']['losses']['alignment']
-            print(f"{branch['branch']} | alignment query dependency={route['query_embedding_dependency']} "
-                  f"norm={route['query_embedding_gradient_norm']}", flush=True)
-    else:
-        for branch in comparison['branches']:
-            for split in ('train', 'validation'):
-                before, after = branch['before'][split], branch['after'][split]
-                print(f"{branch['branch']} {split} | MRR {before['metrics']['ranking_mrr']:.5f} -> "
-                      f"{after['metrics']['ranking_mrr']:.5f} | pair-win {before['pair_win_rate']:.5f} -> "
-                      f"{after['pair_win_rate']:.5f}", flush=True)
+    from tools.summarize_local_cnn_reference import format_summary
+    print(format_summary(report), flush=True)
     print(f'REPORT: {a.output}\nShort cloned comparison completed; original experiment unchanged. Not a full accuracy evaluation.', flush=True)
     return report
 

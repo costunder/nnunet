@@ -145,7 +145,68 @@ reference는 초기 점수 경로가 다르므로 초기 성능도 같지 않다
 모델을 자동 교체하지 않는다. 다음 전달 명령은 기존 snapshot을 읽어 update
 이전 차이를 세 전이·BN mode로 분리하는 진단이다.
 
-## 서버 실행
+## 서버 고정 가중치 결과와 저장된 전체 case 평가 출력
+
+사용자가 제공한 `reference_fixed_20261001_185138.json` 완료 콘솔은 `f803c45`의
+zero-update 결과다. Actual batch32, 전체 schedule533개 중 첫 tile이며
+saved-next=False다. 이 tile의 score는 NOT_EVALUABLE로 출력됐다. Helper는
+한 observation class만 있는 tile에서 이 값을 기록하므로 P×U ranking 쌍이
+없다는 뜻이다. 실제 P 개수·class·snapshot epoch/step은 콘솔에 없어 추정하지
+않는다. 이 tile을 더 좋은 case로 바꾸거나 실패로 감추지 않았다.
+
+동일 L0의 normalized centered energy는 8.213e-8이다. 아래 값은 콘솔 반올림
+값에서 계산한 **방향 에너지 비율**이며 정확도·feature amplitude·생물학적
+정보 손실률이 아니다.
+
+| 초기 eval | L1 최종 normalized centered energy | L0 대비 비율 |
+| --- | ---: | ---: |
+| legacy | 2.510e-12 | 약 0.00306% |
+| raw_columns | 1.648e-8 | 약 20.07% |
+| affine_relations | 1.621e-8 | 약 19.74% |
+| affine_relations_zero_out_bias | 6.071e-8 | 약 73.92% |
+
+Legacy L1의 1층은 약21.80배, 2층은 추가 약1,500.80배, 전체 약32,721배
+energy를 수축시킨다. Affine+bias0 reference에서는 전체 수축이 약1.35배다.
+Affine relation remap만으로는 raw보다 energy가 커지지 않았다. Reference
+중 bias0 차이는 이 초기화의 degree-bias 수축 영향을 보여주지만, 전체 operator
+차이까지 한 요인으로 분리하거나 순위 개선으로 판정하지 않는다. L0 자체도 이
+tile에서 거의 공통 방향이며, 기존 fusion/readout의 문제가 없어졌다는 뜻이 아니다.
+
+Joint train BN에서 reference energy가 크게 늘어도 ranking 비교는 여전히
+NOT_EVALUABLE다. Alignment→query gradient는 legacy에서 None, raw/affine/
+bias0에서 각각 2.255521e-4/7.761518e-5/4.843674e-4였다. 기존 loss 공식과
+달라진 gradient dependency를 구분한다. 전체 서버 JSON은 로컬 미수신이고
+콘솔 전사는 `server_fixed_console_summary.json`에 별도로 보존한다.
+
+**콘솔 출력에서 전체 case 지표를 빠뜨린 것을 수정했다.** 당시 진단은 이미
+네 선택 case의 모든 후보 MRR·pair-win·각 관측 종양 순위를 계산해
+`comparison.branches[].initial_full_case_evaluation`에 저장했다. 기존 콘솔은
+tile mode/gradient만 출력해서 그 순위 결과가 보이지 않았다. 새
+`summarize_local_cnn_reference.py`는 저장 JSON만 읽고, 모델/GPU/optimizer를
+실행하지 않는다. 모든 branch/split/case와 전체 observed rank 목록을 출력하고,
+없는 값은 unavailable/NOT_RUN으로 둔다. 일부 페이지나 case로 잘라내지 않는다.
+미래 진단 CLI도 이 같은 요약 함수를 사용해 전체 case 결과를 표시한다.
+
+요약 도구의 CPU 검사21개가 통과했다. 고정 비교와 이전 update 비교의 저장
+JSON 두 종류를 `python -S`로 읽어 site-packages 없이 실행했고, 입력 파일의
+SHA256이 그대로임을 확인했다. 누락 batch/update 수를 추정하지 않고,
+case별 R@1/5/10과 gradient NOT_RUN 사유도 표시한다. Production source121개와
+이전 검사 결과의 hash는 그대로다. 새 증거는 `saved_summary_checks.json`과
+`saved_summary_unit_log.txt`에 기록했다. 이 검사는 JSON 출력 검증이며 새 GPU
+smoke나 서버 성능 검증이 아니다.
+
+기존 결과를 읽는 명령은 다음과 같다. Production 모델이나 기존 결과를 바꾸지
+않고 새 summarizer만 설치한다. GPU 선택 입력은 필요 없는 파일 읽기 명령이다.
+
+```bash
+cd /home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba &&
+git fetch origin codex/v222-server-r6 &&
+git checkout --detach FETCH_HEAD &&
+python -u tools/summarize_local_cnn_reference.py \
+  /home/aicompetition06/Medical/experiments/reference_fixed_20261001_185138.json
+```
+
+## 새 GPU 진단 실행이 필요한 경우의 원래 명령
 
 가장 최근 사용자가 제공한 host 터미널에서는 물리 GPU3 선택이 성공했으므로
 `CP_GPU=3`을 유지한다. A6000 하나만 GPU0으로 노출된 Singularity 안에서 실행할
