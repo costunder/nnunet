@@ -1,5 +1,6 @@
 ## v2.2 — reference L1 전이·BN 고정 가중치 대조 (2026-10-01)
 
+- da9b1bb 실제 A6000 순위 활성4-update 결과 수신: 두 branch 모든8회 physical32/P16+U16/256쌍 및 CNN/L1/L2 ranking gradient 확인. Reference CNN gradient212~423배 증가와 추천 개선을 구분. 검증 R@5 .178571→.071429, R@10 .214286→.107143, 단일 관측68위→105위로 개선 근거 없음. Update case liver_117이 평가에서 빠진 범위, fresh BN/teacher/bank 단계와 full-objective 방향 미측정 항목 기록. 원문·16case·8update 전사 보존; production/모델 변경·새 학습 없음.
 - 최신 서버 신호에서 이전4회씩의 복제 update 모두 rank pairs/loss0 확인. CE/alignment만 변한 대조를 순위 학습 증거로 쓰지 않음. 기존 결과 보존.
 - 원래 complete schedule의 full physical P/U tile을 명시적으로 고르는 DEBUG 경로 추가. 전체 관측·loss 정규화·multiplicity 유지; 부족 시 오류. 매 update의 rank-only CNN/readout/L1/L2 gradient·원본 schedule·P/U를 출력.
 - RTX5070Ti 실제 CT에서 physical32/P5+U27/135쌍, 양성5+미관측128 전체 case 평가, 두 clone 각1회 rank-gradient/전체 backward/optimizer smoke 통과. 추가44개 helper/회귀 및 production121파일 hash 보존. 장기 학습·production 모델 교체·정확도 향상 주장 없음. 원문·전사·GPU 결과는 `validation/reference_rankable_20261001`.

@@ -4,6 +4,74 @@
 이번 변경은 production L1을 바꾸는 패치가 아니다. 제공된 독립 검토의 전이 문제를
 별도 진단으로 드러내고, optimizer update 이전의 동일 입력 비교를 추가한다.
 
+## 최신 서버 결과: 순위 gradient는 살아났지만 추천 개선은 확인되지 않음
+
+사용자 `211a6441` 첨부 전체를 수신했다. 실행 commit은 `da9b1bb`, 물리 GPU3
+RTX A6000, snapshot은 epoch39/step21320/refresh_memory다. 원래 전체533개 tile과
+11,279개 학습 관측·67,456개의 P×U 비교 정규화가 유지됐다. 선택한 원래
+schedule 위치4/5/6/7은 모두 liver_117이며, 각 batch는 P16+U16=physical32,
+256쌍이다. 두 branch의 모든8 update에서 순위 전용 CNN/readout/L1/L2 gradient가
+비영·유한 값으로 측정됐다. 이전의 rank0 prefix 문제가 이번 실행에는 없다.
+
+Reference의 CNN ranking gradient norm은 같은 step의 legacy보다212~423배,
+readout은173~430배 크다. CNN/readout의 parameter 구조와 초기 값은 같지만
+reference의 L1 연산·새 BN·새 AdamW는 다르다. Norm 증가를 유효한 특징 학습,
+최종 optimizer 방향 또는 정확도 향상으로 바꿔 설명하지 않는다.
+
+| 평가 | Legacy 전→후 | Reference 전→후 |
+| --- | --- | --- |
+| train2case MRR | .121795→.105556 | .196429→.102679 |
+| train2case pair-win | .495716→.518901 | .535786→.500756 |
+| validation2case MRR | .541667→.541667 | .507353→.504762 |
+| validation2case pair-win | .643973→.648158 | .606027→.586775 |
+| validation R@5 | .142857→.142857 | .178571→.071429 |
+| validation R@10 | .178571→.178571 | .214286→.107143 |
+
+Reference의 검증 R@5는 관측 종양5/28→2/28, R@10은6/28→3/28이다.
+liver_3의 단일 종양은68위→105위로 밀렸다. liver_109는 여전히 첫 종양이1위라
+MRR은1이지만, top5/top10에 들어간 다른 종양 수는 줄었다. 따라서 aggregate
+MRR이 거의 유지된다는 이유로 추천 품질이 유지됐다고 결론 내리면 안 된다.
+
+**이번 비교가 직접 확인한 것은 순위 gradient 경로와, 선택된 다른 case들에 대한
+짧은 update의 전이 효과다.** 실제 update 대상 liver_117은 출력된 평가 목록에
+없다. Train 평가 대상은 liver_1/liver_49, validation은 liver_109/liver_3다.
+따라서 학습한 tile/case 자체가 더 잘 맞춰졌는지는 미측정이다. 각 update도 서로
+다른 native tile이므로 step1→4 loss를 동일 batch에서의 하강 곡선으로 해석하지
+않는다. 미측정 항목을 0점이나 성공으로 채우지 않는다.
+
+표시된 weighted ranking loss 약1.37은 전체 epoch 정규화가 적용된 값이다.
+256쌍인 tile에서는 평균 pair loss에 `533×256/67456=2.02277039848`을 곱한
+값이다. Evaluation의 평균 loss 약.693과 직접 비교하지 않는다. 같은 계수라
+branch 간 gradient norm의 차이를 이 정규화로 설명할 수도 없다.
+
+남아 있는 구분은 다음과 같다. Code에서 확인한 계약 차이이며 이번 콘솔에서
+영향 크기나 주원인이 측정됐다는 뜻은 아니다.
+
+1. Reference train은 joint BN이고 eval은 새 BN의 running statistics를 사용한다.
+   네 update 후의 통계·parameter 영향을 분리하지 않았다.
+2. 네 update의 support teacher는 같은 group에서 고정된다. 평가에서는 full
+   eligible support와 새 teacher를 사용한다. 원래 episode 계약은 유지되어 있다.
+3. Snapshot이 refresh_memory이므로 query는 현재 CNN, support는 저장된 완료
+   bank다. Refresh 완료 여부/진행 cursor가 콘솔에 없어 완전히 갱신된 epoch 평가로
+   부르면 안 된다.
+4. 최종 optimizer는 ranking+CE+alignment 합을 사용한다. Ranking-only norm이
+   커져도 이 합의 update가 ranking을 개선한다는 보장은 없다. Loss별 gradient의
+   방향이나 같은 tile의 전후 margin은 이번 출력에 없다.
+
+다음 진단이 필요하다면 새 장기 학습에 앞서 **실제 update한 liver_117의 원래
+전체 후보와 동일 native tile의 전후 margin**을 기존 case 평가와 분리해서
+확인해야 한다. 같은 support/teacher에서 dropout·BN 모드를 분리하고, 동일
+forward에서 rank↔CE/alignment gradient 방향을 확인하는 범위다. 기존 L0/L2/loss,
+BasicCP/후보128/mask를 동시에 바꿀 이유는 이번 결과에 없다. 이 후속 진단은
+이번 수신·기록 작업에서 실행하거나 구현 완료로 표시하지 않았다.
+
+서버 원문과16case/8update 전체 숫자 및 계산한 차이는
+`validation/reference_rankable_20261001/server_rankable_result_original.txt`와
+`server_rankable_result_transcription.json`에 보존했다. 원본 서버 JSON은 로컬에
+없으며 콘솔에 없는 BN state·full gradient cosine·update delta는 미수신이다.
+모델 교체·새 GPU 실행·production 학습은 하지 않았다. 이번 작업은 **실제로
+수신한 A6000 GPU 결과의 해석과 기록**이며 CPU model 검사를 새로 한 것이 아니다.
+
 ## 최신 수신: 기존 4-update에서 순위 비교가 없었던 문제 수정
 
 `fffd1a29` 첨부의 두 서버 신호 출력 전체를 확인했다. Snapshot은

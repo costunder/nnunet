@@ -1,0 +1,97 @@
+
+(nnunet) aicompetition06@ece-a6gpu8:~/Medical/HierCP-diagnosis-2ce11ba$ CP_GPU=3
+cd /home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba &&
+git fetch origin codex/v222-server-r6 &&
+git checkout --detach da9b1bb &&
+python -u tools/diagnose_local_cnn_reference.py \
+  --gpu "$CP_GPU" \
+  --run /home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42 \
+  --output "/home/aicompetition06/Medical/experiments/reference_rankable_$(date +%Y%m%d_%H%M%S).json" \
+  --steps 4 \
+  --update-selection rankable_full_batch_prefix \
+  --update-reference-policy affine_relations_zero_out_bias \
+  --cases-per-split 2 --workers 8 \
+  --cuda-gib 24 --rss-gib 64 --resident-gib 24
+
+From https://github.com/costunder/nnunet
+ * branch            codex/v222-server-r6 -> FETCH_HEAD
+HEAD is now at da9b1bb Verify ranking-active reference controls on native CUDA CT
+GPU selection | physical=3 | type=GPU | CUDA_VISIBLE_DEVICES=GPU-5bc3009f-a738-c66c-f7e7-0583dabe9e0e
+CLONED DEBUG comparison | run=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42
+checkpoint=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt
+DEBUG update selection | {"policy": "rankable_full_batch_prefix", "reference_transfer": "affine_relations_zero_out_bias", "original_schedule_tiles": 533, "original_physical_batch": 32, "selected": [{"schedule_index": 4, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}, {"schedule_index": 5, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}, {"schedule_index": 6, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}, {"schedule_index": 7, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}]}
+CT train liver_1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:20<00:00,  4.19s/it]
+CT train liver_49: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:04<00:00,  1.15it/s]
+CT validation liver_109: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:21<00:00,  4.29s/it]
+CT validation liver_3: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:12<00:00,  2.43s/it]
+DEBUG | 4 updates/branch, original batch=32, CNN channels=[12, 24, 32], L1=2x128D/4heads, L2=2 | NVIDIA RTX A6000
+CLONED legacy L1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:40<00:00, 10.19s/it, batch=32, loss=2.453, seconds=6.47]
+CLONED reference L1: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:26<00:00,  6.54s/it, batch=32, loss=3.811, seconds=6.44]
+SAVED REFERENCE L1 DIAGNOSTIC SUMMARY | No model execution, optimizer update or metric recomputation.
+Scope: normalized-energy spread and exact tile scores are diagnostics; full-case selected-case rankings are separate; not full accuracy or CP efficacy.
+run=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42 | checkpoint=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt
+snapshot | epoch=39 | step=21320 | phase=refresh_memory | tile saved_next=unavailable | schedule_position=unavailable | actual_batch=unavailable | configured_batch=unavailable | P=unavailable | U=unavailable
+tile selection=unavailable
+DEBUG update selection | policy=rankable_full_batch_prefix | original_schedule_tiles=533 | full_cohort_observations=11279 | configured_batch=32 | selected_schedule_indices=[4, 5, 6, 7]
+  original normalization | steps=533 | ranking_pairs=67456 | scope=unchanged full-cohort LiveContext; never selected-prefix normalization
+  selected tile | schedule_index=4 | case=liver_117 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+  selected tile | schedule_index=5 | case=liver_117 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+  selected tile | schedule_index=6 | case=liver_117 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+  selected tile | schedule_index=7 | case=liver_117 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+
+BRANCH legacy
+  optimizer=fresh AdamW; no saved moments reused
+  stored_updates=4 | requested_steps=4
+  update step=1 | schedule_index=4 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.3686386346817017 | CNN=6.859168934170157e-05 | readout_fusion=0.0021648267284035683 | L1=0.5205195546150208 | L2=0.19150692224502563
+  update step=2 | schedule_index=5 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.379416584968567 | CNN=5.075710214441642e-05 | readout_fusion=0.0021211334969848394 | L1=0.18064890801906586 | L2=0.19086569547653198
+  update step=3 | schedule_index=6 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.3889789581298828 | CNN=8.871763566276059e-05 | readout_fusion=0.0019688846077769995 | L1=0.1787702590227127 | L2=0.30486616492271423
+  update step=4 | schedule_index=7 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.3938380479812622 | CNN=6.276828935369849e-05 | readout_fusion=0.0023624813184142113 | L1=0.36137855052948 | L2=0.1967781037092209
+  before | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.12179487179487179 | pair-win=0.4957157219609907 | rank_loss=0.6931467652320862 | R@1=0.0 | R@5=0.0 | R@10=0.03225806451612903
+    case=liver_1 | records=139 | retained=True | MRR=0.16666666666666666 | pair-win=0.5546875 | rank_loss=0.693146288394928 | R@1=0.0 | R@5=0.0 | R@10=0.09090909090909091 | observed_ranks=[6, 25, 27, 30, 53, 62, 63, 76, 106, 113, 124]
+    case=liver_49 | records=148 | retained=True | MRR=0.07692307692307693 | pair-win=0.4632812440395355 | rank_loss=0.6931468844413757 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[13, 16, 37, 41, 48, 53, 55, 57, 62, 69, 76, 86, 87, 89, 99, 105, 113, 118, 130, 143]
+  validation aggregate | MRR=0.5416666666666666 | pair-win=0.6439732377018247 | rank_loss=0.6931470036506653 | R@1=0.03571428571428571 | R@5=0.14285714285714285 | R@10=0.17857142857142858
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.6342592835426331 | rank_loss=0.6931469440460205 | R@1=0.037037037037037035 | R@5=0.14814814814814814 | R@10=0.18518518518518517 | observed_ranks=[1, 2, 3, 5, 10, 12, 16, 18, 19, 26, 37, 46, 48, 49, 51, 55, 62, 64, 93, 98, 108, 112, 114, 121, 138, 142, 145]
+    case=liver_3 | records=129 | retained=True | MRR=0.08333333333333333 | pair-win=0.90625 | rank_loss=0.693146824836731 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[12]
+  after | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.10555555555555556 | pair-win=0.5189012212138022 | rank_loss=0.6931467652320862 | R@1=0.0 | R@5=0.0 | R@10=0.06451612903225806
+    case=liver_1 | records=139 | retained=True | MRR=0.1 | pair-win=0.5561079978942871 | rank_loss=0.6931464672088623 | R@1=0.0 | R@5=0.0 | R@10=0.09090909090909091 | observed_ranks=[10, 22, 24, 28, 52, 60, 69, 70, 113, 114, 125]
+    case=liver_49 | records=148 | retained=True | MRR=0.1111111111111111 | pair-win=0.4984374940395355 | rank_loss=0.6931470632553101 | R@1=0.0 | R@5=0.0 | R@10=0.05 | observed_ranks=[9, 13, 19, 28, 35, 38, 39, 54, 69, 70, 79, 81, 85, 86, 98, 107, 112, 117, 132, 141]
+  validation aggregate | MRR=0.5416666666666666 | pair-win=0.6481584906578064 | rank_loss=0.6931468844413757 | R@1=0.03571428571428571 | R@5=0.14285714285714285 | R@10=0.17857142857142858
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.6383101940155029 | rank_loss=0.6931469440460205 | R@1=0.037037037037037035 | R@5=0.14814814814814814 | R@10=0.18518518518518517 | observed_ranks=[1, 2, 3, 4, 9, 11, 14, 19, 23, 27, 32, 36, 44, 49, 50, 52, 54, 56, 94, 108, 113, 115, 122, 130, 135, 140, 147]
+    case=liver_3 | records=129 | retained=True | MRR=0.08333333333333333 | pair-win=0.9140625 | rank_loss=0.6931467056274414 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[12]
+
+BRANCH reference
+  optimizer=fresh AdamW; no saved moments reused
+  stored_updates=4 | requested_steps=4
+  update step=1 | schedule_index=4 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.3949745893478394 | CNN=0.014512544497847557 | readout_fusion=0.37468400597572327 | L1=1.8785605430603027 | L2=0.1882844716310501
+  update step=2 | schedule_index=5 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.4158843755722046 | CNN=0.01760130748152733 | readout_fusion=0.5681723952293396 | L1=8.22387981414795 | L2=0.36275941133499146
+  update step=3 | schedule_index=6 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.3928470611572266 | CNN=0.03753748908638954 | readout_fusion=0.846173882484436 | L1=14.024080276489258 | L2=0.46090057492256165
+  update step=4 | schedule_index=7 | P=16 | U=16 | actual_batch=32 | ranking_pairs=256
+    ranking-only parameter gradients | status=MEASURED | weighted_loss=1.3775018453598022 | CNN=0.023200737312436104 | readout_fusion=0.6275393962860107 | L1=5.184383869171143 | L2=0.3638056516647339
+  before | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.19642857142857142 | pair-win=0.5357863210862682 | rank_loss=0.6931460499763489 | R@1=0.0 | R@5=0.03225806451612903 | R@10=0.06451612903225806
+    case=liver_1 | records=139 | retained=True | MRR=0.25 | pair-win=0.5326704978942871 | rank_loss=0.6931454539299011 | R@1=0.0 | R@5=0.09090909090909091 | R@10=0.09090909090909091 | observed_ranks=[4, 21, 24, 29, 64, 66, 81, 99, 102, 106, 122]
+    case=liver_49 | records=148 | retained=True | MRR=0.14285714285714285 | pair-win=0.5375000238418579 | rank_loss=0.6931464076042175 | R@1=0.0 | R@5=0.0 | R@10=0.05 | observed_ranks=[7, 13, 21, 22, 25, 26, 34, 38, 52, 63, 78, 80, 97, 98, 102, 108, 113, 117, 120, 141]
+  validation aggregate | MRR=0.5073529411764706 | pair-win=0.6060267771993365 | rank_loss=0.6931467056274414 | R@1=0.03571428571428571 | R@5=0.17857142857142858 | R@10=0.21428571428571427
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.6116898059844971 | rank_loss=0.6931466460227966 | R@1=0.037037037037037035 | R@5=0.18518518518518517 | R@10=0.2222222222222222 | observed_ranks=[1, 2, 3, 4, 5, 10, 11, 20, 27, 32, 34, 40, 41, 45, 48, 57, 74, 75, 96, 112, 121, 122, 133, 138, 142, 143, 149]
+    case=liver_3 | records=129 | retained=True | MRR=0.014705882352941176 | pair-win=0.453125 | rank_loss=0.6931469440460205 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[68]
+  after | scope=all candidates of explicitly selected cases; not full validation or CP efficacy | support=full eligible saved detached epoch L0; own L1/L2 and teacher plan
+  train aggregate | MRR=0.10267857142857142 | pair-win=0.5007560426189054 | rank_loss=0.6931465864181519 | R@1=0.0 | R@5=0.0 | R@10=0.03225806451612903
+    case=liver_1 | records=139 | retained=True | MRR=0.0625 | pair-win=0.5369318127632141 | rank_loss=0.693146288394928 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[16, 24, 41, 44, 65, 66, 76, 79, 90, 100, 111]
+    case=liver_49 | records=148 | retained=True | MRR=0.14285714285714285 | pair-win=0.4808593690395355 | rank_loss=0.693146824836731 | R@1=0.0 | R@5=0.0 | R@10=0.05 | observed_ranks=[7, 13, 21, 40, 43, 45, 55, 61, 64, 72, 78, 91, 95, 97, 105, 108, 118, 123, 129, 132]
+  validation aggregate | MRR=0.5047619047619047 | pair-win=0.5867745812450137 | rank_loss=0.693146824836731 | R@1=0.03571428571428571 | R@5=0.07142857142857142 | R@10=0.10714285714285714
+    case=liver_109 | records=155 | retained=True | MRR=1.0 | pair-win=0.6018518805503845 | rank_loss=0.6931468844413757 | R@1=0.037037037037037035 | R@5=0.07407407407407407 | R@10=0.1111111111111111 | observed_ranks=[1, 4, 9, 12, 14, 18, 19, 27, 31, 39, 46, 47, 49, 56, 57, 58, 68, 70, 76, 91, 92, 126, 129, 141, 144, 147, 149]
+    case=liver_3 | records=129 | retained=True | MRR=0.009523809523809525 | pair-win=0.1796875 | rank_loss=0.6931478381156921 | R@1=0.0 | R@5=0.0 | R@10=0.0 | observed_ranks=[105]
+
+Stored flags | preserved=True | checkpoint_written=False | training_started=False | ready=False | full_training=False | full_evaluation=False
+
+REPORT: /home/aicompetition06/Medical/experiments/reference_rankable_20261001_214930.json
+Short cloned comparison completed; original experiment unchanged. Not a full accuracy evaluation.
