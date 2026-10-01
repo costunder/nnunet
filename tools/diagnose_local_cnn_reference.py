@@ -84,6 +84,9 @@ def diagnose(a):
     update_selection = getattr(a, 'update_selection', None) or 'complete_prefix'
     update_reference_policy = getattr(a, 'update_reference_policy', None) or 'raw_columns'
     causal_probe = getattr(a, 'causal_probe', False)
+    finite_shadow_score = getattr(a, 'finite_shadow_score', False)
+    if finite_shadow_score and not causal_probe:
+        raise ValueError('Finite shadow scoring requires explicit --causal-probe')
     fitted_ids = []
     if not a.fixed_only:
         admission = select_update_tiles(schedule, steps=a.steps, loss_context=context,
@@ -185,7 +188,8 @@ def diagnose(a):
             training=ds.meta['base']['training'], seed=ds.meta['config']['seed'],
             evaluation_provider=prior_evaluate, selection_policy=update_selection,
             transfer_policy=update_reference_policy, causal_probe=causal_probe,
-            fitted_evaluation_provider=(lambda model, names: evaluate(model, case_ids=names)) if causal_probe else None)
+            fitted_evaluation_provider=(lambda model, names: evaluate(model, case_ids=names)) if causal_probe else None,
+            finite_shadow_score=finite_shadow_score)
     if hash_state(net.state_dict()) != model_hash or hash_state(memory) != memory_hash:
         raise AssertionError('Original loaded model or epoch support memory changed')
     report = dict(format='local_cnn_reference_comparison_debug_v1', actual_CT=True,
@@ -204,7 +208,8 @@ def diagnose(a):
             'tools/local_cnn_reference_fixed_probe.py') + ((
             'tools/local_cnn_reference_causal.py','tools/local_cnn_reference_objective_probe.py',
             'tools/local_cnn_reference_mode_probe.py','tools/local_cnn_reference_target_signal.py',
-            'tools/local_cnn_causal_summary.py') if causal_probe else ())}),
+            'tools/local_cnn_causal_summary.py') if causal_probe else ()) + ((
+            'tools/local_cnn_reference_finite_shadow.py',) if finite_shadow_score else ())}),
         input_contract=dict(margin_mm=identity['local_cnn']['margin_mm'],
             local_cnn=identity['local_cnn'], train_observations=len(ds), validation_observations=len(val),
             optimization_schedule=context.audit, candidate_subset='explicit diagnostic cases; every candidate retained',
@@ -261,6 +266,8 @@ def main():
                         help='Explicit reference initialization for cloned update controls')
     parser.add_argument('--causal-probe', action='store_true',
                         help='Opt-in fitted-case timeline, exact-forward loss/Adam directions, and isolated BN/dropout controls')
+    parser.add_argument('--finite-shadow-score', action='store_true',
+                        help='Opt-in exact rank/full shadow finite scoring, fixed pre-forward BN/dropout off; requires --causal-probe')
     parser.add_argument('--workers', type=int, required=True)
     parser.add_argument('--cuda-gib', type=float, required=True)
     parser.add_argument('--rss-gib', type=float, required=True)
@@ -275,6 +282,8 @@ def main():
         parser.error('Update comparison requires positive --steps; --transfer-policies belongs to --fixed-only')
     if args.causal_probe and args.update_selection != 'rankable_full_batch_prefix':
         parser.error('--causal-probe requires --update-selection rankable_full_batch_prefix')
+    if args.finite_shadow_score and not args.causal_probe:
+        parser.error('--finite-shadow-score requires --causal-probe')
     if (min(args.cases_per_split, args.workers) <= 0
             or not all(math.isfinite(v) and v > 0 for v in (args.cuda_gib, args.rss_gib, args.resident_gib))
             or args.resident_gib >= args.rss_gib):

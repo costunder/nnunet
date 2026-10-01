@@ -78,6 +78,16 @@ def format_causal_summary(comparison):
                 +' | exact full-Adam parity='+text(causal.get('shadow_full_matches_actual_update')))
             lines.append('    frozen tile before | '+score_fields(a))
             lines.append('    frozen tile after | '+score_fields(b))
+            finite = causal.get('finite_shadow_scores')
+            if finite:
+                lines.append('    finite shadow | fixed pre-forward BN/dropout off; native CNN re-encoded; same frozen teacher; train-mode gradients')
+                for name in ('no_change', 'rank_only', 'full'):
+                    arm = field(finite, 'arms', name)
+                    score = field(arm, 'score')
+                    lines.append('      '+name+' | margin='+number(field(score, 'mean_positive_minus_unobserved'))
+                        +' | '+score_fields(score)+' | scoring seconds='+number(field(arm, 'synchronized_scoring_seconds'))
+                        +' common score change='+number(field(arm, 'score_change_from_no_change', 'mean'))
+                        +' P-minus-U change='+number(field(arm, 'score_change_from_no_change', 'positive_minus_unobserved_mean_change')))
             objective=causal.get('objective_direction', {})
             for module in ('CNN','readout_fusion','L1','L2'):
                 row=field(objective, 'module_gradients', module);d=field(objective, 'delta_cosines', module)

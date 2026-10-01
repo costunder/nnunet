@@ -80,7 +80,7 @@ def _layout_copy(value, parameter):
                                dtype=parameter.dtype).copy_(value.detach())
 
 
-def _shadow_step(named, gradients, optimizer, state, grad_clip):
+def _shadow_step(named, gradients, optimizer, state, grad_clip, *, score_callback=None):
     parameters = [nn.Parameter(_layout_copy(parameter, parameter)) for _, parameter in named]
     mapping = {id(parameter): shadow for (_, parameter), shadow in zip(named, parameters)}
     groups = [dict(copy.deepcopy({key: value for key, value in group.items() if key != 'params'}),
@@ -108,6 +108,10 @@ def _shadow_step(named, gradients, optimizer, state, grad_clip):
                         for (name, _), parameter in zip(named, parameters)}),
                   post_optimizer_sha256=hash_state(shadow.state_dict()),
                   parameters_skipped_for_missing_derivative=sum(value is None for value in gradients))
+    if score_callback is not None:
+        # Pass the exact post-step values. Re-adding (new-old) to old FP32
+        # parameters is not guaranteed to recover the same rounded parameters.
+        score_callback({name: parameter.detach() for (name, _), parameter in zip(named, parameters)}, report)
     # Returned tensors are parameter-sized derivatives only, never another model
     # or optimizer. The copied moments and parameters are released before next arm.
     del shadow, groups, mapping, parameters
@@ -146,7 +150,7 @@ def _admit(net, named, weighted_terms, optimizer, grad_clip):
     return device
 
 
-def objective_probe(net, named, weighted_terms, optimizer, grad_clip):
+def objective_probe(net, named, weighted_terms, optimizer, grad_clip, *, shadow_score_callback=None):
     """Return JSON data from this forward; caller still performs its real full step.
 
     ``weighted_terms`` keys are ranking, observation_ce, alignment, full. The
@@ -157,6 +161,8 @@ def objective_probe(net, named, weighted_terms, optimizer, grad_clip):
     clear old gradient buffers before its full backward (no accumulation).
     """
     device = _admit(net, named, weighted_terms, optimizer, grad_clip)
+    if shadow_score_callback is not None and not callable(shadow_score_callback):
+        raise ValueError('Explicit callable diagnostic shadow scorer required')
     saved_rng = rng_state()
     saved_model_hash = hash_state(net.state_dict())
     saved_optimizer_hash = hash_state(optimizer.state_dict())
@@ -214,7 +220,11 @@ def objective_probe(net, named, weighted_terms, optimizer, grad_clip):
                                 auxiliary=_sum_gradients(gradients['observation_ce'], gradients['alignment']),
                                 full=gradients['full'])
         for branch in BRANCHES:
-            deltas, report = _shadow_step(named, branch_gradients[branch], optimizer, state, grad_clip)
+            callback = (lambda parameters, row, branch=branch:
+                shadow_score_callback(branch, parameters, row)) if (
+                    shadow_score_callback is not None and branch in ('rank_only', 'full')) else None
+            deltas, report = _shadow_step(named, branch_gradients[branch], optimizer, state, grad_clip,
+                                         score_callback=callback)
             report['module_delta_norms'] = {label: _norm(deltas, group) for label, group in indices.items()}
             shadow_deltas[branch], shadow_reports[branch] = deltas, report
         delta_cosines = {label: {
@@ -274,4 +284,8 @@ def objective_probe(net, named, weighted_terms, optimizer, grad_clip):
             raise AssertionError('Objective diagnostic did not preserve original RNG')
     report.update(original_parameters_gradients_bn_rng_optimizer_preserved=True,
                   checkpoint_backward_bn_buffers_restored=restored_bn)
+    if shadow_score_callback is not None:
+        report.update(external_shadow_score_callbacks=2,
+            additional_model_forwards_scope='zero forwards inside derivative helper; external scorer callbacks execute their separately reported native forwards',
+            memory_policy='sequential parameter/moment/derivative copies plus explicitly opted-in external isolated model-scoring clone; no production state change')
     return report

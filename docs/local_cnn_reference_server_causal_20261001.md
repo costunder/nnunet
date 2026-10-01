@@ -31,14 +31,14 @@ percentage points 감소, legacy는0.5282 points 증가했으나 중간 timeline
 첫 양성이1위라 MRR=1이고 R@1=1/71=.0140845다. R@1의 최고값 자체도1/71,
 R@5와 R@10 최고값은5/71,10/71이다. 작은 R@1만으로 실패를 주장하지 않는다.
 
-Pair-win은 sP>sU인 엄격한 승률이다. 동점은 별도로 세며 현재 콘솔에는 없다.
-따라서 win<.5를 무작위 이하라고 해석하지 않는다. 동점 반점 비교는
-`strict_win + .5*exact_tie_rate`이며 저장 JSON이 필요하다. 동점 순서는 score
+Pair-win은 sP>sU인 엄격한 승률이다. 최초 `786be592` 콘솔에는 동점이 없었고,
+아래 `02454e98`의 동일 JSON 재출력에서 실제 동점률을 확인했다. 동점 반점 비교는
+`strict_win + .5*exact_tie_rate`다. 동점 순서는 score
 내림차순 후 좌표·donor SHA256 순서이며 GT boost가 아니다.
 
-Loss는6 significant digits로 표시된다. .693147은 ln(2) 근처의 작은 변화를 숨긴다.
-콘솔만으로 정확히 같은 loss, 전체 동점이나 FP32 quantization 지배를 확정하지 않는다.
-저장 JSON의 score std/min/max/tie/ranks는 원래 계산됐으며 재학습 없이 읽을 수 있다.
+최초 loss 표시는6 significant digits여서 ln(2) 근처의 작은 변화를 숨겼다.
+이번12자리 재출력도 원래 FP32 계산의 정밀도를 높이지는 않는다. 전체 동점이나
+FP32 quantization 지배를 확정하지 않는다.
 
 ## Objective·Adam·BN에서 확인한 것
 
@@ -85,6 +85,49 @@ frozen teacher를 사용하므로 동일 조건으로 취급하지 않는다. �
 ranking gradient/full descent cosine을12 significant digits로 출력한다. 기본·signals
 기존 출력은 byte-identical이며42개 출력·입출력 회귀검사를 통과했다. JSON reader는
 표준 라이브러리만 사용한다. 이번 변경에서 새 모델 수치 검사를 CPU로 실행하지 않았다.
+
+## 2026-10-02 동일 서버 JSON의 상세 재출력
+
+첨부 `02454e98`는 `1e616d9`의 표준 라이브러리 reader가 위와 같은
+`reference_causal_20261001_230955.json`을 다시 읽은 출력이다. 새 모델 실행이나
+optimizer update가 아니다. 최초 원문과 전사는 그대로 두고 상세 원문과 전사를
+`server_console_precise_original.txt`, `server_precise_transcription.json`으로 추가했다.
+새 원문 SHA256은 `aa17f7314113bf5882cf96f90be071ee268340caf583c078459eccdf6c9629ba`다.
+10 timeline·8 update·32 module rows의 결속과 동점 반점 계산을 검사했다.
+
+| liver_117 전체199개 | Legacy 전→4-update 후 | Reference 전→4-update 후 |
+| --- | --- | --- |
+| 점수 범위의 최솟값 | −.772859931→−.571722746 | −.098206878→−.052211165 |
+| 후보 점수 표준편차 | 7.19933e−7→7.99310e−7 | 2.02360e−6→1.30509e−6 |
+| 후보 점수 max−min | 5.12600e−6→5.48363e−6 | 1.68085e−5→8.70228e−6 |
+| 실제 동점률 | 4.1483%→3.2680% | 2.4538%→4.2254% |
+| 동점에 .5를 주는 P/U 승률 | 46.5284%→46.6164% | 48.9712%→46.9300% |
+
+Legacy의 최솟값·최댓값이 모두 약+.201137 이동한 반면 후보 간 차이는 약1e−6
+수준이다. Reference도 약+.046 이동했고 표준편차는35.51% 줄었다. 후보 구분이
+늘기보다 점수 범위가 공통으로 이동하는 현상이다. 공통 점수 이동은 P−U 순위
+차이를 개선하지 않는다. 실제 동점은 일부이므로 완전 상수 출력이라고 부르지 않는다.
+동점 반점 승률은 임상 정확도나 CP 효용이 아니며, 한 case의 짧은 clone 검사다.
+
+새로 출력된 `ranking-gradient/full-descent`는 현재 train-mode rank gradient와
+실제 full Adam parameter 이동의 **반대 방향**의 cosine이다. Legacy step4 CNN은
+−.337932, fusion은−.082139이다. 같은 step의 두 Adam delta끼리의 cosine은
+각각+.985019,+.989074여서, 두 optimizer delta가 비슷하다는 사실이 현재 ranking
+loss를 내리는 방향이라는 뜻은 아님을 직접 확인했다. Reference step2 L1은
+−.027626, L2는−.189753이다. 모듈별 first-order 방향이며 전체 loss 증가나
+eval 점수 악화의 직접 증명으로 확대하지 않는다. 다른 update에서 CE와 rank가
+같은 방향인 반례도 그대로 남긴다.
+
+기존 tile-before와 tile-after는 같은 teacher·dropout-off이지만, reference의
+native train forward가 중간에 BN running buffers를 갱신한다. 따라서 두 시점의
+BN snapshot까지 같았던 대조로 설명하면 안 된다. 각 평가 함수가 원래 모델의
+BN을 추가 변경하지 않는다는 보존 검사와는 다른 문제다.
+
+이 출력에서 확인된 수정 대상은 점수를 분리하지 못하는 학습·scoring 경로다.
+CNN 범위나 그래프 크기를 다시 바꾸거나, CE/alignment를 무조건 제거하는 패치는
+이 결과만으로 정당화되지 않는다. 같은 BN snapshot과 frozen teacher에서
+no-change/rank-only/full의 **실제 적용 후 native CT 점수**를 비교하는 통제가
+필요하다. 이 수신 보고서에는 아직 그 finite-step 점수 대조가 없다.
 
 ## 작업 완료 체크리스트
 

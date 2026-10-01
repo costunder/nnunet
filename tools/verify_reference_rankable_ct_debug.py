@@ -100,6 +100,9 @@ def verify(a):
     torch.cuda.reset_peak_memory_stats()
     started = time.perf_counter()
     causal_probe = getattr(a, 'causal_probe', False)
+    finite_shadow_score = getattr(a, 'finite_shadow_score', False)
+    if finite_shadow_score and not causal_probe:
+        raise ValueError('Finite shadow scoring requires explicit --causal-probe')
     def fitted_evaluate(model, names):
         from tools.local_cnn_reference_causal import target_head
         from tools.diagnose_local_cnn_learning import score_summary
@@ -128,7 +131,8 @@ def verify(a):
         training=ds.meta['base']['training'], seed=ds.meta['config']['seed'],
         evaluation_provider=lambda model: evaluate(model, case_rows, store, support, budget),
         selection_policy='rankable_full_batch_prefix', transfer_policy=a.transfer_policy,
-        causal_probe=causal_probe, fitted_evaluation_provider=fitted_evaluate if causal_probe else None)
+        causal_probe=causal_probe, fitted_evaluation_provider=fitted_evaluate if causal_probe else None,
+        finite_shadow_score=finite_shadow_score)
     if (hash_state(net.state_dict())!=original_model or hash_state(memory)!=original_memory
             or sha(cp)!=cp_sha or sha(a.assignment)!=assignment_sha):
         raise AssertionError('Original model/support/checkpoint/native assignment changed')
@@ -140,6 +144,12 @@ def verify(a):
                 raise AssertionError('Actual ranking-active full physical update not verified')
             if causal_probe and not step['causal']['shadow_full_matches_actual_update']:
                 raise AssertionError('Exact full AdamW counterfactual parity not verified')
+            if finite_shadow_score:
+                finite = step['causal']['finite_shadow_scores']
+                if (set(finite['arms']) != {'no_change', 'rank_only', 'full'}
+                        or not finite['CNN_reencoded_for_all_arms']
+                        or finite['arms']['full']['parameter_sha256'] != step['causal']['objective_direction']['full_post_parameter_sha256']):
+                    raise AssertionError('Exact finite shadow native scoring not verified')
         print('DEBUG '+branch['branch']+' | rank pairs=' + str([s['ranking_pairs'] for s in branch['updates']])
               + ' | rank-only CNN/L1/L2=' + str({k:branch['updates'][-1]['ranking_parameter_gradient']
                     ['module_gradient_norms'][k] for k in ('CNN','L1','L2')})
@@ -172,7 +182,8 @@ def verify(a):
             'tools/local_cnn_reference_l1.py', 'tools/local_cnn_reference_transfer.py') + ((
             'tools/local_cnn_reference_causal.py','tools/local_cnn_reference_objective_probe.py',
             'tools/local_cnn_reference_mode_probe.py','tools/local_cnn_reference_target_signal.py',
-            'tools/local_cnn_causal_summary.py') if causal_probe else ())}),
+            'tools/local_cnn_causal_summary.py') if causal_probe else ()) + ((
+            'tools/local_cnn_reference_finite_shadow.py',) if finite_shadow_score else ())}),
         limitations=['One complete case with DEBUG support is mechanical smoke, not full accuracy.',
             'Fresh optimizer and reference BatchNorm: not exact resume or learned production replacement.',
             'Ranking-only gradient measurement adds a diagnostic derivative pass; timing is not production speed.'])
@@ -191,6 +202,7 @@ def main():
     parser.add_argument('--steps', type=int, required=True)
     parser.add_argument('--transfer-policy', choices=POLICIES, required=True)
     parser.add_argument('--causal-probe', action='store_true')
+    parser.add_argument('--finite-shadow-score', action='store_true')
     parser.add_argument('--workers', type=int, required=True)
     parser.add_argument('--cuda-gib', type=float, required=True)
     parser.add_argument('--rss-gib', type=float, required=True)

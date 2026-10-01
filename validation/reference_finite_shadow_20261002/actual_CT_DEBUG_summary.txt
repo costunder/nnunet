@@ -1,0 +1,82 @@
+CAUSAL DEBUG | fitted-case evaluation / exact-forward loss and Adam / BN controls
+Cloned short updates only. Candidate spread and gradient size are not accuracy.
+Tile pre/post: same saved episodic support + frozen teacher, eval BN/dropout off.
+Whole fitted case: full eligible saved support + newly fitted own teacher, eval mode.
+First-positive MRR is reciprocal first-positive rank, averaged over evaluable cases; recall@k covers all eligible positives.
+Eligible P / unknown U, recall hits/max and half-tie pair-win are computed from saved fields; missing fields are UNAVAILABLE.
+Full-descent cosine compares ranking gradient with minus full Adam delta; delta rank-full compares optimizer deltas.
+BRANCH legacy | actual fitted cases=['liver_66']
+  fitted liver_66 after=0 N=133 eligibleP(computed)=5 unknownU(computed)=128 | margin=0.00860692653805 first-positive MRR=0.0714285714286
+    score std/min/max=0.0143250320107/-0.017829194665/0.0572658628225 | exact-tie=0 strict-pair-win=0.651562511921 half-tie-pair-win(computed)=0.651562511921 mean-pair-loss=0.688906371593
+    recall@1=0 hits(computed)=0/5 max(computed)=0.2 | recall@5=0 hits(computed)=0/5 max(computed)=1 | recall@10=0 hits(computed)=0/5 max(computed)=1
+    target Fisher raw/normalized | L0=0.259692545429/0.258968904991 | L1_1=0.247639197059/0.247637316977 | L1_2=0.247869854659/0.247868806883
+  fitted liver_66 after=1 N=133 eligibleP(computed)=5 unknownU(computed)=128 | margin=0.0502433180809 first-positive MRR=0.125
+    score std/min/max=0.0435473509133/-0.192897677422/-0.0370383262634 | exact-tie=0 strict-pair-win=0.782812535763 half-tie-pair-win(computed)=0.782812535763 mean-pair-loss=0.668903768063
+    recall@1=0 hits(computed)=0/5 max(computed)=0.2 | recall@5=0 hits(computed)=0/5 max(computed)=1 | recall@10=0.2 hits(computed)=1/5 max(computed)=1
+    target Fisher raw/normalized | L0=0.434542552197/0.436196157223 | L1_1=0.438130832549/0.438124240125 | L1_2=0.428140799269/0.428138368993
+  fitted liver_66 after=2 N=133 eligibleP(computed)=5 unknownU(computed)=128 | margin=0.100630283356 first-positive MRR=0.25
+    score std/min/max=0.0723978355527/-0.370296776295/-0.0877259373665 | exact-tie=0 strict-pair-win=0.837500035763 half-tie-pair-win(computed)=0.837500035763 mean-pair-loss=0.645774841309
+    recall@1=0 hits(computed)=0/5 max(computed)=0.2 | recall@5=0.2 hits(computed)=1/5 max(computed)=1 | recall@10=0.4 hits(computed)=2/5 max(computed)=1
+    target Fisher raw/normalized | L0=0.569099820481/0.572476013092 | L1_1=0.580824320026/0.580817560051 | L1_2=0.573799507371/0.573797550828
+  step=1 schedule=0 case=liver_66 P/U=5/27 | frozen tile margin 0.00707945460454->0.0456311441958 win 0.614814817905->0.762962937355 | exact full-Adam parity=True
+    frozen tile before | score std/min/max=0.015793832019/-0.00129571557045/0.0506945699453 | exact-tie=0 strict-pair-win=0.614814817905 half-tie-pair-win(computed)=0.614814817905 mean-pair-loss=0.689672648907
+    frozen tile after | score std/min/max=0.0516850017011/-0.192865818739/-0.0385194122791 | exact-tie=0 strict-pair-win=0.762962937355 half-tie-pair-win(computed)=0.762962937355 mean-pair-loss=0.671225190163
+    finite shadow | fixed pre-forward BN/dropout off; native CNN re-encoded; same frozen teacher; train-mode gradients
+      no_change | margin=0.00707945460454 | score std/min/max=0.015793832019/-0.00129571557045/0.0506945699453 | exact-tie=0 strict-pair-win=0.614814817905 half-tie-pair-win(computed)=0.614814817905 mean-pair-loss=0.689672648907 | scoring seconds=0.0447620999985 common score change=0 P-minus-U change=0
+      rank_only | margin=0.0445543266833 | score std/min/max=0.0473770275712/-0.0588684678078/0.082275301218 | exact-tie=0 strict-pair-win=0.792592585087 half-tie-pair-win(computed)=0.792592585087 mean-pair-loss=0.671659886837 | scoring seconds=0.035276999999 common score change=-0.0334934107959 P-minus-U change=0.0374748744071
+      full | margin=0.0456311441958 | score std/min/max=0.0516850017011/-0.192865818739/-0.0385194122791 | exact-tie=0 strict-pair-win=0.762962937355 half-tie-pair-win(computed)=0.762962937355 mean-pair-loss=0.671225190163 | scoring seconds=0.0323729000011 common score change=-0.162978991866 P-minus-U change=0.0385516881943
+    CNN | grad norms rank/CE/align/full=3.91521599643/2.18482260937/UNAVAILABLE/5.79566278992 | cos rank-CE/align/full=0.788359417632/UNAVAILABLE/0.972734614528 | cos delta rank-full=0.87208243074 | cos ranking-gradient/full-descent=0.491816683566
+    readout_fusion | grad norms rank/CE/align/full=2.00355203385/1.30382405319/UNAVAILABLE/2.9194562511 | cos rank-CE/align/full=0.537662017094/UNAVAILABLE/0.92639467017 | cos delta rank-full=0.827009096858 | cos ranking-gradient/full-descent=0.365476884636
+    L1 | grad norms rank/CE/align/full=1.25197784378/0.749533027824/0.587681633482/1.76992630844 | cos rank-CE/align/full=0.512210861022/-0.171477623936/0.867336935144 | cos delta rank-full=0.702709485243 | cos ranking-gradient/full-descent=0.476147500003
+    L2 | grad norms rank/CE/align/full=0.693539327112/0.413032076984/0.345928554216/0.94381495238 | cos rank-CE/align/full=0.516297094807/-0.297850295209/0.851598731048 | cos delta rank-full=0.600078493276 | cos ranking-gradient/full-descent=0.436266668664
+  step=2 schedule=1 case=liver_66 P/U=5/27 | frozen tile margin 0.0520750992->0.106284983456 win 0.80740737915->0.866666674614 | exact full-Adam parity=True
+    frozen tile before | score std/min/max=0.0470224767923/-0.192593991756/-0.0410802662373 | exact-tie=0 strict-pair-win=0.80740737915 half-tie-pair-win(computed)=0.80740737915 mean-pair-loss=0.66800147295
+    frozen tile after | score std/min/max=0.0800881385803/-0.367200314999/-0.0877259373665 | exact-tie=0 strict-pair-win=0.866666674614 half-tie-pair-win(computed)=0.866666674614 mean-pair-loss=0.643030464649
+    finite shadow | fixed pre-forward BN/dropout off; native CNN re-encoded; same frozen teacher; train-mode gradients
+      no_change | margin=0.0520750992 | score std/min/max=0.0470224767923/-0.192593991756/-0.0410802662373 | exact-tie=0 strict-pair-win=0.80740737915 half-tie-pair-win(computed)=0.80740737915 mean-pair-loss=0.66800147295 | scoring seconds=0.0296339999986 common score change=0 P-minus-U change=0
+      rank_only | margin=0.110789872706 | score std/min/max=0.0805068314075/-0.254168272018/0.0270155072212 | exact-tie=0 strict-pair-win=0.866666674614 half-tie-pair-win(computed)=0.866666674614 mean-pair-loss=0.640906631947 | scoring seconds=0.0325575999996 common score change=-0.0462026968598 P-minus-U change=0.0587147809565
+      full | margin=0.106284983456 | score std/min/max=0.0800881385803/-0.367200314999/-0.0877259373665 | exact-tie=0 strict-pair-win=0.866666674614 half-tie-pair-win(computed)=0.866666674614 mean-pair-loss=0.643030464649 | scoring seconds=0.0313855000022 common score change=-0.158858388662 P-minus-U change=0.0542098805308
+    CNN | grad norms rank/CE/align/full=3.76843543734/2.64577284168/UNAVAILABLE/5.46124518439 | cos rank-CE/align/full=0.432478361247/UNAVAILABLE/0.899552016857 | cos delta rank-full=0.92671261186 | cos ranking-gradient/full-descent=0.469431451007
+    readout_fusion | grad norms rank/CE/align/full=1.72360834862/1.54285633438/UNAVAILABLE/2.73022538382 | cos rank-CE/align/full=0.395388788282/UNAVAILABLE/0.85474131192 | cos delta rank-full=0.916622710107 | cos ranking-gradient/full-descent=0.343905782761
+    L1 | grad norms rank/CE/align/full=0.956649061256/0.926271491394/0.607524152921/1.62891828306 | cos rank-CE/align/full=0.340327169435/-0.0755963401533/0.752620844689 | cos delta rank-full=0.855284732906 | cos ranking-gradient/full-descent=0.344438529662
+    L2 | grad norms rank/CE/align/full=0.54767551348/0.563000349515/0.347237864735/0.981841666054 | cos rank-CE/align/full=0.355239003782/-0.052200105714/0.743041751367 | cos delta rank-full=0.800105259244 | cos ranking-gradient/full-descent=0.321870990747
+BRANCH reference | actual fitted cases=['liver_66']
+  fitted liver_66 after=0 N=133 eligibleP(computed)=5 unknownU(computed)=128 | margin=0.00106433487963 first-positive MRR=0.0588235294118
+    score std/min/max=0.0199306402355/-0.0705803334713/0.0722361654043 | exact-tie=0 strict-pair-win=0.509375035763 half-tie-pair-win(computed)=0.509375035763 mean-pair-loss=0.692696392536
+    recall@1=0 hits(computed)=0/5 max(computed)=0.2 | recall@5=0 hits(computed)=0/5 max(computed)=1 | recall@10=0 hits(computed)=0/5 max(computed)=1
+    target Fisher raw/normalized | L0=0.259692545429/0.258968904991 | L1_1=0.257818387399/0.262267557449 | L1_2=0.25993356778/0.264361906245
+  fitted liver_66 after=1 N=133 eligibleP(computed)=5 unknownU(computed)=128 | margin=0.0165053438395 first-positive MRR=0.1
+    score std/min/max=0.0228941235691/0.0120140612125/0.203729182482 | exact-tie=0 strict-pair-win=0.756250023842 half-tie-pair-win(computed)=0.756250023842 mean-pair-loss=0.685035645962
+    recall@1=0 hits(computed)=0/5 max(computed)=0.2 | recall@5=0 hits(computed)=0/5 max(computed)=1 | recall@10=0.2 hits(computed)=1/5 max(computed)=1
+    target Fisher raw/normalized | L0=0.167520218952/0.16622897258 | L1_1=0.172611311135/0.171480308814 | L1_2=0.171064289398/0.169681542399
+  fitted liver_66 after=2 N=133 eligibleP(computed)=5 unknownU(computed)=128 | margin=0.0209026429802 first-positive MRR=0.166666666667
+    score std/min/max=0.0203854050487/0.164455801249/0.333881795406 | exact-tie=0 strict-pair-win=0.815625011921 half-tie-pair-win(computed)=0.815625011921 mean-pair-loss=0.682848453522
+    recall@1=0 hits(computed)=0/5 max(computed)=0.2 | recall@5=0 hits(computed)=0/5 max(computed)=1 | recall@10=0.4 hits(computed)=2/5 max(computed)=1
+    target Fisher raw/normalized | L0=0.227986695637/0.225655687139 | L1_1=0.241368056459/0.235725403817 | L1_2=0.238355181615/0.231602943965
+  step=1 schedule=0 case=liver_66 P/U=5/27 | frozen tile margin 0.00129982677754->0.0150883952156 win 0.503703713417->0.740740716457 | exact full-Adam parity=True
+    frozen tile before | score std/min/max=0.0205676481128/-0.0334310829639/0.050907433033 | exact-tie=0 strict-pair-win=0.503703713417 half-tie-pair-win(computed)=0.503703713417 mean-pair-loss=0.692585229874
+    frozen tile after | score std/min/max=0.0208433251828/0.0894585847855/0.174632132053 | exact-tie=0 strict-pair-win=0.740740716457 half-tie-pair-win(computed)=0.740740716457 mean-pair-loss=0.685725450516
+    finite shadow | fixed pre-forward BN/dropout off; native CNN re-encoded; same frozen teacher; train-mode gradients
+      no_change | margin=0.00129982677754 | score std/min/max=0.0205676481128/-0.0334310829639/0.050907433033 | exact-tie=0 strict-pair-win=0.503703713417 half-tie-pair-win(computed)=0.503703713417 mean-pair-loss=0.692585229874 | scoring seconds=0.0261112000007 common score change=0 P-minus-U change=0
+      rank_only | margin=0.0155408075079 | score std/min/max=0.0201015155762/0.0130356997252/0.095688983798 | exact-tie=0 strict-pair-win=0.740740716457 half-tie-pair-win(computed)=0.740740716457 mean-pair-loss=0.685496985912 | scoring seconds=0.0250448000006 common score change=0.0544542111456 P-minus-U change=0.0142409801483
+      full | margin=0.0152968121693 | score std/min/max=0.0199694093317/0.0128711313009/0.0950214266777 | exact-tie=0 strict-pair-win=0.748148143291 half-tie-pair-win(computed)=0.748148143291 mean-pair-loss=0.685615897179 | scoring seconds=0.0256612999983 common score change=0.0540687218308 P-minus-U change=0.0139969885349
+    CNN | grad norms rank/CE/align/full=24.8330764251/8.65061380647/3.82771307055/33.9223489461 | cos rank-CE/align/full=0.989837114898/0.0875018207481/0.994350221595 | cos delta rank-full=0.931154179519 | cos ranking-gradient/full-descent=0.478414895621
+    readout_fusion | grad norms rank/CE/align/full=14.1643759238/4.72616288368/3.27299639925/17.7798381966 | cos rank-CE/align/full=0.979449309366/-0.394167875487/0.98444643749 | cos delta rank-full=0.904790762971 | cos ranking-gradient/full-descent=0.354683523183
+    L1 | grad norms rank/CE/align/full=4.70434001485/1.52956564718/1.11084309217/5.93515547429 | cos rank-CE/align/full=0.981059995024/-0.329466311682/0.983790466654 | cos delta rank-full=0.912880341053 | cos ranking-gradient/full-descent=0.19459694098
+    L2 | grad norms rank/CE/align/full=2.30222850032/0.764725093152/0.604987063831/3.00055283364 | cos rank-CE/align/full=0.970759724438/-0.18033502644/0.978317166994 | cos delta rank-full=0.827743083202 | cos ranking-gradient/full-descent=0.488667107742
+    BN/dropout eval | margin=0.00129986915272 win=0.503703713417 weighted-align=0.223178625107 align-query-grad=0
+    BN/dropout bn_train_only | margin=-0.106330953538 win=0.362962961197 weighted-align=0.310905992985 align-query-grad=0.0852697789669
+    BN/dropout dropout_train_only | margin=-0.126039266586 win=0.274074077606 weighted-align=0.240006029606 align-query-grad=0
+    BN/dropout current_training | margin=-0.12890380621 win=0.422222226858 weighted-align=0.351486682892 align-query-grad=0.0688154324889
+    frozen-BN cloned full update | margin=0.00129986915272->0.0789828673005 win=0.503703713417->0.800000011921 | fresh AdamW, original clipping
+  step=2 schedule=1 case=liver_66 P/U=5/27 | frozen tile margin 0.0135342776775->0.0196776539087 win 0.748148143291->0.770370364189 | exact full-Adam parity=True
+    frozen tile before | score std/min/max=0.0258922297508/0.0837769806385/0.203729182482 | exact-tie=0 strict-pair-win=0.748148143291 half-tie-pair-win(computed)=0.748148143291 mean-pair-loss=0.686532795429
+    frozen tile after | score std/min/max=0.0208986829966/0.227598369122/0.333881795406 | exact-tie=0 strict-pair-win=0.770370364189 half-tie-pair-win(computed)=0.770370364189 mean-pair-loss=0.683452904224
+    finite shadow | fixed pre-forward BN/dropout off; native CNN re-encoded; same frozen teacher; train-mode gradients
+      no_change | margin=0.0135342776775 | score std/min/max=0.0258922297508/0.0837769806385/0.203729182482 | exact-tie=0 strict-pair-win=0.748148143291 half-tie-pair-win(computed)=0.748148143291 mean-pair-loss=0.686532795429 | scoring seconds=0.0246551000018 common score change=0 P-minus-U change=0
+      rank_only | margin=0.0223148930818 | score std/min/max=0.0229155980051/0.155595868826/0.27509739995 | exact-tie=0 strict-pair-win=0.770370364189 half-tie-pair-win(computed)=0.770370364189 mean-pair-loss=0.682166457176 | scoring seconds=0.0248786999982 common score change=0.105427592993 P-minus-U change=0.0087806135416
+      full | margin=0.0221885237843 | score std/min/max=0.0227882955223/0.159247159958/0.278244793415 | exact-tie=0 strict-pair-win=0.770370364189 half-tie-pair-win(computed)=0.770370364189 mean-pair-loss=0.682228088379 | scoring seconds=0.0286469999992 common score change=0.108517572284 P-minus-U change=0.0086542442441
+    CNN | grad norms rank/CE/align/full=16.0335636499/5.3970168789/3.58203353793/22.4222385857 | cos rank-CE/align/full=0.971297014297/0.265978645597/0.991355580587 | cos delta rank-full=0.986621364987 | cos ranking-gradient/full-descent=0.396355029956
+    readout_fusion | grad norms rank/CE/align/full=9.82990091022/3.33215318354/2.72756570233/13.590370596 | cos rank-CE/align/full=0.975151571923/0.0825504558425/0.97895911739 | cos delta rank-full=0.972878173609 | cos ranking-gradient/full-descent=0.334078268115
+    L1 | grad norms rank/CE/align/full=3.7584370142/1.25926211267/0.840021678965/5.1013823712 | cos rank-CE/align/full=0.984646459346/0.0308017401017/0.984877891571 | cos delta rank-full=0.97466806715 | cos ranking-gradient/full-descent=0.173621514901
+    L2 | grad norms rank/CE/align/full=1.83630423407/0.600304274353/0.594016100326/2.51840616735 | cos rank-CE/align/full=0.946570263058/0.0502636136013/0.966639886006 | cos delta rank-full=0.913563964499 | cos ranking-gradient/full-descent=0.433871104942

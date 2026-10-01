@@ -225,7 +225,8 @@ def evaluator(cases, memory, train_rows, physical_batch, budget, original_local_
 def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                   loss_context, physical_batch, budget, training, seed,
                   evaluation_provider, progress=True, selection_policy='complete_prefix',
-                  transfer_policy='raw_columns', causal_probe=False, fitted_evaluation_provider=None):
+                  transfer_policy='raw_columns', causal_probe=False, fitted_evaluation_provider=None,
+                  finite_shadow_score=False):
     """Fresh matched AdamW on explicit original tiles with full-cohort coefficients.
 
     The historical complete-prefix/raw-column path remains the default.
@@ -242,6 +243,8 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
     rankable = selection_policy == 'rankable_full_batch_prefix'
     if type(causal_probe) is not bool or (causal_probe and (not rankable or fitted_evaluation_provider is None)):
         raise ValueError('Causal DEBUG control requires original full rankable tiles and complete fitted-case evaluator')
+    if type(finite_shadow_score) is not bool or (finite_shadow_score and not causal_probe):
+        raise ValueError('Finite shadow scoring requires explicit causal DEBUG control')
     for key in ('lr', 'weight_decay', 'grad_clip'):
         if not math.isfinite(training[key]) or training[key] < 0 or (key != 'weight_decay' and not training[key]):
             raise ValueError('Invalid original optimizer settings')
@@ -302,6 +305,7 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                     plan_hash = hash_state(plan)
                     targets = torch.tensor([loss_context.rows[i]['target'] for i in ids], device=device)
                     causal = {}
+                    finite_control = None
                     if causal_probe:
                         from tools.local_cnn_reference_causal import frozen_tile, capture_prediction, tile_scores
                         causal['tile_before'] = frozen_tile(clone, query, support, plan, targets,
@@ -310,6 +314,13 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                             from tools.local_cnn_reference_mode_probe import mode_probe
                             causal['mode_control'] = mode_probe(clone, query, support, plan, targets,
                                 loss_context, ids, training, budget)
+                        if finite_shadow_score:
+                            from tools.local_cnn_reference_finite_shadow import FiniteShadowScores
+                            # Snapshot buffers before the original train forward.
+                            # Every finite arm uses this same BN state rather than
+                            # conflating the weight step with running-stat updates.
+                            finite_control = FiniteShadowScores(clone, query, support, plan, targets,
+                                loss_context, ids, budget)
                     optimizer.zero_grad(set_to_none=True)
                     torch.cuda.synchronize(device); started = time.perf_counter()
                     if causal_probe:
@@ -343,7 +354,10 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                             observation_ce=settings['observation_auxiliary_weight']*terms['observation_auxiliary_loss'],
                             alignment=clone.alignment_loss_weight*terms['alignment_loss'], full=loss)
                         causal['objective_direction'] = objective_probe(clone, named, weighted,
-                            optimizer, training['grad_clip'])
+                            optimizer, training['grad_clip'], shadow_score_callback=(
+                                finite_control.score_shadow if finite_control is not None else None))
+                        if finite_control is not None:
+                            causal['finite_shadow_scores'] = finite_control.report()
                         step_initial = {name:p.detach().clone() for name,p in named}
                         budget.check()
                     loss.backward(); gradient_check_batched(clone)
@@ -358,6 +372,8 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                         causal['shadow_full_matches_actual_update'] = True
                         del step_initial
                     seconds = time.perf_counter()-started
+                    if finite_control is not None:
+                        seconds -= causal['finite_shadow_scores']['callback_control_seconds']
                     budget.check()
                     if hash_state(dict(query=native, support=support, records=records, group=group)) != digest:
                         raise AssertionError('Native query/support mutated during comparison')
@@ -382,7 +398,7 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                         fitted_timeline.append(dict(after_updates=offset+1, tile_id=tile['tile_id'],
                             evaluation=_evaluate(lambda model: fitted_evaluation_provider(model, fitted_ids), clone)))
                     bar.set_postfix(loss=f'{float(loss.detach()):.4g}', seconds=f'{seconds:.3g}', batch=len(ids))
-                    del query, support, loss, terms
+                    del query, support, loss, terms, finite_control
                 bar.close()
                 after = _evaluate(evaluation_provider, clone)
                 changes = _module_norms(named, [p.detach()-old for (_, p), old in zip(named, initial)])
@@ -408,13 +424,14 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
             raise AssertionError('Original module modes/caller RNG changed')
     return dict(diagnostic_only=True, branches=results, steps_per_branch=steps,
         causal_probe=causal_probe,
+        finite_shadow_score=finite_shadow_score,
         selection_policy=selection_policy, reference_transfer_policy=transfer_policy,
         update_selection=selection,
         selected_schedule_indices=selection['selected_schedule_indices'],
         ranking_parameter_gradients_required=rankable,
         physical_batch=physical_batch, full_objective=configuration(),
         execution=_execution_runtime(device), original_state_and_rng_preserved=True,
-        timing_scope='synchronized forward/full loss/backward/gradient diagnostics/clip/AdamW only; excludes CT loading, transfer, input hashing, teacher preparation, evaluation and checkpoint IO; not epoch timing',
+        timing_scope='synchronized forward/full loss/backward/gradient diagnostics/clip/AdamW only; excludes CT loading, transfer, input hashing, teacher preparation, evaluation, finite-shadow scoring callbacks and checkpoint IO; not epoch timing',
         same_native_inputs=True, original_L0_L2_initial_weights_preserved=True,
         exact_resume=False, production_optimizer_updates=0, production_checkpoint_written=False,
         production_ready=False, full_training=False, full_evaluation=False)
