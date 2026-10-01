@@ -1,3 +1,10 @@
+## v2.2 — 진단 콘솔 요약과 저장된 결과 재열람 (2026-10-01)
+
+- 긴 deep JSON을 터미널에 모두 출력하던 기본 경로를 짧은 요약으로 변경. 전체 상세 JSON 저장과 계산 경로는 유지하며, `--verbose-console`으로 기존 상세 출력을 선택한다.
+- `summarize_local_cnn_diagnosis.py`로 저장된 서버 JSON을 재계산 없이 요약. 신규 UTF-8 요약 파일만 생성하고 원본/기존 출력은 덮어쓰지 않는다. 누락/미실행 값을 unavailable/NOT_RUN으로 구분한다.
+- 서버 콘솔에서 진단 완료와 JSON 경로 확인. 원본 서버 JSON은 로컬 미수신이며, 잘린 train/Adam 결과를 추정하지 않는다. [범위와 기록](docs/local_cnn_deep_diagnosis_20261001.md).
+- 기존 단위/GPU30개 및 요약기8개, 총38검사와 실제 CT DEBUG 새 콘솔/전체 JSON 저장 통과. 모델·loss·전체 실험 설정 변경 없음.
+
 ## v2.2 — 학습 부진 세부 진단과 복제 Adam 대조 (2026-10-01)
 
 - 독립 GPT 검토 반영: eval derivative와 실제 training update를 구분하고 episode/full pairwise metric 출력 이름 수정. gradient cosine·memory drift 및 snapshot 실행 조건을 표시한다.

@@ -119,10 +119,44 @@ Singularity의 GPU 번호는 컨테이너의 `nvidia-smi` namespace다. 사용�
   RSS32GiB/resident8GiB. 실제 peak CUDA0.2354GiB, RSS4.742GiB.
   입력은 명시된 기존 DEBUG cohort이며 final dataset이 아니다.
 - 결과: `work/local_cnn_deep_diagnosis_DEBUG_20261001/report.json`.
-  서버 환경(Torch2.6.0+cu118)과 학습된 m10 weight의 세부 진단은 아직 실행하지 않았다.
+  이 시점에는 서버 환경(Torch2.6.0+cu118)과 학습된 m10 weight의 세부 진단을 아직 실행하지 않았다.
 
 이는 진단 경로 검증이며 서버 원인 판정이나 개선 정확도 측정이 아니다.
 별도30mm/MIG calibration OOM은 이번 작업에서 해결하지 않았다.
+
+## 서버 실행 완료와 콘솔 출력 보존 (2026-10-01 후속)
+
+사용자가 제공한 콘솔 끝부분에 다음 파일의 저장과 정상 종료가 확인됐다.
+`/home/aicompetition06/Medical/experiments/deep_diagnosis_20261001_101631.json`.
+서버 진단은 완료됐으며, 긴 상세 JSON을 콘솔에도 출력해 터미널 앞부분이
+밀려난 상황이다. Singularity 자체가 JSON 파일을 잘랐다는 증거는 없다.
+로컬에는 사용자 첨부의 콘솔 끝부분만 있고 **원본 서버 JSON은 아직 없다**.
+이 첨부에 없는 train/shadow 결과를 재구성하거나 완료 여부를 추정하지 않는다.
+
+`tools/summarize_local_cnn_diagnosis.py <report.json>`은 저장된 보고서를
+표준 라이브러리만으로 읽고 짧은 요약을 출력한다. GPU 초기화·CNN forward·
+loss/backward·학습·재진단 없이 기존 결과를 사용한다. 선택 `--output`은
+UTF-8 text 신규 파일만 기록하고 기존 파일과 원본 JSON을 덮어쓰지 않는다.
+미기록 값은 unavailable, 실행되지 않은 probe는 NOT_RUN으로 표시한다.
+
+향후 `diagnose_local_cnn_learning.py` 콘솔은 진행 막대와 짧은 요약을 기본으로
+출력한다. 전체 상세는 종전과 같이 JSON에 보존하며, 필요할 때만
+`--verbose-console`을 명시해 긴 출력으로 전환한다. 진단 수식·설정·범위·
+실행 횟수와 production source/checkpoint 계약은 바꾸지 않는다.
+
+남은 `liver_3` 수치에서는 fusion 입력/출력의 정규화 후보 분산이
+2.42105e-4 → 5.59089e-6, L1 최종은 7.25596e-10이다. message scale0에서도
+FFN 뒤 차이가 줄며, pair win은 scale0과 scale1 모두 0.0390625다.
+scale0의 pairwise loss는 0.6932707로 scale1의 0.6931957보다 크다.
+점수 분산 증가만을 순위 개선이나 주원인 해결로 해석하지 않는다.
+원본 JSON의 train·gradient·복제 Adam 결과까지 확인해야 해석 범위가 넓어진다.
+
+후속 검사: 기존 단위/GPU30개와 요약기8개, 총38개 PASS. 실제 CT DEBUG
+두 사례의 새 기본 콘솔·전체 JSON 저장을 GPU에서 다시 확인했고,
+저장 JSON을 읽어 신규 summary.txt를 쓰는 경로도 통과했다. torch import를
+차단한 검사에서 요약기는 정상 작동했다. 원본 JSON·가중치·payload·
+support/plan·RNG 보존과 production update0을 확인했다. 새 요약 출력은
+loss 차이를 7 유효숫자로 보존하고 step/개수를 반올림하지 않는다.
 
 ## 작업 완료 체크리스트
 

@@ -213,7 +213,14 @@ def diagnose(a):
         rss_budget_bytes=budget.rss_bytes,resident_bytes=int(a.resident_gib*2**30),workers=a.workers,
         cpu_logical=psutil.cpu_count(),ram_available_bytes=psutil.virtual_memory().available,
         debug_checkpoint=identity['debug'],case_subset_explicit=True)
-    print('SNAPSHOT execution: '+json.dumps(dict(epoch=state['epoch'],step=state['step'],phase=state['phase'],**result['execution'])),flush=True)
+    verbose_console=getattr(a,'verbose_console',False)
+    if verbose_console:
+        print('SNAPSHOT execution: '+json.dumps(dict(epoch=state['epoch'],step=state['step'],phase=state['phase'],**result['execution'])),flush=True)
+    else:
+        print(f"SNAPSHOT | epoch={state['epoch']} step={state['step']} phase={state['phase']} "
+              f"| margin={result['margin_mm']}mm batch={batch} | {result['gpu']}",flush=True)
+        print(f"Resources | CUDA={a.cuda_gib:g}GiB RSS={a.rss_gib:g}GiB workers={a.workers} "
+              f"| parameters={result['execution']['parameters']:,} | details saved in JSON",flush=True)
     if a.deep:
         from tools.local_cnn_l0_probe import trace_local_cnn
         from tools.local_cnn_l1_probe import probe_l1
@@ -239,10 +246,11 @@ def diagnose(a):
                 saved,q,support,plan,ds.rows,ids,context,budget)
             result['shadow_update']['plan_scope']=plan_scope
             shadow=result['shadow_update']
-            print('SHADOW train-mode gradient directions: '+json.dumps(shadow['gradients']),flush=True)
-            for branch,stats in shadow['branches'].items():
-                print('SHADOW Adam '+branch+': '+json.dumps(dict(gradient_norm_before_clip=stats['gradient_norm_before_clip'],
-                    clipping_factor=stats['clipping_factor'],modules=stats['modules'])),flush=True)
+            if verbose_console:
+                print('SHADOW train-mode gradient directions: '+json.dumps(shadow['gradients']),flush=True)
+                for branch,stats in shadow['branches'].items():
+                    print('SHADOW Adam '+branch+': '+json.dumps(dict(gradient_norm_before_clip=stats['gradient_norm_before_clip'],
+                        clipping_factor=stats['clipping_factor'],modules=stats['modules'])),flush=True)
             del q,plan,support
         else:print('SHADOW NOT_RUN: '+request['reason'],flush=True)
     for split,data,reader in [('train',ds,loader),('validation',val,vl)]:
@@ -298,6 +306,9 @@ def diagnose(a):
                 item['gradient_probe']=gradient_probe(net,embeddings[[position[i] for i in tile]],episodic,ds.rows,tile,context,query=q)
                 del q
             result['cases'].append(item);budget.check()
+            if not verbose_console:
+                print(f"CASE DONE | {split} {name} | records={len(ids)} | detailed values retained in JSON",flush=True)
+                continue
             print(json.dumps(dict(split=split,records=len(ids),**item['full_support']['score'])),flush=True)
             t=item['full_support']['trace']
             print('Normalized candidate variance: '+', '.join(f"{s['stage']}={s['normalized_centered_energy']:.6g}" for s in t['stages'])
@@ -323,6 +334,9 @@ def diagnose(a):
     if not result['weights_unchanged']:raise AssertionError('Diagnostic changed model weights')
     a.output.parent.mkdir(parents=True,exist_ok=True)
     with a.output.open('x',encoding='utf8') as f:json.dump(result,f,indent=2,allow_nan=False)
+    if not verbose_console:
+        from tools.summarize_local_cnn_diagnosis import format_summary
+        print(format_summary(result),flush=True)
     print(f'REPORT: {a.output}\nNo training/checkpoint changes. This sampled diagnosis is not full evaluation.',flush=True)
 
 def main():
@@ -336,6 +350,7 @@ def main():
     p.add_argument('--workers',type=int,required=True)
     for key in ('cuda-gib','rss-gib','resident-gib'):p.add_argument('--'+key,type=float,required=True)
     p.add_argument('--allow-debug',action='store_true')
+    p.add_argument('--verbose-console',action='store_true',help='Print full diagnostic JSON sections; default is a short summary and a complete saved report')
     p.add_argument('--deep',action='store_true',help='Explicit extra read-only traces and cloned next-update diagnostic')
     p.add_argument('--anchor-radius-mm',type=float,help='Required with --deep; read-only local feature ROI radius, never changes production FOV')
     p.add_argument('--message-scales',nargs='+',type=float,help='Required with --deep; explicit query-only message counterfactuals, including baseline 1')
