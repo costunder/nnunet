@@ -1,0 +1,500 @@
+지금 최신 정리까지 보면, **이제 원인을 꽤 좁힐 수 있습니다.**  
+그리고 이번에는 GT나 donor 해석을 건드릴 필요 없습니다.
+
+## 핵심 결론
+
+현재 v2.2에서 제일 강하게 의심되는 건:
+
+> **L0가 P/U를 구별하는 “후보 중심의 국소 정보”를 너무 일찍 평균내서 없애고 있다.**
+
+입니다.
+
+L1 collapse도 실제고, L2 prototype scoring도 병목일 수 있지만, **현재 증거상 더 위쪽인 L0 representation부터 이미 target-sensitive signal이 약합니다.**
+
+---
+
+# 왜 그렇게 보냐
+
+현재 LocalCNN은 후보 위치를 중심으로 crop을 만듭니다.
+
+`l0_local_cnn/data.py:93,120`
+
+```text
+recipient crop center = row['center']
+```
+
+여기까지는 맞습니다.
+
+그런데 CNN을 통과한 다음 각 scale에서 하는 일이:
+
+`l0_local_cnn/model.py:60`
+
+```python
+pooled.append(
+    torch.where(m, x, 0).sum((2,3,4)) / count
+)
+```
+
+입니다.
+
+즉 각 scale의 3D feature map 전체를:
+
+```text
+[D,H,W]
+   ↓
+organ 안 전체 평균
+   ↓
+채널 벡터 하나
+```
+
+로 만들어버립니다.
+
+그리고 세 scale 평균만 concat해서 128D `r`을 만듭니다.
+
+```text
+CNN feature map
+    ↓
+scale1 전체 평균
+scale2 전체 평균
+scale3 전체 평균
+    ↓
+128D r
+```
+
+### 문제는 P/U 정답이 “중심 위치”에 묶여 있다는 겁니다
+
+P는:
+
+```text
+crop 중심 = 실제 관측 tumor anchor
+```
+
+U는:
+
+```text
+crop 중심 = unobserved liver position
+```
+
+입니다.
+
+그러면 모델이 중요하게 봐야 하는 건:
+
+> **“바로 이 중심 주변이 어떤가?”**
+
+입니다.
+
+그런데 현재 readout은:
+
+> **“이 crop 전체 평균이 어떤가?”**
+
+를 만듭니다.
+
+둘은 다릅니다.
+
+---
+
+# 수식으로 보면 더 심각합니다
+
+후보 중심의 작은 영역 \(A\)에서만 P와 U의 차이가 있다고 해봅시다.
+
+전체 crop이 \(V\)라면 지금 mean pooling에서 그 차이는 대략:
+
+\[
+\Delta f_{\text{mean}}
+\propto
+\frac{|A|}{|V|}\Delta f_A
+\]
+
+가 됩니다.
+
+즉 중앙의 중요한 영역이 전체 crop의 5%라면, **signal도 평균 과정에서 크게 희석될 수 있습니다.**
+
+그리고 margin이 10mm라서 donor footprint 주변 정상 간 조직도 상당량 같이 들어갑니다.
+
+```text
+      crop 전체
+┌─────────────────┐
+│ 정상 정상 정상   │
+│ 정상 ███ 정상    │ ← 실제로 중요한 중심
+│ 정상 ███ 정상    │
+│ 정상 정상 정상   │
+└─────────────────┘
+
+현재:
+전부 평균
+```
+
+중앙이 중요한데 **모든 위치에 동일 weight를 주는 구조**입니다.
+
+---
+
+# 그리고 이 해석을 지금 데이터가 지지합니다
+
+## 1. `r`에 직접 head를 붙여도 held-out이 안 됐음
+
+이미 실행한 direct-head 결과:
+
+```text
+Frozen recipient project-r + nonlinear scalar head
+
+Train:
+56.93% → 58.85%
+
+Validation:
+43.83% → 36.19%
+```
+
+입니다.
+
+이건 중요합니다.
+
+`r`은 이미:
+
+```text
+CNN maps
+→ spatial mean
+→ project
+```
+
+가 끝난 representation입니다.
+
+즉 **L1/L2를 빼도 `r` 자체에서 일반화 가능한 P/U 분리가 잘 안 나옵니다.**
+
+따라서:
+
+> “L1만 고치면 된다”
+
+는 설명은 이제 약해졌습니다.
+
+---
+
+## 2. Reference L1이 후보 variation을 살려도 ranking은 안 살아남
+
+Legacy:
+
+```text
+L0 → L1
+후보 variation 약 1/30000
+```
+
+Reference:
+
+```text
+L0 → L1
+약 70% 유지
+```
+
+까지 개선됐는데도 ranking이 안 좋아졌죠.
+
+이 말은:
+
+> **L0에 존재하는 variation 대부분이 P/U 정답에 유용한 variation은 아니었다**
+
+는 쪽으로 갑니다.
+
+즉 단순히 벡터들이 서로 다르다고 좋은 게 아닙니다.
+
+---
+
+## 3. Rank-only gradient도 “차이”가 아니라 공통 이동을 많이 만듦
+
+가장 좋은 예가 사용자가 가져온 이 값입니다.
+
+Legacy 첫 rank-only step:
+
+```text
+전체 score mean 이동:
++0.0114257
+
+P-U margin 변화:
++6.33e-8
+```
+
+입니다.
+
+ranking loss는 공통 상수 이동에는 관심이 없습니다.
+
+\[
+(s_P+c)-(s_U+c)=s_P-s_U
+\]
+
+이니까요.
+
+그런데 parameter를 움직였을 때 **P와 U가 거의 같이 움직이고 있습니다.**
+
+이건 모델의 local Jacobian이 대략:
+
+```text
+P candidate  ─┐
+              ├─ 거의 같은 방향으로 score 변화
+U candidate  ─┘
+```
+
+라는 뜻입니다.
+
+즉 gradient가 없는 문제가 아니라:
+
+> **gradient가 P와 U를 다르게 움직일 수 있는 representation을 충분히 갖고 있지 않은 문제**
+
+에 더 가깝습니다.
+
+---
+
+# v1이 됐다는 사실과도 맞습니다
+
+여기가 중요합니다.
+
+v1은 L0 단계에서 후보 주변 정보를 훨씬 구조적으로 유지했습니다.
+
+대략:
+
+```text
+local CNN feature
++ node별 위치/역할/기하 feature
++ context nodes
++ liver surface
+        ↓
+GAT
+        ↓
+role/context별 pooling
+```
+
+였습니다.
+
+즉 v1은 처음부터:
+
+> **“어디에 있는 어떤 정보인가”**
+
+를 버리지 않았습니다.
+
+반면 지금 LocalCNN은:
+
+```text
+3D feature map
+↓
+공간 평균
+↓
+128D
+```
+
+입니다.
+
+그래서 v1의 장점이 꼭 **GAT 자체**였다고 볼 필요는 없습니다.
+
+오히려:
+
+> **v1은 공간 구조를 보존했고, v2.2 LocalCNN은 공간 구조를 너무 일찍 제거했다**
+
+가 현재 증거에 더 잘 맞습니다.
+
+---
+
+# Fusion도 두 번째로 문제입니다
+
+`model.py:44`
+
+```python
+[d, r, r-d, r*d]
+↓
+512
+↓
+256
+↓
+128
+```
+
+인데 이전 deep probe에서 이 구간에서도 후보 variation이 **39~120배 감소**했습니다.
+
+따라서 현재 흐름은:
+
+```text
+candidate-centered CT
+        ↓
+CNN
+        ↓
+전체 spatial mean       ← 첫 번째 정보 손실
+        ↓
+r
+        ↓
+donor-recipient fusion  ← 추가 수축
+        ↓
+L1                      ← 또 추가 수축
+        ↓
+prototype score
+```
+
+입니다.
+
+**한 군데가 아니라 연속적으로 후보 차이를 없애는 구조**입니다.
+
+다만 지금 증거상 가장 위에서 먼저 손실되는 게 L0 readout입니다.
+
+---
+
+# L2도 왜 score가 더 작아질 수 있냐
+
+현재 최종 score는 직접 scalar MLP가 아닙니다.
+
+`hiercp_v222/clustering.py:122-124`
+
+```text
+query normalize
+↓
+class prototype와 cosine
+↓
+class별 logsumexp
+↓
+logit1 - logit0
+```
+
+입니다.
+
+즉 query가 P/U에 따라 달라도 그 차이가:
+
+```text
+class1 prototype 방향
+      vs
+class0 prototype 방향
+```
+
+과 관련된 방향이어야 최종 score에 나타납니다.
+
+예를 들어 query 차이가 이런 방향이면:
+
+```text
+       P •
+         ↑ 차이는 큼
+       U •
+
+class0 ←────────→ class1
+```
+
+P와 U가 서로는 많이 달라도 **class0↔class1 축에 투영되는 값이 같으면 score는 거의 같습니다.**
+
+그래서:
+
+```text
+candidate variance 큼
+```
+
+과
+
+```text
+P/U ranking 가능
+```
+
+은 전혀 같은 말이 아닙니다.
+
+---
+
+# 그래서 원인을 지금 순서대로 정리하면
+
+### **1. L0 target-sensitive representation 부족 — 가장 강함**
+
+현재 `organ_masked_mean_each_scale`이 후보 중심 정보를 희석합니다.
+
+이미 frozen `r` direct head가 held-out P/U를 못 나눴다는 점이 강한 증거입니다.
+
+### **2. Fusion이 그 작은 차이를 또 압축**
+
+실측 39~120배 contraction.
+
+### **3. Legacy L1이 추가로 극단적으로 압축**
+
+현상 자체는 확정이지만, reference로 살려도 성능이 안 살아났으므로 **1차 원인은 아님**.
+
+### **4. L2 prototype scorer가 target-relevant direction만 사용**
+
+남은 차이도 최종 score로 못 변환할 수 있음.
+
+---
+
+# 그러면 제가 지금 구조를 고친다면
+
+GT, P/U, same donor, loss는 **전혀 안 건드립니다.**
+
+L0만 이렇게 바꿉니다.
+
+```text
+현재
+
+CNN feature maps
+↓
+전체 mean
+↓
+128D
+```
+
+를:
+
+```text
+CNN feature maps
+   ├─ 후보 중심 feature
+   ├─ 후보 중심 작은 ROI pooling
+   ├─ 중간 범위 ROI pooling
+   └─ 전체 crop context mean
+              ↓
+          concat
+              ↓
+            128D
+```
+
+로 바꿉니다.
+
+예를 들면 각 scale에서:
+
+```text
+center 1 voxel / trilinear sample
++
+3×3×3 또는 물리반경 small ROI
++
+넓은 context mean
+```
+
+을 같이 가져갑니다.
+
+그러면 모델이:
+
+```text
+“후보 중심 자체”
++
+“후보 바로 주변”
++
+“넓은 간 문맥”
+```
+
+을 동시에 봅니다.
+
+**이건 새로운 정답을 만드는 게 아닙니다.**
+
+P/U는 그대로입니다.
+
+---
+
+## 이게 아까 이야기했던 multi-scale 3D CNN 방향과 정확히 연결됩니다
+
+결국 우리가 전에 이야기한:
+
+```text
+local high-resolution
++
+wide low-resolution context
+```
+
+가 필요한 이유가 여기서 실제 데이터로 나타난 겁니다.
+
+현재는 multi-scale CNN이긴 하지만 마지막에:
+
+```text
+모든 scale → 전체 평균
+```
+
+을 해버려서 **multi-scale spatial information을 제대로 활용하지 못하고 있습니다.**
+
+---
+
+### 한 문장으로 정리하면
+
+> **v2.2는 gradient가 끊긴 게 아니라, P/U를 구별해야 하는 후보 중심 공간정보를 L0에서 평균으로 너무 일찍 압축한 뒤 fusion/L1/prototype을 통과시키고 있어서, parameter update가 P와 U를 다르게 움직이지 못하는 구조가 된 것이 현재 가장 강한 원인입니다.**
+
+그래서 저는 이제 **GT나 BN이나 reference L1을 더 만지는 게 아니라, `organ_masked_mean_each_scale`을 center-aware multi-scale readout으로 바꾸는 게 가장 타당한 수정**이라고 봅니다.

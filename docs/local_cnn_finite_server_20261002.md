@@ -209,6 +209,73 @@ field 연결과 출력은 검증했으며, 이것을 학습된 서버 모델 결
 출력 회귀45개가 통과했다. 모델·optimizer 실행은 없으며 기존 실제 GPU 검사를
 재실행한 것으로 보고하지 않는다.
 
+## 후속 L0 검토 — 중심 readout과 작은 CNN-feature graph
+
+첨부 `ec706b7d`의 전문과 이후 사용자의 작은 graph 제안을 함께 검토했다.
+P/U observation 계약은 앞 절 그대로다. 두 제안 모두 새로운 GT를 만드는 것이
+아니라 L0가 후보와 주변 정보를 보존하는 방식을 바꾸는 대안이다.
+첨부 원문은 `validation/l0_spatial_readout_review_20261002/review_original.txt`에
+byte 그대로 보존하고, 같은 폴더의 `review_receipt.json`에 변경·미실행 범위를 기록한다.
+
+**코드에서 확인한 사실:** 현재 평균은 간 전체가 아니라 donor footprint와
+`margin_mm`으로 정한 **국소 crop의 간 내부 feature**에 적용된다. CNN 세 scale은
+12/24/32 channel, stride1/2/4이고 mean concat은68D, project는68→128이다.
+`LocalCNN.forward`는 crop image/organ/view index를 사용하지만 각 pair의 실제
+candidate anchor를 readout에 직접 사용하지 않는다. 공간 배치를 평균으로
+압축하는 것은 사실이나, learned CNN channel에 모든 중심 정보가 사라졌다는
+뜻까지 코드만으로 증명되는 것은 아니다.
+
+**원인 판정의 한계:** frozen-r head의 선택된 두 train/두 validation case 결과는
+CNN·mean·project를 모두 고정했다. 그 실패는 손실 위치를 mean에 특정하지 못한다.
+Reference L1의 variance 유지와 rank-only의 공통 이동도 mean pooling에 대한
+반사실 개입이 아니다. 따라서 “mean이 확정된 주원인”, “L1은1차 원인이 아니다”,
+“작은 graph가 해결한다”는 결론은 아직 쓰지 않는다. `|A|/|V|` 희석식은 다른
+feature가 그대로이고 차이가 A에만 국한된 단순 조건의 설명이지 실측 손실률이 아니다.
+
+| L0 대안 | 보존하려는 정보 | 현재 상태 |
+| --- | --- | --- |
+| A: center-aware CNN readout | 실제 candidate anchor, 작은/중간 ROI, 넓은 crop context | 구체적인 수정 후보; 새 projection/초기화 필요 |
+| B: CNN feature + 작은 sparse/adaptive graph | 선택된 위치의 영상 feature와 중심·역할·scale·주변 관계 | 사용자가 제시한 설계 후보; node/edge 선택 알고리즘과 비용·효용 미검증 |
+
+B의 노드는 raw voxel 격자를 다시 채우는 방식으로 정의하지 않는다. CNN의
+선택 위치 feature와 후보에 상대적인 위치·거리·역할·scale을 결속하고, GNN 이후에도
+중심과 local/mid/wide 역할을 구분한 readout을128D로 보낸다는 요구를 기록한다.
+노드32~64는 사용자가 든 **예시 범위**이며 검증된 production default나 숨은
+cap으로 추가하지 않는다. `relevant context`나 `adaptive`라는 이름만으로 실제
+선택 규칙이 구현된 것으로 간주하지 않는다. 현재 없는 혈관·multiphase 입력도
+만들지 않는다. 기존 CNN을 unique crop별로 공유하는 것과 전체 환자 CT를 한 번
+인코딩하는 것은 다른 입력·메모리 계약이다. 현재 구현을 후자로 설명하지 않는다.
+
+**두 대안 공통 좌표 계약:** recipient=`row.center`, donor=`donor_bounds(row)[0]`,
+crop 좌표=`native anchor−audit.origin[view_id]`, scale 좌표=`crop 좌표/stride`다.
+Donor footprint 비대칭, native spacing, CT 경계 clipping, high-side batch padding
+때문에 padded tensor midpoint를 candidate center로 사용하면 안 된다.
+기존 `tools/local_cnn_l0_probe.py`가 이 결속과 anisotropic mm sphere/coverage를
+이미 검사한다. 같은 기능을 새로 중복 구현하기 전에 이 경로를 재사용한다.
+
+`CropStore`는 동일 `(case,lo,hi)` crop을 공유한다. 서로 다른 anchor가 경계에서
+같은 bounds로 clip되는 경우 기존 deterministic L0는 같은 donor 아래 동일한
+표현을 낸다. 이는 **조건부 표현력 제한**이며 전체 데이터의 빈도나 현재 성능
+저하 기여율을 측정한 것으로 보고하지 않는다. `anchor_in_organ`은 unique crop의
+최초 anchor에 대한 audit이므로 공유 crop의 모든 pair를 그 값으로 검사하면 안 된다.
+
+관측 anchor는 annotation component의 bbox midpoint다. 오목한 component에서는
+종양/간 mask 밖일 수 있다. 중심 readout이나 중심 node가 유효하다고 임의 가정하지
+않는다. Unsupported organ coverage는 명시적으로 보고하며 anchor 이동, P/U 변경,
+record skip, 조용한0-vector로 숨기지 않는다. Graph와 ROI의 모든 sampling과
+연산도 기존 organ-only 입력·padding 배제 계약을 유지해야 한다.
+
+A에서 center/small/mid/global을 세 scale 모두 concat하면272D다. 기존68→128
+project와 optimizer moments를 exact resume할 수 없다. B의 새 GNN 역시 새 모델이다.
+전체-model 대조에서는 새 query readout과 같은 방식으로 **모든 eligible support
+observation**도 다시 인코딩하고 자신의 teacher/plan을 맞춘다. 이전 mean basis의
+support를 섞어 새 모델 정확도로 평가하지 않는다. L1/L2 연산·P/U·same donor·loss·
+후보128·전체관측·원본 mask·physical batch·Basic CP는 별도의 변경 없이 유지한다.
+
+이번 후속 검토에서는 코드/기존 증거를 읽고 설계 경계를 기록했다. 새 graph나
+center-aware 학습 모델을 구현했다고 주장하지 않는다. 신규 GPU/CPU 모델 실행,
+장기 학습, production model/default 변경도 없다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
