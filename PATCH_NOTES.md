@@ -1,3 +1,10 @@
+## v2.2 — epoch27 증거와 L1 interaction 수정 후보 (2026-10-01)
+
+- 서버 epoch필드27/step14924의 원문·수치를 보존. FFN0은 spread만 늘고 순위가 일관 개선되지 않았으며 direct-head validation은 악화했다. Refresh phase의 saved-next-update는 NOT_RUN으로 유지한다.
+- 기존 edge-conditioned L1 MLP에 명시적 beta·q–k 내적 항을 더하는 독립 복제 후보 추가. Support/query 양쪽에 같은 식을 사용하고 branch별 L1 history/teacher를 새로 계산한다. 기존 L0/L2/loss/MLP/FFN/차원/층수·후보·mask·physical batch는 유지하며 production 기본 경로는 변경하지 않는다.
+- 같은 실제 CT·원래 support 환자 선택·전체 epoch loss 계수로 fresh AdamW 짧은 prefix A/B, CNN까지 실제 갱신·전후 선택 case 순위·자원·진행률·입력/원본 보존 기록. Saved checkpoint exact resume 또는 최종 학습으로 표시하지 않는다.
+- 총100개 단위·CUDA 검사 및 실제CT DEBUG smoke 통과. DEBUG validation 개선은 확인되지 않았고 학습된 서버 모델의 신규 후보는 미실행이다. [수정·검증·서버 명령](docs/local_cnn_interaction_20261001.md).
+
 ## v2.2 — epoch22 검토 반영과 원인 분리 진단 (2026-10-01)
 
 - 두 번째 query L1 FFN만 scale sweep하고 head별 전체 후보 attention weight의 분산·cosine·JS·entropy를 측정한다. Scale1 production parity, support/L2 고정.

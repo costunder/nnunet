@@ -1,0 +1,71 @@
+{
+  "format": "local_cnn_interaction_debug_receipt_v1",
+  "unit_tests": {
+    "passed": 100,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 13.788,
+    "command": ".venv/Scripts/python.exe -B -m unittest tests.test_local_cnn_learning_diagnosis tests.test_local_cnn_l0_probe tests.test_local_cnn_l1_probe tests.test_local_cnn_shadow_probe tests.test_local_cnn_alignment_audit tests.test_local_cnn_fusion_probe tests.test_local_cnn_direct_head_probe tests.test_local_cnn_diagnosis_summary tests.test_local_cnn_interaction_candidate tests.test_local_cnn_interaction_updates tests.test_local_cnn_interaction_runtime tests.test_local_cnn_interaction_summary",
+    "cuda_exact_comparison": "fresh CUDA child with deterministic CUBLAS configured before PyTorch; no CPU fallback"
+  },
+  "static_checks": {
+    "syntax_files": 9,
+    "syntax": "PASS",
+    "tracked_diff_whitespace": "PASS"
+  },
+  "repaired_before_final_pass": [
+    "Ambient AMP influenced cloned backward; full helper now isolates FP32",
+    "Deterministic CUDA unit initialized CUBLAS too late in combined suite; exact comparison now runs in an independent CUDA child"
+  ],
+  "actual_ct_debug": {
+    "status": "PASS",
+    "scope": "mechanics only; all DEBUG candidates in selected train/validation case, two cloned updates each",
+    "report_file": "final_actual_CT_DEBUG_report.json",
+    "report_file_sha256": "9d428603bfaa7fa8fdb48df4647238eb2bae396c085dac1372593f9601c6a319",
+    "checkpoint_content_sha256": "cccdb178cc926f2b786727622e52555aa8d45a244f78067184f137748fcf760a",
+    "snapshot_epoch": 1,
+    "snapshot_step": 4,
+    "snapshot_phase": "complete",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "parameters": 1125718,
+    "physical_batch": 2,
+    "train_observations": 8,
+    "validation_observations": 2,
+    "cases": [
+      {
+        "split": "train",
+        "case_id": "liver_66",
+        "records": 2,
+        "positives": 1,
+        "all_case_candidates_retained": true
+      },
+      {
+        "split": "validation",
+        "case_id": "liver_31",
+        "records": 2,
+        "positives": 1,
+        "all_case_candidates_retained": true
+      }
+    ],
+    "peak_cuda_gib": 0.2397022247314453,
+    "rss_bytes": 6070444032,
+    "helper_fingerprints": {
+      "local_cnn_interaction_candidate.py": "41b78a55834c7b98dd8a4997f84025c2a1f31aa4c60af10ba1058a0b49de4fe4",
+      "local_cnn_interaction_runtime.py": "7f2608d72013f371f8e8e26dad2fe2edb2069c47ad1c8c99c912033c705c7d73",
+      "local_cnn_interaction_updates.py": "80adad37fc3b9d66b4086ec64a8a13599b31bb7a1499be6f520f813e59907f60",
+      "diagnose_local_cnn_learning.py": "2b2f9eaf36d9b3bd90e7ae87ad470445a34592ec8bcea519d6b170076c1557b8"
+    },
+    "full_module_gradients_and_updates": "PASS",
+    "original_checkpoint_content_and_model_preserved": true,
+    "post_update_current_CNN_queries_reencoded": true,
+    "validation_improved": false,
+    "production_updates": 0,
+    "production_checkpoints_written": 0
+  },
+  "production_architecture_defaults_changed": false,
+  "diagnostic_L1_equation_changed": true,
+  "full_training_executed": false,
+  "full_evaluation_executed": false,
+  "trained_server_epoch27_interaction_executed": false,
+  "physical32_cuda_unit": "separate synthetic native tensors using full LocalCNN/L1/L2, not trained CT accuracy"
+}

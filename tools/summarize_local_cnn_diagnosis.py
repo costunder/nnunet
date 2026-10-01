@@ -165,6 +165,119 @@ def _case_lines(case: dict, reasons: dict[str, set[str]]) -> list[str]:
             "score_std", "mean_positive_minus_unobserved", "pair_win_rate", "mean_pairwise_loss"))
         lines.append(f"  Fusion {_text(_get(row, 'branch'))} lambda={_text(_get(row, 'fusion_scale'))} "
                      f"std/gap/win/loss={values}; support+query re-encoded")
+    lines.extend(_interaction_case_lines(case))
+    return lines
+
+
+def _interaction_case_lines(case: dict) -> list[str]:
+    candidate = _get(case, "l1_interaction_candidate")
+    if candidate is _MISSING:
+        return []
+    if not isinstance(candidate, dict):
+        return ["  L1 INTERACTION: unavailable (invalid candidate result)"]
+    if _get(candidate, "status") == "NOT_RUN":
+        return ["  L1 INTERACTION NOT_RUN: " + _text(_get(candidate, "reason"))]
+    branches = _as_list(_get(candidate, "branches"))
+    matched_flags = [_get(branch, "support_query_equation_matched") for branch in branches]
+    matched = (True if matched_flags and all(v is True for v in matched_flags)
+               else False if any(v is False for v in matched_flags) else _MISSING)
+    lines = ["  L1 INTERACTION fixed-weight; support+query-matched=" + _flag(matched)
+             + " beta0-parity=" + _flag(_get(candidate, "scale_zero_production_parity_passed"))
+             + " original-weights=" + _flag(_get(candidate, "original_weights_unchanged"))]
+    if not branches:
+        lines.append("  Interaction branches: unavailable")
+    for branch in branches:
+        name, scale = _get(branch, "branch"), _get(branch, "interaction_scale")
+        beta = "legacy" if name == "legacy_additive" and scale is None else _metric(scale)
+        score = _get(branch, "score")
+        values = "/".join(_metric(_get(score, key)) for key in (
+            "score_std", "pair_win_rate", "mean_pairwise_loss"))
+        lines.append(f"  Interaction {_text(name)} beta={beta} std/win/loss={values}")
+        layer = next((row for row in _as_list(_get(branch, "layers"))
+                      if _get(row, "layer") == 2), None)
+        heads = _as_list(_get(layer, "attention", "per_head"))
+        if not heads:
+            lines.append("    L1_2 attention: unavailable")
+            continue
+        variance = "/".join(_metric(_get(head, "candidate_weight_variance_mean")) for head in heads)
+        js = "/".join(_metric(_get(head, "mean_pairwise_jensen_shannon")) for head in heads)
+        cosines = [_get(head, "mean_pairwise_cosine") for head in heads]
+        cosine_status = _saved_range(cosines)
+        cosine_min = (cosine_status if cosine_status in ("unavailable", "undefined", "invalid", "nonfinite")
+                      else _metric(min(cosines)))
+        lines.append(f"    L1_2 attention head-var={variance} head-JS={js} min(head-mean cos)={cosine_min}")
+    return lines
+
+
+def _saved_range(values: list) -> str:
+    """Never reduce only the present/finite subset of a saved update series."""
+    if not values or any(value is _MISSING for value in values):
+        return "unavailable"
+    if any(value is None for value in values):
+        return "undefined"
+    if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in values):
+        return "invalid"
+    if any(not math.isfinite(value) for value in values):
+        return "nonfinite"
+    return _metric(min(values)) + "/" + _metric(max(values))
+
+
+def _interaction_evaluation(value: Any, split: str) -> str:
+    if _get(value, "status") == "NOT_RUN":
+        return "NOT_RUN: " + _text(_get(value, "reason"))
+    result = _get(value, split)
+    if _get(result, "status") == "NOT_RUN":
+        return "NOT_RUN: " + _text(_get(result, "reason"))
+    # The explicit evaluation callback can return metrics directly or under
+    # 'metrics'; this reader does not infer omitted values from another split.
+    nested = _get(result, "metrics")
+    metrics = nested if isinstance(nested, dict) else result
+    values = []
+    for key in ("ranking_mrr", "pair_win_rate", "ranking_pairwise_loss"):
+        # The matched prefix evaluator saves aggregate pair win on split root,
+        # while ranking_metrics saves MRR/loss inside 'metrics'. Older explicit
+        # layouts with a nested win or fully flat metrics remain readable.
+        value = _get(result, key) if key == "pair_win_rate" else _get(metrics, key)
+        if key == "pair_win_rate" and value is _MISSING:
+            value = _get(metrics, key)
+        values.append(_metric(value))
+    return "/".join(values)
+
+
+def _interaction_update_lines(report: dict) -> list[str]:
+    updates = _get(report, "l1_interaction_updates")
+    if updates is _MISSING:
+        return []
+    if not isinstance(updates, dict):
+        return ["L1 INTERACTION UPDATES: unavailable (invalid result)"]
+    if _get(updates, "status") == "NOT_RUN":
+        return ["L1 INTERACTION UPDATES NOT_RUN: " + _text(_get(updates, "reason"))]
+    lines = [f"L1 INTERACTION UPDATES: cloned fresh-AdamW full-objective prefix; steps/branch="
+             f"{_text(_get(updates, 'cloned_optimizer_updates_per_branch'))} "
+             f"batch={_text(_get(updates, 'physical_batch'))} "
+             f"prefix-observations={_text(_get(updates, 'prefix_unique_observations'))}/"
+             f"{_text(_get(updates, 'full_cohort_observations'))}",
+             "  Optimizer history=" + _text(_get(updates, "optimizer", "history"))
+             + "; exact-resume=" + _flag(_get(updates, "exact_resume"))
+             + " next-saved-update=" + _flag(_get(updates, "next_saved_update"))]
+    branches = _as_list(_get(updates, "branches"))
+    if not branches:
+        lines.append("  Update branches: unavailable")
+    for branch in branches:
+        name = _text(_get(branch, "branch"))
+        lines.append(f"  Update {name} beta={_metric(_get(branch, 'scale'))} "
+                     f"CNN grad min/max={_saved_range([_get(row, 'module_gradient_norms', 'CNN') for row in _as_list(_get(branch, 'updates'))])} "
+                     f"CNN parameter-delta={_metric(_get(branch, 'module_parameter_delta_norms', 'CNN'))} "
+                     f"prefix-seconds={_metric(_get(branch, 'prefix_seconds'))}")
+        for split in ("train", "validation"):
+            before = _interaction_evaluation(_get(branch, "before"), split)
+            after = _interaction_evaluation(_get(branch, "after"), split)
+            lines.append(f"    {name} {split} MRR/win/loss before -> after: {before} -> {after}")
+    lines.append("  Production updates=" + _text(_get(updates, "production_optimizer_updates"))
+                 + " checkpoints=" + _text(_get(updates, "checkpoints_written"))
+                 + " original-preserved=" + _flag(_get(updates, "original_weights_types_methods_modes_preserved"))
+                 + " caller-RNG=" + _flag(_get(updates, "caller_rng_restored")))
+    lines.append("  Fresh optimizer cloned prefix, not production continuation or final CP performance.")
     return lines
 
 
@@ -256,6 +369,7 @@ def format_summary(report: dict) -> str:
                     "ranking_mrr", "pair_win_rate", "ranking_pairwise_loss")))
             lines.append(f"  Direct {split} MRR/win/loss before -> after: " + " -> ".join(values))
         lines.append("  Short frozen-feature control; train fit alone is not CP validity or proof of the original failure cause.")
+    lines.extend(_interaction_update_lines(report))
     lines.append("Preserved: weights=" + _flag(_get(report, "weights_unchanged"))
                  + " saved-payload=" + _flag(_get(report, "shadow_update", "saved_payload_unchanged"))
                  + " support-plan=" + _flag(_get(report, "shadow_update", "support_plan_unchanged"))

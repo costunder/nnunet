@@ -1,0 +1,78 @@
+{
+  "format": "local_cnn_interaction_updates_unit_receipt_v1",
+  "created_at": "2026-10-01T13:17:14.6639781+09:00",
+  "working_directory": "D:/AI project/nnunet",
+  "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_local_cnn_interaction_updates -v",
+  "status": "PASS",
+  "tests_run": 6,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "unittest_elapsed_seconds": 8.804,
+  "prior_cuda_initialization_regression": {
+    "command": "Python stdin launcher imports torch, runs an 8x8 CUDA matmul to initialize the CUDA/CUBLAS context, then runs unittest.defaultTestLoader.loadTestsFromName('tests.test_local_cnn_interaction_updates')",
+    "status": "PASS",
+    "tests_run": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "unittest_elapsed_seconds": 8.834,
+    "scope": "Same six tests with CUDA initialized beforehand; verifies integrated-suite isolation rather than medical-model accuracy"
+  },
+  "test_names": [
+    "test_cuda_fused_native32_prefix_connects_original_full_model",
+    "test_each_branch_fits_own_teacher_once_per_patient_episode",
+    "test_failure_restores_rng_modes_weights_and_gradient_buffers",
+    "test_incomplete_schedule_and_support_patient_observation_drop_rejected",
+    "test_role_mismatch_and_changed_branch_data_fail_without_fallback",
+    "test_zero_candidate_matches_baseline_training_and_callback_rng_isolated"
+  ],
+  "environment": {
+    "torch": "2.8.0+cu128",
+    "cuda_build": "12.8",
+    "cuda_available": true,
+    "gpu": "NVIDIA GeForce RTX 5070 Ti"
+  },
+  "cuda_unit_scope": {
+    "data": "Explicit synthetic UNIT native LocalBatch tensors; not medical CT",
+    "native_tensor_size": [6, 6, 6],
+    "physical_batch": 32,
+    "actual_update_batch_sizes_per_branch": [32, 32],
+    "cloned_prefix_updates_per_branch": 2,
+    "branches": ["baseline scale 0", "candidate scale 1"],
+    "optimizer": "Fresh fused AdamW on each clone; no saved moments",
+    "precision": "FP32 throughout helper, including forward/loss, backward, optimizer, teacher fit and evaluation; caller autocast context is restored",
+    "exact_cuda_parity_test_policy": "Identical CUDA UNIT test runs in an isolated Python process with CUBLAS_WORKSPACE_CONFIG=:4096:8 before PyTorch import; deterministic algorithms enabled and restored inside child. Parent checks actual one-test PASS with no skip. No CPU/size fallback. Helper preserves caller policy and records it.",
+    "timing_claim": "No speedup claim: synchronized update and broader prefix scopes differ; loader/teacher/cache cold-warm effects are recorded",
+    "network": "Original full LocalCNN plus PromptGraphModel; no layer/width reduction",
+    "L0_channels": [12, 24, 32],
+    "L0_convolutions": [2, 3, 3],
+    "hidden_dim": 128,
+    "L1_layers": 2,
+    "L2_layers": 2,
+    "attention_heads": 4,
+    "checks": [
+      "Every full-model trainable parameter gradient is present and finite",
+      "CNN, readout/fusion, L1 and L2 gradients and cloned parameter updates are measured",
+      "Original weights, module types/methods/modes, gradient buffers and caller RNG remain unchanged",
+      "Same native query and support data are used in both branches",
+      "Scale-zero cloned training matches baseline exactly",
+      "Full schedule and selected-support-patient observation coverage cannot be shortened silently",
+      "Evaluation callback RNG consumption does not change training dropout/update results",
+      "Ambient CPU bfloat16 and CUDA float16 autocast contexts do not change the FP32 cloned-update weights/results",
+      "Caller autocast context remains enabled after the nested FP32 helper returns",
+      "Runtime deterministic/TF32/matmul precision/cuDNN/CUBLAS and configured autocast dtype are reported",
+      "Optional branch progress is separate from step counts, objective and model settings"
+    ]
+  },
+  "source_sha256": {
+    "tools/local_cnn_interaction_updates.py": "80adad37fc3b9d66b4086ec64a8a13599b31bb7a1499be6f520f813e59907f60",
+    "tools/local_cnn_interaction_candidate.py": "41b78a55834c7b98dd8a4997f84025c2a1f31aa4c60af10ba1058a0b49de4fe4",
+    "tests/test_local_cnn_interaction_updates.py": "1902433512e698d175490ab9db4e6d1a72c7fea2c2e824e7dfa8c554fc62fc44"
+  },
+  "production_optimizer_updates": 0,
+  "training_checkpoints_written": 0,
+  "long_training_started": false,
+  "full_medical_evaluation_executed": false,
+  "interpretation": "Mechanical unit/operator checks only. This receipt is separate from the root agent's actual CT smoke report and does not establish improved validation ranking or CP usefulness."
+}

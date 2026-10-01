@@ -1,4 +1,4 @@
-"""Read-only GPU diagnosis; cloned optimizer probes, no production writes.
+"""GPU diagnosis and explicit short cloned optimizer probes; no production writes.
 
 Explicit diagnostic case count; all candidates in each selected case are retained.
 Measures trained representations and support sensitivity, not a new trained model.
@@ -272,6 +272,20 @@ def diagnose(a):
     fusion_queries=[]
     direct_steps=getattr(a,'direct_head_steps',None)
     direct_cases={'train':[],'validation':[]}
+    interaction_scales=getattr(a,'interaction_scales',None)
+    interaction_steps=getattr(a,'interaction_update_steps',None)
+    interaction_only=getattr(a,'interaction_only',False)
+    interaction_cases=[]
+    if interaction_scales:
+        from tools.local_cnn_interaction_candidate import probe_interaction,ARCHITECTURE
+        from tools.local_cnn_interaction_runtime import support_binding,make_evaluator
+        result['l1_interaction_contract']=dict(architecture=ARCHITECTURE,scales=interaction_scales,
+            formula='existing edge-conditioned MLP + beta * dot(q,k) / sqrt(head width)',
+            scope='cloned L1 only; same equation for support and query; original model preserved',
+            production_defaults_changed=False,production_optimizer_updates=0,exact_resume=False,
+            fingerprints={name:sha(ROOT/'tools'/name) for name in (
+                'local_cnn_interaction_candidate.py','local_cnn_interaction_runtime.py',
+                'local_cnn_interaction_updates.py','diagnose_local_cnn_learning.py')})
     if fusion_scales:
         from tools.local_cnn_fusion_probe import BasisBank
         fusion_bank=BasisBank(ds.rows)
@@ -307,6 +321,14 @@ def diagnose(a):
                 metrics,details=ranking_metrics(scores.cpu(),truth.cpu(),[name]*len(ids),candidate_keys=[record_key(r) for r in rows])
                 item=dict(split=split,case_id=name,records=len(ids),positives=int(truth.sum()),all_case_candidates_retained=True,
                     full_support=dict(trace=trace,score=score_summary(scores,truth),metrics=metrics),observed_ranks=details[0]['observed_ranks'])
+                if interaction_scales:
+                    bound,support_ids,_=support_binding(memory,ds.rows,group)
+                    item['l1_interaction_candidate']=probe_interaction(net,embeddings,bound,
+                        scales=interaction_scales,truth=truth,batch=batch,
+                        support_record_ids=support_ids,query_group=group)
+                    if interaction_steps is not None:
+                        interaction_cases.append(dict(split=split,rows=rows,indices=ids,truth=truth,
+                            embeddings=embeddings,reader=reader))
                 if a.deep:
                     l0_keys=set(l0_parts)|l0_unavailable
                     item['l0_substages']=dict(stages={key:
@@ -324,14 +346,14 @@ def diagnose(a):
                         direct_cases[split].append(dict(case_id=name,donor_case_id=rows[0]['donor_case_id'],
                             features=torch.cat(l0_parts['project_recipient']),truth=truth,
                             record_ids=[row['id'] for row in rows],candidate_keys=[record_key(row) for row in rows]))
-                if split=='train':
+                if split=='train' and not interaction_only:
                     old=memory['embeddings'][ids]
                     item['memory_drift']=dict(mean_l2=float((old-embeddings).norm(dim=1).mean()),old=spread(old),current=spread(embeddings))
                     episodic=full if episodes is None else episodes.support(group)
                     es,et=trace_head(net,embeddings,episodic,batch)
                     item['training_support_eval']=dict(trace=et,score=score_summary(es,truth),
                         mean_abs_score_change_from_full=float((es-scores).abs().mean()))
-            if split=='train':
+            if split=='train' and not interaction_only:
                 tile=next(tile for tile in groups(ds,batch) if data.rows[tile[0]]['case_id']==name
                           and {data.rows[i]['target'] for i in tile}=={0,1})
                 position={i:j for j,i in enumerate(ids)}
@@ -361,6 +383,35 @@ def diagnose(a):
                         score=sweep['score'],layers=[dict(layer=layer['layer'],
                             normalized_variance={key:stats['normalized_centered_energy'] for key,stats in layer['stages'].items()})
                             for layer in sweep['layers']])),flush=True)
+    if interaction_steps is not None:
+        from l0_regions.donor_learning import configuration
+        from tools.local_cnn_interaction_updates import probe_candidate_updates
+        order=list(groups(ds,batch,ds.meta['config']['seed'],state['epoch']))
+        if interaction_steps>len(order):
+            raise ValueError('Requested short interaction updates exceed the complete diagnostic epoch schedule')
+        training=ds.meta['base']['training']
+        evaluator=make_evaluator(interaction_cases,memory,ds.rows,batch,budget,hash_state(net.local.state_dict()))
+        def candidate_support(ids):
+            selected={ds.rows[i]['patient_group'] for i in ids}
+            if len(selected)!=1:raise ValueError('Candidate tile mixes query patient groups')
+            return support_binding(memory,ds.rows,selected.pop(),episodes)
+        print(f'L1 INTERACTION DEBUG | {interaction_steps} matched updates per cloned branch; '
+              'fresh AdamW; full original objective; not a production resume',flush=True)
+        result['l1_interaction_updates']=probe_candidate_updates(net,
+            scale=a.interaction_training_scale,steps=interaction_steps,lr=a.interaction_lr,
+            train_tiles=order,batch_provider=lambda ids:loader.get(ids).to('cuda'),
+            support_provider=candidate_support,loss_context=context,settings=configuration(),
+            physical_batch=batch,budget=budget,weight_decay=training['weight_decay'],
+            grad_clip=training['grad_clip'],seed=ds.meta['config']['seed'],
+            fused_optimizer=training['fused_optimizer'],evaluation_provider=evaluator,progress=True)
+        result['diagnostic_candidate_training_started']=True
+        result['training_started']=True
+        result['training_scope']='explicit matched prefix in two cloned models; original model and optimizer untouched'
+        result['l1_interaction_updates'].update(snapshot_phase=state['phase'],snapshot_step=state['step'],
+            schedule_scope='fresh diagnostic prefix of complete current epoch order; not saved next update',
+            support_training_scope='original recorded patient episode selection; all eligible observations of each selected patient retained'
+                if episodes is not None else 'all eligible saved support observations')
+        del interaction_cases
     if direct_steps is not None:
         from tools.local_cnn_direct_head_probe import probe_direct_head
         print(f'DIRECT HEAD DIAGNOSTIC | {direct_steps} updates of a separate scalar head; '
@@ -409,6 +460,23 @@ def diagnose(a):
         print(format_summary(result),flush=True)
     print(f'REPORT: {a.output}\nNo production training/checkpoint changes. This sampled diagnosis is not full evaluation.',flush=True)
 
+def validate_interaction_options(a):
+    import math
+    scales=a.interaction_scales
+    if scales is not None and (not scales or len(set(scales))!=len(scales) or 0. not in scales
+            or any(not math.isfinite(value) or value<0 for value in scales)):
+        raise ValueError('Interaction candidate requires unique finite nonnegative scales including baseline 0')
+    update=(a.interaction_update_steps,a.interaction_lr,a.interaction_training_scale)
+    if any(value is not None for value in update):
+        if scales is None or any(value is None for value in update):
+            raise ValueError('Cloned candidate updates require explicit scales, steps, learning rate and training scale')
+        if (a.interaction_update_steps<1 or not math.isfinite(a.interaction_lr) or a.interaction_lr<=0
+                or not math.isfinite(a.interaction_training_scale) or a.interaction_training_scale<=0
+                or a.interaction_training_scale not in scales):
+            raise ValueError('Positive explicit cloned steps/rate and a nonzero measured training scale required')
+    if a.interaction_only and (scales is None or a.deep):
+        raise ValueError('--interaction-only requires interaction scales and excludes unrelated --deep probes')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--run',type=Path)
@@ -429,7 +497,13 @@ def main():
     p.add_argument('--fusion-scales',nargs='+',type=float,help='Explicit r+lambda*Fuse sweep; re-encodes ALL eligible train support once, then shares vectors across lambdas')
     p.add_argument('--direct-head-steps',type=int,help='Explicit short DIAGNOSTIC updates for a separate scalar head on frozen recipient features; never production training')
     p.add_argument('--direct-head-lr',type=float,help='Required together with --direct-head-steps; no implicit diagnostic learning rate')
+    p.add_argument('--interaction-scales',nargs='+',type=float,help='Opt-in cloned L1 additive-plus-dot scales including original baseline 0; applies to support and query')
+    p.add_argument('--interaction-only',action='store_true',help='Run selected full-candidate interaction A/B without repeating unrelated deep probes')
+    p.add_argument('--interaction-update-steps',type=int,help='Explicit short cloned fresh-AdamW prefix; never production or exact resume')
+    p.add_argument('--interaction-lr',type=float,help='Explicit matched diagnostic AdamW rate; required with cloned updates')
+    p.add_argument('--interaction-training-scale',type=float,help='Explicit nonzero measured beta for the short cloned training branch')
     a=p.parse_args()
+    validate_interaction_options(a)
     if a.cases_per_split<1 or a.workers<2 or not 0<a.resident_gib<a.rss_gib:raise ValueError('Explicit valid diagnostic resources required')
     import math
     if a.deep:
