@@ -1,0 +1,37 @@
+{
+  "scope": "Explicit user P/U contract correction and existing GPU JSON ranking-gradient reader",
+  "GT_model_loss_config_changes": false,
+  "production_source_files_unchanged": 121,
+  "user_dirty_files_preserved": {
+    "REFERENCES.md": "41070efe9735a43f74634e2b760b008bc2f0a9de96ec804e6f07ae8a502fde92",
+    "code.txt": "7d471ef0344c11bc55786cf585747d08a9945beb691bc0de461d54502212c64d",
+    "gpt_handoff.md": "fcbc74398f89ca071215b6ab38c24720dd85e030df628dfd7339fced7fd1e990"
+  },
+  "previous_GPU_evidence_unchanged": true,
+  "actual_new_model_GPU_execution": false,
+  "actual_new_model_CPU_execution": false,
+  "formatter_regression": {
+    "passed": 45,
+    "modules": [
+      "tests.test_reference_mode_ranking_summary",
+      "tests.test_reference_causal_summary",
+      "tests.test_reference_finite_summary",
+      "tests.test_summarize_local_cnn_reference"
+    ],
+    "scope": "saved-JSON formatter/reader tests, not numerical/model validation",
+    "default_output_preserved": true,
+    "missing_values_not_fabricated": true
+  },
+  "independent_contract_evidence_audit": "PASS",
+  "derived_argmax_confusions": 10,
+  "long_training_started": false,
+  "production_checkpoint_written": false,
+  "production_ready": false,
+  "main_cause_resolved": false,
+  "changed_source_sha256": {
+    "tools/local_cnn_causal_summary.py": "c6b2911894108b9dd068b64cbd3730540a286e39150fc11cf841416a76d59774",
+    "tools/summarize_local_cnn_reference.py": "d1095b85374ffe631e7e10ba58e4096e85d51ed9a411e226db8a62bb4fb3af2d",
+    "tests/test_reference_mode_ranking_summary.py": "2798f397d3f9f901927c94a66f2f4bc53f3d550f028278fe8e9e91bc693a5d5f"
+  },
+  "correction_sha256": "f0da50e40377c85f66ebcdc34c461e7e44f842191f3ae8b4bff792997dd31f76"
+}

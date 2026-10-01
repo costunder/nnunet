@@ -1,7 +1,7 @@
 """Format saved causal diagnostic JSON using only the standard library."""
 
 
-def format_causal_summary(comparison):
+def format_causal_summary(comparison, *, mode_ranking=False):
     """Compact complete causal signals; reads measured JSON only, no pager."""
     if comparison.get('causal_probe') is not True:
         raise ValueError('Explicit measured causal comparison required')
@@ -101,9 +101,14 @@ def format_causal_summary(comparison):
             if mode_control:
                 for mode in mode_control.get('modes', []):
                     score=mode.get('score', {})
+                    ranking = field(mode, 'per_loss_query_CNN_gradients', 'ranking')
+                    ranking_fields = (' weighted-rank-loss='+number(field(ranking, 'weighted_loss'))
+                        +' rank-query-grad='+number(field(ranking, 'query_embedding_gradient_norm'))
+                        +' rank-CNN-grad='+number(field(ranking, 'CNN_parameter_gradient_norm'))) if mode_ranking else ''
                     lines.append('    BN/dropout '+text(mode.get('mode'))+' | margin='+number(field(score, 'mean_ranking_margin'))
                         +' win='+number(field(score, 'pair_win_rate'))+' weighted-align='+number(mode.get('weighted_alignment_loss'))
-                        +' align-query-grad='+number(field(mode, 'per_loss_query_CNN_gradients', 'alignment', 'query_embedding_gradient_norm')))
+                        +' align-query-grad='+number(field(mode, 'per_loss_query_CNN_gradients', 'alignment', 'query_embedding_gradient_norm'))
+                        +ranking_fields)
                 control=mode_control.get('frozen_BN_dropout_off_full_update', {})
                 a,b=field(control, 'before', 'score'),field(control, 'after', 'score')
                 lines.append('    frozen-BN cloned full update | margin='

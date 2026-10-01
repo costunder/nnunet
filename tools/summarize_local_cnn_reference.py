@@ -468,7 +468,7 @@ def format_signals(report: dict) -> str:
     return '\n'.join(lines) + '\n'
 
 
-def format_causal(report: dict) -> str:
+def format_causal(report: dict, *, mode_ranking: bool = False) -> str:
     """Read the stored causal comparison without CT/model execution."""
     if not isinstance(report, dict):
         raise ValueError('report: expected JSON object')
@@ -482,17 +482,20 @@ def format_causal(report: dict) -> str:
     if root not in sys.path:
         sys.path.insert(0, root)
     from tools.local_cnn_causal_summary import format_causal_summary
-    return format_causal_summary(comparison) + '\n'
+    return format_causal_summary(comparison, mode_ranking=mode_ranking) + '\n'
 
 
-def read_summary(path: str | Path, *, signals: bool = False, causal: bool = False) -> str:
+def read_summary(path: str | Path, *, signals: bool = False, causal: bool = False,
+                 mode_ranking: bool = False) -> str:
     """Read a saved JSON report without changing its bytes."""
     if signals and causal:
         raise ValueError('Signals and causal summaries are mutually exclusive')
+    if mode_ranking and not causal:
+        raise ValueError('Mode ranking fields require the causal summary')
     with Path(path).open('r', encoding='utf-8-sig') as source:
         report = json.load(source)
     if causal:
-        return format_causal(report)
+        return format_causal(report, mode_ranking=mode_ranking)
     return format_signals(report) if signals else format_summary(report)
 
 
@@ -503,8 +506,13 @@ def main(argv: list[str] | None = None) -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--signals', action='store_true', help='Print saved per-case score, spread and loss signals instead of the default summary')
     mode.add_argument('--causal', action='store_true', help='Print saved fitted-case, tie and actual-update direction diagnostics; no retraining')
+    parser.add_argument('--mode-ranking', action='store_true',
+                        help='With --causal, include saved per-mode weighted ranking loss and query/CNN ranking gradient norms')
     args = parser.parse_args(argv)
-    summary = read_summary(args.report, signals=args.signals, causal=args.causal)
+    if args.mode_ranking and not args.causal:
+        parser.error('--mode-ranking requires --causal')
+    summary = read_summary(args.report, signals=args.signals, causal=args.causal,
+                           mode_ranking=args.mode_ranking)
     if args.output is not None:
         with args.output.open('x', encoding='utf-8', newline='\n') as target:
             target.write(summary)

@@ -1,5 +1,28 @@
 # v2.2 — 학습된 서버 모델의 동일 BN finite 비교 결과
 
+## 정답 계약 정정 — 사용자 지시 우선
+
+사용자가 이후 명시적으로 정정했다. **v2.2의 P/U를 donor-specific CP 적합성
+정답으로 해석하거나 v1의 정답으로 되돌리면 안 된다.** 앞선 보고의 “먼저
+donor–위치 적합성과 학습 정답을 연결하는 기준을 바로잡아야 한다”는 결론을 철회한다.
+첨부 `b28b3e51`의 donor mismatch→GT 복원 제안도 이 사용자 정정을 따르며 실행하지 않는다.
+
+| 고정 항목 | 현재 의미 |
+| --- | --- |
+| P / GT=1 | 원본 CT에서 실제 관측된 적격 종양 anchor |
+| U / GT=0 | 기존 comparison/unobserved center |
+| ranking 목표 | 같은 case에서 s(P)>s(U) |
+| observation CE | 제공된 P/U observation class를 예측 |
+| donor | 한 recipient case에서 고정한 조건 입력; donor별로 GT를 새로 부여하지 않음 |
+| CP suitability | 별도 GT 없음; P/U와 같은 의미가 아님 |
+
+U를 CP 부적합, P를 특정 donor의 적합 위치로 부르지 않는다. Donor를 바꿔도 P를
+U로 바꾸거나 U를 P로 바꾸지 않는다. TP/FN/TN/FP를 쓰면 위 **observation label**과
+명시한 classification decision rule에 대한 값이며 CP 성공/실패가 아니다.
+현재 구현은 이미 이 계약으로 `target`을 원래 observation과 대조하고 ranking/CE에
+사용한다. 코드에 label bug가 발견된 것이 아니므로 production GT·assignment·loss를
+수정하지 않는다. 아래 v1 차이는 실험의 차이를 설명하며 GT 변경의 근거가 아니다.
+
 ## 수신한 실행과 보존 범위
 
 사용자 첨부 `47930b33` 전문을 새로 실행된 실제 GPU 진단 결과로 보존했다.
@@ -112,19 +135,79 @@ v1 target CT는 source footprint를 변환해 양성·음성 모두에서 지우
 masking도 있다. 확인한 것은 **학습 target과 donor 조건의 차이**이며, 성능 차이의
 기여율이나 단일 원인을 측정한 것이 아니다.
 
-현재 관측 양성은 proxy supervision으로 쓸 수 있지만 그 donor에 대한 검증된
-CP 위치 정답은 아니다. 따라서 v1의 높은 ranking을 반례로 사용할 때도 같은
-donor 조건·같은 정답 의미·같은 후보 평가를 먼저 맞춰야 한다. 이 차이를 기록하지
-않고 v1과 동일한 학습인데 L0만 바뀌었다고 설명하는 것은 부정확하다.
-정답 계약 변경은 모델 버그패치나 옛 checkpoint exact resume로 적용하지 않는다.
+현재 P/U는 **관측 위치 순위화라는 objective의 정답으로 유지한다.** 특정 donor에
+대한 CP 적합성 GT가 없다는 사실이 이 observation GT를 잘못된 label로 만들지는
+않는다. v1은 원래 관계와 curriculum 관계, v2.2는 observed P와 unobserved U를
+각자의 objective로 분리하는 능력을 비교한다. 차이가 있다는 것과 성능 저하의
+원인이 supervision 오류라는 주장은 별개다. 이전의 GT 복원 우선 판단은 철회했다.
+
+## P/U를 유지한 학습 경로 분석
+
+`l0_regions/donor_learning.py:71–82`는 query target을 원래 row와 대조하고,
+두 class의 현재 CNN 특징을 함께 계산한 뒤 `s=logit1−logit0`를 사용한다.
+Loss는 `softplus(s(U)−s(P))`의 전체 pair 기준 정규화다. Margin이0일 때
+정규화 계수를 적용하기 전 단일 항의 pair margin 미분은−0.5이므로 **ln2 근처의 loss 자체가 gradient를
+포화시켜서 없앤다는 설명은 맞지 않는다.** GPU 결과에도 rank→CNN gradient가 있다.
+
+Rank loss는 모든 점수에 같은 상수 c를 더해도 변하지 않는다. 따라서 score의
+공통 이동은 순위 학습의 성공 지표가 아니다. Parameter gradient가 연결되고
+가중치가 바뀌더라도 **eval에서 P−U 차이가 커지는지**를 따로 봐야 한다.
+원래 train/dropout gradient와 eval readout의 차이, Adam preconditioning과
+nonlinear parameter 변화 때문에 rank-only parameter step에서도 공통 이동은
+생길 수 있다. 이것은 GT 불일치나 rank loss 오류의 증거가 아니다.
+
+현재 scorer(`hiercp_v222/clustering.py:122`)는 정규화한 query와 live class
+prototype의 cosine을 class별 logsumexp한 차이다. Query의 후보 차이가 있어도
+그 방향이 **두 class prototype의 대비 방향**에 반영되지 않으면 score 차이는
+작을 수 있다. Fusion·L1에서의 전체 variance 감소량만으로 target signal이
+사라진 위치를 확정할 수 없다. 이 구조적 가능성의 기여율은 아직 미측정이며
+prototype이 같거나 CNN이 학습 불가능하다고 단정하지 않는다.
+
+이번 whole-case score min/max는 두 branch의 update 전후 모두0보다 작다.
+**CE의 통상 argmax(=logit1−logit0>0이면 P)로 분류한다는 조건에서만**
+이199개 record는 TP0/FN71/TN128/FP0으로 유도된다. 이는 콘솔 range에서
+유도한 선택 case의 observation confusion이며 전체 평가나 CP 실패율이 아니다.
+임의 threshold 전부에서 분류할 수 없다는 주장은 하지 않는다. 작은 score
+amplitude만으로 분류 불가능을 증명할 수도 없다. 실제 P/U pair win이 거의
+chance 수준이라는 측정과 이 지정 decision rule의 confusion을 구분한다.
+
+유지할 원인 분석 질문은 **“P/U GT를 그대로 둔 현재 모델이 왜 그 두 집합의
+score 차이를 학습하지 못하는가?”**다. 현재 증거는 L1만 교체·CE 제거·직접 head
+교체가 해결책임을 보이지 않았다. 같은 기존 P/U와 자기 objective에 대한
+fit·held-out 분리, stage→score의 target-sensitive 경로, train/eval 차이를
+분석한다. 새로운 정답·donor-specific label·CP suitability label을 만들지 않는다.
 
 ## 현재 판단과 변경 상태
 
 - 같은 BN의 finite 점수까지 검사했지만 현재 후보의 안정적인 구분 개선은 확인되지 않았다.
 - L1 reference 교체, FFN 수축 완화, 즉시 CE 제거, frozen 직접 head 중 어느 것도 현재 자료에서 해결책으로 검증되지 않았다.
-- 후보 분산이 있다는 것과 target과 관련된 일반화 가능한 특징이 있다는 것을 구분한다. L0 fusion·L1·prototype score 경로와 v1 대비 supervision/input 차이를 함께 봐야 한다.
+- 후보 분산이 있다는 것과 target과 관련된 일반화 가능한 특징이 있다는 것을 구분한다. **P/U 정답을 고정하고** L0 fusion·L1·prototype score·train/eval의 학습 경로를 분석한다. v1과의 target 차이를 현재 GT 오류로 해석하지 않는다.
 - Production 모델·loss·Basic CP80%·split/seed42·후보128·전체 관측·physical batch·원본 mask는 변경하지 않았다. 장기 GNN/nnU-Net 학습을 자동 시작하지 않았다.
 - 이번에는 원문·전사·판단 기록을 추가했다. 새로운 model 수치 검사나 smoke를 실행한 것으로 보고하지 않는다. 수신한 서버 GPU 실행의 결과와 이전 로컬 smoke를 구분한다.
+
+## 저장된 GPU 결과의 ranking gradient 출력
+
+`tools/summarize_local_cnn_reference.py --causal --mode-ranking`은 기존 JSON의
+BN/dropout 네 모드에 이미 저장된 ranking weighted loss·query gradient norm·
+CNN parameter gradient norm을 출력한다. 원래 `per_loss_query_CNN_gradients.ranking`
+field만 읽고, 없는 값은 UNAVAILABLE, 실제0은0으로 표시한다. 기본 출력은 유지한다.
+이것은 **저장된 GPU 측정의 텍스트 출력**이며 CPU 모델 검사나 추가 GPU 학습이 아니다.
+
+서버의 저장 JSON에서 네 행만 한 번에 출력하는 명령이다. 이 도구가 포함된 commit으로
+코드를 갱신한 뒤 실행한다. GPU 선택과 checkpoint 재로드는 필요 없다.
+
+```bash
+python tools/summarize_local_cnn_reference.py \
+  /home/aicompetition06/Medical/experiments/reference_finite_20261002_010234.json \
+  --causal --mode-ranking |
+python -c 'import sys; print("".join(line for line in sys.stdin if line.startswith("    BN/dropout ")), end="")'
+```
+
+현재 서버 JSON 전문은 미수신이므로 이 네 모드의 **학습된 서버 ranking gradient
+값을 새로 확인했다고 주장하지 않는다.** 보존된 실제 CT 로컬 GPU DEBUG JSON으로
+field 연결과 출력은 검증했으며, 이것을 학습된 서버 모델 결과로 바꾸어 쓰지 않는다.
+출력 회귀45개가 통과했다. 모델·optimizer 실행은 없으며 기존 실제 GPU 검사를
+재실행한 것으로 보고하지 않는다.
 
 ## 작업 완료 체크리스트
 

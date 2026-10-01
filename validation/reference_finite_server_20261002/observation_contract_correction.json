@@ -1,0 +1,163 @@
+{
+  "format": "explicit_user_observation_contract_correction_v1",
+  "date": "2026-10-02",
+  "precedence": "User explicit My request correction overrides the older pasted review",
+  "superseded_review": {
+    "path": "superseded_review_original.txt",
+    "sha256": "8d9fefe253d8e2ff45ebbb7dfd5bba5cdf6e56937cdbaf60be07d3523ec210a5",
+    "bytes": 9314,
+    "rejected_conclusions": [
+      "donor independence invalidates observation GT",
+      "GT must be restored to v1 donor-original-anchor supervision",
+      "target identifiability is the confirmed main cause of current observation-ranking failure"
+    ]
+  },
+  "fixed_contract": {
+    "P": "existing eligible observed tumor anchor, target=1",
+    "U": "existing comparison/unobserved center, target=0",
+    "ranking": "s(P)>s(U) within the existing same-case/fixed-donor comparison",
+    "donor": "conditioning input; no donor-dependent target relabeling",
+    "observation_classification": "TP/FN/TN/FP refer to these observation classes and an explicit decision rule",
+    "CP_suitability": "separate, unavailable ground truth; do not identify P/U with valid/invalid paste",
+    "supervision_rollback_allowed": false,
+    "GT_relabeling_allowed": false
+  },
+  "mathematical_analysis": {
+    "rank": "sum softplus(sU-sP) with original full-cohort normalization",
+    "common_score_shift_invariant": true,
+    "pair_margin_derivative_at_zero": -0.5,
+    "near_ln2_loss_implies_gradient_saturation": false,
+    "nonzero_train_parameter_gradient_implies_eval_separation": false,
+    "independent_donor_invalidates_PU_supervision": false,
+    "tiny_score_amplitude_alone_implies_threshold_classification_failure": false
+  },
+  "derived_observation_argmax_confusions": [
+    {
+      "branch": "legacy",
+      "after_updates": 0,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "legacy",
+      "after_updates": 1,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "legacy",
+      "after_updates": 2,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "legacy",
+      "after_updates": 3,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "legacy",
+      "after_updates": 4,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "reference",
+      "after_updates": 0,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "reference",
+      "after_updates": 1,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "reference",
+      "after_updates": 2,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "reference",
+      "after_updates": 3,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    },
+    {
+      "branch": "reference",
+      "after_updates": 4,
+      "case_id": "liver_117",
+      "decision": "predict observation P iff logit1-logit0 > 0; standard CE argmax; no exact zero in printed range",
+      "TP": 0,
+      "FN": 71,
+      "TN": 128,
+      "FP": 0,
+      "derivation": "All printed class-logit-difference scores below zero, including maximum; not a newly executed classification evaluation",
+      "scope": "selected fitted case only, observation labels, not CP suitability or whole cohort"
+    }
+  ],
+  "source_server_transcription_sha256": "c1ca81fdde4255ddfdc12eb53a3b42cac4603d9e6bde8c4c640b1da0d7fcbd25",
+  "original_GT_assignment_loss_model_changed": false,
+  "new_model_execution": false,
+  "new_head_probe": false,
+  "production_checkpoint_written": false,
+  "long_training_started": false,
+  "main_causal_failure_resolved": false
+}

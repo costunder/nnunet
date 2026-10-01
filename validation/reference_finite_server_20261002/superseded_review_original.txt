@@ -1,0 +1,424 @@
+맞습니다. **제가 원인을 너무 아래 레이어에서만 쪼개고 있었습니다.**  
+지금 최신 ZIP까지 다시 대조하면, v1과 v2.2 사이에서 제일 먼저 봐야 했던 건 L1/BN/gradient가 아니라 **학습 정답 자체가 바뀐 것**입니다.
+
+## 지금 가장 큰 원인
+
+### v1은 `donor ↔ positive 위치`가 실제로 묶여 있었습니다
+
+v1은 source tumor 하나를 잡으면:
+
+```text
+donor/source tumor D
+        ↓
+그 종양이 실제 존재했던 원래 위치 P  ← positive
+        ↓
+같은 source를 기준으로 만든 다른 후보들 U ← negative/curriculum
+```
+
+코드에서도 positive가 정확히:
+
+```python
+positive.center = source.anchor_center
+```
+
+입니다.
+
+즉 학습하는 관계가:
+
+\[
+score(D,\;P_{\text{original}}) >
+score(D,\;U)
+\]
+
+입니다.
+
+**D와 P가 실제 데이터에서 서로 연결된 pair입니다.**
+
+그래서 donor의 모양/문맥을 보고 **“이 donor가 원래 있던 환경과 어떤 위치가 비슷한가”**를 학습할 신호가 있습니다.
+
+---
+
+# 그런데 현재 v2.2는 완전히 다릅니다
+
+현재 `same_donor_live_v1` 코드를 보면 recipient case마다 **다른 환자의 donor를 무작위로 하나 고정**합니다.
+
+```python
+eligible = donor_pool excluding same patient
+donors[recipient_case] = random eligible donor
+```
+
+그리고 target은 그대로:
+
+```text
+recipient의 실제 종양 위치 = 1
+128개 unobserved 위치       = 0
+```
+
+입니다.
+
+즉 실제 학습은:
+
+```text
+무작위 donor D_A
+        +
+recipient에서 원래 종양이 있었던 위치 P
+        ↓
+positive
+
+같은 무작위 donor D_A
+        +
+recipient에서 종양이 없었던 위치 U
+        ↓
+negative
+```
+
+입니다.
+
+**문제는 D_A라는 donor가 P에 적합하다는 정답은 어디에도 없다는 겁니다.**
+
+---
+
+# 수식으로 보면 더 명확합니다
+
+현재 모델은 원래 이런 걸 배우고 싶습니다.
+
+\[
+f(D,\;X)
+=
+\text{“donor D를 위치 X에 붙이기 적합한 정도”}
+\]
+
+그런데 현재 label은:
+
+\[
+Y(X)=
+\begin{cases}
+1 & \text{그 위치에 실제 tumor가 관측됨}\\
+0 & \text{관측되지 않음}
+\end{cases}
+\]
+
+입니다.
+
+**Y에 D가 없습니다.**
+
+donor는 label과 독립적으로 뽑습니다.
+
+따라서 현재 supervision이 실제로 가르치는 건:
+
+\[
+f(X)
+=
+\text{“이 위치가 원래 종양이 생긴 위치 같은가?”}
+\]
+
+에 가깝지,
+
+\[
+f(D,X)
+=
+\text{“이 donor가 이 위치와 맞는가?”}
+\]
+
+가 아닙니다.
+
+이건 architecture 문제가 아니라 **target identifiability 문제**입니다.
+
+---
+
+# 그래서 same-donor로 고친 것도 충분하지 않았던 겁니다
+
+우리가 전에 발견했던 문제가:
+
+```text
+P에 donor A
+U에 donor B
+```
+
+가 섞이는 것이었죠.
+
+그래서 지금은 한 case에서 donor를 고정해서:
+
+```text
+D + P1
+D + P2
+D + U1
+D + U2
+...
+```
+
+로 만들었습니다.
+
+이건 **비교의 confound 하나를 없앤 건 맞습니다.**
+
+그런데 여전히:
+
+> **왜 그 donor D가 P1/P2에 적합한지에 대한 정답은 없다.**
+
+입니다.
+
+donor를 고정했을 뿐, **donor와 positive를 의미 있게 결합한 게 아닙니다.**
+
+---
+
+# 이게 지금까지 이상했던 결과를 상당히 설명합니다
+
+### 1. L0 fusion에서 donor-recipient interaction을 죽임
+
+현재:
+
+```text
+[d, r, r-d, r*d]
+        ↓
+fusion
+```
+
+인데 donor D는 정답과 직접 관련이 없습니다.
+
+그러면 학습 입장에서는 **donor-dependent variation이 noise**가 될 수 있습니다.
+
+따라서:
+
+```text
+fusion 전에는 후보 차이가 있음
+        ↓
+fusion 후 39~120배 수축
+```
+
+하는 게 단순 버그가 아니라,
+
+> **“쓸모없는 donor interaction을 억제하는 방향”**
+
+으로 학습된 결과일 가능성이 생깁니다.
+
+---
+
+### 2. L1이 3만 배 죽는 것도 원인이 아니라 증상일 수 있음
+
+우리가 reference L1으로 후보 variation을 70% 이상 살렸는데도 성능이 안 좋아졌습니다.
+
+이게 이제 설명됩니다.
+
+```text
+variation 많이 보존
+≠
+정답과 관련된 variation 보존
+```
+
+이기 때문입니다.
+
+**label 자체가 donor compatibility를 알려주지 않는데 representation만 살려봐야 ranking이 좋아질 이유가 없습니다.**
+
+그래서 reference에서:
+
+```text
+gradient ↑ 수백 배
+candidate spread ↑
+그런데 R@5/R@10 ↓
+```
+
+가 나온 겁니다.
+
+이제 이상한 결과가 아닙니다.
+
+---
+
+### 3. rank-only Adam으로도 separation이 별로 안 생김
+
+최신 finite 결과에서도:
+
+```text
+Legacy rank-only pair-win
+46.14% → 48.05%
+
+Reference
+49.56% → 49.61%
+```
+
+수준입니다.
+
+CE/alignment를 빼고 **rank만 직접 줘도 크게 안 갈라집니다.**
+
+따라서 이제:
+
+> “CE가 rank를 방해해서 그렇다”
+> “BN 때문이다”
+> “L1 수축만 없애면 된다”
+
+를 주원인으로 잡는 건 설득력이 크게 떨어졌습니다.
+
+---
+
+# 그리고 더 큰 문제: `U`도 진짜 negative가 아닙니다
+
+현재 U의 뜻은:
+
+> **그 위치에 실제 종양이 관측되지 않았다**
+
+입니다.
+
+그런데 우리가 알고 싶은 건:
+
+> **그 위치에 donor를 CP하면 부적합하다**
+
+입니다.
+
+이 둘은 다릅니다.
+
+정상 간의 어떤 위치에 실제 암이 없었다고 해서:
+
+```text
+CP하기 부적절한 위치
+```
+
+라는 뜻은 아닙니다.
+
+그러니까 현재는 양쪽 모두 proxy입니다.
+
+```text
+P = 실제 tumor 발생 위치
+    ≠ 특정 donor의 적합성이 검증된 위치
+
+U = tumor 미관측 위치
+    ≠ 특정 donor의 부적합성이 검증된 위치
+```
+
+**이 target으로 donor-specific CP compatibility를 배우라고 한 게 가장 근본적인 문제입니다.**
+
+---
+
+# 왜 v1에서는 됐냐
+
+이제 이 차이를 보면 매우 명확합니다.
+
+### v1
+
+```text
+실제 source tumor D
+       │
+       ├── 실제 원래 위치 P       ← 확실한 matched positive
+       │
+       ├── easy candidate
+       ├── inter-region candidate
+       └── intra/corruption candidate
+```
+
+따라서:
+
+```text
+D와 P가 실제로 연결돼 있음
+D를 기준으로 negative 난이도도 정의됨
+↓
+ranking supervision이 donor-conditioned
+```
+
+입니다.
+
+### v2.2
+
+```text
+다른 환자의 random donor D
+       │
+       ├── recipient 기존 tumor 위치 P1
+       ├── recipient 기존 tumor 위치 P2
+       ├── ...
+       └── 128개 unobserved U
+```
+
+여기서는:
+
+```text
+D ↔ P
+```
+
+관계가 **데이터에 존재하지 않습니다.**
+
+그런데 모델에는 D를 넣습니다.
+
+---
+
+# 그러니까 이제 L1/BN을 계속 뜯으면 안 됩니다
+
+여기서는 방향을 바꿔야 합니다.
+
+**우리가 원하는 게 donor-specific CP 위치 추천이라면 v1에서 있었던 핵심 supervision을 복원해야 합니다.**
+
+즉:
+
+```text
+특정 donor D
+        ↓
+D와 실제로 맞는 위치 = positive
+D를 이동시킨 후보들 = negative / harder candidates
+        ↓
+score(D,P) > score(D,U)
+```
+
+가 되어야 합니다.
+
+CNN이든 GNN이든 그다음 문제입니다.
+
+---
+
+## 원인 분리를 정말 하나만 한다면 이것입니다
+
+더 이상 FFN scale, BN, gradient norm을 하나씩 건드리는 게 아니라:
+
+### **현재 v2.2 모델 구조는 그대로 둡니다.**
+
+```text
+현재 LocalCNN
+현재 fusion
+현재 L1
+현재 L2
+현재 optimizer
+```
+
+아무것도 안 바꿉니다.
+
+### **학습 example만 v1 의미로 돌립니다.**
+
+```text
+source donor의 실제 original anchor = P
+같은 donor를 움직인 candidate = U
+```
+
+그리고 학습합니다.
+
+결과는 둘 중 하나입니다.
+
+```text
+v2.2 구조 + v1 supervision
+        ↓
+학습됨
+```
+
+이면 **현재 실패의 핵심은 v2.2 supervision 변경**입니다.
+
+반대로:
+
+```text
+v2.2 구조 + v1 supervision
+        ↓
+그래도 안 됨
+```
+
+이면 그때 **v2.2 architecture가 v1보다 추가로 망가진 것**입니다.
+
+**이 한 비교가 v1이라는 이미 존재하는 positive control을 제대로 사용하는 방법입니다.**
+
+---
+
+# 지금 제 판단
+
+제가 앞에서 **L1 collapse를 너무 주원인처럼 추적한 게 잘못이었습니다.**
+
+최신 증거까지 합치면 우선순위는 이제 이렇게 바뀝니다.
+
+> **1순위: v1 → v2.2에서 바뀐 supervision/정답 계약**  
+> **2순위: current L0가 그 supervision에서 의미 있는 local signal을 표현하는지**  
+> **3순위: L1/L2**
+
+특히 **`random independent donor + recipient observed/unobserved label` 구조는 donor-specific compatibility를 직접 학습시킬 수 없습니다.** 이건 추가 probe를 기다려야 알 수 있는 이야기가 아니라 **현재 코드의 학습 정의 자체에서 확인되는 문제**입니다.
+
+즉 이제는 **“다음에 또 뭘 재보자”가 아니라, v1이 왜 됐는지 기준으로 학습 정답부터 되돌려야 합니다.**
