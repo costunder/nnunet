@@ -1,0 +1,1396 @@
+{
+  "source_sha256": "68d5b0b80a6606d8922d8b0de89ab7d84acd6195f6177a91decfa91c56df8a0e",
+  "source_full_json_received": false,
+  "snapshot": {
+    "epoch": 39,
+    "step": 21320,
+    "phase": "refresh_memory"
+  },
+  "cases": [
+    {
+      "report": "fixed",
+      "branch": "legacy",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 6.535148713737726e-06,
+      "score_min": -0.8083057999610901,
+      "score_max": -0.8082682490348816,
+      "mean_positive_minus_unobserved": 1.755543053150177e-06,
+      "exact_tie_rate": 0.0234375,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0014178385026752949,
+          "normalized": 1.4013272675583721e-06,
+          "mean_norm": 31.668798446655273
+        },
+        {
+          "stage": "L1_1",
+          "raw": 8.444318154943176e-06,
+          "normalized": 6.19348483610338e-08,
+          "mean_norm": 11.676277160644531
+        },
+        {
+          "stage": "L1_2",
+          "raw": 8.19212875313724e-09,
+          "normalized": 3.8665785850877654e-11,
+          "mean_norm": 14.552946090698242
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 2.759225967125273e-05,
+      "derived_L1_output_over_L0_raw_energy": 5.777899766214314e-06,
+      "prototype_cosine": {
+        "min": -0.7720613479614258,
+        "max": -0.04908016324043274,
+        "mean": -0.44074684381484985
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "legacy",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 3.166024271195056e-06,
+      "score_min": -0.7887387275695801,
+      "score_max": -0.7887152433395386,
+      "mean_positive_minus_unobserved": 4.84008353396348e-07,
+      "exact_tie_rate": 0.056640625,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0005481142434291542,
+          "normalized": 5.375051159717259e-07,
+          "mean_norm": 31.65835952758789
+        },
+        {
+          "stage": "L1_1",
+          "raw": 3.282437091911561e-06,
+          "normalized": 2.407465515830154e-08,
+          "mean_norm": 11.67629623413086
+        },
+        {
+          "stage": "L1_2",
+          "raw": 3.27839133618113e-09,
+          "normalized": 1.5467380848344092e-11,
+          "mean_norm": 14.552942276000977
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 2.877624861371127e-05,
+      "derived_L1_output_over_L0_raw_energy": 5.981219016806803e-06,
+      "prototype_cosine": {
+        "min": -0.7722868323326111,
+        "max": -0.04951513558626175,
+        "mean": -0.4419591724872589
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "legacy",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 8.506389690410288e-07,
+      "score_min": -0.7864834070205688,
+      "score_max": -0.7864772081375122,
+      "mean_positive_minus_unobserved": 4.393945403080579e-07,
+      "exact_tie_rate": 0.032696761190891266,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.063128628535196e-05,
+          "normalized": 4.8159421339732944e-08,
+          "mean_norm": 31.659547805786133
+        },
+        {
+          "stage": "L1_1",
+          "raw": 3.08780045088497e-07,
+          "normalized": 2.264441301136344e-09,
+          "mean_norm": 11.676335334777832
+        },
+        {
+          "stage": "L1_2",
+          "raw": 3.3290811773944995e-10,
+          "normalized": 1.5699652949202614e-12,
+          "mean_norm": 14.552940368652344
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 3.259933884681031e-05,
+      "derived_L1_output_over_L0_raw_energy": 6.575146360359463e-06,
+      "prototype_cosine": {
+        "min": -0.7725396752357483,
+        "max": -0.049169428646564484,
+        "mean": -0.44178566336631775
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "legacy",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 7.345870471908711e-07,
+      "score_min": -0.7864792346954346,
+      "score_max": -0.7864747643470764,
+      "mean_positive_minus_unobserved": 7.03614205121994e-07,
+      "exact_tie_rate": 0.0234375,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.601675416575745e-05,
+          "normalized": 3.4509938018345565e-08,
+          "mean_norm": 31.653566360473633
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.1738085820288688e-07,
+          "normalized": 1.5941913344974523e-09,
+          "mean_norm": 11.676344871520996
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.2901475160708173e-10,
+          "normalized": 1.0800232236318763e-12,
+          "mean_norm": 14.552940368652344
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 3.129600589423642e-05,
+      "derived_L1_output_over_L0_raw_energy": 6.358561644758514e-06,
+      "prototype_cosine": {
+        "min": -0.7725396752357483,
+        "max": -0.049169428646564484,
+        "mean": -0.44178566336631775
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "raw_columns",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 1.394708647239895e-06,
+      "score_min": -0.016700148582458496,
+      "score_max": -0.016688823699951172,
+      "mean_positive_minus_unobserved": -9.736554673622777e-09,
+      "exact_tie_rate": 0.05255682021379471,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0014178385026752949,
+          "normalized": 1.4013272675583721e-06,
+          "mean_norm": 31.668798446655273
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0006470982916653156,
+          "normalized": 1.2621730149930954e-07,
+          "mean_norm": 71.51019287109375
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.0006470627267844975,
+          "normalized": 3.209160936989974e-08,
+          "mean_norm": 141.82688903808594
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.02290086699434254,
+      "derived_L1_output_over_L0_raw_energy": 0.45637265849641273,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "raw_columns",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 9.467882478020329e-07,
+      "score_min": -0.017683982849121094,
+      "score_max": -0.017678141593933105,
+      "mean_positive_minus_unobserved": 1.858919915775914e-07,
+      "exact_tie_rate": 0.11757812649011612,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0005481142434291542,
+          "normalized": 5.375051159717259e-07,
+          "mean_norm": 31.65835952758789
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.00024174846475943923,
+          "normalized": 4.821917798381037e-08,
+          "mean_norm": 70.69652557373047
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.00024173912242986262,
+          "normalized": 1.2267526550147068e-08,
+          "mean_norm": 140.30076599121094
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.022823087977440516,
+      "derived_L1_output_over_L0_raw_energy": 0.44103784079296293,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "raw_columns",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 3.559971730737743e-07,
+      "score_min": -0.016896605491638184,
+      "score_max": -0.016894102096557617,
+      "mean_positive_minus_unobserved": -7.774819010819556e-08,
+      "exact_tie_rate": 0.14207175374031067,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.063128628535196e-05,
+          "normalized": 4.8159421339732944e-08,
+          "mean_norm": 31.659547805786133
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.1760588424513116e-05,
+          "normalized": 3.94776655809892e-09,
+          "mean_norm": 73.93608856201172
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.1762178221251816e-05,
+          "normalized": 1.0022607188631127e-09,
+          "mean_norm": 146.430908203125
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.020811311493816022,
+      "derived_L1_output_over_L0_raw_energy": 0.42981681521189774,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "raw_columns",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 3.434901714172156e-07,
+      "score_min": -0.01689302921295166,
+      "score_max": -0.0168912410736084,
+      "mean_positive_minus_unobserved": -1.2293457984924316e-07,
+      "exact_tie_rate": 0.0625,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.601675416575745e-05,
+          "normalized": 3.4509938018345565e-08,
+          "mean_norm": 31.653566360473633
+        },
+        {
+          "stage": "L1_1",
+          "raw": 1.5474812244065106e-05,
+          "normalized": 2.8068554147608893e-09,
+          "mean_norm": 73.9332504272461
+        },
+        {
+          "stage": "L1_2",
+          "raw": 1.547430656501092e-05,
+          "normalized": 7.152020642386958e-10,
+          "mean_norm": 146.42762756347656
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.020724524740047132,
+      "derived_L1_output_over_L0_raw_energy": 0.42964189648502404,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 1.8755678183879354e-06,
+      "score_min": -0.007061004638671875,
+      "score_max": -0.007050871849060059,
+      "mean_positive_minus_unobserved": 1.8617986086155724e-07,
+      "exact_tie_rate": 0.04332386329770088,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0014178385026752949,
+          "normalized": 1.4013272675583721e-06,
+          "mean_norm": 31.668798446655273
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0006470889784395695,
+          "normalized": 1.262138908941779e-07,
+          "mean_norm": 71.51051330566406
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.0006472509121522307,
+          "normalized": 3.20987219026847e-08,
+          "mean_norm": 141.83082580566406
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.022905942563019192,
+      "derived_L1_output_over_L0_raw_energy": 0.45650538543772384,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 1.4070121778786415e-06,
+      "score_min": -0.00830388069152832,
+      "score_max": -0.008295655250549316,
+      "mean_positive_minus_unobserved": 3.2242388670056243e-07,
+      "exact_tie_rate": 0.11250000447034836,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0005481142434291542,
+          "normalized": 5.375051159717259e-07,
+          "mean_norm": 31.65835952758789
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0002417348005110398,
+          "normalized": 4.821596633064473e-08,
+          "mean_norm": 70.69682312011719
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.00024170000688172877,
+          "normalized": 1.2264710136378199e-08,
+          "mean_norm": 140.30613708496094
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.022817848187743302,
+      "derived_L1_output_over_L0_raw_energy": 0.4409664769329597,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 4.2899844743260473e-07,
+      "score_min": -0.007494330406188965,
+      "score_max": -0.007491350173950195,
+      "mean_positive_minus_unobserved": -8.633705306237971e-08,
+      "exact_tie_rate": 0.1640625,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.063128628535196e-05,
+          "normalized": 4.8159421339732944e-08,
+          "mean_norm": 31.659547805786133
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.175737972720526e-05,
+          "normalized": 3.947125737369106e-09,
+          "mean_norm": 73.93641662597656
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.1745227059000172e-05,
+          "normalized": 1.001601135364183e-09,
+          "mean_norm": 146.4308624267578
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.020797615658596637,
+      "derived_L1_output_over_L0_raw_energy": 0.42948201901185434,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 3.929445426820166e-07,
+      "score_min": -0.007490634918212891,
+      "score_max": -0.0074884891510009766,
+      "mean_positive_minus_unobserved": -1.6298145055770874e-07,
+      "exact_tie_rate": 0.0703125,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.601675416575745e-05,
+          "normalized": 3.4509938018345565e-08,
+          "mean_norm": 31.653566360473633
+        },
+        {
+          "stage": "L1_1",
+          "raw": 1.547534338897094e-05,
+          "normalized": 2.8068962709681955e-09,
+          "mean_norm": 73.93357849121094
+        },
+        {
+          "stage": "L1_2",
+          "raw": 1.5466121112694964e-05,
+          "normalized": 7.147857861156126e-10,
+          "mean_norm": 146.4275665283203
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.020712462182216347,
+      "derived_L1_output_over_L0_raw_energy": 0.4294146285785857,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations_zero_out_bias",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 1.3367894098337274e-05,
+      "score_min": -0.09832310676574707,
+      "score_max": -0.09826803207397461,
+      "mean_positive_minus_unobserved": 3.5486777960613836e-06,
+      "exact_tie_rate": 0.013494318351149559,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0014178385026752949,
+          "normalized": 1.4013272675583721e-06,
+          "mean_norm": 31.668798446655273
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0006949539529159665,
+          "normalized": 1.394963078382716e-06,
+          "mean_norm": 22.191184997558594
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.0006949883536435664,
+          "normalized": 1.000423367258918e-06,
+          "mean_norm": 26.185989379882812
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.7139112971105056,
+      "derived_L1_output_over_L0_raw_energy": 0.4901745525546139,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations_zero_out_bias",
+      "phase": "initial_full_case_evaluation",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 7.391558028757572e-06,
+      "score_min": -0.09794020652770996,
+      "score_max": -0.09788739681243896,
+      "mean_positive_minus_unobserved": 1.4994293451309204e-06,
+      "exact_tie_rate": 0.02851562574505806,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0005481142434291542,
+          "normalized": 5.375051159717259e-07,
+          "mean_norm": 31.65835952758789
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0002700989134609699,
+          "normalized": 5.382439667300787e-07,
+          "mean_norm": 22.18387222290039
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.00027007763856090605,
+          "normalized": 3.8510214039888524e-07,
+          "mean_norm": 26.17796516418457
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.7164622790662751,
+      "derived_L1_output_over_L0_raw_energy": 0.49273968301065435,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations_zero_out_bias",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 2.4962866973510245e-06,
+      "score_min": -0.09795749187469482,
+      "score_max": -0.0979393720626831,
+      "mean_positive_minus_unobserved": 1.047461978487263e-06,
+      "exact_tie_rate": 0.017650462687015533,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.063128628535196e-05,
+          "normalized": 4.8159421339732944e-08,
+          "mean_norm": 31.659547805786133
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.629110895213671e-05,
+          "normalized": 4.946307896602775e-08,
+          "mean_norm": 22.183391571044922
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.628071524668485e-05,
+          "normalized": 3.5369250639405436e-08,
+          "mean_norm": 26.17874526977539
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.734420174816859,
+      "derived_L1_output_over_L0_raw_energy": 0.5190607858265704,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "fixed",
+      "branch": "affine_relations_zero_out_bias",
+      "phase": "initial_full_case_evaluation",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 2.0566305920510786e-06,
+      "score_min": -0.09796106815338135,
+      "score_max": -0.09794831275939941,
+      "mean_positive_minus_unobserved": 3.119930624961853e-07,
+      "exact_tie_rate": 0.0390625,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.601675416575745e-05,
+          "normalized": 3.4509938018345565e-08,
+          "mean_norm": 31.653566360473633
+        },
+        {
+          "stage": "L1_1",
+          "raw": 1.8191278286394663e-05,
+          "normalized": 3.4740960330736925e-08,
+          "mean_norm": 22.179439544677734
+        },
+        {
+          "stage": "L1_2",
+          "raw": 1.8186559827881865e-05,
+          "normalized": 2.488628503272139e-08,
+          "mean_norm": 26.174762725830078
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.72113386640949,
+      "derived_L1_output_over_L0_raw_energy": 0.5049472182913292,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "before",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 6.535148713737726e-06,
+      "score_min": -0.8083057999610901,
+      "score_max": -0.8082682490348816,
+      "mean_positive_minus_unobserved": 1.755543053150177e-06,
+      "exact_tie_rate": 0.0234375,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0014178385026752949,
+          "normalized": 1.4013272675583721e-06,
+          "mean_norm": 31.668798446655273
+        },
+        {
+          "stage": "L1_1",
+          "raw": 8.444318154943176e-06,
+          "normalized": 6.19348483610338e-08,
+          "mean_norm": 11.676277160644531
+        },
+        {
+          "stage": "L1_2",
+          "raw": 8.19212875313724e-09,
+          "normalized": 3.8665785850877654e-11,
+          "mean_norm": 14.552946090698242
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 2.759225967125273e-05,
+      "derived_L1_output_over_L0_raw_energy": 5.777899766214314e-06,
+      "prototype_cosine": {
+        "min": -0.7720613479614258,
+        "max": -0.04908016324043274,
+        "mean": -0.44074684381484985
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "before",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 3.166024271195056e-06,
+      "score_min": -0.7887387275695801,
+      "score_max": -0.7887152433395386,
+      "mean_positive_minus_unobserved": 4.84008353396348e-07,
+      "exact_tie_rate": 0.056640625,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0005481142434291542,
+          "normalized": 5.375051159717259e-07,
+          "mean_norm": 31.65835952758789
+        },
+        {
+          "stage": "L1_1",
+          "raw": 3.282437091911561e-06,
+          "normalized": 2.407465515830154e-08,
+          "mean_norm": 11.67629623413086
+        },
+        {
+          "stage": "L1_2",
+          "raw": 3.27839133618113e-09,
+          "normalized": 1.5467380848344092e-11,
+          "mean_norm": 14.552942276000977
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 2.877624861371127e-05,
+      "derived_L1_output_over_L0_raw_energy": 5.981219016806803e-06,
+      "prototype_cosine": {
+        "min": -0.7722868323326111,
+        "max": -0.04951513558626175,
+        "mean": -0.4419591724872589
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "before",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 8.506389690410288e-07,
+      "score_min": -0.7864834070205688,
+      "score_max": -0.7864772081375122,
+      "mean_positive_minus_unobserved": 4.393945403080579e-07,
+      "exact_tie_rate": 0.032696761190891266,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.063128628535196e-05,
+          "normalized": 4.8159421339732944e-08,
+          "mean_norm": 31.659547805786133
+        },
+        {
+          "stage": "L1_1",
+          "raw": 3.08780045088497e-07,
+          "normalized": 2.264441301136344e-09,
+          "mean_norm": 11.676335334777832
+        },
+        {
+          "stage": "L1_2",
+          "raw": 3.3290811773944995e-10,
+          "normalized": 1.5699652949202614e-12,
+          "mean_norm": 14.552940368652344
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 3.259933884681031e-05,
+      "derived_L1_output_over_L0_raw_energy": 6.575146360359463e-06,
+      "prototype_cosine": {
+        "min": -0.7725396752357483,
+        "max": -0.049169428646564484,
+        "mean": -0.44178566336631775
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "before",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 7.345870471908711e-07,
+      "score_min": -0.7864792346954346,
+      "score_max": -0.7864747643470764,
+      "mean_positive_minus_unobserved": 7.03614205121994e-07,
+      "exact_tie_rate": 0.0234375,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.601675416575745e-05,
+          "normalized": 3.4509938018345565e-08,
+          "mean_norm": 31.653566360473633
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.1738085820288688e-07,
+          "normalized": 1.5941913344974523e-09,
+          "mean_norm": 11.676344871520996
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.2901475160708173e-10,
+          "normalized": 1.0800232236318763e-12,
+          "mean_norm": 14.552940368652344
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 3.129600589423642e-05,
+      "derived_L1_output_over_L0_raw_energy": 6.358561644758514e-06,
+      "prototype_cosine": {
+        "min": -0.7725396752357483,
+        "max": -0.049169428646564484,
+        "mean": -0.44178566336631775
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "after",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 6.073220902180765e-06,
+      "score_min": -0.9655108451843262,
+      "score_max": -0.9654688835144043,
+      "mean_positive_minus_unobserved": 1.7778947949409485e-06,
+      "exact_tie_rate": 0.014914773404598236,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0015305982669815421,
+          "normalized": 1.5299818869607407e-06,
+          "mean_norm": 31.433692932128906
+        },
+        {
+          "stage": "L1_1",
+          "raw": 8.782023542153183e-06,
+          "normalized": 6.445707612101614e-08,
+          "mean_norm": 11.672232627868652
+        },
+        {
+          "stage": "L1_2",
+          "raw": 8.239479321048293e-09,
+          "normalized": 3.891677258227588e-11,
+          "mean_norm": 14.547163963317871
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 2.5436100200887208e-05,
+      "derived_L1_output_over_L0_raw_energy": 5.383175650196692e-06,
+      "prototype_cosine": {
+        "min": -0.7901419997215271,
+        "max": 0.021342825144529343,
+        "mean": -0.41114625334739685
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "after",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 2.936611508630449e-06,
+      "score_min": -0.9407891035079956,
+      "score_max": -0.9407627582550049,
+      "mean_positive_minus_unobserved": 3.784894886393886e-07,
+      "exact_tie_rate": 0.05195312574505806,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0006566050578840077,
+          "normalized": 6.571862627424707e-07,
+          "mean_norm": 31.419721603393555
+        },
+        {
+          "stage": "L1_1",
+          "raw": 3.859384378301911e-06,
+          "normalized": 2.8326166301440026e-08,
+          "mean_norm": 11.672236442565918
+        },
+        {
+          "stage": "L1_2",
+          "raw": 3.738255482943487e-09,
+          "normalized": 1.765480990567614e-11,
+          "mean_norm": 14.547159194946289
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 2.6864240637048234e-05,
+      "derived_L1_output_over_L0_raw_energy": 5.693308996111734e-06,
+      "prototype_cosine": {
+        "min": -0.7908505797386169,
+        "max": 0.020030979067087173,
+        "mean": -0.4127745032310486
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "after",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 7.874176617406192e-07,
+      "score_min": -0.9412586688995361,
+      "score_max": -0.941252589225769,
+      "mean_positive_minus_unobserved": 5.912001483920903e-07,
+      "exact_tie_rate": 0.028356481343507767,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.3704083256889135e-05,
+          "normalized": 5.041991002485702e-08,
+          "mean_norm": 31.418983459472656
+        },
+        {
+          "stage": "L1_1",
+          "raw": 3.172185927269311e-07,
+          "normalized": 2.3279855820845796e-09,
+          "mean_norm": 11.67227840423584
+        },
+        {
+          "stage": "L1_2",
+          "raw": 3.3506444840902816e-10,
+          "normalized": 1.5790481986202587e-12,
+          "mean_norm": 14.547158241271973
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 3.131794955290059e-05,
+      "derived_L1_output_over_L0_raw_energy": 6.239087013296075e-06,
+      "prototype_cosine": {
+        "min": -0.7909496426582336,
+        "max": 0.020919080823659897,
+        "mean": -0.4123336374759674
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "legacy",
+      "phase": "after",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 6.504046723421197e-07,
+      "score_min": -0.9412567615509033,
+      "score_max": -0.9412521719932556,
+      "mean_positive_minus_unobserved": 3.1711533665657043e-07,
+      "exact_tie_rate": 0.0078125,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.788140384131111e-05,
+          "normalized": 3.604552389901983e-08,
+          "mean_norm": 31.412302017211914
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.2431903801134467e-07,
+          "normalized": 1.6462372576242501e-09,
+          "mean_norm": 11.672284126281738
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.3278717842245555e-10,
+          "normalized": 1.10205388651613e-12,
+          "mean_norm": 14.547157287597656
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 3.0573945591788105e-05,
+      "derived_L1_output_over_L0_raw_energy": 6.145157117133876e-06,
+      "prototype_cosine": {
+        "min": -0.7909496426582336,
+        "max": 0.020919080823659897,
+        "mean": -0.4123336374759674
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "before",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 1.394708647239895e-06,
+      "score_min": -0.016700148582458496,
+      "score_max": -0.016688823699951172,
+      "mean_positive_minus_unobserved": -9.736554673622777e-09,
+      "exact_tie_rate": 0.05255682021379471,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0014178385026752949,
+          "normalized": 1.4013272675583721e-06,
+          "mean_norm": 31.668798446655273
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0006470982916653156,
+          "normalized": 1.2621730149930954e-07,
+          "mean_norm": 71.51019287109375
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.0006470627267844975,
+          "normalized": 3.209160936989974e-08,
+          "mean_norm": 141.82688903808594
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.02290086699434254,
+      "derived_L1_output_over_L0_raw_energy": 0.45637265849641273,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "before",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 9.467882478020329e-07,
+      "score_min": -0.017683982849121094,
+      "score_max": -0.017678141593933105,
+      "mean_positive_minus_unobserved": 1.858919915775914e-07,
+      "exact_tie_rate": 0.11757812649011612,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0005481142434291542,
+          "normalized": 5.375051159717259e-07,
+          "mean_norm": 31.65835952758789
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.00024174846475943923,
+          "normalized": 4.821917798381037e-08,
+          "mean_norm": 70.69652557373047
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.00024173912242986262,
+          "normalized": 1.2267526550147068e-08,
+          "mean_norm": 140.30076599121094
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.022823087977440516,
+      "derived_L1_output_over_L0_raw_energy": 0.44103784079296293,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "before",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 3.559971730737743e-07,
+      "score_min": -0.016896605491638184,
+      "score_max": -0.016894102096557617,
+      "mean_positive_minus_unobserved": -7.774819010819556e-08,
+      "exact_tie_rate": 0.14207175374031067,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 5.063128628535196e-05,
+          "normalized": 4.8159421339732944e-08,
+          "mean_norm": 31.659547805786133
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.1760588424513116e-05,
+          "normalized": 3.94776655809892e-09,
+          "mean_norm": 73.93608856201172
+        },
+        {
+          "stage": "L1_2",
+          "raw": 2.1762178221251816e-05,
+          "normalized": 1.0022607188631127e-09,
+          "mean_norm": 146.430908203125
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.020811311493816022,
+      "derived_L1_output_over_L0_raw_energy": 0.42981681521189774,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "before",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 3.434901714172156e-07,
+      "score_min": -0.01689302921295166,
+      "score_max": -0.0168912410736084,
+      "mean_positive_minus_unobserved": -1.2293457984924316e-07,
+      "exact_tie_rate": 0.0625,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.601675416575745e-05,
+          "normalized": 3.4509938018345565e-08,
+          "mean_norm": 31.653566360473633
+        },
+        {
+          "stage": "L1_1",
+          "raw": 1.5474812244065106e-05,
+          "normalized": 2.8068554147608893e-09,
+          "mean_norm": 73.9332504272461
+        },
+        {
+          "stage": "L1_2",
+          "raw": 1.547430656501092e-05,
+          "normalized": 7.152020642386958e-10,
+          "mean_norm": 146.42762756347656
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.020724524740047132,
+      "derived_L1_output_over_L0_raw_energy": 0.42964189648502404,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "after",
+      "split": "train",
+      "case_id": "liver_1",
+      "records": 139,
+      "score_std": 7.969590114953462e-06,
+      "score_min": -0.060477495193481445,
+      "score_max": -0.060427069664001465,
+      "mean_positive_minus_unobserved": -1.7118555888373521e-06,
+      "exact_tie_rate": 0.01775568164885044,
+      "comparisons": 1408,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0013147210702300072,
+          "normalized": 1.29940269744111e-06,
+          "mean_norm": 31.541824340820312
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0006504151970148087,
+          "normalized": 1.520678836186562e-07,
+          "mean_norm": 65.28404235839844
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.00048365257680416107,
+          "normalized": 5.0034024923206744e-08,
+          "mean_norm": 98.25211334228516
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.03850540330702548,
+      "derived_L1_output_over_L0_raw_energy": 0.36787466768106736,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "after",
+      "split": "train",
+      "case_id": "liver_49",
+      "records": 148,
+      "score_std": 3.197997557435883e-06,
+      "score_min": -0.061414361000061035,
+      "score_max": -0.061389923095703125,
+      "mean_positive_minus_unobserved": -4.4424086809158325e-07,
+      "exact_tie_rate": 0.06914062798023224,
+      "comparisons": 2560,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 0.0004887693794444203,
+          "normalized": 4.7570190986334637e-07,
+          "mean_norm": 31.53066635131836
+        },
+        {
+          "stage": "L1_1",
+          "raw": 0.0002283397043356672,
+          "normalized": 5.470398178886171e-08,
+          "mean_norm": 64.52610778808594
+        },
+        {
+          "stage": "L1_2",
+          "raw": 0.00016995899204630405,
+          "normalized": 1.7994645773455886e-08,
+          "mean_norm": 97.11959838867188
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.03782756680254902,
+      "derived_L1_output_over_L0_raw_energy": 0.34772839542340983,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "after",
+      "split": "validation",
+      "case_id": "liver_109",
+      "records": 155,
+      "score_std": 9.622972356737591e-07,
+      "score_min": -0.06110942363739014,
+      "score_max": -0.06110239028930664,
+      "mean_positive_minus_unobserved": 1.8736830043053487e-07,
+      "exact_tie_rate": 0.0651041641831398,
+      "comparisons": 3456,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 4.628989699995145e-05,
+          "normalized": 4.407164055919566e-08,
+          "mean_norm": 31.531551361083984
+        },
+        {
+          "stage": "L1_1",
+          "raw": 2.1004168957006186e-05,
+          "normalized": 4.568732947518583e-09,
+          "mean_norm": 67.54529571533203
+        },
+        {
+          "stage": "L1_2",
+          "raw": 1.609061291674152e-05,
+          "normalized": 1.5478984760619596e-09,
+          "mean_norm": 101.65789031982422
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.0351223248424998,
+      "derived_L1_output_over_L0_raw_energy": 0.34760528667321067,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    },
+    {
+      "report": "updates",
+      "branch": "reference",
+      "phase": "after",
+      "split": "validation",
+      "case_id": "liver_3",
+      "records": 129,
+      "score_std": 1.1636482213361887e-06,
+      "score_min": -0.06111180782318115,
+      "score_max": -0.06110489368438721,
+      "mean_positive_minus_unobserved": -1.4258548617362976e-06,
+      "exact_tie_rate": 0.0,
+      "comparisons": 128,
+      "trace": [
+        {
+          "stage": "L0",
+          "raw": 3.452046439633705e-05,
+          "normalized": 3.294930905894944e-08,
+          "mean_norm": 31.525524139404297
+        },
+        {
+          "stage": "L1_1",
+          "raw": 1.5721452655270696e-05,
+          "normalized": 3.409633464457329e-09,
+          "mean_norm": 67.54264831542969
+        },
+        {
+          "stage": "L1_2",
+          "raw": 1.1899433047801722e-05,
+          "normalized": 1.1448979542194593e-09,
+          "mean_norm": 101.65567779541016
+        }
+      ],
+      "derived_L1_output_over_L0_direction_energy": 0.034747252276857404,
+      "derived_L1_output_over_L0_raw_energy": 0.34470663288829817,
+      "prototype_cosine": {
+        "min": null,
+        "max": null,
+        "mean": null
+      }
+    }
+  ],
+  "updates": [
+    {
+      "branch": "legacy",
+      "step": 1,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.2834867835044861,
+      "alignment_loss": 0.11570442467927933
+    },
+    {
+      "branch": "legacy",
+      "step": 2,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.29389750957489014,
+      "alignment_loss": 0.11042588949203491
+    },
+    {
+      "branch": "legacy",
+      "step": 3,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.27007532119750977,
+      "alignment_loss": 0.09456440806388855
+    },
+    {
+      "branch": "legacy",
+      "step": 4,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.26269441843032837,
+      "alignment_loss": 0.09720593690872192
+    },
+    {
+      "branch": "reference",
+      "step": 1,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.5057610273361206,
+      "alignment_loss": 1.092138409614563
+    },
+    {
+      "branch": "reference",
+      "step": 2,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.46968743205070496,
+      "alignment_loss": 1.0926761627197266
+    },
+    {
+      "branch": "reference",
+      "step": 3,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.4616429805755615,
+      "alignment_loss": 1.0907278060913086
+    },
+    {
+      "branch": "reference",
+      "step": 4,
+      "ranking_pairs": 0.0,
+      "ranking_loss": 0.0,
+      "observation_auxiliary_loss": 0.3775492012500763,
+      "alignment_loss": 1.0907094478607178
+    }
+  ],
+  "original_four_update_ranking_active": false,
+  "scope": "faithful numeric transcription of supplied console; ratios explicitly derived; not a new evaluation",
+  "conclusions": [
+    "Old four updates in each branch had no ranking pairs; not a ranking-learning control.",
+    "Do not infer production entire schedule has zero ranking.",
+    "L1 candidate shrinkage and weak scores are measured; zero-bias spread recovery is not accuracy improvement."
+  ]
+}

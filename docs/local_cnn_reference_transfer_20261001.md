@@ -4,6 +4,99 @@
 이번 변경은 production L1을 바꾸는 패치가 아니다. 제공된 독립 검토의 전이 문제를
 별도 진단으로 드러내고, optimizer update 이전의 동일 입력 비교를 추가한다.
 
+## 최신 수신: 기존 4-update에서 순위 비교가 없었던 문제 수정
+
+`fffd1a29` 첨부의 두 서버 신호 출력 전체를 확인했다. Snapshot은
+epoch39/step21320/refresh_memory다. 이전 legacy/reference의 **4회 각각 모두**
+`ranking_pairs=0`, `ranking_loss=0`이었다. 관측 CE와 alignment로 변한 모델을
+순위 학습 대조로 해석할 수 없다. 이것은 기존 DEBUG prefix 선택의 오류이며,
+전체 production 학습이 항상 rank0이었다는 뜻은 아니다. 실제 전체 schedule에는
+양성이 없는 case의 pure-U tile도 의도적으로 보존되어 있다.
+
+새 `--update-selection rankable_full_batch_prefix`는 원래 전체 schedule에서
+양성과 미관측이 함께 있는 **원래 physical batch 크기의 tile**을 순서대로 고른다.
+입력 tile이나 후보를 새로 만들지 않고, 원래 schedule 위치·ID·P/U·비교 수를
+기록한다. 전체 관측·원래 multiplicity·전체 cohort loss 계수는 유지한다.
+선택된 prefix로 정규화를 다시 만들지 않는다. 해당 tile이 부족하면 명시적으로
+실패하며 다른 batch나 작은 batch로 대체하지 않는다. 기존 complete-prefix/raw
+전이 대조와 이전 결과는 그대로 보존한다.
+
+같은 forward graph에서 순위 loss만의 CNN/readout/L1/L2 parameter gradient를
+측정한 뒤 원래 전체 loss의 backward/clip/AdamW를 수행한다. CNN/L1/L2의 순위
+gradient가 없거나 0 또는 비유한 값이면 성공으로 처리하지 않는다. `.grad`를
+미리 채우거나 두 번째 forward를 실행하지 않는다. 이 추가 derivative 비용은
+DEBUG timing에 포함되므로 production update 속도로 해석하지 않는다.
+
+### 수신 수치의 해석
+
+- 기존 L0 방향 에너지 `3.45e-8~1.40e-6` → L1 최종 `1.08e-12~3.87e-11`.
+  네 case에서 방향 차이는 약3.1만~3.6만 배, raw 차이는 약15만~17만 배 더 작다.
+  이 통계는 후보 표현의 수축이며 암 특징 손실률을 뜻하지 않는다.
+- affine+out-bias0 전이는 L0 방향 에너지의 약71~73%를 보존한다. 그러나 실제
+  score std는 train `7.39e-6~1.34e-5`, validation `2.06e-6~2.50e-6`이다.
+  분산 회복을 순위 개선으로 승인하지 않는다.
+- 기존 cross-class prototype cosine은 약 `-0.772~-0.049`다. 모든 prototype이
+  같은 방향이라는 주장을 지지하지 않는다. Reference의 unavailable은 해당
+  계측이 없다는 뜻이고 0이나 prototype 소실로 대체하지 않는다.
+- 원본124줄을 byte 보존하고 case32행·trace32개·update8행을 숫자로 전사했다.
+  원본 전체 JSON은 수신하지 않았다. 이전 임시 추정 대신 이번 실제 rank0 확인을
+  기준으로 삼는다. `validation/reference_rankable_20261001/server_signals_*` 참조.
+
+### 실제 CT CUDA smoke 완료
+
+RTX5070Ti에서 새 `probe_updates` 선택 경로를 실제로 실행했다. 간 내 native CT,
+CNN12/24/32, hidden128, L1 2층/4heads, L2 2층, FP32를 유지했다. 실제 liver_66의
+양성5개와 원래 미관측128개를 모두 보존했으며 다른 bound DEBUG support case도
+포함한139관측 context를 유지했다. Physical32 = P5+U27, 한 update당135쌍이다.
+각 clone에1회 update를 실행하고 전후133관측 전체를 평가했다.
+
+| 복제 branch | 순위 전용 CNN gradient norm | L1 | L2 |
+| --- | ---: | ---: | ---: |
+| legacy | 3.915216 | 1.251978 | 0.693539 |
+| affine_relations_zero_out_bias | 24.833076 | 4.704340 | 2.302228 |
+
+두 branch의 전체 loss optimizer에서 CNN/readout/L1/L2 parameter 변경을
+확인했다. Peak allocated0.491GiB, 명시 CUDA 상한3GiB, RSS2.28GiB,
+workers4다. 원본 model/gradient/mode/RNG/support/checkpoint/assignment 보존 검사가
+통과했다. 실제 CT 입력·선택·forward/loss/rank-gradient/backward/optimizer를
+연결한 **기계적 smoke**다. 서버 epoch39의 정확도 비교나 최종 모델 승인,
+속도 개선 근거가 아니다. 보고서는 `actual_ct_cuda_report.json`이다.
+입력 shape/crop 감사를 추가한 최종 동일 경로 검사도 통과했으며,
+`actual_ct_cuda_final_report.json`과 `final_manifest.json`에 별도로 보존했다.
+
+추가 helper/회귀44개도 통과했다. 이전 JSON 출력 두 종류×두 포맷은 이전
+formatter와 byte 단위로 같고 production121파일 hash가 유지됐다.
+기존 사용자가 수정 중인 REFERENCES/code/gpt_handoff 파일도 그대로다.
+장기 GNN/nnU-Net 학습과 production checkpoint/ready 생성은 수행하지 않았다.
+
+### 서버에서 수행할 짧은 순위 학습 대조
+
+최근 성공했던 host 터미널의 물리 GPU3을 사용한다. A6000 하나만 노출된
+Singularity 안에서는 `CP_GPU=0`으로 바꾼다. UUID를 다시 입력하지 않는다.
+기존 학습 checkout과 별도인 diagnosis checkout에서 실행한다.
+
+```bash
+CP_GPU=3
+cd /home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba &&
+git fetch origin codex/v222-server-r6 &&
+git checkout --detach FETCH_HEAD &&
+python -u tools/diagnose_local_cnn_reference.py \
+  --gpu "$CP_GPU" \
+  --run /home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42 \
+  --output "/home/aicompetition06/Medical/experiments/reference_rankable_$(date +%Y%m%d_%H%M%S).json" \
+  --steps 4 \
+  --update-selection rankable_full_batch_prefix \
+  --update-reference-policy affine_relations_zero_out_bias \
+  --cases-per-split 2 --workers 8 \
+  --cuda-gib 24 --rss-gib 64 --resident-gib 24
+```
+
+화면에는 선택 schedule 위치·P/U·physical batch·rank pairs와 순위 전용
+CNN/readout/L1/L2 gradient 및 before/after의 모든 선택 case 지표가 함께 출력된다.
+두 branch 모두 fresh AdamW이며 reference BN은 새 통계다. Exact resume가 아니다.
+이번 패치 후 해야 할 판정은 실제 서버 snapshot에서 rank 신호와 candidate spread가
+유지되는지다. 좋은 결과를 만들려고 후보·loss·BasicCP를 동시에 바꾸지 않는다.
+
 ## 확인한 문제와 전이 정책
 
 기존 프로젝트 relation은 T=[1,1], F=[1,0], U=[0,0]이다. 공식 relation은

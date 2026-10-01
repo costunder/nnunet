@@ -37,7 +37,7 @@ def diagnose(a):
     from l0_regions.training_data import Budget, sha, source_identity
     from tools.diagnose_local_cnn_learning import run_root, checkpoint_for
     from tools.local_cnn_interaction_runtime import support_binding
-    from tools.local_cnn_reference_runtime import evaluator, probe_updates
+    from tools.local_cnn_reference_runtime import evaluator, probe_updates, select_update_tiles
     from tools.local_cnn_reference_fixed_probe import probe_fixed_weights
     from tools.local_cnn_interaction_updates import _query, _support
 
@@ -67,6 +67,20 @@ def diagnose(a):
         raise ValueError('This comparison requires the original FP32 precision contract')
     ds = Dataset(index, 'inner_train', identity['debug'])
     val = Dataset(index, 'inner_val', identity['debug'])
+    batch = state['batch']
+    schedule = list(groups(ds, batch, ds.meta['config']['seed'], state['epoch']))
+    context = LiveContext(ds, batch)
+    update_selection = getattr(a, 'update_selection', None) or 'complete_prefix'
+    update_reference_policy = getattr(a, 'update_reference_policy', None) or 'raw_columns'
+    if not a.fixed_only:
+        admission = select_update_tiles(schedule, steps=a.steps, loss_context=context,
+            physical_batch=batch, selection_policy=update_selection)
+        print('DEBUG update selection | ' + json.dumps(dict(
+            policy=update_selection, reference_transfer=update_reference_policy,
+            original_schedule_tiles=len(schedule), original_physical_batch=batch,
+            selected=[{key: tile[key] for key in ('schedule_index', 'case_id',
+                'physical_batch', 'observed', 'unobserved', 'ranking_pairs')}
+                for tile in admission['selected_tiles']]), ensure_ascii=False), flush=True)
     torch.set_num_threads(a.workers)
     budget = Budget(int(a.cuda_gib*2**30), int(a.rss_gib*2**30))
     total = torch.cuda.get_device_properties(0).total_memory
@@ -78,11 +92,6 @@ def diagnose(a):
     net.load_state_dict(saved['model'], strict=True)
     net.eval()
     memory = tree_to(state['memory'], 'cuda')
-    batch = state['batch']
-    schedule = list(groups(ds, batch, ds.meta['config']['seed'], state['epoch']))
-    if not a.fixed_only and a.steps > len(schedule):
-        raise ValueError(f'DEBUG steps exceed full schedule ({len(schedule)})')
-    context = LiveContext(ds, batch)
     counts = identity.get('support_training', {}).get('patients')
     episodes = None
     if counts:
@@ -149,7 +158,8 @@ def diagnose(a):
             batch_provider=lambda ids: loader.get(ids).to('cuda'), support_provider=support,
             loss_context=context, physical_batch=batch, budget=budget,
             training=ds.meta['base']['training'], seed=ds.meta['config']['seed'],
-            evaluation_provider=evaluate)
+            evaluation_provider=evaluate, selection_policy=update_selection,
+            transfer_policy=update_reference_policy)
     if hash_state(net.state_dict()) != model_hash or hash_state(memory) != memory_hash:
         raise AssertionError('Original loaded model or epoch support memory changed')
     report = dict(format='local_cnn_reference_comparison_debug_v1', actual_CT=True,
@@ -198,6 +208,10 @@ def main():
     parser.add_argument('--steps', type=int)
     parser.add_argument('--fixed-only', action='store_true', help='Zero optimizer updates; fixed same-tile transfer/BN controls')
     parser.add_argument('--transfer-policies', nargs='+', choices=('raw_columns', 'affine_relations', 'affine_relations_zero_out_bias'))
+    parser.add_argument('--update-selection', choices=('complete_prefix', 'rankable_full_batch_prefix'),
+                        help='Explicit DEBUG tile selection from the unchanged full schedule')
+    parser.add_argument('--update-reference-policy', choices=('raw_columns', 'affine_relations', 'affine_relations_zero_out_bias'),
+                        help='Explicit reference initialization for cloned update controls')
     parser.add_argument('--workers', type=int, required=True)
     parser.add_argument('--cuda-gib', type=float, required=True)
     parser.add_argument('--rss-gib', type=float, required=True)
@@ -205,7 +219,8 @@ def main():
     parser.add_argument('--allow-debug', action='store_true')
     args = parser.parse_args()
     if args.fixed_only:
-        if args.steps is not None or not args.transfer_policies or len(set(args.transfer_policies))!=len(args.transfer_policies):
+        if (args.steps is not None or args.update_selection is not None or args.update_reference_policy is not None
+                or not args.transfer_policies or len(set(args.transfer_policies))!=len(args.transfer_policies)):
             parser.error('--fixed-only requires explicit unique --transfer-policies and no --steps')
     elif args.steps is None or args.steps <= 0 or args.transfer_policies is not None:
         parser.error('Update comparison requires positive --steps; --transfer-policies belongs to --fixed-only')

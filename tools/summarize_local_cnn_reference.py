@@ -199,6 +199,63 @@ def _fixed_branch(lines: list[str], branch: dict, path: str) -> None:
     _evaluation(lines, branch.get('initial_full_case_evaluation'), '  initial_full_case_evaluation (separate from physical tile)', path + '.initial_full_case_evaluation')
 
 
+def _update_selection(lines: list[str], comparison: dict) -> None:
+    """Expose saved DEBUG selection metadata only when the report contains it."""
+    if 'update_selection' not in comparison:
+        return
+    path = 'comparison.update_selection'
+    selection = _object(comparison.get('update_selection'), path)
+    audit = _object(selection.get('full_schedule_audit'), path + '.full_schedule_audit')
+    positions = selection.get('selected_schedule_indices')
+    if positions is not None:
+        _list(positions, path + '.selected_schedule_indices')
+        for position in positions:
+            _number(position, path + '.selected_schedule_indices')
+    lines.append('DEBUG update selection | policy=' + _show(selection.get('selection_policy'))
+                 + ' | original_schedule_tiles=' + _number(selection.get('full_schedule_tiles'), path + '.full_schedule_tiles')
+                 + ' | full_cohort_observations=' + _number(selection.get('full_cohort_observations'), path + '.full_cohort_observations')
+                 + ' | configured_batch=' + _number(audit.get('physical_batch'), path + '.full_schedule_audit.physical_batch')
+                 + ' | selected_schedule_indices=' + _show(positions))
+    normalization = _object(selection.get('normalization'), path + '.normalization')
+    lines.append('  original normalization | steps=' + _number(normalization.get('steps'), path + '.normalization.steps')
+                 + ' | ranking_pairs=' + _number(normalization.get('pairs'), path + '.normalization.pairs')
+                 + ' | scope=' + _show(normalization.get('scope')))
+    tiles = _list(selection.get('selected_tiles'), path + '.selected_tiles')
+    if selection.get('selected_tiles') is None:
+        lines.append('  selected_tiles: ' + UNAVAILABLE)
+    elif not tiles:
+        lines.append('  selected_tiles: [] (stored empty list)')
+    for index, value in enumerate(tiles):
+        tile_path = f'{path}.selected_tiles[{index}]'
+        tile = _object(value, tile_path)
+        lines.append('  selected tile | schedule_index=' + _number(tile.get('schedule_index'), tile_path + '.schedule_index')
+                     + ' | case=' + _show(tile.get('case_id'))
+                     + ' | P=' + _number(tile.get('observed'), tile_path + '.observed')
+                     + ' | U=' + _number(tile.get('unobserved'), tile_path + '.unobserved')
+                     + ' | actual_batch=' + _number(tile.get('physical_batch'), tile_path + '.physical_batch')
+                     + ' | ranking_pairs=' + _number(tile.get('ranking_pairs'), tile_path + '.ranking_pairs'))
+
+
+def _ranking_update_signals(lines: list[str], update: dict, path: str) -> None:
+    """Display stored ranking-only derivatives, never full-loss substitutes."""
+    if 'ranking_parameter_gradient' not in update:
+        return
+    gradient_path = path + '.ranking_parameter_gradient'
+    gradient = _object(update.get('ranking_parameter_gradient'), gradient_path)
+    norms = _object(gradient.get('module_gradient_norms'), gradient_path + '.module_gradient_norms')
+    stopped = _status(gradient)
+    lines.append('  update step=' + _number(update.get('step'), path + '.step')
+                 + ' | schedule_index=' + _number(update.get('schedule_index'), path + '.schedule_index')
+                 + ' | P=' + _number(update.get('observed'), path + '.observed')
+                 + ' | U=' + _number(update.get('unobserved'), path + '.unobserved')
+                 + ' | actual_batch=' + _number(update.get('physical_batch'), path + '.physical_batch')
+                 + ' | ranking_pairs=' + _number(update.get('ranking_pairs'), path + '.ranking_pairs'))
+    lines.append('    ranking-only parameter gradients | status=' + (stopped or _show(gradient.get('status')))
+                 + ' | weighted_loss=' + _number(gradient.get('weighted_loss'), gradient_path + '.weighted_loss')
+                 + ' | ' + ' | '.join(name + '=' + _number(norms.get(name), gradient_path + '.module_gradient_norms.' + name)
+                                     for name in ('CNN', 'readout_fusion', 'L1', 'L2')))
+
+
 def format_summary(report: dict) -> str:
     """Format every stored branch and selected case without model computation."""
     if not isinstance(report, dict):
@@ -224,6 +281,7 @@ def format_summary(report: dict) -> str:
              + ' | P=' + _number(binding.get('positive_count'), 'binding.positive_count')
              + ' | U=' + _number(binding.get('unobserved_count'), 'binding.unobserved_count'),
              'tile selection=' + _show(binding.get('selection'))]
+    _update_selection(lines, comparison)
     branches = _list(comparison.get('branches'), 'comparison.branches')
     if not branches:
         lines.append('branches: ' + UNAVAILABLE)
@@ -242,6 +300,12 @@ def format_summary(report: dict) -> str:
             updates = _list(branch.get('updates'), path + '.updates')
             count = UNAVAILABLE if branch.get('updates') is None else str(len(updates))
             lines.append('  stored_updates=' + count + ' | requested_steps=' + _number(comparison.get('steps_per_branch'), 'comparison.steps_per_branch'))
+            for update_index, update_value in enumerate(updates):
+                update_path = f'{path}.updates[{update_index}]'
+                # Historical reports did not expose individual updates here.
+                # Validate and format only the newly recorded gradient field.
+                if isinstance(update_value, dict) and 'ranking_parameter_gradient' in update_value:
+                    _ranking_update_signals(lines, update_value, update_path)
             _evaluation(lines, branch.get('before'), '  before', path + '.before')
             _evaluation(lines, branch.get('after'), '  after', path + '.after')
     lines.extend(['', 'Stored flags | preserved=' + _boolean(report.get('original_model_and_memory_preserved'), 'report.original_model_and_memory_preserved')
@@ -361,6 +425,7 @@ def format_signals(report: dict) -> str:
              + ' | step=' + _number(snapshot.get('step'), 'snapshot.step')
              + ' | phase=' + _show(snapshot.get('phase')),
              'run=' + _show(report.get('run')) + ' | checkpoint=' + _show(report.get('checkpoint'))]
+    _update_selection(lines, comparison)
     branches = _list(comparison.get('branches'), 'comparison.branches')
     if not branches:
         lines.append('branches: ' + UNAVAILABLE)
@@ -386,6 +451,7 @@ def format_signals(report: dict) -> str:
             for update_index, update_value in enumerate(updates):
                 update_path = f'{path}.updates[{update_index}]'
                 update = _object(update_value, update_path)
+                _ranking_update_signals(lines, update, update_path)
                 stopped = _status(update)
                 prefix = '  update step=' + _number(update.get('step'), update_path + '.step')
                 if stopped:

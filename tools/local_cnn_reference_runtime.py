@@ -25,6 +25,111 @@ from tools.v22_candidate_order import record_key
 from tools.v22_rank_objective import ranking_metrics
 
 
+SELECTION_POLICIES = ('complete_prefix', 'rankable_full_batch_prefix')
+
+
+def select_update_tiles(train_tiles, *, steps, loss_context, physical_batch,
+                        selection_policy='complete_prefix'):
+    """Admit an explicit DEBUG selection using only the complete native schedule.
+
+    Selection never constructs a new tile or changes ``LiveContext``.  In the
+    rankable control the first full physical tiles containing both P and U are
+    selected in existing schedule order, independently of model outputs.
+    """
+    if selection_policy not in SELECTION_POLICIES:
+        raise ValueError(f'Explicit DEBUG tile selection required; choose from {SELECTION_POLICIES}')
+    if type(steps) is not int or steps <= 0:
+        raise ValueError('Explicit positive DEBUG update count required')
+    if (type(physical_batch) is not int or physical_batch < 2
+            or not isinstance(loss_context, LiveContext)
+            or loss_context.audit['physical_batch'] != physical_batch):
+        raise ValueError('Original full-cohort live-ranking context and physical batch required')
+    if not isinstance(train_tiles, list) or len(train_tiles) != loss_context.steps:
+        raise ValueError('Complete original ranking schedule required')
+    if any(not tile or len(tile) > physical_batch or len(set(tile)) != len(tile)
+           or any(type(i) is not int or i < 0 or i >= len(loss_context.rows) for i in tile)
+           for tile in train_tiles):
+        raise ValueError('Original unique in-range physical query tiles required')
+    if Counter(tuple(sorted(tile)) for tile in train_tiles) != Counter(
+            tuple(sorted(tile)) for tile in loss_context.order):
+        raise ValueError('Full ranking schedule changed; no observations/pairs may be dropped')
+    if Counter(i for tile in train_tiles for i in tile) != loss_context.uses:
+        raise ValueError('Original observation coverage and schedule multiplicities required')
+
+    tiles = []
+    for schedule_index, ids in enumerate(train_tiles):
+        rows = [loss_context.rows[i] for i in ids]
+        if len({row['case_id'] for row in rows}) != 1:
+            raise ValueError('One original recipient case per scheduled ranking tile required')
+        observed = sum(int(row['target']) for row in rows)
+        unobserved = len(ids)-observed
+        tiles.append(dict(schedule_index=schedule_index,
+            tile_id=f'schedule:{schedule_index}', indices=list(ids),
+            observation_ids=[row['id'] for row in rows], case_id=rows[0]['case_id'],
+            physical_batch=len(ids), observed=observed, unobserved=unobserved,
+            ranking_pairs=observed*unobserved))
+    eligible = [tile for tile in tiles if tile['physical_batch'] == physical_batch
+                and tile['ranking_pairs'] > 0]
+    choices = tiles if selection_policy == 'complete_prefix' else eligible
+    if steps > len(choices):
+        raise ValueError(f'DEBUG {selection_policy} requires {steps} native tiles; '
+                         f'only {len(choices)} available within the unchanged complete schedule')
+    selected = choices[:steps]
+    return dict(selection_policy=selection_policy,
+        selected_schedule_indices=[tile['schedule_index'] for tile in selected],
+        selected_tiles=selected, eligible_tile_count=len(eligible),
+        eligible_full_physical_rankable_tile_count=len(eligible),
+        selection_basis='existing schedule order and original P/U metadata only; no score selection',
+        full_schedule_audit=copy.deepcopy(loss_context.audit),
+        full_schedule_tiles=len(train_tiles), full_cohort_observations=len(loss_context.rows),
+        full_schedule_query_presentations=sum(loss_context.uses.values()),
+        selected_unique_observations=len({i for tile in selected for i in tile['indices']}),
+        complete_schedule_coverage_and_multiplicity_preserved=True,
+        normalization=dict(steps=loss_context.steps, pairs=loss_context.pairs,
+            class_counts=dict(loss_context.counts),
+            observation_multiplicities_sha256=hash_state(dict(loss_context.uses)),
+            ranking_coefficient=loss_context.steps/loss_context.pairs,
+            observation_auxiliary_coefficient='steps / (2 * full_class_count * original_schedule_uses)',
+            scope='unchanged full-cohort LiveContext; never selected-prefix normalization'),
+        subset_scope='explicit DEBUG update selection; full cohort and production schedule retained')
+
+
+def ranking_parameter_gradients(ranking_loss, named, *, require_nonzero=False):
+    """Measure this forward's ranking-only parameter derivatives without .grad writes.
+
+    Retaining the graph lets the unchanged full objective perform its single
+    optimizer backward afterwards. Missing ranking dependencies stay explicit.
+    """
+    from tools.local_cnn_shadow_probe import MODULES
+    if (not named or ranking_loss.ndim != 0 or not ranking_loss.requires_grad
+            or not bool(torch.isfinite(ranking_loss))):
+        raise ValueError('Finite differentiable scalar ranking loss and trainable parameters required')
+    gradients = torch.autograd.grad(ranking_loss, [p for _, p in named],
+                                    retain_graph=True, allow_unused=True)
+    present = [value for value in gradients if value is not None]
+    if present and not bool(torch.stack([torch.isfinite(value).all() for value in present]).all()):
+        raise FloatingPointError('Nonfinite ranking-only parameter gradient')
+    norms, connections = {}, {}
+    for label, prefixes in MODULES.items():
+        bound = [value for (name, _), value in zip(named, gradients) if name.startswith(prefixes)]
+        connected = [value for value in bound if value is not None]
+        norms[label] = (float(torch.stack([value.detach().float().square().sum()
+                         for value in connected]).sum().sqrt()) if connected else None)
+        connections[label] = dict(trainable_parameters=len(bound), connected_parameters=len(connected))
+    norms['global'] = (float(torch.stack([value.detach().float().square().sum()
+                         for value in present]).sum().sqrt()) if present else None)
+    required = ['CNN', 'L1', 'L2'] if require_nonzero else []
+    if any(norms[label] is None or not math.isfinite(norms[label]) or norms[label] <= 0
+           for label in required):
+        raise ValueError('Rankable DEBUG update requires nonzero finite ranking parameter gradients '
+                         f'through CNN/L1/L2; measured {norms}')
+    return dict(status='MEASURED', weighted_loss=float(ranking_loss.detach()),
+        module_gradient_norms=norms, module_parameter_connections=connections,
+        required_nonzero_modules=required,
+        scope='ranking-only derivatives from this exact original full-objective forward',
+        original_gradient_buffers_untouched=True)
+
+
 def _head(model, embeddings, support, physical_batch):
     from tools.diagnose_local_cnn_learning import trace_head, spread
     if not hasattr(model, 'encode_joint'):
@@ -110,15 +215,22 @@ def evaluator(cases, memory, train_rows, physical_batch, budget, original_local_
 
 def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                   loss_context, physical_batch, budget, training, seed,
-                  evaluation_provider, progress=True):
-    """Fresh matched AdamW, same CT prefix and complete-cohort loss coefficients."""
+                  evaluation_provider, progress=True, selection_policy='complete_prefix',
+                  transfer_policy='raw_columns'):
+    """Fresh matched AdamW on explicit original tiles with full-cohort coefficients.
+
+    The historical complete-prefix/raw-column path remains the default.
+    Rankable full-batch selection and alternative transfers are opt-in DEBUG
+    controls; neither mode writes or updates the production model.
+    """
     from tools.local_cnn_reference_l1 import clone_reference
-    if type(steps) is not int or not 0 < steps <= len(train_tiles):
-        raise ValueError('Explicit positive DEBUG prefix within full schedule required')
-    if not isinstance(loss_context, LiveContext) or loss_context.audit['physical_batch'] != physical_batch:
-        raise ValueError('Original full-cohort live-ranking context and physical batch required')
-    if Counter(tuple(sorted(v)) for v in train_tiles) != Counter(tuple(sorted(v)) for v in loss_context.order):
-        raise ValueError('Full ranking schedule changed; no observations/pairs may be dropped')
+    from tools.local_cnn_reference_transfer import POLICIES, clone_reference_control
+    # All selection/transfer settings are admitted before GPU providers or clones.
+    selection = select_update_tiles(train_tiles, steps=steps, loss_context=loss_context,
+        physical_batch=physical_batch, selection_policy=selection_policy)
+    if transfer_policy not in POLICIES:
+        raise ValueError(f'Explicit reference transfer policy required; choose from {POLICIES}')
+    rankable = selection_policy == 'rankable_full_batch_prefix'
     for key in ('lr', 'weight_decay', 'grad_clip'):
         if not math.isfinite(training[key]) or training[key] < 0 or (key != 'weight_decay' and not training[key]):
             raise ValueError('Invalid original optimizer settings')
@@ -136,8 +248,13 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
         with torch.autocast(device.type, enabled=False):
             for branch in ('legacy', 'reference'):
                 budget.check()
-                clone, contract = ((copy.deepcopy(net), dict(architecture='unchanged_legacy_L1'))
-                                   if branch == 'legacy' else clone_reference(net))
+                if branch == 'legacy':
+                    clone, contract = copy.deepcopy(net), dict(architecture='unchanged_legacy_L1')
+                elif transfer_policy == 'raw_columns':
+                    # Preserve the historical transfer implementation and metadata.
+                    clone, contract = clone_reference(net)
+                else:
+                    clone, contract = clone_reference_control(net, policy=transfer_policy)
                 if hash_state(clone.local.state_dict()) != saved_l0 or hash_state({
                     n: v for n, v in clone.state_dict().items() if n.startswith(('l2.', 'l2_updates.'))}) != saved_l2:
                     raise AssertionError('Reference initialization changed L0/L2 weights')
@@ -153,7 +270,8 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                 reports, last_group, plan = [], None, None
                 bar = tqdm(range(steps), desc=f'CLONED {branch} L1', disable=not progress)
                 for offset in bar:
-                    ids = train_tiles[offset]
+                    tile = selection['selected_tiles'][offset]
+                    ids = tile['indices']
                     budget.check()
                     query = _query(batch_provider(ids), ids, loss_context, device)
                     support, records, group = _support(support_provider(ids), ids, loss_context, device)
@@ -165,12 +283,24 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                     if group != last_group:
                         plan = clone.fit_support_clusters(*support)
                         last_group = group
+                    plan_hash = hash_state(plan)
                     targets = torch.tensor([loss_context.rows[i]['target'] for i in ids], device=device)
                     optimizer.zero_grad(set_to_none=True)
                     torch.cuda.synchronize(device); started = time.perf_counter()
                     loss, terms = forward_loss(clone, query, support, plan, targets, None,
                         loss_context, configuration(), indices=ids)
                     if not bool(torch.isfinite(loss)): raise FloatingPointError('Nonfinite full original objective')
+                    if int(terms['ranking_pairs'].detach()) != tile['ranking_pairs']:
+                        raise AssertionError('Actual forward ranking pairs differ from original selected tile')
+                    ranking_gradient = dict(status='NOT_RUN',
+                        reason='Historical complete-prefix path; ranking-only gradients are required in rankable control')
+                    if rankable:
+                        if len(ids) != physical_batch or tile['ranking_pairs'] <= 0:
+                            raise AssertionError('Rankable selection lost its full physical P/U comparison')
+                        budget.check()
+                        ranking_gradient = ranking_parameter_gradients(
+                            configuration()['ranking_weight']*terms['ranking_loss'], named, require_nonzero=True)
+                        budget.check()
                     loss.backward(); gradient_check_batched(clone)
                     norms = _module_norms(named, [p.grad for _, p in named])
                     grad = torch.nn.utils.clip_grad_norm_([p for _, p in named], training['grad_clip'], error_if_nonfinite=True)
@@ -179,7 +309,16 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                     budget.check()
                     if hash_state(dict(query=native, support=support, records=records, group=group)) != digest:
                         raise AssertionError('Native query/support mutated during comparison')
+                    if hash_state(plan) != plan_hash:
+                        raise AssertionError('Own-branch teacher plan mutated during comparison')
                     reports.append(dict(step=offset+1, indices=ids, physical_batch=len(ids),
+                        input_tensor_shape=list(query.images.shape), organ_tensor_shape=list(query.organ.shape),
+                        native_crop_audit=query.audit,
+                        schedule_index=tile['schedule_index'], tile_id=tile['tile_id'],
+                        observation_ids=tile['observation_ids'], case_id=tile['case_id'],
+                        observed=tile['observed'], unobserved=tile['unobserved'],
+                        ranking_pairs=tile['ranking_pairs'], ranking_parameter_gradient=ranking_gradient,
+                        teacher_plan_sha256=plan_hash, own_branch_teacher_plan=True,
                         input_content_sha256=digest, support_record_ids=records,
                         loss=float(loss.detach()), terms={k: float(v.detach()) for k, v in terms.items()},
                         module_gradient_norms=norms, gradient_norm_before_clip=float(grad),
@@ -194,6 +333,8 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
                 if not changes['CNN'] or not changes['L1'] or not changes['L2']:
                     raise AssertionError('Required CNN/L1/L2 module was not updated')
                 results.append(dict(branch=branch, architecture_contract=contract,
+                    reference_transfer_policy=transfer_policy if branch == 'reference' else None,
+                    selection_policy=selection_policy,
                     optimizer='fresh AdamW; no saved moments reused', precision='FP32',
                     initial_parameters=sum(p.numel() for _, p in named),
                     before=before, after=after, updates=reports, parameter_delta_norms=changes))
@@ -205,6 +346,10 @@ def probe_updates(net, *, steps, train_tiles, batch_provider, support_provider,
         if any(m.training != mode for m, mode in saved_modes) or hash_state(rng_state()) != hash_state(saved_rng):
             raise AssertionError('Original module modes/caller RNG changed')
     return dict(diagnostic_only=True, branches=results, steps_per_branch=steps,
+        selection_policy=selection_policy, reference_transfer_policy=transfer_policy,
+        update_selection=selection,
+        selected_schedule_indices=selection['selected_schedule_indices'],
+        ranking_parameter_gradients_required=rankable,
         physical_batch=physical_batch, full_objective=configuration(),
         execution=_execution_runtime(device), original_state_and_rng_preserved=True,
         timing_scope='synchronized forward/full loss/backward/gradient diagnostics/clip/AdamW only; excludes CT loading, transfer, input hashing, teacher preparation, evaluation and checkpoint IO; not epoch timing',

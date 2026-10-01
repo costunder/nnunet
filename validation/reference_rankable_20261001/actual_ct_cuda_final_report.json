@@ -1,0 +1,2751 @@
+{
+  "debug": true,
+  "diagnostic_only": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "production_default_changed": false,
+  "production_checkpoint_written": false,
+  "production_training_started": false,
+  "original_model_support_rng_preserved": true,
+  "checkpoint": "D:\\AI project\\nnunet\\work\\local_cnn_experiment_resume_DEBUG_20261001\\resumed\\attempts\\0002\\checkpoint_latest.pt",
+  "checkpoint_sha256": "9b36e85a57819042026b152e7bcc7236ed9ad0b372fa32b5d5c321d74b50c1f6",
+  "assignment_sha256": "b7347a7d383f7010a6c114874121f8a2bb60d3910dd807ed4d6e4de0f433a19f",
+  "case": "liver_66",
+  "all_original_positive_anchors": 5,
+  "comparison_centers": 128,
+  "all_case_observations": 133,
+  "full_debug_cohort_observations": 139,
+  "support_records": 6,
+  "support_record_ids": [
+    "liver_71:0",
+    "liver_71:91",
+    "liver_72:1",
+    "liver_72:84",
+    "liver_75:2",
+    "liver_75:44"
+  ],
+  "support_scope": "verified saved DEBUG memory; not complete production cohort",
+  "donor_binding": {
+    "donor_case_id": "liver_1",
+    "donor_component": 1,
+    "donor_group": "case:liver_1"
+  },
+  "original_masks_changed": false,
+  "Basic_CP_changed": false,
+  "loss_normalization_scope": "unchanged complete DEBUG LiveContext, not selected update subset",
+  "physical_batch": 32,
+  "gradient_accumulation": 1,
+  "effective_batch": 32,
+  "CNN_config": {
+    "architecture": "paired_native_local_cnn_v1",
+    "margin_mm": 10.0,
+    "channels": [
+      12,
+      24,
+      32
+    ],
+    "convolutions": [
+      2,
+      3,
+      3
+    ],
+    "hidden_dim": 128,
+    "readout": "organ_masked_mean_each_scale",
+    "fusion": "donor_target_difference_product",
+    "input": "native_spacing_organ_only",
+    "initialization": "fresh_seed42",
+    "learning_policy": "same_donor_live_v1"
+  },
+  "L1_layers": 2,
+  "L2_layers": 2,
+  "hidden_dim": 128,
+  "heads": 4,
+  "total_parameters": 1125718,
+  "trainable_parameters": 1125718,
+  "comparison": {
+    "diagnostic_only": true,
+    "branches": [
+      {
+        "branch": "legacy",
+        "architecture_contract": {
+          "architecture": "unchanged_legacy_L1"
+        },
+        "reference_transfer_policy": null,
+        "selection_policy": "rankable_full_batch_prefix",
+        "optimizer": "fresh AdamW; no saved moments reused",
+        "precision": "FP32",
+        "initial_parameters": 1125718,
+        "before": {
+          "observations": 133,
+          "positives": 5,
+          "comparison_centers": 128,
+          "all_candidates_retained": true,
+          "physical_query_chunk": 32,
+          "metrics": {
+            "ranking_pairwise_loss": 0.6889063715934753,
+            "ranking_pairs": 640,
+            "ranking_mrr": 0.07142857142857142,
+            "ranking_mean_observed_rank": 47.6,
+            "ranking_evaluable_cases": 1,
+            "ranking_cases_without_observed": 0,
+            "ranking_recall_at_1": 0.0,
+            "ranking_recall_at_5": 0.0,
+            "ranking_recall_at_10": 0.0
+          },
+          "score": {
+            "score_std": 0.014325032010674477,
+            "score_min": -0.01782919466495514,
+            "score_max": 0.057265862822532654,
+            "mean_positive_minus_unobserved": 0.008606924675405025,
+            "pair_win_rate": 0.651562511920929,
+            "exact_tie_rate": 0.0,
+            "mean_pairwise_loss": 0.6889064908027649,
+            "comparisons": 640
+          },
+          "observed_ranks": [
+            14,
+            17,
+            22,
+            55,
+            130
+          ],
+          "finite": true,
+          "scope": "one complete original case; DEBUG support; not full validation"
+        },
+        "after": {
+          "observations": 133,
+          "positives": 5,
+          "comparison_centers": 128,
+          "all_candidates_retained": true,
+          "physical_query_chunk": 32,
+          "metrics": {
+            "ranking_pairwise_loss": 0.6689038276672363,
+            "ranking_pairs": 640,
+            "ranking_mrr": 0.125,
+            "ranking_mean_observed_rank": 30.8,
+            "ranking_evaluable_cases": 1,
+            "ranking_cases_without_observed": 0,
+            "ranking_recall_at_1": 0.0,
+            "ranking_recall_at_5": 0.0,
+            "ranking_recall_at_10": 0.2
+          },
+          "score": {
+            "score_std": 0.04354735091328621,
+            "score_min": -0.19289767742156982,
+            "score_max": -0.037038326263427734,
+            "mean_positive_minus_unobserved": 0.0502433180809021,
+            "pair_win_rate": 0.7828124761581421,
+            "exact_tie_rate": 0.0,
+            "mean_pairwise_loss": 0.6689037680625916,
+            "comparisons": 640
+          },
+          "observed_ranks": [
+            8,
+            12,
+            15,
+            51,
+            68
+          ],
+          "finite": true,
+          "scope": "one complete original case; DEBUG support; not full validation"
+        },
+        "updates": [
+          {
+            "step": 1,
+            "indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "physical_batch": 32,
+            "input_tensor_shape": [
+              33,
+              1,
+              58,
+              50,
+              7
+            ],
+            "organ_tensor_shape": [
+              33,
+              1,
+              58,
+              50,
+              7
+            ],
+            "native_crop_audit": [
+              {
+                "case": "liver_1",
+                "origin": [
+                  173,
+                  283,
+                  66
+                ],
+                "shape": [
+                  58,
+                  50,
+                  7
+                ],
+                "spacing": [
+                  0.6757810115814209,
+                  0.6757810115814209,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.19529867172241,
+                  33.789050579071045,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  251,
+                  322,
+                  76
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  326,
+                  168,
+                  75
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  319,
+                  293,
+                  75
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  372,
+                  244,
+                  76
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  382,
+                  292,
+                  56
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  414,
+                  186,
+                  74
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  419,
+                  207,
+                  66
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  413,
+                  209,
+                  69
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  402,
+                  173,
+                  61
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  318,
+                  199,
+                  75
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  392,
+                  241,
+                  59
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  393,
+                  236,
+                  70
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  292,
+                  299,
+                  70
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  402,
+                  217,
+                  65
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  359,
+                  276,
+                  72
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  418,
+                  261,
+                  66
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  240,
+                  307,
+                  78
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  365,
+                  132,
+                  65
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  355,
+                  183,
+                  68
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  403,
+                  154,
+                  62
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  338,
+                  212,
+                  78
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  343,
+                  325,
+                  68
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  211,
+                  279,
+                  73
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  357,
+                  300,
+                  73
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  270,
+                  290,
+                  77
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  215,
+                  272,
+                  74
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  303,
+                  216,
+                  61
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  405,
+                  215,
+                  71
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  407,
+                  129,
+                  69
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  262,
+                  206,
+                  68
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  423,
+                  178,
+                  63
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  431,
+                  167,
+                  66
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              }
+            ],
+            "schedule_index": 0,
+            "tile_id": "schedule:0",
+            "observation_ids": [
+              "liver_66:0",
+              "liver_66:1",
+              "liver_66:2",
+              "liver_66:3",
+              "liver_66:4",
+              "liver_66:10",
+              "liver_66:100",
+              "liver_66:101",
+              "liver_66:102",
+              "liver_66:103",
+              "liver_66:104",
+              "liver_66:105",
+              "liver_66:106",
+              "liver_66:107",
+              "liver_66:108",
+              "liver_66:109",
+              "liver_66:11",
+              "liver_66:110",
+              "liver_66:111",
+              "liver_66:112",
+              "liver_66:113",
+              "liver_66:114",
+              "liver_66:115",
+              "liver_66:116",
+              "liver_66:117",
+              "liver_66:118",
+              "liver_66:119",
+              "liver_66:12",
+              "liver_66:120",
+              "liver_66:121",
+              "liver_66:122",
+              "liver_66:123"
+            ],
+            "case_id": "liver_66",
+            "observed": 5,
+            "unobserved": 27,
+            "ranking_pairs": 135,
+            "ranking_parameter_gradient": {
+              "status": "MEASURED",
+              "weighted_loss": 1.2419323921203613,
+              "module_gradient_norms": {
+                "CNN": 3.9152159690856934,
+                "readout_fusion": 2.003552198410034,
+                "L1": 1.2519779205322266,
+                "L2": 0.6935393214225769,
+                "global": 4.62510347366333
+              },
+              "module_parameter_connections": {
+                "CNN": {
+                  "trainable_parameters": 24,
+                  "connected_parameters": 24
+                },
+                "readout_fusion": {
+                  "trainable_parameters": 10,
+                  "connected_parameters": 10
+                },
+                "L1": {
+                  "trainable_parameters": 37,
+                  "connected_parameters": 37
+                },
+                "L2": {
+                  "trainable_parameters": 28,
+                  "connected_parameters": 28
+                }
+              },
+              "required_nonzero_modules": [
+                "CNN",
+                "L1",
+                "L2"
+              ],
+              "scope": "ranking-only derivatives from this exact original full-objective forward",
+              "original_gradient_buffers_untouched": true
+            },
+            "teacher_plan_sha256": "52e8d9ec07c9806c07d9f5d90a0cd9666fbe9c7b45bb55c54c18f5ecc927fde3",
+            "own_branch_teacher_plan": true,
+            "input_content_sha256": "36bf408fe10432779d281da1745c7f7d767c51669c23f600be4434becc8dbaaf",
+            "support_record_ids": [
+              "liver_71:0",
+              "liver_71:91",
+              "liver_72:1",
+              "liver_72:84",
+              "liver_75:2",
+              "liver_75:44"
+            ],
+            "loss": 2.6816463470458984,
+            "terms": {
+              "ranking_loss": 1.2419323921203613,
+              "ranking_pairs": 135.0,
+              "observation_auxiliary_loss": 0.9225150346755981,
+              "alignment_loss": 0.5171990394592285
+            },
+            "module_gradient_norms": {
+              "CNN": 5.795662879943848,
+              "readout_fusion": 2.9194562435150146,
+              "L1": 1.7699263095855713,
+              "L2": 0.9438149929046631,
+              "global": 6.792375087738037
+            },
+            "gradient_norm_before_clip": 6.792375087738037,
+            "synchronized_update_seconds": 0.5399106000004394
+          }
+        ],
+        "parameter_delta_norms": {
+          "CNN": 0.03456880897283554,
+          "readout_fusion": 0.04167419299483299,
+          "L1": 0.06339868158102036,
+          "L2": 0.06549482047557831,
+          "global": 0.1060221940279007
+        }
+      },
+      {
+        "branch": "reference",
+        "architecture_contract": {
+          "architecture": "diagnostic_l1_prodigy_basic_joint_v1",
+          "official_source": {
+            "repository": "https://github.com/snap-stanford/prodigy",
+            "commit": "107ba57234d3188227cda5b78a2dbcfb84a1c694",
+            "path": "models/metaGNN.py",
+            "sha256": "fd94b26236b0edddfa585fc69f2d2f03e5deafd29d2a2a1b2e30bbc4267d9074"
+          },
+          "debug": true,
+          "production_default_changed": false,
+          "production_checkpoint_created": false,
+          "exact_resume": false,
+          "layers": 2,
+          "hidden_dimension": 128,
+          "heads": 4,
+          "inter_layer_activation": "GELU",
+          "relation_codes": {
+            "T": [
+              0,
+              1
+            ],
+            "F": [
+              0,
+              -1
+            ],
+            "U": [
+              1,
+              0
+            ],
+            "self_loop": [
+              0,
+              0
+            ]
+          },
+          "original_state_sha256": "5193bce20a16770ce3c279cd12e5ab76eafcc79164a25dd5fadf510457ebd096",
+          "unchanged_l0_l2_label_seed_sha256_before": "b6822dbd663748f923386a71a4d63ac0ff390cdedb9fc263afb69ad5f3167594",
+          "unchanged_l0_l2_label_seed_sha256_after": "b6822dbd663748f923386a71a4d63ac0ff390cdedb9fc263afb69ad5f3167594",
+          "original_parameters": 1125718,
+          "candidate_parameters": 862806,
+          "transfers": [
+            {
+              "layer": 1,
+              "copied": {
+                "l1.0.mlp_kqv.weight": [
+                  "l1.0.q.weight",
+                  "l1.0.k.weight",
+                  "l1.0.v.weight"
+                ],
+                "l1.0.att_mlp.0.weight": "l1.0.attn.0.weight [k,q,e] block permutation",
+                "l1.0.att_mlp.0.bias": "l1.0.attn.0.bias",
+                "l1.0.att_mlp.2.weight": "l1.0.attn.2.weight",
+                "l1.0.att_mlp.2.bias": "l1.0.attn.2.bias",
+                "l1.0.out_proj.weight": "l1.0.update.out.weight"
+              },
+              "new_zero_bias": [
+                "l1.0.mlp_kqv.bias",
+                "l1.0.out_proj.bias"
+              ],
+              "new_batch_norm": {
+                "affine_weight": 1.0,
+                "affine_bias": 0.0,
+                "running_mean": 0.0,
+                "running_var": 1.0,
+                "num_batches_tracked": 0,
+                "momentum": 0.1,
+                "eps": 1e-05
+              },
+              "removed_parameters": [
+                "l1.0.update.norm.weight",
+                "l1.0.update.norm.bias",
+                "l1.0.update.ff.0.weight",
+                "l1.0.update.ff.0.bias",
+                "l1.0.update.ff.3.weight",
+                "l1.0.update.ff.3.bias",
+                "l1.0.update.final.weight",
+                "l1.0.update.final.bias"
+              ],
+              "affine_mapped": {
+                "l1.0.lin_edge.weight": "l1.0.edge.weight [explicit affine T/F/U remap]",
+                "l1.0.lin_edge.bias": "l1.0.edge.weight[:,0] + edge.weight[:,1]/2"
+              }
+            },
+            {
+              "layer": 2,
+              "copied": {
+                "l1.1.mlp_kqv.weight": [
+                  "l1.1.q.weight",
+                  "l1.1.k.weight",
+                  "l1.1.v.weight"
+                ],
+                "l1.1.att_mlp.0.weight": "l1.1.attn.0.weight [k,q,e] block permutation",
+                "l1.1.att_mlp.0.bias": "l1.1.attn.0.bias",
+                "l1.1.att_mlp.2.weight": "l1.1.attn.2.weight",
+                "l1.1.att_mlp.2.bias": "l1.1.attn.2.bias",
+                "l1.1.out_proj.weight": "l1.1.update.out.weight"
+              },
+              "new_zero_bias": [
+                "l1.1.mlp_kqv.bias",
+                "l1.1.out_proj.bias"
+              ],
+              "new_batch_norm": {
+                "affine_weight": 1.0,
+                "affine_bias": 0.0,
+                "running_mean": 0.0,
+                "running_var": 1.0,
+                "num_batches_tracked": 0,
+                "momentum": 0.1,
+                "eps": 1e-05
+              },
+              "removed_parameters": [
+                "l1.1.update.norm.weight",
+                "l1.1.update.norm.bias",
+                "l1.1.update.ff.0.weight",
+                "l1.1.update.ff.0.bias",
+                "l1.1.update.ff.3.weight",
+                "l1.1.update.ff.3.bias",
+                "l1.1.update.final.weight",
+                "l1.1.update.final.bias"
+              ],
+              "affine_mapped": {
+                "l1.1.lin_edge.weight": "l1.1.edge.weight [explicit affine T/F/U remap]",
+                "l1.1.lin_edge.bias": "l1.1.edge.weight[:,0] + edge.weight[:,1]/2"
+              }
+            }
+          ],
+          "batch_norm_contract": {
+            "train": "one_joint_support_labels_query_graph",
+            "eval": "fixed_running_statistics_query_chunks",
+            "fresh_running_statistics": true,
+            "query_ground_truth": "not_an_input",
+            "query_normalization_influence": "train_only",
+            "l1_activation_checkpointing": false
+          },
+          "unchanged_equations": [
+            "L0",
+            "L2",
+            "cluster_assignment",
+            "prototype_logits",
+            "loss",
+            "temperature"
+          ],
+          "altered_equations": [
+            "biased_qkv_and_edge",
+            "k_scaling",
+            "relation_coding",
+            "ReLU_attention",
+            "value_without_edge",
+            "per_edge_output_projection",
+            "attention_dropout",
+            "self_loop_attention",
+            "joint_batch_norm_without_FFN",
+            "inter_layer_GELU"
+          ],
+          "transfer_policy": "affine_relations_zero_out_bias",
+          "relation_transfer": [
+            {
+              "layer": 1,
+              "preserved_projected_relations": true,
+              "equations": {
+                "old": "a = W_old[:,0]; b = W_old[:,1]",
+                "new_column_0": "-a - b/2",
+                "new_column_1": "b/2",
+                "new_bias": "a + b/2",
+                "T": "W_new @ [0,1] + bias_new = a+b = W_old @ [1,1]",
+                "F": "W_new @ [0,-1] + bias_new = a = W_old @ [1,0]",
+                "U": "W_new @ [1,0] + bias_new = 0 = W_old @ [0,0]"
+              },
+              "projected_TFU_max_abs_error": {
+                "T": 1.1920928955078125e-07,
+                "F": 5.960464477539063e-08,
+                "U": 0.0
+              },
+              "floating_absolute_tolerance": 2.318558472325094e-06,
+              "comparison_dtype": "torch.float32",
+              "self_projection": {
+                "code": [
+                  0,
+                  0
+                ],
+                "equation": "bias_new",
+                "norm": 5.0086669921875,
+                "old_counterpart": false,
+                "interpretation": "A new self-loop; preservation claims apply only to old T/F/U edges"
+              },
+              "full_layer_function_preserved": false
+            },
+            {
+              "layer": 2,
+              "preserved_projected_relations": true,
+              "equations": {
+                "old": "a = W_old[:,0]; b = W_old[:,1]",
+                "new_column_0": "-a - b/2",
+                "new_column_1": "b/2",
+                "new_bias": "a + b/2",
+                "T": "W_new @ [0,1] + bias_new = a+b = W_old @ [1,1]",
+                "F": "W_new @ [0,-1] + bias_new = a = W_old @ [1,0]",
+                "U": "W_new @ [1,0] + bias_new = 0 = W_old @ [0,0]"
+              },
+              "projected_TFU_max_abs_error": {
+                "T": 1.1920928955078125e-07,
+                "F": 5.960464477539063e-08,
+                "U": 0.0
+              },
+              "floating_absolute_tolerance": 2.5324570742668584e-06,
+              "comparison_dtype": "torch.float32",
+              "self_projection": {
+                "code": [
+                  0,
+                  0
+                ],
+                "equation": "bias_new",
+                "norm": 5.411231994628906,
+                "old_counterpart": false,
+                "interpretation": "A new self-loop; preservation claims apply only to old T/F/U edges"
+              },
+              "full_layer_function_preserved": false
+            }
+          ],
+          "out_bias_transfer": [
+            {
+              "layer": 1,
+              "old_output_bias_norm": 0.5633347630500793,
+              "new_output_bias_norm": 0.0,
+              "old_placement": "once after aggregation, per node",
+              "new_placement": "once per incoming edge, before aggregation",
+              "policy": "explicit_zero",
+              "official_bias_component": "0",
+              "shift_relative_old_once_per_node_bias": "-b_old",
+              "old_bias_parameter_copied": false,
+              "old_once_per_node_bias_effect_preserved": false,
+              "full_node_bias_effect_preserved": false,
+              "full_layer_function_preserved": false
+            },
+            {
+              "layer": 2,
+              "old_output_bias_norm": 0.5711103677749634,
+              "new_output_bias_norm": 0.0,
+              "old_placement": "once after aggregation, per node",
+              "new_placement": "once per incoming edge, before aggregation",
+              "policy": "explicit_zero",
+              "official_bias_component": "0",
+              "shift_relative_old_once_per_node_bias": "-b_old",
+              "old_bias_parameter_copied": false,
+              "old_once_per_node_bias_effect_preserved": false,
+              "full_node_bias_effect_preserved": false,
+              "full_layer_function_preserved": false
+            }
+          ],
+          "operator_equations_unchanged_from_reference": true,
+          "historical_clone_reference_unchanged": true,
+          "full_layer_function_preserved": false,
+          "batch_norm_calibrated": false,
+          "remaining_operator_confounds": [
+            "Key divided by sqrt(head_dim); copied attention key weights are not rescaled",
+            "ReLU instead of old SiLU/LeakyReLU attention transformations",
+            "New self-loop and value-only messages",
+            "Per-edge output projection and fresh joint BatchNorm",
+            "Old LayerNorm/FFN removed, inter-layer GELU added",
+            "Joint train BN can route support alignment gradients to query features"
+          ],
+          "L0_L2_initial_weights_and_loss_formulas_preserved": true,
+          "gradient_dependency_equivalence": false
+        },
+        "reference_transfer_policy": "affine_relations_zero_out_bias",
+        "selection_policy": "rankable_full_batch_prefix",
+        "optimizer": "fresh AdamW; no saved moments reused",
+        "precision": "FP32",
+        "initial_parameters": 862806,
+        "before": {
+          "observations": 133,
+          "positives": 5,
+          "comparison_centers": 128,
+          "all_candidates_retained": true,
+          "physical_query_chunk": 32,
+          "metrics": {
+            "ranking_pairwise_loss": 0.6926963925361633,
+            "ranking_pairs": 640,
+            "ranking_mrr": 0.058823529411764705,
+            "ranking_mean_observed_rank": 65.8,
+            "ranking_evaluable_cases": 1,
+            "ranking_cases_without_observed": 0,
+            "ranking_recall_at_1": 0.0,
+            "ranking_recall_at_5": 0.0,
+            "ranking_recall_at_10": 0.0
+          },
+          "score": {
+            "score_std": 0.01993064023554325,
+            "score_min": -0.07058033347129822,
+            "score_max": 0.07223616540431976,
+            "mean_positive_minus_unobserved": 0.0010643346467986703,
+            "pair_win_rate": 0.5093749761581421,
+            "exact_tie_rate": 0.0,
+            "mean_pairwise_loss": 0.6926963925361633,
+            "comparisons": 640
+          },
+          "observed_ranks": [
+            17,
+            31,
+            32,
+            123,
+            126
+          ],
+          "finite": true,
+          "scope": "one complete original case; DEBUG support; not full validation"
+        },
+        "after": {
+          "observations": 133,
+          "positives": 5,
+          "comparison_centers": 128,
+          "all_candidates_retained": true,
+          "physical_query_chunk": 32,
+          "metrics": {
+            "ranking_pairwise_loss": 0.6850355863571167,
+            "ranking_pairs": 640,
+            "ranking_mrr": 0.1,
+            "ranking_mean_observed_rank": 34.2,
+            "ranking_evaluable_cases": 1,
+            "ranking_cases_without_observed": 0,
+            "ranking_recall_at_1": 0.0,
+            "ranking_recall_at_5": 0.0,
+            "ranking_recall_at_10": 0.2
+          },
+          "score": {
+            "score_std": 0.022894123569130898,
+            "score_min": 0.012014061212539673,
+            "score_max": 0.20372918248176575,
+            "mean_positive_minus_unobserved": 0.016505341976881027,
+            "pair_win_rate": 0.7562500238418579,
+            "exact_tie_rate": 0.0,
+            "mean_pairwise_loss": 0.6850355863571167,
+            "comparisons": 640
+          },
+          "observed_ranks": [
+            10,
+            15,
+            16,
+            55,
+            75
+          ],
+          "finite": true,
+          "scope": "one complete original case; DEBUG support; not full validation"
+        },
+        "updates": [
+          {
+            "step": 1,
+            "indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "physical_batch": 32,
+            "input_tensor_shape": [
+              33,
+              1,
+              58,
+              50,
+              7
+            ],
+            "organ_tensor_shape": [
+              33,
+              1,
+              58,
+              50,
+              7
+            ],
+            "native_crop_audit": [
+              {
+                "case": "liver_1",
+                "origin": [
+                  173,
+                  283,
+                  66
+                ],
+                "shape": [
+                  58,
+                  50,
+                  7
+                ],
+                "spacing": [
+                  0.6757810115814209,
+                  0.6757810115814209,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.19529867172241,
+                  33.789050579071045,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  251,
+                  322,
+                  76
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  326,
+                  168,
+                  75
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  319,
+                  293,
+                  75
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  372,
+                  244,
+                  76
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  382,
+                  292,
+                  56
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  414,
+                  186,
+                  74
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  419,
+                  207,
+                  66
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  413,
+                  209,
+                  69
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  402,
+                  173,
+                  61
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  318,
+                  199,
+                  75
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  392,
+                  241,
+                  59
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  393,
+                  236,
+                  70
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  292,
+                  299,
+                  70
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  402,
+                  217,
+                  65
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  359,
+                  276,
+                  72
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  418,
+                  261,
+                  66
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  240,
+                  307,
+                  78
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  365,
+                  132,
+                  65
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  355,
+                  183,
+                  68
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  403,
+                  154,
+                  62
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  338,
+                  212,
+                  78
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  343,
+                  325,
+                  68
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  211,
+                  279,
+                  73
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  357,
+                  300,
+                  73
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  270,
+                  290,
+                  77
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  215,
+                  272,
+                  74
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  303,
+                  216,
+                  61
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  405,
+                  215,
+                  71
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  407,
+                  129,
+                  69
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  262,
+                  206,
+                  68
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  423,
+                  178,
+                  63
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              },
+              {
+                "case": "liver_66",
+                "origin": [
+                  431,
+                  167,
+                  66
+                ],
+                "shape": [
+                  56,
+                  48,
+                  7
+                ],
+                "spacing": [
+                  0.7128909826278687,
+                  0.7128909826278687,
+                  5.0
+                ],
+                "extent_mm": [
+                  39.921895027160645,
+                  34.218767166137695,
+                  35.0
+                ],
+                "anchor_in_organ": true
+              }
+            ],
+            "schedule_index": 0,
+            "tile_id": "schedule:0",
+            "observation_ids": [
+              "liver_66:0",
+              "liver_66:1",
+              "liver_66:2",
+              "liver_66:3",
+              "liver_66:4",
+              "liver_66:10",
+              "liver_66:100",
+              "liver_66:101",
+              "liver_66:102",
+              "liver_66:103",
+              "liver_66:104",
+              "liver_66:105",
+              "liver_66:106",
+              "liver_66:107",
+              "liver_66:108",
+              "liver_66:109",
+              "liver_66:11",
+              "liver_66:110",
+              "liver_66:111",
+              "liver_66:112",
+              "liver_66:113",
+              "liver_66:114",
+              "liver_66:115",
+              "liver_66:116",
+              "liver_66:117",
+              "liver_66:118",
+              "liver_66:119",
+              "liver_66:12",
+              "liver_66:120",
+              "liver_66:121",
+              "liver_66:122",
+              "liver_66:123"
+            ],
+            "case_id": "liver_66",
+            "observed": 5,
+            "unobserved": 27,
+            "ranking_pairs": 135,
+            "ranking_parameter_gradient": {
+              "status": "MEASURED",
+              "weighted_loss": 1.312792181968689,
+              "module_gradient_norms": {
+                "CNN": 24.83307647705078,
+                "readout_fusion": 14.164376258850098,
+                "L1": 4.70434045791626,
+                "L2": 2.3022284507751465,
+                "global": 29.064451217651367
+              },
+              "module_parameter_connections": {
+                "CNN": {
+                  "trainable_parameters": 24,
+                  "connected_parameters": 24
+                },
+                "readout_fusion": {
+                  "trainable_parameters": 10,
+                  "connected_parameters": 10
+                },
+                "L1": {
+                  "trainable_parameters": 25,
+                  "connected_parameters": 25
+                },
+                "L2": {
+                  "trainable_parameters": 28,
+                  "connected_parameters": 28
+                }
+              },
+              "required_nonzero_modules": [
+                "CNN",
+                "L1",
+                "L2"
+              ],
+              "scope": "ranking-only derivatives from this exact original full-objective forward",
+              "original_gradient_buffers_untouched": true
+            },
+            "teacher_plan_sha256": "a6258eb264b6a756c68e348d77e2585b9178b887881e46ba09ff06a9c1bf4a14",
+            "own_branch_teacher_plan": true,
+            "input_content_sha256": "36bf408fe10432779d281da1745c7f7d767c51669c23f600be4434becc8dbaaf",
+            "support_record_ids": [
+              "liver_71:0",
+              "liver_71:91",
+              "liver_72:1",
+              "liver_72:84",
+              "liver_75:2",
+              "liver_75:44"
+            ],
+            "loss": 2.625981330871582,
+            "terms": {
+              "ranking_loss": 1.312792181968689,
+              "ranking_pairs": 135.0,
+              "observation_auxiliary_loss": 0.9617025256156921,
+              "alignment_loss": 0.3514866828918457
+            },
+            "module_gradient_norms": {
+              "CNN": 33.9223518371582,
+              "readout_fusion": 17.77983856201172,
+              "L1": 5.935154914855957,
+              "L2": 3.0005526542663574,
+              "global": 38.87258529663086
+            },
+            "gradient_norm_before_clip": 38.87258529663086,
+            "synchronized_update_seconds": 0.4712076000014349
+          }
+        ],
+        "parameter_delta_norms": {
+          "CNN": 0.03456881269812584,
+          "readout_fusion": 0.04167735204100609,
+          "L1": 0.037114743143320084,
+          "L2": 0.06546245515346527,
+          "global": 0.09270837157964706
+        }
+      }
+    ],
+    "steps_per_branch": 1,
+    "selection_policy": "rankable_full_batch_prefix",
+    "reference_transfer_policy": "affine_relations_zero_out_bias",
+    "update_selection": {
+      "selection_policy": "rankable_full_batch_prefix",
+      "selected_schedule_indices": [
+        0
+      ],
+      "selected_tiles": [
+        {
+          "schedule_index": 0,
+          "tile_id": "schedule:0",
+          "indices": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31
+          ],
+          "observation_ids": [
+            "liver_66:0",
+            "liver_66:1",
+            "liver_66:2",
+            "liver_66:3",
+            "liver_66:4",
+            "liver_66:10",
+            "liver_66:100",
+            "liver_66:101",
+            "liver_66:102",
+            "liver_66:103",
+            "liver_66:104",
+            "liver_66:105",
+            "liver_66:106",
+            "liver_66:107",
+            "liver_66:108",
+            "liver_66:109",
+            "liver_66:11",
+            "liver_66:110",
+            "liver_66:111",
+            "liver_66:112",
+            "liver_66:113",
+            "liver_66:114",
+            "liver_66:115",
+            "liver_66:116",
+            "liver_66:117",
+            "liver_66:118",
+            "liver_66:119",
+            "liver_66:12",
+            "liver_66:120",
+            "liver_66:121",
+            "liver_66:122",
+            "liver_66:123"
+          ],
+          "case_id": "liver_66",
+          "physical_batch": 32,
+          "observed": 5,
+          "unobserved": 27,
+          "ranking_pairs": 135
+        }
+      ],
+      "eligible_tile_count": 4,
+      "eligible_full_physical_rankable_tile_count": 4,
+      "selection_basis": "existing schedule order and original P/U metadata only; no score selection",
+      "full_schedule_audit": {
+        "policy": "same_donor_live_v1",
+        "unique_observations": 139,
+        "query_presentations": 159,
+        "optimization_steps": 8,
+        "physical_batch": 32,
+        "actual_batch_sizes": [
+          32,
+          32,
+          32,
+          32,
+          25,
+          2,
+          2,
+          2
+        ],
+        "ranking_pairs": 643,
+        "zero_positive_cases": 0
+      },
+      "full_schedule_tiles": 8,
+      "full_cohort_observations": 139,
+      "full_schedule_query_presentations": 159,
+      "selected_unique_observations": 32,
+      "complete_schedule_coverage_and_multiplicity_preserved": true,
+      "normalization": {
+        "steps": 8,
+        "pairs": 643,
+        "class_counts": {
+          "1": 8,
+          "0": 131
+        },
+        "observation_multiplicities_sha256": "6bedb68029d1c9cdd888277a020bcaed93dbf7d3ed40357c98e12229851a8b9a",
+        "ranking_coefficient": 0.012441679626749611,
+        "observation_auxiliary_coefficient": "steps / (2 * full_class_count * original_schedule_uses)",
+        "scope": "unchanged full-cohort LiveContext; never selected-prefix normalization"
+      },
+      "subset_scope": "explicit DEBUG update selection; full cohort and production schedule retained"
+    },
+    "selected_schedule_indices": [
+      0
+    ],
+    "ranking_parameter_gradients_required": true,
+    "physical_batch": 32,
+    "full_objective": {
+      "objective": "same_donor_live_v1",
+      "ranking_weight": 1.0,
+      "observation_auxiliary_weight": 1.0,
+      "ranking": "all within-case observed/unobserved pairs exactly once per epoch",
+      "donor": "one fixed train-only donor per case; independent of observation class",
+      "reference": "both sides live; no detached ranking-reference embeddings",
+      "auxiliary": "global balanced CE; inverse schedule multiplicity per observation",
+      "normalization": "epoch objective: global pair mean and global balanced observation mean",
+      "selection_metric": "MRR then R@1 then negative pairwise loss",
+      "query_scope": "all observations; retain cases without eligible positive",
+      "support": "unchanged patient support and L2 policy",
+      "report_recall_at": [
+        1,
+        5,
+        10
+      ]
+    },
+    "execution": {
+      "device_type": "cuda",
+      "autocast_enabled": false,
+      "configured_autocast_dtype": "torch.float16",
+      "deterministic_algorithms": true,
+      "deterministic_warn_only": false,
+      "tf32_matmul": false,
+      "tf32_cudnn": false,
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": false,
+      "float32_matmul_precision": "highest",
+      "cublas_workspace_config": ":4096:8"
+    },
+    "original_state_and_rng_preserved": true,
+    "timing_scope": "synchronized forward/full loss/backward/gradient diagnostics/clip/AdamW only; excludes CT loading, transfer, input hashing, teacher preparation, evaluation and checkpoint IO; not epoch timing",
+    "same_native_inputs": true,
+    "original_L0_L2_initial_weights_preserved": true,
+    "exact_resume": false,
+    "production_optimizer_updates": 0,
+    "production_checkpoint_written": false,
+    "production_ready": false,
+    "full_training": false,
+    "full_evaluation": false
+  },
+  "elapsed_seconds": 7.5360772000003635,
+  "resources": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_count": 1,
+    "gpu_total_bytes": 17094344704,
+    "free_bytes_at_start": 15740174336,
+    "cuda_limit_bytes": 3221225472,
+    "peak_allocated_bytes": 527448576,
+    "peak_reserved_bytes": 635437056,
+    "rss_bytes": 2462650368,
+    "rss_limit_bytes": 34359738368,
+    "resident_limit_bytes": 8589934592,
+    "workers": 4,
+    "cpu_logical": 16,
+    "available_ram_bytes": 39840497664
+  },
+  "torch_version": "2.8.0+cu128",
+  "python": "3.10.18",
+  "source": {
+    "production": {
+      "core": {
+        "config/prompt_graph_v222_v1_l0.json": "b6205a175427d53bf23a72e7173adbaf5dbf9fa011c2df276d5158b2662ffd09",
+        "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+        "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+        "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+        "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+        "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+        "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+        "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+        "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+        "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+        "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+        "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+        "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+        "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+        "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+        "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+        "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+        "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+        "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+        "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+        "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+        "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+        "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+        "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+        "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+        "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+        "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+        "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+        "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+        "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+        "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+        "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2",
+        "hiercp_v22/__init__.py": "acd6b333c88967319a0ed9e00a9286e6297f71f18d98ab528962980576626671",
+        "hiercp_v22/bank.py": "1c4b53155f9c55702b6b8d33de7839b10131fe51a8edffd9d013ad43f2f4945c",
+        "hiercp_v22/contracts.py": "2e420b3763e278faabec681b5edd91786b4c4bc064738258e47d7592ba9f47e4",
+        "hiercp_v22/data.py": "0fa999191f452f525233f8227e1bcb3a8ef989064d3d36f1ab0c566f0976f9a9",
+        "hiercp_v22/donors.py": "b3ba23a31904b1617b30abe1de1311cd593b37e1ccbc637ef929300ea03f51fa",
+        "hiercp_v22/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+        "hiercp_v22/features.py": "88ed491ac16290b50c19c461876b81a122dcb4590437079e6ab7a8ca661a8061",
+        "hiercp_v22/geometry.py": "5429c827bbb5360fedb22a3aff751733abffb6ab97cada0e704ffe6e45e97b17",
+        "hiercp_v22/local.py": "d37138ee5464950a8e9544c187502165e6732857f4f5234c0e289937be2f012d",
+        "hiercp_v22/migration.py": "07f1b82188c9fff4fee9c3c5f44e23224dff94b1ac0d209f1aef65dd94d86781",
+        "hiercp_v22/model.py": "801e9c8c3099070c1c80c7bb18f60a1b66415bfa171818ea68ecc91e470f6093",
+        "hiercp_v22/native_adapter.py": "913220629d5fd2bebaa66b3451aa5c24c683f486e2fd1481a617437b45905f2c",
+        "hiercp_v22/nnunet.py": "6dcd9749fa39b559241232cb19cb239dfdf4f37c67576d61e322e372c3b7cda6",
+        "hiercp_v22/nnUNetTrainer_OnlinePromptGraphV22.py": "a778b2fb8485b725400916215851dfce6ff9865026a504da78e8cb0f8b49ccd6",
+        "hiercp_v22/parallel.py": "44dba9a2cecbabb66017f9121b3608014d961a421075429438f277a88bc29fb9",
+        "hiercp_v22/resources.py": "005084a33f80a43d24031df590f3b74781979e7229b73f52b48a9b3fb0207f90",
+        "hiercp_v22/sample.py": "2bd7541094af140873bc0daa6237d5e8419129aa6d37ecb7171b8e56bee3f9ab",
+        "hiercp_v22/schema.py": "3f05b0d1ba0335c12bb4bbb1dcbe8b6f6f59be17549ee567da7e36419d20c8db",
+        "hiercp_v22/scoring.py": "b758715a6a5555086fe9872bb5ee70026a0f8e4d8e371a2eff48ef9cb2077c0d",
+        "hiercp_v22/spatial.py": "869b04bc4f7fed9b7ce7bdbe91c2d25b4e00566a81efdc009a55e4900fe55cb3",
+        "hiercp_v22/storage.py": "39229a40504dafef4cd89f13784e42361f41bc64ce7d93139ea115f0e8a0454a",
+        "hiercp_v22/training.py": "617b43960d03e273f48b242a203660fbcf45d0df398d78a9ca767017cb1f3eac",
+        "hiercp_v22/volumes.py": "ac4ed51ee58ff68efbbd69f2fb86f00bd8ff9a3264fe18f95ee97b7f18bd9c89",
+        "hiercp_v222/__init__.py": "79df44c676b02717da388d39306273f0e33dcc7205be3cd672274b52daddb1d6",
+        "hiercp_v222/bank.py": "c0aa8b9c4bcca48a9bd1c1febf28494a730c19df6fc4a3e97fd5a078d4b3908b",
+        "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+        "hiercp_v222/contracts.py": "21a54c95a01ecb211dff1b851d64341113d2aba6a7a2d0f992b8d6f169d77993",
+        "hiercp_v222/data.py": "1286e6f5ba6baa57f6e977840748eb4e8ca4a39edd0bdfe062219962a9cdbbb9",
+        "hiercp_v222/deterministic_sampling.py": "90e34002e2f58082cb9272c403650c02b7f7242253779d6f4017984c2f4c66c3",
+        "hiercp_v222/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+        "hiercp_v222/inputs.py": "adcbd2e7d64d996fbe89dd7251f3cefa4c0987a492ec6e41352d0df45ffd9dcf",
+        "hiercp_v222/l0_comparison.py": "2877c624274fe97b4b7c628ba4deeb525adb64ca39bf005e7c449288de78eed2",
+        "hiercp_v222/l0_graph_unet.py": "e5df0b2c7818c3213631224f8c53bc4ae5f7e93038b234bc41805c1c16701d22",
+        "hiercp_v222/migration.py": "54c7383901e668428e587ff7048ab9763633aa9ee629f54a319a90c6f4c930ff",
+        "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+        "hiercp_v222/native_adapter.py": "b55c1ff2584abd5c4e498ed38555c139821d72a1beee88c9c4536cb7a969b740",
+        "hiercp_v222/nnunet.py": "af882f55eee4c290995861726e9543225aadf608a57ec462a4af24d0b1401158",
+        "hiercp_v222/nnUNetTrainer_OnlinePromptGraphV222.py": "e4c51ee69442fef258149f30e1d05a6b9292999214d30f860560c6ab39e1114a",
+        "hiercp_v222/parallel.py": "90f3b6681fae7dd5dae2d705bd610af2576f0a5bd32143151fa64f12d985d228",
+        "hiercp_v222/placement.py": "bb9cae758b339de2ccc8d32d7a4f0b3b906bea499bc1e0e3db6ba6eb2588131c",
+        "hiercp_v222/record_binding.py": "13caac68634cf0774932b4dbefb96e675b6a5717d10c2bed0d9fa01264c80b0a",
+        "hiercp_v222/runtime.py": "a6597198bf3f558be9708df6fb0c6a41d9dbea1478cd398d6af3473ba6cd94f2",
+        "hiercp_v222/sampling.py": "17bebd68bd198744a8677fd611c8623656f209580b0f29e34660ed2f2ad7d6bf",
+        "hiercp_v222/scoring.py": "c1952f087c9f8961a1e081643eba495561a41a3e9bd7fc1491d11f329be9b7ae",
+        "hiercp_v222/training.py": "ff82cf35adbcee359da4dc0046f35b96434c4fcfea070588f2fea52bff34234a",
+        "hiercp_v222/v1_cache.py": "c473fef21ac60e6fce7401bc6cc34f1126c23e269dd66674ded485440b9220b7",
+        "hiercp_v222/v1_execution.py": "320c69f40ee386deac6d6989cae6c2d51fdacb5393768c316fbb4c73b65b390b",
+        "hiercp_v222/v1_local.py": "2bb724171ee0b8c8ae1892eebe6487db68f393a270d3d0708b2ad06417b0641d",
+        "hiercp_v222/v1_recovery.py": "09b684513d6d9a109de54484f4b4e82b655132c017da1107087695c6b42a9f5f",
+        "hiercp_v222/v1_training.py": "3c13a598d2352d2a854b94a1d38186fabf6ea4b1ff9b93ce0b24a2cbe51c1ea3",
+        "run_v222_v1_l0.py": "ef332ad54d58e06439df67b204d7e9ee3cb85fe8e10ecd1ab3e9877cd39fd961"
+      },
+      "runtime": {
+        "l0_regions/admission_report.py": "f1e15f958d63c01fdc5d22427881af04ba8335c722e9e144d8b403313837535a",
+        "l0_regions/data.py": "0b5b3e81d70d05839368aa787d2143bf338d3bbb332426bfaf58be541d8ed053",
+        "l0_regions/donor_data.py": "73f683fde9997fd223bccf1f047d6bb4051840efe7104a4a09089fd03c54bbee",
+        "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+        "l0_regions/encoder.py": "222fa4e7910a9240601d25a3a137a0169e53a86a217bf708510c1e4361c9e9a2",
+        "l0_regions/execution_pipeline.py": "6676c70b30f7fd560963c6d8280795b7ae2cf608b4e3749b6944e62f28e275d1",
+        "l0_regions/execution_upgrade.py": "6db172543b2f28d72d065c2d8f94654148f549befe66c662f19ff173a51c1ab2",
+        "l0_regions/final.py": "2d27b8aa110944b61d746aee907bc71f6aa3b9684d205c5b989868686a7c877e",
+        "l0_regions/fine_graph.py": "bb785bbbd0a5e48afb83e568594ff121b18060d7e25af70899f1b61546f8779e",
+        "l0_regions/learning_monitor.py": "f082073506564c9a902160a8a092e43469f6039fa1f12f789697dd92652df945",
+        "l0_regions/materialization.py": "761d2fad6fe82764d190405f752e9d6f8139a5816b0161d9465f16d78c522815",
+        "l0_regions/preparation.py": "0c532695a03317f166fddda690d9f008b13c6061127b0355477e960bcf7b3293",
+        "l0_regions/preparation_reuse.py": "d9739930df6a83da01f6d96a1f36f5930715fe0ce89f16dfa2d72d5ece22695f",
+        "l0_regions/preparation_runtime.py": "9ab22fd4109b358c9476bf59a8068420aeba576b0f49fd2799f76765cc5e9770",
+        "l0_regions/profile_policy.py": "eaacdc8880867392ea7a7b64437caa7b6cd83746e6e76a94712876e7985cc93c",
+        "l0_regions/ram_pressure.py": "0280120d92c5edc51aefd0a97775713fa6341de2a274798729c7f77dd6e26618",
+        "l0_regions/ranking_history.py": "868e5c9e46dd5376ec72f1c9f2391cf35490a618d9e460a45123fa9465a2596e",
+        "l0_regions/recommendation.py": "6ccc8ed0d6a4a0cbbcc3d8fc6f225b7b523aee803d7075c0643296fc2db58079",
+        "l0_regions/resident.py": "914b89ad9cfc87f6bfb6ebc0b79b53d029b305bb634011fdbf407336eed5adb7",
+        "l0_regions/sparse.py": "6524b1239f93f4b647e9ac14ba93e8e14761429b49cd65eb3d14c67240733e05",
+        "l0_regions/support_episodes.py": "3947ef3776850510c1f6af595a2d8d1134e1a5babf3654c415488557f391e3e1",
+        "l0_regions/training.py": "6e106f1828a854cdca06e2f664af819f80b533c7c5a144dee66eb7a4f3122bdb",
+        "l0_regions/training_data.py": "dda32285f52302e7831901a3118d6044f337f92b5a1100adf4f982d3796c3df9",
+        "l0_regions/__init__.py": "73f897eb8a727afc2b0b55f277709e56ec38c1a9fc5a6bb10c6efdbe9a9f1ce1",
+        "l0_local_cnn/artifact.py": "00f09f953cc1fb8d3f0e4a8f3837917dde7bb34ee1256afcdc9a56a62a0f8dda",
+        "l0_local_cnn/data.py": "907d1ea35e138cb07a2af017bab8c76f7fd4149a9ed000a1d7d7d76c693df03c",
+        "l0_local_cnn/model.py": "51aa70d4fdfe9e7d1f25b9bd110adaa25c1ec1f264659888695853f9bf923e19",
+        "l0_local_cnn/recommendation.py": "c6dd5c642277cfbca1a934d83f415e41315435a0dae19066ab15d7b2b5703b46",
+        "l0_local_cnn/__init__.py": "97db808df45a723e53363b11fd1228af460f32fe56f6824838f7cc1843d2cb56",
+        "l0_exploration/model.py": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+        "l0_exploration/data.py": "791e68e927465236d844dbff816596697641cc1e5b9264ff23bf2513f76eed89",
+        "l0_sage/encoder.py": "42a640aac444203c3e125563e0209448f87e4813a3af07a28ef68c484f167265",
+        "tools/run_fixed_regions.py": "4e977d366bab9fca5555c5df8376d223e99f231c66f0443ae5f69adea9bd0d69",
+        "tools/run_local_cnn.py": "a3993a8d105c2e0f1c7a59f82789d385f44514d7a23ad2b68d983c9d6aa1deed",
+        "tools/v22_rank_objective.py": "11adc325971bafc35d470fa0719c4a8e21e456219cf583969f3674a4999c268a",
+        "tools/v222_review_contracts.py": "7d5d37e96474e8d45bac749601b4c6497bc2e4a3d9b80d488e53ba5fe9e63b44",
+        "tools/v22_rank_recommendation.py": "5adf0c0c4dd4961ca878a596be8d30ffddcd5283a506bb7ec2a07b32020badfd",
+        "tools/v22_online_rank_bank.py": "ea0e35db5efb2746ca11b9642b687e8fb4645ae7a6194281bd72b2eaf041795b"
+      }
+    },
+    "diagnostic": {
+      "tools/verify_reference_rankable_ct_debug.py": "23480271abbb66b3fbbcd7ec8b3238f4684fcc80efb2bd31c8787c2156393b92",
+      "tools/local_cnn_reference_runtime.py": "7d345c064740974618e445b55505b3a27444a180d21587e9d89711859233bf5c",
+      "tools/local_cnn_reference_l1.py": "b024794ae4105e5c04513fbf7427d13698a631ca46dedd735059f50dff747a04",
+      "tools/local_cnn_reference_transfer.py": "26504a8e6c289457a6b434a3176883e5da4fefcc8d74477a9d2a274478c808a9"
+    }
+  },
+  "limitations": [
+    "One complete case with DEBUG support is mechanical smoke, not full accuracy.",
+    "Fresh optimizer and reference BatchNorm: not exact resume or learned production replacement.",
+    "Ranking-only gradient measurement adds a diagnostic derivative pass; timing is not production speed."
+  ]
+}
