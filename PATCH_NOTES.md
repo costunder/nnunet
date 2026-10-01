@@ -1,5 +1,6 @@
 ## v2.2 — reference L1 전이·BN 고정 가중치 대조 (2026-10-01)
 
+- 실제 update case의 전체 후보를 매 step 평가하는 opt-in causal 진단 추가. 기존 비교 지표 분모 유지, 동일 forward rank/CE/alignment/full gradient·실제 moments를 복제한 AdamW delta, reference 첫 tile BN/dropout 2×2와 frozen-BN update, L0/L1 target class separation 계측. 실제 CT133관측/physical32/두 branch 각2 update의 full shadow parity 통과,67개 검사 PASS. 분산·gradient 크기를 정확도로 해석하지 않으며 production 모델/설정·장기 학습 변경 없음. [검토 반영과 범위](docs/local_cnn_reference_causal_20261001.md).
 - da9b1bb 실제 A6000 순위 활성4-update 결과 수신: 두 branch 모든8회 physical32/P16+U16/256쌍 및 CNN/L1/L2 ranking gradient 확인. Reference CNN gradient212~423배 증가와 추천 개선을 구분. 검증 R@5 .178571→.071429, R@10 .214286→.107143, 단일 관측68위→105위로 개선 근거 없음. Update case liver_117이 평가에서 빠진 범위, fresh BN/teacher/bank 단계와 full-objective 방향 미측정 항목 기록. 원문·16case·8update 전사 보존; production/모델 변경·새 학습 없음.
 - 최신 서버 신호에서 이전4회씩의 복제 update 모두 rank pairs/loss0 확인. CE/alignment만 변한 대조를 순위 학습 증거로 쓰지 않음. 기존 결과 보존.
 - 원래 complete schedule의 full physical P/U tile을 명시적으로 고르는 DEBUG 경로 추가. 전체 관측·loss 정규화·multiplicity 유지; 부족 시 오류. 매 update의 rank-only CNN/readout/L1/L2 gradient·원본 schedule·P/U를 출력.

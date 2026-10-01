@@ -1,0 +1,745 @@
+네. 다만 **이번 결과 때문에 이전 판단 하나는 명확히 수정해야 합니다.**
+
+> **Legacy L1의 3만 배 수준 representation contraction은 실제 현상이다.**
+> 하지만 **그 contraction이 v2.2 학습 실패의 주원인이라고는 이제 말할 수 없습니다.**
+
+이번 reference 결과가 그 주장에 대한 **직접적인 반례**입니다.
+
+## 지금까지 확정된 것
+
+| 질문 | 현재 판정 |
+|---|---|
+| ranking loss가 CNN까지 안 내려가나? | **아님. 내려감** |
+| Legacy L1이 후보 차이를 극단적으로 줄이나? | **맞음** |
+| 그 차이를 보존하면 ranking이 좋아지나? | **아님. Reference가 반례** |
+| Reference에서 gradient가 커지면 더 잘 배우나? | **아님. 명백히 반례** |
+| Reference L1을 production에 넣어야 하나? | **근거 없음** |
+| L0의 후보 variation이 실제 P/U 판별정보인가? | **아직 모름** |
+| rank+CE+alignment의 실제 update 방향이 rank에 유리한가? | **아직 모름** |
+| BN/teacher mismatch가 reference 악화 원인인가? | **코드상 존재, 영향 미측정** |
+
+즉 지금부터는 **“분산이 얼마나 남았냐”가 아니라 “남은 분산이 정답 방향이냐”**를 봐야 합니다.
+
+---
+
+# 1. 이번 결과가 L1 가설을 어떻게 바꿨냐
+
+Legacy epoch39에서는 실제로:
+
+```text
+L0 candidate variation
+        ↓
+L1_1
+        ↓
+L1_2
+약 1/30,000 수준
+```
+
+까지 줄었습니다.
+
+그래서 처음에는 당연히 L1이 의심됐습니다.
+
+그런데 reference `affine_relations_zero_out_bias`에서는:
+
+```text
+L0 variation
+   ↓
+Reference L1
+약 71~73% 보존
+```
+
+까지 회복됐습니다.
+
+그런데 성능은:
+
+```text
+Validation pair-win
+60.6% → 58.7%
+
+R@5
+17.9% → 7.1%
+
+R@10
+21.4% → 10.7%
+
+liver_3
+68위 → 105위
+```
+
+로 오히려 내려갔습니다.
+
+이 말은 중요합니다.
+
+> **Legacy L1이 없애던 variation 중 상당 부분이 ranking에 필요한 신호라는 보장이 없다.**
+
+즉 reference는 **후보 차이는 많이 보존했는데, 그 차이가 P/U를 구별하는 유용한 방향이 아닐 수 있습니다.**
+
+그래서 지금부터 `candidate variance`, `directional energy`만 보고 모델을 판단하면 안 됩니다.
+
+---
+
+# 2. Gradient 400배도 왜 아무 의미가 없을 수 있는지가 확인됐습니다
+
+이번 A6000에서 reference CNN rank-gradient는 legacy 대비:
+
+```text
+step 1 : 212×
+step 2 : 347×
+step 3 : 423×
+step 4 : 370×
+```
+
+였습니다.
+
+그런데 이걸 **“CNN이 훨씬 잘 학습된다”**고 해석하면 틀립니다.
+
+실제로 ZIP 안의 이전 actual-CT CUDA smoke에 아주 좋은 반례가 있습니다.
+
+### 동일 1-step DEBUG
+
+```text
+                    Legacy        Reference
+rank-only CNN grad    3.915          24.833
+full grad norm        6.792          38.873
+```
+
+Reference gradient가 훨씬 큽니다.
+
+그런데 `grad_clip=5`를 거쳐 fresh AdamW step 후:
+
+```text
+CNN parameter Δ
+Legacy     0.034568809
+Reference  0.034568813
+```
+
+**거의 똑같습니다.**
+
+Fusion도:
+
+```text
+Legacy     0.04167419
+Reference  0.04167735
+```
+
+거의 같습니다.
+
+이건 굉장히 중요한 증거입니다.
+
+### 이유
+
+첫째, global clipping이 있습니다.
+
+```text
+Legacy:
+6.79 → 최대 5
+
+Reference:
+38.87 → 최대 5
+```
+
+Reference가 훨씬 심하게 잘립니다.
+
+둘째, 이번 short control은 **fresh AdamW**입니다.
+
+Adam 첫 step은 대략 parameter별로
+
+\[
+\Delta\theta \approx -lr \frac{g}{|g|+\epsilon}
+\]
+
+형태라서 gradient가 400배라고 update도 400배가 되는 구조가 아닙니다.
+
+따라서 이번 결과는 오히려:
+
+> **raw gradient norm을 학습성 지표로 쓰면 안 된다**
+
+는 걸 확실하게 보여줍니다.
+
+---
+
+# 3. 지금 제일 중요한 미확인 원인: `rank gradient`와 `실제 optimizer update`가 같은 방향인가
+
+현재 production loss는:
+
+\[
+L =
+L_{\text{rank}}
++
+L_{\text{CE}}
++
+L_{\text{alignment}}
+\]
+
+입니다.
+
+그런데 현재 측정한 212~423배는:
+
+```text
+∂L_rank / ∂θ
+```
+
+뿐입니다.
+
+실제 optimizer가 받는 건:
+
+```text
+g_total
+ = g_rank
+ + g_CE
+ + g_alignment
+```
+
+입니다.
+
+따라서 필요한 건 norm이 아니라:
+
+```text
+cos(g_rank, g_CE)
+cos(g_rank, g_alignment)
+cos(g_rank, g_total)
+```
+
+입니다.
+
+그리고 거기서 끝나면 안 됩니다.
+
+```text
+g_total
+ ↓
+global grad clip
+ ↓
+AdamW
+ ↓
+실제 Δθ
+```
+
+이므로 최종적으로는:
+
+```text
+cos(Δθ_full, Δθ_rank_only)
+```
+
+를 봐야 합니다.
+
+### 이게 왜 중요하냐
+
+가능한 상황이:
+
+```text
+rank는 이쪽 ↑
+CE는 저쪽 ↙
+alignment는 저쪽 ←
+
+합치면 ←
+```
+
+일 수 있습니다.
+
+그러면 **rank gradient가 CNN에 엄청 크게 존재해도 실제 update는 ranking을 망칠 수 있습니다.**
+
+현재 데이터로는 이게 아직 비어 있습니다.
+
+---
+
+# 4. 특히 reference에는 BN 때문에 새로운 gradient route까지 생겼습니다
+
+이건 코드에서 확실히 확인했습니다.
+
+Reference L1은 training에서:
+
+```text
+support
++ label nodes
++ query candidates
+        ↓
+같은 BatchNorm
+```
+
+을 사용합니다.
+
+`tools/local_cnn_reference_l1.py:180-203`
+
+그 결과 query는 graph edge로 support에 역방향 message를 보내지는 않지만,
+
+**BN 통계를 통해 query feature가 support/label representation에 영향을 줄 수 있습니다.**
+
+그리고 그 label representation으로:
+
+```text
+alignment loss
+```
+
+를 계산합니다.
+
+따라서 reference에서는:
+
+```text
+alignment loss
+     ↓
+joint BN
+     ↓
+query
+     ↓
+L0/CNN
+```
+
+이라는 경로가 생길 수 있습니다.
+
+실제로 diagnostic metadata에도:
+
+```text
+alignment_query_gradient_route_changed_by_joint_BN=True
+```
+
+라고 기록돼 있습니다.
+
+Legacy에서는 이 dependency가 동일하지 않습니다.
+
+즉 reference가 단순히:
+
+> “L1 collapse만 없앤 버전”
+
+이 아닙니다.
+
+**loss gradient topology까지 바뀐 버전**입니다.
+
+---
+
+# 5. BN에는 더 큰 train/eval mismatch도 있습니다
+
+Reference의 teacher 생성:
+
+```text
+fit_support_clusters()
+↓
+model.eval()
+↓
+support only
+↓
+BN running statistics 사용
+```
+
+그런데 실제 update:
+
+```text
+model.train()
+↓
+support + labels + query
+↓
+BN batch statistics 사용
+```
+
+입니다.
+
+즉 같은 reference 안에서도:
+
+```text
+teacher:
+support-only + BN eval
+
+student:
+support+query + BN train
+```
+
+이라는 차이가 있습니다.
+
+더구나 BN은 **fresh**입니다.
+
+처음에는:
+
+```text
+running_mean = 0
+running_var  = 1
+```
+
+입니다.
+
+4번 update만 하고 validation에서는 다시:
+
+```text
+BN running stats
+```
+
+를 사용합니다.
+
+따라서 지금 reference의 악화가:
+
+1. official-style operator 때문인지,
+2. fresh BN 때문인지,
+3. train/eval BN mismatch 때문인지,
+4. alignment의 query gradient route 때문인지
+
+아직 분리되지 않았습니다.
+
+---
+
+# 6. Teacher도 완전히 같은 대상이 아닙니다
+
+4 update가 전부:
+
+```text
+liver_117
+schedule 4
+schedule 5
+schedule 6
+schedule 7
+```
+
+입니다.
+
+동일 group이므로 teacher plan은 처음 한 번 만들고 4 tile 동안 고정됩니다.
+
+그런데 매 step:
+
+```text
+CNN/L1/L2 weights
+```
+
+는 바뀝니다.
+
+즉 step 2부터는:
+
+```text
+현재 network
++
+이전 weight에서 만들어진 frozen cluster teacher
+```
+
+를 쓰게 됩니다.
+
+이건 production 계약과 맞는 동작이긴 합니다.
+
+하지만 **reference처럼 representation이 크게 달라진 새 architecture를 warm-start한 직후에는 mismatch가 특히 클 수 있습니다.**
+
+그리고 evaluation에서는 다시:
+
+```text
+현재 weights
++
+full eligible support
++
+새 teacher
+```
+
+를 만듭니다.
+
+따라서 training objective와 evaluation geometry가 또 다릅니다.
+
+이것도 실제 영향은 아직 측정하지 않았습니다.
+
+---
+
+# 7. 그리고 현재 가장 큰 평가 공백은 사용자가 정확히 짚었습니다
+
+4개 update 전부 `liver_117`인데 평가한 train case는:
+
+```text
+liver_1
+liver_49
+```
+
+이고 validation은:
+
+```text
+liver_109
+liver_3
+```
+
+입니다.
+
+즉 현재 결과는:
+
+> **liver_117로 4회 학습했을 때 다른 환자들에게 어떤 변화가 생겼나**
+
+만 봅니다.
+
+아직:
+
+> **그 4 update가 자기 학습 대상인 liver_117에서 ranking loss를 실제로 줄였나?**
+
+조차 모릅니다.
+
+이걸 안 보고 generalization부터 해석하면 순서가 뒤집힙니다.
+
+---
+
+# 8. 그래서 다음 진단은 정확히 3개만 필요합니다
+
+## A. `liver_117` 자체를 반드시 평가
+
+각 step에 같은 전체 liver_117 후보를 평가합니다.
+
+```text
+before
+↓
+update tile #4
+↓
+evaluate liver_117
+↓
+update tile #5
+↓
+evaluate liver_117
+↓
+...
+```
+
+기록할 것:
+
+```text
+전체 P×U mean margin
+pair-win
+pairwise loss
+positive ranks 전체
+R@1 / R@5 / R@10
+score std
+mean(score_P) - mean(score_U)
+```
+
+그리고 추가로 **현재 update tile 자체의 16P/16U margin**도 pre/post 측정합니다.
+
+그러면 바로 분리됩니다.
+
+### 경우 1
+
+```text
+train tile ↑
+liver_117 전체 ↑
+other cases ↓
+```
+
+→ **학습은 되는데 generalization 문제**
+
+### 경우 2
+
+```text
+train tile ↑
+liver_117 전체 ↓
+```
+
+→ **tile overfit / objective inconsistency**
+
+### 경우 3
+
+```text
+train tile조차 ↓
+```
+
+→ **full objective/BN/optimizer update가 rank 방향을 방해**
+
+이 세 개가 완전히 다른 문제입니다.
+
+---
+
+# 9. B. 같은 forward에서 loss별 gradient + 실제 Adam delta
+
+이게 두 번째입니다.
+
+같은 native tile, **forward 한 번**에서:
+
+```text
+g_rank
+g_CE
+g_align
+g_full
+```
+
+을 모두 저장합니다.
+
+각 module마다:
+
+```text
+CNN
+fusion
+L1
+L2
+```
+
+에 대해:
+
+```text
+norm
+rank↔CE cosine
+rank↔align cosine
+rank↔full cosine
+```
+
+을 계산합니다.
+
+그리고 똑같은 pre-step weights에서 shadow optimizer를 세 개 만듭니다.
+
+```text
+rank-only AdamW
+CE+alignment AdamW
+full AdamW
+```
+
+global clipping까지 똑같이 적용합니다.
+
+최종적으로:
+
+```text
+cos(Δθ_rank, Δθ_full)
+```
+
+을 측정합니다.
+
+**이게 raw gradient norm보다 훨씬 중요한 값입니다.**
+
+---
+
+# 10. C. BN만 분리
+
+새 architecture를 또 만들 필요 없습니다.
+
+Reference clone 하나에서 같은 weight/teacher/tile로:
+
+```text
+1. full eval
+   BN eval + dropout off
+
+2. BN-train only
+   BN batch stats + dropout off
+
+3. dropout-train only
+   BN eval + dropout on
+
+4. current training
+   BN batch stats + dropout on
+```
+
+을 비교하면 됩니다.
+
+특히 2번에서:
+
+```text
+ranking margin
+alignment loss
+query gradient
+```
+
+가 크게 변하면 BN이 직접 원인 후보로 올라옵니다.
+
+그리고 **BN을 eval로 고정한 채 1 cloned update**를 하면:
+
+```text
+query → BN → support → alignment
+```
+
+cross-sample gradient route도 사라집니다.
+
+이게 가장 좁은 BN intervention입니다.
+
+---
+
+# 하나 더: 이제 `variance` 대신 이것을 측정해야 합니다
+
+이 부분은 제가 앞선 진단에서 부족하게 본 지점입니다.
+
+지금까지는:
+
+```text
+후보 vector들이 얼마나 서로 다른가?
+```
+
+를 측정했습니다.
+
+그런데 필요한 건:
+
+> **positive와 unobserved가 올바른 방향으로 다른가?**
+
+입니다.
+
+각 stage에서:
+
+```text
+L0
+L1_1
+L1_2
+```
+
+별로 최소한
+
+\[
+\Delta\mu = \mu_P-\mu_U
+\]
+
+와
+
+\[
+\frac{\|\mu_P-\mu_U\|^2}
+{\mathrm{Var}(P)+\mathrm{Var}(U)}
+\]
+
+같은 **class-separation/Fisher ratio**를 기록해야 합니다.
+
+더 결정적인 방법은:
+
+```text
+stage feature freeze
+↓
+아주 작은 linear ranking head
+↓
+train cases로만 fit
+↓
+held-out case 평가
+```
+
+입니다.
+
+그러면:
+
+### 만약
+
+```text
+L0 linear probe 잘 됨
+L1_2 probe 안 됨
+```
+
+이면 **L1이 실제 target signal을 죽인 것**입니다.
+
+반대로:
+
+```text
+L0 probe도 안 됨
+```
+
+이면 Legacy L1의 30,000배 collapse를 고쳐봐야 **애초에 보존할 유용한 ranking signal이 부족했다**는 뜻입니다.
+
+이게 지금 가장 근본적인 분기입니다.
+
+---
+
+## 현재 결론
+
+그래서 질문에 정확히 답하면:
+
+**지금은 원인분석 절차 자체는 제대로 가고 있습니다. 하지만 아직 “원인을 찾았다”고 말할 단계는 아닙니다.**
+
+그리고 제가 전에:
+
+> **“L1 collapse가 현재 학습 실패의 가장 확실한 원인이다”**
+
+처럼 말한 건 **이번 결과 기준으로는 과한 결론이었습니다.**
+
+지금 정확한 상태는:
+
+```text
+L0에는 후보 variation이 존재함
+          ↓
+그 variation이 target signal인지는 미확정
+          ↓
+Legacy L1은 대부분을 죽임      ← 현상 확정
+          ↓
+Reference는 variation을 살림    ← 현상 확정
+          ↓
+그런데 ranking은 안 좋아짐      ← 중요 반례
+```
+
+따라서 **다음 핵심은 L1을 또 만지는 게 아니라**:
+
+> **① liver_117 자체가 실제로 배웠는지 → ② full loss/Adam update가 rank 방향인지 → ③ L0/L1의 variation이 실제 P/U 정보인지 → ④ BN/teacher mismatch**
+
+이 순서로 가는 게 맞습니다.
+
+이 네 개를 보면 그 다음에는 **L0 문제인지, L1/L2 문제인지, loss/update 문제인지**를 거의 분리할 수 있습니다.

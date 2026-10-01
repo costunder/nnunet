@@ -1,0 +1,27 @@
+{
+  "tests": 67,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "PASS": true,
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "new_numerical_controls_device": "cuda",
+  "reader_and_admission": "standard-library/data-binding checks",
+  "syntax_files": [
+    "tools/local_cnn_reference_causal.py",
+    "tools/local_cnn_reference_objective_probe.py",
+    "tools/local_cnn_reference_mode_probe.py",
+    "tools/local_cnn_reference_target_signal.py",
+    "tools/local_cnn_reference_runtime.py",
+    "tools/diagnose_local_cnn_reference.py",
+    "tools/verify_reference_rankable_ct_debug.py",
+    "tests/test_local_cnn_reference_objective_probe.py",
+    "tests/test_local_cnn_reference_mode_probe.py",
+    "tests/test_local_cnn_reference_target_signal.py",
+    "tests/test_reference_causal_integration.py"
+  ],
+  "peak_cuda_bytes": 66554880,
+  "cpu_logical": 16,
+  "available_ram_bytes": 41366351872,
+  "production_training_started": false
+}

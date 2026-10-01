@@ -4,6 +4,13 @@
 이번 변경은 production L1을 바꾸는 패치가 아니다. 제공된 독립 검토의 전이 문제를
 별도 진단으로 드러내고, optimizer update 이전의 동일 입력 비교를 추가한다.
 
+후속 `99c17e59` 검토에 따라 실제 update case의 전체 후보 timeline, 동일 forward의
+loss/Adam 방향, reference BN/dropout 분리를 opt-in으로 구현하고 실제 CT GPU에서
+검증했다. [진단·검사·해석 경계](local_cnn_reference_causal_20261001.md)를 참조한다.
+아래의 '후속 진단 미구현' 문장은 당시 수신 시점의 상태이며 현재 구현 상태는 이 후속
+문서에 기록했다. 기존 L1 수축은 실제 현상이지만 주원인 확정이나 reference 악화만으로
+L1 가설 전체를 배제하는 결론을 내리지 않는다.
+
 ## 최신 서버 결과: 순위 gradient는 살아났지만 추천 개선은 확인되지 않음
 
 사용자 `211a6441` 첨부 전체를 수신했다. 실행 commit은 `da9b1bb`, 물리 GPU3
