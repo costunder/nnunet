@@ -1,0 +1,146 @@
+
+(nnunet) aicompetition06@ece-a6gpu8:~/Medical/HierCP-diagnosis-2ce11ba$ CP_GPU=3
+CP_REVISION=0596e8f70f486bca69d9a1f60a768604a30a70ab
+CP_BASE=/home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba
+CP_CODE_DIR=/home/aicompetition06/Medical/HierCP-l1-0596e8f
+
+git -C "$CP_BASE" fetch origin codex/v222-server-r6 &&
+(
+  test -d "$CP_CODE_DIR" ||
+  git -C "$CP_BASE" worktree add --detach "$CP_CODE_DIR" "$CP_REVISION"
+) &&
+test "$(git -C "$CP_CODE_DIR" rev-parse HEAD)" = "$CP_REVISION" &&
+cd "$CP_CODE_DIR" &&
+python -u tools/diagnose_local_cnn_learning.py \
+  --gpu "$CP_GPU" \
+  --run /home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42 \
+  --output "/home/aicompetition06/Medical/experiments/l1_interaction_$(date +%Y%m%d_%H%M%S).json" \
+  --cases-per-split 2 --workers 8 \
+  --cuda-gib 24 --rss-gib 64 --resident-gib 24 \
+  --interaction-only --interaction-scales 0 0.25 1 \
+  --interaction-update-steps 4 --interaction-lr 0.0001 \
+  --interaction-training-scale 1
+remote: Enumerating objects: 31, done.
+remote: Counting objects: 100% (31/31), done.
+remote: Compressing objects: 100% (15/15), done.
+remote: Total 23 (delta 8), reused 23 (delta 8), pack-reused 0 (from 0)
+Unpacking objects: 100% (23/23), 77.48 KiB | 1.06 MiB/s, done.
+From https://github.com/costunder/nnunet
+ * branch            codex/v222-server-r6 -> FETCH_HEAD
+   f5381e3..0596e8f  codex/v222-server-r6 -> origin/codex/v222-server-r6
+Preparing worktree (detached HEAD 0596e8f)
+Updating files: 100% (812/812), done.
+HEAD is now at 0596e8f Add verified cloned L1 query-key interaction comparison
+GPU selection | physical=3 | type=GPU | CUDA_VISIBLE_DEVICES=GPU-5bc3009f-a738-c66c-f7e7-0583dabe9e0e
+DIAGNOSTIC ONLY | run=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42
+checkpoint=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt
+SNAPSHOT | epoch=30 step=16431 phase=optimization | margin=10.0mm batch=32 | NVIDIA RTX A6000
+Resources | CUDA=24GiB RSS=64GiB workers=8 | parameters=1,125,718 | details saved in JSON
+DIAGNOSTIC train liver_1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:21<00:00,  4.29s/it]
+CASE DONE | train liver_1 | records=139 | detailed values retained in JSON
+DIAGNOSTIC train liver_49: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:04<00:00,  1.16it/s]
+CASE DONE | train liver_49 | records=148 | detailed values retained in JSON
+DIAGNOSTIC validation liver_109: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:21<00:00,  4.24s/it]
+CASE DONE | validation liver_109 | records=155 | detailed values retained in JSON
+DIAGNOSTIC validation liver_3: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:12<00:00,  2.40s/it]
+CASE DONE | validation liver_3 | records=129 | detailed values retained in JSON
+L1 INTERACTION DEBUG | 4 matched updates per cloned branch; fresh AdamW; full original objective; not a production resume
+CLONED L1 baseline: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:07<00:00,  1.87s/it, actual_batch=32, loss=2.482, seconds=0.855]
+CLONED L1 candidate: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:03<00:00,  1.01it/s, actual_batch=32, loss=2.493, seconds=1.09]
+SAVED DIAGNOSTIC SUMMARY (saved values only; full details in JSON)
+Run: /home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42
+Snapshot epoch=30 step=16431 phase=optimization margin_mm=10.0 batch=32
+Checkpoint content SHA256: a303115d0643e45a3e3df1a6e50c7c01d6f284c44ca56854ee950d694aa3257e
+CASE train/liver_1 N=139 P=11 std=1.117106e-05 gap=2.62688e-06 win=0.5511364 loss=0.6931459 MRR=0.0625
+  CNN map spatial-var batch-crop mean s1/s2/s3=unavailable/unavailable/unavailable (not candidate variance)
+  L0 readout/anchor substage: unavailable (no deep trace in report)
+  L1 baseline stage trace: unavailable (scale=1 not recorded)
+  Candidate variance L0/L1_1/L1_2=2.09e-06/1.49e-07/6.59e-11
+  Message-scale sweep: unavailable
+  L1 INTERACTION fixed-weight; support+query-matched=true beta0-parity=true original-weights=true
+  Interaction legacy_additive beta=legacy std/win/loss=1.117106e-05/0.5511364/0.6931459
+    L1_2 attention head-var=4.393781e-16/1.078214e-14/3.152804e-15/1.232291e-15 head-JS=3.078398e-12/7.060246e-11/2.151904e-11/7.716161e-12
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0 std/win/loss=1.117106e-05/0.5511364/0.6931459
+    L1_2 attention head-var=4.393781e-16/1.078214e-14/3.152804e-15/1.232291e-15 head-JS=3.078398e-12/7.060246e-11/2.151904e-11/7.716161e-12
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0.25 std/win/loss=1.108207e-05/0.5553977/0.6931459
+    L1_2 attention head-var=2.926711e-14/1.419108e-14/2.159293e-14/1.692003e-13 head-JS=1.9825e-10/9.336062e-11/1.439574e-10/1.140854e-09
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=1 std/win/loss=1.077853e-05/0.5546875/0.6931459
+    L1_2 attention head-var=5.697634e-13/1.583929e-13/1.999236e-13/2.946052e-12 head-JS=3.797718e-09/1.045123e-09/1.33961e-09/1.954057e-08
+    min(head-mean cos)=0.9999999
+CASE train/liver_49 N=148 P=20 std=6.85948e-06 gap=1.521153e-06 win=0.540625 loss=0.6931464 MRR=0.07142857
+  CNN map spatial-var batch-crop mean s1/s2/s3=unavailable/unavailable/unavailable (not candidate variance)
+  L0 readout/anchor substage: unavailable (no deep trace in report)
+  L1 baseline stage trace: unavailable (scale=1 not recorded)
+  Candidate variance L0/L1_1/L1_2=8.14e-07/5.77e-08/2.49e-11
+  Message-scale sweep: unavailable
+  L1 INTERACTION fixed-weight; support+query-matched=true beta0-parity=true original-weights=true
+  Interaction legacy_additive beta=legacy std/win/loss=6.85948e-06/0.540625/0.6931464
+    L1_2 attention head-var=1.768662e-16/1.728297e-15/7.64737e-16/6.58172e-16 head-JS=1.203912e-12/1.117608e-11/5.096166e-12/3.99859e-12
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0 std/win/loss=6.85948e-06/0.540625/0.6931464
+    L1_2 attention head-var=1.768662e-16/1.728297e-15/7.64737e-16/6.58172e-16 head-JS=1.203912e-12/1.117608e-11/5.096166e-12/3.99859e-12
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0.25 std/win/loss=6.809062e-06/0.5484375/0.6931464
+    L1_2 attention head-var=7.024054e-15/7.805672e-15/4.429255e-15/1.420328e-14 head-JS=4.633236e-11/5.030778e-11/2.879879e-11/9.329365e-11
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=1 std/win/loss=6.613025e-06/0.5410156/0.6931465
+    L1_2 attention head-var=1.435063e-13/8.526366e-14/4.765734e-14/2.650989e-13 head-JS=9.320976e-10/5.481938e-10/3.115992e-10/1.714115e-09
+    min(head-mean cos)=1
+CASE validation/liver_109 N=155 P=27 std=1.394262e-06 gap=6.481315e-08 win=0.5121528 loss=0.6931472 MRR=1
+  CNN map spatial-var batch-crop mean s1/s2/s3=unavailable/unavailable/unavailable (not candidate variance)
+  L0 readout/anchor substage: unavailable (no deep trace in report)
+  L1 baseline stage trace: unavailable (scale=1 not recorded)
+  Candidate variance L0/L1_1/L1_2=5.85e-08/4.13e-09/1.86e-12
+  Message-scale sweep: unavailable
+  L1 INTERACTION fixed-weight; support+query-matched=true beta0-parity=true original-weights=true
+  Interaction legacy_additive beta=legacy std/win/loss=1.394262e-06/0.5121528/0.6931472
+    L1_2 attention head-var=6.438101e-18/5.926857e-16/4.901022e-17/2.143182e-17 head-JS=4.869867e-14/4.189822e-12/3.594053e-13/1.427967e-13
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0 std/win/loss=1.394262e-06/0.5121528/0.6931472
+    L1_2 attention head-var=6.438101e-18/5.926857e-16/4.901022e-17/2.143182e-17 head-JS=4.869867e-14/4.189822e-12/3.594053e-13/1.427967e-13
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0.25 std/win/loss=1.379864e-06/0.5028935/0.6931472
+    L1_2 attention head-var=1.701795e-16/6.95309e-16/3.154269e-16/5.497884e-16 head-JS=1.234378e-12/4.91185e-12/2.256737e-12/3.971675e-12
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=1 std/win/loss=1.415118e-06/0.5133102/0.6931472
+    L1_2 attention head-var=3.481471e-15/2.751298e-15/3.117599e-15/9.484819e-15 head-JS=2.489567e-11/1.945283e-11/2.25053e-11/6.759484e-11
+    min(head-mean cos)=1
+CASE validation/liver_3 N=129 P=1 std=1.199617e-06 gap=1.30944e-06 win=0.96875 loss=0.6931465 MRR=0.2
+  CNN map spatial-var batch-crop mean s1/s2/s3=unavailable/unavailable/unavailable (not candidate variance)
+  L0 readout/anchor substage: unavailable (no deep trace in report)
+  L1 baseline stage trace: unavailable (scale=1 not recorded)
+  Candidate variance L0/L1_1/L1_2=4.91e-08/3.54e-09/1.59e-12
+  Message-scale sweep: unavailable
+  L1 INTERACTION fixed-weight; support+query-matched=true beta0-parity=true original-weights=true
+  Interaction legacy_additive beta=legacy std/win/loss=1.199617e-06/0.96875/0.6931465
+    L1_2 attention head-var=3.953652e-18/4.04939e-16/4.712797e-17/4.190928e-17 head-JS=3.004692e-14/2.866784e-12/3.480181e-13/2.831828e-13
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0 std/win/loss=1.199617e-06/0.96875/0.6931465
+    L1_2 attention head-var=3.953652e-18/4.04939e-16/4.712797e-17/4.190928e-17 head-JS=3.004692e-14/2.866784e-12/3.480181e-13/2.831828e-13
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=0.25 std/win/loss=1.201923e-06/0.9765625/0.6931464
+    L1_2 attention head-var=2.03467e-16/7.918327e-16/2.163555e-16/9.585134e-16 head-JS=1.479975e-12/5.61031e-12/1.548883e-12/6.935666e-12
+    min(head-mean cos)=1
+  Interaction diagnostic_l1_additive_plus_dot_v1 beta=1 std/win/loss=1.21054e-06/0.9765625/0.6931465
+    L1_2 attention head-var=3.860877e-15/4.359703e-15/2.951825e-15/1.506774e-14 head-JS=2.763818e-11/3.087593e-11/2.140783e-11/1.075344e-10
+    min(head-mean cos)=1
+SHADOW: unavailable (cloned next-update result not recorded)
+L1 INTERACTION UPDATES: cloned fresh-AdamW full-objective prefix; steps/branch=4 batch=32 prefix-observations=106/11279
+  Optimizer history=fresh reset; no saved optimizer moments; exact-resume=false next-saved-update=false
+  Update baseline beta=0 CNN grad min/max=0.0001737692/0.0003023104 CNN parameter-delta=0.07675509 prefix-seconds=7.464416
+    baseline train MRR/win/loss before -> after: 0.06696429/0.5443549/0.6931462 -> 0.125/0.5602319/0.6931459
+    baseline validation MRR/win/loss before -> after: 0.6/0.5284598/0.6931471 -> 0.2083333/0.4988839/0.6931472
+  Update candidate beta=1 CNN grad min/max=0.0001695883/0.0003077042 CNN parameter-delta=0.07779981 prefix-seconds=3.967674
+    candidate train MRR/win/loss before -> after: 0.1047619/0.5458669/0.6931462 -> 0.07177033/0.5357863/0.6931459
+    candidate validation MRR/win/loss before -> after: 0.625/0.5298549/0.6931471 -> 0.5625/0.4974889/0.6931472
+  Production updates=0 checkpoints=0 original-preserved=true caller-RNG=true
+  Fresh optimizer cloned prefix, not production continuation or final CP performance.
+Preserved: weights=true saved-payload=unavailable support-plan=unavailable caller-RNG=unavailable
+Scope: diagnostic=true production-updates=0 full-evaluation=false; peak GPU GiB=1.81
+Variance is not accuracy. Sweep uses fixed weights. unavailable=missing; undefined=null/zero denominator.
+REPORT: /home/aicompetition06/Medical/experiments/l1_interaction_20261001_133109.json
+No production training/checkpoint changes. This sampled diagnosis is not full evaluation.
+(nnunet) aicompetition06@ece-a6gpu8:~/Medical/HierCP-l1-0596e8f$

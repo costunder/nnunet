@@ -1,3 +1,9 @@
+## v2.2 — epoch30 L1 interaction 서버 결과 수신 (2026-10-01)
+
+- epoch필드30/step16431, A6000·m10·physical batch32의 전체 진단 콘솔을 byte 그대로 보존하고 구조화 전사. 기존 epoch22/27 snapshot과 혼합하지 않는다.
+- Beta0 parity 및 실제 CNN update 실행은 확인됐으나 beta1의 validation pair win은 .5298549→.4974889, loss는 ln2 수준. Post-update MRR만 비교해 성능 개선으로 표시하지 않는다.
+- 후보 내적항의 production 적용 근거는 확보하지 못했다. Production 모델·loss·기본값·checkpoint 변경과 새 장기 학습 없음. [수치·해석·다음 수정 경계](docs/local_cnn_interaction_epoch30_20261001.md).
+
 ## v2.2 — epoch27 증거와 L1 interaction 수정 후보 (2026-10-01)
 
 - 서버 epoch필드27/step14924의 원문·수치를 보존. FFN0은 spread만 늘고 순위가 일관 개선되지 않았으며 direct-head validation은 악화했다. Refresh phase의 saved-next-update는 NOT_RUN으로 유지한다.

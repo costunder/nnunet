@@ -1,5 +1,9 @@
 # v2.2 Local-CNN — epoch필드27 결과와 명시적 q–k interaction 진단 후보
 
+후속 상태: 서버에서 epoch필드30/step16431의 interaction 비교가 실제 완료됐다.
+내적항 후보의 sampled validation 개선은 확인되지 않았다. [새 서버 결과](local_cnn_interaction_epoch30_20261001.md)에 원문·수치·판정 경계를 별도로 기록했다.
+아래 epoch27 및 로컬 DEBUG 기록은 당시 snapshot의 결과로 보존한다.
+
 상태: **clone-only 수정 후보 구현, 로컬 GPU/실제 CT smoke 확인**. 아래 서버 증거의 정리와 새로운 진단 후보를
 구분한다. Production 기본 모델·loss를 바꾸거나 장기 학습을 실행하지 않았다.
 전체 회귀 검사 결과와 실행 명령은 아래에 별도로 기록한다. 서버27epoch 가중치의 개선이나 전체 성능을 확인한 상태는 아니다.
