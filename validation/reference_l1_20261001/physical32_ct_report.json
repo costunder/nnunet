@@ -1,0 +1,1373 @@
+{
+  "debug": true,
+  "diagnostic_only": true,
+  "actual_CT": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_default_changed": false,
+  "production_checkpoint_written": false,
+  "production_ready": false,
+  "original_checkpoint_unchanged": true,
+  "original_model_support_rng_preserved": true,
+  "case": "liver_66",
+  "checkpoint": "D:\\AI project\\nnunet\\work\\local_cnn_experiment_resume_DEBUG_20261001\\resumed\\attempts\\0002\\checkpoint_latest.pt",
+  "checkpoint_sha256": "9b36e85a57819042026b152e7bcc7236ed9ad0b372fa32b5d5c321d74b50c1f6",
+  "assignment_sha256": "b7347a7d383f7010a6c114874121f8a2bb60d3910dd807ed4d6e4de0f433a19f",
+  "margin_mm": 10.0,
+  "CNN_config": {
+    "architecture": "paired_native_local_cnn_v1",
+    "margin_mm": 10.0,
+    "channels": [
+      12,
+      24,
+      32
+    ],
+    "convolutions": [
+      2,
+      3,
+      3
+    ],
+    "hidden_dim": 128,
+    "readout": "organ_masked_mean_each_scale",
+    "fusion": "donor_target_difference_product",
+    "input": "native_spacing_organ_only",
+    "initialization": "fresh_seed42",
+    "learning_policy": "same_donor_live_v1"
+  },
+  "L1_layers": 2,
+  "L2_layers": 2,
+  "hidden_dim": 128,
+  "heads": 4,
+  "case_observations": 133,
+  "all_original_positive_anchors": 5,
+  "comparison_centers": 128,
+  "support_records": 6,
+  "support_patients": 3,
+  "support_record_ids": [
+    "liver_71:0",
+    "liver_71:91",
+    "liver_72:1",
+    "liver_72:84",
+    "liver_75:2",
+    "liver_75:44"
+  ],
+  "query_group": "case:liver_66",
+  "donor_binding": {
+    "donor_case_id": "liver_1",
+    "donor_component": 1,
+    "donor_group": "case:liver_1"
+  },
+  "support_scope": "verified saved DEBUG epoch memory; not full training cohort support",
+  "loss": {
+    "objective": "same_donor_live_v1",
+    "ranking_weight": 1.0,
+    "observation_auxiliary_weight": 1.0,
+    "ranking": "all within-case observed/unobserved pairs exactly once per epoch",
+    "donor": "one fixed train-only donor per case; independent of observation class",
+    "reference": "both sides live; no detached ranking-reference embeddings",
+    "auxiliary": "global balanced CE; inverse schedule multiplicity per observation",
+    "normalization": "epoch objective: global pair mean and global balanced observation mean",
+    "selection_metric": "MRR then R@1 then negative pairwise loss",
+    "query_scope": "all observations; retain cases without eligible positive",
+    "support": "unchanged patient support and L2 policy",
+    "report_recall_at": [
+      1,
+      5,
+      10
+    ]
+  },
+  "normalization_scope": "all P x U pairs and observations of this complete case; DEBUG only",
+  "context_audit": {
+    "policy": "same_donor_live_v1",
+    "unique_observations": 133,
+    "query_presentations": 153,
+    "optimization_steps": 5,
+    "physical_batch": 32,
+    "actual_batch_sizes": [
+      32,
+      32,
+      32,
+      32,
+      25
+    ],
+    "ranking_pairs": 640,
+    "zero_positive_cases": 0
+  },
+  "physical_batch": 32,
+  "cloned_optimizer_updates_per_arm": 1,
+  "branches": [
+    {
+      "branch": "legacy",
+      "transfer": {
+        "architecture": "unchanged_legacy_L1"
+      },
+      "optimizer": "fresh AdamW; no saved moments",
+      "precision": "FP32",
+      "physical_batch": 32,
+      "effective_batch": 32,
+      "gradient_accumulation": 1,
+      "update_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "observed_in_batch": 5,
+      "loss": 2.0347607135772705,
+      "terms": {
+        "ranking_loss": 0.77984619140625,
+        "ranking_pairs": 135.0,
+        "observation_auxiliary_loss": 0.7377154231071472,
+        "alignment_loss": 0.5171990394592285
+      },
+      "all_trainable_parameters_finite_gradient": true,
+      "module_gradient_norms": {
+        "CNN": 3.5719010829925537,
+        "readout_fusion": 1.9138296842575073,
+        "L1": 1.2504677772521973,
+        "L2": 0.655667245388031,
+        "global": 4.291245937347412
+      },
+      "gradient_norm_before_clip": 4.291245937347412,
+      "module_parameter_delta_norms": {
+        "CNN": 0.034568656235933304,
+        "readout_fusion": 0.04167269542813301,
+        "L1": 0.06339259445667267,
+        "L2": 0.06549245119094849,
+        "global": 0.10601644217967987
+      },
+      "parameters": 1125718,
+      "timing": {
+        "forward_seconds": 0.09524200000009841,
+        "backward_seconds": 0.08574829999997746,
+        "gradient_clip_optimizer_seconds": 0.15220759999988331,
+        "update_seconds": 0.3331978999999592,
+        "excludes": "CT loading/transfer, input hashing, teacher fit, evaluation, checkpoint IO"
+      },
+      "update_peak_cuda_bytes": 474894848,
+      "peak_cuda_bytes": 474894848,
+      "before": {
+        "observations": 133,
+        "positives": 5,
+        "comparison_centers": 128,
+        "all_candidates_retained": true,
+        "physical_query_chunk": 32,
+        "metrics": {
+          "ranking_pairwise_loss": 0.6889063715934753,
+          "ranking_pairs": 640,
+          "ranking_mrr": 0.07142857142857142,
+          "ranking_mean_observed_rank": 47.6,
+          "ranking_evaluable_cases": 1,
+          "ranking_cases_without_observed": 0,
+          "ranking_recall_at_1": 0.0,
+          "ranking_recall_at_5": 0.0,
+          "ranking_recall_at_10": 0.0
+        },
+        "score": {
+          "score_std": 0.014325032010674477,
+          "score_min": -0.01782919466495514,
+          "score_max": 0.057265862822532654,
+          "mean_positive_minus_unobserved": 0.008606924675405025,
+          "pair_win_rate": 0.651562511920929,
+          "exact_tie_rate": 0.0,
+          "mean_pairwise_loss": 0.6889064908027649,
+          "comparisons": 640
+        },
+        "observed_ranks": [
+          14,
+          17,
+          22,
+          55,
+          130
+        ],
+        "finite": true,
+        "scope": "one complete original case; DEBUG support; not full validation"
+      },
+      "after": {
+        "observations": 133,
+        "positives": 5,
+        "comparison_centers": 128,
+        "all_candidates_retained": true,
+        "physical_query_chunk": 32,
+        "metrics": {
+          "ranking_pairwise_loss": 0.6676356792449951,
+          "ranking_pairs": 640,
+          "ranking_mrr": 0.16666666666666666,
+          "ranking_mean_observed_rank": 28.4,
+          "ranking_evaluable_cases": 1,
+          "ranking_cases_without_observed": 0,
+          "ranking_recall_at_1": 0.0,
+          "ranking_recall_at_5": 0.0,
+          "ranking_recall_at_10": 0.4
+        },
+        "score": {
+          "score_std": 0.04092433303594589,
+          "score_min": 0.00044983625411987305,
+          "score_max": 0.1526581346988678,
+          "mean_positive_minus_unobserved": 0.05276939272880554,
+          "pair_win_rate": 0.801562488079071,
+          "exact_tie_rate": 0.0,
+          "mean_pairwise_loss": 0.6676357984542847,
+          "comparisons": 640
+        },
+        "observed_ranks": [
+          6,
+          9,
+          14,
+          39,
+          74
+        ],
+        "finite": true,
+        "scope": "one complete original case; DEBUG support; not full validation"
+      }
+    },
+    {
+      "branch": "reference",
+      "transfer": {
+        "architecture": "diagnostic_l1_prodigy_basic_joint_v1",
+        "official_source": {
+          "repository": "https://github.com/snap-stanford/prodigy",
+          "commit": "107ba57234d3188227cda5b78a2dbcfb84a1c694",
+          "path": "models/metaGNN.py",
+          "sha256": "fd94b26236b0edddfa585fc69f2d2f03e5deafd29d2a2a1b2e30bbc4267d9074"
+        },
+        "debug": true,
+        "production_default_changed": false,
+        "production_checkpoint_created": false,
+        "exact_resume": false,
+        "layers": 2,
+        "hidden_dimension": 128,
+        "heads": 4,
+        "inter_layer_activation": "GELU",
+        "relation_codes": {
+          "T": [
+            0,
+            1
+          ],
+          "F": [
+            0,
+            -1
+          ],
+          "U": [
+            1,
+            0
+          ],
+          "self_loop": [
+            0,
+            0
+          ]
+        },
+        "original_state_sha256": "5193bce20a16770ce3c279cd12e5ab76eafcc79164a25dd5fadf510457ebd096",
+        "unchanged_l0_l2_label_seed_sha256_before": "b6822dbd663748f923386a71a4d63ac0ff390cdedb9fc263afb69ad5f3167594",
+        "unchanged_l0_l2_label_seed_sha256_after": "b6822dbd663748f923386a71a4d63ac0ff390cdedb9fc263afb69ad5f3167594",
+        "original_parameters": 1125718,
+        "candidate_parameters": 862806,
+        "transfers": [
+          {
+            "layer": 1,
+            "copied": {
+              "l1.0.mlp_kqv.weight": [
+                "l1.0.q.weight",
+                "l1.0.k.weight",
+                "l1.0.v.weight"
+              ],
+              "l1.0.lin_edge.weight": "l1.0.edge.weight",
+              "l1.0.att_mlp.0.weight": "l1.0.attn.0.weight [k,q,e] block permutation",
+              "l1.0.att_mlp.0.bias": "l1.0.attn.0.bias",
+              "l1.0.att_mlp.2.weight": "l1.0.attn.2.weight",
+              "l1.0.att_mlp.2.bias": "l1.0.attn.2.bias",
+              "l1.0.out_proj.weight": "l1.0.update.out.weight",
+              "l1.0.out_proj.bias": "l1.0.update.out.bias"
+            },
+            "new_zero_bias": [
+              "l1.0.mlp_kqv.bias",
+              "l1.0.lin_edge.bias"
+            ],
+            "new_batch_norm": {
+              "affine_weight": 1.0,
+              "affine_bias": 0.0,
+              "running_mean": 0.0,
+              "running_var": 1.0,
+              "num_batches_tracked": 0,
+              "momentum": 0.1,
+              "eps": 1e-05
+            },
+            "removed_parameters": [
+              "l1.0.update.norm.weight",
+              "l1.0.update.norm.bias",
+              "l1.0.update.ff.0.weight",
+              "l1.0.update.ff.0.bias",
+              "l1.0.update.ff.3.weight",
+              "l1.0.update.ff.3.bias",
+              "l1.0.update.final.weight",
+              "l1.0.update.final.bias"
+            ]
+          },
+          {
+            "layer": 2,
+            "copied": {
+              "l1.1.mlp_kqv.weight": [
+                "l1.1.q.weight",
+                "l1.1.k.weight",
+                "l1.1.v.weight"
+              ],
+              "l1.1.lin_edge.weight": "l1.1.edge.weight",
+              "l1.1.att_mlp.0.weight": "l1.1.attn.0.weight [k,q,e] block permutation",
+              "l1.1.att_mlp.0.bias": "l1.1.attn.0.bias",
+              "l1.1.att_mlp.2.weight": "l1.1.attn.2.weight",
+              "l1.1.att_mlp.2.bias": "l1.1.attn.2.bias",
+              "l1.1.out_proj.weight": "l1.1.update.out.weight",
+              "l1.1.out_proj.bias": "l1.1.update.out.bias"
+            },
+            "new_zero_bias": [
+              "l1.1.mlp_kqv.bias",
+              "l1.1.lin_edge.bias"
+            ],
+            "new_batch_norm": {
+              "affine_weight": 1.0,
+              "affine_bias": 0.0,
+              "running_mean": 0.0,
+              "running_var": 1.0,
+              "num_batches_tracked": 0,
+              "momentum": 0.1,
+              "eps": 1e-05
+            },
+            "removed_parameters": [
+              "l1.1.update.norm.weight",
+              "l1.1.update.norm.bias",
+              "l1.1.update.ff.0.weight",
+              "l1.1.update.ff.0.bias",
+              "l1.1.update.ff.3.weight",
+              "l1.1.update.ff.3.bias",
+              "l1.1.update.final.weight",
+              "l1.1.update.final.bias"
+            ]
+          }
+        ],
+        "batch_norm_contract": {
+          "train": "one_joint_support_labels_query_graph",
+          "eval": "fixed_running_statistics_query_chunks",
+          "fresh_running_statistics": true,
+          "query_ground_truth": "not_an_input",
+          "query_normalization_influence": "train_only",
+          "l1_activation_checkpointing": false
+        },
+        "unchanged_equations": [
+          "L0",
+          "L2",
+          "cluster_assignment",
+          "prototype_logits",
+          "loss",
+          "temperature"
+        ],
+        "altered_equations": [
+          "biased_qkv_and_edge",
+          "k_scaling",
+          "relation_coding",
+          "ReLU_attention",
+          "value_without_edge",
+          "per_edge_output_projection",
+          "attention_dropout",
+          "self_loop_attention",
+          "joint_batch_norm_without_FFN",
+          "inter_layer_GELU"
+        ]
+      },
+      "optimizer": "fresh AdamW; no saved moments",
+      "precision": "FP32",
+      "physical_batch": 32,
+      "effective_batch": 32,
+      "gradient_accumulation": 1,
+      "update_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "observed_in_batch": 5,
+      "loss": 2.1612253189086914,
+      "terms": {
+        "ranking_loss": 0.8419473767280579,
+        "ranking_pairs": 135.0,
+        "observation_auxiliary_loss": 0.765114426612854,
+        "alignment_loss": 0.5541633367538452
+      },
+      "all_trainable_parameters_finite_gradient": true,
+      "module_gradient_norms": {
+        "CNN": 15.003833770751953,
+        "readout_fusion": 10.973977088928223,
+        "L1": 3.6241800785064697,
+        "L2": 1.9398373365402222,
+        "global": 19.037879943847656
+      },
+      "gradient_norm_before_clip": 19.037879943847656,
+      "module_parameter_delta_norms": {
+        "CNN": 0.03456839174032211,
+        "readout_fusion": 0.0416787751019001,
+        "L1": 0.03721337765455246,
+        "L2": 0.06548484414815903,
+        "global": 0.09276419132947922
+      },
+      "parameters": 862806,
+      "timing": {
+        "forward_seconds": 0.03154369999992923,
+        "backward_seconds": 0.08309310000004189,
+        "gradient_clip_optimizer_seconds": 0.14956050000000687,
+        "update_seconds": 0.264197299999978,
+        "excludes": "CT loading/transfer, input hashing, teacher fit, evaluation, checkpoint IO"
+      },
+      "update_peak_cuda_bytes": 508248064,
+      "peak_cuda_bytes": 508248064,
+      "before": {
+        "observations": 133,
+        "positives": 5,
+        "comparison_centers": 128,
+        "all_candidates_retained": true,
+        "physical_query_chunk": 32,
+        "metrics": {
+          "ranking_pairwise_loss": 0.6931966543197632,
+          "ranking_pairs": 640,
+          "ranking_mrr": 0.3333333333333333,
+          "ranking_mean_observed_rank": 68.0,
+          "ranking_evaluable_cases": 1,
+          "ranking_cases_without_observed": 0,
+          "ranking_recall_at_1": 0.0,
+          "ranking_recall_at_5": 0.2,
+          "ranking_recall_at_10": 0.4
+        },
+        "score": {
+          "score_std": 0.0034691672772169113,
+          "score_min": -0.019732952117919922,
+          "score_max": 0.010557174682617188,
+          "mean_positive_minus_unobserved": -8.98458092706278e-05,
+          "pair_win_rate": 0.4921875,
+          "exact_tie_rate": 0.0,
+          "mean_pairwise_loss": 0.6931966543197632,
+          "comparisons": 640
+        },
+        "observed_ranks": [
+          3,
+          6,
+          80,
+          121,
+          130
+        ],
+        "finite": true,
+        "scope": "one complete original case; DEBUG support; not full validation"
+      },
+      "after": {
+        "observations": 133,
+        "positives": 5,
+        "comparison_centers": 128,
+        "all_candidates_retained": true,
+        "physical_query_chunk": 32,
+        "metrics": {
+          "ranking_pairwise_loss": 0.6928737759590149,
+          "ranking_pairs": 640,
+          "ranking_mrr": 0.3333333333333333,
+          "ranking_mean_observed_rank": 59.0,
+          "ranking_evaluable_cases": 1,
+          "ranking_cases_without_observed": 0,
+          "ranking_recall_at_1": 0.0,
+          "ranking_recall_at_5": 0.4,
+          "ranking_recall_at_10": 0.4
+        },
+        "score": {
+          "score_std": 0.004264909774065018,
+          "score_min": -0.04148435592651367,
+          "score_max": -0.003682851791381836,
+          "mean_positive_minus_unobserved": 0.000560099259018898,
+          "pair_win_rate": 0.5625,
+          "exact_tie_rate": 0.0,
+          "mean_pairwise_loss": 0.6928737759590149,
+          "comparisons": 640
+        },
+        "observed_ranks": [
+          3,
+          5,
+          38,
+          118,
+          131
+        ],
+        "finite": true,
+        "scope": "one complete original case; DEBUG support; not full validation"
+      }
+    }
+  ],
+  "elapsed_seconds": 2.966591899999912,
+  "input_tensor_shape": [
+    33,
+    1,
+    58,
+    50,
+    7
+  ],
+  "native_crop_audit": [
+    {
+      "case": "liver_1",
+      "origin": [
+        173,
+        283,
+        66
+      ],
+      "shape": [
+        58,
+        50,
+        7
+      ],
+      "spacing": [
+        0.6757810115814209,
+        0.6757810115814209,
+        5.0
+      ],
+      "extent_mm": [
+        39.19529867172241,
+        33.789050579071045,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        251,
+        322,
+        76
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        326,
+        168,
+        75
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        319,
+        293,
+        75
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        372,
+        244,
+        76
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        382,
+        292,
+        56
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        414,
+        186,
+        74
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        419,
+        207,
+        66
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        413,
+        209,
+        69
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        402,
+        173,
+        61
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        318,
+        199,
+        75
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        392,
+        241,
+        59
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        393,
+        236,
+        70
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        292,
+        299,
+        70
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        402,
+        217,
+        65
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        359,
+        276,
+        72
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        418,
+        261,
+        66
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        240,
+        307,
+        78
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        365,
+        132,
+        65
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        355,
+        183,
+        68
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        403,
+        154,
+        62
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        338,
+        212,
+        78
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        343,
+        325,
+        68
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        211,
+        279,
+        73
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        357,
+        300,
+        73
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        270,
+        290,
+        77
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        215,
+        272,
+        74
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        303,
+        216,
+        61
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        405,
+        215,
+        71
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        407,
+        129,
+        69
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        262,
+        206,
+        68
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        423,
+        178,
+        63
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    },
+    {
+      "case": "liver_66",
+      "origin": [
+        431,
+        167,
+        66
+      ],
+      "shape": [
+        56,
+        48,
+        7
+      ],
+      "spacing": [
+        0.7128909826278687,
+        0.7128909826278687,
+        5.0
+      ],
+      "extent_mm": [
+        39.921895027160645,
+        34.218767166137695,
+        35.0
+      ],
+      "anchor_in_organ": true
+    }
+  ],
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "gpu_count": 1,
+  "gpu_total_bytes": 17094344704,
+  "cuda_budget_bytes": 12884901888,
+  "rss_budget_bytes": 34359738368,
+  "resident_budget_bytes": 8589934592,
+  "workers": 4,
+  "CPU_logical": 16,
+  "RSS_bytes": 2468855808,
+  "RAM_available_bytes": 46613086208,
+  "python": "3.10.18",
+  "torch_version": "2.8.0+cu128",
+  "no_new_graphs": true,
+  "limitations": [
+    "One cloned update per arm is mechanical smoke evidence, not learning improvement.",
+    "Candidate BatchNorm running statistics start fresh; not an exact resume.",
+    "DEBUG support and one-case loss normalization do not represent production cohort."
+  ]
+}

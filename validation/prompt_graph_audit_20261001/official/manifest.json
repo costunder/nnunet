@@ -1,0 +1,33 @@
+{
+  "repository": "https://github.com/snap-stanford/prodigy",
+  "commit": "107ba57234d3188227cda5b78a2dbcfb84a1c694",
+  "retrieved": "2026-10-01",
+  "scope": "Pinned official source for comparison; upstream package not installed or executed. Later UNIT checks extract only MetaGNNLayer AST for an independent output/gradient oracle.",
+  "license_note": "No LICENSE root file at this commit; source retained only as audit reference, not incorporated into production",
+  "files": [
+    {
+      "path": "models/metaGNN.py",
+      "url": "https://raw.githubusercontent.com/snap-stanford/prodigy/107ba57234d3188227cda5b78a2dbcfb84a1c694/models/metaGNN.py",
+      "sha256": "fd94b26236b0edddfa585fc69f2d2f03e5deafd29d2a2a1b2e30bbc4267d9074",
+      "bytes": 24575
+    },
+    {
+      "path": "models/general_gnn.py",
+      "url": "https://raw.githubusercontent.com/snap-stanford/prodigy/107ba57234d3188227cda5b78a2dbcfb84a1c694/models/general_gnn.py",
+      "sha256": "39964607b713ce04f3b16a790f3fa6cebcb9aab1ed7e9d9428b61016f1f51425",
+      "bytes": 8281
+    },
+    {
+      "path": "data/dataloader.py",
+      "url": "https://raw.githubusercontent.com/snap-stanford/prodigy/107ba57234d3188227cda5b78a2dbcfb84a1c694/data/dataloader.py",
+      "sha256": "fc2ef9631e8185456f536f8892ecc6288c18dfaf3fbb412cf6a5c4fe091e5660",
+      "bytes": 19797
+    },
+    {
+      "path": "experiments/trainer.py",
+      "url": "https://raw.githubusercontent.com/snap-stanford/prodigy/107ba57234d3188227cda5b78a2dbcfb84a1c694/experiments/trainer.py",
+      "sha256": "c8d01cfdda55cb4c44cc713546b5ca0ac942b3dc9a2dfeedfd14d83eceedf5f4",
+      "bytes": 24438
+    }
+  ]
+}

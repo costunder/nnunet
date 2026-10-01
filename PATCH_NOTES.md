@@ -1,3 +1,9 @@
+## v2.2 — 공식 기본 L1 대조 경로 (2026-10-01)
+
+- PRODIGY 고정 commit의 기본 operator를 독립 구현한 별도 복제 후보. Self-loop·T/F/U·value-only attention·edge별 projection·joint BN와 층 사이 GELU를 원문 AST 출력/gradient에 대조한다. L1 2층/128D/4heads, 기존 L0/L2/loss/CP/후보/원본 mask 보존.
+- 기존 가중치의 전이 목록, 새 bias/BN, 제거한 L1 FFN/LayerNorm과 parameter 차이를 기록한다. 기존 checkpoint exact resume나 production 기본 변경으로 표시하지 않는다.
+- 실제 CT 입력·support·전체 schedule/loss 결속을 보존한 짧은 fresh AdamW 두 branch 비교, 모든 모듈 실제 갱신 및 원본 state/RNG/결과 보존 검사. 단위18개 및 원래128후보+양성5/physical32 실제 CT DEBUG 검사 통과; DEBUG support임을 구분하고 서버 학습 완료 snapshot의 정확도 개선은 미검증. [구현·검증·서버 명령](docs/local_cnn_reference_l1_20261001.md).
+
 ## v2.2 — epoch30 L1 interaction 서버 결과 수신 (2026-10-01)
 
 - epoch필드30/step16431, A6000·m10·physical batch32의 전체 진단 콘솔을 byte 그대로 보존하고 구조화 전사. 기존 epoch22/27 snapshot과 혼합하지 않는다.

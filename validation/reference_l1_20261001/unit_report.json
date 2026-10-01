@@ -1,0 +1,41 @@
+{
+  "status": "PASS",
+  "debug": true,
+  "tests_run": 18,
+  "passed": [
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_clone_failure_preserves_rng_original_state_and_old_teacher_rejected",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_clone_preserves_original_rng_mode_gradients_l0_and_l2",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_edge_embedding_only_affects_attention_and_projection_bias_is_per_edge",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_eval_128_queries_chunk32_permutation_and_label_invariance",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_inference_api_rejects_query_truth_and_invalid_explicit_data",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_joint_topology_has_tf_u_and_one_self_loop_each_without_query_reverse",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_official_eval_and_joint_train_output_gradient_parity_cuda",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_official_eval_output_and_all_parameter_gradient_parity_cpu",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_official_joint_train_bn_dropout_and_gradient_parity_cpu",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_official_source_hash_and_no_foreign_project_imports",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_optional_trace_uses_same_forward_and_teacher_restores_mixed_modes",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_rank_gradient_reaches_query_l0_reference_l1_l2_and_label_seed",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_real_local_cnn_extra_state_survives_clone_and_remains_independent",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_train_executes_one_joint_batchnorm_call_each_layer_and_not_split_parity",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_transfer_qkv_attention_permutation_and_new_bias_bn_identity",
+    "tests.test_local_cnn_reference_l1.ReferenceL1Checks.test_two_layer_joint_matches_official_sequence_and_input_histories",
+    "tests.test_local_cnn_reference_selection.ReferenceCaseSelection.test_keeps_all_case_candidates_for_fixed_eligible_spread",
+    "tests.test_local_cnn_reference_selection.ReferenceCaseSelection.test_rejects_unavailable_counts_instead_of_shrinking_or_substituting"
+  ],
+  "skipped": [],
+  "failures": [],
+  "errors": [],
+  "seconds": 1.8633987999999135,
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "torch_version": "2.8.0+cu128",
+  "scope": "Independent pinned official AST UNIT comparison incl CPU/CUDA; fixture tensors not CT performance",
+  "source_sha256": {
+    "tools/local_cnn_reference_l1.py": "b024794ae4105e5c04513fbf7427d13698a631ca46dedd735059f50dff747a04",
+    "tools/local_cnn_reference_runtime.py": "b5a4b5dc90468935b02d8d60e495b9d9edb42d9afb0fd8d1a468ca800e78c0b5",
+    "tools/diagnose_local_cnn_reference.py": "4bca01bb09245fc7714f385ebdf6976ca5c57477e8f25b9347d97de2253e599f",
+    "tools/verify_reference_l1_ct_debug.py": "5cdb3369b5556e61ac87ca8a06a5adf0e5b14d4ef3c5cc838443d3bea22d1e9d",
+    "tests/test_local_cnn_reference_l1.py": "b3fb286cac41a6c6aa7118b0d0c5209bd50a94552a072cfe72ccdc2bc3fd2a2e",
+    "tests/test_local_cnn_reference_selection.py": "7c4aecd4195238454303d3aa63f65594186a90b0ab5f4d2dad09b50b1f144a17"
+  },
+  "log": "test_clone_failure_preserves_rng_original_state_and_old_teacher_rejected (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_clone_preserves_original_rng_mode_gradients_l0_and_l2 (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_edge_embedding_only_affects_attention_and_projection_bias_is_per_edge (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_eval_128_queries_chunk32_permutation_and_label_invariance (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_inference_api_rejects_query_truth_and_invalid_explicit_data (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_joint_topology_has_tf_u_and_one_self_loop_each_without_query_reverse (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_official_eval_and_joint_train_output_gradient_parity_cuda (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_official_eval_output_and_all_parameter_gradient_parity_cpu (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_official_joint_train_bn_dropout_and_gradient_parity_cpu (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_official_source_hash_and_no_foreign_project_imports (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_optional_trace_uses_same_forward_and_teacher_restores_mixed_modes (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_rank_gradient_reaches_query_l0_reference_l1_l2_and_label_seed (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_real_local_cnn_extra_state_survives_clone_and_remains_independent (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_train_executes_one_joint_batchnorm_call_each_layer_and_not_split_parity (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_transfer_qkv_attention_permutation_and_new_bias_bn_identity (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_two_layer_joint_matches_official_sequence_and_input_histories (tests.test_local_cnn_reference_l1.ReferenceL1Checks) ... ok\ntest_keeps_all_case_candidates_for_fixed_eligible_spread (tests.test_local_cnn_reference_selection.ReferenceCaseSelection) ... ok\ntest_rejects_unavailable_counts_instead_of_shrinking_or_substituting (tests.test_local_cnn_reference_selection.ReferenceCaseSelection) ... ok\n\n----------------------------------------------------------------------\nRan 18 tests in 1.863s\n\nOK\n"
+}

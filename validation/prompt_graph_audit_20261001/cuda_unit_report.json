@@ -1,0 +1,181 @@
+{
+  "scope": "CUDA UNIT, synthetic embedding fixtures; no CT/CNN/trained performance",
+  "diagnostic_only": true,
+  "official_PRODIGY_execution": false,
+  "reference": "joint graph executes the same CURRENT local RelationLayer equations",
+  "production_optimizer_updates": 0,
+  "production_checkpoint_written": false,
+  "production_ready": false,
+  "script_sha256": "4b1a485dde2632417dd7f6affacfc2bd6760172b6a518c5716ef360abd1092f8",
+  "checks": {
+    "actual_topology": {
+      "support_nodes": 256,
+      "patient_labels": 32,
+      "support_edges": 1024,
+      "support_edge_codes": {
+        "T": [
+          1,
+          1
+        ],
+        "F": [
+          1,
+          0
+        ]
+      },
+      "query_edge_code": [
+        0,
+        0
+      ],
+      "query_incoming_edges_per_candidate": 32,
+      "query_edges_per_physical_chunk": 1024,
+      "support_self_loops": false,
+      "query_reverse_edges": false,
+      "query_self_loops": false,
+      "captured_from_actual_forward_and_predict": true,
+      "note": "source and destination indices use separate node spaces; numerical src==dst is not a self-loop"
+    },
+    "synchronous_two_layer_parity": {
+      "query_max_abs": 7.152557373046875e-07,
+      "label_max_abs": 1.430511474609375e-06,
+      "history_max_abs": [
+        0.0,
+        1.430511474609375e-06
+      ],
+      "history0_matches_shared_seeds": true
+    },
+    "input_and_parameter_gradient_parity": {
+      "all_compared_parameters": 37,
+      "derivative_count": 39,
+      "max_abs_differences": {
+        "support_input": 3.637978807091713e-11,
+        "query_input": 7.275957614183426e-11,
+        "label_seed": 2.3283064365386963e-09,
+        "l1.0.q.weight": 6.849631972727366e-12,
+        "l1.0.k.weight": 1.1641532182693481e-10,
+        "l1.0.v.weight": 1.3969838619232178e-09,
+        "l1.0.edge.weight": 3.725290298461914e-09,
+        "l1.0.attn.0.weight": 1.1641532182693481e-09,
+        "l1.0.attn.0.bias": 1.382431946694851e-10,
+        "l1.0.attn.2.weight": 6.330083124339581e-10,
+        "l1.0.attn.2.bias": 9.076757123693824e-10,
+        "l1.0.update.out.weight": 3.725290298461914e-09,
+        "l1.0.update.out.bias": 2.7939677238464355e-09,
+        "l1.0.update.norm.weight": 2.2118911147117615e-09,
+        "l1.0.update.norm.bias": 6.984919309616089e-10,
+        "l1.0.update.ff.0.weight": 1.1641532182693481e-09,
+        "l1.0.update.ff.0.bias": 2.6193447411060333e-10,
+        "l1.0.update.ff.3.weight": 2.3283064365386963e-09,
+        "l1.0.update.ff.3.bias": 9.313225746154785e-10,
+        "l1.0.update.final.weight": 2.0590960048139095e-09,
+        "l1.0.update.final.bias": 7.275957614183426e-10,
+        "l1.1.q.weight": 5.161382432561368e-11,
+        "l1.1.k.weight": 3.8198777474462986e-11,
+        "l1.1.v.weight": 1.0477378964424133e-09,
+        "l1.1.edge.weight": 8.149072527885437e-10,
+        "l1.1.attn.0.weight": 1.8917489796876907e-10,
+        "l1.1.attn.0.bias": 5.093170329928398e-11,
+        "l1.1.attn.2.weight": 2.3283064365386963e-10,
+        "l1.1.attn.2.bias": 4.383764462545514e-10,
+        "l1.1.update.out.weight": 9.313225746154785e-10,
+        "l1.1.update.out.bias": 6.984919309616089e-10,
+        "l1.1.update.norm.weight": 1.862645149230957e-09,
+        "l1.1.update.norm.bias": 6.111804395914078e-10,
+        "l1.1.update.ff.0.weight": 8.149072527885437e-10,
+        "l1.1.update.ff.0.bias": 2.0372681319713593e-10,
+        "l1.1.update.ff.3.weight": 1.862645149230957e-09,
+        "l1.1.update.ff.3.bias": 6.984919309616089e-10,
+        "l1.1.update.final.weight": 1.6298145055770874e-09,
+        "l1.1.update.final.bias": 4.656612873077393e-10
+      },
+      "atol": 3e-06,
+      "rtol": 0.0004,
+      "objective": "same random linear L1 query and final-label readout",
+      "mode": "eval; all stochastic dropout disabled"
+    },
+    "eval_chunk_permutation_parity": {
+      "chunk_vs_whole_max_abs": 2.384185791015625e-07,
+      "permutation_max_abs": 0.0,
+      "all_128_candidates_retained": true,
+      "actual_chunk_sizes": [
+        32,
+        32,
+        32,
+        32
+      ]
+    },
+    "detached_support_live_query_rank_gradient": {
+      "mode": "eval stochastic dropout off; same production detach/data-flow contract",
+      "query_norm": 0.016152678057551384,
+      "support_gradient": null,
+      "module_gradient_norms": {
+        "L1": 0.26705002784729004,
+        "L2": 0.18709911406040192,
+        "label_seed": 0.19414134323596954
+      },
+      "rank_loss": 0.7000418901443481,
+      "query_candidates": 128,
+      "pair_comparisons": 4096,
+      "optimizer_updates": 0,
+      "meaning": "gradient connectivity only; random UNIT class fixture is not learning performance"
+    },
+    "query_targets_rejected_by_forward_api": true,
+    "state_and_source_preserved": {
+      "model_state_sha256": "e3bef8a6a6000a4640177173019c20d80139b911640cfec81a66226fe49a00ba",
+      "state_preserved": true,
+      "modes_preserved": true,
+      "gradient_buffers_preserved": true,
+      "source_hashes": {
+        "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+        "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+        "hiercp_v222/contracts.py": "21a54c95a01ecb211dff1b851d64341113d2aba6a7a2d0f992b8d6f169d77993",
+        "hiercp_v222/v1_cache.py": "c473fef21ac60e6fce7401bc6cc34f1126c23e269dd66674ded485440b9220b7",
+        "config/prompt_graph_v222.json": "832d9c3cef99013058c5b60e6c738dc0978c80cd653bcea62460d4700d79ba5c",
+        "config/prompt_graph_v222_v1_l0.json": "b6205a175427d53bf23a72e7173adbaf5dbf9fa011c2df276d5158b2662ffd09",
+        "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6"
+      }
+    }
+  },
+  "software": {
+    "python": "3.10.18 | packaged by Anaconda, Inc. | (main, Jun  5 2025, 13:08:55) [MSC v.1929 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch": "2.8.0+cu128",
+    "cuda_build": "12.8"
+  },
+  "resources_before": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "device_total_bytes": 17094344704,
+    "device_free_bytes": 15740174336,
+    "cpu_logical": 16,
+    "ram_available": 47797981184,
+    "process_rss": 815177728,
+    "nvidia_smi": "0, NVIDIA GeForce RTX 5070 Ti, 16303 MiB, 1322 MiB, 5 %"
+  },
+  "model": {
+    "hidden_dim": 128,
+    "heads": 4,
+    "L1_layers": 2,
+    "L2_layers": 2,
+    "label_count": 2,
+    "prompt_parameters": 832386,
+    "local_encoder": "nn.Identity injected solely for embedding-fixture L1/L2 UNIT",
+    "precision": "FP32",
+    "physical_query_chunk": 32,
+    "query_candidates": 128,
+    "support_patients": 16,
+    "support_observations_per_patient": 16,
+    "support_observations": 256,
+    "optimizer": null,
+    "gradient_accumulation": null,
+    "effective_training_batch": null,
+    "CNN_tested": false,
+    "CT_used": false
+  },
+  "resources_after": {
+    "peak_cuda_allocated_bytes": 126394368,
+    "peak_cuda_reserved_bytes": 171966464,
+    "process_rss": 1880784896,
+    "ram_available": 46727065600
+  },
+  "status": "PASS",
+  "elapsed_seconds": 1.071968900039792
+}

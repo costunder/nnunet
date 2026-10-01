@@ -1,0 +1,22 @@
+{
+  "debug": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "baseline_commit": "5f01011e51a0779df474ea912bc25cc6663b7b93",
+  "production_source_unchanged": true,
+  "production_files_verified": 121,
+  "baseline_comparison": "Git LF versus working CRLF normalized; actual executed source exact-byte identity verified against checkpoint and final report",
+  "report_sha256": {
+    "unit_report.json": "4a79574c0f7db262ce4b033c0cae4b4447ee5ce67521361549e235f7ee4fc2b7",
+    "native_ct_report.json": "e7603980c7325ef603ef387b821ef0729ba9cfe8644eddf19e44a44587d6152e",
+    "physical32_ct_report.json": "47867f3092afa4f7eabbe1e7efa3e43ab377d9bfbaf55552758a68ba42a41070"
+  },
+  "mechanical_checks_passed": true,
+  "accuracy_improvement_validated": false,
+  "limitations": [
+    "physical32 CT smoke uses DEBUG support6 and complete onecase normalization",
+    "native execution smoke uses original DEBUG batch2/fullDEBUG schedule",
+    "trained epoch30 server checkpoint not available locally"
+  ]
+}
