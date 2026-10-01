@@ -11,7 +11,16 @@ loss/Adam 방향, reference BN/dropout 분리를 opt-in으로 구현하고 실�
 문서에 기록했다. 기존 L1 수축은 실제 현상이지만 주원인 확정이나 reference 악화만으로
 L1 가설 전체를 배제하는 결론을 내리지 않는다.
 
-## 최신 서버 결과: 순위 gradient는 살아났지만 추천 개선은 확인되지 않음
+## 후속 서버 결과: 실제 학습 대상에도 안정적인 개선 없음
+
+사용자 `786be592`의 `70c8c5f` A6000 실행은 실제 update case liver_117의
+199개 관측을 모두 평가했다. Legacy strict pair-win .444542→.449824,
+reference .477443→.448173이며 loss는 표시 정밀도에서 .693147이다.
+MRR=1은71개 양성 중 첫 양성이1위라는 의미다. 일부 step의 CE/rank 충돌은
+확인됐지만 보편적인 주원인이나 production 수정안의 유효성은 확정하지 않는다.
+[전체 수치·metric 정의·해석 경계](local_cnn_reference_server_causal_20261001.md)를 참조한다.
+
+## 이전 서버 결과: 순위 gradient는 살아났지만 추천 개선은 확인되지 않음
 
 사용자 `211a6441` 첨부 전체를 수신했다. 실행 commit은 `da9b1bb`, 물리 GPU3
 RTX A6000, snapshot은 epoch39/step21320/refresh_memory다. 원래 전체533개 tile과

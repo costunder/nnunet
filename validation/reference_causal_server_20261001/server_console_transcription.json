@@ -1,0 +1,1008 @@
+{
+  "source_sha256": "76e96548daa4acef17b63dd24421617577d1fdbb9a68d343bc9ce7563aa3952f",
+  "original_server_JSON_received": false,
+  "complete_case_count_derivation": "199 retained observations and preserved128 unobserved candidates give71 observed; this matches displayed1/71 recall. This count is derived, not a separate console field.",
+  "transcription_precision": "displayed text only; unprinted fields unavailable",
+  "executed_commit": "70c8c5f87c27a6ffdb863775a136c230deb6437c",
+  "GPU": "NVIDIA RTX A6000",
+  "physical_GPU": 3,
+  "checkpoint_path": "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt",
+  "snapshot_epoch": null,
+  "snapshot_step": null,
+  "snapshot_sha256": null,
+  "snapshot_scope": "not displayed; previous epoch39 report is separate",
+  "branches": {
+    "legacy": {
+      "timeline": [
+        {
+          "case_id": "liver_117",
+          "after_updates": 0,
+          "records": 199,
+          "mean_P_minus_U": -5.40889e-08,
+          "strict_pair_win": 0.444542,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.0422535,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00179568,
+              "normalized": 0.00152803
+            },
+            "L1_1": {
+              "raw": 0.00130887,
+              "normalized": 0.00130904
+            },
+            "L1_2": {
+              "raw": 0.00115677,
+              "normalized": 0.00115838
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 1,
+          "records": 199,
+          "mean_P_minus_U": -3.11534e-08,
+          "strict_pair_win": 0.443002,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.0422535,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.0017792,
+              "normalized": 0.00150212
+            },
+            "L1_1": {
+              "raw": 0.00128569,
+              "normalized": 0.00128569
+            },
+            "L1_2": {
+              "raw": 0.00126519,
+              "normalized": 0.00126665
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 2,
+          "records": 199,
+          "mean_P_minus_U": 2.42669e-09,
+          "strict_pair_win": 0.451034,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.056338,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00179023,
+              "normalized": 0.00150157
+            },
+            "L1_1": {
+              "raw": 0.00128687,
+              "normalized": 0.00128702
+            },
+            "L1_2": {
+              "raw": 0.00126983,
+              "normalized": 0.00125788
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 3,
+          "records": 199,
+          "mean_P_minus_U": -3.39539e-08,
+          "strict_pair_win": 0.428697,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.0422535,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00183663,
+              "normalized": 0.0015264
+            },
+            "L1_1": {
+              "raw": 0.0013157,
+              "normalized": 0.00131579
+            },
+            "L1_2": {
+              "raw": 0.00126132,
+              "normalized": 0.00126456
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 4,
+          "records": 199,
+          "mean_P_minus_U": -3.15076e-08,
+          "strict_pair_win": 0.449824,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.056338,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00188318,
+              "normalized": 0.001552
+            },
+            "L1_1": {
+              "raw": 0.00134785,
+              "normalized": 0.00134797
+            },
+            "L1_2": {
+              "raw": 0.00136695,
+              "normalized": 0.00137026
+            }
+          }
+        }
+      ],
+      "updates": [
+        {
+          "step": 1,
+          "schedule_index": 4,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": 1.41561e-07,
+          "frozen_tile_margin_after": 1.86265e-07,
+          "frozen_tile_win_before": 0.574219,
+          "frozen_tile_win_after": 0.585938,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 6.85917e-05,
+                "CE": 0.00022514,
+                "alignment": null,
+                "full": 0.000211131
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.350208,
+                "rank_vs_alignment": null,
+                "rank_vs_full": -0.0485679
+              },
+              "Adam_delta_rank_only_vs_full_cosine": -0.249329,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.00216483,
+                "CE": 0.00949414,
+                "alignment": null,
+                "full": 0.0100479
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.149237,
+                "rank_vs_alignment": null,
+                "rank_vs_full": 0.356463
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.102999,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 0.52052,
+                "CE": 0.906257,
+                "alignment": 0.519674,
+                "full": 1.5876
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.316957,
+                "rank_vs_alignment": 0.858092,
+                "rank_vs_full": 0.78968
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.296696,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.191507,
+                "CE": 1.19822,
+                "alignment": 0.133656,
+                "full": 1.2435
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.0183382,
+                "rank_vs_alignment": 0.151555,
+                "rank_vs_full": 0.152626
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.0719069,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        },
+        {
+          "step": 2,
+          "schedule_index": 5,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": -3.94881e-07,
+          "frozen_tile_margin_after": -4.32134e-07,
+          "frozen_tile_win_before": 0.332031,
+          "frozen_tile_win_after": 0.347656,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 5.07571e-05,
+                "CE": 0.000256996,
+                "alignment": null,
+                "full": 0.000288095
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.55102,
+                "rank_vs_alignment": null,
+                "rank_vs_full": 0.66772
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.913629,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.00212113,
+                "CE": 0.010152,
+                "alignment": null,
+                "full": 0.0110398
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.332367,
+                "rank_vs_alignment": null,
+                "rank_vs_full": 0.497775
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.896612,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 0.180649,
+                "CE": 1.15736,
+                "alignment": 0.377783,
+                "full": 1.01345
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.185496,
+                "rank_vs_alignment": 0.219016,
+                "rank_vs_full": 0.0480577
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.777938,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.190866,
+                "CE": 1.18704,
+                "alignment": 0.122649,
+                "full": 1.23066
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.0390836,
+                "rank_vs_alignment": 0.0444431,
+                "rank_vs_full": 0.121823
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.844349,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        },
+        {
+          "step": 3,
+          "schedule_index": 6,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": -7.45058e-09,
+          "frozen_tile_margin_after": 3.72529e-08,
+          "frozen_tile_win_before": 0.339844,
+          "frozen_tile_win_after": 0.40625,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 8.87176e-05,
+                "CE": 0.00028316,
+                "alignment": null,
+                "full": 0.00036115
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.843478,
+                "rank_vs_alignment": null,
+                "rank_vs_full": 0.906984
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.983279,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.00196888,
+                "CE": 0.00867104,
+                "alignment": null,
+                "full": 0.00913279
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.127237,
+                "rank_vs_alignment": null,
+                "rank_vs_full": 0.336388
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.978936,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 0.17877,
+                "CE": 0.842541,
+                "alignment": 1.00382,
+                "full": 1.45344
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.261967,
+                "rank_vs_alignment": 0.0251201,
+                "rank_vs_full": 0.292206
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.871078,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.304866,
+                "CE": 1.17085,
+                "alignment": 0.18834,
+                "full": 1.28525
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.156076,
+                "rank_vs_alignment": -0.0414501,
+                "rank_vs_full": 0.373313
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.941238,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        },
+        {
+          "step": 4,
+          "schedule_index": 7,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": 5.7742e-08,
+          "frozen_tile_margin_after": -2.04891e-08,
+          "frozen_tile_win_before": 0.527344,
+          "frozen_tile_win_after": 0.492188,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 6.27683e-05,
+                "CE": 0.000209777,
+                "alignment": null,
+                "full": 0.000173026
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.683827,
+                "rank_vs_alignment": null,
+                "rank_vs_full": -0.466306
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.985019,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.00236248,
+                "CE": 0.0090745,
+                "alignment": null,
+                "full": 0.00886214
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.219009,
+                "rank_vs_alignment": null,
+                "rank_vs_full": 0.0423247
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.989074,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 0.361379,
+                "CE": 0.934757,
+                "alignment": 0.351134,
+                "full": 0.985848
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.463413,
+                "rank_vs_alignment": -0.812847,
+                "rank_vs_full": 0.516447
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.95245,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.196778,
+                "CE": 1.05245,
+                "alignment": 0.108899,
+                "full": 1.11934
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.125371,
+                "rank_vs_alignment": -0.0598764,
+                "rank_vs_full": 0.287853
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.980611,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        }
+      ],
+      "observed": 71,
+      "unobserved": 128,
+      "whole_case_pair_count": 9088,
+      "derived_strict_win_change": 0.005282000000000009
+    },
+    "reference": {
+      "timeline": [
+        {
+          "case_id": "liver_117",
+          "after_updates": 0,
+          "records": 199,
+          "mean_P_minus_U": -8.06184e-08,
+          "strict_pair_win": 0.477443,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.028169,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00179568,
+              "normalized": 0.00152803
+            },
+            "L1_1": {
+              "raw": 0.00171319,
+              "normalized": 0.00159668
+            },
+            "L1_2": {
+              "raw": 0.00171228,
+              "normalized": 0.00160844
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 1,
+          "records": 199,
+          "mean_P_minus_U": -1.43332e-07,
+          "strict_pair_win": 0.454886,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.028169,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00184294,
+              "normalized": 0.0015763
+            },
+            "L1_1": {
+              "raw": 0.00174757,
+              "normalized": 0.00165416
+            },
+            "L1_2": {
+              "raw": 0.00178263,
+              "normalized": 0.00168696
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 2,
+          "records": 199,
+          "mean_P_minus_U": -1.50481e-07,
+          "strict_pair_win": 0.447403,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.028169,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00189062,
+              "normalized": 0.00165524
+            },
+            "L1_1": {
+              "raw": 0.00178536,
+              "normalized": 0.00173263
+            },
+            "L1_2": {
+              "raw": 0.00185076,
+              "normalized": 0.00178126
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 3,
+          "records": 199,
+          "mean_P_minus_U": -1.37534e-07,
+          "strict_pair_win": 0.440581,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.028169,
+          "recall_at_10": 0.0422535,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00195696,
+              "normalized": 0.00174186
+            },
+            "L1_1": {
+              "raw": 0.00183482,
+              "normalized": 0.00180848
+            },
+            "L1_2": {
+              "raw": 0.00192744,
+              "normalized": 0.00187298
+            }
+          }
+        },
+        {
+          "case_id": "liver_117",
+          "after_updates": 4,
+          "records": 199,
+          "mean_P_minus_U": -1.53668e-07,
+          "strict_pair_win": 0.448173,
+          "mean_pairwise_loss": 0.693147,
+          "first_positive_MRR": 1.0,
+          "recall_at_1": 0.0140845,
+          "recall_at_5": 0.0140845,
+          "recall_at_10": 0.028169,
+          "exact_tie_rate": null,
+          "score_std": null,
+          "Fisher": {
+            "L0": {
+              "raw": 0.00201633,
+              "normalized": 0.00182413
+            },
+            "L1_1": {
+              "raw": 0.00187401,
+              "normalized": 0.00187463
+            },
+            "L1_2": {
+              "raw": 0.00199192,
+              "normalized": 0.00195415
+            }
+          }
+        }
+      ],
+      "updates": [
+        {
+          "step": 1,
+          "schedule_index": 4,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": 3.50177e-07,
+          "frozen_tile_margin_after": 2.83122e-07,
+          "frozen_tile_win_before": 0.558594,
+          "frozen_tile_win_after": 0.558594,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 0.0145125,
+                "CE": 0.0450841,
+                "alignment": 0.00086943,
+                "full": 0.0481395
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.106042,
+                "rank_vs_alignment": -0.081494,
+                "rank_vs_full": 0.399309
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.00615889,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.374684,
+                "CE": 0.755407,
+                "alignment": 0.021234,
+                "full": 0.957072
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.394254,
+                "rank_vs_alignment": -0.121849,
+                "rank_vs_full": 0.699968
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.475217,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 1.87856,
+                "CE": 17.3128,
+                "alignment": 0.931834,
+                "full": 17.4767
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.494854,
+                "rank_vs_alignment": -0.386971,
+                "rank_vs_full": 0.577068
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.338132,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.188284,
+                "CE": 0.723805,
+                "alignment": 0.0458294,
+                "full": 0.766954
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.302343,
+                "rank_vs_alignment": -0.363306,
+                "rank_vs_full": 0.50912
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.304335,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        },
+        {
+          "step": 2,
+          "schedule_index": 5,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": -9.31323e-07,
+          "frozen_tile_margin_after": -8.04663e-07,
+          "frozen_tile_win_before": 0.390625,
+          "frozen_tile_win_after": 0.390625,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 0.0176013,
+                "CE": 0.0365941,
+                "alignment": 0.00109343,
+                "full": 0.0354939
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.271669,
+                "rank_vs_alignment": 0.364695,
+                "rank_vs_full": 0.227042
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.624732,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.568172,
+                "CE": 0.992191,
+                "alignment": 0.0296292,
+                "full": 0.953791
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.333386,
+                "rank_vs_alignment": 0.353395,
+                "rank_vs_full": 0.259868
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.511892,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 8.22388,
+                "CE": 32.2247,
+                "alignment": 1.66538,
+                "full": 24.1421
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.837876,
+                "rank_vs_alignment": 0.816707,
+                "rank_vs_full": -0.721407
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.389348,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.362759,
+                "CE": 1.3667,
+                "alignment": 0.0854577,
+                "full": 1.02882
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": -0.793583,
+                "rank_vs_alignment": 0.696015,
+                "rank_vs_full": -0.643796
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.462748,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        },
+        {
+          "step": 3,
+          "schedule_index": 6,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": 2.01166e-07,
+          "frozen_tile_margin_after": 2.01166e-07,
+          "frozen_tile_win_before": 0.394531,
+          "frozen_tile_win_after": 0.398438,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 0.0375375,
+                "CE": 0.0279397,
+                "alignment": 0.000401546,
+                "full": 0.0525592
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.275565,
+                "rank_vs_alignment": 0.14712,
+                "rank_vs_full": 0.861805
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.898065,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.846174,
+                "CE": 0.892426,
+                "alignment": 0.0134975,
+                "full": 1.40521
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.308405,
+                "rank_vs_alignment": 0.120777,
+                "rank_vs_full": 0.799195
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.897497,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 14.0241,
+                "CE": 43.0769,
+                "alignment": 1.79764,
+                "full": 55.0091
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.963019,
+                "rank_vs_alignment": -0.902872,
+                "rank_vs_full": 0.979564
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.946898,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.460901,
+                "CE": 1.28294,
+                "alignment": 0.0689945,
+                "full": 1.65561
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.911235,
+                "rank_vs_alignment": -0.773795,
+                "rank_vs_full": 0.952263
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.96287,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        },
+        {
+          "step": 4,
+          "schedule_index": 7,
+          "case_id": "liver_117",
+          "observed": 16,
+          "unobserved": 16,
+          "ranking_pairs": 256,
+          "frozen_tile_margin_before": 6.4075e-07,
+          "frozen_tile_margin_after": 7.15256e-07,
+          "frozen_tile_win_before": 0.582031,
+          "frozen_tile_win_after": 0.625,
+          "full_shadow_matches_actual_delta": true,
+          "modules": {
+            "CNN": {
+              "weighted_gradient_norms": {
+                "rank": 0.0232007,
+                "CE": 0.0354271,
+                "alignment": 0.000688812,
+                "full": 0.0487062
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.350025,
+                "rank_vs_alignment": 0.216778,
+                "rank_vs_full": 0.734002
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.826715,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "readout_fusion": {
+              "weighted_gradient_norms": {
+                "rank": 0.627539,
+                "CE": 0.767494,
+                "alignment": 0.0178298,
+                "full": 1.17182
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.414893,
+                "rank_vs_alignment": -0.179838,
+                "rank_vs_full": 0.804526
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.778209,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L1": {
+              "weighted_gradient_norms": {
+                "rank": 5.18438,
+                "CE": 22.9224,
+                "alignment": 1.15523,
+                "full": 26.6143
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.904671,
+                "rank_vs_alignment": -0.853229,
+                "rank_vs_full": 0.936938
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.909146,
+              "ranking_gradient_vs_full_descent_cosine": null
+            },
+            "L2": {
+              "weighted_gradient_norms": {
+                "rank": 0.363806,
+                "CE": 1.54719,
+                "alignment": 0.0737132,
+                "full": 1.80125
+              },
+              "gradient_cosines": {
+                "rank_vs_CE": 0.831231,
+                "rank_vs_alignment": -0.699352,
+                "rank_vs_full": 0.887345
+              },
+              "Adam_delta_rank_only_vs_full_cosine": 0.89474,
+              "ranking_gradient_vs_full_descent_cosine": null
+            }
+          }
+        }
+      ],
+      "observed": 71,
+      "unobserved": 128,
+      "whole_case_pair_count": 9088,
+      "derived_strict_win_change": -0.029270000000000018
+    }
+  },
+  "modes": [
+    {
+      "mode": "eval",
+      "margin": 3.57628e-07,
+      "strict_win": 0.558594,
+      "weighted_alignment": 1.79031,
+      "alignment_query_gradient": 0.0
+    },
+    {
+      "mode": "bn_train_only",
+      "margin": -1.37836e-07,
+      "strict_win": 0.445312,
+      "weighted_alignment": 1.79216,
+      "alignment_query_gradient": 0.00062963
+    },
+    {
+      "mode": "dropout_train_only",
+      "margin": 0.00273491,
+      "strict_win": 0.644531,
+      "weighted_alignment": 1.78886,
+      "alignment_query_gradient": 0.0
+    },
+    {
+      "mode": "current_training",
+      "margin": 0.0073373,
+      "strict_win": 0.585938,
+      "weighted_alignment": 1.7936,
+      "alignment_query_gradient": 0.000403056
+    }
+  ],
+  "production_changed": false,
+  "new_local_model_execution": false,
+  "full_training_started": false,
+  "selection": {
+    "policy": "rankable_full_batch_prefix",
+    "reference_transfer": "affine_relations_zero_out_bias",
+    "original_schedule_tiles": 533,
+    "original_physical_batch": 32,
+    "selected": [
+      {
+        "schedule_index": 4,
+        "case_id": "liver_117",
+        "physical_batch": 32,
+        "observed": 16,
+        "unobserved": 16,
+        "ranking_pairs": 256
+      },
+      {
+        "schedule_index": 5,
+        "case_id": "liver_117",
+        "physical_batch": 32,
+        "observed": 16,
+        "unobserved": 16,
+        "ranking_pairs": 256
+      },
+      {
+        "schedule_index": 6,
+        "case_id": "liver_117",
+        "physical_batch": 32,
+        "observed": 16,
+        "unobserved": 16,
+        "ranking_pairs": 256
+      },
+      {
+        "schedule_index": 7,
+        "case_id": "liver_117",
+        "physical_batch": 32,
+        "observed": 16,
+        "unobserved": 16,
+        "ranking_pairs": 256
+      }
+    ]
+  },
+  "frozen_BN_dropout_off_update": {
+    "margin_before": 3.57628e-07,
+    "margin_after": 3.20375e-07,
+    "win_before": 0.558594,
+    "win_after": 0.554688,
+    "both_BN_and_dropout_changed": true
+  },
+  "server_summary_path": "/home/aicompetition06/Medical/experiments/reference_causal_20261001_230955.summary.txt",
+  "server_report_path": "/home/aicompetition06/Medical/experiments/reference_causal_20261001_230955.json",
+  "metric_definitions": {
+    "MRR": "macro mean of 1/min(positive ranks), not accuracy",
+    "R_at_k": "micro positive recall; ceiling min(k,P)/P",
+    "strict_pair_win": "mean(sP>sU); ties separate, omitted from console",
+    "half_tie_win": "unavailable without tie rate; do not assume zero",
+    "pair_loss_precision": "6 significant digits; .693147 does not prove exact constant",
+    "Adam_delta_cosine": "rank-only Adam delta versus full Adam delta, not gradient versus descent",
+    "frozen_tile": "same episodic support, frozen teacher, eval BN/dropout off",
+    "whole_case": "all199 observations, saved full eligible support, newly fitted teacher"
+  }
+}

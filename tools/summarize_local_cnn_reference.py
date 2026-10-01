@@ -1,7 +1,8 @@
 """Print the complete saved reference-L1 diagnosis without rerunning a model.
 
-This module deliberately uses only Python's standard library. It formats stored
-measurements; unavailable measurements stay unavailable and are never scored.
+This module uses only Python's standard library. The causal mode lazily imports
+its saved-measurement formatter without importing model dependencies.
+Unavailable measurements stay unavailable and are never scored.
 """
 from __future__ import annotations
 
@@ -467,10 +468,31 @@ def format_signals(report: dict) -> str:
     return '\n'.join(lines) + '\n'
 
 
-def read_summary(path: str | Path, *, signals: bool = False) -> str:
+def format_causal(report: dict) -> str:
+    """Read the stored causal comparison without CT/model execution."""
+    if not isinstance(report, dict):
+        raise ValueError('report: expected JSON object')
+    _finite_json(report)
+    comparison = _object(report.get('comparison'), 'comparison')
+    if comparison.get('diagnostic_only') is not True or comparison.get('causal_probe') is not True:
+        raise ValueError('Expected an explicitly diagnostic-only comparison with causal_probe=True')
+    # Also support direct `python tools/summarize_local_cnn_reference.py` use.
+    import sys
+    root = str(Path(__file__).resolve().parents[1])
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from tools.local_cnn_causal_summary import format_causal_summary
+    return format_causal_summary(comparison) + '\n'
+
+
+def read_summary(path: str | Path, *, signals: bool = False, causal: bool = False) -> str:
     """Read a saved JSON report without changing its bytes."""
+    if signals and causal:
+        raise ValueError('Signals and causal summaries are mutually exclusive')
     with Path(path).open('r', encoding='utf-8-sig') as source:
         report = json.load(source)
+    if causal:
+        return format_causal(report)
     return format_signals(report) if signals else format_summary(report)
 
 
@@ -478,9 +500,11 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('report', type=Path)
     parser.add_argument('--output', type=Path, help='Optional NEW text file; existing files are never overwritten')
-    parser.add_argument('--signals', action='store_true', help='Print saved per-case score, spread and loss signals instead of the default summary')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--signals', action='store_true', help='Print saved per-case score, spread and loss signals instead of the default summary')
+    mode.add_argument('--causal', action='store_true', help='Print saved fitted-case, tie and actual-update direction diagnostics; no retraining')
     args = parser.parse_args(argv)
-    summary = read_summary(args.report, signals=args.signals)
+    summary = read_summary(args.report, signals=args.signals, causal=args.causal)
     if args.output is not None:
         with args.output.open('x', encoding='utf-8', newline='\n') as target:
             target.write(summary)

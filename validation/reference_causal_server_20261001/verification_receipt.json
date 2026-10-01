@@ -1,0 +1,20 @@
+{
+  "tests": 42,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "scope": "saved JSON/CLI reporting only; no CPU or GPU model execution",
+  "existing_numerical_helper_functions_AST_unchanged": 5,
+  "production_files_unchanged": 121,
+  "existing_user_edits_preserved": 3,
+  "source_console_sha256": "76e96548daa4acef17b63dd24421617577d1fdbb9a68d343bc9ce7563aa3952f",
+  "complete_timeline_rows": 10,
+  "actual_server_updates": 8,
+  "per_module_rows": 32,
+  "BN_modes": 4,
+  "original_server_JSON_received": false,
+  "local_actual_GPU_report_unchanged": "fd8be4e6838c291ca58f2072b13b47f9dc96cbaed9f0bb0ff70d79f4ef9b12c7",
+  "model_or_loss_default_changed": false,
+  "long_training_started": false,
+  "production_ready": false
+}

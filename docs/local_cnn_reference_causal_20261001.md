@@ -3,6 +3,9 @@
 사용자 `99c17e59` 검토 전문을 읽고 기존 원문·결과를 보존했다. 이번 변경은
 `--causal-probe`로 켜는 독립 DEBUG 계측이며 production 모델 또는 최종 학습 패치가 아니다.
 
+후속 실제 A6000 결과 `786be592`를 수신했다. [서버 결과·MRR 의미·objective 충돌](local_cnn_reference_server_causal_20261001.md)에 별도 기록했다.
+아래 RTX5070Ti DEBUG 개선을 서버 학습 회복으로 해석하지 않는다.
+
 ## v1과 현재 모델의 실제 차이
 
 | 항목 | 보존된 v1 코드·설정 | 현재 v2.2 LocalCNN |

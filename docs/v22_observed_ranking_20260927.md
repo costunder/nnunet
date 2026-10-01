@@ -30,9 +30,9 @@
 
 ## 평가와 best checkpoint
 
-inner-validation의 모든 관측 위치를 **제외하기 전** 점수로 평가한다. 정답 위치를 인위적으로 먼저 정렬하지 않는다. 동점은 관측 종양에 불리한 순위로 계산해 GT를 이용한 동점 이득을 막는다.
+inner-validation의 모든 관측 위치를 **제외하기 전** 점수로 평가한다. 정답 위치를 인위적으로 먼저 정렬하지 않는다. 2026-09-27 당시에는 동점을 관측 종양에 불리한 순위로 계산한다고 설명했다. 현재(2026-10-01) 구현은 점수 내림차순, 정확한 동점에서는 case/donor/component/native center의 SHA256 오름차순인 단일 GT-independent 순서를 사용한다(`tools/v22_candidate_order.py`). 이전 설명은 변경 이력이며 현재 동점 규칙이 아니다.
 
-- `ranking_pairwise_loss`: 같은 CT 관측 종양/미관측 후보 상대 순위 손실. 이것으로 best epoch를 선택한다.
+- `ranking_pairwise_loss`: 같은 CT 관측 종양/미관측 후보 상대 순위 손실. 2026-09-27 구현의 best 선택 기준이었다. 현재 same-donor/live trainer는 MRR → R@1 → 낮은 pairwise loss 순서로 best를 선택한다(`l0_regions/donor_learning.py:selection`). 기존 실행의 best 선택 이력을 현재 규칙으로 다시 해석하지 않는다.
 - `ranking_recall_at_1/5/10`: 전체 eligible 관측 종양 중 해당 순위 안에 든 비율.
 - `ranking_mrr`: 양성이 있는 CT별 첫 관측 종양 순위의 역수 평균.
 - `ranking_mean_observed_rank`, 평가 가능한 CT 수, 양성 없는 CT 수.

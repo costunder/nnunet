@@ -171,7 +171,8 @@ def verify(a):
             'tools/verify_reference_rankable_ct_debug.py', 'tools/local_cnn_reference_runtime.py',
             'tools/local_cnn_reference_l1.py', 'tools/local_cnn_reference_transfer.py') + ((
             'tools/local_cnn_reference_causal.py','tools/local_cnn_reference_objective_probe.py',
-            'tools/local_cnn_reference_mode_probe.py','tools/local_cnn_reference_target_signal.py') if causal_probe else ())}),
+            'tools/local_cnn_reference_mode_probe.py','tools/local_cnn_reference_target_signal.py',
+            'tools/local_cnn_causal_summary.py') if causal_probe else ())}),
         limitations=['One complete case with DEBUG support is mechanical smoke, not full accuracy.',
             'Fresh optimizer and reference BatchNorm: not exact resume or learned production replacement.',
             'Ranking-only gradient measurement adds a diagnostic derivative pass; timing is not production speed.'])

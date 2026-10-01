@@ -1,0 +1,100 @@
+
+  --cases-per-split 2 --workers 8 \
+  --cuda-gib 24 --rss-gib 64 --resident-gib 24
+remote: Enumerating objects: 46, done.
+remote: Counting objects: 100% (46/46), done.
+remote: Compressing objects: 100% (19/19), done.
+remote: Total 35 (delta 16), reused 35 (delta 16), pack-reused 0 (from 0)
+Unpacking objects: 100% (35/35), 161.14 KiB | 97.00 KiB/s, done.
+From https://github.com/costunder/nnunet
+ * branch            codex/v222-server-r6 -> FETCH_HEAD
+   da9b1bb..70c8c5f  codex/v222-server-r6 -> origin/codex/v222-server-r6
+Previous HEAD position was da9b1bb Verify ranking-active reference controls on native CUDA CT
+HEAD is now at 70c8c5f Add causal ranking diagnostics for fitted cases, losses and BatchNorm
+GPU selection | physical=3 | type=GPU | CUDA_VISIBLE_DEVICES=GPU-5bc3009f-a738-c66c-f7e7-0583dabe9e0e
+CLONED DEBUG comparison | run=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42
+checkpoint=/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt
+DEBUG update selection | {"policy": "rankable_full_batch_prefix", "reference_transfer": "affine_relations_zero_out_bias", "original_schedule_tiles": 533, "original_physical_batch": 32, "selected": [{"schedule_index": 4, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}, {"schedule_index": 5, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}, {"schedule_index": 6, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}, {"schedule_index": 7, "case_id": "liver_117", "physical_batch": 32, "observed": 16, "unobserved": 16, "ranking_pairs": 256}]}
+CT train liver_1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:20<00:00,  4.17s/it]
+CT train liver_49: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:04<00:00,  1.13it/s]
+CT train liver_117: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 7/7 [00:18<00:00,  2.71s/it]
+CT validation liver_109: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:19<00:00,  3.98s/it]
+CT validation liver_3: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:12<00:00,  2.44s/it]
+DEBUG | 4 updates/branch, original batch=32, CNN channels=[12, 24, 32], L1=2x128D/4heads, L2=2 | NVIDIA RTX A6000
+CLONED legacy L1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [01:10<00:00, 17.57s/it, batch=32, loss=2.453, seconds=16.4]
+CLONED reference L1: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [02:04<00:00, 31.19s/it, batch=32, loss=3.811, seconds=19.5]
+CAUSAL DEBUG | fitted-case evaluation / exact-forward loss and Adam / BN controls
+Cloned short updates only. Candidate spread and gradient size are not accuracy.
+Tile pre/post: same saved episodic support + frozen teacher, eval BN/dropout off.
+Whole fitted case: full eligible saved support + newly fitted own teacher, eval mode.
+BRANCH legacy | actual fitted cases=['liver_117']
+  fitted liver_117 after=0 N=199 | margin=-5.40889e-08 win=0.444542 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.0422535
+    target Fisher raw/normalized | L0=0.00179568/0.00152803 | L1_1=0.00130887/0.00130904 | L1_2=0.00115677/0.00115838
+  fitted liver_117 after=1 N=199 | margin=-3.11534e-08 win=0.443002 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.0422535
+    target Fisher raw/normalized | L0=0.0017792/0.00150212 | L1_1=0.00128569/0.00128569 | L1_2=0.00126519/0.00126665
+  fitted liver_117 after=2 N=199 | margin=2.42669e-09 win=0.451034 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.056338
+    target Fisher raw/normalized | L0=0.00179023/0.00150157 | L1_1=0.00128687/0.00128702 | L1_2=0.00126983/0.00125788
+  fitted liver_117 after=3 N=199 | margin=-3.39539e-08 win=0.428697 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.0422535
+    target Fisher raw/normalized | L0=0.00183663/0.0015264 | L1_1=0.0013157/0.00131579 | L1_2=0.00126132/0.00126456
+  fitted liver_117 after=4 N=199 | margin=-3.15076e-08 win=0.449824 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.056338
+    target Fisher raw/normalized | L0=0.00188318/0.001552 | L1_1=0.00134785/0.00134797 | L1_2=0.00136695/0.00137026
+  step=1 schedule=4 case=liver_117 P/U=16/16 | frozen tile margin 1.41561e-07->1.86265e-07 win 0.574219->0.585938 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=6.85917e-05/0.00022514/UNDEFINED/0.000211131 | cos rank-CE/align/full=-0.350208/UNDEFINED/-0.0485679 | cos delta rank-full=-0.249329
+    readout_fusion | grad norms rank/CE/align/full=0.00216483/0.00949414/UNDEFINED/0.0100479 | cos rank-CE/align/full=0.149237/UNDEFINED/0.356463 | cos delta rank-full=0.102999
+    L1 | grad norms rank/CE/align/full=0.52052/0.906257/0.519674/1.5876 | cos rank-CE/align/full=0.316957/0.858092/0.78968 | cos delta rank-full=0.296696
+    L2 | grad norms rank/CE/align/full=0.191507/1.19822/0.133656/1.2435 | cos rank-CE/align/full=-0.0183382/0.151555/0.152626 | cos delta rank-full=0.0719069
+  step=2 schedule=5 case=liver_117 P/U=16/16 | frozen tile margin -3.94881e-07->-4.32134e-07 win 0.332031->0.347656 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=5.07571e-05/0.000256996/UNDEFINED/0.000288095 | cos rank-CE/align/full=0.55102/UNDEFINED/0.66772 | cos delta rank-full=0.913629
+    readout_fusion | grad norms rank/CE/align/full=0.00212113/0.010152/UNDEFINED/0.0110398 | cos rank-CE/align/full=0.332367/UNDEFINED/0.497775 | cos delta rank-full=0.896612
+    L1 | grad norms rank/CE/align/full=0.180649/1.15736/0.377783/1.01345 | cos rank-CE/align/full=-0.185496/0.219016/0.0480577 | cos delta rank-full=0.777938
+    L2 | grad norms rank/CE/align/full=0.190866/1.18704/0.122649/1.23066 | cos rank-CE/align/full=-0.0390836/0.0444431/0.121823 | cos delta rank-full=0.844349
+  step=3 schedule=6 case=liver_117 P/U=16/16 | frozen tile margin -7.45058e-09->3.72529e-08 win 0.339844->0.40625 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=8.87176e-05/0.00028316/UNDEFINED/0.00036115 | cos rank-CE/align/full=0.843478/UNDEFINED/0.906984 | cos delta rank-full=0.983279
+    readout_fusion | grad norms rank/CE/align/full=0.00196888/0.00867104/UNDEFINED/0.00913279 | cos rank-CE/align/full=0.127237/UNDEFINED/0.336388 | cos delta rank-full=0.978936
+    L1 | grad norms rank/CE/align/full=0.17877/0.842541/1.00382/1.45344 | cos rank-CE/align/full=0.261967/0.0251201/0.292206 | cos delta rank-full=0.871078
+    L2 | grad norms rank/CE/align/full=0.304866/1.17085/0.18834/1.28525 | cos rank-CE/align/full=0.156076/-0.0414501/0.373313 | cos delta rank-full=0.941238
+  step=4 schedule=7 case=liver_117 P/U=16/16 | frozen tile margin 5.7742e-08->-2.04891e-08 win 0.527344->0.492188 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=6.27683e-05/0.000209777/UNDEFINED/0.000173026 | cos rank-CE/align/full=-0.683827/UNDEFINED/-0.466306 | cos delta rank-full=0.985019
+    readout_fusion | grad norms rank/CE/align/full=0.00236248/0.0090745/UNDEFINED/0.00886214 | cos rank-CE/align/full=-0.219009/UNDEFINED/0.0423247 | cos delta rank-full=0.989074
+    L1 | grad norms rank/CE/align/full=0.361379/0.934757/0.351134/0.985848 | cos rank-CE/align/full=0.463413/-0.812847/0.516447 | cos delta rank-full=0.95245
+    L2 | grad norms rank/CE/align/full=0.196778/1.05245/0.108899/1.11934 | cos rank-CE/align/full=0.125371/-0.0598764/0.287853 | cos delta rank-full=0.980611
+BRANCH reference | actual fitted cases=['liver_117']
+  fitted liver_117 after=0 N=199 | margin=-8.06184e-08 win=0.477443 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.028169
+    target Fisher raw/normalized | L0=0.00179568/0.00152803 | L1_1=0.00171319/0.00159668 | L1_2=0.00171228/0.00160844
+  fitted liver_117 after=1 N=199 | margin=-1.43332e-07 win=0.454886 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.028169
+    target Fisher raw/normalized | L0=0.00184294/0.0015763 | L1_1=0.00174757/0.00165416 | L1_2=0.00178263/0.00168696
+  fitted liver_117 after=2 N=199 | margin=-1.50481e-07 win=0.447403 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.028169
+    target Fisher raw/normalized | L0=0.00189062/0.00165524 | L1_1=0.00178536/0.00173263 | L1_2=0.00185076/0.00178126
+  fitted liver_117 after=3 N=199 | margin=-1.37534e-07 win=0.440581 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.028169/0.0422535
+    target Fisher raw/normalized | L0=0.00195696/0.00174186 | L1_1=0.00183482/0.00180848 | L1_2=0.00192744/0.00187298
+  fitted liver_117 after=4 N=199 | margin=-1.53668e-07 win=0.448173 loss=0.693147 MRR=1 R1/5/10=0.0140845/0.0140845/0.028169
+    target Fisher raw/normalized | L0=0.00201633/0.00182413 | L1_1=0.00187401/0.00187463 | L1_2=0.00199192/0.00195415
+  step=1 schedule=4 case=liver_117 P/U=16/16 | frozen tile margin 3.50177e-07->2.83122e-07 win 0.558594->0.558594 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=0.0145125/0.0450841/0.00086943/0.0481395 | cos rank-CE/align/full=0.106042/-0.081494/0.399309 | cos delta rank-full=0.00615889
+    readout_fusion | grad norms rank/CE/align/full=0.374684/0.755407/0.021234/0.957072 | cos rank-CE/align/full=0.394254/-0.121849/0.699968 | cos delta rank-full=0.475217
+    L1 | grad norms rank/CE/align/full=1.87856/17.3128/0.931834/17.4767 | cos rank-CE/align/full=0.494854/-0.386971/0.577068 | cos delta rank-full=0.338132
+    L2 | grad norms rank/CE/align/full=0.188284/0.723805/0.0458294/0.766954 | cos rank-CE/align/full=0.302343/-0.363306/0.50912 | cos delta rank-full=0.304335
+    BN/dropout eval | margin=3.57628e-07 win=0.558594 weighted-align=1.79031 align-query-grad=0
+    BN/dropout bn_train_only | margin=-1.37836e-07 win=0.445312 weighted-align=1.79216 align-query-grad=0.00062963
+    BN/dropout dropout_train_only | margin=0.00273491 win=0.644531 weighted-align=1.78886 align-query-grad=0
+    BN/dropout current_training | margin=0.0073373 win=0.585938 weighted-align=1.7936 align-query-grad=0.000403056
+    frozen-BN cloned full update | margin=3.57628e-07->3.20375e-07 win=0.558594->0.554688 | fresh AdamW, original clipping
+  step=2 schedule=5 case=liver_117 P/U=16/16 | frozen tile margin -9.31323e-07->-8.04663e-07 win 0.390625->0.390625 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=0.0176013/0.0365941/0.00109343/0.0354939 | cos rank-CE/align/full=-0.271669/0.364695/0.227042 | cos delta rank-full=0.624732
+    readout_fusion | grad norms rank/CE/align/full=0.568172/0.992191/0.0296292/0.953791 | cos rank-CE/align/full=-0.333386/0.353395/0.259868 | cos delta rank-full=0.511892
+    L1 | grad norms rank/CE/align/full=8.22388/32.2247/1.66538/24.1421 | cos rank-CE/align/full=-0.837876/0.816707/-0.721407 | cos delta rank-full=0.389348
+    L2 | grad norms rank/CE/align/full=0.362759/1.3667/0.0854577/1.02882 | cos rank-CE/align/full=-0.793583/0.696015/-0.643796 | cos delta rank-full=0.462748
+  step=3 schedule=6 case=liver_117 P/U=16/16 | frozen tile margin 2.01166e-07->2.01166e-07 win 0.394531->0.398438 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=0.0375375/0.0279397/0.000401546/0.0525592 | cos rank-CE/align/full=0.275565/0.14712/0.861805 | cos delta rank-full=0.898065
+    readout_fusion | grad norms rank/CE/align/full=0.846174/0.892426/0.0134975/1.40521 | cos rank-CE/align/full=0.308405/0.120777/0.799195 | cos delta rank-full=0.897497
+    L1 | grad norms rank/CE/align/full=14.0241/43.0769/1.79764/55.0091 | cos rank-CE/align/full=0.963019/-0.902872/0.979564 | cos delta rank-full=0.946898
+    L2 | grad norms rank/CE/align/full=0.460901/1.28294/0.0689945/1.65561 | cos rank-CE/align/full=0.911235/-0.773795/0.952263 | cos delta rank-full=0.96287
+  step=4 schedule=7 case=liver_117 P/U=16/16 | frozen tile margin 6.4075e-07->7.15256e-07 win 0.582031->0.625 | exact full-Adam parity=True
+    CNN | grad norms rank/CE/align/full=0.0232007/0.0354271/0.000688812/0.0487062 | cos rank-CE/align/full=0.350025/0.216778/0.734002 | cos delta rank-full=0.826715
+    readout_fusion | grad norms rank/CE/align/full=0.627539/0.767494/0.0178298/1.17182 | cos rank-CE/align/full=0.414893/-0.179838/0.804526 | cos delta rank-full=0.778209
+    L1 | grad norms rank/CE/align/full=5.18438/22.9224/1.15523/26.6143 | cos rank-CE/align/full=0.904671/-0.853229/0.936938 | cos delta rank-full=0.909146
+    L2 | grad norms rank/CE/align/full=0.363806/1.54719/0.0737132/1.80125 | cos rank-CE/align/full=0.831231/-0.699352/0.887345 | cos delta rank-full=0.89474
+FULL SAVED SUMMARY: /home/aicompetition06/Medical/experiments/reference_causal_20261001_230955.summary.txt
+REPORT: /home/aicompetition06/Medical/experiments/reference_causal_20261001_230955.json
+Short cloned comparison completed; original experiment unchanged. Not a full accuracy evaluation.
+(nnunet) aicompetition06@ece-a6gpu8:~/Medical/HierCP-diagnosis-2ce11ba$

@@ -203,7 +203,8 @@ def diagnose(a):
             'tools/local_cnn_reference_runtime.py', 'tools/local_cnn_reference_transfer.py',
             'tools/local_cnn_reference_fixed_probe.py') + ((
             'tools/local_cnn_reference_causal.py','tools/local_cnn_reference_objective_probe.py',
-            'tools/local_cnn_reference_mode_probe.py','tools/local_cnn_reference_target_signal.py') if causal_probe else ())}),
+            'tools/local_cnn_reference_mode_probe.py','tools/local_cnn_reference_target_signal.py',
+            'tools/local_cnn_causal_summary.py') if causal_probe else ())}),
         input_contract=dict(margin_mm=identity['local_cnn']['margin_mm'],
             local_cnn=identity['local_cnn'], train_observations=len(ds), validation_observations=len(val),
             optimization_schedule=context.audit, candidate_subset='explicit diagnostic cases; every candidate retained',
