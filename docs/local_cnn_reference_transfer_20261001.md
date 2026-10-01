@@ -116,17 +116,47 @@ batch2/전체 DEBUG train8·val2를 상속했고 snapshot phase가 complete라
 saved-next tile=False와 첫 deterministic tile 사용을 기록했다. Production
 source121개는 `6a02e9b`와 동일하며 이전 18검사/CT 보고서 hash도 그대로다.
 
+## 서버의 이전 raw 전이 4-update 결과 수신
+
+사용자가 제공한 `reference_l1_20261001_173620.json` 실행 콘솔은
+`6a02e9b`에서 raw column 전이로 완료한 이전 명령의 결과다. 사용자가 명령을
+잘못 실행한 것이 아니며, 이 결과를 새 affine/BN 고정 비교로 분류하지 않는다.
+물리 GPU3의 RTX A6000 선택은 실제로 성공했다. Checkpoint의 epoch/step은
+콘솔에 없어 추정하지 않는다. 원본 서버 JSON은 로컬에 수신하지 않았다.
+
+| 복제 branch / 평가 | MRR 전 → 후 | 모든 P×U pair-win 전 → 후 |
+| --- | --- | --- |
+| legacy / train | 0.12179 → 0.08333 | 0.49572 → 0.49320 |
+| legacy / validation | 0.54167 → 0.51562 | 0.64397 → 0.68052 |
+| reference / train | 0.10965 → 0.16071 | 0.49521 → 0.42742 |
+| reference / validation | 0.50510 → 0.25394 | 0.45229 → 0.48661 |
+
+이 4회 갱신은 reference 개선 근거가 아니다. Validation MRR은 약 절반으로
+떨어졌고 pair-win은 증가해도 0.5 미만이다. MRR은 case별 첫 관측 종양의
+reciprocal rank 평균이며 pair-win은 모든 관측/미관측 쌍의 score 대소 비교라
+둘은 서로 다른 양이다. Console만으로 실제 어떤 종양 순위가 이동했는지는
+알 수 없다. Fresh BN/Adam과 전이/연산 차이가 함께 들어갔으므로 공식 PRODIGY
+실패 또는 특정 원인 확정으로도 해석하지 않는다. 같은 결과의 기존 모델과
+reference는 초기 점수 경로가 다르므로 초기 성능도 같지 않다.
+
+서버 콘솔의 반올림 값과 미수신 범위는
+`validation/reference_transfer_20261001/server_raw4_console_summary.json`에
+기록했다. 전체 데이터 학습을 다시 실행하거나 이 결과 때문에 production
+모델을 자동 교체하지 않는다. 다음 전달 명령은 기존 snapshot을 읽어 update
+이전 차이를 세 전이·BN mode로 분리하는 진단이다.
+
 ## 서버 실행
 
-현재 Singularity에서 A6000 하나가 visible GPU0인 세션 기준이다. 호스트에서
-직접 실행할 때는 `CP_GPU`만 실제 visible 번호로 바꾼다. 실행 중인 학습 checkout과
-별도의 기존 diagnosis checkout에서 실행한다.
+가장 최근 사용자가 제공한 host 터미널에서는 물리 GPU3 선택이 성공했으므로
+`CP_GPU=3`을 유지한다. A6000 하나만 GPU0으로 노출된 Singularity 안에서 실행할
+때만 0으로 바꾼다. 실행 중인 학습 checkout과 별도의 기존 diagnosis checkout에서
+실행한다. 실제 진단 구현은 검증한 `de7d62d` commit을 고정한다.
 
 ```bash
-CP_GPU=0
+CP_GPU=3
 cd /home/aicompetition06/Medical/HierCP-diagnosis-2ce11ba &&
 git fetch origin codex/v222-server-r6 &&
-git checkout --detach FETCH_HEAD &&
+git checkout --detach de7d62d &&
 python -u tools/diagnose_local_cnn_reference.py \
   --gpu "$CP_GPU" \
   --run /home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42 \

@@ -1,0 +1,63 @@
+{
+  "format": "reference_l1_server_console_transcription_v1",
+  "source": "User-provided terminal transcript; not the complete server JSON",
+  "commit": "6a02e9babeb991b3b6ab7db1cafcf04eb01efb5a",
+  "transfer_policy": "raw_columns",
+  "checkpoint": "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt",
+  "server_report": "/home/aicompetition06/Medical/experiments/reference_l1_20261001_173620.json",
+  "snapshot_epoch": null,
+  "snapshot_step": null,
+  "snapshot_reason": "Not printed in the supplied console; do not infer epoch30",
+  "server_report_received": false,
+  "run_completed_according_to_console": true,
+  "gpu": {
+    "physical_number": 3,
+    "name": "NVIDIA RTX A6000",
+    "selected_uuid": "GPU-5bc3009f-a738-c66c-f7e7-0583dabe9e0e"
+  },
+  "configured_original_physical_batch": 32,
+  "workers": 8,
+  "CNN_channels": [12, 24, 32],
+  "L1_layers": 2,
+  "hidden_dim": 128,
+  "heads": 4,
+  "L2_layers": 2,
+  "optimizer": "fresh AdamW in each isolated branch, from verified 6a02e9b source",
+  "updates_per_branch": 4,
+  "selected_train_cases": ["liver_1", "liver_49"],
+  "selected_validation_cases": ["liver_109", "liver_3"],
+  "console_metrics_rounded": [
+    {
+      "branch": "legacy", "split": "train",
+      "MRR_before": 0.12179, "MRR_after": 0.08333,
+      "pair_win_before": 0.49572, "pair_win_after": 0.49320
+    },
+    {
+      "branch": "legacy", "split": "validation",
+      "MRR_before": 0.54167, "MRR_after": 0.51562,
+      "pair_win_before": 0.64397, "pair_win_after": 0.68052
+    },
+    {
+      "branch": "reference", "split": "train",
+      "MRR_before": 0.10965, "MRR_after": 0.16071,
+      "pair_win_before": 0.49521, "pair_win_after": 0.42742
+    },
+    {
+      "branch": "reference", "split": "validation",
+      "MRR_before": 0.50510, "MRR_after": 0.25394,
+      "pair_win_before": 0.45229, "pair_win_after": 0.48661
+    }
+  ],
+  "full_training": false,
+  "full_evaluation": false,
+  "accuracy_improvement_supported": false,
+  "official_PRODIGY_failure_established": false,
+  "production_checkpoint_changed_by_diagnostic": false,
+  "limitations": [
+    "Console values have five decimal rounding; raw scores, observed ranks, spread and gradients are unavailable locally",
+    "MRR is the case mean reciprocal rank of first observed tumor; pair-win uses all P x U comparisons",
+    "Four updates and changed initial scoring/BN/transfer do not isolate a single causal factor",
+    "Raw relation projection transfer, per-edge copied output bias, fresh BN and changed operator remain confounds",
+    "Wall times for four updates are not full epoch performance evidence"
+  ]
+}
