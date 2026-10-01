@@ -36,6 +36,7 @@ from tools.diagnose_local_cnn_learning import checkpoint_for, score_summary
 from tools.local_cnn_interaction_runtime import support_binding
 from tools.local_cnn_interaction_updates import _module_norms
 from tools.local_cnn_reference_l1 import clone_reference
+from tools.local_cnn_reference_transfer import POLICIES, clone_reference_control
 from tools.v22_candidate_order import record_key
 from tools.v22_rank_objective import ranking_metrics
 
@@ -85,6 +86,10 @@ def main():
     parser.add_argument('--cuda-gib', type=float, default=12.)
     parser.add_argument('--rss-gib', type=float, default=32.)
     parser.add_argument('--resident-gib', type=float, default=8.)
+    parser.add_argument('--transfer-policy', choices=POLICIES,
+                        help='Explicit new reference initialization; omission preserves historical raw transfer')
+    parser.add_argument('--fixed-probe-policies', nargs='+', choices=POLICIES,
+                        help='Optional zero-update controls on this exact actual physical32 tile')
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError('Existing DEBUG report preserved')
@@ -152,11 +157,22 @@ def main():
     branches = []
     settings = meta['base']['training']
     started = time.perf_counter()
+    fixed = None
+    if args.fixed_probe_policies:
+        from tools.local_cnn_reference_fixed_probe import probe_fixed_weights
+        if len(set(args.fixed_probe_policies))!=len(args.fixed_probe_policies):
+            raise ValueError('Duplicate fixed control policies')
+        with torch.no_grad():
+            embeddings = net.local(query).detach()
+        truth = torch.tensor([rows[i]['target'] for i in ids], device='cuda', dtype=torch.long)
+        fixed = probe_fixed_weights(net,embeddings,support,policies=args.fixed_probe_policies,
+            truth=truth,budget=budget,loss_context=context,indices=ids)
     try:
         for name in ('legacy','reference'):
             budget.check()
             if name=='reference':
-                candidate, transfer = clone_reference(net)
+                candidate, transfer = (clone_reference(net) if args.transfer_policy is None else
+                    clone_reference_control(net,policy=args.transfer_policy))
             else:
                 candidate, transfer = copy.deepcopy(net), dict(architecture='unchanged_legacy_L1')
             if candidate.checkpoint_support:
@@ -225,6 +241,7 @@ def main():
         loss=configuration(),normalization_scope='all P x U pairs and observations of this complete case; DEBUG only',
         context_audit=context.audit,physical_batch=32,cloned_optimizer_updates_per_arm=1,
         branches=branches,elapsed_seconds=time.perf_counter()-started,
+        explicit_transfer_policy=args.transfer_policy, fixed_weight_comparison=fixed,
         input_tensor_shape=list(query.images.shape),native_crop_audit=query.audit,
         GPU=torch.cuda.get_device_name(),gpu_count=torch.cuda.device_count(),gpu_total_bytes=total,
         cuda_budget_bytes=budget.cuda_bytes,rss_budget_bytes=budget.rss_bytes,

@@ -1,0 +1,632 @@
+분석해보니, 이번 ZIP은 **“공식 PRODIGY L1을 그대로 복원했다”기보다는 `공식 MetaGNNLayer 연산을 현재 v2.2 topology/L2/loss에 끼운 대조군`**입니다. 그 목적에는 꽤 잘 만들어졌습니다. 다만 **epoch30에서 4 update만 돌려서 이 구조가 좋은지 나쁜지 판단하기에는 중요한 confound가 3개 있습니다.**
+
+먼저 ZIP 자체는 정상입니다. `02_MANIFEST.json` 기준 **497/497 파일 SHA256 일치**, 포함된 `unit_report/native_ct_report/physical32_ct_report` 해시도 모두 일치했습니다. 코드는 직접 확인했습니다. 다만 제 현재 실행 환경에는 `torch_geometric`이 없어서 18개 PyG unit을 제가 재실행하지는 못했고, 저장된 실행 결과와 소스의 대응을 검증했습니다.
+
+## 1. 공식 `MetaGNNLayer` 연산 복제 자체는 제대로 됐습니다
+
+이 부분은 상당히 정확합니다.
+
+공식 코드:
+
+```text
+Q/K/V Linear
+edge Linear
+K / sqrt(head_dim)
+[k, q, ReLU(edge)]
+→ attention MLP
+→ softmax
+→ attention dropout
+→ weight * V
+→ out_proj를 edge마다 적용
+→ sum
+→ residual
+→ BatchNorm
+→ 다음 layer 전 GELU
+```
+
+reference 코드도 정확히 이 흐름입니다.
+
+`tools/local_cnn_reference_l1.py:101-118`
+
+```python
+qkv = self.mlp_kqv(nodes)
+
+k[source] / sqrt(head_dim)
+q[destination]
+relu(edge)
+
+probabilities = softmax(...)
+weights = dropout(probabilities)
+
+per_edge = self.out_proj(weights * v[source])
+aggregate.index_add_(...)
+pre_bn = nodes + dropout(aggregate)
+output = self.bn(pre_bn)
+```
+
+공식 `metaGNN.py:104-142`와 연산상 맞습니다.
+
+또 공식 relation도 제대로 바꿨습니다.
+
+```text
+T = [0, +1]
+F = [0, -1]
+U = [1,  0]
+self = [0, 0]
+```
+
+support↔label, label→query, 모든 node self-loop도 공식 `MetaGNN.forward`의 방향과 일치합니다.
+
+그리고 현재 v2.2의 문제로 의심했던:
+
+```text
+LayerNorm
+→ FFN
+→ LayerNorm
+```
+
+을 완전히 없애고,
+
+```text
+residual
+→ BatchNorm
+→ GELU between layers
+```
+
+로 바꿨습니다.
+
+그래서 **“현재 L1_2 FFN/LayerNorm 때문에 2000배 수축하는가?”를 보는 control로는 설계 방향이 맞습니다.**
+
+---
+
+# 2. 하지만 이건 전체 PRODIGY 복원이 아닙니다
+
+여기가 중요합니다.
+
+공식 PRODIGY에서 query는 자기 task의 label node들과 연결됩니다.
+
+우리 reference에서는 기존 v2.2 구조를 유지해서:
+
+```text
+patient A → label0 / label1
+patient B → label0 / label1
+patient C → label0 / label1
+...
+                     ↘
+                      Query
+```
+
+처럼 **모든 support patient의 label node를 query가 봅니다.**
+
+예를 들어 support patient가 16명이면 query 하나에:
+
+```text
+32 label edges
++ self-loop
+= incoming edge 33개
+```
+
+입니다.
+
+공식 binary task라면 보통:
+
+```text
+2 class label
++ self-loop
+```
+
+에 가까운 구조입니다.
+
+따라서 이번 후보는:
+
+> **PRODIGY의 operator + 우리의 patient-label topology**
+
+입니다.
+
+이 구분은 ZIP 문서에도 제대로 명시돼 있습니다.
+
+---
+
+# 3. 제일 중요한 문제 ① — edge weight transfer가 의미상 안 맞습니다
+
+이건 이번 검토에서 제가 가장 크게 잡은 부분입니다.
+
+현재 v2.2 relation encoding은:
+
+```text
+T = [1,1]
+F = [1,0]
+U = [0,0]
+```
+
+입니다.
+
+reference에서는 공식대로:
+
+```text
+T = [0,1]
+F = [0,-1]
+U = [1,0]
+```
+
+로 바꿨습니다.
+
+그런데 `clone_reference()`에서:
+
+```python
+layer.lin_edge.weight.copy_(old.edge.weight)
+layer.lin_edge.bias.zero_()
+```
+
+합니다.
+
+즉 **relation 좌표계를 완전히 바꿔놓고 기존 edge projection W는 그대로 복사합니다.**
+
+이건 function-preserving transfer가 아닙니다.
+
+예를 들어 기존 `U=[0,0]`는:
+
+```text
+edge embedding = 0
+```
+
+이었습니다.
+
+그런데 새로운 `U=[1,0]`에 기존 W를 그대로 적용하면:
+
+```text
+edge embedding = 기존 W의 첫 번째 column
+```
+
+이 됩니다.
+
+그 첫 번째 column은 원래 **support 관계를 나타내는 방향**을 학습하던 파라미터입니다.
+
+즉 epoch30 weight를 넣는 순간부터 의미가 바뀝니다.
+
+### 사실 정확히 변환할 수도 있습니다
+
+기존 edge weight의 두 column을:
+
+\[
+a=W_{old}[:,0],\qquad b=W_{old}[:,1]
+\]
+
+라고 하면 새 코드에서 T/F/U의 기존 embedding을 보존하려면:
+
+\[
+W_{new}[:,0]=-a-\frac b2
+\]
+
+\[
+W_{new}[:,1]=\frac b2
+\]
+
+\[
+bias_{new}=a+\frac b2
+\]
+
+로 두면 됩니다.
+
+그러면 정확히:
+
+```text
+new U=[1,0]  → 0          = old U
+new F=[0,-1] → a          = old F
+new T=[0,1]  → a+b        = old T
+```
+
+가 됩니다.
+
+현재 reference transfer는 이렇게 하지 않습니다.
+
+**즉 지금 4-update 비교는 공식 operator의 성능만 비교하는 게 아니라, relation embedding을 갑자기 재해석한 영향까지 같이 봅니다.**
+
+---
+
+# 4. 문제 ② — `out_proj.bias` transfer도 의미가 크게 달라집니다
+
+이것도 꽤 큽니다.
+
+현재 L1:
+
+```text
+messages 합산
+↓
+Linear(out)
+```
+
+이므로 `out.bias`가 **node당 한 번** 들어갑니다.
+
+그런데 공식 PRODIGY:
+
+```text
+각 edge:
+    Linear(weight * V)
+↓
+edge들을 합산
+```
+
+입니다.
+
+따라서 bias가 **edge마다 한 번씩** 들어갑니다.
+
+reference도 공식 코드를 정확히 따라갑니다.
+
+문제는 transfer에서:
+
+```python
+new.out_proj.bias = old.update.out.bias
+```
+
+를 그대로 복사한다는 겁니다.
+
+기존에 한 번 들어가던 bias가 새로운 구조에서는 incoming edge 개수만큼 들어갑니다.
+
+예를 들어 query가:
+
+```text
+32 label edge + self
+```
+
+이면 대략:
+
+\[
+33b
+\]
+
+가 됩니다.
+
+support data node라면 incoming degree가 다르고, label node도 또 다릅니다.
+
+그래서 **node type/degree에 따라 완전히 다른 constant shift가 생깁니다.**
+
+공식 구현을 따라간다는 점에서는 맞지만,
+
+> **기존 epoch30 parameter를 새로운 공식 operator로 warm-start하는 방식**
+
+으로서는 꽤 심한 mismatch입니다.
+
+---
+
+# 5. 문제 ③ — Fresh BatchNorm 때문에 4 update 평가는 상당히 불리합니다
+
+reference L1은 새 BatchNorm을 만듭니다.
+
+초기값:
+
+```text
+weight = 1
+bias = 0
+running_mean = 0
+running_var = 1
+```
+
+기존 LayerNorm/FFN weight는 전부 버립니다.
+
+즉 epoch30 checkpoint라고 해도 L1 전체로 보면 사실상:
+
+```text
+일부 attention weight만 가져온
+새 architecture
+```
+
+입니다.
+
+더 큰 문제는 training 시 BN입니다.
+
+reference는:
+
+```text
+support
++ label nodes
++ 현재 query tile
+↓
+하나의 BatchNorm
+```
+
+을 합니다.
+
+따라서 **query 정답은 안 들어가지만 query feature는 BN statistics에 들어갑니다.**
+
+즉 query A의 표현이 같은 physical batch 안에:
+
+```text
+B, C, D...
+```
+
+어떤 후보가 들어왔는지에 따라 달라질 수 있습니다.
+
+현재 `physical_batch=32`이면:
+
+> **training output 자체가 32개 후보의 grouping에 의존합니다.**
+
+eval에서는 running statistics를 쓰기 때문에 chunk32 invariance가 맞습니다.
+
+하지만 4 update 후에는 BN running statistics가 겨우 몇 번 업데이트됐을 뿐입니다.
+
+그래서:
+
+```text
+4 update 후 validation
+```
+
+에는
+
+- architecture 변화
+- 학습
+- BN calibration
+
+세 효과가 섞입니다.
+
+---
+
+# 6. 실제 DEBUG 숫자에서도 이 “초기 충격”이 보입니다
+
+physical32 실제 CT 한 case에서:
+
+### 기존 L1
+
+```text
+gradient norm before clip = 4.29
+grad_clip = 5
+```
+
+즉 clip이 사실상 안 걸립니다.
+
+### reference L1
+
+```text
+gradient norm before clip = 19.04
+grad_clip = 5
+```
+
+**강하게 clip됩니다.**
+
+더 작은 DEBUG runner에서는:
+
+```text
+legacy:
+9.28
+10.51
+
+reference:
+54.55
+85.52
+```
+
+였습니다.
+
+즉 새로운 reference L1을 넣자마자 gradient scale 자체가 상당히 달라집니다.
+
+이건 상당히 중요한 증거입니다.
+
+단순히:
+
+> “공식 L1을 넣었더니 성능이 어떻다”
+
+라고 보기에는 **초기 parameterization shock가 너무 큽니다.**
+
+---
+
+# 7. 반대로 잘 되어 있는 부분도 확실합니다
+
+여기는 문제 없어 보입니다.
+
+### Query truth leakage
+
+없습니다.
+
+reference graph 생성 함수에 `query_targets` 자체가 없습니다.
+
+Query edge는 항상:
+
+```text
+U=[1,0]
+```
+
+이고 query→label reverse edge도 없습니다.
+
+### Patient leakage / donor leakage
+
+`support_binding()`에서:
+
+```python
+query_group not in
+(row['patient_group'], row['donor_group'])
+```
+
+를 검사합니다.
+
+즉 recipient와 donor 어느 쪽에도 query patient가 있으면 support에서 제외합니다.
+
+### 동일 schedule
+
+전체 P×U tile set이 동일한지 Counter로 확인합니다.
+
+4 step만 실행할 뿐 **전체 schedule의 구조를 바꿔서 작은 dataset으로 만든 것은 아닙니다.**
+
+### 원본 보호
+
+model/state/memory/grad/mode/RNG를 hash해서 전후 확인합니다.
+
+이 부분은 상당히 철저합니다.
+
+---
+
+# 8. 저장된 18개 UNIT 결과는 의미 있습니다
+
+이 테스트로 확인할 수 있는 건:
+
+> **reference operator가 공식 `MetaGNNLayer`의 수치 연산을 제대로 복제했는가?**
+
+입니다.
+
+여기는 신뢰할 만합니다.
+
+CPU/CUDA에서:
+
+- output
+- 모든 parameter gradient
+- dropout
+- BN
+- self-loop
+- T/F/U
+- query128/chunk32
+- query permutation
+
+까지 검사했습니다.
+
+다만 topology 쪽은 **공식 MetaGNN 전체를 실행한 oracle과 비교한 것은 아니고**, 공식 source를 읽고 별도의 expected graph를 만들어 비교하는 방식입니다.
+
+제가 공식 `dataloader.py`와 `metaGNN.py`도 직접 대조했는데, **edge 방향과 T/F/U 구성 자체는 맞습니다.**
+
+---
+
+# 9. 실제 CT 결과는 아직 성능 판단 자료가 아닙니다
+
+physical32 liver_66:
+
+| | 기존 L1 | reference L1 |
+|---|---:|---:|
+| pair-win before | .6516 | .4922 |
+| pair-win after 1 update | .8016 | .5625 |
+| MRR before | .0714 | .3333 |
+| MRR after | .1667 | .3333 |
+
+reference MRR이 높아 보이지만 positive 5개 중 하나가 rank3이라 그렇게 나온 겁니다.
+
+전체 positive rank를 보면:
+
+```text
+reference before:
+3, 6, 80, 121, 130
+
+after:
+3, 5, 38, 118, 131
+```
+
+그래서 **reference가 더 좋다고 볼 수 없습니다.**
+
+반대로 reference가 나쁘다고 볼 수도 없습니다.
+
+이건:
+
+```text
+DEBUG support 6 observations
+3 patients
+1 case
+1 optimizer update
+fresh BN
+```
+
+입니다.
+
+---
+
+# 10. 그래서 epoch30에서 4-update 비교를 해도 되냐?
+
+**해도 됩니다. 다만 그 결과의 의미를 제한해야 합니다.**
+
+확인할 수 있는 건:
+
+> reference L1이 실제 epoch30 CT에서도 실행되고,  
+> candidate spread를 즉시 회복시키는 징후가 있는가?
+
+정도입니다.
+
+**4 update에서 성능이 안 오른다고 “공식 L1 실패” 판정하면 안 됩니다.**
+
+특히 지금 transfer는:
+
+```text
+relation code 의미 변경
++
+out_proj bias 위치 변경
++
+Fresh BN
++
+FFN/LN 제거
++
+self-loop 추가
++
+joint execution
+```
+
+가 한꺼번에 일어납니다.
+
+---
+
+# 제가 서버에서 제일 먼저 보고 싶은 건 성능보다 이겁니다
+
+epoch30 checkpoint에서 optimizer update 전에 동일한 실제 tile을 넣고:
+
+```text
+                 Legacy        Reference
+
+L0 spread           ?              ?
+L1_1 spread         ?              ?
+L1_2 spread         ?              ?
+
+L1_1/L0             ?              ?
+L1_2/L1_1           ?              ?
+```
+
+를 봐야 합니다.
+
+현재 legacy는 대략:
+
+```text
+L0
+ ↓ 14× 수축
+L1_1
+ ↓ 2200× 수축
+L1_2
+```
+
+였죠.
+
+reference fixed-weight에서 예를 들어:
+
+```text
+L0
+ ↓ 2×
+L1_1
+ ↓ 3×
+L1_2
+```
+
+같이 나온다면, **성능이 아직 안 좋아도 L1 collapse 원인을 제대로 건드렸다는 뜻**입니다.
+
+반대로 official reference에서도:
+
+```text
+L1_2에서 1000× collapse
+```
+
+하면 FFN/LN만의 문제는 아니었던 겁니다.
+
+---
+
+# 결론
+
+이번 구현은 **코딩 오류로 엉터리 official L1을 만든 것은 아닙니다.** `MetaGNNLayer`의 핵심 operator는 제대로 복제됐습니다.
+
+하지만 현재 상태 그대로의 **“epoch30 → reference L1 → fresh Adam → 4 update”는 clean architecture A/B가 아닙니다.**
+
+특히 두 가지가 큽니다.
+
+> **① relation encoding을 바꿨는데 기존 edge projection weight를 그대로 복사함**  
+> **② node당 1회 적용되던 out-projection bias를 edge당 적용되는 위치로 그대로 복사함**
+
+여기에 **fresh BatchNorm**까지 있습니다.
+
+그래서 저는 이번 reference L1을 버리자는 게 아니라, 오히려 **좋은 control인데 warm-start transfer가 아직 깨끗하지 않다**고 봅니다.
+
+그리고 지금 가장 중요한 검사는 full 40 epoch가 아니라:
+
+> **epoch30 동일 tile에서 Legacy vs Reference의 L1_1/L1_2 candidate spread를 update 전부터 직접 비교**
+
+입니다.
+
+그 결과가 나오면 **현재 v2.2가 왜 v1과 달리 학습을 못 하는지 상당히 강하게 좁힐 수 있습니다.**

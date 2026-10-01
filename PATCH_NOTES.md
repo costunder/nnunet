@@ -1,3 +1,9 @@
+## v2.2 — reference L1 전이·BN 고정 가중치 대조 (2026-10-01)
+
+- 이전 공식 operator 구현과 결과를 보존하고 raw 전이/T·F·U affine 전이/affine+out bias0의 세 초기화 정책을 명시적으로 분리. Node당 bias를 edge별 위치로 복사할 때의 degree 증폭과 self/key scaling 등 남은 차이를 기록한다.
+- 같은 native CT tile·L0·support에서 optimizer 없이 eval-fresh/joint train BN/한 pass 후 eval의 세 모드를 비교. 후보 표현 단계별 에너지, 실제 degree/bias, 원래 loss coefficient별 query gradient를 저장한다.
+- Joint BN의 support alignment→query gradient 경로는 기존 loss 공식 보존과 별개로 명시. 단위/회귀34개와 실제 CT physical32·전체133관측 smoke 및 zero-update CLI 통과. Production121파일·이전 증거 보존, DEBUG 분산 회복을 정확도 개선으로 선언하지 않음. 장기 학습·production 기본 모델·CP·후보128·원본 mask 변경 없음. [검토 반영과 실행](docs/local_cnn_reference_transfer_20261001.md).
+
 ## v2.2 — 공식 기본 L1 대조 경로 (2026-10-01)
 
 - PRODIGY 고정 commit의 기본 operator를 독립 구현한 별도 복제 후보. Self-loop·T/F/U·value-only attention·edge별 projection·joint BN와 층 사이 GELU를 원문 AST 출력/gradient에 대조한다. L1 2층/128D/4heads, 기존 L0/L2/loss/CP/후보/원본 mask 보존.
