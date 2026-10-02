@@ -1,0 +1,192 @@
+{
+  "debug": true,
+  "reports": {
+    "original": {
+      "loss": 3.8547518253326416,
+      "ranking": 3.8428587913513184,
+      "consistency": 0.11893149465322495,
+      "ce": 2.0869140625,
+      "pair": 1.1446664333343506,
+      "ordinal": 0.7211716175079346,
+      "mined": 0.9340879917144775,
+      "acc": 0.0,
+      "mrr": 0.2666666805744171,
+      "positive": 0.04752349853515625,
+      "hardest_negative": 0.12420654296875,
+      "margin": -0.076690673828125,
+      "samples": 2,
+      "batches": 1,
+      "optimizer_steps": 1,
+      "elapsed_seconds": 26.316285800014157,
+      "samples_per_second": 0.07599856663659292,
+      "process_cpu_seconds": 24.34375,
+      "process_cpu_utilization_percent_of_allocated_capacity": 46.252252663988976,
+      "gpu_utilization_percent": "unavailable (external profiler not attached)",
+      "process_rss_bytes": "unavailable (not present)",
+      "process_peak_rss_bytes": "unavailable (not present)",
+      "cuda_device": "cuda:0",
+      "cuda_allocated_bytes": 1798377472,
+      "cuda_reserved_bytes": 6255804416,
+      "cuda_peak_allocated_bytes": 6049660928,
+      "cuda_peak_reserved_bytes": 6255804416,
+      "cuda_free_bytes": 9413066752,
+      "cuda_total_bytes": 17094344704
+    },
+    "original_repeat": {
+      "loss": 3.854773759841919,
+      "ranking": 3.8428800106048584,
+      "consistency": 0.1189383789896965,
+      "ce": 2.0869140625,
+      "pair": 1.144683599472046,
+      "ordinal": 0.7211865186691284,
+      "mined": 0.9340895414352417,
+      "acc": 0.0,
+      "mrr": 0.2666666805744171,
+      "positive": 0.047527313232421875,
+      "hardest_negative": 0.124114990234375,
+      "margin": -0.07659912109375,
+      "samples": 2,
+      "batches": 1,
+      "optimizer_steps": 1,
+      "elapsed_seconds": 24.633932099997764,
+      "samples_per_second": 0.08118882490547182,
+      "process_cpu_seconds": 23.203125,
+      "process_cpu_utilization_percent_of_allocated_capacity": 47.09586132211939,
+      "gpu_utilization_percent": "unavailable (external profiler not attached)",
+      "process_rss_bytes": "unavailable (not present)",
+      "process_peak_rss_bytes": "unavailable (not present)",
+      "cuda_device": "cuda:0",
+      "cuda_allocated_bytes": 1798880768,
+      "cuda_reserved_bytes": 6215958528,
+      "cuda_peak_allocated_bytes": 6049981440,
+      "cuda_peak_reserved_bytes": 6215958528,
+      "cuda_free_bytes": 9452912640,
+      "cuda_total_bytes": 17094344704
+    },
+    "instrumented": {
+      "loss": 3.8548433780670166,
+      "ranking": 3.8429503440856934,
+      "consistency": 0.11893065273761749,
+      "ce": 2.0869140625,
+      "pair": 1.144718885421753,
+      "ordinal": 0.7211754322052002,
+      "mined": 0.9341644048690796,
+      "acc": 0.0,
+      "mrr": 0.2666666805744171,
+      "positive": 0.0474853515625,
+      "hardest_negative": 0.124176025390625,
+      "margin": -0.076690673828125,
+      "samples": 2,
+      "batches": 1,
+      "optimizer_steps": 1,
+      "elapsed_seconds": 25.007017600000836,
+      "samples_per_second": 0.07997754998180723,
+      "process_cpu_seconds": 23.0,
+      "process_cpu_utilization_percent_of_allocated_capacity": 45.987091239539154,
+      "gpu_utilization_percent": "unavailable (external profiler not attached)",
+      "process_rss_bytes": "unavailable (not present)",
+      "process_peak_rss_bytes": "unavailable (not present)",
+      "cuda_device": "cuda:0",
+      "cuda_allocated_bytes": 1798880768,
+      "cuda_reserved_bytes": 6262095872,
+      "cuda_peak_allocated_bytes": 6043513344,
+      "cuda_peak_reserved_bytes": 6262095872,
+      "cuda_free_bytes": 9406775296,
+      "cuda_total_bytes": 17094344704,
+      "loader_wait_seconds": 7.499998901039362e-06,
+      "sampling_worker_seconds_sum": 10.813421699975152,
+      "sampling_worker_sample_seconds_min": 3.0274857999756932,
+      "sampling_worker_sample_seconds_max": 7.785935899999458,
+      "sampling_measured_samples": 2,
+      "collate_worker_seconds_sum": 1.0497532000008505,
+      "gpu_optimization_seconds": 24.960392578125,
+      "gpu_validation_compute_seconds": null,
+      "gpu_compute_timing_status": "MEASURED_CUDA_EVENTS",
+      "compute_host_enqueue_seconds": 24.95798800000921,
+      "timing_scope": {
+        "loader_wait": "Host iter/next wait; CUDA prefetch may fetch the following batch before yielding",
+        "sampling_worker": "Sum of actual materialize_sample_views calls, including both views and strict subset work",
+        "sampling_overlap": "Worker sampling/collation overlap with GPU work; worker-second sums are not additive epoch wall time",
+        "gpu_compute": "Current-stream forward, loss, backward and optimizer update; excludes ranking metrics and H2D prefetch stream",
+        "host_enqueue": "Host time scheduling compute; not a measurement of GPU execution time",
+        "validation_wall": "Original elapsed_seconds includes validation loader, transfer, forward, loss and metrics"
+      }
+    }
+  },
+  "metric_errors": {
+    "original_repeat": {
+      "loss": 2.193450927734375e-05,
+      "ranking": 2.1219253540039062e-05,
+      "consistency": 6.884336471557617e-06,
+      "ce": 0.0,
+      "pair": 1.71661376953125e-05,
+      "ordinal": 1.4901161193847656e-05,
+      "mined": 1.5497207641601562e-06,
+      "acc": 0.0,
+      "mrr": 0.0,
+      "positive": 3.814697265625e-06,
+      "hardest_negative": 9.1552734375e-05,
+      "margin": 9.1552734375e-05,
+      "samples": 0,
+      "batches": 0,
+      "optimizer_steps": 0
+    },
+    "instrumented": {
+      "loss": 9.1552734375e-05,
+      "ranking": 9.1552734375e-05,
+      "consistency": 8.419156074523926e-07,
+      "ce": 0.0,
+      "pair": 5.245208740234375e-05,
+      "ordinal": 3.814697265625e-06,
+      "mined": 7.641315460205078e-05,
+      "acc": 0.0,
+      "mrr": 0.0,
+      "positive": 3.814697265625e-05,
+      "hardest_negative": 3.0517578125e-05,
+      "margin": 0.0,
+      "samples": 0,
+      "batches": 0,
+      "optimizer_steps": 0
+    }
+  },
+  "max_parameter_errors": {
+    "original_repeat": 0.00019999779760837555,
+    "instrumented": 0.00020000338554382324
+  },
+  "RNG_states_equal": {
+    "original_repeat": true,
+    "instrumented": true
+  },
+  "update_comparison": {
+    "original_repeat": {
+      "update_cosine": 0.9951370035902826,
+      "relative_state_L2_error": 0.00014409232217015494,
+      "relative_update_L2_error": 0.09862051897027552
+    },
+    "instrumented": {
+      "update_cosine": 0.993393918652437,
+      "relative_state_L2_error": 0.00016794274282909828,
+      "relative_update_L2_error": 0.11494436487420086
+    }
+  },
+  "gradient_connectivity": {
+    "original": {
+      "expected": 1085,
+      "connected": 1085,
+      "verified": true
+    },
+    "original_repeat": {
+      "expected": 1085,
+      "connected": 1085,
+      "verified": true
+    },
+    "instrumented": {
+      "expected": 1085,
+      "connected": 1085,
+      "verified": true
+    }
+  },
+  "strict_deterministic_algorithms_DEBUG_only": false,
+  "production_runtime_changed": false,
+  "quality_verified": false
+}
