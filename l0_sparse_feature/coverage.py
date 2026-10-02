@@ -55,10 +55,12 @@ def all_pool_distances(graph, *, workspace_bytes):
         member = eligible & (band == role)
         if not bool(member.any(-1).all()):
             raise ValueError('Empty complete band')
-        slots = (graph['role'][0] == role).nonzero().flatten()
+        # Retained paths have scene-specific shell positions and padding.
+        # Fixed quota graphs are the special case where every row agrees.
+        slots = (graph['role'] == role).any(0).nonzero().flatten()
         if not len(slots):
             raise ValueError('Missing selected context role')
-        selected_mask = graph['node_mask'][:, slots]
+        selected_mask = graph['node_mask'][:, slots] & (graph['role'][:, slots] == role)
         if not bool(selected_mask.any(-1).all()):
             raise ValueError('Empty selected context band')
         selected_features = graph['features'][:, slots]

@@ -1,0 +1,108 @@
+<div id="v1-relay-sparse-20261002">
+  <h2>실제 CT · 원본 Seed + 문맥 연결 경로</h2>
+  <div id="vrs-provenance" class="text-small"></div>
+  <div class="viz-controls">
+    <label class="form-label">구조<select id="vrs-model" class="form-select"><option value="relational">Seed + 실제 경로 Relay 보존</option><option value="baseline">이전: Seed만 선택한 분절 그래프</option></select></label>
+    <label class="form-label">원본 후보<select id="vrs-candidate" class="form-select"></select></label>
+    <label class="form-label">연결<select id="vrs-relation" class="form-select"><option value="all">전체 관계</option><option value="cross">Donor → Recipient</option><option value="context">영역 내부 문맥</option><option value="query">Query와 문맥</option></select></label>
+    <label class="form-label">방향 관계 유형<select id="vrs-type" class="form-select"><option value="all">전체 유형</option></select></label>
+    <label class="form-check"><input id="vrs-tumor" class="form-check-input" type="checkbox" checked><span class="form-check-label">원본 GT 종양 주석</span></label>
+  </div>
+  <div id="vrs-panels" class="vrs-panels"></div>
+  <div class="viz-row text-small" aria-label="범례"><span>◇ 추상 query</span><span>○ donor seed · □ recipient seed · △ relay</span><span class="vrs-near">● near ≤5 mm</span><span class="vrs-mid">● mid 5–10 mm</span><span class="vrs-wide">● wide &gt;10 mm</span><span class="vrs-cross">→ 교차 메시지</span><span class="vrs-gt">─ 원본 GT 종양</span></div>
+  <div class="text-small">원본 anchor 기준 mm · 좌우는 표시 이동 · relay 경로선은 실제 간 내부 native voxel · query는 3 mm CNN 평균</div>
+  <div id="vrs-readout" class="text-small"></div>
+  <div class="viz-controls">
+    <label class="form-label">좌우 회전<input id="vrs-yaw" class="form-range" type="range" min="-80" max="80" value="12"></label>
+    <label class="form-label">상하 회전<input id="vrs-pitch" class="form-range" type="range" min="-80" max="80" value="30"></label>
+    <label class="form-label">확대<input id="vrs-zoom" class="form-range" type="range" min="50" max="200" value="100"></label>
+  </div>
+  <label class="form-label">실제 노드<select id="vrs-node" class="form-select"><option value="">노드를 선택하세요</option></select></label>
+  <div id="vrs-detail" class="text-small tabular-nums" aria-live="polite">노드를 선택하세요.</div>
+  <div class="table-responsive"><table class="table table-sm" aria-label="전체 133개 후보의 연결 통계와 짧은 실제 update 비용">
+    <caption class="text-small">P5 + U128 전체 연결 통계 · physical batch32 · 짧은 CUDA update</caption>
+    <thead><tr><th>Seed/영역</th><th>실제 Pair nodes 범위</th><th>방향 edges 범위</th><th>교차 연결 0인 pair</th><th>Weak components 범위</th><th>고립 노드 범위</th><th>Update 중앙값 (s)</th><th>Peak (GiB)</th></tr></thead><tbody id="vrs-metrics"></tbody>
+  </table></div>
+  <div id="vrs-scope" class="text-small"></div><div id="vrs-error" class="text-destructive" role="alert" hidden></div>
+  <style>
+    #v1-relay-sparse-20261002 .vrs-panels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:12px 0}
+    #v1-relay-sparse-20261002 section{min-width:0}
+    #v1-relay-sparse-20261002 canvas{display:block;width:100%;aspect-ratio:1 / 1.1;touch-action:none}
+    #v1-relay-sparse-20261002 .vrs-near{color:var(--viz-series-2)}
+    #v1-relay-sparse-20261002 .vrs-mid{color:var(--viz-series-3)}
+    #v1-relay-sparse-20261002 .vrs-wide{color:var(--viz-series-4)}
+    #v1-relay-sparse-20261002 .vrs-cross{color:var(--viz-series-1)}
+    #v1-relay-sparse-20261002 .vrs-gt{color:var(--viz-series-5)}
+    #v1-relay-sparse-20261002 #vrs-detail,#v1-relay-sparse-20261002 #vrs-provenance,#v1-relay-sparse-20261002 #vrs-scope{overflow-wrap:anywhere}
+    @media(max-width:780px){#v1-relay-sparse-20261002 .vrs-panels{grid-template-columns:1fr}}
+  </style>
+  <script>
+  (async()=>{
+    const root=document.getElementById('v1-relay-sparse-20261002'),$=id=>root.querySelector('#vrs-'+id);
+    const bytes=Uint8Array.from(atob('__DATA__'),c=>c.charCodeAt(0));
+    const data=JSON.parse(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+    if(data.format!=='vrs-relay-debug-compact-v2')throw Error('검증된 실제 CT 압축 자료가 필요합니다.');
+    for(const b of data.budgets)for(const key of ['baseline','relational'])for(const c of b.variants[key].candidates){
+      const g=c.joint,count=g.donor_node_count;
+      g.nodes=g.node_indices.map((index,i)=>{const n=data.node_pool[index];if(!n)throw Error('원본 좌표 참조가 없습니다.');return {...n,side:i<count?'donor':'recipient',local_index:i<count?i:i-count};});
+      g.edges=g.edges.map(([source,target,index])=>{const name=data.relation_names[index];if(!name)throw Error('실제 방향 관계 유형이 없습니다.');return [source,target,name];});
+      if(g.edge_path_refs.length!==g.edges.length)throw Error('실제 경로 참조가 빠졌습니다.');
+      g.edge_path_mm=g.edge_path_refs.map(ref=>{if(ref===null)return null;const [index,reversed]=ref,stored=data.path_pool[index];if(!stored)throw Error('실제 경로가 없습니다.');const ids=reversed?stored.slice().reverse():stored;return ids.map(id=>{const point=data.path_point_pool[id];if(!point)throw Error('경로의 원본 좌표가 없습니다.');return point;});});
+    }
+    if(data.budgets?.length!==3)throw Error('세 가지 원본 seed 밀도 자료가 필요합니다.');
+    const budgets=data.budgets,first=budgets[0].variants.relational.candidates;
+    const point=p=>Array.isArray(p)&&p.length===3&&p.every(Number.isFinite);
+    const state={model:'relational',candidate:Math.max(0,first.findIndex(c=>c.kind==='U')),relation:'all',type:'all',tumor:true,yaw:12,pitch:30,zoom:1,selected:null};
+    for(const b of budgets)for(const key of ['baseline','relational']){
+      const cs=b.variants[key].candidates;if(cs.length!==first.length)throw Error('비교 후보 수가 다릅니다.');
+      cs.forEach((c,i)=>{if(c.id!==first[i].id||c.kind!==first[i].kind)throw Error('원본 후보 결속이 다릅니다.');
+        if(!c.joint?.nodes.length||c.joint.nodes.some(n=>!point(n.relative_xyz_mm)||!point(n.xyz)||!point(n.native_voxel)))throw Error('실제 노드 좌표가 없습니다.');
+        for(const e of c.joint.edges)if(e[0]<0||e[1]<0||e[0]>=c.joint.nodes.length||e[1]>=c.joint.nodes.length)throw Error('잘못된 edge index');});
+    }
+    first.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.kind+' · '+c.id;$('candidate').append(o);});
+    const panels=budgets.map((b,i)=>{const section=document.createElement('section'),h=document.createElement('h3'),detail=document.createElement('div'),canvas=document.createElement('canvas');detail.className='text-small tabular-nums';h.id='vrs-title-'+i;canvas.setAttribute('role','img');canvas.setAttribute('aria-labelledby',h.id);canvas.className='cursor-interaction';section.append(h,detail,canvas);$('panels').append(section);return {h,detail,canvas,hits:[]};});
+    const probe=document.createElement('span');probe.hidden=true;root.append(probe);let colors={},pending=false;
+    function palette(){for(const t of ['--foreground','--muted-foreground','--border','--viz-series-1','--viz-series-2','--viz-series-3','--viz-series-4','--viz-series-5']){probe.style.color='var('+t+')';colors[t]=getComputedStyle(probe).color;}}
+    function current(){return budgets.map(b=>b.variants[state.model].candidates[state.candidate].joint);}
+    function scenes(i){const v=budgets[i].variants[state.model],c=v.candidates[state.candidate];return [c.donor,c.scene];}
+    function rotate(p){const a=state.yaw*Math.PI/180,b=state.pitch*Math.PI/180;const x=p[0]*Math.cos(a)-p[1]*Math.sin(a),y=p[0]*Math.sin(a)+p[1]*Math.cos(a);return [x,y*Math.sin(b)-p[2]*Math.cos(b),y*Math.cos(b)+p[2]*Math.sin(b)];}
+    function camera(){const ss=scenes(0),half=ss.map(s=>s.box[1].map((v,k)=>Math.max(Math.abs(v-s.center[k]),Math.abs(s.box[0][k]-s.center[k]))));
+      const shift=(half[0][0]+half[1][0]+8)/2,points=[];
+      for(let side=0;side<2;side++)for(let bits=0;bits<8;bits++){const p=half[side].map((v,k)=>v*((bits>>k)&1?1:-1));p[0]+=side?shift:-shift;points.push(rotate(p));}
+      const extent=[0,1].map(k=>2*Math.max(...points.map(p=>Math.abs(p[k]))));return {shift,extent};}
+    function plot(i,joint,cam){const panel=panels[i],canvas=panel.canvas,w=canvas.clientWidth,h=canvas.clientHeight,dpr=devicePixelRatio||1;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+      const scale=Math.min((w-28)/Math.max(cam.extent[0],1),(h-74)/Math.max(cam.extent[1],1))*state.zoom;
+      const projection=(xyz,side)=>{const p=xyz.slice();p[0]+=side?cam.shift:-cam.shift;const q=rotate(p);return [w/2+scale*q[0],h/2+scale*q[1],q[2]];};
+      const ss=scenes(i);ctx.lineWidth=.65;
+      function line(ps,color,alpha){ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.beginPath();ps.forEach((p,j)=>j?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.globalAlpha=1;}
+      function arrow(a,b,color,alpha,selected){line([a,b],color,alpha);const dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);if(length<8)return;const ux=dx/length,uy=dy/length,size=selected?4.5:2.7,x=b[0]-ux*4,y=b[1]-uy*4;ctx.fillStyle=color;ctx.globalAlpha=alpha;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-ux*size-uy*size*.65,y-uy*size+ux*size*.65);ctx.lineTo(x-ux*size+uy*size*.65,y-uy*size-ux*size*.65);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
+      function clip(a,b,low,high){let lo=0,hi=1;for(let k=0;k<3;k++){const d=b[k]-a[k];if(Math.abs(d)<1e-12){if(a[k]<low[k]||a[k]>high[k])return null;}else{const t0=(low[k]-a[k])/d,t1=(high[k]-a[k])/d;lo=Math.max(lo,Math.min(t0,t1));hi=Math.min(hi,Math.max(t0,t1));if(lo>hi)return null;}}return [lo,hi].map(t=>a.map((v,k)=>v+t*(b[k]-v)));}
+      ss.forEach((s,side)=>{const a=data.anatomy[s.case];for(const contour of a?.organ_surface||[])for(let q=1;q<contour.length;q++){const segment=clip(contour[q-1],contour[q],s.box[0],s.box[1]);if(segment)line(segment.map(p=>projection(p.map((v,k)=>v-s.center[k]),side)),colors['--muted-foreground'],.2);}
+        const box=[];for(let q=0;q<8;q++)box.push(projection(s.center.map((v,k)=>s.box[(q>>k)&1][k]-v),side));for(let u=0;u<8;u++)for(let v=u+1;v<8;v++)if([1,2,4].includes(u^v))line([box[u],box[v]],colors['--muted-foreground'],.2);
+        ctx.font=getComputedStyle($('detail')).font;ctx.fillStyle=colors['--foreground'];ctx.textAlign='center';ctx.fillText(side?'Recipient':'Donor',side?w*.74:w*.26,19);
+      });
+      const hits=joint.nodes.map((n,index)=>({n,index,p:projection(n.relative_xyz_mm,n.side==='recipient'?1:0)}));
+      let shown=0,cross=0,pathEdges=0;for(const [edgeIndex,e] of joint.edges.entries()){const a=hits[e[0]],b=hits[e[1]],isCross=a.n.side!==b.n.side,isQuery=a.n.role==='query'||b.n.role==='query';if(isCross)cross++;
+        if(state.relation==='cross'&&!isCross||state.relation==='query'&&!isQuery||state.relation==='context'&&(isCross||isQuery)||state.type!=='all'&&state.type!==e[2])continue;
+        const active=state.selected?.budget===i&&(state.selected.index===e[0]||state.selected.index===e[1]),color=colors[isCross?'--viz-series-1':'--foreground'],alpha=active?.9:isCross?.38:.12,path=joint.edge_path_mm[edgeIndex];if(path){const side=a.n.side==='recipient'?1:0,center=ss[side].center,pp=path.map(x=>projection(x.map((v,k)=>v-center[k]),side));line(pp,color,alpha);arrow(pp[pp.length-2],pp[pp.length-1],color,alpha,active);pathEdges++;}else arrow(a.p,b.p,color,alpha,active);shown++;}
+      hits.sort((a,b)=>a.p[2]-b.p[2]);for(const {n,index,p} of hits){const selected=state.selected?.budget===i&&state.selected.index===index,r=n.role==='query'?5:2.7;ctx.fillStyle=colors[{'query':'--viz-series-1','near':'--viz-series-2','mid':'--viz-series-3','wide':'--viz-series-4'}[n.role]];ctx.strokeStyle=colors['--foreground'];ctx.globalAlpha=.92;ctx.beginPath();if(n.role==='query'){ctx.moveTo(p[0],p[1]-r);ctx.lineTo(p[0]+r,p[1]);ctx.lineTo(p[0],p[1]+r);ctx.lineTo(p[0]-r,p[1]);ctx.closePath();}else if(n.retention==='relay'){ctx.moveTo(p[0],p[1]-r);ctx.lineTo(p[0]+r,p[1]+r);ctx.lineTo(p[0]-r,p[1]+r);ctx.closePath();}else if(n.side==='recipient')ctx.rect(p[0]-r,p[1]-r,2*r,2*r);else ctx.arc(p[0],p[1],r,0,2*Math.PI);ctx.fill();if(selected){ctx.lineWidth=1.5;ctx.stroke();}ctx.globalAlpha=1;}
+      let gtSegments=0;if(state.tumor){ctx.lineWidth=1.2;ss.forEach((s,side)=>{for(const contour of data.anatomy[s.case]?.tumor_surface||[])for(let q=1;q<contour.length;q++){const segment=clip(contour[q-1],contour[q],s.box[0],s.box[1]);if(segment){line(segment.map(p=>projection(p.map((v,k)=>v-s.center[k]),side)),colors['--viz-series-5'],.9);gtSegments++;}}});ctx.lineWidth=.65;}canvas.dataset.gtSegments=gtSegments;
+      const mm=Math.max(1,Math.pow(10,Math.floor(Math.log10(cam.extent[0]/5)))),bar=mm*scale;line([[14,h-15],[14+bar,h-15]],colors['--foreground'],1);ctx.font=getComputedStyle($('detail')).font;ctx.fillStyle=colors['--foreground'];ctx.textAlign='left';ctx.fillText(mm+' mm',14,h-23);
+      panel.h.textContent=budgets[i].context_nodes+' seed/영역 · 최종 cap 아님';panel.detail.textContent=joint.nodes.length+' nodes · relay '+joint.nodes.filter(n=>n.retention==='relay').length+' · '+joint.edges.length+' 방향 edges · 교차 '+cross+' · components '+joint.stats.components+' · 고립 '+joint.stats.isolated_nodes;panel.hits=hits;canvas.dataset.nodeCount=joint.nodes.length;canvas.dataset.crossCount=cross;canvas.dataset.scaleMm=scale;canvas.dataset.shownEdges=shown;canvas.dataset.components=joint.stats.components;canvas.dataset.isolatedNodes=joint.stats.isolated_nodes;canvas.dataset.pathEdges=pathEdges;canvas.dataset.relayNodes=joint.nodes.filter(n=>n.retention==='relay').length;
+    }
+    function metricRows(){const fmt=(v,d=3)=>typeof v==='number'&&Number.isFinite(v)?v.toFixed(d):'미제공';$('metrics').replaceChildren();for(const b of budgets){const m=b.metrics[state.model],r=document.createElement('tr');for(const v of [b.context_nodes,m.pair_nodes_min+'–'+m.pair_nodes_max,m.edges_min+'–'+m.edges_max,m.zero_cross_pairs,m.components_min+'–'+m.components_max,m.isolated_min===null?'미기록':m.isolated_min+'–'+m.isolated_max,fmt(m.update_seconds),fmt(m.peak_GiB)]){const c=document.createElement('td');c.className='tabular-nums';c.textContent=v;r.append(c);}$('metrics').append(r);}}
+    function detail(){if(!state.selected){$('detail').textContent='노드를 선택하세요.';$('node').value='';return;}const g=current()[state.selected.budget],n=g.nodes[state.selected.index],incoming=g.edges.filter(e=>e[1]===state.selected.index),outgoing=g.edges.filter(e=>e[0]===state.selected.index),types=[...new Set([...incoming,...outgoing].map(e=>e[2]))];$('node').value=state.selected.budget+':'+state.selected.index;$('detail').textContent=budgets[state.selected.budget].context_nodes+' · '+n.side+' #'+n.local_index+' · '+n.role+' / '+n.retention+(n.abstract?' (3 mm CNN 평균 · CT voxel 표본 아님)':'')+' · 원본 voxel ['+n.native_voxel.map(v=>v.toFixed(2)).join(', ')+'] · 원본 mm ['+n.xyz.map(v=>v.toFixed(2)).join(', ')+'] · 상대 mm ['+n.relative_xyz_mm.map(v=>v.toFixed(2)).join(', ')+'] · 수신 '+incoming.length+' / 발신 '+outgoing.length+' · '+(types.join(', ')||'고립 노드');}
+    function relationTypes(){const option=document.createElement('option');option.value='all';option.textContent='전체 유형';$('type').replaceChildren(option);const names=[...new Set(current().flatMap(g=>g.edges.map(e=>e[2])))].sort();for(const name of names){const o=document.createElement('option');o.value=name;o.textContent=name;$('type').append(o);}if(state.type!=='all'&&!names.includes(state.type))state.type='all';$('type').value=state.type;}
+    function nodes(){const empty=document.createElement('option');empty.value='';empty.textContent='노드를 선택하세요';$('node').replaceChildren(empty);current().forEach((g,i)=>{const group=document.createElement('optgroup');group.label=budgets[i].context_nodes+' seed/영역';g.nodes.forEach((n,j)=>{const o=document.createElement('option');o.value=i+':'+j;o.textContent=n.side+' #'+n.local_index+' '+n.role+' '+n.retention;group.append(o);});$('node').append(group);});detail();}
+    function draw(){palette();$('model').value=state.model;$('candidate').value=state.candidate;$('relation').value=state.relation;$('type').value=state.type;$('tumor').checked=state.tumor;$('yaw').value=state.yaw;$('pitch').value=state.pitch;$('zoom').value=Math.round(state.zoom*100);$('readout').textContent='CNN → 공간·특징 seed → '+(state.model==='relational'?'실제 경로 relay 보존 → ':'')+'같은 8종 관계 SAGE 3층 → 역할별 attention pooling → paired fusion 128';const cam=camera();current().forEach((g,i)=>plot(i,g,cam));detail();root.dataset.ready='true';root.dataset.model=state.model;root.dataset.candidate=first[state.candidate].id;}
+    function redraw(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;draw();});}
+    function save(){window.openai?.setWidgetState?.({modelContent:{visual:'v1-relay-sparse-20261002',case:data.case,model:state.model,candidate:first[state.candidate].id,context_nodes:budgets.map(b=>b.context_nodes),relation:state.relation,type:state.type,selected:state.selected,scope:data.scope},privateContent:{...state}}).catch(()=>{});}
+    function restore(s){if(s?.modelContent?.visual!=='v1-relay-sparse-20261002')return;const p=s.privateContent||{};if(['baseline','relational'].includes(p.model))state.model=p.model;if(Number.isInteger(p.candidate)&&p.candidate>=0&&p.candidate<first.length)state.candidate=p.candidate;if(['all','cross','context','query'].includes(p.relation))state.relation=p.relation;if(p.type==='all'||data.relation_names.includes(p.type))state.type=p.type;if(typeof p.tumor==='boolean')state.tumor=p.tumor;for(const key of ['yaw','pitch'])if(Number.isFinite(p[key]))state[key]=Math.max(-80,Math.min(80,p[key]));if(Number.isFinite(p.zoom))state.zoom=Math.max(.5,Math.min(2,p.zoom));const selected=p.selected;state.selected=selected&&Number.isInteger(selected.budget)&&selected.budget>=0&&selected.budget<budgets.length&&Number.isInteger(selected.index)&&selected.index>=0&&selected.index<current()[selected.budget].nodes.length?{budget:selected.budget,index:selected.index}:null;}
+    for(const key of ['model','candidate','relation','type'])$(key).addEventListener('change',()=>{state[key]=key==='candidate'?Number($(key).value):$(key).value;state.selected=null;nodes();relationTypes();metricRows();redraw();save();});
+    $('tumor').addEventListener('change',()=>{state.tumor=$('tumor').checked;redraw();save();});for(const key of ['yaw','pitch','zoom']){$(key).addEventListener('input',()=>{state[key]=Number($(key).value)/(key==='zoom'?100:1);redraw();});$(key).addEventListener('change',save);}
+    $('node').addEventListener('change',()=>{const v=$('node').value;if(v){const [budget,index]=v.split(':').map(Number);state.selected={budget,index};}else state.selected=null;redraw();save();});
+    panels.forEach((panel,budget)=>{let drag=null;panel.canvas.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY,yaw:state.yaw,pitch:state.pitch,moved:false};panel.canvas.setPointerCapture(e.pointerId);});panel.canvas.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved||=Math.hypot(dx,dy)>4;if(drag.moved){state.yaw=Math.max(-80,Math.min(80,drag.yaw+dx*.4));state.pitch=Math.max(-80,Math.min(80,drag.pitch+dy*.4));redraw();}});panel.canvas.addEventListener('pointerup',e=>{if(!drag)return;if(!drag.moved){const r=panel.canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,hit=panel.hits.map(n=>({...n,d:Math.hypot(n.p[0]-x,n.p[1]-y)})).filter(n=>n.d<18).sort((a,b)=>a.d-b.d)[0];state.selected=hit?{budget,index:hit.index}:null;redraw();}drag=null;save();});panel.canvas.addEventListener('pointercancel',()=>{drag=null;});});
+    $('provenance').textContent=data.case+' · P'+data.evidence.original_P+' + U'+data.evidence.original_U+' · '+data.weight_source+' · DEBUG · graph는 update 전 seed42';$('scope').textContent='전체 133개 pair · 표시 P5/U3 · 원본 seed 전부 유지 · 간 내부 parent 경로 · 혈관 경로 아님 · DEBUG, 성능 검증 아님';restore(window.openai?.widgetState);nodes();relationTypes();metricRows();new ResizeObserver(redraw).observe(root);new MutationObserver(redraw).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});window.addEventListener('openai:set_globals',e=>{restore(e.detail?.globals?.widgetState);nodes();relationTypes();metricRows();redraw();});draw();
+  })().catch(e=>{const root=document.getElementById('v1-relay-sparse-20261002');root.dataset.ready='error';const p=root.querySelector('#vrs-error');p.hidden=false;p.textContent=e.message;throw e;});
+  </script>
+</div>

@@ -1,0 +1,252 @@
+{
+  "date": "2026-10-02",
+  "debug": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "checkpoint_written": false,
+  "production_source_files_unchanged": 121,
+  "production_source_manifest_sha256": "85a54a59e19d880c15ead16c01eb2c98405c7a93bac5a90360586bfc13143538",
+  "prior_dirty_files_unchanged": {
+    "REFERENCES.md": "41070efe9735a43f74634e2b760b008bc2f0a9de96ec804e6f07ae8a502fde92",
+    "code.txt": "7d471ef0344c11bc55786cf585747d08a9945beb691bc0de461d54502212c64d",
+    "gpt_handoff.md": "fcbc74398f89ca071215b6ab38c24720dd85e030df628dfd7339fced7fd1e990"
+  },
+  "numerical_implementation_sha256": {
+    "l0_sparse_feature/model.py": "f5ceb4c9e9c3c0e1193ba8ec41e63b5f88eae0d9a12061ca4bd9974cd5ed3c0d",
+    "l0_sparse_feature/relational.py": "d96456353017b3f83698d9d806e9f978702191a68c00d462a16b86237856fb20",
+    "l0_sparse_feature/relayed.py": "e5f4980346bb58e8500075509149d3038a63988eb3eea821a3d479439e6399bc",
+    "l0_sparse_feature/relay_sampling.py": "927447dc640b11365acb037d67f34838c3367f146d3d8a7450370548fef4aa77",
+    "l0_sparse_feature/coverage.py": "a5c9e18a86305687927c85344a560f604f90d6b4a0a262fb55e2411ec22f71c8",
+    "tools/verify_relay_sparse_ct_debug.py": "81400741fbccf8c7b8137a82ab373d6d3108e014bcb8dcfc5b349e21f5d7f749",
+    "tools/verify_relational_sparse_ct_debug.py": "49d359095b798a940345f25a005e6893948f16cfa9bc9eee417733708a78cd34",
+    "tools/verify_sparse_feature_ct_debug.py": "5e8f02a1bc42acba0399d75a10e3c69a2726f85b2e389d64e211e278c9d9b80c",
+    "tools/compare_sparse_feature_budgets_debug.py": "4aad38b8f25ca51bba3f28e516e9305e63541d77eb1e02ce1405b819ad85adb5",
+    "tools/local_cnn_interaction_runtime.py": "7f2608d72013f371f8e8e26dad2fe2edb2069c47ad1c8c99c912033c705c7d73",
+    "tools/local_cnn_l0_probe.py": "4edf62a2dca7d3ccbe34e47d20b2ef022ef1ae314c8077fe430c6b505453687b"
+  },
+  "numerical_implementation_matches_final_r2": true,
+  "task_source_sha256": {
+    "l0_sparse_feature/relational.py": "d96456353017b3f83698d9d806e9f978702191a68c00d462a16b86237856fb20",
+    "l0_sparse_feature/coverage.py": "a5c9e18a86305687927c85344a560f604f90d6b4a0a262fb55e2411ec22f71c8",
+    "l0_sparse_feature/relay_sampling.py": "927447dc640b11365acb037d67f34838c3367f146d3d8a7450370548fef4aa77",
+    "l0_sparse_feature/relayed.py": "e5f4980346bb58e8500075509149d3038a63988eb3eea821a3d479439e6399bc",
+    "tests/test_relay_sparse_graph.py": "157d14cb587aca0d78754b01286c4939aeb04fd6272fafc22fc5c527d558772d",
+    "tests/test_relay_connectivity_json_audit.py": "49057b986c293b9119ab20f20c571bd3e55047a237d9932fb141d87c7dba1587",
+    "tools/verify_relay_sparse_ct_debug.py": "81400741fbccf8c7b8137a82ab373d6d3108e014bcb8dcfc5b349e21f5d7f749",
+    "tools/summarize_relay_sparse_debug.py": "7a9291edd36af553140d495fb2d2fec8eb434fbb034098b6df14786ae1a20302",
+    "tools/audit_relay_connectivity_debug.py": "8457c41447b013fb939644f31140edeb69869395533e2cee5dc172d98b37a71b",
+    "tools/render_relay_sparse_debug.py": "11af6da3eaa76db44cde8a6ce02dc9a02e962415e291df5089a1a5460ff6ecc4",
+    "tools/relay-sparse.template.html": "5383d68dd22c0719f98ecd28e24467a76293ebd991f49e6b8126258a8ffaae05",
+    "tools/check_relay_sparse_visual.cjs": "65bc509bd7e1568a6e5f35e39dfb6d1c94584207a9072fe2be399d6feb30798f",
+    "docs/relay_sparse_L0_DEBUG_20261002.md": "2e7ef67164081e36d83e5604baf9e04940bdfa941e1591fc52bb9827323494ab",
+    "PATCH_NOTES.md": "2ade935f597dfeedb904dcc4127a0c2ec62901f50124583a590ff0c7a19f8864"
+  },
+  "original_checkpoint_sha256": "9b36e85a57819042026b152e7bcc7236ed9ad0b372fa32b5d5c321d74b50c1f6",
+  "original_assignment_sha256": "b7347a7d383f7010a6c114874121f8a2bb60d3910dd807ed4d6e4de0f433a19f",
+  "observed_tests": {
+    "total": 46,
+    "numerical_CUDA": 40,
+    "CPU_profile_metadata": 1,
+    "CPU_JSON_audit": 5,
+    "groups": [
+      {
+        "path": "tests/test_relay_sparse_graph.py",
+        "tests": 14,
+        "names": [
+          "CUDARelaySampling.test_all_original_seeds_and_necessary_relays_survive_without_final_cap",
+          "CUDARelaySampling.test_anisotropic_z5_mandatory_step_survives_nearest_three_exclusion",
+          "CUDARelaySampling.test_concave_organ_hole_cannot_be_replaced_by_straight_line_shortcut",
+          "CUDARelaySampling.test_truly_unreachable_component_keeps_seed_and_reports_incomplete",
+          "CUDARelaySampling.test_native_axis_step_greater_than_radius_is_unreachable_not_fabricated",
+          "CUDARelaySampling.test_relay_roles_follow_actual_radial_native_positions",
+          "CUDARelaySampling.test_nan_padding_and_false_seed_slots_are_ignored_without_scene_leakage",
+          "CUDARelaySampling.test_invalid_native_coordinates_support_seeds_and_query_coverage_fail",
+          "CUDARelaySampling.test_integrated_mandatory_z_edges_survive_in_each_context_relation",
+          "CUDARelaySampling.test_duplicate_union_uses_unique_degree_and_separate_relation_means",
+          "CUDARelaySampling.test_forged_native_witness_role_pair_padding_and_radius_are_rejected",
+          "CUDARelaySampling.test_forged_concave_hole_shortcut_cannot_enter_integrated_edges",
+          "CUDARelaySampling.test_dynamic_role_coverage_uses_each_scene_slots_and_known_distances",
+          "CUDARelaySampling.test_model_deduplicates_exact_scene_work_and_matches_expanded_oracle"
+        ],
+        "status": "PASS",
+        "numerical_CUDA_tests": 14,
+        "CPU_metadata_JSON_tests": 0,
+        "observed_duration_seconds": 2.471,
+        "execution": "Observed unittest execution in this task; this receipt reads AST, never reruns models"
+      },
+      {
+        "path": "tests/test_relational_sparse_graph.py",
+        "tests": 10,
+        "names": [
+          "CPUProfileMetadata.test_profile_retains_reviewed_debug_width_depth_and_quota",
+          "CUDARelationalGraph.test_radius_nearest_direction_counts_and_isolation_have_no_fallback",
+          "CUDARelationalGraph.test_radius_boundary_keeps_only_in_radius_sources",
+          "CUDARelationalGraph.test_each_relation_mean_is_separate_and_root_residual_occurs_once",
+          "CUDARelationalGraph.test_native_anchors_roles_full_pool_and_single_cnn_forward",
+          "CUDARelationalGraph.test_donor_changes_recipient_hidden_before_fusion_and_pairs_do_not_leak",
+          "CUDARelationalGraph.test_all_trainable_modules_and_role_pool_rows_reach_optimizer",
+          "CUDARelationalGraph.test_outside_organ_and_native_padding_nan_cannot_change_graph",
+          "CUDARelationalGraph.test_real_anchor_in_background_is_preserved_without_query_fallback",
+          "CUDARelationalGraph.test_missing_band_query_native_audit_and_budget_fail_explicitly"
+        ],
+        "status": "PASS",
+        "numerical_CUDA_tests": 9,
+        "CPU_metadata_JSON_tests": 1,
+        "observed_duration_seconds": 3.191,
+        "execution": "Observed unittest execution in this task; this receipt reads AST, never reruns models"
+      },
+      {
+        "path": "tests/test_sparse_feature_graph.py",
+        "tests": 11,
+        "names": [
+          "Checks.test_native_geometry_full_pool_roles_unique_crops_and_disjoint_graph",
+          "Checks.test_gradient_every_trainable_module_and_reference_is_unchanged",
+          "Checks.test_approved_sizes_preserve_architecture_gradients_and_nested_selection",
+          "Checks.test_optional_coverage_pool_reuses_one_cnn_and_requires_graph",
+          "Checks.test_outside_organ_and_padding_perturbation_cannot_change_feature_graph",
+          "Checks.test_deterministic_initialization_selection_and_no_gt_input",
+          "Checks.test_small_band_padding_does_not_create_nodes_or_edges",
+          "Checks.test_empty_band_query_coverage_native_audit_and_budget_fail_explicitly",
+          "Checks.test_balanced_metric_features_change_selected_nodes_at_fixed_positions",
+          "Checks.test_masked_corner_support_has_explicit_unavailable_scale",
+          "Checks.test_mst_is_explicit_and_root_path_occurs_once"
+        ],
+        "status": "PASS",
+        "numerical_CUDA_tests": 11,
+        "CPU_metadata_JSON_tests": 0,
+        "observed_duration_seconds": null,
+        "execution": "Observed unittest execution in this task; this receipt reads AST, never reruns models"
+      },
+      {
+        "path": "tests/test_sparse_feature_coverage.py",
+        "tests": 6,
+        "names": [
+          "Checks.test_joint_uses_same_node_not_independent_minima",
+          "Checks.test_full_retention_has_zero_coverage_error",
+          "Checks.test_nested_selected_sets_cannot_increase_any_point_or_summary",
+          "Checks.test_padding_and_ineligible_values_cannot_change_metrics",
+          "Checks.test_workspace_chunking_preserves_complete_results",
+          "Checks.test_eligible_zero_and_nonfinite_norms_fail_explicitly"
+        ],
+        "status": "PASS",
+        "numerical_CUDA_tests": 6,
+        "CPU_metadata_JSON_tests": 0,
+        "observed_duration_seconds": null,
+        "execution": "Observed unittest execution in this task; this receipt reads AST, never reruns models"
+      },
+      {
+        "path": "tests/test_relay_connectivity_json_audit.py",
+        "tests": 5,
+        "names": [
+          "JSONOnlyAuditUnit.test_saved_edge_bfs_and_original_shape_match_known_graph",
+          "JSONOnlyAuditUnit.test_wrong_saved_cuda_components_are_rejected",
+          "JSONOnlyAuditUnit.test_native_parent_polyline_checks_direction_axis_and_cumulative_length",
+          "JSONOnlyAuditUnit.test_original_seed_role_or_retention_cannot_be_changed",
+          "JSONOnlyAuditUnit.test_crop_shape_shift_or_nonfinite_point_is_rejected"
+        ],
+        "status": "PASS",
+        "numerical_CUDA_tests": 0,
+        "CPU_metadata_JSON_tests": 5,
+        "observed_duration_seconds": 0.003,
+        "execution": "Observed unittest execution in this task; this receipt reads AST, never reruns models"
+      }
+    ],
+    "existing_sparse_graph_and_coverage_combined_observed_seconds": 5.556,
+    "commands": [
+      ".venv/Scripts/python.exe -m unittest discover -s tests -p test_relay_sparse_graph.py -v",
+      ".venv/Scripts/python.exe -m unittest discover -s tests -p test_relational_sparse_graph.py -v",
+      "unittest combined loader: test_sparse_feature_graph.py and test_sparse_feature_coverage.py",
+      ".venv/Scripts/python.exe -m unittest discover -s tests -p test_relay_connectivity_json_audit.py -v"
+    ]
+  },
+  "actual_CT_scope": {
+    "case": "liver_66",
+    "P": 5,
+    "U": 128,
+    "records": 133,
+    "seed_quotas": [
+      48,
+      96,
+      192
+    ],
+    "variants": 2,
+    "full_case_forward_variants": 798,
+    "physical_batch": 32,
+    "effective_batch": 32,
+    "warmup_per_branch": 1,
+    "continuous_measured_updates_per_branch": 3,
+    "measured_updates_total": 18,
+    "full_epoch": false,
+    "server_trained_weights": false,
+    "new_all133_connected_and_no_isolates": true,
+    "zero_native6_unreachable_seed_occurrences": true
+  },
+  "evidence_sha256": {
+    "raw_report": "1a6fe93725f9a8a0f45827e28e2d32fa004da8d5e71f75997ffd61b4cc066ce5",
+    "raw_visual_payload": "6cf46ffa67c6f2d65893251f14f76cd13ba07b148d20cb26e259cc060d2bf4be",
+    "public_numeric_summary": "6cb1d4e81683679216b0217a0fb9f6ccc10f195c20dedffeab201991ebb89899",
+    "independent_JSON_audit": "08678958600342b205396ade7a3d56ff3e2341da53a262caec1e3c56f88a9669",
+    "browser_checks": "a58e186b829c4791d54deca00acede7d5884776d896c0add2d4e5e50daba9d3e"
+  },
+  "independent_audit": {
+    "displayed_graphs": 48,
+    "all133_independent_BFS": false,
+    "mask_pixels_rechecked": false,
+    "source_hash_matches": true,
+    "CPU_model_run": false,
+    "scope": "JSON-only CPU graph BFS and f64 parent-polyline audit; no CPU model or CT pixels"
+  },
+  "visual": {
+    "fragment_sha256": "5c7ee0cfca9b8a218f38011cce96c850dec965fad870a640d92499ddf1c95597",
+    "bytes": 723036,
+    "checks": [
+      "three simultaneous actual pair graphs",
+      "seed count is not a hidden final node cap",
+      "all displayed repaired pairs connected",
+      "no displayed isolated nodes",
+      "actual native-parent polylines drawn",
+      "relay nodes distinct from original seeds",
+      "cross relations present",
+      "common original mm scale",
+      "original P5 and displayed U3 selectable",
+      "DEBUG weight provenance visible",
+      "original observed candidate changes graphs",
+      "selected node exact native and relative mm shown",
+      "selection survives saved-state echo",
+      "original GT contours visible",
+      "GT toggle changes only annotation",
+      "cross filter draws exact actual cross edges",
+      "cross filter does not depict native parent paths",
+      "previous actual seed-only node counts preserved",
+      "previous disconnected components visible",
+      "previous isolation visible",
+      "previous typed cross relations remain actual",
+      "baseline has no invented relay paths",
+      "3D camera rotates all graphs",
+      "zoom uses the same physical scale in all three panels",
+      "actual typed context filter draws the exact exported relation and keeps native paths",
+      "mobile no horizontal overflow",
+      "no browser runtime errors"
+    ],
+    "errors": [],
+    "root_inspected_screenshots": [
+      "relayed.png",
+      "baseline.png",
+      "mobile.png"
+    ],
+    "exact_native_parent_polylines": true,
+    "lossless_path_coordinates": true,
+    "original_GT_annotation_toggle": true,
+    "local_CT_geometry_not_uploaded_to_Git": true
+  },
+  "limitations": [
+    "Weak connectivity is not all-node three-layer query influence.",
+    "Role attention readout consumes all valid nodes; no extra message-passing layers were added.",
+    "Fresh same-tile update timings exclude loader/transfer and production checkpoint saving.",
+    "Memory refresh covers original eight-record DEBUG memory, not production support11279.",
+    "No accuracy improvement, optimal seed quota, worst-case resource admission or full epoch speedup was established."
+  ]
+}

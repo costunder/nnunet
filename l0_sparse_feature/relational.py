@@ -334,6 +334,17 @@ class V1RelationalSparseL0(nn.Module):
         if self.resource_budget:
             self.resource_budget.check()
 
+    def _select_nodes(self, pool_xyz, pool_mm, pool, eligible, band, distance, spacing, *, scene_keys):
+        selection, mask, statistics = _select_context(
+            pool_mm, pool, eligible, band, distance, self.profile)
+        roles = torch.arange(1, 4, device=band.device).repeat_interleave(
+            self.profile.context_nodes_per_band)[None].expand(len(band), -1)
+        return selection, mask, roles, statistics, None
+
+    def _pair_edges(self, pair_xyz, pair_mask, sampling, *, diagnostics):
+        return _build_pair_edges(pair_xyz, pair_mask, self.profile,
+                                 diagnostics=diagnostics)
+
     def forward(self, batch, *, recipient_centers_native, donor_centers_native,
                 return_graph=False, return_pool=False):
         if return_pool and not return_graph:
@@ -379,8 +390,9 @@ class V1RelationalSparseL0(nn.Module):
         if not bool((query_counts > 0).all()):
             raise SparseFeatureCoverageError('Original anchor sphere lacks all-scale organ support; anchor/radius unchanged')
         self._budget()
-        selection, context_mask, metric_statistics = _select_context(
-            pool_mm, pool, eligible, band, distance, self.profile)
+        selection, context_mask, context_role, metric_statistics, sampling = self._select_nodes(
+            pool_xyz, pool_mm, pool, eligible, band, distance, spacing,
+            scene_keys=torch.cat((ids[:,None], anchors_local.long()), -1))
         selected_xyz = pool_xyz.gather(1, selection[..., None].expand(-1, -1, 3))
         selected_features, selected_support = _masked_corner_features(maps,
             selected_xyz.reshape(-1, 3), ids[:, None].expand_as(selection).reshape(-1))
@@ -396,18 +408,17 @@ class V1RelationalSparseL0(nn.Module):
         query_features = query_features / query_counts[:, None]
         features = torch.cat((query_features[:, None], selected_features), 1)
         mask = torch.cat((torch.ones((len(ids), 1), device=ids.device, dtype=torch.bool), context_mask), 1)
-        shell = torch.cat((torch.zeros(1, device=ids.device, dtype=torch.long),
-            torch.arange(1, 4, device=ids.device).repeat_interleave(self.profile.context_nodes_per_band)))
-        role = shell[None].expand(len(ids), -1)
+        role = torch.cat((torch.zeros((len(ids), 1), device=ids.device, dtype=torch.long),
+                          context_role), -1)
         xyz_local = torch.cat((anchors_local[:, None], selected_xyz), 1)
         relative_mm = (xyz_local - anchors_local[:, None]) * spacing[:, None]
         features = torch.where(mask[..., None], features, 0)
-        b, s = len(batch), len(shell)
+        b, s = len(batch), role.shape[1]
         pair_mask = mask.reshape(2, b, s).transpose(0, 1).reshape(b, 2 * s)
         pair_xyz = relative_mm.reshape(2, b, s, 3).transpose(0, 1)
-        edges = _build_pair_edges(pair_xyz, pair_mask.reshape(b, 2, s),
-                                 self.profile, diagnostics=return_graph)
-        pair_role = torch.cat((shell, shell + 4))[None].expand(b, -1)
+        edges = self._pair_edges(pair_xyz, pair_mask.reshape(b, 2, s), sampling,
+                                 diagnostics=return_graph)
+        pair_role = torch.cat((role[:b], role[b:] + 4), -1)
         global_role = torch.cat((role[:b], role[b:] + 4))
         self._budget()
         scene_h = self.node_project(torch.cat((features, relative_mm / self.margin_mm), -1))
@@ -480,7 +491,8 @@ class V1RelationalSparseL0(nn.Module):
                 unsupported_scale_counts=(fine_mask[..., None] & ~supported).sum(1),
                 unsupported_any_scale_counts=(fine_mask & ~supported.all(-1)).sum(-1),
                 band_pool_counts=counts,
-                band_selected_counts=counts.clamp_max(self.profile.context_nodes_per_band),
+                band_selected_counts=torch.stack([
+                    (context_mask & (context_role == value)).sum(-1) for value in (1, 2, 3)], -1),
                 band_max_radius_mm=radii, query_pool_counts=query_counts,
                 relation_edge_counts=in_degree.sum(-1),
                 relation_max_incoming=in_degree.max(-1).values,
@@ -499,6 +511,10 @@ class V1RelationalSparseL0(nn.Module):
                 unique_cnn_crops=len(batch.images), physical_pairs=b,
                 hard_selection_differentiable=False, fine_pool_stride=1))
         graph['statistics'].update(metric_statistics)
+        if sampling is not None:
+            graph['sampling'] = sampling
+            graph['statistics'].update(sampling['diagnostics'])
+            graph['relation_edge_audit'].update(edges['mandatory_edge_audit'])
         if return_pool:
             # Existing on-device tensors only; callers must not retain/serialize
             # full fine pools across all cases. These are not training inputs.
