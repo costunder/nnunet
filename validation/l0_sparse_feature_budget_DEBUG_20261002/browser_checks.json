@@ -1,0 +1,20 @@
+{
+  "ready": true,
+  "errors": [],
+  "checks": [
+    "three simultaneous actual budget graphs",
+    "actual node counts49/97/193",
+    "same native-mm camera scale",
+    "all original P plus displayed U options",
+    "DEBUG weight provenance visible",
+    "measured coverage and cost rows",
+    "P/U changes all three actual graphs",
+    "node exact native-mm detail",
+    "rotation changes all three graphs",
+    "Donor selection synchronized",
+    "full liver location view synchronized",
+    "original tumor overlay toggle",
+    "mobile no horizontal overflow",
+    "no browser runtime errors"
+  ]
+}

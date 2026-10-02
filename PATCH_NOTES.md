@@ -1,5 +1,7 @@
 ## v2.2 — CNN 특징 기반 희소 L0 그래프·실제 3D DEBUG 시각화 (2026-10-02)
 
+- 사용자 승인 후48/96/192 context node를 같은 실제 CT·초기 가중치·physical32로 비교. 전체P5＋U128의133관측/266scene, 동일 feature pool·nested 선택·support6 재인코딩을 확인. Recipient 유효 위치1,938,845개 occurrence의 pooled 공간p95는15.008/11.692/9.980mm, CNN cosine deficit p95는.3152/.2402/.1800. 48의 충분성·192최적·CP 정확도 향상으로 해석하지 않음.
+- 모든7개 모듈의 실제 gradient/update, GPU unit17·화면14검사 및 독립 hash 감사 PASS. Fresh clone3회 update 중앙값.481/.660/.994초, loader/전송/저장 제외. 대표점 선택 비용은.189/.358/.675초로 남음. 3D 세 그래프를 같은 native-mm 축척으로 비교. Production/장기학습/epoch 속도 완료 주장 없이 기존 결과 보존. [비교 범위·수식·비용·검증](docs/sparse_feature_budget_comparison_DEBUG_20261002.md).
 - 기존 native organ-only CNN 특징과 후보 상대 위치를 사용하는 별도 L0 후보 구현. Near/mid/wide16개씩+query1개, 3층128D mean GraphSAGE, role별 readout 뒤 기존 fusion/L1/L2/전체 objective에 연결. Production 기본 경로·Basic CP·정답 P/U·후보128·원본 mask·physical32 보존.
 - 초기 시각화에서 공간 거리 척도가 CNN 차이를 압도하는 문제를 확인하고 두 거리의 band별 분산 정규화 수정. 기존 결과 보존, feature 변경에 따른 선택 변화 검사. 암 관련 위치를 학습한 탐색기나 무손실 압축으로 표시하지 않음.
 - RTX5070Ti에서 GPU 단위9개 PASS, 실제 liver_66 P5+U128 전체133/266scene 및 physical32 ranking135쌍 전체 loss/backward/optimizer PASS. 새 L0 기준 DEBUG support 재인코딩. Peak2.134GiB; CNN은 로컬DEBUG saved step4, graph/readout은 새 초기값.

@@ -122,6 +122,72 @@ class Checks(unittest.TestCase):
         for k,v in saved.items(): self.assertTrue(torch.equal(v,reference.state_dict()[k]))
         self.assertGreaterEqual(budget.calls,4)
 
+    def test_approved_sizes_preserve_architecture_gradients_and_nested_selection(self):
+        reference,profile,batch,kwargs=fixture()
+        graphs,states={},{}
+        for quota in (16,32,64):
+            with self.subTest(context_nodes=quota*3):
+                model=SparseFeatureL0(reference,replace(profile,context_nodes_per_band=quota)).eval()
+                states[quota]={name:value.detach().clone() for name,value in model.state_dict().items()}
+                output,graph=model(batch,return_graph=True,**kwargs)
+                n=1+3*quota
+                self.assertEqual(output.shape,(2,128))
+                self.assertEqual(graph['features'].shape,(4,n,68))
+                self.assertEqual(graph['adjacency'].shape,(4,n,n))
+                self.assertEqual(graph['node_mask'].shape,(4,n))
+                self.assertEqual(len(model.blocks),3)
+                self.assertEqual(sum(isinstance(m,torch.nn.Conv3d) for m in model.cnn.modules()),8)
+                self.assertTrue((graph['statistics']['band_pool_counts']>64).all())
+                self.assertTrue((graph['statistics']['band_selected_counts']==quota).all())
+                self.assertTrue(graph['statistics']['band_normalization_required'].all())
+                self.assertTrue(graph['node_mask'].all())
+                self.assertTrue(_connected(graph['adjacency'],graph['node_mask']).all())
+                self.assertFalse(graph['adjacency'].diagonal(dim1=1,dim2=2).any())
+                output.square().mean().backward()
+                missing=[name for name,p in model.named_parameters() if p.grad is None or
+                    not torch.isfinite(p.grad).all() or not p.grad.abs().sum()>0]
+                self.assertEqual(missing,[])
+                # Explicit UNIT optimizer step, never a training checkpoint.
+                optimizer=torch.optim.SGD(model.parameters(),lr=.001)
+                before=model.node_project.weight.detach().clone()
+                optimizer.step()
+                self.assertFalse(torch.equal(before,model.node_project.weight))
+                graphs[quota]=graph['xyz_native'].detach().clone()
+                del output,graph,model,optimizer
+        for quota in (32,64):
+            for name in states[16]: self.assertTrue(torch.equal(states[16][name],states[quota][name]),name)
+        # Same pool/feature values, metric, seed and nontrivial band: larger
+        # FPS quotas retain the smaller quota's ordered selection as a prefix.
+        for small,large in ((16,32),(32,64),(16,64)):
+            for band in range(3):
+                first=graphs[small][:,1+band*small:1+(band+1)*small]
+                prefix=graphs[large][:,1+band*large:1+band*large+small]
+                self.assertTrue(torch.equal(first,prefix),(small,large,band))
+        with self.assertRaisesRegex(ValueError,'16/32/64'):
+            SparseFeatureL0(reference,replace(profile,context_nodes_per_band=48))
+
+    def test_optional_coverage_pool_reuses_one_cnn_and_requires_graph(self):
+        reference,profile,batch,kwargs=fixture()
+        model=SparseFeatureL0(reference,profile).eval()
+        with torch.no_grad(),patch.object(model.cnn,'forward',wraps=model.cnn.forward) as cnn:
+            with self.assertRaisesRegex(ValueError,'return_pool requires return_graph'):
+                model(batch,return_pool=True,**kwargs)
+            self.assertEqual(cnn.call_count,0)
+            _,graph=model(batch,return_graph=True,return_pool=True,**kwargs)
+            self.assertEqual(cnn.call_count,1)
+        pool=graph['coverage_pool']
+        self.assertEqual(pool['features'].shape[:2],pool['eligible'].shape)
+        self.assertEqual(pool['features'].shape[-1],68)
+        self.assertEqual(pool['relative_mm'].shape,pool['eligible'].shape+(3,))
+        self.assertEqual(pool['band'].shape,pool['eligible'].shape)
+        self.assertEqual(pool['features'].device.type,'cuda')
+        self.assertFalse(pool['features'].requires_grad)
+        self.assertFalse(pool['relative_mm'].requires_grad)
+        self.assertTrue(torch.equal(pool['eligible'].sum(-1),
+            graph['statistics']['eligible_all_scale_pool_counts']))
+        with torch.no_grad(): _,ordinary=model(batch,return_graph=True,**kwargs)
+        self.assertNotIn('coverage_pool',ordinary)
+
     def test_outside_organ_and_padding_perturbation_cannot_change_feature_graph(self):
         reference,profile,batch,kwargs=fixture()
         model=SparseFeatureL0(reference,profile).eval()

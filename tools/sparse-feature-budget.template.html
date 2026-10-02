@@ -1,0 +1,193 @@
+<div id="cnn-sparse-budget-20261002">
+  <h2 id="csb-heading">CNN 특징 그래프 · 문맥 노드 수 비교</h2>
+  <div id="csb-source" class="text-small"></div>
+  <div class="viz-controls">
+    <label class="form-label">대상<select id="csb-side" class="form-select"><option value="recipient">Recipient</option><option value="donor">Donor</option></select></label>
+    <label class="form-label">Recipient 후보<select id="csb-candidate" class="form-select"></select></label>
+    <label class="form-label">공간 범위<select id="csb-view" class="form-select"><option value="local">국소 그래프 확대</option><option value="full">전체 간과 그래프 위치</option></select></label>
+    <label class="form-check"><input id="csb-tumor" type="checkbox" class="form-check-input" checked><span class="form-check-label">원본 종양 주석 (모델 노드 아님)</span></label>
+  </div>
+  <div id="csb-scenes" class="csb-scenes"></div>
+  <div class="csb-legend text-small" aria-label="노드와 원본 주석 범례">
+    <span><i class="csb-mark csb-query" aria-hidden="true"></i>query · 후보 기준점</span>
+    <span><i class="csb-mark csb-near" aria-hidden="true"></i>near · 가까운 문맥</span>
+    <span><i class="csb-mark csb-mid" aria-hidden="true"></i>mid · 중간 문맥</span>
+    <span><i class="csb-mark csb-wide" aria-hidden="true"></i>wide · 넓은 문맥</span>
+    <span><i class="csb-surface" aria-hidden="true"></i>전체 간 윤곽 / 직선 crop 박스</span>
+    <span><i class="csb-tumor-surface" aria-hidden="true"></i>원본 종양 주석</span>
+  </div>
+  <div id="csb-edge-legend" class="csb-legend text-small" aria-label="연결 종류 범례"></div>
+  <div class="viz-controls">
+    <label class="form-label">공통 확대 <span id="csb-zoom-value" class="tabular-nums"></span><input id="csb-zoom" class="form-range" type="range" min="50" max="250" value="100"></label>
+    <label class="form-label">공통 좌우 회전<input id="csb-yaw" class="form-range" type="range" min="-180" max="180" value="35"></label>
+    <label class="form-label">공통 상하 회전<input id="csb-pitch" class="form-range" type="range" min="-80" max="80" value="25"></label>
+  </div>
+  <div class="text-small">같은 좌표·확대 비율 · 드래그 회전 · 휠 확대 · 노드 클릭 · 좌표와 거리 mm</div>
+  <label class="form-label">노드 정보<select id="csb-node" class="form-select"><option value="">노드를 선택하세요</option></select></label>
+  <div id="csb-node-detail" class="text-small tabular-nums" aria-live="polite">노드를 선택하세요.</div>
+  <div class="table-responsive">
+    <table class="table table-sm" aria-label="Recipient 전체 133개 후보의 문맥 포괄 범위와 동일 조건 DEBUG update 비용">
+      <caption class="text-small">Recipient 133개 후보 p95 · 복제 상태 1 update 비용 · 학습 정확도 미검증</caption>
+      <thead><tr><th scope="col">문맥 노드</th><th scope="col">Joint p95</th><th scope="col">특징 부족 p95</th><th scope="col">공간 거리 p95 (mm)</th><th scope="col">전체 update (s)</th><th scope="col">Peak VRAM (GiB)</th></tr></thead>
+      <tbody id="csb-metrics"></tbody>
+    </table>
+  </div>
+  <div id="csb-scope" class="text-small"></div>
+  <div id="csb-error" class="text-destructive" role="alert" hidden></div>
+  <style>
+    #cnn-sparse-budget-20261002 .csb-scenes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:12px}
+    #cnn-sparse-budget-20261002 section{min-width:0}
+    #cnn-sparse-budget-20261002 canvas{display:block;width:100%;aspect-ratio:1 / 1;touch-action:none}
+    #cnn-sparse-budget-20261002 .csb-count,#cnn-sparse-budget-20261002 .csb-range{overflow-wrap:anywhere}
+    #cnn-sparse-budget-20261002 .csb-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:10px 0}
+    #cnn-sparse-budget-20261002 .csb-legend span{display:inline-flex;align-items:center;gap:7px}
+    #cnn-sparse-budget-20261002 .csb-mark{display:inline-block;width:9px;height:9px;background:var(--viz-series-1)}
+    #cnn-sparse-budget-20261002 .csb-query{transform:rotate(45deg);background:transparent;border:1px solid var(--viz-series-1)}
+    #cnn-sparse-budget-20261002 .csb-near{border-radius:50%;background:var(--viz-series-2)}
+    #cnn-sparse-budget-20261002 .csb-mid{background:var(--viz-series-3)}
+    #cnn-sparse-budget-20261002 .csb-wide{background:var(--viz-series-4);clip-path:polygon(50% 0,100% 100%,0 100%)}
+    #cnn-sparse-budget-20261002 .csb-surface,#cnn-sparse-budget-20261002 .csb-tumor-surface{display:inline-block;width:16px;height:0;border-top:1px solid var(--muted-foreground)}
+    #cnn-sparse-budget-20261002 .csb-tumor-surface{border-color:var(--viz-series-5)}
+    #cnn-sparse-budget-20261002 .csb-edge-line{display:inline-block;width:22px;height:0;border-top:1px solid var(--foreground)}
+    #cnn-sparse-budget-20261002 #csb-source,#cnn-sparse-budget-20261002 #csb-scope,#cnn-sparse-budget-20261002 #csb-node-detail{overflow-wrap:anywhere}
+    #cnn-sparse-budget-20261002 #csb-node-detail{margin:6px 0}
+    @media(max-width:780px){#cnn-sparse-budget-20261002 .csb-scenes{grid-template-columns:1fr}}
+  </style>
+  <script>
+  (async()=>{
+    const root=document.getElementById('cnn-sparse-budget-20261002');
+    if(!root)throw new Error('Budget graph root is missing');
+    const $=name=>root.querySelector('#csb-'+name);
+    const compressed=Uint8Array.from(atob('__DATA__'),c=>c.charCodeAt(0));
+    const data=JSON.parse(await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+    if(!Array.isArray(data.budgets)||data.budgets.length!==3)throw new Error('세 가지 실제 문맥 노드 예산의 비교 데이터가 필요합니다.');
+    const budgets=data.budgets;
+    const roles={query:{token:'--viz-series-1',shape:'diamond'},near:{token:'--viz-series-2',shape:'circle'},mid:{token:'--viz-series-3',shape:'square'},wide:{token:'--viz-series-4',shape:'triangle'}};
+    const points=surface=>!Array.isArray(surface)||!surface.length?[]:validPoint(surface[0])?surface:surface.flatMap(contour=>Array.isArray(contour)?contour:[]);
+    function validPoint(p){return Array.isArray(p)&&p.length===3&&p.every(Number.isFinite);}
+    function boxFor(scene){const b=scene.box;if(Array.isArray(b)&&b.length===2&&validPoint(b[0])&&validPoint(b[1]))return b;if(b&&validPoint(b.lo)&&validPoint(b.hi))return [b.lo,b.hi];return null;}
+    function validate(scene,label){
+      if(!scene||!Array.isArray(scene.nodes)||!scene.nodes.length||!Array.isArray(scene.edges)||!validPoint(scene.center)||!boxFor(scene))throw new Error(label+'의 필수 실제 그래프/공간 정보가 없습니다.');
+      for(const n of scene.nodes)if(!validPoint(n.xyz)||!roles[n.role])throw new Error(label+'의 실제 노드 좌표/역할이 잘못됐습니다.');
+      for(const e of scene.edges)if(!Array.isArray(e)||e.length<2||!Number.isInteger(e[0])||!Number.isInteger(e[1])||e[0]<0||e[1]<0||e[0]>=scene.nodes.length||e[1]>=scene.nodes.length)throw new Error(label+'의 edge index가 잘못됐습니다.');
+      for(const p of [...points(scene.organ_surface),...points(scene.tumor_surface)])if(!validPoint(p))throw new Error(label+'의 원본 표면 좌표가 잘못됐습니다.');
+    }
+    const first=budgets[0];
+    if(!Array.isArray(first.candidates)||!first.candidates.length)throw new Error('실제 P/U 후보가 없습니다.');
+    const signature=c=>String(c.id)+'\u0000'+c.kind;
+    const candidateSignatures=first.candidates.map(signature);
+    if(new Set(candidateSignatures).size!==candidateSignatures.length)throw new Error('후보 ID·P/U 조합이 중복됩니다.');
+    for(const [i,budget] of budgets.entries()){
+      if(!Number.isInteger(budget.context_nodes)||budget.context_nodes<=0)throw new Error('문맥 노드 예산이 잘못됐습니다.');
+      validate(budget.donor,'Donor '+budget.context_nodes);
+      if(!Array.isArray(budget.candidates)||budget.candidates.length!==candidateSignatures.length)throw new Error('예산별 후보 수가 다릅니다.');
+      budget.candidates.forEach((candidate,j)=>{if(!['P','U'].includes(candidate.kind)||signature(candidate)!==candidateSignatures[j])throw new Error('예산별 후보 ID 또는 P/U 순서가 다릅니다.');validate(candidate.scene,'Recipient '+candidate.id+' / '+budget.context_nodes);});
+      if(i){const paired=[[first.donor,budget.donor],...first.candidates.map((c,j)=>[c.scene,budget.candidates[j].scene])];for(const [a,b] of paired)if(a.center.some((v,k)=>Math.abs(v-b.center[k])>1e-6)||boxFor(a).some((p,l)=>p.some((v,k)=>Math.abs(v-boxFor(b)[l][k])>1e-6)))throw new Error('예산별 비교 대상의 중심 또는 원본 crop 범위가 다릅니다.');}
+    }
+    if(new Set(budgets.map(b=>b.context_nodes)).size!==budgets.length)throw new Error('문맥 노드 예산이 중복됩니다.');
+    const state={side:'recipient',candidate:Math.max(0,first.candidates.findIndex(c=>c.kind==='U')),view:'local',tumor:true,zoom:1,yaw:35,pitch:25,selected:null};
+    const scenes=()=>budgets.map(b=>state.side==='donor'?b.donor:b.candidates[state.candidate].scene);
+    first.candidates.forEach((c,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=(c.kind==='P'?'P · 관측 종양':'U · 미관측 비교')+' · '+c.id;$('candidate').append(option);});
+    const panels=budgets.map((budget,i)=>{
+      const section=document.createElement('section'),heading=document.createElement('h3'),count=document.createElement('div'),range=document.createElement('div'),canvas=document.createElement('canvas');
+      heading.id='csb-heading-'+i;count.className='csb-count text-small tabular-nums';range.className='csb-range text-small tabular-nums';canvas.id='csb-canvas-'+i;canvas.className='cursor-interaction';canvas.setAttribute('role','img');canvas.setAttribute('aria-labelledby',heading.id);canvas.textContent='실제 CT 3D 그래프 · 문맥 노드 '+budget.context_nodes;section.append(heading,count,range,canvas);$('scenes').append(section);return {heading,count,range,canvas,projected:[]};
+    });
+    const allKinds=Array.from(new Set(budgets.flatMap(b=>[b.donor,...b.candidates.map(c=>c.scene)]).flatMap(s=>s.edges.map(e=>String(e[2]??'연결'))))).sort();
+    const edgeStyles=new Map(allKinds.map(k=>[k,{dash:k.includes('connectivity')?[1,3]:k.includes('feature')?[4,3]:[],alpha:.34}]));
+    for(const [kind,style] of edgeStyles){const item=document.createElement('span'),line=document.createElement('i');line.className='csb-edge-line';line.style.borderTopStyle=style.dash.length?'dashed':'solid';line.setAttribute('aria-hidden','true');item.append(line,document.createTextNode(kind));$('edge-legend').append(item);}
+    const metricColumns=[['context_nodes',0],['joint_p95',4],['feature_deficit_p95',4],['spatial_mm_p95',2],['full_update_seconds',3],['peak_GiB',3]];
+    for(const budget of budgets){const row=document.createElement('tr');for(const [key,precision] of metricColumns){const value=key==='context_nodes'?budget.context_nodes:budget.metrics?.[key];const cell=document.createElement(key==='context_nodes'?'th':'td');if(key==='context_nodes')cell.scope='row';else cell.className='text-end tabular-nums';cell.textContent=finiteFormat(value,precision);row.append(cell);}$('metrics').append(row);}
+    const probe=document.createElement('span');probe.hidden=true;root.append(probe);const colors={};
+    function theme(){for(const token of ['--foreground','--muted-foreground','--border','--viz-series-1','--viz-series-2','--viz-series-3','--viz-series-4','--viz-series-5']){probe.style.color='var('+token+')';colors[token]=getComputedStyle(probe).color;}}
+    const font=getComputedStyle($('node-detail'));let drawPending=false;
+    function scheduleDraw(){if(drawPending)return;drawPending=true;requestAnimationFrame(()=>{drawPending=false;draw();});}
+    function rotate(p,center){const a=state.yaw*Math.PI/180,b=state.pitch*Math.PI/180;const [x,y,z]=p.map((v,k)=>v-center[k]);const u=x*Math.cos(a)-y*Math.sin(a),v=x*Math.sin(a)+y*Math.cos(a);return [u,v*Math.sin(b)-z*Math.cos(b),v*Math.cos(b)+z*Math.sin(b)];}
+    function bounds(coordinates){const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];for(const p of coordinates)for(let k=0;k<3;k++){lo[k]=Math.min(lo[k],p[k]);hi[k]=Math.max(hi[k],p[k]);}return [lo,hi];}
+    function commonCamera(currentScenes,dimensions){
+      const firstScene=currentScenes[0],box=boxFor(firstScene);let fit=state.view==='full'?points(firstScene.organ_surface):[];
+      if(!fit.length){fit=[];for(let i=0;i<8;i++)fit.push([0,1,2].map(k=>box[(i>>k)&1][k]));}
+      const [lo,hi]=bounds(fit),center=state.view==='local'?firstScene.center:lo.map((v,k)=>(v+hi[k])/2),corners=[];
+      for(let i=0;i<8;i++)corners.push(rotate([0,1,2].map(k=>((i>>k)&1)?hi[k]:lo[k]),center));
+      const extent=[0,1].map(k=>2*Math.max(...corners.map(p=>Math.abs(p[k]))));
+      const width=Math.min(...dimensions.map(d=>d.width)),height=Math.min(...dimensions.map(d=>d.height));
+      const scale=Math.min(Math.max(1,width-52)/Math.max(extent[0],1),Math.max(1,height-72)/Math.max(extent[1],1))*state.zoom;
+      return {center,scale};
+    }
+    function projection(camera,width,height){return {width,height,scale:camera.scale,center:camera.center,p:xyz=>{const q=rotate(xyz,camera.center);return [width/2+q[0]*camera.scale,(height-26)/2+q[1]*camera.scale,q[2]];}};}
+    function stroke(ctx,coordinates,color,alpha=1,dash=[]){if(!coordinates.length)return;ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.setLineDash(dash);ctx.beginPath();coordinates.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);}
+    function surface(ctx,raw,pr,token,alpha){
+      if(!Array.isArray(raw)||!raw.length)return;ctx.fillStyle=colors[token];ctx.globalAlpha=alpha;
+      if(validPoint(raw[0])){for(const xyz of raw){const p=pr.p(xyz);ctx.fillRect(p[0]-.7,p[1]-.7,1.4,1.4);}}
+      else{ctx.lineWidth=.7;for(const contour of raw)stroke(ctx,contour.map(pr.p),colors[token],alpha);}
+      ctx.globalAlpha=1;
+    }
+    function mark(ctx,node,p,selected){
+      const radius=node.role==='query'?6:node.role==='wide'?4:3.5,style=roles[node.role];ctx.fillStyle=colors[style.token];ctx.strokeStyle=colors['--foreground'];ctx.lineWidth=1;ctx.globalAlpha=.92;ctx.beginPath();
+      if(style.shape==='diamond'){ctx.moveTo(p[0],p[1]-radius);ctx.lineTo(p[0]+radius,p[1]);ctx.lineTo(p[0],p[1]+radius);ctx.lineTo(p[0]-radius,p[1]);ctx.closePath();}
+      else if(style.shape==='square')ctx.rect(p[0]-radius,p[1]-radius,radius*2,radius*2);
+      else if(style.shape==='triangle'){ctx.moveTo(p[0],p[1]-radius);ctx.lineTo(p[0]+radius,p[1]+radius);ctx.lineTo(p[0]-radius,p[1]+radius);ctx.closePath();}
+      else ctx.arc(p[0],p[1],radius,0,Math.PI*2);
+      if(node.abstract===true){ctx.strokeStyle=colors[style.token];ctx.stroke();}else ctx.fill();
+      if(selected){ctx.globalAlpha=1;ctx.strokeStyle=colors['--foreground'];ctx.beginPath();ctx.arc(p[0],p[1],radius+4,0,Math.PI*2);ctx.stroke();}ctx.globalAlpha=1;
+    }
+    function niceBar(maximum){const power=Math.pow(10,Math.floor(Math.log10(Math.max(maximum,1e-8))));return [5,2,1].map(v=>v*power).find(v=>v<=maximum)||power/2;}
+    function axes(ctx,pr){
+      ctx.font=font.fontSize+' '+font.fontFamily;ctx.fillStyle=colors['--foreground'];ctx.textBaseline='middle';const origin=[34,pr.height-43],length=21;
+      for(const [i,label] of ['X','Y','Z'].entries()){const v=rotate([0,1,2].map(k=>k===i?1:0),[0,0,0]),end=[origin[0]+v[0]*length,origin[1]+v[1]*length];ctx.lineWidth=1;stroke(ctx,[origin,end],colors['--foreground'],.65);ctx.fillText(label,end[0]+(v[0]>=0?4:-14),end[1]+(v[1]>=0?7:-7));}
+      const mm=niceBar(pr.width*.22/pr.scale),x=pr.width-18-mm*pr.scale,y=pr.height-20;ctx.lineWidth=1.5;stroke(ctx,[[x,y],[x+mm*pr.scale,y]],colors['--foreground']);ctx.textAlign='right';ctx.fillText(mm.toLocaleString('en-US',{maximumFractionDigits:2})+' mm',pr.width-18,y-12);ctx.textAlign='left';
+    }
+    function render(i,scene,dimension,camera){
+      const panel=panels[i],canvas=panel.canvas,{width,height}=dimension,dpr=Math.min(window.devicePixelRatio||1,2);
+      if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);}
+      const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);ctx.save();ctx.beginPath();ctx.rect(1,1,width-2,height-2);ctx.clip();const pr=projection(camera,width,height);
+      surface(ctx,scene.organ_surface,pr,'--muted-foreground',state.view==='full'?.3:.12);if(state.tumor)surface(ctx,scene.tumor_surface,pr,'--viz-series-5',state.view==='full'?.55:.35);
+      const box=boxFor(scene),corners=[];for(let j=0;j<8;j++)corners.push(pr.p([0,1,2].map(k=>box[(j>>k)&1][k])));ctx.lineWidth=.65;for(let j=0;j<8;j++)for(let k=j+1;k<8;k++)if([1,2,4].includes(j^k))stroke(ctx,[corners[j],corners[k]],colors['--muted-foreground'],.45);
+      const projected=scene.nodes.map((node,j)=>({index:j,node,p:pr.p(node.xyz)}));ctx.lineWidth=.85;
+      for(const edge of scene.edges){const style=edgeStyles.get(String(edge[2]??'연결'));stroke(ctx,[projected[edge[0]].p,projected[edge[1]].p],colors['--foreground'],style.alpha,style.dash);}
+      projected.sort((a,b)=>a.p[2]-b.p[2]);for(const n of projected)mark(ctx,n.node,n.p,state.selected?.budget===i&&state.selected.index===n.index);ctx.restore();axes(ctx,pr);ctx.strokeStyle=colors['--border'];ctx.lineWidth=1;ctx.strokeRect(.5,.5,width-1,height-1);panel.projected=projected;
+      const roleCounts=Object.keys(roles).map(role=>role+' '+scene.nodes.filter(n=>n.role===role).length).join(' · '),stats=scene.stats??{};
+      const edgeLabel=Number.isFinite(stats.directed_edges)?scene.edges.length+' 무방향 / '+stats.directed_edges+' 방향 edges':scene.edges.length+' 표시 edges';
+      const candidate=first.candidates[state.candidate];panel.heading.textContent=budgets[i].context_nodes+' 문맥 노드 · '+(state.side==='donor'?'Donor':'Recipient '+candidate.kind);
+      panel.count.textContent=scene.nodes.length+' 총 nodes · '+edgeLabel+' · '+roleCounts;
+      panel.range.textContent=['near','mid','wide'].map(role=>{const values=scene.nodes.filter(n=>n.role===role).map(n=>Number.isFinite(n.distance_mm)?n.distance_mm:Math.hypot(...n.xyz.map((v,k)=>v-scene.center[k])));return values.length?role+' '+Math.min(...values).toFixed(1)+'–'+Math.max(...values).toFixed(1)+' mm':null;}).filter(Boolean).join(' · ');
+      canvas.setAttribute('aria-label',budgets[i].context_nodes+' 문맥 노드의 실제 '+state.side+' 3D 그래프, 총 '+scene.nodes.length+' nodes, '+scene.edges.length+' 연결, '+(state.view==='full'?'전체 간 위치':'국소 확대')+', 공통 확대 비율, 좌표 단위 mm');canvas.dataset.scaleMm=String(camera.scale);canvas.dataset.nodeCount=String(scene.nodes.length);canvas.dataset.edgeCount=String(scene.edges.length);
+    }
+    function finiteFormat(value,decimals=3){return typeof value==='number'&&Number.isFinite(value)?value.toFixed(decimals):'미제공';}
+    function nodeDetail(){
+      if(!state.selected){$('node-detail').textContent='노드를 선택하세요.';$('node').value='';return;}
+      const {budget,index}=state.selected,scene=scenes()[budget],node=scene?.nodes[index];if(!node){state.selected=null;nodeDetail();return;}
+      $('node').value=budget+':'+index;const distance=Math.hypot(...node.xyz.map((v,k)=>v-scene.center[k]));
+      $('node-detail').textContent=budgets[budget].context_nodes+' 문맥 노드 · '+(state.side==='donor'?'Donor':'Recipient')+' #'+index+' · '+node.role+(node.abstract===true?' (추상 query 허브 · voxel 표본 아님)':'')+' · ['+node.xyz.map(v=>finiteFormat(v,2)).join(', ')+'] mm · 기준점 거리 '+finiteFormat(distance,2)+' mm · feature norm '+finiteFormat(node.feature_norm)+' · query cosine '+finiteFormat(node.cosine_to_query,4)+(node.scale!==undefined?' · '+String(node.scale):'');
+    }
+    function fillNodes(){
+      $('node').replaceChildren();const empty=document.createElement('option');empty.value='';empty.textContent='노드를 선택하세요';$('node').append(empty);
+      scenes().forEach((scene,i)=>{const group=document.createElement('optgroup');group.label=budgets[i].context_nodes+' 문맥 노드';scene.nodes.forEach((node,j)=>{const option=document.createElement('option');option.value=i+':'+j;option.textContent='#'+j+' · '+node.role;group.append(option);});$('node').append(group);});nodeDetail();
+    }
+    function draw(){
+      theme();$('side').value=state.side;$('candidate').value=String(state.candidate);$('candidate').disabled=state.side==='donor';$('view').value=state.view;$('tumor').checked=state.tumor;$('zoom').value=String(Math.round(state.zoom*100));$('zoom-value').textContent=state.zoom.toFixed(2)+'×';$('yaw').value=String(state.yaw);$('pitch').value=String(state.pitch);
+      const currentScenes=scenes(),dimensions=panels.map(panel=>{const rect=panel.canvas.getBoundingClientRect();return {width:Math.max(1,rect.width),height:Math.max(1,rect.height)};}),camera=commonCamera(currentScenes,dimensions);
+      currentScenes.forEach((scene,i)=>render(i,scene,dimensions[i],camera));nodeDetail();root.dataset.ready='true';root.dataset.side=state.side;root.dataset.candidate=String(first.candidates[state.candidate].id);
+    }
+    function save(){const host=window.openai;if(typeof host?.setWidgetState==='function')host.setWidgetState({modelContent:{visual:'cnn-sparse-budget-20261002',case:data.case,context_nodes:budgets.map(b=>b.context_nodes),side:state.side,candidate:first.candidates[state.candidate].id,kind:first.candidates[state.candidate].kind,view:state.view,selected:state.selected,scope:data.scope??'actual CT graph budget comparison'},privateContent:{...state}}).catch(()=>{});}
+    function restore(saved){
+      if(saved?.modelContent?.visual!=='cnn-sparse-budget-20261002'||saved.modelContent.case!==data.case)return;const s=saved.privateContent??{};
+      if(['donor','recipient'].includes(s.side))state.side=s.side;if(Number.isInteger(s.candidate)&&s.candidate>=0&&s.candidate<first.candidates.length)state.candidate=s.candidate;if(['full','local'].includes(s.view))state.view=s.view;if(typeof s.tumor==='boolean')state.tumor=s.tumor;
+      if(Number.isFinite(s.zoom))state.zoom=Math.max(.5,Math.min(2.5,s.zoom));if(Number.isFinite(s.yaw))state.yaw=Math.max(-180,Math.min(180,s.yaw));if(Number.isFinite(s.pitch))state.pitch=Math.max(-80,Math.min(80,s.pitch));
+      if(s.selected&&Number.isInteger(s.selected.budget)&&s.selected.budget>=0&&s.selected.budget<budgets.length&&Number.isInteger(s.selected.index)&&s.selected.index>=0&&s.selected.index<scenes()[s.selected.budget].nodes.length)state.selected=s.selected;
+    }
+    for(const name of ['side','candidate'])$(name).addEventListener('change',()=>{if(name==='side')state.side=$('side').value;else state.candidate=Number($('candidate').value);state.selected=null;fillNodes();scheduleDraw();save();});
+    $('view').addEventListener('change',()=>{state.view=$('view').value;state.zoom=1;scheduleDraw();save();});$('tumor').addEventListener('change',()=>{state.tumor=$('tumor').checked;scheduleDraw();save();});
+    for(const name of ['zoom','yaw','pitch']){$(name).addEventListener('input',()=>{state[name]=Number($(name).value)/(name==='zoom'?100:1);scheduleDraw();});$(name).addEventListener('change',save);}
+    $('node').addEventListener('change',()=>{const value=$('node').value;if(value){const [budget,index]=value.split(':').map(Number);state.selected={budget,index};}else state.selected=null;nodeDetail();scheduleDraw();save();});
+    for(const [i,panel] of panels.entries()){
+      const canvas=panel.canvas;let drag=null;
+      canvas.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY,yaw:state.yaw,pitch:state.pitch,moved:false};canvas.setPointerCapture(e.pointerId);});
+      canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>4)drag.moved=true;if(drag.moved){state.yaw=((drag.yaw+dx*.6+540)%360)-180;state.pitch=Math.max(-80,Math.min(80,drag.pitch+dy*.45));scheduleDraw();}});
+      canvas.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;if(!drag.moved){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top,radius=matchMedia('(pointer:coarse)').matches?22:16;const hit=panel.projected.map(n=>({...n,distance:Math.hypot(n.p[0]-x,n.p[1]-y)})).filter(n=>n.distance<=radius).sort((a,b)=>a.distance-b.distance||b.p[2]-a.p[2])[0];state.selected=hit?{budget:i,index:hit.index}:null;nodeDetail();scheduleDraw();}drag=null;save();});
+      canvas.addEventListener('pointercancel',()=>{drag=null;});canvas.addEventListener('wheel',e=>{e.preventDefault();state.zoom=Math.max(.5,Math.min(2.5,state.zoom*Math.exp(-e.deltaY*.001)));scheduleDraw();save();},{passive:false});
+    }
+    const source=data.weight_source??{};const label=typeof source==='string'?source:source.label??Object.entries(source).map(([key,value])=>key+': '+String(value)).join(' · ');$('source').textContent='가중치: '+label+' · DEBUG · 학습 정확도 미검증';$('scope').textContent=typeof data.scope==='string'?data.scope:'실제 CT·실제 CNN 특징의 노드 예산 비교 · 연결은 메시지 관계이며 혈관 경로가 아님';$('heading').textContent='CNN 특징 그래프 · 48 / 96 / 192 문맥 노드 · '+(data.case??'실제 CT')+(Number.isFinite(data.margin_mm)?' · margin '+data.margin_mm+' mm':'');
+    restore(window.openai?.widgetState);fillNodes();new ResizeObserver(scheduleDraw).observe(root);new MutationObserver(scheduleDraw).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});window.addEventListener('openai:set_globals',e=>{restore(e.detail?.globals?.widgetState);fillNodes();scheduleDraw();});draw();
+  })().catch(error=>{const root=document.getElementById('cnn-sparse-budget-20261002');if(root){const panel=root.querySelector('#csb-error');panel.hidden=false;panel.textContent='시각화 오류: '+error.message;root.dataset.ready='error';}throw error;});
+  </script>
+</div>

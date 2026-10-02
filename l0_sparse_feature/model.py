@@ -40,9 +40,11 @@ class SparseFeatureProfile:
     def validate(self):
         if not self.debug:
             raise ValueError('This new sparse feature graph has a DEBUG-only profile')
-        if (self.context_nodes_per_band, self.spatial_neighbors, self.feature_neighbors,
-                self.hidden_dim, self.sage_layers) != (16, 3, 1, 128, 3):
-            raise ValueError('Explicit reviewed DEBUG 16-per-band / 3+1 neighbors / 3x128 profile required')
+        if type(self.context_nodes_per_band) is not int or self.context_nodes_per_band not in (16, 32, 64):
+            raise ValueError('Explicit DEBUG context quota must be 16/32/64 per band (48/96/192 context nodes)')
+        if (self.spatial_neighbors, self.feature_neighbors,
+                self.hidden_dim, self.sage_layers) != (3, 1, 128, 3):
+            raise ValueError('Reviewed 3+1 neighbors / 3x128 DEBUG architecture required')
         values = (self.query_radius_mm, self.near_radius_mm, self.mid_radius_mm,
                   self.spatial_metric_weight, self.feature_metric_weight)
         if any(not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0 for v in values):
@@ -253,7 +255,10 @@ class SparseFeatureL0(nn.Module):
         if self.resource_budget:
             self.resource_budget.check()
 
-    def forward(self, batch, *, recipient_centers_native, donor_centers_native, return_graph=False):
+    def forward(self, batch, *, recipient_centers_native, donor_centers_native,
+                return_graph=False, return_pool=False):
+        if return_pool and not return_graph:
+            raise ValueError('return_pool requires return_graph; no implicit large diagnostic output')
         if not isinstance(batch, LocalBatch):
             raise TypeError('Native LocalBatch required')
         check_verified(batch)
@@ -361,4 +366,10 @@ class SparseFeatureL0(nn.Module):
                 unique_cnn_crops=len(batch.images), physical_pairs=len(batch),
                 hard_selection_differentiable=False, fine_pool_stride=1))
         graph['statistics'].update(metric_statistics)
+        if return_pool:
+            # Existing tensors only: no second CNN/feature-pool calculation.
+            # Callers must use these on-device for coverage, not serialize the
+            # fine pool as a report or retain an autograd training graph.
+            graph['coverage_pool'] = dict(features=pool.detach(),
+                relative_mm=pool_mm.detach(), eligible=eligible, band=band)
         return output, graph
