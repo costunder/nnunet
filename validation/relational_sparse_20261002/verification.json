@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-02",
+  "debug": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "production_ready": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_source_files_unchanged": 121,
+  "production_source_manifest_sha256": "85a54a59e19d880c15ead16c01eb2c98405c7a93bac5a90360586bfc13143538",
+  "prior_dirty_files_unchanged": {
+    "REFERENCES.md": "41070efe9735a43f74634e2b760b008bc2f0a9de96ec804e6f07ae8a502fde92",
+    "code.txt": "7d471ef0344c11bc55786cf585747d08a9945beb691bc0de461d54502212c64d",
+    "gpt_handoff.md": "fcbc74398f89ca071215b6ab38c24720dd85e030df628dfd7339fced7fd1e990"
+  },
+  "new_implementation_sha256": {
+    "l0_sparse_feature/relational.py": "b477b0ed7dd583b38f141150ff581987abfc04b6b0b87a7505b45f1e6ab67bd2",
+    "tests/test_relational_sparse_graph.py": "336fd70f742555f017379bf88268f1d66793797d23ac75e1253b15f191182786",
+    "tools/verify_relational_sparse_ct_debug.py": "49d359095b798a940345f25a005e6893948f16cfa9bc9eee417733708a78cd34",
+    "tools/render_relational_sparse_debug.py": "e61fb83db10ccf1345c098641227a9c7b57a50f36f33f7760d84fd13b02ed3f0",
+    "tools/relational-sparse.template.html": "cbdc8d1959c2b836eba916f323d857c98e805b7214911c44c8672a2c35b6d620",
+    "tools/check_relational_sparse_visual.cjs": "4e5c78d224ae84d524d78129424af395f5189cb4289453edfb10cf3a95246a61",
+    "tools/summarize_relational_sparse_debug.py": "8ef2af66f145d8ea53e59bcc25d6c298dc54c8d1a11d09bb91dafb64aadd087e",
+    "tools/audit_relational_connectivity_debug.py": "d579fa518541fea2e7610d3071193dcaeef27c0544af0e7a2e0361b13371bb56"
+  },
+  "probe_implementation_start_end_unchanged": true,
+  "unit_tests": {
+    "command": ".venv/Scripts/python.exe -m unittest tests.test_relational_sparse_graph tests.test_sparse_feature_graph tests.test_sparse_feature_coverage -v",
+    "status": "PASS",
+    "tests": 27,
+    "cpu_metadata": 1,
+    "numerical_CUDA_fixture": 26,
+    "observed_duration_seconds": 6.411,
+    "names": [
+      "tests.test_relational_sparse_graph.CPUProfileMetadata.test_profile_retains_reviewed_debug_width_depth_and_quota",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_all_trainable_modules_and_role_pool_rows_reach_optimizer",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_donor_changes_recipient_hidden_before_fusion_and_pairs_do_not_leak",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_each_relation_mean_is_separate_and_root_residual_occurs_once",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_missing_band_query_native_audit_and_budget_fail_explicitly",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_native_anchors_roles_full_pool_and_single_cnn_forward",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_outside_organ_and_native_padding_nan_cannot_change_graph",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_radius_boundary_keeps_only_in_radius_sources",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_radius_nearest_direction_counts_and_isolation_have_no_fallback",
+      "tests.test_relational_sparse_graph.CUDARelationalGraph.test_real_anchor_in_background_is_preserved_without_query_fallback",
+      "tests.test_sparse_feature_graph.Checks.test_approved_sizes_preserve_architecture_gradients_and_nested_selection",
+      "tests.test_sparse_feature_graph.Checks.test_balanced_metric_features_change_selected_nodes_at_fixed_positions",
+      "tests.test_sparse_feature_graph.Checks.test_deterministic_initialization_selection_and_no_gt_input",
+      "tests.test_sparse_feature_graph.Checks.test_empty_band_query_coverage_native_audit_and_budget_fail_explicitly",
+      "tests.test_sparse_feature_graph.Checks.test_gradient_every_trainable_module_and_reference_is_unchanged",
+      "tests.test_sparse_feature_graph.Checks.test_masked_corner_support_has_explicit_unavailable_scale",
+      "tests.test_sparse_feature_graph.Checks.test_mst_is_explicit_and_root_path_occurs_once",
+      "tests.test_sparse_feature_graph.Checks.test_native_geometry_full_pool_roles_unique_crops_and_disjoint_graph",
+      "tests.test_sparse_feature_graph.Checks.test_optional_coverage_pool_reuses_one_cnn_and_requires_graph",
+      "tests.test_sparse_feature_graph.Checks.test_outside_organ_and_padding_perturbation_cannot_change_feature_graph",
+      "tests.test_sparse_feature_graph.Checks.test_small_band_padding_does_not_create_nodes_or_edges",
+      "tests.test_sparse_feature_coverage.Checks.test_eligible_zero_and_nonfinite_norms_fail_explicitly",
+      "tests.test_sparse_feature_coverage.Checks.test_full_retention_has_zero_coverage_error",
+      "tests.test_sparse_feature_coverage.Checks.test_joint_uses_same_node_not_independent_minima",
+      "tests.test_sparse_feature_coverage.Checks.test_nested_selected_sets_cannot_increase_any_point_or_summary",
+      "tests.test_sparse_feature_coverage.Checks.test_padding_and_ineligible_values_cannot_change_metrics",
+      "tests.test_sparse_feature_coverage.Checks.test_workspace_chunking_preserves_complete_results"
+    ]
+  },
+  "browser_tests": {
+    "status": "PASS",
+    "checks": 17,
+    "runtime_errors": [],
+    "receipt_sha256": "d346d7cfc37bca8e188272beae3b1f635bb5e98409f7a232942d23ac94613362"
+  },
+  "actual_CT_report_sha256": "0a84960bfcd7dece044906e61a2b34836e768ce65261a1f2589a0292c0cbcbef",
+  "actual_CT_summary_sha256": "6af68dce18a73e4a11bb3b40cf86292cf37cbb5523ec461fc9be44b011d98930",
+  "independent_connectivity_sha256": "eda8bb884e6acd0950c1f01369651046f6ac370c2869cf9158bba8876c57be52",
+  "visual": {
+    "path": "C:\\Users\\user\\.codex\\visualizations\\2026\\09\\17\\01a0ae06-ab24-7fe0-bdb8-ef2751a1c7be\\v1-relational-sparse-ct-r3.html",
+    "sha256": "0dc61f1a2fcf932902980c298f602b71bbd555ee8aadfd951704dbd5b3181ef5",
+    "bytes": 222669,
+    "only_local": true,
+    "raw_CT_or_checkpoint_committed": false
+  },
+  "all_original_inputs_and_results_preserved": true
+}

@@ -1,0 +1,53 @@
+const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),path=require('path');
+const folder=process.argv[2];
+if(!folder)throw Error('Task-owned fresh output folder required');
+(async()=>{
+  const browser=await chromium.launch({headless:true,channel:'msedge'});
+  try {
+  const page=await browser.newPage({viewport:{width:1040,height:1800}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('file:///'+path.resolve(folder,'preview.html').replace(/\\/g,'/'));
+  const frame=page.frameLocator('iframe'),root=frame.locator('#v1-relational-sparse-20261002');
+  await frame.locator('#v1-relational-sparse-20261002[data-ready="true"]').waitFor();
+  const checks=[],check=(name,ok)=>{if(!ok)throw Error(name);checks.push(name);};
+  const canvases=root.locator('canvas'),snapshot=()=>canvases.evaluateAll(xs=>xs.map(x=>x.toDataURL()));
+  check('three simultaneous actual pair graphs',await canvases.count()===3);
+  check('pair node counts98/194/386',JSON.stringify(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.nodeCount))))==='[98,194,386]');
+  check('cross relations present at all three densities',(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.crossCount)))).every(n=>n>0));
+  check('common mm scale',(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.scaleMm)))).every((n,i,a)=>Math.abs(n-a[0])<1e-8));
+  check('all P5 and displayed U3 available',await frame.locator('#vrs-candidate option').count()===8);
+  check('fresh DEBUG graph provenance',(await frame.locator('#vrs-provenance').innerText()).includes('DEBUG'));
+  await root.screenshot({path:path.join(folder,'relational.png')});
+  const initial=await snapshot();await frame.locator('#vrs-candidate').selectOption('0');await page.waitForTimeout(120);
+  check('P/U actual candidate switch',(await snapshot()).every((x,i)=>x!==initial[i]));
+  await frame.locator('#vrs-node').selectOption('2:200');
+  await frame.locator('#vrs-detail').filter({hasText:'상대 mm'}).waitFor();
+  check('node exact native and relative coordinates',(await frame.locator('#vrs-detail').innerText()).includes('상대 mm'));
+  check('node selection survives saved-state echo',await frame.locator('#vrs-node').inputValue()==='2:200');
+  check('original GT contour segments visible',(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.gtSegments)))).every(n=>n>0));
+  const withGT=await snapshot();await frame.locator('#vrs-tumor').uncheck();await page.waitForTimeout(120);
+  check('original GT toggle hides only annotation',(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.gtSegments)))).every(n=>n===0)&&(await snapshot()).every((x,i)=>x!==withGT[i]));
+  await frame.locator('#vrs-tumor').check();await page.waitForTimeout(120);
+  await frame.locator('#vrs-relation').selectOption('cross');await page.waitForTimeout(120);
+  check('filter draws exactly cross edges',(await canvases.evaluateAll(xs=>xs.map(x=>[x.dataset.shownEdges,x.dataset.crossCount]))).every(x=>x[0]===x[1]));
+  await root.screenshot({path:path.join(folder,'cross-only.png')});
+  await frame.locator('#vrs-model').selectOption('baseline');await page.waitForTimeout(120);
+  check('previous independent graphs have zero cross edges',(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.crossCount)))).every(n=>n===0));
+  check('no synthetic baseline cross lines',(await canvases.evaluateAll(xs=>xs.map(x=>Number(x.dataset.shownEdges)))).every(n=>n===0));
+  await frame.locator('#vrs-relation').selectOption('all');await page.waitForTimeout(120);
+  await root.screenshot({path:path.join(folder,'baseline.png')});
+  await frame.locator('#vrs-model').selectOption('relational');const before=await snapshot();
+  await frame.locator('#vrs-yaw').fill('-50');await frame.locator('#vrs-yaw').dispatchEvent('input');await page.waitForTimeout(120);
+  check('3D rotation affects all actual pair graphs',(await snapshot()).every((x,i)=>x!==before[i]));
+  await frame.locator('#vrs-yaw').fill('12');await frame.locator('#vrs-yaw').dispatchEvent('input');
+  await page.setViewportSize({width:360,height:3000});await page.waitForTimeout(120);
+  check('mobile no horizontal overflow',await root.evaluate(r=>r.scrollWidth<=r.clientWidth+2));
+  await root.screenshot({path:path.join(folder,'mobile.png')});
+  check('browser runtime errors absent',errors.length===0);
+  fs.writeFileSync(path.join(folder,'browser_checks.json'),JSON.stringify({checks,errors},null,2));
+  console.log(JSON.stringify({checks,errors}));
+  } finally {
+    await browser.close();
+  }
+})().catch(e=>{console.error(e);process.exitCode=1;});

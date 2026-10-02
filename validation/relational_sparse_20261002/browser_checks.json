@@ -1,0 +1,22 @@
+{
+  "checks": [
+    "three simultaneous actual pair graphs",
+    "pair node counts98/194/386",
+    "cross relations present at all three densities",
+    "common mm scale",
+    "all P5 and displayed U3 available",
+    "fresh DEBUG graph provenance",
+    "P/U actual candidate switch",
+    "node exact native and relative coordinates",
+    "node selection survives saved-state echo",
+    "original GT contour segments visible",
+    "original GT toggle hides only annotation",
+    "filter draws exactly cross edges",
+    "previous independent graphs have zero cross edges",
+    "no synthetic baseline cross lines",
+    "3D rotation affects all actual pair graphs",
+    "mobile no horizontal overflow",
+    "browser runtime errors absent"
+  ],
+  "errors": []
+}
