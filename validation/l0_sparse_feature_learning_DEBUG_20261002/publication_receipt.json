@@ -1,0 +1,22 @@
+{
+  "measured_report_sha256": "b813cb65730b24407808c401a8423610d231a8db349e94e921694c31bccc2412",
+  "published_copy_matches": true,
+  "production121_preserved": true,
+  "implementation_sha256": {
+    "l0_sparse_feature/model.py": "f5ceb4c9e9c3c0e1193ba8ec41e63b5f88eae0d9a12061ca4bd9974cd5ed3c0d",
+    "l0_sparse_feature/learning.py": "ebe10b933c9abc849b1eda866458eb8d3aa3e8d6b7274e12893170a7a4f4fe57",
+    "tools/compare_sparse_feature_learning_debug.py": "26fa45137f7c6e11057649ae46750530ab82e073c66cdf5acc15c0cf538d3674",
+    "tests/test_sparse_feature_learning.py": "39c6d4e2d54321391179e31e557859c2d1f030c1f5889150a6855f741b669058"
+  },
+  "actual_optimizer_backend": {
+    "fused": null,
+    "foreach": null,
+    "policy": "same fresh Torch2.8 AdamW defaults for all three DEBUG budgets; not exact production fused=true execution"
+  },
+  "unit_checks": 32,
+  "actual_CUDA_updates": 180,
+  "production_checkpoint_written": false,
+  "optimal_graph_size_established": false,
+  "old_visual_preserved": true,
+  "publication_excludes": "native CT/masks/weights/anatomy; scientific metric figure included"
+}
