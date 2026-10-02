@@ -1,0 +1,179 @@
+<div id="cnn-sparse-graph-20261002">
+  <h2 id="csg-heading">CNN 특징 → 작은 그래프 · 실제 CT</h2>
+  <div id="csg-source" class="text-small"></div>
+  <div class="viz-controls">
+    <label class="form-label">Recipient 후보<select id="csg-candidate" class="form-select"></select></label>
+    <label class="form-label">공간 범위<select id="csg-view" class="form-select"><option value="local">국소 그래프 확대</option><option value="full">전체 간과 그래프 위치</option></select></label>
+    <label class="form-check"><input id="csg-tumor" type="checkbox" class="form-check-input" checked><span class="form-check-label">원본 종양 주석 (모델 노드 아님)</span></label>
+  </div>
+  <div class="csg-scenes">
+    <section>
+      <h3 id="csg-donor-heading">Donor</h3>
+      <div id="csg-donor-count" class="text-small tabular-nums"></div>
+      <canvas id="csg-donor-canvas" class="cursor-interaction" role="img" aria-label="실제 donor의 CNN 특징 노드, 연결과 원본 간·종양 주석. 아래 선택기로 노드 정보를 확인할 수 있습니다.">Donor 3D 그래프</canvas>
+    </section>
+    <section>
+      <h3 id="csg-recipient-heading">Recipient</h3>
+      <div id="csg-recipient-count" class="text-small tabular-nums"></div>
+      <canvas id="csg-recipient-canvas" class="cursor-interaction" role="img" aria-label="선택한 recipient 후보의 CNN 특징 노드, 연결과 원본 간·종양 주석. 아래 선택기로 노드 정보를 확인할 수 있습니다.">Recipient 3D 그래프</canvas>
+    </section>
+  </div>
+  <div class="csg-legend text-small" aria-label="노드와 원본 주석 범례">
+    <span><i class="csg-mark csg-query" aria-hidden="true"></i>query · 후보 기준점</span>
+    <span><i class="csg-mark csg-near" aria-hidden="true"></i>near · 가까운 문맥</span>
+    <span><i class="csg-mark csg-mid" aria-hidden="true"></i>mid · 중간 문맥</span>
+    <span><i class="csg-mark csg-wide" aria-hidden="true"></i>wide · 넓은 문맥</span>
+    <span><i class="csg-surface" aria-hidden="true"></i>전체 간 윤곽</span>
+    <span><i class="csg-surface" aria-hidden="true"></i>직선 박스 · L0 입력 crop</span>
+    <span><i class="csg-tumor-surface" aria-hidden="true"></i>원본 종양 주석</span>
+  </div>
+  <div id="csg-edge-legend" class="csg-legend text-small" aria-label="연결 종류 범례"></div>
+  <div class="viz-controls">
+    <label class="form-label">확대 <span id="csg-zoom-value" class="tabular-nums"></span><input id="csg-zoom" class="form-range" type="range" min="50" max="250" value="100"></label>
+    <label class="form-label">좌우 회전<input id="csg-yaw" class="form-range" type="range" min="-180" max="180" value="35"></label>
+    <label class="form-label">상하 회전<input id="csg-pitch" class="form-range" type="range" min="-80" max="80" value="25"></label>
+  </div>
+  <div class="text-small">드래그 회전 · 휠 확대 · 노드 클릭 · 좌표와 거리는 mm</div>
+  <label class="form-label">노드 정보<select id="csg-node" class="form-select"><option value="">노드를 선택하세요</option></select></label>
+  <div id="csg-node-detail" class="text-small tabular-nums" aria-live="polite">노드를 선택하세요.</div>
+  <div id="csg-scope" class="text-small"></div>
+  <div id="csg-error" class="text-destructive" role="alert" hidden></div>
+  <style>
+    #cnn-sparse-graph-20261002 .csg-scenes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:12px}
+    #cnn-sparse-graph-20261002 section{min-width:0}
+    #cnn-sparse-graph-20261002 canvas{display:block;width:100%;aspect-ratio:1 / 1;touch-action:none}
+    #cnn-sparse-graph-20261002 .csg-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:10px 0}
+    #cnn-sparse-graph-20261002 .csg-legend span{display:inline-flex;align-items:center;gap:7px}
+    #cnn-sparse-graph-20261002 .csg-mark{display:inline-block;width:9px;height:9px;background:var(--viz-series-1)}
+    #cnn-sparse-graph-20261002 .csg-query{transform:rotate(45deg);background:transparent;border:1px solid var(--viz-series-1)}
+    #cnn-sparse-graph-20261002 .csg-near{border-radius:50%;background:var(--viz-series-2)}
+    #cnn-sparse-graph-20261002 .csg-mid{background:var(--viz-series-3)}
+    #cnn-sparse-graph-20261002 .csg-wide{background:var(--viz-series-4);clip-path:polygon(50% 0,100% 100%,0 100%)}
+    #cnn-sparse-graph-20261002 .csg-surface,#cnn-sparse-graph-20261002 .csg-tumor-surface{display:inline-block;width:16px;height:0;border-top:1px solid var(--muted-foreground)}
+    #cnn-sparse-graph-20261002 .csg-tumor-surface{border-color:var(--viz-series-5)}
+    #cnn-sparse-graph-20261002 .csg-edge-line{display:inline-block;width:22px;height:0;border-top:1px solid var(--foreground)}
+    #cnn-sparse-graph-20261002 #csg-source,#cnn-sparse-graph-20261002 #csg-scope,#cnn-sparse-graph-20261002 #csg-node-detail{overflow-wrap:anywhere}
+    #cnn-sparse-graph-20261002 #csg-node-detail{margin:6px 0}
+    @media(max-width:660px){#cnn-sparse-graph-20261002 .csg-scenes{grid-template-columns:1fr}}
+  </style>
+  <script>
+  (async()=>{
+    const root=document.getElementById('cnn-sparse-graph-20261002');
+    if(!root)throw new Error('Graph root is missing');
+    const $=name=>root.querySelector('#csg-'+name);
+    const bytes=Uint8Array.from(atob('__DATA__'),c=>c.charCodeAt(0));
+    const data=JSON.parse(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+    if(!data.donor||!Array.isArray(data.candidates)||!data.candidates.length)throw new Error('실제 donor·recipient 그래프 데이터가 없습니다.');
+    const roles={query:{token:'--viz-series-1',label:'query',shape:'diamond'},near:{token:'--viz-series-2',label:'near',shape:'circle'},mid:{token:'--viz-series-3',label:'mid',shape:'square'},wide:{token:'--viz-series-4',label:'wide',shape:'triangle'}};
+    const state={candidate:Math.max(0,data.candidates.findIndex(c=>c.kind==='U')),view:'local',tumor:true,zoom:1,yaw:35,pitch:25,selected:null};
+    const probe=document.createElement('span');probe.hidden=true;root.append(probe);
+    const colors={};
+    function theme(){for(const key of ['--foreground','--muted-foreground','--border','--viz-series-1','--viz-series-2','--viz-series-3','--viz-series-4','--viz-series-5']){probe.style.color='var('+key+')';colors[key]=getComputedStyle(probe).color;}}
+    function validPoint(p){return Array.isArray(p)&&p.length===3&&p.every(Number.isFinite);}
+    function points(surface){if(!Array.isArray(surface)||!surface.length)return [];return validPoint(surface[0])?surface:surface.flatMap(p=>Array.isArray(p)?p:[]);}
+    function sceneFor(side){return side==='donor'?data.donor:data.candidates[state.candidate].scene;}
+    function boxFor(scene){const b=scene.box;if(Array.isArray(b)&&b.length===2&&validPoint(b[0])&&validPoint(b[1]))return b;if(b&&validPoint(b.lo)&&validPoint(b.hi))return [b.lo,b.hi];return null;}
+    function validate(scene,label){
+      if(!scene||!Array.isArray(scene.nodes)||!scene.nodes.length||!Array.isArray(scene.edges)||!validPoint(scene.center))throw new Error(label+'의 필수 그래프 정보가 없습니다.');
+      for(const n of scene.nodes)if(!validPoint(n.xyz)||!roles[n.role])throw new Error(label+'의 실제 노드 좌표/역할이 잘못됐습니다.');
+      for(const e of scene.edges)if(!Array.isArray(e)||e.length<2||!Number.isInteger(e[0])||!Number.isInteger(e[1])||e[0]<0||e[1]<0||e[0]>=scene.nodes.length||e[1]>=scene.nodes.length)throw new Error(label+'의 edge index가 잘못됐습니다.');
+      for(const p of [...points(scene.organ_surface),...points(scene.tumor_surface)])if(!validPoint(p))throw new Error(label+'의 원본 표면 좌표가 잘못됐습니다.');
+    }
+    validate(data.donor,'Donor');data.candidates.forEach(c=>{if(!['P','U'].includes(c.kind))throw new Error('기존 P/U 후보 표기가 필요합니다.');validate(c.scene,'Recipient '+c.id);});
+    data.candidates.forEach((c,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=(c.kind==='P'?'P · 관측 종양':'U · 미관측 비교')+' · '+c.id;$('candidate').append(option);});
+    const allKinds=Array.from(new Set([data.donor,...data.candidates.map(c=>c.scene)].flatMap(s=>s.edges.map(e=>String(e[2]??'연결'))))).sort();
+    const edgeStyles=new Map(allKinds.map((k,i)=>[k,{token:'--foreground',dash:i%3===0?[]:i%3===1?[4,3]:[1,3],alpha:.38,label:k}]));
+    for(const [k,s] of edgeStyles){const item=document.createElement('span'),line=document.createElement('i');line.className='csg-edge-line';line.style.borderTopStyle=s.dash.length?'dashed':'solid';line.setAttribute('aria-hidden','true');item.append(line,document.createTextNode(k));$('edge-legend').append(item);}
+    const font=getComputedStyle($('node-detail'));
+    const plots={};let drawPending=false;
+    function scheduleDraw(){if(drawPending)return;drawPending=true;requestAnimationFrame(()=>{drawPending=false;draw();});}
+    function rotate(p,center){const a=state.yaw*Math.PI/180,b=state.pitch*Math.PI/180;const [x,y,z]=p.map((v,k)=>v-center[k]);const u=x*Math.cos(a)-y*Math.sin(a),v=x*Math.sin(a)+y*Math.cos(a);return [u,v*Math.sin(b)-z*Math.cos(b),v*Math.cos(b)+z*Math.sin(b)];}
+    function projection(scene,width,height){
+      let fit=[];const box=boxFor(scene);
+      if(state.view==='full')fit=points(scene.organ_surface);
+      if(!fit.length&&box){for(let i=0;i<8;i++)fit.push([0,1,2].map(k=>box[(i>>k)&1][k]));}
+      if(!fit.length)fit=scene.nodes.map(n=>n.xyz);
+      const low=[0,1,2].map(k=>Math.min(...fit.map(p=>p[k]))),high=[0,1,2].map(k=>Math.max(...fit.map(p=>p[k])));
+      const center=state.view==='local'?scene.center:low.map((v,k)=>(v+high[k])/2);
+      const corners=[];for(let i=0;i<8;i++)corners.push(rotate([0,1,2].map(k=>((i>>k)&1)?high[k]:low[k]),center));
+      const ext=[0,1].map(k=>2*Math.max(...corners.map(p=>Math.abs(p[k]))));
+      const scale=Math.min((width-56)/Math.max(ext[0],1),(height-75)/Math.max(ext[1],1))*state.zoom;
+      const p=xyz=>{const q=rotate(xyz,center);return [width/2+q[0]*scale,(height-26)/2+q[1]*scale,q[2]];};
+      return {p,scale,center,width,height};
+    }
+    function stroke(ctx,coordinates,color,alpha=1,dash=[]){if(!coordinates.length)return;ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.setLineDash(dash);ctx.beginPath();coordinates.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);}
+    function surface(ctx,surfaceData,pr,token,alpha){
+      if(!Array.isArray(surfaceData)||!surfaceData.length)return;
+      ctx.fillStyle=colors[token];ctx.globalAlpha=alpha;
+      if(validPoint(surfaceData[0])){for(const xyz of surfaceData){const p=pr.p(xyz);ctx.fillRect(p[0]-.7,p[1]-.7,1.4,1.4);}}
+      else{ctx.lineWidth=.7;for(const contour of surfaceData)stroke(ctx,contour.map(pr.p),colors[token],alpha);}
+      ctx.globalAlpha=1;
+    }
+    function mark(ctx,node,p,selected){
+      const r=node.role==='query'?6:node.role==='wide'?4.5:4,style=roles[node.role];ctx.fillStyle=colors[style.token];ctx.strokeStyle=colors['--foreground'];ctx.lineWidth=1;ctx.globalAlpha=.92;ctx.beginPath();
+      if(style.shape==='diamond'){ctx.moveTo(p[0],p[1]-r);ctx.lineTo(p[0]+r,p[1]);ctx.lineTo(p[0],p[1]+r);ctx.lineTo(p[0]-r,p[1]);ctx.closePath();}
+      else if(style.shape==='square')ctx.rect(p[0]-r,p[1]-r,r*2,r*2);
+      else if(style.shape==='triangle'){ctx.moveTo(p[0],p[1]-r);ctx.lineTo(p[0]+r,p[1]+r);ctx.lineTo(p[0]-r,p[1]+r);ctx.closePath();}
+      else ctx.arc(p[0],p[1],r,0,Math.PI*2);
+      if(node.role==='query'&&(node.abstract!==false&&node.sampled!==true)){ctx.strokeStyle=colors[style.token];ctx.stroke();}else ctx.fill();
+      if(selected){ctx.globalAlpha=1;ctx.strokeStyle=colors['--foreground'];ctx.beginPath();ctx.arc(p[0],p[1],r+4,0,Math.PI*2);ctx.stroke();}
+      ctx.globalAlpha=1;
+    }
+    function niceBar(maximum){const exponent=Math.pow(10,Math.floor(Math.log10(Math.max(maximum,1e-8))));return [5,2,1].map(v=>v*exponent).find(v=>v<=maximum)||exponent/2;}
+    function axes(ctx,pr){
+      ctx.font=font.fontSize+' '+font.fontFamily;ctx.fillStyle=colors['--foreground'];ctx.textBaseline='middle';
+      const base=[36,pr.height-43],length=22;
+      for(const [i,label] of ['X','Y','Z'].entries()){const v=rotate([0,1,2].map(k=>k===i?1:0),[0,0,0]),end=[base[0]+v[0]*length,base[1]+v[1]*length];ctx.lineWidth=1;stroke(ctx,[base,end],colors['--foreground'],.65);ctx.fillText(label,end[0]+(v[0]>=0?4:-14),end[1]+(v[1]>=0?7:-7));}
+      const bar=niceBar(pr.width*.22/pr.scale),x=pr.width-20-bar*pr.scale,y=pr.height-20;ctx.lineWidth=1.5;stroke(ctx,[[x,y],[x+bar*pr.scale,y]],colors['--foreground']);ctx.textAlign='right';ctx.fillText(bar.toLocaleString('en-US',{maximumFractionDigits:2})+' mm',pr.width-20,y-12);ctx.textAlign='left';
+    }
+    function render(side){
+      const scene=sceneFor(side),canvas=$(side+'-canvas'),rect=canvas.getBoundingClientRect();const width=Math.max(1,rect.width),height=Math.max(1,rect.height),dpr=Math.min(window.devicePixelRatio||1,2);
+      if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);}
+      const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);ctx.save();ctx.beginPath();ctx.rect(1,1,width-2,height-2);ctx.clip();
+      const pr=projection(scene,width,height);surface(ctx,scene.organ_surface,pr,'--muted-foreground',state.view==='full'?.3:.12);
+      if(state.tumor)surface(ctx,scene.tumor_surface,pr,'--viz-series-5',state.view==='full'?.55:.35);
+      const box=boxFor(scene);if(box){const p=[];for(let i=0;i<8;i++)p.push(pr.p([0,1,2].map(k=>box[(i>>k)&1][k])));ctx.lineWidth=.65;for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)if([1,2,4].includes(i^j))stroke(ctx,[p[i],p[j]],colors['--muted-foreground'],.45);}
+      const projected=scene.nodes.map((n,i)=>({i,node:n,p:pr.p(n.xyz)}));
+      ctx.lineWidth=.85;for(const e of scene.edges){const s=edgeStyles.get(String(e[2]??'연결'));stroke(ctx,[projected[e[0]].p,projected[e[1]].p],colors[s.token],s.alpha,s.dash);}
+      projected.sort((a,b)=>a.p[2]-b.p[2]);for(const n of projected)mark(ctx,n.node,n.p,state.selected?.side===side&&state.selected.index===n.i);
+      ctx.restore();axes(ctx,pr);ctx.strokeStyle=colors['--border'];ctx.lineWidth=1;ctx.strokeRect(.5,.5,width-1,height-1);
+      plots[side]={projected,pr};
+      const counts=Object.keys(roles).map(role=>role+' '+scene.nodes.filter(n=>n.role===role).length).join(' · ');
+      const stats=scene.stats??{};let edgeLabel=scene.edges.length+'개 표시 연결';
+      if(Number.isFinite(stats.undirected_edges)&&Number.isFinite(stats.directed_edges))edgeLabel=stats.undirected_edges+' 무방향 / '+stats.directed_edges+' 방향 edges';
+      const ranges=['near','mid','wide'].map(role=>{const values=scene.nodes.filter(n=>n.role===role).map(n=>Number.isFinite(n.distance_mm)?n.distance_mm:Math.hypot(...n.xyz.map((v,k)=>v-scene.center[k])));return values.length?role+' '+Math.min(...values).toFixed(1)+'–'+Math.max(...values).toFixed(1)+' mm':null;}).filter(Boolean).join(' · ');
+      $(side+'-count').textContent=scene.nodes.length+' nodes · '+edgeLabel+' · '+counts+(ranges?' · 거리 구간: '+ranges:'');
+      canvas.setAttribute('aria-label',(side==='donor'?'Donor':'Recipient')+' 실제 3D 그래프, '+scene.nodes.length+' nodes, '+scene.edges.length+' edges, '+(state.view==='full'?'전체 간 위치':'국소 확대')+', 좌표 단위 mm');
+    }
+    function finiteFormat(value,decimals=3){return typeof value==='number'&&Number.isFinite(value)?value.toFixed(decimals):'미제공';}
+    function nodeDetail(){
+      if(!state.selected){$('node-detail').textContent='노드를 선택하세요.';$('node').value='';return;}
+      const {side,index}=state.selected,scene=sceneFor(side),node=scene.nodes[index];if(!node){state.selected=null;nodeDetail();return;}
+      $('node').value=side+':'+index;const distance=Math.hypot(...node.xyz.map((v,k)=>v-scene.center[k]));const cosine=node.cosine_to_query??node.feature_cosine??node.cosine;
+      const abstract=node.role==='query'&&node.abstract!==false&&node.sampled!==true;const scale=node.scale??node.feature_scale;
+      $('node-detail').textContent=(side==='donor'?'Donor':'Recipient')+' #'+index+' · '+node.role+(abstract?' (추상 query 허브 · voxel 표본 아님)':'')+' · ['+node.xyz.map(v=>finiteFormat(v,2)).join(', ')+'] mm · 기준점 거리 '+finiteFormat(distance,2)+' mm · feature norm '+finiteFormat(node.feature_norm)+' · query cosine '+finiteFormat(cosine,4)+(scale!==undefined?' · scale '+String(scale):'');
+    }
+    function fillNodes(){const previous=state.selected;$('node').replaceChildren();const empty=document.createElement('option');empty.value='';empty.textContent='노드를 선택하세요';$('node').append(empty);for(const side of ['donor','recipient'])sceneFor(side).nodes.forEach((n,i)=>{const option=document.createElement('option');option.value=side+':'+i;option.textContent=(side==='donor'?'Donor':'Recipient')+' #'+i+' · '+n.role;$('node').append(option);});state.selected=previous;nodeDetail();}
+    function draw(){theme();$('candidate').value=String(state.candidate);$('view').value=state.view;$('tumor').checked=state.tumor;$('zoom').value=String(Math.round(state.zoom*100));$('zoom-value').textContent=state.zoom.toFixed(2)+'×';$('yaw').value=String(state.yaw);$('pitch').value=String(state.pitch);$('donor-heading').textContent='Donor · '+(data.donor.case??data.donor.case_id??data.donor.id??'실제 source');const c=data.candidates[state.candidate];$('recipient-heading').textContent='Recipient · '+(data.case??c.case??'')+' · '+c.kind;render('donor');render('recipient');nodeDetail();root.dataset.ready='true';}
+    function save(){const host=window.openai;if(typeof host?.setWidgetState==='function')host.setWidgetState({modelContent:{visual:'cnn-sparse-graph-20261002',case:data.case,candidate:data.candidates[state.candidate].id,kind:data.candidates[state.candidate].kind,view:state.view,selected:state.selected,scope:data.scope??'actual CT graph geometry'},privateContent:{candidate:state.candidate,view:state.view,tumor:state.tumor,zoom:state.zoom,yaw:state.yaw,pitch:state.pitch,selected:state.selected}}).catch(()=>{});}
+    function restore(saved){if(saved?.modelContent?.visual!=='cnn-sparse-graph-20261002'||saved.modelContent.case!==data.case)return;const s=saved.privateContent??{};if(Number.isInteger(s.candidate)&&s.candidate>=0&&s.candidate<data.candidates.length)state.candidate=s.candidate;if(['full','local'].includes(s.view))state.view=s.view;if(typeof s.tumor==='boolean')state.tumor=s.tumor;if(Number.isFinite(s.zoom))state.zoom=Math.max(.5,Math.min(2.5,s.zoom));if(Number.isFinite(s.yaw))state.yaw=Math.max(-180,Math.min(180,s.yaw));if(Number.isFinite(s.pitch))state.pitch=Math.max(-80,Math.min(80,s.pitch));if(s.selected&&['donor','recipient'].includes(s.selected.side)&&Number.isInteger(s.selected.index)&&s.selected.index>=0&&s.selected.index<sceneFor(s.selected.side).nodes.length)state.selected=s.selected;}
+    $('candidate').addEventListener('change',()=>{state.candidate=Number($('candidate').value);state.selected=null;fillNodes();scheduleDraw();save();});
+    $('view').addEventListener('change',()=>{state.view=$('view').value;state.zoom=1;scheduleDraw();save();});
+    $('tumor').addEventListener('change',()=>{state.tumor=$('tumor').checked;scheduleDraw();save();});
+    for(const k of ['zoom','yaw','pitch'])$(k).addEventListener('input',()=>{state[k]=Number($(k).value)/(k==='zoom'?100:1);scheduleDraw();});
+    for(const k of ['zoom','yaw','pitch'])$(k).addEventListener('change',save);
+    $('node').addEventListener('change',()=>{const value=$('node').value;if(value){const [side,index]=value.split(':');state.selected={side,index:Number(index)};}else state.selected=null;nodeDetail();scheduleDraw();save();});
+    for(const side of ['donor','recipient']){
+      const canvas=$(side+'-canvas');let drag=null;
+      canvas.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY,yaw:state.yaw,pitch:state.pitch,moved:false};canvas.setPointerCapture(e.pointerId);});
+      canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>4)drag.moved=true;if(drag.moved){state.yaw=((drag.yaw+dx*.6+540)%360)-180;state.pitch=Math.max(-80,Math.min(80,drag.pitch+dy*.45));scheduleDraw();}});
+      canvas.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;if(!drag.moved&&plots[side]){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;const radius=matchMedia('(pointer:coarse)').matches?22:16;const hit=plots[side].projected.map(n=>({...n,distance:Math.hypot(n.p[0]-x,n.p[1]-y)})).filter(n=>n.distance<=radius).sort((a,b)=>a.distance-b.distance||b.p[2]-a.p[2])[0];state.selected=hit?{side,index:hit.i}:null;nodeDetail();scheduleDraw();}drag=null;save();});
+      canvas.addEventListener('pointercancel',()=>{drag=null;});
+      canvas.addEventListener('wheel',e=>{e.preventDefault();state.zoom=Math.max(.5,Math.min(2.5,state.zoom*Math.exp(-e.deltaY*.001)));scheduleDraw();save();},{passive:false});
+    }
+    const source=data.weight_source??{};const label=typeof source==='string'?source:source.label??source.kind??source.description??Object.entries(source).map(([key,value])=>key+': '+(typeof value==='string'?value:JSON.stringify(value))).join(' · ');$('source').textContent='가중치: '+label;$('scope').textContent=typeof data.scope==='string'?data.scope:'실제 CT의 제안 그래프 구조 · 추천 정확도 평가 아님';
+    $('heading').textContent='CNN 특징 → 작은 그래프 · '+(data.case??'실제 CT')+(Number.isFinite(data.margin_mm)?' · margin '+data.margin_mm+' mm':'');
+    restore(window.openai?.widgetState);fillNodes();new ResizeObserver(scheduleDraw).observe(root);new MutationObserver(scheduleDraw).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});window.addEventListener('openai:set_globals',e=>{restore(e.detail?.globals?.widgetState);fillNodes();scheduleDraw();});draw();
+  })().catch(error=>{const root=document.getElementById('cnn-sparse-graph-20261002');if(root){const panel=root.querySelector('#csg-error');panel.hidden=false;panel.textContent='시각화 오류: '+error.message;root.dataset.ready='error';}throw error;});
+  </script>
+</div>

@@ -1,0 +1,14 @@
+test_balanced_metric_features_change_selected_nodes_at_fixed_positions (tests.test_sparse_feature_graph.Checks) ... ok
+test_deterministic_initialization_selection_and_no_gt_input (tests.test_sparse_feature_graph.Checks) ... ok
+test_empty_band_query_coverage_native_audit_and_budget_fail_explicitly (tests.test_sparse_feature_graph.Checks) ... ok
+test_gradient_every_trainable_module_and_reference_is_unchanged (tests.test_sparse_feature_graph.Checks) ... ok
+test_masked_corner_support_has_explicit_unavailable_scale (tests.test_sparse_feature_graph.Checks) ... ok
+test_mst_is_explicit_and_root_path_occurs_once (tests.test_sparse_feature_graph.Checks) ... ok
+test_native_geometry_full_pool_roles_unique_crops_and_disjoint_graph (tests.test_sparse_feature_graph.Checks) ... ok
+test_outside_organ_and_padding_perturbation_cannot_change_feature_graph (tests.test_sparse_feature_graph.Checks) ... ok
+test_small_band_padding_does_not_create_nodes_or_edges (tests.test_sparse_feature_graph.Checks) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.589s
+
+OK

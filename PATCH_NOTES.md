@@ -1,3 +1,10 @@
+## v2.2 — CNN 특징 기반 희소 L0 그래프·실제 3D DEBUG 시각화 (2026-10-02)
+
+- 기존 native organ-only CNN 특징과 후보 상대 위치를 사용하는 별도 L0 후보 구현. Near/mid/wide16개씩+query1개, 3층128D mean GraphSAGE, role별 readout 뒤 기존 fusion/L1/L2/전체 objective에 연결. Production 기본 경로·Basic CP·정답 P/U·후보128·원본 mask·physical32 보존.
+- 초기 시각화에서 공간 거리 척도가 CNN 차이를 압도하는 문제를 확인하고 두 거리의 band별 분산 정규화 수정. 기존 결과 보존, feature 변경에 따른 선택 변화 검사. 암 관련 위치를 학습한 탐색기나 무손실 압축으로 표시하지 않음.
+- RTX5070Ti에서 GPU 단위9개 PASS, 실제 liver_66 P5+U128 전체133/266scene 및 physical32 ranking135쌍 전체 loss/backward/optimizer PASS. 새 L0 기준 DEBUG support 재인코딩. Peak2.134GiB; CNN은 로컬DEBUG saved step4, graph/readout은 새 초기값.
+- 실제 forward의 node/edge를 native3D로 표시하고 전체 간/국소 보기·P/U 전환·종양 overlay·회전 등 화면10검사 PASS. Coverage 제외와 연구 범위 기록. 장기 학습·production checkpoint/ready·정확도 및 epoch 속도 향상 주장 없음. [구현·실제 검증](docs/sparse_feature_graph_l0_DEBUG_20261002.md).
+
 ## v2.2 — reference L1 전이·BN 고정 가중치 대조 (2026-10-01)
 
 - 후속 L0 공간 표현 검토(2026-10-02): 국소 crop mean과 간 전체 mean을 구분하고 center-aware readout/A 및 CNN-feature sparse graph/B 설계 후보를 기록. Mean pooling 주원인·graph 필수라는 인과 확정은 하지 않음. 실제 anchor→crop origin→stride 좌표, 공유 crop alias, unsupported center, 새 projection/optimizer 및 support basis 결속 요건 확인. 노드32~64 예시는 production cap/default로 구현하지 않음. P/U·모델·loss 변경·신규 model 검사·장기 학습 없음. [검토 기록](docs/local_cnn_finite_server_20261002.md).

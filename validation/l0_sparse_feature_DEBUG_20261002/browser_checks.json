@@ -1,0 +1,16 @@
+{
+  "ready": true,
+  "errors": [],
+  "checks": [
+    "original P and U options",
+    "node/edge counts visible",
+    "DEBUG weight provenance",
+    "P/U actual scene changes",
+    "exact native-mm node details",
+    "3D rotation works",
+    "full liver view differs",
+    "original tumor overlay toggle",
+    "mobile no horizontal overflow",
+    "no browser runtime errors"
+  ]
+}
