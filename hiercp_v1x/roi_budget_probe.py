@@ -93,6 +93,73 @@ def _write_new(path: Path, payload: dict) -> None:
         json.dump(payload, stream, ensure_ascii=False, indent=2, allow_nan=False)
 
 
+def summarize_probe_failure(row: dict, *, message_limit: int = 480) -> dict:
+    """Summarize recorded child output; never infer an exception from ROI shape.
+
+    The full traceback and stdout remain in ``row['error']`` / ``row['stdout']``.
+    Only this terminal summary is bounded. Unclassified child output is labeled
+    explicitly, and a resource stop is distinguished from a child exception.
+    """
+    if type(message_limit) is not int or message_limit < 1:
+        raise ValueError("Failure display message limit must be a positive integer")
+    if row.get("status") == "PASS":
+        raise ValueError("A successful probe has no failure summary")
+    stderr, stdout = row.get("error", ""), row.get("stdout", "")
+    if not isinstance(stderr, str) or not isinstance(stdout, str):
+        raise TypeError("Recorded child stderr/stdout must be text")
+    source, error_class, message = None, None, None
+    marker = "Traceback (most recent call last):"
+    if marker in stderr:
+        # In a chained traceback the final block contains the propagated error.
+        lines = stderr.rsplit(marker, 1)[1].strip().splitlines()
+        pattern = re.compile(r"^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(?::(?:\s*(.*))?)?$")
+        matches = [(index, pattern.match(line)) for index, line in enumerate(lines)]
+        matches = [(index, match) for index, match in matches
+                   if match is not None and (":" in lines[index] or
+                       re.fullmatch(r"(?:[A-Za-z_]\w*\.)*(?:[A-Za-z_]\w*(?:Error|Exception)|KeyboardInterrupt|SystemExit)", match.group(1)))]
+        if matches:
+            # Later lines belong to a multiline exception message. A line such
+            # as ``Tip: ...`` must not replace the actual exception header.
+            index, match = matches[0]
+            error_class = match.group(1)
+            message = "\n".join([match.group(2) or "", *lines[index+1:]]).strip()
+            source = "stderr_traceback"
+    if source is None:
+        if stderr.strip():
+            source, message = "stderr_unclassified", stderr.strip().splitlines()[-1]
+        elif stdout.strip():
+            source, message = "stdout_unclassified", stdout.strip().splitlines()[-1]
+        elif row.get("status") in ("RSS_BUDGET", "TIME_BUDGET"):
+            source = "diagnostic_resource_budget"
+            message = "Child stopped at the explicitly configured " + row["status"]
+        elif row.get("answer_missing"):
+            source = "child_exit_without_answer"
+            message = f"Child returned {row.get('returncode')} without an answer file or diagnostic output"
+        else:
+            source = "child_exit_without_output"
+            message = f"Child returned {row.get('returncode')} without diagnostic output; cause is unknown"
+    # Collapse whitespace for one terminal line; this does not alter raw output.
+    compact = " ".join(message.split())
+    truncated = len(compact) > message_limit
+    if truncated:
+        compact = compact[:message_limit] + " ... [full output in report]"
+    return dict(source=source, error_class=error_class, message=compact,
+                message_truncated=truncated)
+
+
+def format_probe_result(row: dict) -> str:
+    """Format one result, including an honest failure reason when available."""
+    line = (f"CPU ROI DEBUG | {row['case_id']}[{row['sample_index']}] | {row['status']} | "
+            f"RSS={row['peak_rss_bytes']/2**30:.3f} GiB | wall={row['wall_seconds']:.2f}s")
+    if row["status"] != "PASS":
+        details = summarize_probe_failure(row)
+        label = details["error_class"] or details["source"]
+        line += f" | {label}"
+        if details["message"]:
+            line += ": " + details["message"]
+    return line
+
+
 def worker(request_path: str) -> None:
     """Child entry: import the verified frozen snapshot before any hiercp module."""
     from dataclasses import replace
@@ -278,15 +345,17 @@ def run_probe(experiment: str, output: str, *, candidate_voxels: int,
             row = dict(case_id=failure["case_id"], sample_index=failure["sample_index"],
                        status=stopped or "FAILED", returncode=proc.returncode,
                        peak_rss_bytes=observed_peak, wall_seconds=time.perf_counter()-started,
-                       error=stderr, stdout=stdout)
+                       error=stderr, stdout=stdout, answer_missing=not answer_path.is_file())
         else:
             row = json.loads(answer_path.read_text(encoding="utf-8"))
             row["peak_rss_bytes"] = max(observed_peak, row["process_peak_rss_bytes"] or 0)
             row["wall_seconds"] = time.perf_counter()-started
             if row["peak_rss_bytes"] > rss_bytes:
                 row["status"] = "RSS_BUDGET"
+        if row["status"] != "PASS":
+            row["failure_summary"] = summarize_probe_failure(row)
         rows.append(row)
-        print(f"CPU ROI DEBUG | {row['case_id']}[{row['sample_index']}] | {row['status']} | RSS={row['peak_rss_bytes']/2**30:.3f} GiB | wall={row['wall_seconds']:.2f}s", flush=True)
+        print(format_probe_result(row), flush=True)
     preserved = all(digest(Path(name)) == sha for name, sha in signatures.items())
     report = dict(format=FORMAT, scope=SCOPE, archived_source_sha256=V1_ARCHIVE_SHA256,
         original_roi_max_voxels=original_voxels, candidate_roi_max_voxels=candidate_voxels,

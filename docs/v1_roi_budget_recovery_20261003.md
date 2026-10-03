@@ -82,6 +82,33 @@ The immediate server operation is the read-only probe. After its real results,
 choose and explicitly approve the resource ceiling before fresh recovery. Do not
 edit the old frozen JSON or restart the unchanged8M preparation expecting a fix.
 
+## Server probe received at 14:07:51
+
+The user supplied the console output of
+`/home/aicompetition06/Medical/experiments/v1_roi_probe_20261003_140751.json`
+from revision `8b53e90`. This is console evidence; the JSON file itself has not
+been copied to this workspace or independently hashed.
+
+| Source request | Status | Observed RSS GiB | Wall seconds |
+| --- | --- | ---: | ---: |
+| liver_116[0] | PASS | 5.625 | 24.09 |
+| liver_116[1] | PASS | 5.625 | 20.11 |
+| liver_129[1] | FAILED | 2.220 | 6.29 |
+| liver_84[0] | FAILED | 4.607 | 12.12 |
+
+The report is incomplete (`completed=false`), preserves the originals, and
+started no training. Neither failure was reported as `RSS_BUDGET` or
+`TIME_BUDGET`. Their original child stderr is required to distinguish geometry
+replay mismatch, original surface expansion, data validation, or another error;
+the summary alone does not establish the cause. Do not increase the resource
+ceiling, accept the two failures, or start cache recovery from this report.
+The diagnostic display now exposes the actual child error while retaining its
+complete stderr/stdout in the JSON; this changes reporting only.
+Twelve focused failure-display UNIT checks pass, including multiline/chained
+exceptions, stdout-only failures and unknown exit causes. The original worker
+and ROI replay function are unchanged. This does not resolve the two server
+failures whose stderr has not yet been supplied.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
