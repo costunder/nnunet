@@ -1,0 +1,51 @@
+{
+  "format": "v1_snapshot_bytecode_release_v1",
+  "date": "2026-10-03",
+  "scope": "Source inventory/cache isolation correction; no server CT or neural run",
+  "prior_revision": "1e5e615e309155f6f7c5ec1ac642f1d1e5dabdb9",
+  "server_error": "ContractError: Unlisted or missing snapshot files: v1.0",
+  "remote_inventory_received": false,
+  "evidence": "Prior ROI child could create snapshot bytecode; exact-all-files inventory rejects those caches. Generated-file classification and fresh lookup prefix reproduced in UNIT tests.",
+  "files": {
+    "hiercp_v1x/experiment.py": "8f5876290e78e398d281fbf0a40253be34c826d5cd9faa1a2834701944a9bf60",
+    "hiercp_v1x/roi_budget_probe.py": "9b0a178e7ee468ebc74b45212c8169abf887b9271804f2f71eb12a86fd277666",
+    "hiercp_v1x/snapshot_inventory.py": "06a3c3667d8fe6b4648d742d0da6fea45062596373c7cb7d3a35ade186019670",
+    "tests/test_v1x_experiment.py": "a93d52377f754baa55f74b015388f90380111fc9eb6039de8f6a71ede66784a6",
+    "tests/test_v1_snapshot_bytecode.py": "2d42452baa9a433d274b5d928f5f9d244ec032c1dd983b73c109ad08c06d1d49",
+    "docs/v1_roi_budget_recovery_20261003.md": "cf8e26aad84cb8836d23a6db96a57224bf1dd7ff5e514d8938a46fb07f367251"
+  },
+  "AST_pass": 5,
+  "unit_results": {
+    "existing_runtime_ROI_pass": 60,
+    "bytecode_suite_pass": 17,
+    "bytecode_suite_skipped": 3,
+    "total_pass": 77,
+    "total_fail": 0
+  },
+  "skipped_reason": "Windows lacks privilege for actual file/directory/broken symlink creation",
+  "source_inventory": "Only unlisted direct __pycache__/*.pyc mapping to listed .py is generated; required members, exact SHA and overlays remain enforced; symlinks rejected",
+  "execution": "New non-existing PYTHONPYCACHEPREFIX and PYTHONDONTWRITEBYTECODE=1 per invocation/child; worker repeats settings before frozen imports",
+  "forged_cache_subprocess_pass": true,
+  "source_hash_and_overlay_integration_pass": true,
+  "original_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+  "strict_sampler_preserved": {
+    "hiercp_v1x/graph_size.py": true,
+    "hiercp_v1x/nested_graph_size.py": true,
+    "hiercp_v1x/sampling_entry.py": true,
+    "hiercp_v1x/sampling_runtime.py": true
+  },
+  "existing_caches_deleted": false,
+  "source_manifest_rewritten": false,
+  "original_results_overwritten": false,
+  "default_roi_guard": 8000000,
+  "diagnostic_voxel_limit": 12000000,
+  "rss_gib": 16,
+  "timeout_seconds": 120,
+  "production_config_changed": false,
+  "server_target_costs_measured": false,
+  "neural_smoke_run": false,
+  "full_cache_preparation_run": false,
+  "training_started": false,
+  "full_evaluation_started": false,
+  "quality_verified": false
+}

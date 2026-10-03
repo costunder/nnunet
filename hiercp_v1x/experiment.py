@@ -404,9 +404,8 @@ def load_suite(experiment, *, repo=ROOT, _seen=None):
         if set(item['source_hashes']) != expected_names:
             raise ContractError('Snapshot source inventory changed')
         source = experiment / 'source' / stage
-        actual_names = {p.relative_to(source).as_posix() for p in source.rglob('*') if p.is_file()}
-        if actual_names != expected_names:
-            raise ContractError(f'Unlisted or missing snapshot files: {stage}')
+        from .snapshot_inventory import checked_snapshot_inventory
+        checked_snapshot_inventory(source, expected_names)
         if item["spec"] != get_stage(stage).to_dict():
             raise ContractError("Stage registry changed")
         config = read(experiment / "configs" / f"{stage}.json")
@@ -645,7 +644,8 @@ def execute_stage(experiment, stage, target, *, gpu=None):
                   source_snapshot=manifest["stages"][stage], nnunet_started=False))
         print(f"Foreground {stage} | {target} | {output}", flush=True)
         print("Ctrl+C interrupts this foreground job. Original v1 resumes at its last saved complete epoch; partial epochs are not claimed saved.", flush=True)
-        env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+        from .snapshot_inventory import isolated_snapshot_bytecode_env
+        env = isolated_snapshot_bytecode_env(experiment/'invocations'/(run_id+'_bytecode_lookup'))
         env.pop('PYTHONPATH', None)  # Snapshot imports must not resolve current v2 packages.
         env.pop('HIERCP_V1X_SAMPLING_CONTRACT', None)  # Inherited settings cannot contaminate native preparation.
         for command in commands:

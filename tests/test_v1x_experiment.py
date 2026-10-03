@@ -265,6 +265,9 @@ class RuntimeMetadataUnitTests(unittest.TestCase):
         self.assertNotIn("shell", kwargs)
         self.assertNotIn("start_new_session", kwargs)
         self.assertEqual(kwargs["env"]["PYTHONDONTWRITEBYTECODE"], "1")
+        bytecode_lookup = Path(kwargs["env"]["PYTHONPYCACHEPREFIX"])
+        self.assertEqual(bytecode_lookup.parent, self.suite / 'invocations')
+        self.assertFalse(bytecode_lookup.exists())
         self.assertNotIn("PYTHONPATH", kwargs["env"])
         self.assertFalse((self.suite / "shared/prepare.lock").exists())
 

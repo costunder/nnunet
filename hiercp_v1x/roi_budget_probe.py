@@ -164,6 +164,10 @@ def format_probe_result(row: dict) -> str:
 
 def worker(request_path: str) -> None:
     """Child entry: import the verified frozen snapshot before any hiercp module."""
+    from .snapshot_inventory import isolated_snapshot_bytecode_env
+    bytecode_env = isolated_snapshot_bytecode_env(Path(request_path).with_name(Path(request_path).stem+'_bytecode_lookup'))
+    sys.dont_write_bytecode = True
+    sys.pycache_prefix = bytecode_env['PYTHONPYCACHEPREFIX']
     from dataclasses import replace
     import hashlib
     import numpy as np
@@ -406,7 +410,9 @@ def run_probe(experiment: str, output: str, *, candidate_voxels: int,
         command = [sys.executable, "-u", str(tool), "--worker-request", str(request_path)]
         print(f"CPU ROI DEBUG | {ordinal+1}/{len(requests)} | {failure['case_id']}[{failure['sample_index']}]", flush=True)
         started = time.perf_counter()
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        from .snapshot_inventory import isolated_snapshot_bytecode_env
+        env = isolated_snapshot_bytecode_env(request_path.with_name(request_path.stem+'_bytecode_lookup'))
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
                                 text=True, encoding="utf-8", errors="replace")
         observed_peak = 0
         stopped = None
@@ -449,7 +455,7 @@ def run_probe(experiment: str, output: str, *, candidate_voxels: int,
     report = dict(format=FORMAT, scope=SCOPE, archived_source_sha256=V1_ARCHIVE_SHA256,
         replay_protocol='original_sample_first_roi_failure_v1',
         implementation_sha256={name: digest(Path(__file__).parent/name) for name in
-            ('roi_budget_probe.py', 'roi_failure_replay.py', 'roi_probe_reuse.py')},
+            ('roi_budget_probe.py', 'roi_failure_replay.py', 'roi_probe_reuse.py', 'snapshot_inventory.py')},
         original_roi_max_voxels=original_voxels, candidate_roi_max_voxels=candidate_voxels,
         experiment=str(root), failed_manifest_sha256=signatures[str(progress)],
         resource_budget=dict(rss_bytes=rss_bytes, case_timeout_seconds=case_timeout_seconds,

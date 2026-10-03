@@ -153,6 +153,47 @@ the focused suite); 62 distinct UNIT checks pass in total. Eight modified/new
 Python files parse, and the CLI exposes the reuse option. No new neural smoke,
 full-cache preparation, training or accuracy evaluation was run for this patch.
 
+## Snapshot inventory stop before the corrected probe
+
+The next supplied server run at `1e5e615` stopped in `load_suite` with
+`Unlisted or missing snapshot files: v1.0`, before starting an ROI worker.
+That message alone does not enumerate the files, so the remote inventory has
+not been independently inspected. A concrete defect was found locally: the
+earlier probe imported the frozen snapshot without suppressing Python bytecode
+writes, while `load_suite` counted every generated `.pyc` as unlisted source.
+
+The correction distinguishes only an unlisted `.pyc` whose direct parent is
+`__pycache__` and whose cache filename maps to an explicitly listed `.py`.
+It still requires every listed source, exact source hashes, exact declared
+overlays and configuration/manifest binding. Arbitrary extra files, caches
+mapping to unlisted modules, `.pyc` outside `__pycache__`, and symlinks are
+rejected. Real inventory errors now list the missing and unlisted paths.
+The original snapshot, generated caches and old results are not deleted or
+rewritten.
+
+Suppressing bytecode writes alone does not prevent Python from reading an old
+cache. Both ROI children and ordinary suite invocations therefore use a new,
+non-existing `PYTHONPYCACHEPREFIX` plus `PYTHONDONTWRITEBYTECODE=1`. The ROI
+worker enforces these settings again before frozen imports. Existing snapshot
+bytecode cannot replace the verified source in these launched processes; no
+replacement bytecode is written. A subprocess UNIT regression checks this with
+timestamp-valid altered bytecode, while preserving its original bytes.
+
+This is an execution/inventory correction. It does not change source manifests,
+model mathematics, sampler rules, resources or the original 8M production guard.
+The same original `140751` source PASS report remains the reuse input. Corrected
+target ROI measurements and full preparation/training remain pending on the
+server. If actual source files are missing or changed, the corrected checker
+will still reject the run with their paths instead of treating them as caches.
+
+Validation: all 60 existing runtime/ROI UNIT checks passed. The new bytecode
+suite ran 20 checks: 17 passed and 3 real symlink-creation checks were skipped
+because this Windows session lacks that privilege. The successful subprocess
+check proves source execution despite a timestamp-valid altered cache; four
+`load_suite` integration checks retain real inventory, source-hash and overlay
+validation. No actual server inventory, target ROI cost, model forward or long
+training was executed in this correction.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
