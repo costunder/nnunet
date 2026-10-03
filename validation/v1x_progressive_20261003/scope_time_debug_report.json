@@ -1,0 +1,5444 @@
+{
+  "debug": true,
+  "status": "PASS",
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "branches": [
+    {
+      "debug": true,
+      "scope": "bounded physical ROI short original-v1 cost probe",
+      "training_started": false,
+      "debug_optimizer_updates": true,
+      "full_training": false,
+      "full_evaluation": false,
+      "production_ready": false,
+      "quality_verified": false,
+      "margin_mm": 10.0,
+      "source": {
+        "source": "D:\\AI project\\nnunet\\work\\v1_sampling_runtime416_CUDA_DEBUG_20261003\\native\\source\\v1.0",
+        "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+        "verified_files": {
+          "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+          "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+          "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+          "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+          "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+          "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+          "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+          "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+          "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+          "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+          "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+          "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+          "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+          "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+          "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+          "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+          "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+          "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+          "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+          "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+          "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+          "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+          "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+          "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+          "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+          "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+          "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+          "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+          "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+          "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+          "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+        }
+      },
+      "adapter": {
+        "path": "D:\\AI project\\nnunet\\hiercp_v1x\\bounded_scope.py",
+        "sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b"
+      },
+      "phase": "complete",
+      "timing_contract": {
+        "warmup_updates": 0,
+        "first_update_includes_kernel_startup": true,
+        "scope": "bounded short DEBUG; initialization and diagnostic work included where named",
+        "excluded": [
+          "production loader queue",
+          "production checkpoint save",
+          "complete epoch"
+        ],
+        "RSS_enforcement": "100ms sampled peak plus explicit phase checks; not an OS hard limit"
+      },
+      "probe_tool_sha256": "5bf640e4e0535e99bec9df3b9eebe6ab564b2087d48589a392b37d4c61de8577",
+      "requested_execution": {
+        "baseline_source": "work/v1_sampling_runtime416_CUDA_DEBUG_20261003/native/source/v1.0",
+        "fixture_dir": "work/v1_sampling_runtime416_CUDA_DEBUG_20261003/samples",
+        "output": "work/v1_scope_time_CUDA_DEBUG_20261003_r3",
+        "margin_mm": [
+          10.0,
+          20.0,
+          30.0
+        ],
+        "physical_batch": 2,
+        "workers": 2,
+        "updates": 1,
+        "cuda_gib": 12.0,
+        "rss_gib": 32.0,
+        "gpu": null,
+        "margin": 10.0
+      },
+      "scope_contract": {
+        "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+        "margin_mm": 10.0,
+        "context_outer_radius_mm": 10.0,
+        "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+        "implicit_depth_expansion": false,
+        "mandatory_surface_search": false,
+        "optional_roles": [
+          "source_liver_surface",
+          "target_liver_surface"
+        ],
+        "CNN_shape": [
+          48,
+          48,
+          48
+        ],
+        "coordinate_normalization_mm": 28.0,
+        "tumor_sdf_normalization_mm": 28.0,
+        "context_shells_mm": [
+          4.0,
+          12.0,
+          28.0
+        ],
+        "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+        "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+        "original_module_sha256": {
+          "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+          "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+          "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+          "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+          "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+          "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+          "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+          "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+          "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+          "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+          "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+          "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+          "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+          "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+          "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+          "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+          "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+          "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+          "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+          "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+          "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+          "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+          "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+          "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+          "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+          "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+          "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+          "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+          "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+          "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+        },
+        "debug": true,
+        "production_ready": false,
+        "quality_verified": false,
+        "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+      },
+      "raw_load_and_depth_seconds": 65.58978390000993,
+      "GPU": "NVIDIA GeForce RTX 5070 Ti",
+      "device_total_bytes": 17094344704,
+      "cuda_budget_bytes": 12884901888,
+      "rss_budget_bytes": 34359738368,
+      "workers": 2,
+      "physical_sample_batch": 2,
+      "physical_candidate_graph_batch": 16,
+      "effective_sample_batch": 2,
+      "gradient_accumulation_steps": 1,
+      "CPU_logical": 16,
+      "RAM_available": 41835888640,
+      "cache_candidate_pool": 128,
+      "candidates_per_sample": 8,
+      "epoch_for_debug_loss": 29,
+      "model_config": {
+        "hidden_dim": 128,
+        "heads": 4,
+        "local_layers": 3,
+        "patient_layers": 2,
+        "prototype_layers": 2,
+        "dropout": 0.1,
+        "dense_base_channels": 12,
+        "dense_feature_dim": 32,
+        "dense_batch_size": 4,
+        "channels_last_3d": true,
+        "checkpoint_local_blocks": true,
+        "checkpoint_dense_encoder": true
+      },
+      "loss_and_training_config": {
+        "val_fraction": 0.2,
+        "epochs": 40,
+        "batch_size": "auto",
+        "batch_size_candidates": "powers_of_two_to_cohort",
+        "batch_calibration_repeats": 3,
+        "batch_calibration_max_vram_fraction": 0.9,
+        "num_workers": "auto",
+        "num_worker_candidates": [
+          0,
+          2,
+          4,
+          8
+        ],
+        "loader_calibration_batches": 8,
+        "lr": 0.0001,
+        "weight_decay": 0.0001,
+        "amp": true,
+        "grad_clip": 5.0,
+        "easy_epochs": 8,
+        "inter_epochs": 18,
+        "intra_epochs": 28,
+        "model_mine_start_epoch": 29,
+        "semi_hard_low_percentile": 0.7,
+        "semi_hard_high_percentile": 0.95,
+        "cross_entropy_weight": 1.0,
+        "pairwise_weight": 1.0,
+        "ordinal_weight": 0.2,
+        "mined_weight": 0.5,
+        "consistency_weight": 0.1,
+        "fixed_validation_epoch": 29,
+        "checkpoint_metric_precision": 8,
+        "gradient_accumulation_steps": 1,
+        "target_effective_batch_size": null,
+        "fused_optimizer": true,
+        "pin_memory": true,
+        "prefetch_factor": 1,
+        "persistent_workers": true,
+        "cuda_prefetch": false
+      },
+      "seed": 42,
+      "ROI_and_canonical_preparation_seconds": 9.717449499992654,
+      "ROI_records": [
+        {
+          "case_id": "liver_5",
+          "candidate": "source",
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.13026340000214987
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 1,
+          "center": [
+            294,
+            305,
+            415
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.1420823999796994
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 0,
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.15323080000234768
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 3,
+          "center": [
+            323,
+            224,
+            387
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.11867820000043139
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 2,
+          "center": [
+            324,
+            289,
+            379
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.14042859998880886
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 4,
+          "center": [
+            349,
+            263,
+            458
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.13861170000745915
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 5,
+          "center": [
+            299,
+            306,
+            455
+          ],
+          "native_shape": [
+            39,
+            41,
+            41
+          ],
+          "native_voxels": 65559,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            11.140625,
+            11.140625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            11.625,
+            11.625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.13056580000557005
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 7,
+          "center": [
+            308,
+            260,
+            462
+          ],
+          "native_shape": [
+            45,
+            35,
+            39
+          ],
+          "native_voxels": 61425,
+          "footprint_shape": [
+            23,
+            13,
+            13
+          ],
+          "full_footprint_voxels": 567,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.12828100001206622
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 6,
+          "center": [
+            329,
+            264,
+            467
+          ],
+          "native_shape": [
+            43,
+            47,
+            45
+          ],
+          "native_voxels": 90945,
+          "footprint_shape": [
+            21,
+            25,
+            19
+          ],
+          "full_footprint_voxels": 1810,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_low_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "padding_high_mm": [
+            10.65625,
+            10.65625,
+            10.399843633174896
+          ],
+          "fields_seconds": 0.15194319997681305
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": "source",
+          "center": [
+            386,
+            293,
+            389
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.19420570001238957
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 0,
+          "center": [
+            386,
+            293,
+            389
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.2641843000019435
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 1,
+          "center": [
+            385,
+            201,
+            387
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.26814610001747496
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 3,
+          "center": [
+            318,
+            372,
+            450
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.18463099998189136
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 2,
+          "center": [
+            328,
+            216,
+            425
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.19437710000784136
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 5,
+          "center": [
+            403,
+            277,
+            405
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.1904993999924045
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 4,
+          "center": [
+            373,
+            290,
+            447
+          ],
+          "native_shape": [
+            61,
+            55,
+            53
+          ],
+          "native_voxels": 177815,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.9130859375,
+            10.5
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            11.349609375,
+            11.0
+          ],
+          "fields_seconds": 0.19199369999114424
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 7,
+          "center": [
+            401,
+            323,
+            385
+          ],
+          "native_shape": [
+            77,
+            53,
+            43
+          ],
+          "native_voxels": 175483,
+          "footprint_shape": [
+            53,
+            29,
+            23
+          ],
+          "full_footprint_voxels": 9054,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "fields_seconds": 0.19636180001543835
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 6,
+          "center": [
+            395,
+            314,
+            376
+          ],
+          "native_shape": [
+            71,
+            63,
+            61
+          ],
+          "native_voxels": 272853,
+          "footprint_shape": [
+            47,
+            39,
+            41
+          ],
+          "full_footprint_voxels": 20395,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.4765625,
+            10.4765625,
+            10.0
+          ],
+          "fields_seconds": 0.3169080999796279
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": "source",
+          "center": [
+            410,
+            177,
+            62
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.05776739999419078
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 1,
+          "center": [
+            396,
+            275,
+            55
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.048044499999377877
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 0,
+          "center": [
+            410,
+            177,
+            62
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.05826449999585748
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 2,
+          "center": [
+            393,
+            289,
+            49
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.07505250000394881
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 3,
+          "center": [
+            397,
+            256,
+            58
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.06660449999617413
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 4,
+          "center": [
+            249,
+            327,
+            69
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.05046639998909086
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 5,
+          "center": [
+            252,
+            332,
+            69
+          ],
+          "native_shape": [
+            39,
+            47,
+            29
+          ],
+          "native_voxels": 53157,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.5,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            11.0,
+            10.0
+          ],
+          "fields_seconds": 0.051481900009093806
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 6,
+          "center": [
+            382,
+            183,
+            76
+          ],
+          "native_shape": [
+            45,
+            57,
+            29
+          ],
+          "native_voxels": 74385,
+          "footprint_shape": [
+            25,
+            37,
+            9
+          ],
+          "full_footprint_voxels": 2077,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "fields_seconds": 0.06728780001867563
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 7,
+          "center": [
+            374,
+            186,
+            73
+          ],
+          "native_shape": [
+            37,
+            55,
+            25
+          ],
+          "native_voxels": 50875,
+          "footprint_shape": [
+            17,
+            35,
+            5
+          ],
+          "full_footprint_voxels": 688,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_low_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "padding_high_mm": [
+            10.0,
+            10.0,
+            10.0
+          ],
+          "fields_seconds": 0.05028820000006817
+        }
+      ],
+      "views_collate_pin_seconds": 4.404385500005446,
+      "train_input": {
+        "scope": "provided_batch",
+        "sample_count": 2,
+        "case_ids": [
+          "liver_5",
+          "liver_6"
+        ],
+        "candidate_counts": {
+          "min": 8,
+          "max": 8,
+          "mean": 8.0,
+          "total": 16
+        },
+        "input_shapes": {
+          "source_patches": [
+            2,
+            5,
+            48,
+            48,
+            48
+          ],
+          "target_patches": [
+            16,
+            5,
+            48,
+            48,
+            48
+          ],
+          "difficulties": [
+            16
+          ]
+        },
+        "local_graphs": {
+          "available": true,
+          "graph_count": 16,
+          "nodes_per_graph": {
+            "min": 2169,
+            "max": 8598,
+            "mean": 4628.0,
+            "total": 74048
+          },
+          "edges_per_graph": {
+            "min": 174022,
+            "max": 655309,
+            "mean": 373628.0625,
+            "total": 5978049
+          },
+          "node_type_totals": {
+            "tumor_surface": 5176,
+            "tumor_interior": 2520,
+            "source_context": 31880,
+            "source_liver_surface": 2096,
+            "target_context": 27553,
+            "target_liver_surface": 4823
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 110544,
+            "tumor_interior|interior_neighbor|tumor_interior": 54000,
+            "source_context|context_neighbor|source_context": 1592096,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 52304,
+            "target_context|context_neighbor|target_context": 1340448,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 143398,
+            "tumor_interior|supports|tumor_surface": 136536,
+            "tumor_surface|supported_by|tumor_interior": 136536,
+            "tumor_surface|interfaces_source|source_context": 408240,
+            "source_context|interfaces_tumor|tumor_surface": 408240,
+            "tumor_surface|interfaces_target|target_context": 333178,
+            "source_context|corresponds_to|target_context": 688255,
+            "source_context|near_liver_surface|source_liver_surface": 87752,
+            "source_liver_surface|anchors_context|source_context": 87752,
+            "target_context|near_liver_surface|target_liver_surface": 199385,
+            "target_liver_surface|anchors_context|target_context": 199385
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "local_graphs_view2": {
+          "available": true,
+          "graph_count": 16,
+          "nodes_per_graph": {
+            "min": 2169,
+            "max": 8598,
+            "mean": 4628.0,
+            "total": 74048
+          },
+          "edges_per_graph": {
+            "min": 174022,
+            "max": 655309,
+            "mean": 373628.0625,
+            "total": 5978049
+          },
+          "node_type_totals": {
+            "tumor_surface": 5176,
+            "tumor_interior": 2520,
+            "source_context": 31880,
+            "source_liver_surface": 2096,
+            "target_context": 27553,
+            "target_liver_surface": 4823
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 110544,
+            "tumor_interior|interior_neighbor|tumor_interior": 54000,
+            "source_context|context_neighbor|source_context": 1592096,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 52304,
+            "target_context|context_neighbor|target_context": 1340448,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 143398,
+            "tumor_interior|supports|tumor_surface": 136536,
+            "tumor_surface|supported_by|tumor_interior": 136536,
+            "tumor_surface|interfaces_source|source_context": 408240,
+            "source_context|interfaces_tumor|tumor_surface": 408240,
+            "tumor_surface|interfaces_target|target_context": 333178,
+            "source_context|corresponds_to|target_context": 688255,
+            "source_context|near_liver_surface|source_liver_surface": 87752,
+            "source_liver_surface|anchors_context|source_context": 87752,
+            "target_context|near_liver_surface|target_liver_surface": 199385,
+            "target_liver_surface|anchors_context|target_context": 199385
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "patient_graphs": {
+          "available": true,
+          "graph_count": 2,
+          "nodes_per_graph": {
+            "min": 34,
+            "max": 40,
+            "mean": 37.0,
+            "total": 74
+          },
+          "edges_per_graph": {
+            "min": 432,
+            "max": 549,
+            "mean": 490.5,
+            "total": 981
+          },
+          "node_type_totals": {
+            "tumor": 2,
+            "candidate": 16,
+            "region": 48,
+            "lesion": 6,
+            "liver": 2
+          },
+          "edge_type_totals": {
+            "tumor|compatible_with|candidate": 16,
+            "candidate|matched_to|tumor": 16,
+            "candidate|spatial_neighbor|candidate": 112,
+            "candidate|belongs_to|region": 16,
+            "region|contains_candidate|candidate": 16,
+            "tumor|conditions|region": 48,
+            "region|context_for|tumor": 48,
+            "candidate|near|lesion": 48,
+            "lesion|near|candidate": 48,
+            "lesion|hosted_by|region": 6,
+            "region|hosts_lesion|lesion": 6,
+            "tumor|coexists_with|lesion": 6,
+            "lesion|coexists_with|tumor": 6,
+            "region|adjacent_to|region": 493,
+            "region|inside|liver": 48,
+            "liver|contains|region": 48
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "prototype_graphs": {
+          "available": true,
+          "graph_count": 2,
+          "nodes_per_graph": {
+            "min": 48,
+            "max": 48,
+            "mean": 48.0,
+            "total": 96
+          },
+          "edges_per_graph": {
+            "min": 176,
+            "max": 176,
+            "mean": 176.0,
+            "total": 352
+          },
+          "node_type_totals": {
+            "candidate": 16,
+            "region": 48,
+            "prototype": 32
+          },
+          "edge_type_totals": {
+            "candidate|belongs_to|region": 16,
+            "region|contains_candidate|candidate": 16,
+            "region|assigned_to|prototype": 96,
+            "prototype|represents|region": 96,
+            "prototype|similar_to|prototype": 128
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        }
+      },
+      "validation_input": {
+        "scope": "provided_batch",
+        "sample_count": 1,
+        "case_ids": [
+          "liver_31"
+        ],
+        "candidate_counts": {
+          "min": 8,
+          "max": 8,
+          "mean": 8.0,
+          "total": 8
+        },
+        "input_shapes": {
+          "source_patches": [
+            1,
+            5,
+            48,
+            48,
+            48
+          ],
+          "target_patches": [
+            8,
+            5,
+            48,
+            48,
+            48
+          ],
+          "difficulties": [
+            8
+          ]
+        },
+        "local_graphs": {
+          "available": true,
+          "graph_count": 8,
+          "nodes_per_graph": {
+            "min": 1997,
+            "max": 2485,
+            "mean": 2339.25,
+            "total": 18714
+          },
+          "edges_per_graph": {
+            "min": 177436,
+            "max": 200049,
+            "mean": 187466.125,
+            "total": 1499729
+          },
+          "node_type_totals": {
+            "tumor_surface": 920,
+            "tumor_interior": 256,
+            "source_context": 4888,
+            "source_liver_surface": 2512,
+            "target_context": 8329,
+            "target_liver_surface": 1809
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 21136,
+            "tumor_interior|interior_neighbor|tumor_interior": 3008,
+            "source_context|context_neighbor|source_context": 217968,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 79232,
+            "target_context|context_neighbor|target_context": 398780,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 51608,
+            "tumor_interior|supports|tumor_surface": 14872,
+            "tumor_surface|supported_by|tumor_interior": 14872,
+            "tumor_surface|interfaces_source|source_context": 59944,
+            "source_context|interfaces_tumor|tumor_surface": 59944,
+            "tumor_surface|interfaces_target|target_context": 72722,
+            "source_context|corresponds_to|target_context": 106185,
+            "source_context|near_liver_surface|source_liver_surface": 116008,
+            "source_liver_surface|anchors_context|source_context": 116008,
+            "target_context|near_liver_surface|target_liver_surface": 83721,
+            "target_liver_surface|anchors_context|target_context": 83721
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "local_graphs_view2": {
+          "available": true,
+          "graph_count": 8,
+          "nodes_per_graph": {
+            "min": 1997,
+            "max": 2485,
+            "mean": 2339.25,
+            "total": 18714
+          },
+          "edges_per_graph": {
+            "min": 177436,
+            "max": 200049,
+            "mean": 187466.125,
+            "total": 1499729
+          },
+          "node_type_totals": {
+            "tumor_surface": 920,
+            "tumor_interior": 256,
+            "source_context": 4888,
+            "source_liver_surface": 2512,
+            "target_context": 8329,
+            "target_liver_surface": 1809
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 21136,
+            "tumor_interior|interior_neighbor|tumor_interior": 3008,
+            "source_context|context_neighbor|source_context": 217968,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 79232,
+            "target_context|context_neighbor|target_context": 398780,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 51608,
+            "tumor_interior|supports|tumor_surface": 14872,
+            "tumor_surface|supported_by|tumor_interior": 14872,
+            "tumor_surface|interfaces_source|source_context": 59944,
+            "source_context|interfaces_tumor|tumor_surface": 59944,
+            "tumor_surface|interfaces_target|target_context": 72722,
+            "source_context|corresponds_to|target_context": 106185,
+            "source_context|near_liver_surface|source_liver_surface": 116008,
+            "source_liver_surface|anchors_context|source_context": 116008,
+            "target_context|near_liver_surface|target_liver_surface": 83721,
+            "target_liver_surface|anchors_context|target_context": 83721
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "patient_graphs": {
+          "available": true,
+          "graph_count": 1,
+          "nodes_per_graph": {
+            "min": 41,
+            "max": 41,
+            "mean": 41.0,
+            "total": 41
+          },
+          "edges_per_graph": {
+            "min": 560,
+            "max": 560,
+            "mean": 560.0,
+            "total": 560
+          },
+          "node_type_totals": {
+            "tumor": 1,
+            "candidate": 8,
+            "region": 24,
+            "lesion": 7,
+            "liver": 1
+          },
+          "edge_type_totals": {
+            "tumor|compatible_with|candidate": 8,
+            "candidate|matched_to|tumor": 8,
+            "candidate|spatial_neighbor|candidate": 56,
+            "candidate|belongs_to|region": 8,
+            "region|contains_candidate|candidate": 8,
+            "tumor|conditions|region": 24,
+            "region|context_for|tumor": 24,
+            "candidate|near|lesion": 56,
+            "lesion|near|candidate": 56,
+            "lesion|hosted_by|region": 7,
+            "region|hosts_lesion|lesion": 7,
+            "tumor|coexists_with|lesion": 7,
+            "lesion|coexists_with|tumor": 7,
+            "region|adjacent_to|region": 236,
+            "region|inside|liver": 24,
+            "liver|contains|region": 24
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "prototype_graphs": {
+          "available": true,
+          "graph_count": 1,
+          "nodes_per_graph": {
+            "min": 48,
+            "max": 48,
+            "mean": 48.0,
+            "total": 48
+          },
+          "edges_per_graph": {
+            "min": 176,
+            "max": 176,
+            "mean": 176.0,
+            "total": 176
+          },
+          "node_type_totals": {
+            "candidate": 8,
+            "region": 24,
+            "prototype": 16
+          },
+          "edge_type_totals": {
+            "candidate|belongs_to|region": 8,
+            "region|contains_candidate|candidate": 8,
+            "region|assigned_to|prototype": 48,
+            "prototype|represents|region": 48,
+            "prototype|similar_to|prototype": 64
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        }
+      },
+      "H2D_seconds": 0.039977500011445954,
+      "initial_state_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+      "model_parameters": 10434532,
+      "updates": [
+        {
+          "step": 1,
+          "loss": 3.8923420906066895,
+          "forward_seconds": 3.7359460000006948,
+          "backward_seconds": 9.532895000011194,
+          "optimizer_seconds": 0.19427959999302402,
+          "update_with_diagnostics_seconds": 14.180706899991492,
+          "gradient_groups": {
+            "CNN": 4.4481377601623535,
+            "L0": 1.5373705625534058,
+            "local_encoder_total": 6.337168216705322,
+            "role_attention_pool": 0.03836973384022713,
+            "shell_attention_pool": 0.04846661165356636,
+            "local_fusion": 1.6293963193893433,
+            "L1": 2.9327290058135986,
+            "L2": 1.9201433658599854,
+            "scalar_score": 8.604608535766602
+          },
+          "gradient_connectivity": {
+            "trainable": 1085,
+            "with_gradient": 1085,
+            "scope": "Core module norms checked; genuinely absent surface roles can contribute zero gradients"
+          },
+          "peak_allocated_bytes": 2627579904
+        }
+      ],
+      "validation": {
+        "seconds": 0.9271031999960542,
+        "top1": 0.0,
+        "MRR": 0.20000000298023224,
+        "scores": [
+          [
+            0.042694091796875,
+            0.043182373046875,
+            0.045654296875,
+            0.039093017578125,
+            0.01342010498046875,
+            0.0136566162109375,
+            0.06341552734375,
+            0.0675048828125
+          ]
+        ],
+        "case_ids": [
+          "liver_31"
+        ],
+        "quality_verified": false
+      },
+      "status": "PASS",
+      "actual_CT": true,
+      "actual_CUDA": true,
+      "process_peak_rss_bytes": 9568174080,
+      "fixture_manifest_sha256": "a784d890a7b583c1d28d72f2a9d6611dfae8f18d98696b04708b1733b1ced59d"
+    },
+    {
+      "debug": true,
+      "scope": "bounded physical ROI short original-v1 cost probe",
+      "training_started": false,
+      "debug_optimizer_updates": true,
+      "full_training": false,
+      "full_evaluation": false,
+      "production_ready": false,
+      "quality_verified": false,
+      "margin_mm": 20.0,
+      "source": {
+        "source": "D:\\AI project\\nnunet\\work\\v1_sampling_runtime416_CUDA_DEBUG_20261003\\native\\source\\v1.0",
+        "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+        "verified_files": {
+          "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+          "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+          "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+          "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+          "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+          "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+          "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+          "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+          "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+          "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+          "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+          "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+          "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+          "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+          "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+          "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+          "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+          "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+          "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+          "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+          "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+          "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+          "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+          "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+          "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+          "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+          "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+          "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+          "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+          "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+          "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+        }
+      },
+      "adapter": {
+        "path": "D:\\AI project\\nnunet\\hiercp_v1x\\bounded_scope.py",
+        "sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b"
+      },
+      "phase": "complete",
+      "timing_contract": {
+        "warmup_updates": 0,
+        "first_update_includes_kernel_startup": true,
+        "scope": "bounded short DEBUG; initialization and diagnostic work included where named",
+        "excluded": [
+          "production loader queue",
+          "production checkpoint save",
+          "complete epoch"
+        ],
+        "RSS_enforcement": "100ms sampled peak plus explicit phase checks; not an OS hard limit"
+      },
+      "probe_tool_sha256": "5bf640e4e0535e99bec9df3b9eebe6ab564b2087d48589a392b37d4c61de8577",
+      "requested_execution": {
+        "baseline_source": "work/v1_sampling_runtime416_CUDA_DEBUG_20261003/native/source/v1.0",
+        "fixture_dir": "work/v1_sampling_runtime416_CUDA_DEBUG_20261003/samples",
+        "output": "work/v1_scope_time_CUDA_DEBUG_20261003_r3",
+        "margin_mm": [
+          10.0,
+          20.0,
+          30.0
+        ],
+        "physical_batch": 2,
+        "workers": 2,
+        "updates": 1,
+        "cuda_gib": 12.0,
+        "rss_gib": 32.0,
+        "gpu": null,
+        "margin": 20.0
+      },
+      "scope_contract": {
+        "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+        "margin_mm": 20.0,
+        "context_outer_radius_mm": 20.0,
+        "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+        "implicit_depth_expansion": false,
+        "mandatory_surface_search": false,
+        "optional_roles": [
+          "source_liver_surface",
+          "target_liver_surface"
+        ],
+        "CNN_shape": [
+          48,
+          48,
+          48
+        ],
+        "coordinate_normalization_mm": 28.0,
+        "tumor_sdf_normalization_mm": 28.0,
+        "context_shells_mm": [
+          4.0,
+          12.0,
+          28.0
+        ],
+        "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+        "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+        "original_module_sha256": {
+          "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+          "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+          "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+          "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+          "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+          "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+          "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+          "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+          "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+          "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+          "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+          "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+          "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+          "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+          "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+          "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+          "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+          "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+          "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+          "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+          "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+          "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+          "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+          "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+          "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+          "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+          "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+          "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+          "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+          "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+        },
+        "debug": true,
+        "production_ready": false,
+        "quality_verified": false,
+        "contract_sha256": "430ba047a79d545f2ec67e9fc9cb538541fd97d6c19ca0ec17128a66009e28a9"
+      },
+      "raw_load_and_depth_seconds": 65.20436070000869,
+      "GPU": "NVIDIA GeForce RTX 5070 Ti",
+      "device_total_bytes": 17094344704,
+      "cuda_budget_bytes": 12884901888,
+      "rss_budget_bytes": 34359738368,
+      "workers": 2,
+      "physical_sample_batch": 2,
+      "physical_candidate_graph_batch": 16,
+      "effective_sample_batch": 2,
+      "gradient_accumulation_steps": 1,
+      "CPU_logical": 16,
+      "RAM_available": 41939410944,
+      "cache_candidate_pool": 128,
+      "candidates_per_sample": 8,
+      "epoch_for_debug_loss": 29,
+      "model_config": {
+        "hidden_dim": 128,
+        "heads": 4,
+        "local_layers": 3,
+        "patient_layers": 2,
+        "prototype_layers": 2,
+        "dropout": 0.1,
+        "dense_base_channels": 12,
+        "dense_feature_dim": 32,
+        "dense_batch_size": 4,
+        "channels_last_3d": true,
+        "checkpoint_local_blocks": true,
+        "checkpoint_dense_encoder": true
+      },
+      "loss_and_training_config": {
+        "val_fraction": 0.2,
+        "epochs": 40,
+        "batch_size": "auto",
+        "batch_size_candidates": "powers_of_two_to_cohort",
+        "batch_calibration_repeats": 3,
+        "batch_calibration_max_vram_fraction": 0.9,
+        "num_workers": "auto",
+        "num_worker_candidates": [
+          0,
+          2,
+          4,
+          8
+        ],
+        "loader_calibration_batches": 8,
+        "lr": 0.0001,
+        "weight_decay": 0.0001,
+        "amp": true,
+        "grad_clip": 5.0,
+        "easy_epochs": 8,
+        "inter_epochs": 18,
+        "intra_epochs": 28,
+        "model_mine_start_epoch": 29,
+        "semi_hard_low_percentile": 0.7,
+        "semi_hard_high_percentile": 0.95,
+        "cross_entropy_weight": 1.0,
+        "pairwise_weight": 1.0,
+        "ordinal_weight": 0.2,
+        "mined_weight": 0.5,
+        "consistency_weight": 0.1,
+        "fixed_validation_epoch": 29,
+        "checkpoint_metric_precision": 8,
+        "gradient_accumulation_steps": 1,
+        "target_effective_batch_size": null,
+        "fused_optimizer": true,
+        "pin_memory": true,
+        "prefetch_factor": 1,
+        "persistent_workers": true,
+        "cuda_prefetch": false
+      },
+      "seed": 42,
+      "ROI_and_canonical_preparation_seconds": 13.77935980001348,
+      "ROI_records": [
+        {
+          "case_id": "liver_5",
+          "candidate": "source",
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.2248439000104554
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 1,
+          "center": [
+            294,
+            305,
+            415
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.2948053000145592
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 0,
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.29895440000109375
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 3,
+          "center": [
+            323,
+            224,
+            387
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.21207720000529662
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 2,
+          "center": [
+            324,
+            289,
+            379
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.23090969998156652
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 4,
+          "center": [
+            349,
+            263,
+            458
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.2087517000036314
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 5,
+          "center": [
+            299,
+            306,
+            455
+          ],
+          "native_shape": [
+            59,
+            61,
+            67
+          ],
+          "native_voxels": 241133,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.828125,
+            20.828125,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            21.3125,
+            21.3125,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.23284280000370927
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 6,
+          "center": [
+            329,
+            264,
+            467
+          ],
+          "native_shape": [
+            63,
+            67,
+            71
+          ],
+          "native_voxels": 299691,
+          "footprint_shape": [
+            21,
+            25,
+            19
+          ],
+          "full_footprint_voxels": 1810,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.28632599997217767
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 7,
+          "center": [
+            308,
+            260,
+            462
+          ],
+          "native_shape": [
+            65,
+            55,
+            65
+          ],
+          "native_voxels": 232375,
+          "footprint_shape": [
+            23,
+            13,
+            13
+          ],
+          "full_footprint_voxels": 567,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_low_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "padding_high_mm": [
+            20.34375,
+            20.34375,
+            20.799687266349792
+          ],
+          "fields_seconds": 0.2200707999872975
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": "source",
+          "center": [
+            386,
+            293,
+            389
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.4480284000164829
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 0,
+          "center": [
+            386,
+            293,
+            389
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.3748349000234157
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 1,
+          "center": [
+            385,
+            201,
+            387
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.4502762999909464
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 2,
+          "center": [
+            328,
+            216,
+            425
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.4565856000117492
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 3,
+          "center": [
+            318,
+            372,
+            450
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.45931850001215935
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 4,
+          "center": [
+            373,
+            290,
+            447
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.3548362999863457
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 5,
+          "center": [
+            403,
+            277,
+            405
+          ],
+          "native_shape": [
+            83,
+            77,
+            73
+          ],
+          "native_voxels": 466543,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.5166015625,
+            20.5
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.953125,
+            21.0
+          ],
+          "fields_seconds": 0.44035359998815693
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 6,
+          "center": [
+            395,
+            314,
+            376
+          ],
+          "native_shape": [
+            93,
+            85,
+            81
+          ],
+          "native_voxels": 640305,
+          "footprint_shape": [
+            47,
+            39,
+            41
+          ],
+          "full_footprint_voxels": 20395,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "fields_seconds": 0.4817666999879293
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 7,
+          "center": [
+            401,
+            323,
+            385
+          ],
+          "native_shape": [
+            99,
+            75,
+            63
+          ],
+          "native_voxels": 467775,
+          "footprint_shape": [
+            53,
+            29,
+            23
+          ],
+          "full_footprint_voxels": 9054,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.080078125,
+            20.080078125,
+            20.0
+          ],
+          "fields_seconds": 0.3931194000178948
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": "source",
+          "center": [
+            410,
+            177,
+            62
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.1154781999939587
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 0,
+          "center": [
+            410,
+            177,
+            62
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.17303579999133945
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 1,
+          "center": [
+            396,
+            275,
+            55
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.1885529000137467
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 2,
+          "center": [
+            393,
+            289,
+            49
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.13300239999080077
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 3,
+          "center": [
+            397,
+            256,
+            58
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.13782540001557209
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 4,
+          "center": [
+            249,
+            327,
+            69
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.14360989999840967
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 5,
+          "center": [
+            252,
+            332,
+            69
+          ],
+          "native_shape": [
+            59,
+            67,
+            49
+          ],
+          "native_voxels": 193697,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.5,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            21.0,
+            20.0
+          ],
+          "fields_seconds": 0.1774176000035368
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 6,
+          "center": [
+            382,
+            183,
+            76
+          ],
+          "native_shape": [
+            65,
+            77,
+            49
+          ],
+          "native_voxels": 245245,
+          "footprint_shape": [
+            25,
+            37,
+            9
+          ],
+          "full_footprint_voxels": 2077,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "fields_seconds": 0.1893166999798268
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 7,
+          "center": [
+            374,
+            186,
+            73
+          ],
+          "native_shape": [
+            57,
+            75,
+            45
+          ],
+          "native_voxels": 192375,
+          "footprint_shape": [
+            17,
+            35,
+            5
+          ],
+          "full_footprint_voxels": 688,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_low_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "padding_high_mm": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "fields_seconds": 0.12030130001949146
+        }
+      ],
+      "views_collate_pin_seconds": 7.521188000013353,
+      "train_input": {
+        "scope": "provided_batch",
+        "sample_count": 2,
+        "case_ids": [
+          "liver_5",
+          "liver_6"
+        ],
+        "candidate_counts": {
+          "min": 8,
+          "max": 8,
+          "mean": 8.0,
+          "total": 16
+        },
+        "input_shapes": {
+          "source_patches": [
+            2,
+            5,
+            48,
+            48,
+            48
+          ],
+          "target_patches": [
+            16,
+            5,
+            48,
+            48,
+            48
+          ],
+          "difficulties": [
+            16
+          ]
+        },
+        "local_graphs": {
+          "available": true,
+          "graph_count": 16,
+          "nodes_per_graph": {
+            "min": 6250,
+            "max": 17840,
+            "mean": 10832.25,
+            "total": 173316
+          },
+          "edges_per_graph": {
+            "min": 446710,
+            "max": 1272604,
+            "mean": 795182.375,
+            "total": 12722918
+          },
+          "node_type_totals": {
+            "tumor_surface": 4888,
+            "tumor_interior": 2448,
+            "source_context": 77136,
+            "source_liver_surface": 9768,
+            "target_context": 67009,
+            "target_liver_surface": 12067
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 99184,
+            "tumor_interior|interior_neighbor|tumor_interior": 50704,
+            "source_context|context_neighbor|source_context": 3991200,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 288912,
+            "target_context|context_neighbor|target_context": 3421146,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 392176,
+            "tumor_interior|supports|tumor_surface": 128104,
+            "tumor_surface|supported_by|tumor_interior": 128104,
+            "tumor_surface|interfaces_source|source_context": 374360,
+            "source_context|interfaces_tumor|tumor_surface": 374360,
+            "tumor_surface|interfaces_target|target_context": 306616,
+            "source_context|corresponds_to|target_context": 1552482,
+            "source_context|near_liver_surface|source_liver_surface": 301776,
+            "source_liver_surface|anchors_context|source_context": 301776,
+            "target_context|near_liver_surface|target_liver_surface": 506009,
+            "target_liver_surface|anchors_context|target_context": 506009
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "local_graphs_view2": {
+          "available": true,
+          "graph_count": 16,
+          "nodes_per_graph": {
+            "min": 6250,
+            "max": 17840,
+            "mean": 10822.8125,
+            "total": 173165
+          },
+          "edges_per_graph": {
+            "min": 446710,
+            "max": 1272604,
+            "mean": 794407.8125,
+            "total": 12710525
+          },
+          "node_type_totals": {
+            "tumor_surface": 4888,
+            "tumor_interior": 2448,
+            "source_context": 77136,
+            "source_liver_surface": 9768,
+            "target_context": 66858,
+            "target_liver_surface": 12067
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 99184,
+            "tumor_interior|interior_neighbor|tumor_interior": 50704,
+            "source_context|context_neighbor|source_context": 3991200,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 288912,
+            "target_context|context_neighbor|target_context": 3410852,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 392176,
+            "tumor_interior|supports|tumor_surface": 128104,
+            "tumor_surface|supported_by|tumor_interior": 128104,
+            "tumor_surface|interfaces_source|source_context": 374360,
+            "source_context|interfaces_tumor|tumor_surface": 374360,
+            "tumor_surface|interfaces_target|target_context": 306616,
+            "source_context|corresponds_to|target_context": 1552375,
+            "source_context|near_liver_surface|source_liver_surface": 301776,
+            "source_liver_surface|anchors_context|source_context": 301776,
+            "target_context|near_liver_surface|target_liver_surface": 505013,
+            "target_liver_surface|anchors_context|target_context": 505013
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "patient_graphs": {
+          "available": true,
+          "graph_count": 2,
+          "nodes_per_graph": {
+            "min": 34,
+            "max": 40,
+            "mean": 37.0,
+            "total": 74
+          },
+          "edges_per_graph": {
+            "min": 432,
+            "max": 549,
+            "mean": 490.5,
+            "total": 981
+          },
+          "node_type_totals": {
+            "tumor": 2,
+            "candidate": 16,
+            "region": 48,
+            "lesion": 6,
+            "liver": 2
+          },
+          "edge_type_totals": {
+            "tumor|compatible_with|candidate": 16,
+            "candidate|matched_to|tumor": 16,
+            "candidate|spatial_neighbor|candidate": 112,
+            "candidate|belongs_to|region": 16,
+            "region|contains_candidate|candidate": 16,
+            "tumor|conditions|region": 48,
+            "region|context_for|tumor": 48,
+            "candidate|near|lesion": 48,
+            "lesion|near|candidate": 48,
+            "lesion|hosted_by|region": 6,
+            "region|hosts_lesion|lesion": 6,
+            "tumor|coexists_with|lesion": 6,
+            "lesion|coexists_with|tumor": 6,
+            "region|adjacent_to|region": 493,
+            "region|inside|liver": 48,
+            "liver|contains|region": 48
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "prototype_graphs": {
+          "available": true,
+          "graph_count": 2,
+          "nodes_per_graph": {
+            "min": 48,
+            "max": 48,
+            "mean": 48.0,
+            "total": 96
+          },
+          "edges_per_graph": {
+            "min": 176,
+            "max": 176,
+            "mean": 176.0,
+            "total": 352
+          },
+          "node_type_totals": {
+            "candidate": 16,
+            "region": 48,
+            "prototype": 32
+          },
+          "edge_type_totals": {
+            "candidate|belongs_to|region": 16,
+            "region|contains_candidate|candidate": 16,
+            "region|assigned_to|prototype": 96,
+            "prototype|represents|region": 96,
+            "prototype|similar_to|prototype": 128
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        }
+      },
+      "validation_input": {
+        "scope": "provided_batch",
+        "sample_count": 1,
+        "case_ids": [
+          "liver_31"
+        ],
+        "candidate_counts": {
+          "min": 8,
+          "max": 8,
+          "mean": 8.0,
+          "total": 8
+        },
+        "input_shapes": {
+          "source_patches": [
+            1,
+            5,
+            48,
+            48,
+            48
+          ],
+          "target_patches": [
+            8,
+            5,
+            48,
+            48,
+            48
+          ],
+          "difficulties": [
+            8
+          ]
+        },
+        "local_graphs": {
+          "available": true,
+          "graph_count": 8,
+          "nodes_per_graph": {
+            "min": 4586,
+            "max": 7143,
+            "mean": 5836.375,
+            "total": 46691
+          },
+          "edges_per_graph": {
+            "min": 410267,
+            "max": 515163,
+            "mean": 458463.875,
+            "total": 3667711
+          },
+          "node_type_totals": {
+            "tumor_surface": 920,
+            "tumor_interior": 208,
+            "source_context": 13008,
+            "source_liver_surface": 5048,
+            "target_context": 21497,
+            "target_liver_surface": 6010
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 21136,
+            "tumor_interior|interior_neighbor|tumor_interior": 1888,
+            "source_context|context_neighbor|source_context": 649414,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 172976,
+            "target_context|context_neighbor|target_context": 1091538,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 193824,
+            "tumor_interior|supports|tumor_surface": 11704,
+            "tumor_surface|supported_by|tumor_interior": 11704,
+            "tumor_surface|interfaces_source|source_context": 59944,
+            "source_context|interfaces_tumor|tumor_surface": 59944,
+            "tumor_surface|interfaces_target|target_context": 72722,
+            "source_context|corresponds_to|target_context": 247989,
+            "source_context|near_liver_surface|source_liver_surface": 288981,
+            "source_liver_surface|anchors_context|source_context": 288981,
+            "target_context|near_liver_surface|target_liver_surface": 247483,
+            "target_liver_surface|anchors_context|target_context": 247483
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "local_graphs_view2": {
+          "available": true,
+          "graph_count": 8,
+          "nodes_per_graph": {
+            "min": 4642,
+            "max": 7094,
+            "mean": 5843.125,
+            "total": 46745
+          },
+          "edges_per_graph": {
+            "min": 413311,
+            "max": 512185,
+            "mean": 459217.875,
+            "total": 3673743
+          },
+          "node_type_totals": {
+            "tumor_surface": 920,
+            "tumor_interior": 208,
+            "source_context": 12975,
+            "source_liver_surface": 5048,
+            "target_context": 21584,
+            "target_liver_surface": 6010
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 21136,
+            "tumor_interior|interior_neighbor|tumor_interior": 1888,
+            "source_context|context_neighbor|source_context": 647326,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 172976,
+            "target_context|context_neighbor|target_context": 1096774,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 193824,
+            "tumor_interior|supports|tumor_surface": 11704,
+            "tumor_surface|supported_by|tumor_interior": 11704,
+            "tumor_surface|interfaces_source|source_context": 59944,
+            "source_context|interfaces_tumor|tumor_surface": 59944,
+            "tumor_surface|interfaces_target|target_context": 72722,
+            "source_context|corresponds_to|target_context": 248829,
+            "source_context|near_liver_surface|source_liver_surface": 288914,
+            "source_liver_surface|anchors_context|source_context": 288914,
+            "target_context|near_liver_surface|target_liver_surface": 248572,
+            "target_liver_surface|anchors_context|target_context": 248572
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "patient_graphs": {
+          "available": true,
+          "graph_count": 1,
+          "nodes_per_graph": {
+            "min": 41,
+            "max": 41,
+            "mean": 41.0,
+            "total": 41
+          },
+          "edges_per_graph": {
+            "min": 560,
+            "max": 560,
+            "mean": 560.0,
+            "total": 560
+          },
+          "node_type_totals": {
+            "tumor": 1,
+            "candidate": 8,
+            "region": 24,
+            "lesion": 7,
+            "liver": 1
+          },
+          "edge_type_totals": {
+            "tumor|compatible_with|candidate": 8,
+            "candidate|matched_to|tumor": 8,
+            "candidate|spatial_neighbor|candidate": 56,
+            "candidate|belongs_to|region": 8,
+            "region|contains_candidate|candidate": 8,
+            "tumor|conditions|region": 24,
+            "region|context_for|tumor": 24,
+            "candidate|near|lesion": 56,
+            "lesion|near|candidate": 56,
+            "lesion|hosted_by|region": 7,
+            "region|hosts_lesion|lesion": 7,
+            "tumor|coexists_with|lesion": 7,
+            "lesion|coexists_with|tumor": 7,
+            "region|adjacent_to|region": 236,
+            "region|inside|liver": 24,
+            "liver|contains|region": 24
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "prototype_graphs": {
+          "available": true,
+          "graph_count": 1,
+          "nodes_per_graph": {
+            "min": 48,
+            "max": 48,
+            "mean": 48.0,
+            "total": 48
+          },
+          "edges_per_graph": {
+            "min": 176,
+            "max": 176,
+            "mean": 176.0,
+            "total": 176
+          },
+          "node_type_totals": {
+            "candidate": 8,
+            "region": 24,
+            "prototype": 16
+          },
+          "edge_type_totals": {
+            "candidate|belongs_to|region": 8,
+            "region|contains_candidate|candidate": 8,
+            "region|assigned_to|prototype": 48,
+            "prototype|represents|region": 48,
+            "prototype|similar_to|prototype": 64
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        }
+      },
+      "H2D_seconds": 0.07637049999902956,
+      "initial_state_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+      "model_parameters": 10434532,
+      "updates": [
+        {
+          "step": 1,
+          "loss": 3.7503318786621094,
+          "forward_seconds": 6.189984000026016,
+          "backward_seconds": 16.366487000021152,
+          "optimizer_seconds": 0.11310420001973398,
+          "update_with_diagnostics_seconds": 23.006372000003466,
+          "gradient_groups": {
+            "CNN": 6.013136863708496,
+            "L0": 1.8504319190979004,
+            "local_encoder_total": 8.088664054870605,
+            "role_attention_pool": 0.07541239261627197,
+            "shell_attention_pool": 0.12462227046489716,
+            "local_fusion": 2.004918098449707,
+            "L1": 3.530754327774048,
+            "L2": 2.1144893169403076,
+            "scalar_score": 8.3452730178833
+          },
+          "gradient_connectivity": {
+            "trainable": 1085,
+            "with_gradient": 1085,
+            "scope": "Core module norms checked; genuinely absent surface roles can contribute zero gradients"
+          },
+          "peak_allocated_bytes": 5663424000
+        }
+      ],
+      "validation": {
+        "seconds": 1.2686702999926638,
+        "top1": 0.0,
+        "MRR": 0.125,
+        "scores": [
+          [
+            0.0286865234375,
+            0.083740234375,
+            0.08087158203125,
+            0.08544921875,
+            0.04510498046875,
+            0.035614013671875,
+            0.03369140625,
+            0.036285400390625
+          ]
+        ],
+        "case_ids": [
+          "liver_31"
+        ],
+        "quality_verified": false
+      },
+      "status": "PASS",
+      "actual_CT": true,
+      "actual_CUDA": true,
+      "process_peak_rss_bytes": 11904188416,
+      "fixture_manifest_sha256": "a784d890a7b583c1d28d72f2a9d6611dfae8f18d98696b04708b1733b1ced59d"
+    },
+    {
+      "debug": true,
+      "scope": "bounded physical ROI short original-v1 cost probe",
+      "training_started": false,
+      "debug_optimizer_updates": true,
+      "full_training": false,
+      "full_evaluation": false,
+      "production_ready": false,
+      "quality_verified": false,
+      "margin_mm": 30.0,
+      "source": {
+        "source": "D:\\AI project\\nnunet\\work\\v1_sampling_runtime416_CUDA_DEBUG_20261003\\native\\source\\v1.0",
+        "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+        "verified_files": {
+          "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+          "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+          "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+          "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+          "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+          "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+          "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+          "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+          "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+          "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+          "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+          "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+          "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+          "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+          "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+          "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+          "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+          "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+          "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+          "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+          "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+          "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+          "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+          "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+          "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+          "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+          "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+          "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+          "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+          "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+          "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+        }
+      },
+      "adapter": {
+        "path": "D:\\AI project\\nnunet\\hiercp_v1x\\bounded_scope.py",
+        "sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b"
+      },
+      "phase": "complete",
+      "timing_contract": {
+        "warmup_updates": 0,
+        "first_update_includes_kernel_startup": true,
+        "scope": "bounded short DEBUG; initialization and diagnostic work included where named",
+        "excluded": [
+          "production loader queue",
+          "production checkpoint save",
+          "complete epoch"
+        ],
+        "RSS_enforcement": "100ms sampled peak plus explicit phase checks; not an OS hard limit"
+      },
+      "probe_tool_sha256": "5bf640e4e0535e99bec9df3b9eebe6ab564b2087d48589a392b37d4c61de8577",
+      "requested_execution": {
+        "baseline_source": "work/v1_sampling_runtime416_CUDA_DEBUG_20261003/native/source/v1.0",
+        "fixture_dir": "work/v1_sampling_runtime416_CUDA_DEBUG_20261003/samples",
+        "output": "work/v1_scope_time_CUDA_DEBUG_20261003_r3",
+        "margin_mm": [
+          10.0,
+          20.0,
+          30.0
+        ],
+        "physical_batch": 2,
+        "workers": 2,
+        "updates": 1,
+        "cuda_gib": 12.0,
+        "rss_gib": 32.0,
+        "gpu": null,
+        "margin": 30.0
+      },
+      "scope_contract": {
+        "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+        "margin_mm": 30.0,
+        "context_outer_radius_mm": 30.0,
+        "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+        "implicit_depth_expansion": false,
+        "mandatory_surface_search": false,
+        "optional_roles": [
+          "source_liver_surface",
+          "target_liver_surface"
+        ],
+        "CNN_shape": [
+          48,
+          48,
+          48
+        ],
+        "coordinate_normalization_mm": 28.0,
+        "tumor_sdf_normalization_mm": 28.0,
+        "context_shells_mm": [
+          4.0,
+          12.0,
+          28.0
+        ],
+        "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+        "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+        "original_module_sha256": {
+          "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+          "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+          "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+          "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+          "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+          "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+          "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+          "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+          "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+          "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+          "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+          "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+          "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+          "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+          "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+          "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+          "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+          "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+          "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+          "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+          "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+          "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+          "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+          "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+          "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+          "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+          "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+          "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+          "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+          "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+        },
+        "debug": true,
+        "production_ready": false,
+        "quality_verified": false,
+        "contract_sha256": "470f7766450b48c54c6974e650c4f3a74df7e2aad7fed447c26b2e62ffcba862"
+      },
+      "raw_load_and_depth_seconds": 68.07370579999406,
+      "GPU": "NVIDIA GeForce RTX 5070 Ti",
+      "device_total_bytes": 17094344704,
+      "cuda_budget_bytes": 12884901888,
+      "rss_budget_bytes": 34359738368,
+      "workers": 2,
+      "physical_sample_batch": 2,
+      "physical_candidate_graph_batch": 16,
+      "effective_sample_batch": 2,
+      "gradient_accumulation_steps": 1,
+      "CPU_logical": 16,
+      "RAM_available": 42513092608,
+      "cache_candidate_pool": 128,
+      "candidates_per_sample": 8,
+      "epoch_for_debug_loss": 29,
+      "model_config": {
+        "hidden_dim": 128,
+        "heads": 4,
+        "local_layers": 3,
+        "patient_layers": 2,
+        "prototype_layers": 2,
+        "dropout": 0.1,
+        "dense_base_channels": 12,
+        "dense_feature_dim": 32,
+        "dense_batch_size": 4,
+        "channels_last_3d": true,
+        "checkpoint_local_blocks": true,
+        "checkpoint_dense_encoder": true
+      },
+      "loss_and_training_config": {
+        "val_fraction": 0.2,
+        "epochs": 40,
+        "batch_size": "auto",
+        "batch_size_candidates": "powers_of_two_to_cohort",
+        "batch_calibration_repeats": 3,
+        "batch_calibration_max_vram_fraction": 0.9,
+        "num_workers": "auto",
+        "num_worker_candidates": [
+          0,
+          2,
+          4,
+          8
+        ],
+        "loader_calibration_batches": 8,
+        "lr": 0.0001,
+        "weight_decay": 0.0001,
+        "amp": true,
+        "grad_clip": 5.0,
+        "easy_epochs": 8,
+        "inter_epochs": 18,
+        "intra_epochs": 28,
+        "model_mine_start_epoch": 29,
+        "semi_hard_low_percentile": 0.7,
+        "semi_hard_high_percentile": 0.95,
+        "cross_entropy_weight": 1.0,
+        "pairwise_weight": 1.0,
+        "ordinal_weight": 0.2,
+        "mined_weight": 0.5,
+        "consistency_weight": 0.1,
+        "fixed_validation_epoch": 29,
+        "checkpoint_metric_precision": 8,
+        "gradient_accumulation_steps": 1,
+        "target_effective_batch_size": null,
+        "fused_optimizer": true,
+        "pin_memory": true,
+        "prefetch_factor": 1,
+        "persistent_workers": true,
+        "cuda_prefetch": false
+      },
+      "seed": 42,
+      "ROI_and_canonical_preparation_seconds": 21.828606399998534,
+      "ROI_records": [
+        {
+          "case_id": "liver_5",
+          "candidate": "source",
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.4596018999873195
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 1,
+          "center": [
+            294,
+            305,
+            415
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.5352461999864317
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 0,
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.5401550999959
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 3,
+          "center": [
+            323,
+            224,
+            387
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.5394648000074085
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 2,
+          "center": [
+            324,
+            289,
+            379
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.5458941000106279
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 4,
+          "center": [
+            349,
+            263,
+            458
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.5067686999973375
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 5,
+          "center": [
+            299,
+            306,
+            455
+          ],
+          "native_shape": [
+            79,
+            81,
+            91
+          ],
+          "native_voxels": 582309,
+          "footprint_shape": [
+            16,
+            18,
+            15
+          ],
+          "full_footprint_voxels": 540,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.515625,
+            30.515625,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            31.0,
+            31.0,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.5459573999978602
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 7,
+          "center": [
+            308,
+            260,
+            462
+          ],
+          "native_shape": [
+            85,
+            75,
+            89
+          ],
+          "native_voxels": 567375,
+          "footprint_shape": [
+            23,
+            13,
+            13
+          ],
+          "full_footprint_voxels": 567,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.4906545999983791
+        },
+        {
+          "case_id": "liver_5",
+          "candidate": 6,
+          "center": [
+            329,
+            264,
+            467
+          ],
+          "native_shape": [
+            83,
+            87,
+            95
+          ],
+          "native_voxels": 685995,
+          "footprint_shape": [
+            21,
+            25,
+            19
+          ],
+          "full_footprint_voxels": 1810,
+          "spacing_mm": [
+            0.96875,
+            0.96875,
+            0.7999879717826843
+          ],
+          "actual_padding_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_low_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "padding_high_mm": [
+            30.03125,
+            30.03125,
+            30.399542927742004
+          ],
+          "fields_seconds": 0.7095956999983173
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": "source",
+          "center": [
+            386,
+            293,
+            389
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.7039252999820746
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 1,
+          "center": [
+            385,
+            201,
+            387
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.8312828000052832
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 0,
+          "center": [
+            386,
+            293,
+            389
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.8499938999884762
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 2,
+          "center": [
+            328,
+            216,
+            425
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.9034950000059325
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 3,
+          "center": [
+            318,
+            372,
+            450
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.8731765999982599
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 4,
+          "center": [
+            373,
+            290,
+            447
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.9334941999986768
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 5,
+          "center": [
+            403,
+            277,
+            405
+          ],
+          "native_shape": [
+            107,
+            101,
+            93
+          ],
+          "native_voxels": 1005051,
+          "footprint_shape": [
+            37,
+            30,
+            32
+          ],
+          "full_footprint_voxels": 8241,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.9931640625,
+            30.5
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            31.4296875,
+            31.0
+          ],
+          "fields_seconds": 0.9923307000135537
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 6,
+          "center": [
+            395,
+            314,
+            376
+          ],
+          "native_shape": [
+            117,
+            109,
+            101
+          ],
+          "native_voxels": 1288053,
+          "footprint_shape": [
+            47,
+            39,
+            41
+          ],
+          "full_footprint_voxels": 20395,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "fields_seconds": 1.18563669998548
+        },
+        {
+          "case_id": "liver_6",
+          "candidate": 7,
+          "center": [
+            401,
+            323,
+            385
+          ],
+          "native_shape": [
+            123,
+            99,
+            83
+          ],
+          "native_voxels": 1010691,
+          "footprint_shape": [
+            53,
+            29,
+            23
+          ],
+          "full_footprint_voxels": 9054,
+          "spacing_mm": [
+            0.873046875,
+            0.873046875,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.556640625,
+            30.556640625,
+            30.0
+          ],
+          "fields_seconds": 0.9148468000057619
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": "source",
+          "center": [
+            410,
+            177,
+            62
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.29851700001745485
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 0,
+          "center": [
+            410,
+            177,
+            62
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.3539065000077244
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 1,
+          "center": [
+            396,
+            275,
+            55
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.35790579998865724
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 2,
+          "center": [
+            393,
+            289,
+            49
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.3672450000012759
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 3,
+          "center": [
+            397,
+            256,
+            58
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.41373010000097565
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 4,
+          "center": [
+            249,
+            327,
+            69
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.4374166000052355
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 5,
+          "center": [
+            252,
+            332,
+            69
+          ],
+          "native_shape": [
+            79,
+            87,
+            69
+          ],
+          "native_voxels": 474237,
+          "footprint_shape": [
+            19,
+            26,
+            9
+          ],
+          "full_footprint_voxels": 596,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.5,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            31.0,
+            30.0
+          ],
+          "fields_seconds": 0.3879900999891106
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 6,
+          "center": [
+            382,
+            183,
+            76
+          ],
+          "native_shape": [
+            85,
+            97,
+            69
+          ],
+          "native_voxels": 568905,
+          "footprint_shape": [
+            25,
+            37,
+            9
+          ],
+          "full_footprint_voxels": 2077,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "fields_seconds": 0.46869070001412183
+        },
+        {
+          "case_id": "liver_31",
+          "candidate": 7,
+          "center": [
+            374,
+            186,
+            73
+          ],
+          "native_shape": [
+            77,
+            95,
+            65
+          ],
+          "native_voxels": 475475,
+          "footprint_shape": [
+            17,
+            35,
+            5
+          ],
+          "full_footprint_voxels": 688,
+          "spacing_mm": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "actual_padding_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_low_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "padding_high_mm": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "fields_seconds": 0.403898599994136
+        }
+      ],
+      "views_collate_pin_seconds": 9.226228300016373,
+      "train_input": {
+        "scope": "provided_batch",
+        "sample_count": 2,
+        "case_ids": [
+          "liver_5",
+          "liver_6"
+        ],
+        "candidate_counts": {
+          "min": 8,
+          "max": 8,
+          "mean": 8.0,
+          "total": 16
+        },
+        "input_shapes": {
+          "source_patches": [
+            2,
+            5,
+            48,
+            48,
+            48
+          ],
+          "target_patches": [
+            16,
+            5,
+            48,
+            48,
+            48
+          ],
+          "difficulties": [
+            16
+          ]
+        },
+        "local_graphs": {
+          "available": true,
+          "graph_count": 16,
+          "nodes_per_graph": {
+            "min": 7161,
+            "max": 20137,
+            "mean": 13037.8125,
+            "total": 208605
+          },
+          "edges_per_graph": {
+            "min": 480216,
+            "max": 1346253,
+            "mean": 896936.875,
+            "total": 14350990
+          },
+          "node_type_totals": {
+            "tumor_surface": 5144,
+            "tumor_interior": 2600,
+            "source_context": 77504,
+            "source_liver_surface": 23784,
+            "target_context": 76775,
+            "target_liver_surface": 22798
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 109008,
+            "tumor_interior|interior_neighbor|tumor_interior": 56624,
+            "source_context|context_neighbor|source_context": 3980784,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 778192,
+            "target_context|context_neighbor|target_context": 3917696,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 761252,
+            "tumor_interior|supports|tumor_surface": 140304,
+            "tumor_surface|supported_by|tumor_interior": 140304,
+            "tumor_surface|interfaces_source|source_context": 403624,
+            "source_context|interfaces_tumor|tumor_surface": 403624,
+            "tumor_surface|interfaces_target|target_context": 328660,
+            "source_context|corresponds_to|target_context": 1548348,
+            "source_context|near_liver_surface|source_liver_surface": 295296,
+            "source_liver_surface|anchors_context|source_context": 295296,
+            "target_context|near_liver_surface|target_liver_surface": 595989,
+            "target_liver_surface|anchors_context|target_context": 595989
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "local_graphs_view2": {
+          "available": true,
+          "graph_count": 16,
+          "nodes_per_graph": {
+            "min": 7161,
+            "max": 20137,
+            "mean": 13013.5,
+            "total": 208216
+          },
+          "edges_per_graph": {
+            "min": 480216,
+            "max": 1346253,
+            "mean": 892128.75,
+            "total": 14274060
+          },
+          "node_type_totals": {
+            "tumor_surface": 5144,
+            "tumor_interior": 2600,
+            "source_context": 77504,
+            "source_liver_surface": 23784,
+            "target_context": 76386,
+            "target_liver_surface": 22798
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 109008,
+            "tumor_interior|interior_neighbor|tumor_interior": 56624,
+            "source_context|context_neighbor|source_context": 3980784,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 778192,
+            "target_context|context_neighbor|target_context": 3894304,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 761252,
+            "tumor_interior|supports|tumor_surface": 140304,
+            "tumor_surface|supported_by|tumor_interior": 140304,
+            "tumor_surface|interfaces_source|source_context": 403624,
+            "source_context|interfaces_tumor|tumor_surface": 403624,
+            "tumor_surface|interfaces_target|target_context": 328660,
+            "source_context|corresponds_to|target_context": 1546802,
+            "source_context|near_liver_surface|source_liver_surface": 295296,
+            "source_liver_surface|anchors_context|source_context": 295296,
+            "target_context|near_liver_surface|target_liver_surface": 569993,
+            "target_liver_surface|anchors_context|target_context": 569993
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "patient_graphs": {
+          "available": true,
+          "graph_count": 2,
+          "nodes_per_graph": {
+            "min": 34,
+            "max": 40,
+            "mean": 37.0,
+            "total": 74
+          },
+          "edges_per_graph": {
+            "min": 432,
+            "max": 549,
+            "mean": 490.5,
+            "total": 981
+          },
+          "node_type_totals": {
+            "tumor": 2,
+            "candidate": 16,
+            "region": 48,
+            "lesion": 6,
+            "liver": 2
+          },
+          "edge_type_totals": {
+            "tumor|compatible_with|candidate": 16,
+            "candidate|matched_to|tumor": 16,
+            "candidate|spatial_neighbor|candidate": 112,
+            "candidate|belongs_to|region": 16,
+            "region|contains_candidate|candidate": 16,
+            "tumor|conditions|region": 48,
+            "region|context_for|tumor": 48,
+            "candidate|near|lesion": 48,
+            "lesion|near|candidate": 48,
+            "lesion|hosted_by|region": 6,
+            "region|hosts_lesion|lesion": 6,
+            "tumor|coexists_with|lesion": 6,
+            "lesion|coexists_with|tumor": 6,
+            "region|adjacent_to|region": 493,
+            "region|inside|liver": 48,
+            "liver|contains|region": 48
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "prototype_graphs": {
+          "available": true,
+          "graph_count": 2,
+          "nodes_per_graph": {
+            "min": 48,
+            "max": 48,
+            "mean": 48.0,
+            "total": 96
+          },
+          "edges_per_graph": {
+            "min": 176,
+            "max": 176,
+            "mean": 176.0,
+            "total": 352
+          },
+          "node_type_totals": {
+            "candidate": 16,
+            "region": 48,
+            "prototype": 32
+          },
+          "edge_type_totals": {
+            "candidate|belongs_to|region": 16,
+            "region|contains_candidate|candidate": 16,
+            "region|assigned_to|prototype": 96,
+            "prototype|represents|region": 96,
+            "prototype|similar_to|prototype": 128
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        }
+      },
+      "validation_input": {
+        "scope": "provided_batch",
+        "sample_count": 1,
+        "case_ids": [
+          "liver_31"
+        ],
+        "candidate_counts": {
+          "min": 8,
+          "max": 8,
+          "mean": 8.0,
+          "total": 8
+        },
+        "input_shapes": {
+          "source_patches": [
+            1,
+            5,
+            48,
+            48,
+            48
+          ],
+          "target_patches": [
+            8,
+            5,
+            48,
+            48,
+            48
+          ],
+          "difficulties": [
+            8
+          ]
+        },
+        "local_graphs": {
+          "available": true,
+          "graph_count": 8,
+          "nodes_per_graph": {
+            "min": 6596,
+            "max": 9645,
+            "mean": 8101.875,
+            "total": 64815
+          },
+          "edges_per_graph": {
+            "min": 525642,
+            "max": 673364,
+            "mean": 602010.875,
+            "total": 4816087
+          },
+          "node_type_totals": {
+            "tumor_surface": 920,
+            "tumor_interior": 176,
+            "source_context": 20938,
+            "source_liver_surface": 7720,
+            "target_context": 22791,
+            "target_liver_surface": 12270
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 21136,
+            "tumor_interior|interior_neighbor|tumor_interior": 1200,
+            "source_context|context_neighbor|source_context": 1049444,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 267600,
+            "target_context|context_neighbor|target_context": 1160080,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 417264,
+            "tumor_interior|supports|tumor_surface": 9392,
+            "tumor_surface|supported_by|tumor_interior": 9392,
+            "tumor_surface|interfaces_source|source_context": 59944,
+            "source_context|interfaces_tumor|tumor_surface": 59944,
+            "tumor_surface|interfaces_target|target_context": 72722,
+            "source_context|corresponds_to|target_context": 276101,
+            "source_context|near_liver_surface|source_liver_surface": 428942,
+            "source_liver_surface|anchors_context|source_context": 428942,
+            "target_context|near_liver_surface|target_liver_surface": 276992,
+            "target_liver_surface|anchors_context|target_context": 276992
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "local_graphs_view2": {
+          "available": true,
+          "graph_count": 8,
+          "nodes_per_graph": {
+            "min": 6576,
+            "max": 9759,
+            "mean": 8124.25,
+            "total": 64994
+          },
+          "edges_per_graph": {
+            "min": 517112,
+            "max": 670469,
+            "mean": 603841.75,
+            "total": 4830734
+          },
+          "node_type_totals": {
+            "tumor_surface": 920,
+            "tumor_interior": 176,
+            "source_context": 21435,
+            "source_liver_surface": 7720,
+            "target_context": 22473,
+            "target_liver_surface": 12270
+          },
+          "edge_type_totals": {
+            "tumor_surface|surface_neighbor|tumor_surface": 21136,
+            "tumor_interior|interior_neighbor|tumor_interior": 1200,
+            "source_context|context_neighbor|source_context": 1080332,
+            "source_liver_surface|surface_neighbor|source_liver_surface": 267600,
+            "target_context|context_neighbor|target_context": 1139836,
+            "target_liver_surface|surface_neighbor|target_liver_surface": 417264,
+            "tumor_interior|supports|tumor_surface": 9392,
+            "tumor_surface|supported_by|tumor_interior": 9392,
+            "tumor_surface|interfaces_source|source_context": 59944,
+            "source_context|interfaces_tumor|tumor_surface": 59944,
+            "tumor_surface|interfaces_target|target_context": 72722,
+            "source_context|corresponds_to|target_context": 269476,
+            "source_context|near_liver_surface|source_liver_surface": 440965,
+            "source_liver_surface|anchors_context|source_context": 440965,
+            "target_context|near_liver_surface|target_liver_surface": 270283,
+            "target_liver_surface|anchors_context|target_context": 270283
+          },
+          "edge_execution_contracts": [
+            "hiercp_all_induced_edges_v1"
+          ],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "patient_graphs": {
+          "available": true,
+          "graph_count": 1,
+          "nodes_per_graph": {
+            "min": 41,
+            "max": 41,
+            "mean": 41.0,
+            "total": 41
+          },
+          "edges_per_graph": {
+            "min": 560,
+            "max": 560,
+            "mean": 560.0,
+            "total": 560
+          },
+          "node_type_totals": {
+            "tumor": 1,
+            "candidate": 8,
+            "region": 24,
+            "lesion": 7,
+            "liver": 1
+          },
+          "edge_type_totals": {
+            "tumor|compatible_with|candidate": 8,
+            "candidate|matched_to|tumor": 8,
+            "candidate|spatial_neighbor|candidate": 56,
+            "candidate|belongs_to|region": 8,
+            "region|contains_candidate|candidate": 8,
+            "tumor|conditions|region": 24,
+            "region|context_for|tumor": 24,
+            "candidate|near|lesion": 56,
+            "lesion|near|candidate": 56,
+            "lesion|hosted_by|region": 7,
+            "region|hosts_lesion|lesion": 7,
+            "tumor|coexists_with|lesion": 7,
+            "lesion|coexists_with|tumor": 7,
+            "region|adjacent_to|region": 236,
+            "region|inside|liver": 24,
+            "liver|contains|region": 24
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        },
+        "prototype_graphs": {
+          "available": true,
+          "graph_count": 1,
+          "nodes_per_graph": {
+            "min": 48,
+            "max": 48,
+            "mean": 48.0,
+            "total": 48
+          },
+          "edges_per_graph": {
+            "min": 176,
+            "max": 176,
+            "mean": 176.0,
+            "total": 176
+          },
+          "node_type_totals": {
+            "candidate": 8,
+            "region": 24,
+            "prototype": 16
+          },
+          "edge_type_totals": {
+            "candidate|belongs_to|region": 8,
+            "region|contains_candidate|candidate": 8,
+            "region|assigned_to|prototype": 48,
+            "prototype|represents|region": 48,
+            "prototype|similar_to|prototype": 64
+          },
+          "edge_execution_contracts": [],
+          "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+          "edges_dropped_by_limit": 0
+        }
+      },
+      "H2D_seconds": 0.08502009999938309,
+      "initial_state_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+      "model_parameters": 10434532,
+      "updates": [
+        {
+          "step": 1,
+          "loss": 3.734297275543213,
+          "forward_seconds": 8.05923260000418,
+          "backward_seconds": 21.024334599991562,
+          "optimizer_seconds": 0.11438169999746606,
+          "update_with_diagnostics_seconds": 29.581082899996545,
+          "gradient_groups": {
+            "CNN": 5.699449062347412,
+            "L0": 1.74253249168396,
+            "local_encoder_total": 7.535023212432861,
+            "role_attention_pool": 0.1218249723315239,
+            "shell_attention_pool": 0.04783701151609421,
+            "local_fusion": 2.0030319690704346,
+            "L1": 2.9000351428985596,
+            "L2": 1.8570466041564941,
+            "scalar_score": 8.028119087219238
+          },
+          "gradient_connectivity": {
+            "trainable": 1085,
+            "with_gradient": 1085,
+            "scope": "Core module norms checked; genuinely absent surface roles can contribute zero gradients"
+          },
+          "peak_allocated_bytes": 6611754496
+        }
+      ],
+      "validation": {
+        "seconds": 1.664896400005091,
+        "top1": 0.0,
+        "MRR": 0.125,
+        "scores": [
+          [
+            0.09954833984375,
+            0.1630859375,
+            0.163330078125,
+            0.1600341796875,
+            0.10284423828125,
+            0.10260009765625,
+            0.12384033203125,
+            0.122802734375
+          ]
+        ],
+        "case_ids": [
+          "liver_31"
+        ],
+        "quality_verified": false
+      },
+      "status": "PASS",
+      "actual_CT": true,
+      "actual_CUDA": true,
+      "process_peak_rss_bytes": 12516814848,
+      "fixture_manifest_sha256": "a784d890a7b583c1d28d72f2a9d6611dfae8f18d98696b04708b1733b1ced59d"
+    }
+  ],
+  "timing_scope": "Actual bounded ROI preparation, complete canonical graphs, two original views and full objective updates; no epoch extrapolation"
+}

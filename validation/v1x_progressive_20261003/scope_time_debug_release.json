@@ -1,0 +1,59 @@
+{
+  "created_at": "2026-10-03T14:00:44.435569+00:00",
+  "status": "PASS",
+  "scope": "bounded ROI implementation and actual CT CUDA smoke only",
+  "unit_tests_passed": 37,
+  "synthetic_geometry_assertions": 20,
+  "debug": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "debug_updates_per_margin": 1,
+  "physical_sample_batch": 2,
+  "workers": 2,
+  "model_parameters": 10434532,
+  "initial_state_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+  "raw_report_path": "validation/v1x_progressive_20261003/scope_time_debug_report.json",
+  "raw_report_sha256": "57424539a9e5a85175510ae1ce2ae7ca79ffade9430988b1574c6a858be5915a",
+  "files": {
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_inputs.py": "db332caaf674a81dc20b0b532c4a9c0f2c872c6f5fbb6de3732367802489e165",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "tools/probe_v1_scope_time.py": "5bf640e4e0535e99bec9df3b9eebe6ab564b2087d48589a392b37d4c61de8577",
+    "tools/run_v1_scope_probe.py": "241d1509c1a66cab1ec84fe054c99de8078d3d83ae9ad54cf46ec82a68ccd78d",
+    "tests/test_v1_bounded_scope.py": "ced62d389c5e04a6588a6e0786b8288284a98fbc5318613f9013b00750f39517",
+    "tests/test_v1_scope_inputs.py": "5b00de234922a12906f6623cd1032e0204e05fe93c77f37d9a126212dfc0bd22",
+    "tests/test_v1_scope_phase_gate.py": "4a6a7c414e2399ca878dc0bd31a610b4d4ed63fd652fbd201a91adc3aae028d6",
+    "tests/test_v1_scope_probe_support.py": "d0c6039b1465390c38f270c279efc7a453ac843eb0062fe9f645232bc0e7393e",
+    "docs/v1_scope_time_first_20261003.md": "68c817934c05c388a8144bc0075b0b7327794dda38caad571f72fde934c6793c"
+  },
+  "preserved_v1_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+  "preserved_r5_zip_sha256": "ef5814d011889dc2ad14c453180c33f63eb0df7ae4d8e61fb29b1a75b5af418e",
+  "untouched_strict_nested_sources": {
+    "hiercp_v1x/graph_size.py": "0605716ec6f019d8ab85fe981de100ae90a37db489ef6e56fe87fa60a1eb4089",
+    "hiercp_v1x/nested_graph_size.py": "1b614e6882f783ffe38a167b36142c51ed81a8454d474a2585daa6692266851e",
+    "hiercp_v1x/sampling_entry.py": "d021259ef40db419a3932cc5de1d69d3337f65899fc9b8629bd4b97e385d7bd5",
+    "hiercp_v1x/sampling_runtime.py": "c4c9d832d6a12317e3adb368b3560d0aec66f6a4a4a1f80be9c6e1df12d50311"
+  },
+  "timing_limitations": [
+    "First update includes kernel startup and diagnostics",
+    "Other GOIS training process observed on same GPU; non-exclusive timing",
+    "No production loader queue or checkpoint write",
+    "No full epoch extrapolation"
+  ],
+  "deferred_work": [
+    "Independent server short timing",
+    "Bounded-scope ranking quality",
+    "All 84/21 records and worst-case resources"
+  ],
+  "first_experiment": "physical spatial scope10/20/30mm; no strict-nested thinning or deferred-edge optimization",
+  "earlier_debug_outputs_preserved": [
+    "work/v1_scope_time_CUDA_DEBUG_20261003",
+    "work/v1_scope_time_CUDA_DEBUG_20261003_r2"
+  ],
+  "original_work_report_sha256": "83b50b365af794683ccfcc35e2c6907e2adf7c7354e1bfe2f3db3d8b27a594ed",
+  "git_report_serialization": "LF line endings; parsed JSON unchanged; original work bytes preserved"
+}
