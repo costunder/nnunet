@@ -31,10 +31,39 @@ def admission_from_probe(max_voxels, probe_path):
             or report.get('cache_publication_created') is not False
             or not isinstance(rows, list) or not rows
             or len(rows) != report.get('failed_sample_requests')
-            or any(row.get('status') != 'PASS' or row.get('geometry_equal') is not True
-                   or row.get('original_guard_reproduced') is not True for row in rows)):
-        raise ValueError('ROI admission requires a completed, geometry-preserving failed-source cost probe; it is not full-cache admission')
+            or any(not _valid_roi_measurement(row, max_voxels) for row in rows)):
+        raise ValueError('ROI admission requires a completed, geometry-preserving failed-ROI cost probe; it is not full-cache admission')
     return make_preparation_admission(max_voxels, digest(probe_path))
+
+
+def _valid_roi_measurement(row, max_voxels):
+    if not isinstance(row, dict):
+        return False
+    if row.get('status') != 'PASS' or row.get('original_guard_reproduced') is not True:
+        return False
+    if row.get('replay_contract') != 'original_sample_first_roi_failure_v1':
+        return row.get('geometry_equal') is True  # Original source-only evidence.
+    import math
+    requested, initial, effective = (row.get(k) for k in
+                                     ('requested_shape', 'payload_initial_shape', 'effective_shape'))
+    if any(not isinstance(s, list) or len(s) != 3 or
+           any(type(v) is not int or v <= 0 for v in s) for s in (requested, initial, effective)):
+        return False
+    phase = row.get('original_failure_phase')
+    replayed = row.get('replayed_geometry')
+    if (row.get('geometry_preserved') is not True or row.get('full_mask_preserved') is not True
+            or phase not in ('source', 'target')
+            or row.get('failed_operation') not in ('build_patch_payload', 'transform_footprint_physical')
+            or not isinstance(replayed, dict) or replayed.get('requested_shape') != requested
+            or row.get('original_requested_shape') != requested
+            or any(a < b for a, b in zip(initial, requested))
+            or any(a < b for a, b in zip(effective, initial))
+            or math.prod(effective) != row.get('roi_voxels') or math.prod(effective) > max_voxels
+            or type(row.get('full_mask_voxels')) is not int or row['full_mask_voxels'] <= 0):
+        return False
+    return phase != 'target' or (isinstance(row.get('target_spec'), dict)
+                                and row['target_spec'].get('center') == row.get('actual_center')
+                                and row.get('erase_target') is True)
 
 
 def main():

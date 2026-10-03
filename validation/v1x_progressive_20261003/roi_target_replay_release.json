@@ -1,0 +1,59 @@
+{
+  "format": "v1_roi_target_replay_release_v1",
+  "date": "2026-10-03",
+  "scope": "Exact first-failure diagnostic replay and byte-bound historical source cost reuse; server target costs pending",
+  "original_probe_revision": "8b53e90b72d0c10ef8054783a922d10e909d91d0",
+  "original_probe": "/home/aicompetition06/Medical/experiments/v1_roi_probe_20261003_140751.json",
+  "server_stderr_received": {
+    "liver_129[1]": "Failed ROI is not the replayed original source footprint; target replay is required",
+    "liver_84[0]": "Original failed ROI guard did not reproduce on this source"
+  },
+  "files": {
+    "hiercp_v1x/roi_budget_probe.py": "b454a97e08623a3304190e763bdc35695873788272773e4a0c4f2dbd4822ac8f",
+    "hiercp_v1x/roi_failure_replay.py": "c93c1717f272807af4cc4683b1abf087f677cc48f2ce1d0fc56597cf6959e579",
+    "hiercp_v1x/roi_probe_reuse.py": "cac8b699a5bb2352423453df33f29cdd64e367c7c03ab293f4f441b508225d44",
+    "tools/probe_v1_roi_budget.py": "97a7d7e7b77f2e2dbab1144a8f4a3d060de93d2079d6d2235cb554b3f607126d",
+    "tools/run_v1x_experiment.py": "8e205566392aaf4241544c11a072808e8b44d4c38fc9e50e8d106e3630bd2cd6",
+    "tests/test_v1_roi_failure_replay.py": "1ca99643830ed79c6c20bebd5fdda98fb9b24561b1725bd205dfd11bc1024a33",
+    "tests/test_v1_roi_probe_reuse.py": "8fa224cef280573251d9f0ef3e18870e7c05edd1aaa5b1f2d087af3196ea11d1",
+    "tests/test_v1_roi_replay_admission.py": "48770fdce25b109f79a597d7648c48a32fb87faf1796d88e36f153d992c1763e",
+    "docs/v1_roi_budget_recovery_20261003.md": "d72f7cc02e940bd2dcce63f703f2602b37a8d323decc9a05900cdcffabcb780f"
+  },
+  "AST_pass": 8,
+  "original_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+  "original_archive_files": 202,
+  "accepted_r5_sha256": "ef5814d011889dc2ad14c453180c33f63eb0df7ae4d8e61fb29b1a75b5af418e",
+  "strict_sampler_preserved": {
+    "hiercp_v1x/graph_size.py": true,
+    "hiercp_v1x/nested_graph_size.py": true,
+    "hiercp_v1x/sampling_entry.py": true,
+    "hiercp_v1x/sampling_runtime.py": true
+  },
+  "unit_results": {
+    "replay": 9,
+    "historical_reuse": 8,
+    "exact_mask_geometry_admission": 6,
+    "error_display": 12,
+    "parser": 5,
+    "existing_admission_recovery": 22,
+    "unique_total": 62
+  },
+  "diagnostic_limits": {
+    "candidate_voxels": 12000000,
+    "rss_gib": 16,
+    "timeout_seconds": 120
+  },
+  "default_production_roi_voxels": 8000000,
+  "production_config_changed": false,
+  "source_PASS_reuse": "Original source-only report, matching raw bytes/config/request/answer and limits required; failed rows never adopted",
+  "reuse_report_scope": "Original 8b53e90 report only; mixed output report does not duplicate historical sidecars",
+  "replay_cost_boundary": "Earlier genuine candidate/canonical/graph work included in child wall/RSS; replay, transform and ROI field times reported separately",
+  "original_geometry_checks_preserved": true,
+  "complete_transformed_mask_verified": true,
+  "actual_server_target_costs_measured": false,
+  "new_neural_smoke_run": false,
+  "full_cache_preparation_run": false,
+  "training_started": false,
+  "full_evaluation_started": false,
+  "quality_verified": false
+}

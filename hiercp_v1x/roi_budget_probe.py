@@ -1,7 +1,8 @@
 """Bounded, read-only CPU geometry diagnostics for failed native-v1 ROI requests.
 
-This executes no neural model, graph edge construction, cache preparation or
-training. The proposed voxel ceiling exists only in the child process's copy of
+This executes no neural model, cache publication or training. Exact target
+replay follows the original sample/graph preparation until its first ROI error.
+The proposed voxel ceiling exists only in the child process's copy of
 GraphBuildConfig. Existing source, config, masks and prepared results stay intact.
 """
 from __future__ import annotations
@@ -79,6 +80,7 @@ def failure_requests(path: Path) -> list[dict]:
             raise ValueError("Duplicate failed sample identity")
         identities.add(identity)
         requests.append({"case_id": case_id, "sample_index": index,
+                         "split_name": row.get("split", ""),
                          "original_failure": row["message"],
                          "geometry": parse_roi_failure(row["message"]),
                          "source_image_sha256": row.get("source_image_sha256"),
@@ -169,15 +171,17 @@ def worker(request_path: str) -> None:
     request = json.loads(Path(request_path).read_text(encoding="utf-8"))
     snapshot = Path(request["snapshot"]).resolve()
     sys.path.insert(0, str(snapshot))
-    from hiercp.common import (CasePaths, choose_source_tumor, load_case,
+    from hiercp.common import (CasePaths, load_case,
                                stable_case_seed, ct_normalize, erase_mask_with_context,
                                verify_loaded_case_source_signatures)
     from hiercp.region import (load_patient_regions, _region_cache_metadata,
                               _metadata_equal, REGION_CACHE_SEED_SALT)
     from hiercp.schema import graph_config_from_dict
-    from hiercp.spatial import (adaptive_native_shape, AdaptiveRoiBudgetError,
-                               build_patch_payload, exact_source_footprint)
+    from hiercp.spatial import (adaptive_native_shape, build_patch_payload, center_crop_or_pad)
     import hiercp.spatial
+    from hiercp import cache, local
+    from hiercp.prototype import PrototypeBank
+    from .roi_failure_replay import capture_failed_roi
     if Path(hiercp.spatial.__file__).resolve() != snapshot / "hiercp/spatial.py":
         raise ValueError("Worker imported a non-frozen spatial implementation")
     spatial_hash = hashlib.sha256((snapshot / "hiercp/spatial.py").read_bytes()).hexdigest()
@@ -203,59 +207,112 @@ def worker(request_path: str) -> None:
         seed=stable_case_seed(cfg["seed"], case_id, REGION_CACHE_SEED_SALT))
     if not _metadata_equal(metadata, expected):
         raise ValueError("Existing region cache does not match original case/config contract")
-    source, components, _ = choose_source_tumor(case.image, case.label,
-        tumor_label=cfg["labels"]["tumor"],
-        rng=np.random.default_rng(stable_case_seed(cfg["seed"], case_id, f"sample_{index}")),
-        selection=cfg["cache"]["source_selection"], pad=cfg["cache"]["source_pad"])
-    del components
-    footprint = exact_source_footprint(source)
+    bank_path = Path(request['shared'])/'prototype_bank.pt'
+    if hashlib.sha256(bank_path.read_bytes()).hexdigest() != request['prototype_sha256']:
+        raise ValueError('Original prepared prototype changed before replay')
+    bank = PrototypeBank.load(bank_path)
+    prepared_contract = json.loads((Path(request['shared'])/'cache/config.json').read_text(encoding='utf-8'))
+    if prepared_contract.get('prototype_fingerprint') != bank.fingerprint():
+        raise ValueError('Replay prototype does not match the failed cache preparation contract')
+    c = cfg['cache']
+    sample_kwargs = dict(case=case, bank=bank, regions=regions, sample_index=index,
+        split_name=row['split_name'], graph_config=original,
+        liver_label=int(cfg['labels']['liver']), tumor_label=int(cfg['labels']['tumor']),
+        source_selection=str(c['source_selection']), source_pad=int(c['source_pad']),
+        total_candidates=int(c['total_candidates']), candidate_pool_size=int(c['candidate_pool_size']),
+        easy_fraction=float(c['easy_fraction']), inter_fraction=float(c['inter_fraction']),
+        intra_fraction=float(c['intra_fraction']), max_draws=int(c['max_draws']),
+        min_liver_coverage=float(c['min_liver_coverage']),
+        occupied_clearance_vox=int(c['occupied_clearance_vox']),
+        min_center_separation_mm=float(c['min_center_separation_mm']),
+        min_center_separation_vox=float(c.get('min_center_separation_vox', 0.0)),
+        ct_clip=tuple(float(v) for v in cfg['ct_clip']), seed=int(cfg['seed']))
     geometry = row["geometry"]
-    if list(footprint.shape) != geometry["footprint_shape"]:
-        raise ValueError("Failed ROI is not the replayed original source footprint; target replay is required")
-    depth = float(regions.organ_depth[source.anchor_center])
-    try:
-        adaptive_native_shape(footprint.shape, case.spacing, original,
-                              center_liver_depth_mm=depth)
-    except AdaptiveRoiBudgetError as error:
-        replayed = parse_roi_failure(str(error))
-    else:
-        raise ValueError("Original failed ROI guard did not reproduce on this source")
-    if replayed != geometry:
-        raise ValueError("Original source ROI does not exactly match failed manifest geometry")
-    requested = adaptive_native_shape(footprint.shape, case.spacing, proposed,
-                                      center_liver_depth_mm=depth)
-    if list(requested) != geometry["requested_shape"]:
-        raise ValueError("Proposed admission changed requested geometry")
     load_seconds = time.perf_counter() - load_start
+    start = time.perf_counter()
+    captured = capture_failed_roi(cache, local, hiercp.spatial,
+        sample_kwargs=sample_kwargs, expected_geometry=geometry, parse_failure=parse_roi_failure)
+    replay_seconds = time.perf_counter() - start
+    # The replay uses every original candidate/coordinate/graph check. Its
+    # exception is consumed only after exact first-error equality is proven.
+    # No preceding graph tensor is retained for the measured ROI field phase.
+    del sample_kwargs, bank
+    import gc
+    gc.collect()
+    transform_seconds = 0.0
+    if captured['operation'] == 'build_patch_payload':
+        kwargs = dict(captured['payload_kwargs'])
+        if kwargs['config'].to_dict() != original.to_dict():
+            raise ValueError('Captured payload used a different original graph contract')
+        kwargs['config'] = proposed
+        footprint = kwargs['footprint']
+    elif captured['operation'] == 'transform_footprint_physical':
+        args, tkw = captured['transform_args'], captured['transform_kwargs']
+        if len(args) != 4 or tkw or args[3].to_dict() != original.to_dict():
+            raise ValueError('Unexpected original transform call contract')
+        start = time.perf_counter()
+        footprint = local.transform_footprint_physical(args[0], args[1], args[2], proposed)
+        transform_seconds = time.perf_counter() - start
+        if list(footprint.shape) != geometry['footprint_shape']:
+            raise ValueError('Original transformed mask differs from the captured allocation request')
+        context = captured['target_context']
+        if context is None or context['case'] is not case:
+            raise ValueError('Failed physical transform has no exact target context')
+        k = context['kwargs']
+        kwargs = dict(image=case.image, center=context['spec'].center, footprint=footprint,
+            full_organ=k['full_organ_mask'], organ_depth=k['organ_depth'], spacing=case.spacing,
+            config=proposed, erase_target=True, ct_clip=k['ct_clip'],
+            ct_normalize_fn=ct_normalize, erase_fn=erase_mask_with_context)
+    else:
+        raise ValueError('Unsupported captured ROI operation')
+    center = tuple(int(v) for v in kwargs['center'])
+    if any(v < 0 or v >= size for v, size in zip(center, case.image.shape)):
+        raise ValueError('Captured original ROI center is out of bounds')
+    if list(footprint.shape) != geometry['footprint_shape']:
+        raise ValueError('Captured full footprint does not match the original error')
+    depth = float(kwargs['organ_depth'][center])
+    payload_initial_shape = adaptive_native_shape(footprint.shape, case.spacing, proposed,
+                                                 center_liver_depth_mm=depth)
+    original_count = int(np.count_nonzero(footprint))
+    mask_sha_before = hashlib.sha256(np.ascontiguousarray(footprint).view(np.uint8)).hexdigest()
     before_rss = psutil.Process().memory_info().rss
     start = time.perf_counter()
-    payload = build_patch_payload(image=case.image, center=source.anchor_center,
-        footprint=footprint, full_organ=regions.full_organ_mask,
-        organ_depth=regions.organ_depth, spacing=case.spacing, config=proposed,
-        erase_target=False, ct_clip=tuple(cfg["ct_clip"]),
-        ct_normalize_fn=ct_normalize, erase_fn=erase_mask_with_context)
+    payload = build_patch_payload(**kwargs)
     elapsed = time.perf_counter() - start
-    # This source probe must not silently claim a bigger liver-anchor expansion
-    # matches the originally rejected shape.
     actual_shape = list(payload["footprint"].shape)
     geometry_equal = actual_shape == geometry["requested_shape"]
-    if not geometry_equal:
-        raise ValueError("Actual liver-anchor expansion differs from the initial failed ROI; measure a separate explicit budget")
-    original_count = int(np.count_nonzero(footprint))
+    if (any(a < b for a, b in zip(actual_shape, payload_initial_shape))
+            or any(a < b for a, b in zip(payload_initial_shape, geometry['requested_shape']))
+            or math.prod(actual_shape) > request['candidate_roi_max_voxels']):
+        raise ValueError('Original ROI expansion reduced geometry or exceeded its explicit budget')
+    if hashlib.sha256(np.ascontiguousarray(footprint).view(np.uint8)).hexdigest() != mask_sha_before:
+        raise ValueError('ROI measurement mutated the captured full mask')
     if int(np.count_nonzero(payload["footprint"])) != original_count:
         raise ValueError("ROI probe changed original full paste footprint")
+    expected_mask = center_crop_or_pad(footprint, actual_shape, pad_value=False)
+    if not np.array_equal(expected_mask, payload['footprint']):
+        raise ValueError('Measured native ROI changed the exact captured mask positions')
+    del expected_mask
     unique_arrays = {id(value): value for value in payload.values() if isinstance(value, np.ndarray)}
     if any(not np.all(np.isfinite(value)) for value in unique_arrays.values()):
         raise ValueError("Non-finite original ROI geometry payload")
     verify_loaded_case_source_signatures(case)
+    if hashlib.sha256(bank_path.read_bytes()).hexdigest() != request['prototype_sha256']:
+        raise ValueError('Prepared prototype changed during replay')
     peak_rss = None
     if sys.platform != "win32":
         import resource
         peak_rss = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) * (1 if sys.platform == "darwin" else 1024)
     answer = dict(case_id=case_id, sample_index=index, status="PASS",
-        cpu_geometry_only=True, source_component=int(source.component_id),
-        source_anchor=list(source.anchor_center), original_guard_reproduced=True,
-        original_requested_shape=geometry["requested_shape"], requested_shape=list(requested),
+        cpu_geometry_only=True, source_component=captured['source_component'],
+        source_anchor=captured['source_anchor'], original_guard_reproduced=True,
+        replay_contract='original_sample_first_roi_failure_v1',
+        original_failure_phase=captured['phase'], failed_operation=captured['operation'],
+        target_spec=captured['target_spec'], actual_center=list(center),
+        erase_target=bool(kwargs['erase_target']), replayed_geometry=captured['replayed_geometry'],
+        replay_seconds=replay_seconds, transform_seconds=transform_seconds,
+        original_requested_shape=geometry["requested_shape"], requested_shape=geometry['requested_shape'],
+        payload_initial_shape=list(payload_initial_shape), geometry_preserved=True, full_mask_preserved=True,
         effective_shape=actual_shape, geometry_equal=geometry_equal,
         original_requested_voxels=geometry["requested_voxels"],
         roi_voxels=math.prod(actual_shape), full_mask_voxels=original_count,
@@ -266,12 +323,12 @@ def worker(request_path: str) -> None:
         process_peak_rss_bytes=peak_rss,
         spatial_sha256=spatial_hash, source_image_sha256=row["source_image_sha256"],
         source_label_sha256=row["source_label_sha256"],
-        limitation="Source ROI fields only; target transforms, canonical nodes/edges and full-cache admission are not measured")
+        limitation="Exact first failed source/target ROI cost; earlier original graphs may be replayed; no full-cache admission or training quality claim")
     _write_new(Path(request["answer_path"]), answer)
 
 
 def run_probe(experiment: str, output: str, *, candidate_voxels: int,
-              rss_bytes: int, case_timeout_seconds: float) -> dict:
+              rss_bytes: int, case_timeout_seconds: float, reuse_report=None) -> dict:
     from .contracts import V1_ARCHIVE_SHA256
     from .experiment import load_suite, preparation_root, digest
     import psutil
@@ -288,6 +345,13 @@ def run_probe(experiment: str, output: str, *, candidate_voxels: int,
     shared = preparation_root(root, manifest)
     progress = shared / "cache" / "manifest.csv"
     requests = failure_requests(progress)
+    for row in requests:
+        case_id = row['case_id']
+        expected_split = ('train' if case_id in manifest['split']['train'] else
+                          'val' if case_id in manifest['split']['val'] else None)
+        if expected_split is None or row['split_name'] not in (expected_split, ''):
+            raise ValueError('Failed ROI request is not bound to the original train/val split')
+        row['split_name'] = expected_split
     cfg_path = root / "configs" / "v1.0.json"
     cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
     original_voxels = cfg["graph"]["adaptive_roi_max_voxels"]
@@ -303,17 +367,42 @@ def run_probe(experiment: str, output: str, *, candidate_voxels: int,
     work.mkdir(exist_ok=False)
     snapshot = root / "source" / "v1.0"
     spatial_sha = digest(snapshot / "hiercp/spatial.py")
-    watched = [root / "manifest.json", cfg_path, progress]
+    bank_path = shared/'prototype_bank.pt'
+    watched = [root / "manifest.json", cfg_path, progress, bank_path, shared/'cache/config.json']
+    for row in requests:
+        for name, folder, suffix in (('image', 'image', '_0000.nii.gz'), ('label', 'labels', '.nii.gz')):
+            path = Path(manifest['medical_root'])/'Data'/folder/(row['case_id']+suffix)
+            if digest(path) != row[f'source_{name}_sha256']:
+                raise ValueError('Failed ROI manifest raw CT bytes changed')
+            if path not in watched:
+                watched.append(path)
     signatures = {str(p): digest(p) for p in watched}
+    reuse, reuse_provenance = {}, None
+    if reuse_report is not None:
+        from .roi_probe_reuse import verified_source_reuse
+        reuse, reuse_provenance = verified_source_reuse(reuse_report, experiment=root,
+            requests=requests, config=cfg, snapshot=snapshot, spatial_sha256=spatial_sha,
+            medical_root=manifest['medical_root'],
+            failed_manifest_sha256=signatures[str(progress)], candidate_voxels=candidate_voxels,
+            rss_bytes=rss_bytes, case_timeout_seconds=case_timeout_seconds)
+        watched_reuse = [Path(reuse_provenance['report']),
+                         *map(Path, reuse_provenance['bound_sidecars'])]
+        signatures.update({str(p): digest(p) for p in watched_reuse})
     rows = []
     tool = Path(__file__).resolve().parents[1] / "tools" / "probe_v1_roi_budget.py"
     for ordinal, failure in enumerate(requests):
+        previous = reuse.get((failure['case_id'], failure['sample_index']))
+        if previous is not None:
+            rows.append(previous)
+            print('REUSED verified source measurement | '+format_probe_result(previous), flush=True)
+            continue
         request_path = work / f"{ordinal:03d}_request.json"
         answer_path = work / f"{ordinal:03d}_answer.json"
         _write_new(request_path, dict(snapshot=str(snapshot), config=cfg,
             candidate_roi_max_voxels=candidate_voxels, failure=failure,
             medical_root=manifest["medical_root"], shared=str(shared),
-            spatial_sha256=spatial_sha, answer_path=str(answer_path)))
+            spatial_sha256=spatial_sha, prototype_sha256=signatures[str(bank_path)],
+            answer_path=str(answer_path)))
         command = [sys.executable, "-u", str(tool), "--worker-request", str(request_path)]
         print(f"CPU ROI DEBUG | {ordinal+1}/{len(requests)} | {failure['case_id']}[{failure['sample_index']}]", flush=True)
         started = time.perf_counter()
@@ -358,15 +447,20 @@ def run_probe(experiment: str, output: str, *, candidate_voxels: int,
         print(format_probe_result(row), flush=True)
     preserved = all(digest(Path(name)) == sha for name, sha in signatures.items())
     report = dict(format=FORMAT, scope=SCOPE, archived_source_sha256=V1_ARCHIVE_SHA256,
+        replay_protocol='original_sample_first_roi_failure_v1',
+        implementation_sha256={name: digest(Path(__file__).parent/name) for name in
+            ('roi_budget_probe.py', 'roi_failure_replay.py', 'roi_probe_reuse.py')},
         original_roi_max_voxels=original_voxels, candidate_roi_max_voxels=candidate_voxels,
         experiment=str(root), failed_manifest_sha256=signatures[str(progress)],
         resource_budget=dict(rss_bytes=rss_bytes, case_timeout_seconds=case_timeout_seconds,
                              rss_sampling_interval_seconds=0.05, concurrent_cases=1,
                              concurrency_reason="Isolated whole-process peak measurement per full failing source ROI"),
         failed_sample_requests=len(requests), measurements=rows,
+        reused_source_measurements=len(reuse), new_measurements=len(requests)-len(reuse),
+        reuse_provenance=reuse_provenance,
         completed=preserved and all(row["status"] == "PASS" for row in rows),
         originals_preserved=preserved, training_started=False, cache_publication_created=False,
         production_ready=False, quality_verified=False,
-        limitation="Bounds source geometry cost only; full candidates, graph N/E and full-cache capacity remain unverified")
+        limitation="Exact failed ROI costs only; original graph preparation may be replayed to reach target errors; no full-cache capacity or training-quality validation")
     _write_new(destination, report)
     return report

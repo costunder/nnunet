@@ -15,6 +15,7 @@ def main():
     p.add_argument('--candidate-voxel-budget', type=int)
     p.add_argument('--rss-gib', type=float)
     p.add_argument('--case-timeout-seconds', type=float)
+    p.add_argument('--reuse-report', help='Verify and reuse completed source ROI costs; failed target rows are replayed')
     a = p.parse_args()
     if a.worker_request:
         worker(a.worker_request)
@@ -26,9 +27,12 @@ def main():
     if not math.isfinite(a.rss_gib) or a.rss_gib <= 0:
         p.error('--rss-gib must be finite and positive')
     report = run_probe(a.experiment, a.output, candidate_voxels=a.candidate_voxel_budget,
-                       rss_bytes=int(a.rss_gib*2**30), case_timeout_seconds=a.case_timeout_seconds)
+                       rss_bytes=int(a.rss_gib*2**30), case_timeout_seconds=a.case_timeout_seconds,
+                       reuse_report=a.reuse_report)
     print(json.dumps(dict(report=str(Path(a.output).resolve()),
         completed=report['completed'], failed_sample_requests=report['failed_sample_requests'],
+        reused_source_measurements=report['reused_source_measurements'],
+        new_measurements=report['new_measurements'],
         proposed_guard=report['candidate_roi_max_voxels'],
         peak_rss_gib=max(row['peak_rss_bytes'] for row in report['measurements'])/2**30,
         scope=report['scope'], originals_preserved=report['originals_preserved'],

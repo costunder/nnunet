@@ -4,7 +4,7 @@
 
 The pasted `ece-a6gpu4` run stopped in native CPU cache preparation. Training did
 not start. This was `AdaptiveRoiBudgetError`, not a CUDA OOM. The preserved
-baseline limits `graph.adaptive_roi_max_voxels` to 8,000,000. Source ROI requests
+baseline limits `graph.adaptive_roi_max_voxels` to 8,000,000. Failed ROI requests
 in the log were:
 
 | Case/sample | Requested native ROI | Voxels |
@@ -36,9 +36,11 @@ as a fifth ROI failure or as a newly permitted record skip.
 ## Delivered code and scope
 
 1. `tools/probe_v1_roi_budget.py` reads every sample-level ROI failure in the
-   native manifest. Each bounded child replays the original source-component
-   seed, verifies CT/label hashes and prepared-region metadata, reproduces the
-   old guard failure, and executes the official source ROI field construction
+   native manifest. Each bounded child runs the original sample builder, including
+   source selection, candidate search, curriculum transforms and earlier graph
+   checks, until the exact first allocation failure recorded in the manifest.
+   It verifies CT/label hashes, prepared-region metadata and the original
+   prototype. It then executes the captured source or target ROI field call
    with an explicitly supplied candidate guard. It records shape, full mask
    voxel count, finite checks, elapsed time and process RSS. A failed child stays
    failed; other diagnostics continue. No cache, model or production config is
@@ -72,9 +74,9 @@ integrity inputs and never a clinical performance result. A sandbox-only Windows
 temporary-directory problem was resolved by rerunning the same tests with
 appropriate task-owned write access.
 
-Actual failed-source cost measurement must run beside the server's existing
+Actual failed-ROI cost measurement must run beside the server's existing
 native region cache. No local copy of that failed server manifest/region cache
-was available. A completed source ROI probe still does not establish canonical
+was available. A completed failed-ROI probe still does not establish canonical
 graph or full-cache admission, ranking quality, full40 training, full21
 evaluation, production CP128 or nnU-Net performance.
 
@@ -89,7 +91,7 @@ The user supplied the console output of
 from revision `8b53e90`. This is console evidence; the JSON file itself has not
 been copied to this workspace or independently hashed.
 
-| Source request | Status | Observed RSS GiB | Wall seconds |
+| Failed sample | Status | Observed RSS GiB | Wall seconds |
 | --- | --- | ---: | ---: |
 | liver_116[0] | PASS | 5.625 | 24.09 |
 | liver_116[1] | PASS | 5.625 | 20.11 |
@@ -98,16 +100,58 @@ been copied to this workspace or independently hashed.
 
 The report is incomplete (`completed=false`), preserves the originals, and
 started no training. Neither failure was reported as `RSS_BUDGET` or
-`TIME_BUDGET`. Their original child stderr is required to distinguish geometry
-replay mismatch, original surface expansion, data validation, or another error;
-the summary alone does not establish the cause. Do not increase the resource
-ceiling, accept the two failures, or start cache recovery from this report.
-The diagnostic display now exposes the actual child error while retaining its
-complete stderr/stdout in the JSON; this changes reporting only.
-Twelve focused failure-display UNIT checks pass, including multiline/chained
-exceptions, stdout-only failures and unknown exit causes. The original worker
-and ROI replay function are unchanged. This does not resolve the two server
-failures whose stderr has not yet been supplied.
+`TIME_BUDGET`. The subsequently supplied child stderr identifies incorrect
+source-only assumptions in the diagnostic:
+
+- `liver_129[1]`: the original source footprint is different from the failed
+  footprint; the target transform must be replayed.
+- `liver_84[0]`: the guard does not fail at the original source position; the
+  original candidate location and its depth-dependent margin must be replayed.
+
+These exceptions do not prove a model defect or insufficient RAM. The new
+diagnostic captures the actual original ROI call without skipping earlier
+candidate, canonical node/edge or geometry checks. The first original failure
+must exactly match every parsed field in the old manifest before a larger
+diagnostic guard is used. It retains the actual candidate center, rotation,
+scale, corruption and target erasure, rather than measuring a guessed source
+ROI.
+
+The worker records `replay_seconds`, `transform_seconds` and `geometry_seconds`
+separately. Whole-child wall time and RSS include the earlier original work;
+they are not falsely reported as ROI-only cost. The initial allocation shape,
+actual target-depth initial shape and final shape are recorded independently.
+An original liver-surface expansion is allowed only within the explicitly
+declared diagnostic ceiling, without shrinking geometry or changing the exact
+centered full mask. A later real allocation failure remains a failure.
+
+`--reuse-report` verifies the old report and matching request/answer sidecars,
+frozen configuration, original source code, manifest, raw CT/label bytes and
+resource limits. Only the two exact source PASS measurements are reused.
+Their historical costs remain labeled `reused=true`; the two failed rows are
+not adopted. Original report, sidecars, prototype and CT bytes are checked
+again after the new diagnostics. Reuse saves the completed measurements without
+relaxing a check or fabricating new timing.
+Keep the original `v1_roi_probe_20261003_140751.json` as `--reuse-report` on
+retries. The new combined report does not duplicate the old source sidecars;
+it is not a replacement input for historical source-cost reuse.
+
+The explicit limits remain 12,000,000 diagnostic voxels, 16 GiB RSS and 120
+seconds per diagnostic child. The production default remains 8,000,000 voxels.
+No automatic ceiling increase, new model configuration, cache publication or
+training is introduced. Exact target replay may include earlier original graph
+construction, so it may hit the declared timeout; that result must be reported,
+not repaired by silently increasing the limit.
+
+41 focused UNIT checks pass: 9 original-call replay, 8 bound historical reuse,
+6 exact geometry/mask admission, 12 error display, 5 parser and 1 existing
+admission integration regression. The fixtures are contract tests, not actual
+server CT cost or GPU ranking evidence. The corrected server target measurements
+remain pending. The accepted r5 ZIP, 202-file archive, four strict-nested sampler
+modules, model, loss, candidate pool and curriculum are unchanged.
+The existing admission/recovery suites also pass all 22 checks (one overlaps
+the focused suite); 62 distinct UNIT checks pass in total. Eight modified/new
+Python files parse, and the CLI exposes the reuse option. No new neural smoke,
+full-cache preparation, training or accuracy evaluation was run for this patch.
 
 ## 작업 완료 체크리스트
 
