@@ -35,6 +35,17 @@ def select_records(rows, split, physical_batch):
         name, case = row.get('split'), row.get('case_id')
         if name not in allowed or case not in allowed[name]:
             raise ValueError('Successful manifest record lies outside the frozen split')
+        # The original CSV also contains terminal case-level status='ok' rows.
+        # Their blank sample_index and artifact fields identify summaries, not
+        # eight-candidate samples. Do not treat their blank candidates as data.
+        index = row.get('sample_index')
+        if index in ('', None):
+            if any(row.get(key) not in ('', None) for key in ('candidates', 'path', 'artifact_sha256', 'file_size')):
+                raise ValueError('Case-level summary cannot carry a sample artifact without sample_index')
+            continue
+        if (not isinstance(index, str) or not index.isascii() or not index.isdecimal()
+                or str(int(index)) != index):
+            raise ValueError('Successful sample requires a canonical nonnegative sample_index')
         if case in seen or counts[name] >= (physical_batch if name == 'train' else 1):
             continue
         if row.get('candidates') != '8':

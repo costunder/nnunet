@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import copy
 import csv
+import ast
 from contextlib import ExitStack
+from datetime import datetime, timezone
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -46,6 +49,29 @@ class ScopeRecordSelectionUnits(unittest.TestCase):
             [row("UNIT_A"), row("UNIT_B"), row("UNIT_C"), row("UNIT_V", "val")], self.split, 3)
         self.assertEqual(len(selected), 4)
 
+    def test_successful_case_summaries_are_not_candidate_samples(self):
+        records = [row('UNIT_A'), row('UNIT_B'), row('UNIT_V', 'val')]
+        summaries = [{**r, 'sample_index': '', 'candidates': '', 'path': '',
+                      'artifact_sha256': '', 'file_size': ''} for r in records]
+        selected = scope_inputs.select_records(summaries + records, self.split, 2)
+        self.assertEqual(selected, records)
+
+    def test_case_summaries_cannot_fill_the_physical_batch(self):
+        records = [row('UNIT_A'), row('UNIT_V', 'val'), row('UNIT_B', index='', candidates='')]
+        with self.assertRaisesRegex(ValueError, 'Insufficient'):
+            scope_inputs.select_records(records, self.split, 2)
+
+    def test_indexless_sample_artifact_cannot_be_hidden_as_a_summary(self):
+        summary = row('UNIT_A', index='', candidates='')
+        for field in ('candidates', 'path', 'artifact_sha256', 'file_size'):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'without sample_index'):
+                scope_inputs.select_records([{**summary, field: 'nonempty'}], self.split, 2)
+
+    def test_sample_index_must_be_canonical_before_a_record_is_selected(self):
+        for index in ('-1', '0.0', ' 0', '00', '٠', 0):
+            with self.subTest(index=index), self.assertRaisesRegex(ValueError, 'sample_index'):
+                scope_inputs.select_records([row('UNIT_A', index=index)], self.split, 2)
+
     def test_failed_records_cannot_fill_requested_batch(self):
         rows = [row("UNIT_A"), row("UNIT_B", status="failed"), row("UNIT_V", "val")]
         with self.assertRaisesRegex(ValueError, "Insufficient"):
@@ -71,6 +97,58 @@ class ScopeRecordSelectionUnits(unittest.TestCase):
         for value in (True, 1, 0, -1, 2.0):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 scope_inputs.select_records([], self.split, value)
+
+
+class ArchivedManifestCSVUnits(unittest.TestCase):
+    """Execute unchanged archived CSV producers, not a hand-invented schema."""
+
+    @classmethod
+    def setUpClass(cls):
+        from hiercp_v1x.contracts import verify_archive
+        root = Path(__file__).resolve().parents[1]
+        verify_archive(root)
+        with ZipFile(root / 'versions/v1/pipeline_v1_source.zip') as archive:
+            tree = ast.parse(archive.read('hiercp/cache.py').decode('utf8'))
+        names = {'_progress_row', '_progress_sort_key', '_parse_progress_sample_index'}
+        nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in names]
+        columns = next(n for n in tree.body if isinstance(n, ast.Assign)
+                       and any(isinstance(t, ast.Name) and t.id == 'CACHE_PROGRESS_COLUMNS' for t in n.targets))
+        cls.columns = ast.literal_eval(columns.value)
+        ns = {'datetime': datetime, 'timezone': timezone}
+        module = ast.Module(body=[ast.ImportFrom(module='__future__',
+            names=[ast.alias(name='annotations')], level=0), *nodes], type_ignores=[])
+        ast.fix_missing_locations(module)
+        exec(compile(module, 'verified_archive/hiercp/cache.py', 'exec'), ns)
+        cls.producer = staticmethod(ns['_progress_row'])
+        cls.sort_key = staticmethod(ns['_progress_sort_key'])
+
+    def actual_rows(self, *, bad_candidates=False):
+        rows = []
+        for case, split in (('UNIT_A', 'train'), ('UNIT_B', 'train'), ('UNIT_V', 'val')):
+            common = dict(case_id=case, split_name=split, config_fingerprint='metadata_UNIT')
+            rows.append(self.producer(**common, sample_index=None, status='ok'))
+            rows.append(self.producer(**common, sample_index=0, status='ok',
+                path=case+'__000.pt', candidates=7 if bad_candidates and case=='UNIT_A' else 8,
+                artifact_sha256='a'*64, file_size=123))
+        stream = io.StringIO(newline='')
+        writer = csv.DictWriter(stream, fieldnames=self.columns)
+        writer.writeheader(); writer.writerows(sorted(rows, key=self.sort_key))
+        stream.seek(0)
+        return list(csv.DictReader(stream))
+
+    def test_original_terminal_summary_and_samples_csv_round_trip(self):
+        rows = self.actual_rows()
+        self.assertEqual(rows[0]['sample_index'], '')
+        self.assertEqual(rows[0]['candidates'], '')
+        self.assertEqual(rows[0]['status'], 'ok')
+        selected = scope_inputs.select_records(rows, dict(train=['UNIT_A','UNIT_B'], val=['UNIT_V']), 2)
+        self.assertEqual([r['path'] for r in selected], ['UNIT_A__000.pt','UNIT_B__000.pt','UNIT_V__000.pt'])
+        self.assertTrue(all(r['sample_index']=='0' and r['candidates']=='8' for r in selected))
+
+    def test_real_sample_candidate_violation_is_still_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'eight-candidate'):
+            scope_inputs.select_records(self.actual_rows(bad_candidates=True),
+                                        dict(train=['UNIT_A','UNIT_B'], val=['UNIT_V']), 2)
 
 
 class ScopeInputPackagingUnits(unittest.TestCase):
@@ -144,6 +222,30 @@ class ScopeInputPackagingUnits(unittest.TestCase):
             for item in result["files"]:
                 self.assertEqual(scope_inputs.sha(samples / item["name"]), item["sha256"])
             self.assertFalse(any(base.rglob("checkpoint*")))
+
+    def test_original_csv_with_terminal_rows_reaches_verified_input_packaging(self):
+        # This test also runs independently of the producer test class.
+        ArchivedManifestCSVUnits.setUpClass()
+        with temporary_unit_directory() as name:
+            base = Path(name)
+            setup = self.fixture(base)
+            rows = []
+            for r in setup[4]:
+                common = dict(case_id=r['case_id'], split_name=r['split'],
+                    config_fingerprint=r['config_fingerprint'],
+                    source_image_sha256=r['source_image_sha256'],
+                    source_label_sha256=r['source_label_sha256'])
+                rows.append(ArchivedManifestCSVUnits.producer(**common, sample_index=None, status='ok'))
+                rows.append(ArchivedManifestCSVUnits.producer(**common, sample_index=0, status='ok',
+                    path=r['path'], candidates=8, artifact_sha256=r['artifact_sha256'], file_size=r['file_size']))
+            self.write_rows(setup[2], sorted(rows, key=ArchivedManifestCSVUnits.sort_key))
+            before = self.signatures(setup[1])
+            _, samples = self.run_fixture(setup, base / 'DEBUG_OUTPUT')
+            fixture = json.loads((samples / 'fixture_manifest.json').read_text())
+            self.assertEqual(len(fixture['files']), 3)
+            self.assertTrue(all(r['sample_index']==0 for r in fixture['files']))
+            self.assertEqual(self.signatures(setup[1]), before)
+            self.assertFalse(fixture['source_preparation_complete_claimed'])
 
     def test_existing_output_and_overlapping_source_are_preserved(self):
         with temporary_unit_directory() as name:

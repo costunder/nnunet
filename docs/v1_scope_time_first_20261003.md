@@ -49,6 +49,12 @@ Raw CT/hash/depth 비용은 세 case 합계65.6/65.2/68.1s로 별도다. 이는 
 
 원시 r3 보고서: `validation/v1x_progressive_20261003/scope_time_debug_report.json`. 결속 및 미검증 상태: `validation/v1x_progressive_20261003/scope_time_debug_release.json`. 초기 loader 실패 r1과 SDF 혼입을 찾은 r2 출력도 기존 work 폴더에 보존했다. 실행이 가능한 bounded scope 구현·정적/단위/실제 CT CUDA smoke 완료와 전체 ranking 품질 검증은 구분한다.
 
+## 서버 CSV 입력 수정
+
+서버의 `1b8e1d7` 실행은 GPU 단계 전에 종료됐다. 원본 CSV의 `sample_index="", status="ok"` case 완료 요약행을 실제 sample로 오인해, 비어 있는 후보 수를8과 비교한 구현 오류다. 실제 sample 행에는 숫자 sample_index·후보8·artifact 경로/SHA/크기가 들어 있다. 이제 원본 요약행만 제외하고 실제 sample에는 기존 후보8/bytes/config/raw provenance 검사를 유지한다. 공백 index인데 후보 또는 artifact를 주장하는 비정상 기록은 요약행으로 숨기지 않고 거부한다.
+
+기존 로컬 GPU 입력은 `.pt + fixture_manifest`를 직접 사용했으므로 이 서버 CSV 경계를 검사하지 못했다. 수정본은 보존 ZIP의 실제 `_progress_row`와 `_progress_sort_key`를 변경 없이 실행하고, 원본 columns로 CSV를 저장·읽는 회귀 검사를 추가했다. 요약행과 sample 행이 함께 있는 입력에서 선택·SHA 확인·복사까지 연결됐고, 전체 관련 단위 검사는44개 PASS다. 이번에는 CSV 선택만 바꾸었으며 앞선3개 범위의 neural CUDA 실행·모델·ROI 계약을 변경하거나 새로운 GPU 실행을 주장하지 않는다. 기존 서버 캐시·원본 기록은 수정하지 않는다. 결속은 `scope_manifest_selection_fix.json`에 추가하고 앞선 receipt는 역사적 기록으로 보존한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

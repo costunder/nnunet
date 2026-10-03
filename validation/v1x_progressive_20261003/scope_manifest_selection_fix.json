@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "created_at": "2026-10-03T14:21:15.943324+00:00",
+  "scope": "original v1 manifest case-summary/sample distinction and read-only input packaging",
+  "cause": "case-level status=ok sample_index empty was incorrectly treated as an eight-candidate sample",
+  "unit_tests_passed": 44,
+  "standalone_packaging_regression": "PASS",
+  "original_producer_CSV_roundtrip": "PASS",
+  "original_v1_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+  "files": {
+    "hiercp_v1x/scope_inputs.py": "176eb99802f58ba7b1fe89a54a66de2139b4ab95b2626394f3ba245401eaf1cb",
+    "tests/test_v1_scope_inputs.py": "6ad42026433581d3d21d377b8578bba97714019475b55fa6721d38292b8a05ef",
+    "docs/v1_scope_time_first_20261003.md": "dc17ebe0850e47c1a92f151bd07616fd1af26f19ff636f055e326faa99dcfbda"
+  },
+  "unchanged_CUDA_execution_files": {
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "tools/probe_v1_scope_time.py": "5bf640e4e0535e99bec9df3b9eebe6ab564b2087d48589a392b37d4c61de8577",
+    "tools/run_v1_scope_probe.py": "241d1509c1a66cab1ec84fe054c99de8078d3d83ae9ad54cf46ec82a68ccd78d"
+  },
+  "previous_actual_CUDA_receipt": "validation/v1x_progressive_20261003/scope_time_debug_release.json",
+  "previous_actual_CUDA_receipt_sha256": "c124a1d977bf4991c06d97b46de3cb89512bc3359b34f121ca69628fe7d6abed",
+  "new_GPU_run": false,
+  "debug": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "source_cache_modified": false,
+  "candidate_count": 8,
+  "margin_mm": [
+    10,
+    20,
+    30
+  ],
+  "server_metadata_requested": false,
+  "server_manifest_received": false,
+  "checks": [
+    "case summaries do not fill batch",
+    "malformed indexless artifacts rejected",
+    "actual eight-candidate sample still required",
+    "case and artifact input hashes preserved",
+    "original producer summary and samples sorted then serialized to CSV and read",
+    "mixed summary/sample CSV reaches byte-verified input packaging",
+    "no training checkpoint or automatic long run"
+  ]
+}
