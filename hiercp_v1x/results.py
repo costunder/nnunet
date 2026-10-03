@@ -109,7 +109,8 @@ def collect_result(experiment: str | Path, stage: str, output: str | Path | None
     lock = freeze_execution(experiment)  # Existing lock is verified, never created here.
     stage_config = read(experiment / "configs" / f"{stage}.json")
     resolved = resolve_execution_config(stage_config, lock)
-    validate_stage_config(resolved, stage, execution_lock=lock)
+    validate_stage_config(resolved, stage, execution_lock=lock,
+                          preparation_admission=manifest.get('preparation_admission'))
     if resolved_execution:
         _same(read(results / "resolved_config.json"), resolved, "resolved execution settings")
     launch = read(results / "launch_contract.json")
@@ -121,6 +122,8 @@ def collect_result(experiment: str | Path, stage: str, output: str | Path | None
     _same(launch.get("config"), expected_config, "launch configuration")
     expected_execution_lock = lock if resolved_execution else None
     _same(launch.get("execution_lock"), expected_execution_lock, "baseline physical batch lock")
+    _same(launch.get('preparation_admission'), manifest.get('preparation_admission'),
+          'explicit ROI resource admission')
     if sampling is not None:
         _same(launch.get('sampling_contract'), sampling, 'selected sampler identity')
     elif 'sampling_contract' in launch:
@@ -135,7 +138,8 @@ def collect_result(experiment: str | Path, stage: str, output: str | Path | None
         binding = make_run_contract(stage, resolved, cache_identity=cache,
                                    source_identity=launch["source"], evaluation_identity=evaluation,
                                    physical_batch_size=lock["selected_batch_size"], debug=False,
-                                   execution_lock=lock, sampling_contract=sampling)
+                                   execution_lock=lock, sampling_contract=sampling,
+                                   preparation_admission=manifest.get('preparation_admission'))
         validate_resume(binding, read(results / "run_contract.json"))
     index = read(shared / "cache/index.json")
     entries = index.get("entries")

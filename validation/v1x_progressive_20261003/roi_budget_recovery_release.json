@@ -1,0 +1,43 @@
+{
+  "format": "v1_roi_recovery_release_v1",
+  "date": "2026-10-03",
+  "scope": "implementation and UNIT regression; failed server CT cost measurement pending",
+  "prior_server_revision": "47bdb58b872682fc1be9887afc4acd0afa712cb6",
+  "archive": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+  "strict_sampler_preserved": {
+    "hiercp_v1x/graph_size.py": true,
+    "hiercp_v1x/nested_graph_size.py": true,
+    "hiercp_v1x/sampling_entry.py": true,
+    "hiercp_v1x/sampling_runtime.py": true
+  },
+  "files": {
+    "hiercp_v1x/contracts.py": "58ac2c92ed9dcfb58473d22c3517bc1ac74f79ae3fc012a705e3792a7eddf53b",
+    "hiercp_v1x/experiment.py": "0ffce987aef8c33fc4a1d60125cb7ca757fe125a2ed93644bb5e17ee667ee5ea",
+    "hiercp_v1x/results.py": "1d43a3899fa3e9a0a30e6a29445c57a01cb697e292fca037626c7a06d7c7e704",
+    "hiercp_v1x/cache_budget_recovery.py": "1fc0cb63da48d63d81629a20e07e23c7e2b6d6be5f5902a274ceeafdc1675bd1",
+    "hiercp_v1x/budget_recovery_entry.py": "0e5547c1e116cd54bc2a0c978ee6729bbcb9607097e0d15496488ec6da775a53",
+    "hiercp_v1x/roi_budget_probe.py": "ba30a4da31506cdb5e38d2f117db10a40e2e85f68baeee0d302a66cc086f9ad4",
+    "tools/run_v1x_experiment.py": "f58e6f0655307d15032b766f29ac20c65488ec09b0e5837303a6af109be63ed4",
+    "tools/probe_v1_roi_budget.py": "e4d4ce0adf1e2301271407b7c2a3abbbb448e7b7cefd61c957a9c136ae9ac17d",
+    "tools/run_v1_native_nested416_server.sh": "7de56824a2429301656625b69b2fee03cbf76c417684b6b2dec5968256e45110",
+    "tests/test_v1_roi_recovery_suite.py": "9cb60a86edb47ed2d38c6acf3a3fcf6655383b80285f85f7439011b75302a3ce",
+    "tests/test_v1_roi_admission_contract.py": "47c824b72be2ec1229eaa08fa3492ead45271c660f9d397402cc90dcd8e5821e",
+    "tests/test_v1_cache_budget_recovery.py": "0b8fd913f6a616cb39d3a975f01eb28d0c6a5a3cacff29ed6617b5d41b058186",
+    "tests/test_v1_roi_budget_probe.py": "f5285f24975228848bf28dfbf5aa070928602fabb8750f7bf0dbe502032bf74d"
+  },
+  "unit_results": {
+    "contract_runtime_suite": 50,
+    "explicit_admission": 14,
+    "current_cache_recovery": 9,
+    "ROI_parser": 5,
+    "total": 78
+  },
+  "AST_pass": 12,
+  "default_guard": 8000000,
+  "production_config_changed": false,
+  "actual_failed_ROI_cost_measured_locally": false,
+  "full_cache_recovery_verified_on_server": false,
+  "training_started": false,
+  "full_evaluation_started": false,
+  "quality_verified": false
+}

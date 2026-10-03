@@ -32,6 +32,9 @@ SAMPLING_HELPERS = (
 EPOCH_RECORDING_HELPERS = (
     "hiercp_v1x/epoch_telemetry.py", "hiercp_v1x/telemetry_entry.py",
 )
+ROI_RECOVERY_HELPERS = (
+    "hiercp_v1x/cache_budget_recovery.py", "hiercp_v1x/budget_recovery_entry.py",
+)
 EPOCH_RECORDING = {
     "format": "hiercp_v1_epoch_recording_v1",
     "scope": "identical observational instrumentation; original model, sampler, loss and RNG calls retained",
@@ -164,7 +167,8 @@ def normalize_split(payload):
 
 
 def initialize(experiment, medical, split_file, *, repo=ROOT, local_sampling=None,
-               sampling_profile=None, reference_experiment=None, record_epochs=False):
+               sampling_profile=None, reference_experiment=None, record_epochs=False,
+               preparation_admission=None, recover_preparation_from=None):
     experiment, medical = Path(experiment).resolve(), Path(medical).resolve()
     if experiment == Path(repo).resolve() or experiment == medical:
         raise ContractError("Experiment must be a separate output directory")
@@ -172,6 +176,9 @@ def initialize(experiment, medical, split_file, *, repo=ROOT, local_sampling=Non
         if experiment == protected or protected in experiment.parents:
             raise ContractError(f"Protected experiment destination: {protected}")
     proof = verify_archive(repo)
+    if preparation_admission is not None:
+        from .contracts import validate_preparation_admission
+        validate_preparation_admission(preparation_admission, root=repo)
     incoming = Path(split_file).resolve()
     split = normalize_split(read(incoming))
     sampling = local_sampling_spec(local_sampling, sampling_profile) if local_sampling is not None else None
@@ -195,9 +202,30 @@ def initialize(experiment, medical, split_file, *, repo=ROOT, local_sampling=Non
             raise ContractError('Native reference has a different data/split contract')
         if reference_manifest.get('epoch_recording') != recording:
             raise ContractError('Matched arms must use the same epoch recording policy')
+        if reference_manifest.get('preparation_admission') != preparation_admission:
+            raise ContractError('Matched arms must use the same explicit ROI resource admission')
         reference = dict(path=str(reference_path), manifest_sha256=reference_manifest['manifest_sha256'])
     elif reference_experiment is not None:
         raise ContractError('Only strict nested comparisons can reuse a native reference experiment')
+    recovery = None
+    if recover_preparation_from is not None:
+        if preparation_admission is None or sampling is None or sampling['mode'] != 'native':
+            raise ContractError('Cache recovery requires explicit native sampling and measured ROI admission')
+        old_root = Path(recover_preparation_from).resolve()
+        old = load_suite(old_root, repo=repo)
+        if (old_root == experiment or old_root in experiment.parents or experiment in old_root.parents
+                or old.get('sampling_contract', {}).get('mode') != 'native'
+                or old['medical_root'] != str(medical) or old['split'] != split):
+            raise ContractError('Recovery must use a disjoint, matched failed native experiment')
+        old_shared = preparation_root(old_root, old)
+        if (old_shared/'prepare.lock').exists() or any((old_root/'results').glob('*/run.lock')):
+            raise ContractError('Recovery source is active; no concurrent source mutation permitted')
+        cache = old_shared/'cache'
+        if read(cache/'config.json').get('state') != 'failed' or any((cache/name).exists() for name in ('index.json','complete.json')):
+            raise ContractError('Recovery source must be failed and unpublished')
+        recovery = dict(path=str(old_root), manifest_sha256=old['manifest_sha256'],
+                        cache_config_sha256=digest(cache/'config.json'),
+                        progress_sha256=digest(cache/'manifest.csv'))
     data = medical / "Data"
     images, labels, unsupported = {}, {}, []
     for kind, table in (("image", images), ("labels", labels)):
@@ -220,7 +248,9 @@ def initialize(experiment, medical, split_file, *, repo=ROOT, local_sampling=Non
         if (existing["medical_root"] != str(medical) or existing["split"] != split
                 or existing.get('sampling_contract') != sampling
                 or _reference(existing) != reference
-                or existing.get('epoch_recording') != recording):
+                or existing.get('epoch_recording') != recording
+                or existing.get('preparation_admission') != preparation_admission
+                or existing.get('preparation_recovery') != recovery):
             raise ContractError("Existing experiment has a different data/split contract")
         return existing
     experiment.mkdir(parents=True, exist_ok=False)
@@ -258,13 +288,16 @@ def initialize(experiment, medical, split_file, *, repo=ROOT, local_sampling=Non
                 helpers.extend((name, (Path(repo) / name).read_bytes()) for name in SAMPLING_HELPERS)
             if record_epochs:
                 helpers.extend((name, (Path(repo) / name).read_bytes()) for name in EPOCH_RECORDING_HELPERS)
+            if preparation_admission is not None:
+                helpers.extend((name, (Path(repo) / name).read_bytes()) for name in ROI_RECOVERY_HELPERS)
             for name, payload in helpers:
                 target = source / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with target.open("xb") as out:
                     out.write(payload)
                 hashes[name] = digest(target)
-            config = make_stage_config(proof["base_config"], stage, root=repo)
+            config = make_stage_config(proof["base_config"], stage, root=repo,
+                                       preparation_admission=preparation_admission)
             write_new(experiment / "configs" / f"{stage}.json", config)
             if sampling is not None:
                 contract = create_contract(sampling['mode'], config['graph'],
@@ -292,6 +325,10 @@ def initialize(experiment, medical, split_file, *, repo=ROOT, local_sampling=Non
                         graph_quality_passed=False, matched_graph_comparison_only=True)
     if recording is not None:
         manifest['epoch_recording'] = recording
+    if preparation_admission is not None:
+        manifest['preparation_admission'] = preparation_admission
+    if recovery is not None:
+        manifest['preparation_recovery'] = recovery
     manifest["manifest_sha256"] = canonical_hash(manifest)
     write_new(experiment / "manifest.json", manifest)
     return manifest
@@ -317,6 +354,21 @@ def load_suite(experiment, *, repo=ROOT, _seen=None):
         raise ContractError("Common split changed")
     sampling = manifest.get('sampling_contract')
     recording = manifest.get('epoch_recording')
+    admission = manifest.get('preparation_admission')
+    if admission is not None:
+        from .contracts import validate_preparation_admission
+        validate_preparation_admission(admission, root=repo)
+    recovery = manifest.get('preparation_recovery')
+    if recovery is not None:
+        if admission is None or sampling is None or sampling.get('mode') != 'native':
+            raise ContractError('Recovery identity lacks explicit native ROI admission')
+        old = load_suite(recovery['path'], repo=repo, _seen=seen)
+        old_shared = preparation_root(recovery['path'], old)
+        if (old['manifest_sha256'] != recovery['manifest_sha256']
+                or old['medical_root'] != manifest['medical_root'] or old['split'] != manifest['split']
+                or digest(old_shared/'cache/config.json') != recovery['cache_config_sha256']
+                or digest(old_shared/'cache/manifest.csv') != recovery['progress_sha256']):
+            raise ContractError('Failed native recovery source changed')
     if recording is not None and (recording != EPOCH_RECORDING or sampling is None):
         raise ContractError('Epoch recording policy changed or lacks explicit sampling')
     if manifest['format'] == SAMPLING_FORMAT:
@@ -334,7 +386,8 @@ def load_suite(experiment, *, repo=ROOT, _seen=None):
                     or parent['manifest_sha256'] != reference['manifest_sha256']
                     or parent['medical_root'] != manifest['medical_root']
                     or parent['split'] != manifest['split']
-                    or parent.get('epoch_recording') != recording):
+                    or parent.get('epoch_recording') != recording
+                    or parent.get('preparation_admission') != admission):
                 raise ContractError('Native reference identity, data or split changed')
         elif reference is not None:
             raise ContractError('Native sampler must own its preparation and calibration')
@@ -346,6 +399,8 @@ def load_suite(experiment, *, repo=ROOT, _seen=None):
             expected_names.update(SAMPLING_HELPERS)
         if recording is not None:
             expected_names.update(EPOCH_RECORDING_HELPERS)
+        if admission is not None:
+            expected_names.update(ROI_RECOVERY_HELPERS)
         if set(item['source_hashes']) != expected_names:
             raise ContractError('Snapshot source inventory changed')
         source = experiment / 'source' / stage
@@ -355,7 +410,7 @@ def load_suite(experiment, *, repo=ROOT, _seen=None):
         if item["spec"] != get_stage(stage).to_dict():
             raise ContractError("Stage registry changed")
         config = read(experiment / "configs" / f"{stage}.json")
-        validate_stage_config(config, stage, root=repo)
+        validate_stage_config(config, stage, root=repo, preparation_admission=admission)
         if canonical_hash(config) != item["config_sha256"]:
             raise ContractError("Stage config changed")
         for name, sha in item["source_hashes"].items():
@@ -417,6 +472,9 @@ def command_plan(experiment, stage, target, *, python=sys.executable):
         args = [["prepare-prototypes", *common, "--output", str(shared/"prototype_bank.pt")],
                 ["prepare", *common, "--prototype-bank", str(shared/"prototype_bank.pt"),
                  "--cache-dir", str(shared/"cache")]]
+        if manifest.get('preparation_recovery') is not None:
+            return source, [[str(python), '-u', '-m', 'hiercp_v1x.budget_recovery_entry',
+                             '--experiment', str(native), '--', *args[1]]]
     elif target == "train":
         resolved = output / "resolved_config.json"
         args = [["train", "--config", str(resolved if execution_is_resolved(manifest, stage) else config),
@@ -483,6 +541,8 @@ def bind_launch(experiment, stage, manifest, config, execution_lock):
                       mask_contract='original_full_source_footprint_and_original_eligibility')
     launch = dict(stage=stage, source=source, cache=cache, evaluation=evaluation,
                   config=config, execution_lock=execution_lock)
+    if manifest.get('preparation_admission') is not None:
+        launch['preparation_admission'] = manifest['preparation_admission']
     sampling = sampler_contract(experiment, stage, manifest)
     if sampling is not None:
         launch['sampling_contract'] = sampling
@@ -499,7 +559,8 @@ def bind_launch(experiment, stage, manifest, config, execution_lock):
         binding = make_run_contract(stage, config, cache_identity=cache,
                     source_identity=source, evaluation_identity=evaluation,
                     physical_batch_size=execution_lock['selected_batch_size'], debug=False,
-                    execution_lock=execution_lock, sampling_contract=sampling)
+                    execution_lock=execution_lock, sampling_contract=sampling,
+                    preparation_admission=manifest.get('preparation_admission'))
         full = output/'run_contract.json'
         if full.exists(): validate_resume(binding, read(full))
         else: write_new(full, binding)

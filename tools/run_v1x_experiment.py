@@ -10,6 +10,33 @@ from hiercp_v1x.experiment import (initialize, load_suite, command_plan, execute
 from hiercp_v1x.contracts import STAGES, LOCAL_SAMPLING_MODES, LOCAL_SAMPLING_ROLES
 
 
+def admission_from_probe(max_voxels, probe_path):
+    """Bind completed actual failed-source ROI evidence, without choosing a cap."""
+    if max_voxels is None and probe_path is None:
+        return None
+    if max_voxels is None or probe_path is None:
+        raise ValueError('--roi-max-voxels and --roi-budget-probe must be supplied together')
+    from hiercp_v1x.contracts import make_preparation_admission, V1_ARCHIVE_SHA256
+    from hiercp_v1x.experiment import read, digest
+    report = read(probe_path)
+    rows = report.get('measurements')
+    if (report.get('format') != 'v1_roi_budget_probe_v1'
+            or report.get('scope') != 'debug_geometry_only'
+            or report.get('archived_source_sha256') != V1_ARCHIVE_SHA256
+            or report.get('original_roi_max_voxels') != 8_000_000
+            or report.get('candidate_roi_max_voxels') != max_voxels
+            or report.get('completed') is not True
+            or report.get('originals_preserved') is not True
+            or report.get('training_started') is not False
+            or report.get('cache_publication_created') is not False
+            or not isinstance(rows, list) or not rows
+            or len(rows) != report.get('failed_sample_requests')
+            or any(row.get('status') != 'PASS' or row.get('geometry_equal') is not True
+                   or row.get('original_guard_reproduced') is not True for row in rows)):
+        raise ValueError('ROI admission requires a completed, geometry-preserving failed-source cost probe; it is not full-cache admission')
+    return make_preparation_admission(max_voxels, digest(probe_path))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     commands = p.add_subparsers(dest='action', required=True)
@@ -26,6 +53,12 @@ def main():
                       help='Matched explicit-native experiment owning shared canonical preparation and measured batch/worker lock')
     init.add_argument('--record-epochs', action='store_true',
                       help='Bind identical observational epoch timing/logging to both matched arms')
+    init.add_argument('--roi-max-voxels', type=int,
+                      help='Explicit measured resource-only ROI allocation guard increase; no automatic selection')
+    init.add_argument('--roi-budget-probe',
+                      help='Completed probe_v1_roi_budget JSON for exactly this proposed guard; no quality promotion')
+    init.add_argument('--recover-preparation-from',
+                      help='Disjoint failed native suite whose verified successful cache bytes are retained in a fresh output')
     for name in ('plan', 'run'):
         q = commands.add_parser(name)
         q.add_argument('--experiment', required=True)
@@ -45,9 +78,18 @@ def main():
     a = p.parse_args()
     if a.action == 'init':
         profile = dict(zip(LOCAL_SAMPLING_ROLES, a.role_seeds)) if a.role_seeds is not None else None
+        admission = admission_from_probe(a.roi_max_voxels, a.roi_budget_probe)
+        if a.recover_preparation_from is not None and admission is not None:
+            from hiercp_v1x.experiment import read, digest
+            probe = read(a.roi_budget_probe)
+            old = Path(a.recover_preparation_from).resolve()
+            if (Path(probe.get('experiment', '')).resolve() != old
+                    or probe.get('failed_manifest_sha256') != digest(old/'shared/cache/manifest.csv')):
+                raise ValueError('ROI probe does not belong to this exact failed preparation')
         m = initialize(a.experiment, a.medical_root, a.split,
                        local_sampling=a.local_sampling, sampling_profile=profile,
-                       reference_experiment=a.reference_experiment, record_epochs=a.record_epochs)
+                       reference_experiment=a.reference_experiment, record_epochs=a.record_epochs,
+                       preparation_admission=admission, recover_preparation_from=a.recover_preparation_from)
         result = dict(experiment=str(Path(a.experiment).resolve()), stages=list(m['stages']),
                       train_cases=len(m['split']['train']), validation_cases=len(m['split']['val']),
                       excluded_outer_cases=len(m['split']['outer_validation_excluded']),
@@ -55,6 +97,8 @@ def main():
                       execution_reference=str(execution_reference(a.experiment, m)),
                       local_sampling=m.get('sampling_contract', {'mode': 'native', 'legacy': True}),
                       epoch_recording=m.get('epoch_recording'),
+                      preparation_admission=m.get('preparation_admission'),
+                      preparation_recovery=m.get('preparation_recovery'),
                       training_started=False, graph_quality_passed=False)
     elif a.action == 'plan':
         cwd, commands = command_plan(a.experiment, a.stage, a.target)

@@ -146,6 +146,53 @@ def _base(root: str | Path | None = None) -> dict[str, Any]:
     return verify_archive(root)["base_config"]
 
 
+PREPARATION_ADMISSION_FORMAT = "hiercp_v1_preparation_roi_admission_v1"
+PREPARATION_ADMISSION_PATH = "graph.adaptive_roi_max_voxels"
+PREPARATION_ADMISSION_SCOPE = (
+    "Explicit preparation resource admission only; model, spatial resolution, "
+    "context margin and graph sampling rules remain unchanged"
+)
+
+
+def make_preparation_admission(max_voxels: int, probe_sha256: str, *,
+                               root: str | Path | None = None) -> dict[str, Any]:
+    """Bind an explicit larger ROI guard to evidence; never choose a budget.
+
+    The caller must verify the actual probe artifact before initialization.
+    This metadata contract validates its identity, not the probe's resources,
+    permission to run, partition quality, or readiness for long training.
+    """
+    original = _base(root)["graph"]["adaptive_roi_max_voxels"]
+    if type(max_voxels) is not int or max_voxels <= original:
+        raise ContractError("Preparation admission must explicitly increase the archived ROI voxel guard")
+    if (not isinstance(probe_sha256, str) or len(probe_sha256) != 64
+            or any(char not in "0123456789abcdef" for char in probe_sha256)):
+        raise ContractError("Preparation admission requires the probe artifact's lowercase SHA256")
+    admission = {
+        "format": PREPARATION_ADMISSION_FORMAT,
+        "config_path": PREPARATION_ADMISSION_PATH,
+        "original_max_voxels": original,
+        "max_voxels": max_voxels,
+        "probe_sha256": probe_sha256,
+        "scope": PREPARATION_ADMISSION_SCOPE,
+        "quality_verified": False,
+    }
+    admission["contract_sha256"] = canonical_hash(admission)
+    return admission
+
+
+def validate_preparation_admission(profile: Mapping[str, Any], *,
+                                   root: str | Path | None = None) -> dict[str, Any]:
+    """Reject guard tampering, scope expansion, and unsupported quality claims."""
+    if not isinstance(profile, Mapping):
+        raise ContractError("Preparation admission must be an explicit bound profile")
+    expected = make_preparation_admission(profile.get("max_voxels"),
+                                         profile.get("probe_sha256"), root=root)
+    if config_diff(expected, dict(profile)):
+        raise ContractError("Preparation admission profile changed its bound fields or hash")
+    return copy.deepcopy(expected)
+
+
 def config_diff(before: Any, after: Any, path: str = "") -> dict[str, dict[str, Any]]:
     """Leaf changes, including added/removed keys (no silent schema relaxation)."""
     if isinstance(before, dict) and isinstance(after, dict):
@@ -166,7 +213,8 @@ def config_diff(before: Any, after: Any, path: str = "") -> dict[str, dict[str, 
 
 
 def make_stage_config(base: Mapping[str, Any], stage: str,
-                      *, root: str | Path | None = None) -> dict[str, Any]:
+                      *, root: str | Path | None = None,
+                      preparation_admission: Mapping[str, Any] | None = None) -> dict[str, Any]:
     spec = get_stage(stage)
     original = _base(root)
     delta = config_diff(original, dict(base))
@@ -175,6 +223,9 @@ def make_stage_config(base: Mapping[str, Any], stage: str,
     result = copy.deepcopy(original)
     if spec.activation_storage == "cnn_retained_local_checkpointed":
         result["model"]["checkpoint_dense_encoder"] = False
+    if preparation_admission is not None:
+        admission = validate_preparation_admission(preparation_admission, root=root)
+        result["graph"]["adaptive_roi_max_voxels"] = admission["max_voxels"]
     return result
 
 
@@ -200,8 +251,10 @@ def resolve_execution_config(config: Mapping[str, Any], calibration: Mapping[str
 
 def validate_stage_config(config: Mapping[str, Any], stage: str,
                           *, root: str | Path | None = None,
-                          execution_lock: Mapping[str, Any] | None = None) -> None:
-    expected = make_stage_config(_base(root), stage, root=root)
+                          execution_lock: Mapping[str, Any] | None = None,
+                          preparation_admission: Mapping[str, Any] | None = None) -> None:
+    expected = make_stage_config(_base(root), stage, root=root,
+                                 preparation_admission=preparation_admission)
     if execution_lock is not None:
         expected = resolve_execution_config(expected, execution_lock)
     delta = config_diff(expected, dict(config))
@@ -212,13 +265,16 @@ def validate_stage_config(config: Mapping[str, Any], stage: str,
 def validate_transition(before_stage: str, before: Mapping[str, Any],
                         after_stage: str, after: Mapping[str, Any],
                         *, root: str | Path | None = None,
-                        execution_lock: Mapping[str, Any] | None = None) -> dict[str, Any]:
+                        execution_lock: Mapping[str, Any] | None = None,
+                        preparation_admission: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Require the declared predecessor and precisely one experiment factor."""
     old, new = get_stage(before_stage), get_stage(after_stage)
     if new.predecessor != old.name:
         raise ContractError(f"{after_stage} must be compared to {new.predecessor}, not {before_stage}")
-    validate_stage_config(before, before_stage, root=root, execution_lock=execution_lock)
-    validate_stage_config(after, after_stage, root=root, execution_lock=execution_lock)
+    validate_stage_config(before, before_stage, root=root, execution_lock=execution_lock,
+                          preparation_admission=preparation_admission)
+    validate_stage_config(after, after_stage, root=root, execution_lock=execution_lock,
+                          preparation_admission=preparation_admission)
     fields = ("local_features", "local_operator", "activation_storage")
     altered = [key for key in fields if getattr(old, key) != getattr(new, key)]
     if altered != [new.changed_factor]:
@@ -244,10 +300,12 @@ def make_run_contract(stage: str, config: Mapping[str, Any], *,
                       physical_batch_size: int, debug: bool,
                       root: str | Path | None = None,
                       execution_lock: Mapping[str, Any] | None = None,
-                      sampling_contract: Mapping[str, Any] | None = None) -> dict[str, Any]:
+                      sampling_contract: Mapping[str, Any] | None = None,
+                      preparation_admission: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Bind exact resume to one stage, config, cache, source, and physical batch."""
     spec = get_stage(stage)
-    validate_stage_config(config, stage, root=root, execution_lock=execution_lock)
+    validate_stage_config(config, stage, root=root, execution_lock=execution_lock,
+                          preparation_admission=preparation_admission)
     if type(physical_batch_size) is not int or physical_batch_size <= 0:
         raise ContractError("Physical batch must be the actual measured positive integer")
     if type(debug) is not bool:
@@ -270,6 +328,8 @@ def make_run_contract(stage: str, config: Mapping[str, Any], *,
     }
     if sampling_contract is not None:
         binding["sampling_contract"] = _identity(sampling_contract, "local sampling")
+    if preparation_admission is not None:
+        binding["preparation_admission"] = validate_preparation_admission(preparation_admission, root=root)
     binding["contract_sha256"] = canonical_hash(binding)
     return binding
 
