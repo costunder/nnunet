@@ -1,0 +1,569 @@
+{
+  "status": "PASS",
+  "debug": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "optimizer_steps": 0,
+  "checkpoint_written": false,
+  "model_parameters": 10434532,
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "device_total_bytes": 17094344704,
+  "physical_sample_batch": 2,
+  "candidate_graph_batch": 16,
+  "workers": 2,
+  "worker_start_method": "spawn",
+  "workers_apply_exact_scope": true,
+  "worker_graphs_equal": true,
+  "worker_CUDA_scores_equal": true,
+  "worker_score_comparison_precision": "FP32 diagnostic; training AMP unchanged",
+  "worker_score_max_absolute_difference": 8.195638656616211e-08,
+  "actual_neural_scope_state_bound": true,
+  "rejected_checkpoints": [
+    "native_architecture",
+    "missing_marker",
+    "wrong_marker"
+  ],
+  "original_source": {
+    "source": "D:\\AI project\\nnunet\\work\\v1_scope_learning_cuda_SMOKE_20261003_10only\\worker_cuda_r5.source",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "verified_files": {
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    }
+  },
+  "scope_contract": {
+    "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+    "margin_mm": 10.0,
+    "context_outer_radius_mm": 10.0,
+    "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+    "implicit_depth_expansion": false,
+    "mandatory_surface_search": false,
+    "optional_roles": [
+      "source_liver_surface",
+      "target_liver_surface"
+    ],
+    "CNN_shape": [
+      48,
+      48,
+      48
+    ],
+    "coordinate_normalization_mm": 28.0,
+    "tumor_sdf_normalization_mm": 28.0,
+    "context_shells_mm": [
+      4.0,
+      12.0,
+      28.0
+    ],
+    "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "original_module_sha256": {
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    },
+    "debug": true,
+    "production_ready": false,
+    "quality_verified": false,
+    "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  },
+  "preparation": {
+    "raw_load_and_depth_seconds": 66.71141540000099,
+    "bounded_canonical_preparation_seconds": 10.370017800014466,
+    "ROI_records": [
+      {
+        "case_id": "liver_5",
+        "candidate": "source",
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 1,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 0,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 2,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 3,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 4,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 5,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 6,
+        "shape": [
+          43,
+          47,
+          45
+        ],
+        "voxels": 90945,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 1810
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 7,
+        "shape": [
+          45,
+          35,
+          39
+        ],
+        "voxels": 61425,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 567
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": "source",
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 1,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 0,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 2,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 3,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 4,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 5,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 6,
+        "shape": [
+          71,
+          63,
+          61
+        ],
+        "voxels": 272853,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 20395
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 7,
+        "shape": [
+          77,
+          53,
+          43
+        ],
+        "voxels": 175483,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 9054
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": "source",
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 1,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 0,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 2,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 3,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 4,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 5,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 6,
+        "shape": [
+          45,
+          57,
+          29
+        ],
+        "voxels": 74385,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 2077
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 7,
+        "shape": [
+          37,
+          55,
+          25
+        ],
+        "voxels": 50875,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 688
+      }
+    ],
+    "supervision_sha256": "2f025efb9275368ac36ce5c7cbc4a42e60691c7bca54871dd09bc0473e42c3f3"
+  },
+  "peak_cuda_allocated_bytes": 1678410240
+}

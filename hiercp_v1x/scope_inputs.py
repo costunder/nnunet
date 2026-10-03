@@ -24,9 +24,11 @@ def sha(path):
     return h.hexdigest()
 
 
-def select_records(rows, split, physical_batch):
+def select_records(rows, split, physical_batch, *, validation_cases=1):
     if type(physical_batch) is not int or physical_batch < 2:
         raise ValueError('Explicit DEBUG physical batch must contain at least two samples')
+    if type(validation_cases) is not int or validation_cases < 1:
+        raise ValueError('Explicit DEBUG validation case count must be a positive integer')
     selected, counts, seen = [], {'train': 0, 'val': 0}, set()
     allowed = {name: set(split[name]) for name in counts}
     for row in sorted(rows, key=lambda x: (x.get('case_id', ''), x.get('sample_index', ''))):
@@ -46,19 +48,19 @@ def select_records(rows, split, physical_batch):
         if (not isinstance(index, str) or not index.isascii() or not index.isdecimal()
                 or str(int(index)) != index):
             raise ValueError('Successful sample requires a canonical nonnegative sample_index')
-        if case in seen or counts[name] >= (physical_batch if name == 'train' else 1):
+        if case in seen or counts[name] >= (physical_batch if name == 'train' else validation_cases):
             continue
         if row.get('candidates') != '8':
             raise ValueError('DEBUG record must preserve the full eight-candidate curriculum')
         selected.append(row)
         seen.add(case)
         counts[name] += 1
-    if counts != {'train': physical_batch, 'val': 1}:
+    if counts != {'train': physical_batch, 'val': validation_cases}:
         raise ValueError('Insufficient verified records for the explicit DEBUG batch and held-out case')
     return selected
 
 
-def prepare_debug_inputs(experiment, output, physical_batch):
+def prepare_debug_inputs(experiment, output, physical_batch, *, validation_cases=1):
     from .experiment import load_suite, preparation_root
     from .contracts import verify_archive
     experiment = Path(experiment).resolve(strict=True)
@@ -72,7 +74,7 @@ def prepare_debug_inputs(experiment, output, physical_batch):
     config = json.loads(cache_config.read_text(encoding='utf-8'))
     with progress.open(encoding='utf-8', newline='') as f:
         rows = list(csv.DictReader(f))
-    records = select_records(rows, manifest['split'], physical_batch)
+    records = select_records(rows, manifest['split'], physical_batch, validation_cases=validation_cases)
     destination = Path(output).resolve()
     if destination.exists():
         raise FileExistsError('Existing diagnostic outputs are preserved; choose a new output')
@@ -133,6 +135,7 @@ def prepare_debug_inputs(experiment, output, physical_batch):
     identity = {'files': entries, 'source_records': raw_records,
                 'debug': True, 'source_preparation_complete_claimed': False,
                 'selection': 'first verified successful sample per distinct case; explicit DEBUG only',
+                'selected_train_cases': physical_batch, 'selected_validation_cases': validation_cases,
                 'source_experiment': str(experiment), 'source_split': manifest['split'],
                 'source_archive_sha256': proof['archive_sha256'], 'source_signatures': watched,
                 'original_failed_requests_replayed': False,

@@ -1,0 +1,620 @@
+{
+  "status": "PASS",
+  "scope": "selected-cohort native ranking learning diagnostic",
+  "seed": 42,
+  "epochs": 2,
+  "native_epochs": 40,
+  "scheduler_t_max": 40,
+  "fixed_validation_epoch": 29,
+  "physical_sample_batch": 2,
+  "physical_candidate_graph_batch": 16,
+  "gradient_accumulation_steps": 1,
+  "data_parallel_workers": 1,
+  "effective_sample_batch": 2,
+  "workers": 2,
+  "candidates_per_sample": 8,
+  "candidate_pool": 128,
+  "smoke": true,
+  "debug": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "target": "native source anchor versus existing curriculum candidates",
+  "cohort": "explicit selected diagnostic patients; not full 84/21 accuracy",
+  "evaluation": "fixed native two views and full eight scores; loss epoch29",
+  "checkpoint_written": false,
+  "initial": {
+    "epoch": 0,
+    "train": {
+      "samples": 2,
+      "top1": 0.0,
+      "MRR": 0.35,
+      "margin": -0.007537841796875,
+      "pair_win": 0.6428571428571429,
+      "positive_score": 0.01284027099609375,
+      "best_other_score": 0.02037811279296875,
+      "positive_ranks": [
+        2,
+        5
+      ],
+      "loss": 3.810810089111328,
+      "ranking": 3.810810089111328,
+      "consistency": 1.390775139498146e-07,
+      "ce": 2.0751953125,
+      "pair": 1.1352317333221436,
+      "ordinal": 0.7171316146850586,
+      "mined": 0.9139137864112854,
+      "scores": [
+        {
+          "case_id": "liver_5",
+          "sample_index": 0,
+          "values": [
+            0.01055145263671875,
+            -0.0160064697265625,
+            -0.0011882781982421875,
+            -0.0073699951171875,
+            0.004634857177734375,
+            -0.00359344482421875,
+            0.0157928466796875,
+            0.00420379638671875
+          ]
+        },
+        {
+          "case_id": "liver_6",
+          "sample_index": 0,
+          "values": [
+            0.01512908935546875,
+            0.016998291015625,
+            0.02496337890625,
+            0.024139404296875,
+            0.005634307861328125,
+            0.00917816162109375,
+            0.0182647705078125,
+            0.01036834716796875
+          ]
+        }
+      ],
+      "loss_epoch": 29,
+      "seconds": 2.984567099978449
+    },
+    "validation": {
+      "samples": 1,
+      "top1": 0.0,
+      "MRR": 0.25,
+      "margin": -0.028167724609375,
+      "pair_win": 0.5714285714285714,
+      "positive_score": 0.057098388671875,
+      "best_other_score": 0.08526611328125,
+      "positive_ranks": [
+        4
+      ],
+      "loss": 3.832683801651001,
+      "ranking": 3.832683801651001,
+      "consistency": 1.1920928955078125e-07,
+      "ce": 2.083984375,
+      "pair": 1.1419081687927246,
+      "ordinal": 0.7118930816650391,
+      "mined": 0.9288252592086792,
+      "scores": [
+        {
+          "case_id": "liver_31",
+          "sample_index": 0,
+          "values": [
+            0.057098388671875,
+            0.0631103515625,
+            0.056884765625,
+            0.054595947265625,
+            0.054595947265625,
+            0.038787841796875,
+            0.0831298828125,
+            0.08526611328125
+          ]
+        }
+      ],
+      "loss_epoch": 29,
+      "seconds": 0.9505266000051051
+    },
+    "optimizer_lr": 0.0001,
+    "optimization": null,
+    "seed": 42,
+    "epochs": 2,
+    "native_epochs": 40,
+    "scheduler_t_max": 40,
+    "fixed_validation_epoch": 29,
+    "physical_sample_batch": 2,
+    "physical_candidate_graph_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "data_parallel_workers": 1,
+    "effective_sample_batch": 2,
+    "workers": 2,
+    "candidates_per_sample": 8,
+    "candidate_pool": 128,
+    "smoke": true,
+    "debug": true,
+    "full_training": false,
+    "full_evaluation": false,
+    "production_ready": false,
+    "quality_verified": false,
+    "target": "native source anchor versus existing curriculum candidates",
+    "cohort": "explicit selected diagnostic patients; not full 84/21 accuracy",
+    "evaluation": "fixed native two views and full eight scores; loss epoch29",
+    "checkpoint_written": false
+  },
+  "epochs_completed": 2,
+  "history": [
+    {
+      "epoch": 0,
+      "train": {
+        "samples": 2,
+        "top1": 0.0,
+        "MRR": 0.35,
+        "margin": -0.007537841796875,
+        "pair_win": 0.6428571428571429,
+        "positive_score": 0.01284027099609375,
+        "best_other_score": 0.02037811279296875,
+        "positive_ranks": [
+          2,
+          5
+        ],
+        "loss": 3.810810089111328,
+        "ranking": 3.810810089111328,
+        "consistency": 1.390775139498146e-07,
+        "ce": 2.0751953125,
+        "pair": 1.1352317333221436,
+        "ordinal": 0.7171316146850586,
+        "mined": 0.9139137864112854,
+        "scores": [
+          {
+            "case_id": "liver_5",
+            "sample_index": 0,
+            "values": [
+              0.01055145263671875,
+              -0.0160064697265625,
+              -0.0011882781982421875,
+              -0.0073699951171875,
+              0.004634857177734375,
+              -0.00359344482421875,
+              0.0157928466796875,
+              0.00420379638671875
+            ]
+          },
+          {
+            "case_id": "liver_6",
+            "sample_index": 0,
+            "values": [
+              0.01512908935546875,
+              0.016998291015625,
+              0.02496337890625,
+              0.024139404296875,
+              0.005634307861328125,
+              0.00917816162109375,
+              0.0182647705078125,
+              0.01036834716796875
+            ]
+          }
+        ],
+        "loss_epoch": 29,
+        "seconds": 2.984567099978449
+      },
+      "validation": {
+        "samples": 1,
+        "top1": 0.0,
+        "MRR": 0.25,
+        "margin": -0.028167724609375,
+        "pair_win": 0.5714285714285714,
+        "positive_score": 0.057098388671875,
+        "best_other_score": 0.08526611328125,
+        "positive_ranks": [
+          4
+        ],
+        "loss": 3.832683801651001,
+        "ranking": 3.832683801651001,
+        "consistency": 1.1920928955078125e-07,
+        "ce": 2.083984375,
+        "pair": 1.1419081687927246,
+        "ordinal": 0.7118930816650391,
+        "mined": 0.9288252592086792,
+        "scores": [
+          {
+            "case_id": "liver_31",
+            "sample_index": 0,
+            "values": [
+              0.057098388671875,
+              0.0631103515625,
+              0.056884765625,
+              0.054595947265625,
+              0.054595947265625,
+              0.038787841796875,
+              0.0831298828125,
+              0.08526611328125
+            ]
+          }
+        ],
+        "loss_epoch": 29,
+        "seconds": 0.9505266000051051
+      },
+      "optimizer_lr": 0.0001,
+      "optimization": null,
+      "seed": 42,
+      "epochs": 2,
+      "native_epochs": 40,
+      "scheduler_t_max": 40,
+      "fixed_validation_epoch": 29,
+      "physical_sample_batch": 2,
+      "physical_candidate_graph_batch": 16,
+      "gradient_accumulation_steps": 1,
+      "data_parallel_workers": 1,
+      "effective_sample_batch": 2,
+      "workers": 2,
+      "candidates_per_sample": 8,
+      "candidate_pool": 128,
+      "smoke": true,
+      "debug": true,
+      "full_training": false,
+      "full_evaluation": false,
+      "production_ready": false,
+      "quality_verified": false,
+      "target": "native source anchor versus existing curriculum candidates",
+      "cohort": "explicit selected diagnostic patients; not full 84/21 accuracy",
+      "evaluation": "fixed native two views and full eight scores; loss epoch29",
+      "checkpoint_written": false
+    },
+    {
+      "epoch": 1,
+      "train": {
+        "samples": 2,
+        "top1": 1.0,
+        "MRR": 1.0,
+        "margin": 0.00754547119140625,
+        "pair_win": 1.0,
+        "positive_score": 0.01239776611328125,
+        "best_other_score": 0.004852294921875,
+        "positive_ranks": [
+          1,
+          1
+        ],
+        "loss": 3.760810375213623,
+        "ranking": 3.760810375213623,
+        "consistency": 1.2914340175029793e-07,
+        "ce": 2.05078125,
+        "pair": 1.1152677536010742,
+        "ordinal": 0.707453727722168,
+        "mined": 0.9065413475036621,
+        "scores": [
+          {
+            "case_id": "liver_5",
+            "sample_index": 0,
+            "values": [
+              0.05126953125,
+              -0.035797119140625,
+              -0.034149169921875,
+              -0.0246124267578125,
+              0.04425048828125,
+              0.0291290283203125,
+              0.0484619140625,
+              0.042572021484375
+            ]
+          },
+          {
+            "case_id": "liver_6",
+            "sample_index": 0,
+            "values": [
+              -0.0264739990234375,
+              -0.06048583984375,
+              -0.03875732421875,
+              -0.070556640625,
+              -0.050048828125,
+              -0.0556640625,
+              -0.040985107421875,
+              -0.052154541015625
+            ]
+          }
+        ],
+        "loss_epoch": 29,
+        "seconds": 1.7731718000140972
+      },
+      "validation": {
+        "samples": 1,
+        "top1": 0.0,
+        "MRR": 0.16666666666666666,
+        "margin": -0.04022216796875,
+        "pair_win": 0.2857142857142857,
+        "positive_score": 0.03948974609375,
+        "best_other_score": 0.0797119140625,
+        "positive_ranks": [
+          6
+        ],
+        "loss": 3.8389110565185547,
+        "ranking": 3.8389110565185547,
+        "consistency": 1.2914340175029793e-07,
+        "ce": 2.0859375,
+        "pair": 1.1435004472732544,
+        "ordinal": 0.712727427482605,
+        "mined": 0.9338552951812744,
+        "scores": [
+          {
+            "case_id": "liver_31",
+            "sample_index": 0,
+            "values": [
+              0.03948974609375,
+              0.054718017578125,
+              0.060028076171875,
+              0.04364013671875,
+              0.00595855712890625,
+              0.00989532470703125,
+              0.07391357421875,
+              0.0797119140625
+            ]
+          }
+        ],
+        "loss_epoch": 29,
+        "seconds": 0.9274192999873776
+      },
+      "optimizer_lr": 0.0001,
+      "optimization": {
+        "loss": 2.7117114067077637,
+        "ranking": 2.6990678310394287,
+        "consistency": 0.12643679976463318,
+        "ce": 1.38623046875,
+        "pair": 1.3128373622894287,
+        "ordinal": 0.0,
+        "mined": 0.0,
+        "top1": 0.0,
+        "MRR": 0.2380952537059784,
+        "pair_win": 0.4285714626312256,
+        "margin": -0.0772247314453125,
+        "samples": 2,
+        "optimizer_steps": 1,
+        "scores": [
+          {
+            "case_id": "liver_6",
+            "sample_index": 0,
+            "values": [
+              -0.037628173828125,
+              0.056671142578125,
+              0.064208984375,
+              -0.005588531494140625,
+              0.001560211181640625,
+              -0.03472900390625,
+              -0.10626220703125,
+              -0.0123291015625
+            ]
+          },
+          {
+            "case_id": "liver_5",
+            "sample_index": 0,
+            "values": [
+              0.0443115234375,
+              -0.036865234375,
+              -0.06170654296875,
+              -0.005611419677734375,
+              -0.036102294921875,
+              -0.0245361328125,
+              0.096923828125,
+              0.081298828125
+            ]
+          }
+        ],
+        "curriculum_epoch": 1,
+        "active_max_difficulty": 1.0,
+        "seconds": 17.344773199991323,
+        "loader_wait_seconds": 4.434722000005422,
+        "transfer_seconds": 0.027020599984098226,
+        "GPU_update_seconds": 12.854704900004435,
+        "peak_allocated_bytes": 2441810944,
+        "peak_reserved_bytes": 2577399808,
+        "optimizer_lr": 0.0001
+      },
+      "seed": 42,
+      "epochs": 2,
+      "native_epochs": 40,
+      "scheduler_t_max": 40,
+      "fixed_validation_epoch": 29,
+      "physical_sample_batch": 2,
+      "physical_candidate_graph_batch": 16,
+      "gradient_accumulation_steps": 1,
+      "data_parallel_workers": 1,
+      "effective_sample_batch": 2,
+      "workers": 2,
+      "candidates_per_sample": 8,
+      "candidate_pool": 128,
+      "smoke": true,
+      "debug": true,
+      "full_training": false,
+      "full_evaluation": false,
+      "production_ready": false,
+      "quality_verified": false,
+      "target": "native source anchor versus existing curriculum candidates",
+      "cohort": "explicit selected diagnostic patients; not full 84/21 accuracy",
+      "evaluation": "fixed native two views and full eight scores; loss epoch29",
+      "checkpoint_written": false
+    },
+    {
+      "epoch": 2,
+      "train": {
+        "samples": 2,
+        "top1": 1.0,
+        "MRR": 1.0,
+        "margin": 0.013580322265625,
+        "pair_win": 1.0,
+        "positive_score": 0.015777587890625,
+        "best_other_score": 0.002197265625,
+        "positive_ranks": [
+          1,
+          1
+        ],
+        "loss": 3.716886520385742,
+        "ranking": 3.716886520385742,
+        "consistency": 1.1920928955078125e-07,
+        "ce": 2.029296875,
+        "pair": 1.0974855422973633,
+        "ordinal": 0.6981412172317505,
+        "mined": 0.9009518623352051,
+        "scores": [
+          {
+            "case_id": "liver_5",
+            "sample_index": 0,
+            "values": [
+              0.07196044921875,
+              -0.07244873046875,
+              -0.07958984375,
+              -0.0653076171875,
+              0.0577392578125,
+              0.047760009765625,
+              0.061004638671875,
+              0.054351806640625
+            ]
+          },
+          {
+            "case_id": "liver_6",
+            "sample_index": 0,
+            "values": [
+              -0.0404052734375,
+              -0.10858154296875,
+              -0.09033203125,
+              -0.1343994140625,
+              -0.056610107421875,
+              -0.06658935546875,
+              -0.0692138671875,
+              -0.08709716796875
+            ]
+          }
+        ],
+        "loss_epoch": 29,
+        "seconds": 1.688304600014817
+      },
+      "validation": {
+        "samples": 1,
+        "top1": 0.0,
+        "MRR": 0.16666666666666666,
+        "margin": -0.046783447265625,
+        "pair_win": 0.2857142857142857,
+        "positive_score": 0.024017333984375,
+        "best_other_score": 0.07080078125,
+        "positive_ranks": [
+          6
+        ],
+        "loss": 3.852621555328369,
+        "ranking": 3.852621555328369,
+        "consistency": 1.0927518445669193e-07,
+        "ce": 2.091796875,
+        "pair": 1.147527813911438,
+        "ordinal": 0.7155117988586426,
+        "mined": 0.9403892159461975,
+        "scores": [
+          {
+            "case_id": "liver_31",
+            "sample_index": 0,
+            "values": [
+              0.024017333984375,
+              0.05712890625,
+              0.063232421875,
+              0.04425048828125,
+              -0.037689208984375,
+              -0.009429931640625,
+              0.0692138671875,
+              0.07080078125
+            ]
+          }
+        ],
+        "loss_epoch": 29,
+        "seconds": 0.8351133999822196
+      },
+      "optimizer_lr": 9.98458666866564e-05,
+      "optimization": {
+        "loss": 2.6386635303497314,
+        "ranking": 2.6259422302246094,
+        "consistency": 0.12721262872219086,
+        "ce": 1.349609375,
+        "pair": 1.2763327360153198,
+        "ordinal": 0.0,
+        "mined": 0.0,
+        "top1": 0.0,
+        "MRR": 0.2916666865348816,
+        "pair_win": 0.6428571939468384,
+        "margin": -0.045330047607421875,
+        "samples": 2,
+        "optimizer_steps": 1,
+        "scores": [
+          {
+            "case_id": "liver_5",
+            "sample_index": 0,
+            "values": [
+              0.029266357421875,
+              0.08953857421875,
+              -0.0125885009765625,
+              -0.136962890625,
+              -0.00830078125,
+              0.04736328125,
+              0.09326171875,
+              0.01390838623046875
+            ]
+          },
+          {
+            "case_id": "liver_6",
+            "sample_index": 0,
+            "values": [
+              -0.0130615234375,
+              0.00017118453979492188,
+              -0.09234619140625,
+              -0.10894775390625,
+              -0.033416748046875,
+              -0.07476806640625,
+              0.01360321044921875,
+              -0.0242462158203125
+            ]
+          }
+        ],
+        "curriculum_epoch": 2,
+        "active_max_difficulty": 1.0,
+        "seconds": 16.206148900004337,
+        "loader_wait_seconds": 4.1803688000072725,
+        "transfer_seconds": 0.0270895000139717,
+        "GPU_update_seconds": 11.975354199996218,
+        "peak_allocated_bytes": 2531496960,
+        "peak_reserved_bytes": 2619342848,
+        "optimizer_lr": 9.98458666866564e-05
+      },
+      "seed": 42,
+      "epochs": 2,
+      "native_epochs": 40,
+      "scheduler_t_max": 40,
+      "fixed_validation_epoch": 29,
+      "physical_sample_batch": 2,
+      "physical_candidate_graph_batch": 16,
+      "gradient_accumulation_steps": 1,
+      "data_parallel_workers": 1,
+      "effective_sample_batch": 2,
+      "workers": 2,
+      "candidates_per_sample": 8,
+      "candidate_pool": 128,
+      "smoke": true,
+      "debug": true,
+      "full_training": false,
+      "full_evaluation": false,
+      "production_ready": false,
+      "quality_verified": false,
+      "target": "native source anchor versus existing curriculum candidates",
+      "cohort": "explicit selected diagnostic patients; not full 84/21 accuracy",
+      "evaluation": "fixed native two views and full eight scores; loss epoch29",
+      "checkpoint_written": false
+    }
+  ],
+  "fixed_view_preparation_seconds": 5.569633900013287,
+  "scalar_head_changed": true,
+  "connected_parameters": 1085,
+  "expected_trainable_parameters": 1085,
+  "missing_gradient_parameters": [],
+  "parameter_count": 10434532,
+  "train_case_ids": [
+    "liver_5",
+    "liver_6"
+  ],
+  "validation_case_ids": [
+    "liver_31"
+  ],
+  "original_GT_preserved": true,
+  "original_loss_preserved": true,
+  "final_lr": 9.938441702975689e-05
+}

@@ -49,6 +49,16 @@ class ScopeRecordSelectionUnits(unittest.TestCase):
             [row("UNIT_A"), row("UNIT_B"), row("UNIT_C"), row("UNIT_V", "val")], self.split, 3)
         self.assertEqual(len(selected), 4)
 
+    def test_explicit_validation_cohort_is_not_silently_capped_at_one(self):
+        records = [row('UNIT_A'), row('UNIT_B'), row('UNIT_V', 'val'), row('UNIT_W', 'val')]
+        selected = scope_inputs.select_records(records, self.split, 2, validation_cases=2)
+        self.assertEqual(selected, records)
+
+    def test_insufficient_requested_validation_cohort_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'Insufficient'):
+            scope_inputs.select_records([row('UNIT_A'), row('UNIT_B'), row('UNIT_V', 'val')],
+                                       self.split, 2, validation_cases=2)
+
     def test_successful_case_summaries_are_not_candidate_samples(self):
         records = [row('UNIT_A'), row('UNIT_B'), row('UNIT_V', 'val')]
         summaries = [{**r, 'sample_index': '', 'candidates': '', 'path': '',

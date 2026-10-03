@@ -1,0 +1,271 @@
+{
+  "format": "v1_10mm_actual_learning_and_worker_smoke_v1",
+  "status": "PASS",
+  "debug": true,
+  "smoke": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "native_or_30mm_rerun": false,
+  "epochs_completed": 2,
+  "actual_optimizer_updates": 2,
+  "original_scheduler_t_max": 40,
+  "parameter_count": 10434532,
+  "physical_sample_batch": 2,
+  "physical_candidate_graph_batch": 16,
+  "workers": 2,
+  "margin_mm": 10,
+  "train_cases": [
+    "liver_5",
+    "liver_6"
+  ],
+  "held_out_cases": [
+    "liver_31"
+  ],
+  "initial_metrics": {
+    "train": {
+      "samples": 2,
+      "top1": 0.0,
+      "MRR": 0.35,
+      "margin": -0.007537841796875,
+      "pair_win": 0.6428571428571429,
+      "positive_score": 0.01284027099609375,
+      "best_other_score": 0.02037811279296875,
+      "positive_ranks": [
+        2,
+        5
+      ],
+      "loss": 3.810810089111328,
+      "ranking": 3.810810089111328,
+      "consistency": 1.390775139498146e-07,
+      "ce": 2.0751953125,
+      "pair": 1.1352317333221436,
+      "ordinal": 0.7171316146850586,
+      "mined": 0.9139137864112854,
+      "scores": [
+        {
+          "case_id": "liver_5",
+          "sample_index": 0,
+          "values": [
+            0.01055145263671875,
+            -0.0160064697265625,
+            -0.0011882781982421875,
+            -0.0073699951171875,
+            0.004634857177734375,
+            -0.00359344482421875,
+            0.0157928466796875,
+            0.00420379638671875
+          ]
+        },
+        {
+          "case_id": "liver_6",
+          "sample_index": 0,
+          "values": [
+            0.01512908935546875,
+            0.016998291015625,
+            0.02496337890625,
+            0.024139404296875,
+            0.005634307861328125,
+            0.00917816162109375,
+            0.0182647705078125,
+            0.01036834716796875
+          ]
+        }
+      ],
+      "loss_epoch": 29,
+      "seconds": 2.984567099978449
+    },
+    "validation": {
+      "samples": 1,
+      "top1": 0.0,
+      "MRR": 0.25,
+      "margin": -0.028167724609375,
+      "pair_win": 0.5714285714285714,
+      "positive_score": 0.057098388671875,
+      "best_other_score": 0.08526611328125,
+      "positive_ranks": [
+        4
+      ],
+      "loss": 3.832683801651001,
+      "ranking": 3.832683801651001,
+      "consistency": 1.1920928955078125e-07,
+      "ce": 2.083984375,
+      "pair": 1.1419081687927246,
+      "ordinal": 0.7118930816650391,
+      "mined": 0.9288252592086792,
+      "scores": [
+        {
+          "case_id": "liver_31",
+          "sample_index": 0,
+          "values": [
+            0.057098388671875,
+            0.0631103515625,
+            0.056884765625,
+            0.054595947265625,
+            0.054595947265625,
+            0.038787841796875,
+            0.0831298828125,
+            0.08526611328125
+          ]
+        }
+      ],
+      "loss_epoch": 29,
+      "seconds": 0.9505266000051051
+    }
+  },
+  "final_metrics": {
+    "train": {
+      "samples": 2,
+      "top1": 1.0,
+      "MRR": 1.0,
+      "margin": 0.013580322265625,
+      "pair_win": 1.0,
+      "positive_score": 0.015777587890625,
+      "best_other_score": 0.002197265625,
+      "positive_ranks": [
+        1,
+        1
+      ],
+      "loss": 3.716886520385742,
+      "ranking": 3.716886520385742,
+      "consistency": 1.1920928955078125e-07,
+      "ce": 2.029296875,
+      "pair": 1.0974855422973633,
+      "ordinal": 0.6981412172317505,
+      "mined": 0.9009518623352051,
+      "scores": [
+        {
+          "case_id": "liver_5",
+          "sample_index": 0,
+          "values": [
+            0.07196044921875,
+            -0.07244873046875,
+            -0.07958984375,
+            -0.0653076171875,
+            0.0577392578125,
+            0.047760009765625,
+            0.061004638671875,
+            0.054351806640625
+          ]
+        },
+        {
+          "case_id": "liver_6",
+          "sample_index": 0,
+          "values": [
+            -0.0404052734375,
+            -0.10858154296875,
+            -0.09033203125,
+            -0.1343994140625,
+            -0.056610107421875,
+            -0.06658935546875,
+            -0.0692138671875,
+            -0.08709716796875
+          ]
+        }
+      ],
+      "loss_epoch": 29,
+      "seconds": 1.688304600014817
+    },
+    "validation": {
+      "samples": 1,
+      "top1": 0.0,
+      "MRR": 0.16666666666666666,
+      "margin": -0.046783447265625,
+      "pair_win": 0.2857142857142857,
+      "positive_score": 0.024017333984375,
+      "best_other_score": 0.07080078125,
+      "positive_ranks": [
+        6
+      ],
+      "loss": 3.852621555328369,
+      "ranking": 3.852621555328369,
+      "consistency": 1.0927518445669193e-07,
+      "ce": 2.091796875,
+      "pair": 1.147527813911438,
+      "ordinal": 0.7155117988586426,
+      "mined": 0.9403892159461975,
+      "scores": [
+        {
+          "case_id": "liver_31",
+          "sample_index": 0,
+          "values": [
+            0.024017333984375,
+            0.05712890625,
+            0.063232421875,
+            0.04425048828125,
+            -0.037689208984375,
+            -0.009429931640625,
+            0.0692138671875,
+            0.07080078125
+          ]
+        }
+      ],
+      "loss_epoch": 29,
+      "seconds": 0.8351133999822196
+    }
+  },
+  "missing_gradient_parameters": [],
+  "connected_trainable_parameter_tensors": 1085,
+  "unit_tests": {
+    "run": 108,
+    "passed": 105,
+    "skipped": 3,
+    "failed": 0,
+    "scope": "metadata/metric/worker/checkpoint/source contracts; CPU units are not GPU learning evidence"
+  },
+  "worker_score_precision": "FP32 diagnostic; actual learning uses native AMP",
+  "worker_max_absolute_score_difference": 8.195638656616211e-08,
+  "worker_exact_CPU_input_equality": true,
+  "worker_spawn_applies_scope": true,
+  "worker_wrong_checkpoint_variants_rejected": [
+    "native_architecture",
+    "missing_marker",
+    "wrong_marker"
+  ],
+  "worker_optimizer_steps": 0,
+  "worker_checkpoint_written": false,
+  "learning_max_peak_allocated_bytes": 2531496960,
+  "learning_process_peak_rss_bytes": 9872232448,
+  "GPU_shared_with_another_project": true,
+  "server_epoch_speed_extrapolated": false,
+  "originals_preserved": true,
+  "payload_sha256": {
+    "learning_controller_raw.json": "afcadca4da6e0dc415aa10839f7dbd4e02932db19c297a97a578fbffbe4ee4dc",
+    "learning_branch_raw.json": "4edf38b36dfd41b17dc936b4dc1aa190510735c52c5bf3f69a857b8ffb4e6745",
+    "learning_report_raw.json": "41bebf5e0cb947c8c099908ba53af5c66c58e1a7e43c24ef08266a1ffc312123",
+    "learning_curve_raw.jsonl": "333a8a48de3edf92cb6c79c11265683e67e81467ef0fc17b2790ac14ea0ef0dc",
+    "worker_cuda_raw.json": "d5e0149416ce1a3d0157a6b2187b2388f6c5b3cea8ba19d6fed00ee97140f034",
+    "actual_input_manifest.json": "51b6ca8eb5aca205f834c4b242ba39e7556b103e94d95c9bc1e91d0f1d9fab05"
+  },
+  "verified_current_execution_source_sha256": {
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_training_entry.py": "05ee89ef7a1cdef947401a082e2b60dced59977328f56b0ea004638695546a80",
+    "hiercp_v1x/scope_learning_inputs.py": "0edd13901908124f02f6212998ee3b8599902f8c0392a96cbef309c6e4a63b9b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/epoch_telemetry.py": "142a66674bce1208a151d73b5610e2cfe848b5e427160be51eb99e900867a86c",
+    "hiercp_v1x/snapshot_inventory.py": "06a3c3667d8fe6b4648d742d0da6fea45062596373c7cb7d3a35ade186019670",
+    "hiercp_v1x/sampling_entry.py": "d021259ef40db419a3932cc5de1d69d3337f65899fc9b8629bd4b97e385d7bd5",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "hiercp_v1x/contracts.py": "58ac2c92ed9dcfb58473d22c3517bc1ac74f79ae3fc012a705e3792a7eddf53b",
+    "hiercp_v1x/experiment.py": "8f5876290e78e398d281fbf0a40253be34c826d5cd9faa1a2834701944a9bf60",
+    "tools/run_v1_bounded_training.py": "a47dacf6d000acd12c2eafba12eeb8e527d963d58765c6981c44b1c08819c9cd",
+    "hiercp_v1x/scope_learning_loop.py": "aebde93532180081bb37aaa2cbe61782f1648351c6b2f77ed2cd3d2e68d0b9e6",
+    "hiercp_v1x/scope_inputs.py": "d921e5169a23ff16772bb4af41387d66d3113da3cfb416d87bf083b020d96b20",
+    "tools/run_v1_scope_learning.py": "b411bc71215578019e3402db8731d2c4f9057ad51b0632c25fcd4ec3e9f1a7ca",
+    "tools/verify_v1_scope_worker_cuda_smoke.py": "3777b57c0e8fbc4fe083221640a1c2b3efc0116b3be69b0a15565debe641bf4b"
+  },
+  "failed_DEBUG_attempts_preserved": {
+    "learning_r1_r2": "Pre-update provenance encoder failed for PyG/zero-stride metadata; fixed before successful r3.",
+    "worker_r1_r2": "Legacy snapshot import/helper collisions; full controller uses fresh exact archive snapshot.",
+    "worker_r3": "Smoke comparator incorrectly indexed PyG global metadata; fixed comparator only.",
+    "worker_r4": "Exact CPU inputs, native AMP repeated-forward numerical difference max 0.000175476; separate FP32 worker equality used without changing AMP learning."
+  },
+  "limitations": [
+    "Train ranking improves on selected patients; held-out MRR worsens. No full-cohort accuracy claim.",
+    "Full server prepare and 40-epoch ranking run have not been executed locally.",
+    "Missing original native requests are not falsely described as identical candidate-paired comparisons."
+  ]
+}

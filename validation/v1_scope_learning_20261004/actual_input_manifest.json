@@ -1,0 +1,47 @@
+{
+  "files": [
+    {
+      "name": "liver_5.pt",
+      "split": "train",
+      "sha256": "14c5697cf67b7370d029db7ee099923ce9c857ca592d84a9de2aeadfaa39a3b3"
+    },
+    {
+      "name": "liver_6.pt",
+      "split": "train",
+      "sha256": "09406a42eb12292ef28062fadd817753d680e47af6e2af889beb638f909c4aef"
+    },
+    {
+      "name": "liver_31.pt",
+      "split": "val",
+      "sha256": "a09f18d286d37478f50b9462a619331e4f1093eb596bcc5bf10551f1569c161f"
+    }
+  ],
+  "source_records": [
+    {
+      "case_id": "liver_5",
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_5_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_5.nii.gz",
+      "image_sha256": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+      "label_sha256": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06"
+    },
+    {
+      "case_id": "liver_6",
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_6_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_6.nii.gz",
+      "image_sha256": "da441b7b71fea9b654d3fbb405bdf19d562145297f896a3e906f7820cb59271e",
+      "label_sha256": "5847fb1c0641b1c6d19baefd9404e1c3f86108a902a8fccf4eb5fae177acac14"
+    },
+    {
+      "case_id": "liver_31",
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_31_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_31.nii.gz",
+      "image_sha256": "86c8f3b6ef777ef98f900c85676e5585b3298ecc53b827bccf7a53fde8b51cec",
+      "label_sha256": "b80998498bf9fb1210ee6690432fab58cd9dc1eeb06fe84c74b881922eedb8d9"
+    }
+  ],
+  "debug": true,
+  "quality_verified": false,
+  "production_ready": false,
+  "full_training": false,
+  "derived_from_manifest_sha256": "a784d890a7b583c1d28d72f2a9d6611dfae8f18d98696b04708b1733b1ced59d"
+}
