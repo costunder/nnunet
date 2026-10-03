@@ -194,6 +194,51 @@ check proves source execution despite a timestamp-valid altered cache; four
 validation. No actual server inventory, target ROI cost, model forward or long
 training was executed in this correction.
 
+## Corrected server ROI probe completed at 15:36:22
+
+The user supplied the complete console outcome of
+`/home/aicompetition06/Medical/experiments/v1_roi_target_probe_20261003_153622.json`
+at revision `dd601db`. This is received server console evidence; the JSON bytes
+and its report SHA have not been independently obtained locally.
+
+| Failed sample | Measurement provenance | Status | Peak RSS GiB | Whole-child wall seconds |
+| --- | --- | --- | ---: | ---: |
+| liver_116[0] | Verified historical source measurement | PASS | 5.625 | 24.09 |
+| liver_116[1] | Verified historical source measurement | PASS | 5.625 | 20.11 |
+| liver_129[1] | New exact original target replay | PASS | 6.405 | 54.77 |
+| liver_84[0] | New exact original target replay | PASS | 13.249 | 74.19 |
+
+The emitted report summary says `completed=true`, four failed-sample requests,
+two reused and two new measurements, candidate guard 12,000,000, maximum RSS
+13.248973846435547 GiB, and `originals_preserved=true`. It retains
+`scope=debug_geometry_only`, `training_started=false`, `production_ready=false`.
+This closes the four recorded first-failure ROI cost probes. It does not prove
+complete canonical cache preparation or ranking quality.
+
+The next reviewable server action uses this completed `153622` report as the
+explicit 12M resource admission, the original failed native suite as recovery
+source, and a fresh disjoint comparison root. The old `140751` report remains
+historical evidence; it is not the completed admission input. Successful
+artifacts are checked and copied with matching tensor/geometry semantics;
+prototype and region files are copied as verified bytes. The expected 183
+recovered artifacts must be confirmed by the actual server migration log.
+
+The existing server shell performs native prepare, native 40 epochs, nested416
+40 epochs and full21 paired evaluation in order. Native calibrates and freezes
+the physical batch/worker lock; nested uses the same lock. The sole sampling
+contrast remains native versus strict-nested 64/32/96/64/96/64. Model, target,
+loss, two views, 84/21 split with outer26 excluded, seed42, curriculum8 and
+candidate pool128 stay fixed.
+
+The original runtime already accepts `HIERCP_PREPARE_MEASURED_CASE_RSS_BYTES` as
+a conservative per-case memory floor. Read its exact integer value from the
+completed report, rather than reconstructing it from rounded console GiB.
+This informs parallel resource admission; it is not a new whole-training RSS
+limit, and the diagnostic 16GiB/120s constraints do not become training limits.
+The explicit 8M-to-12M allocation-guard change is applied only when the user
+executes the reviewed fresh-suite command. No production configuration or
+server training has been modified or started by the local documentation work.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
