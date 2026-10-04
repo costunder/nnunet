@@ -6,7 +6,7 @@
 
 ## 변경
 
-`--allocation-policy current_allocation`을 명시한 **새 B 폴더의 최초 실행**에서만 baseline과 다른 allocation을 허용한다. GPU name·VRAM 총량·SM 개수·compute capability·MIG 여부는 실제 측정된 baseline과 같아야 한다. GPU UUID·서버 CPU 구성·스케줄러 identity의 차이는 그대로 기록한다.
+`--allocation-policy current_allocation`을 명시한 **새 B 폴더의 최초 실행**에서만 baseline과 다른 allocation을 허용한다. GPU name·SM 개수·compute capability·MIG 여부는 실제 측정된 baseline과 같아야 한다. VRAM 총량은 현재의 선언한 한도를 수용하는지 검사한다. GPU UUID·VRAM 총량·서버 CPU 구성·스케줄러 identity의 차이는 그대로 기록한다.
 
 원래 verified baseline의 physical batch, workers, gradient accumulation을 유지한다. 이 셋이 실제 config와 다르면 거부한다. 현재 단일 CUDA device, GPU 잔여 공간과 자체 할당량, CPU affinity·cgroup v1/v2·스케줄러 제약을 반영한 CPU 용량과 RAM 잔여 공간을 확인한다. 선언한 GPU/RSS 한도가 현재 capacity를 초과하면 명확하게 실패하며 batch·worker·모델을 자동으로 줄이지 않는다. 이 검사는 시간별 capacity의 영구 보장이 아니며 실행 중 기존 ResourceBudget 검사도 유지한다.
 
@@ -27,7 +27,17 @@ Native pipeline에는 **현재 실제 fingerprint**를 반환한다. Baseline fi
 - 기존 실제 CT 8 update와 CUDA parity 근거는 `validation/v16_half_b_20261004`에 보존했다. Neural 모델·support·native prompt/clustering 모듈 byte가 수정되지 않은 것을 확인했다. 이번 자원 검사 수정으로 그 근거를 새 서버 장기 학습 또는 새로운 추천 품질 검증으로 승격하지 않는다.
 - 로컬 UNIT 두 개는 workspace 임시 폴더 생성 권한에서 대기해 중단했다. 정확한 PID·명령을 확인한 직접 생성 검사 worker22328/37064만 중단한 뒤, 쓰기 권한을 맞춘 검사는 모두 통과했다. 서버나 셸·SSH 프로세스는 중단하지 않았다.
 
-현재 상태는 실행 검사 수정 완료, UNIT/CUDA resource probe 완료, 서버 재시도 전이다. 전체 B 학습 및 전체 B 평가 결과는 아직 없다.
+## 후속 용량 수정: r3
+
+첫 수정 r2의 서버 로그에서는 다른 hardware 필드가 아니라 `total_vram_bytes` 하나 때문에 실패했다. Baseline은47,839,313,920bytes(44.553833GiB), 현재 GPU는51,041,271,808bytes(47.535889GiB)였다. 현재 용량이 더 크고 선언한 한도는40GiB인데도 용량 equality로 거부한 것은 잘못된 조건이었다. 보고된 용량이 다른 원인을 ECC·드라이버 등으로 단정하지 않는다.
+
+`current_allocation`에서 total VRAM을 GPU identity 비교에서 분리했다. 총량은 실제 양수 측정값이어야 하며, 기존의 선언한40GiB 한도와 현재 free+allocated 확인은 그대로다. 더 적은 VRAM도 선언한 한도를 수용하면 허용하며 한도를 못 받으면 거부한다. Budget, model, batch, workers를 자동 변경하는 기능은 없다. Default `same_allocation`과 시작된 B의 실제 allocation lock은 그대로 엄격하게 유지한다.
+
+73 UNIT PASS에는 서버의 정확한 두 용량값으로40GiB admission과 실제 entry fingerprint/lock 결속을 확인하는 검사가 포함된다. 실제 RTX5070Ti의 CUDA와 archived entry에서도 이전보다 큰 실제 현재 VRAM을 허용하는 경로를 확인했다. 이 GPU 검사에서 이전 VRAM만 명시적인 DEBUG counterfactual이며 서버 GPU를 로컬에서 독립 검증한 결과는 아니다. Neural/optimizer update는0이며 핵심 neural module byte는 기존 CT 근거와 동일하다. 근거는 `validation/v16_half_b_capacity_20261004/manifest.json`에 보존했다.
+
+실패한 r1/r2 manifest를 덮어쓰지 않고 `/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3`에서 B만 실행한다. 앞선 두 실패가 update 이전이므로 학습 진척을 버리는 것이 아니며 baseline cache를 다시 만들지도 않는다.
+
+현재 상태는 용량 검사 수정 완료, UNIT/CUDA resource probe 완료, 서버 r3 재시도 전이다. 전체 B 학습 및 전체 B 평가 결과는 아직 없다.
 
 ## 작업 완료 체크리스트
 

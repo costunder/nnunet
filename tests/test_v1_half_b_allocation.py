@@ -120,13 +120,54 @@ class HalfBAllocationUnits(unittest.TestCase):
     def test_every_stable_gpu_hardware_field_must_match(self):
         self.migrated()
         gpu = deepcopy(self.actual['gpu_devices'][0])
-        differences = dict(name='UNIT other GPU', total_vram_bytes=47 * GIB,
-                           multiprocessors=83, compute_capability='8.0', mig_instance=True)
+        differences = dict(name='UNIT other GPU', multiprocessors=83,
+                           compute_capability='8.0', mig_instance=True)
         for key, value in differences.items():
             with self.subTest(field=key):
                 self.actual['gpu_devices'][0] = dict(gpu, **{key:value})
                 with self.assertRaisesRegex(ValueError, 'hardware differs'):
                     self.admit()
+
+    def test_reported_server_vram_capacity_difference_is_admitted_at_40_gib(self):
+        self.migrated()
+        self.expected['gpu_devices'][0]['total_vram_bytes'] = 47839313920
+        self.receipt['baseline_proof']['execution']['resource_fingerprint'] = deepcopy(self.expected)
+        self.actual['gpu_devices'][0]['total_vram_bytes'] = 51041271808
+        value = self.admit()
+        self.assertTrue(value['accepted'])
+        self.assertEqual(value['declared_budgets']['cuda_bytes'], 40 * GIB)
+        self.assertEqual(value['preserved_execution'], dict(physical_batch=16, workers=8,
+            gradient_accumulation_steps=2, data_parallel_workers=1, effective_batch=32))
+        self.assertEqual(value['actual_resource_fingerprint']['gpu_devices'][0]['total_vram_bytes'],
+                         51041271808)
+        self.assertEqual(value['baseline_resource_fingerprint']['gpu_devices'][0]['total_vram_bytes'],
+                         47839313920)
+        self.assertFalse(value['new_calibration'])
+        self.assertFalse(value['matched_performance_claim'])
+
+    def test_smaller_current_vram_is_admitted_when_fixed_40_gib_budget_still_fits(self):
+        self.migrated()
+        self.actual['gpu_devices'][0]['total_vram_bytes'] = 42 * GIB
+        self.report.update(cuda_free_bytes=40 * GIB, cuda_allocated_bytes=2 * GIB)
+        value = self.admit()
+        self.assertTrue(value['accepted'])
+        self.assertEqual(value['declared_budgets']['cuda_bytes'], 40 * GIB)
+        self.assertEqual(value['preserved_execution']['physical_batch'], 16)
+        self.assertEqual(value['preserved_execution']['workers'], 8)
+
+    def test_current_vram_below_declared_budget_is_rejected_without_reduction(self):
+        self.migrated()
+        self.actual['gpu_devices'][0]['total_vram_bytes'] = 39 * GIB
+        self.report.update(cuda_free_bytes=37 * GIB, cuda_allocated_bytes=2 * GIB)
+        before = deepcopy(self.receipt)
+        with self.assertRaisesRegex(ValueError, 'budget exceeds selected GPU'):
+            self.admit()
+        self.assertEqual(self.receipt, before)
+
+    def test_default_same_allocation_still_rejects_vram_capacity_change(self):
+        self.actual['gpu_devices'][0]['total_vram_bytes'] = 47 * GIB
+        with self.assertRaisesRegex(ValueError, 'changed_fields=.*total_vram_bytes'):
+            self.admit()
 
     def test_unknown_or_malformed_gpu_hardware_rejected(self):
         self.migrated()

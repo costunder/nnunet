@@ -1,0 +1,32 @@
+{
+  "format": "hiercp_half_B_capacity_fix_verification_v1",
+  "implementation_complete": true,
+  "static_AST": "PASS",
+  "UNIT_and_integration_checks": 73,
+  "exact_server_VRAM_pair_and_40GiB_regression": "PASS",
+  "actual_CUDA_capacity_admission": "PASS",
+  "actual_local_GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "prior_VRAM_in_GPU_probe_is_DEBUG_counterfactual": true,
+  "baseline_and_actual_fingerprints_preserved": true,
+  "native_signature_binds_actual": true,
+  "VRAM_checked_as_capacity_not_baseline_identity": true,
+  "undersized_capacity_rejected_without_reduction": true,
+  "original_neural_core_unchanged_sha256": {
+    "hiercp_v1x/half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+    "hiercp_v1x/half_b_support.py": "20c5059e55e396f9fd8cbfaa2d4c079596a1024589078a015a96fd3e71bf7730",
+    "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+    "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+    "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+    "l0_local_cnn/recommendation.py": "c6dd5c642277cfbca1a934d83f415e41315435a0dae19066ab15d7b2b5703b46"
+  },
+  "original_GT_loss_scope_batch_workers_accumulation_seed_epochs_unchanged": true,
+  "failed_B_folders_preserved": true,
+  "cache_regeneration": false,
+  "baseline_retraining": false,
+  "new_B_root": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3",
+  "optimizer_updates_this_fix": 0,
+  "training_started_by_agent": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false
+}

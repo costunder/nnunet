@@ -91,6 +91,21 @@ class AllocationEntryUnits(unittest.TestCase):
         self.assertFalse((self.root/'execution_lock.json').exists())
         self.assertFalse((self.root/'allocations').exists())
 
+    def test_reported_server_capacity_increase_binds_actual_without_reducing_controls(self):
+        self.expected['gpu_devices'][0]['total_vram_bytes'] = 47839313920
+        self.report['gpu_devices'][0]['total_vram_bytes'] = 51041271808
+        expected_actual = deepcopy(self.actual)
+        expected_actual['gpu_devices'][0]['total_vram_bytes'] = 51041271808
+        self.assertEqual(self.run_checked(), expected_actual)
+        lock = json.loads((self.root/'execution_lock.json').read_text())
+        self.assertEqual(lock['baseline_resource_fingerprint']['gpu_devices'][0]['total_vram_bytes'],47839313920)
+        self.assertEqual(lock['resource_fingerprint']['gpu_devices'][0]['total_vram_bytes'],51041271808)
+        self.assertEqual((lock['physical_batch'],lock['workers'],lock['effective_batch']),(2,4,2))
+        path, = (self.root/'allocations').glob('admission_*.json')
+        admission = json.loads(path.read_text())
+        self.assertEqual(admission['declared_budgets']['cuda_bytes'],40*GIB)
+        self.assertEqual(admission['current_total_vram_bytes'],51041271808)
+
 
 class AllocationRecipeUnits(UnitFixture):
     def test_current_policy_is_explicit_bound_and_changes_no_training_config(self):

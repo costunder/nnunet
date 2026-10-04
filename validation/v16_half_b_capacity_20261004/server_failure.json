@@ -1,0 +1,11 @@
+{
+  "origin": "user_server_trace_not_independent_remote_execution",
+  "stage": "half_b_allocation.validate_allocation before first update",
+  "error": "Selected GPU hardware differs from baseline; changed_hardware={\"total_vram_bytes\":{\"new\":51041271808,\"old\":47839313920}}",
+  "baseline_total_vram_bytes": 47839313920,
+  "current_total_vram_bytes": 51041271808,
+  "declared_cuda_gib": 40,
+  "current_capacity_exceeds_declared_limit": true,
+  "other_hardware_fields_reported_changed": [],
+  "training_started": false
+}

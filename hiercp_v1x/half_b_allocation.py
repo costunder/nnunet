@@ -14,6 +14,7 @@ POLICIES = ('same_allocation', 'current_allocation')
 FORMAT = 'hiercp_half_B_allocation_admission_v1'
 GPU_HARDWARE_FIELDS = ('name', 'total_vram_bytes', 'multiprocessors',
                        'compute_capability', 'mig_instance')
+GPU_IDENTITY_FIELDS = ('name', 'multiprocessors', 'compute_capability', 'mig_instance')
 
 
 def _object(value, name):
@@ -108,10 +109,14 @@ def validate_allocation(report, expected_fingerprint, actual_fingerprint,
 
     baseline_gpu = _gpu(expected, 'Baseline fingerprint')
     current_gpu = _gpu(actual, 'Current fingerprint')
-    if current_gpu != baseline_gpu:
-        hardware_changes = {key: dict(old=baseline_gpu[key], new=current_gpu[key])
-                            for key in GPU_HARDWARE_FIELDS
-                            if baseline_gpu[key] != current_gpu[key]}
+    # Capacity is an admission bound, not hardware identity. The current
+    # device must fit the declared unchanged budget; a larger reported VRAM
+    # total must not reject an otherwise matching GPU. same_allocation keeps
+    # its exact fingerprint guard above, including the reported capacity.
+    hardware_changes = {key: dict(old=baseline_gpu[key], new=current_gpu[key])
+                        for key in GPU_IDENTITY_FIELDS
+                        if baseline_gpu[key] != current_gpu[key]}
+    if hardware_changes:
         raise ValueError('Selected GPU hardware differs from baseline; '
                          'changed_hardware=' + json.dumps(hardware_changes,
                                                          sort_keys=True))
@@ -164,6 +169,10 @@ def validate_allocation(report, expected_fingerprint, actual_fingerprint,
     admission = dict(format=FORMAT, allocation_policy=policy, accepted=True,
         changed_fields=changed, baseline_resource_fingerprint=expected,
         actual_resource_fingerprint=actual,
+        GPU_identity_verified=True,
+        VRAM_capacity_comparison='current_declared_budget_not_baseline_equality',
+        baseline_total_vram_bytes=baseline_gpu['total_vram_bytes'],
+        current_total_vram_bytes=current_gpu['total_vram_bytes'],
         preserved_execution=dict(physical_batch=batch, workers=workers,
             gradient_accumulation_steps=accumulation, data_parallel_workers=1,
             effective_batch=batch * accumulation),

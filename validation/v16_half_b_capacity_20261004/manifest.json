@@ -1,0 +1,27 @@
+{
+  "format": "hiercp_half_B_capacity_evidence_v1",
+  "quality_verified": false,
+  "full_training": false,
+  "files": {
+    "actual_CUDA_capacity.json": {
+      "sha256": "d0df3684b0999d54f9d84ffbc720c9576634bff632f68c1d4ea8f02cd8979716",
+      "size": 7116
+    },
+    "server_failure.json": {
+      "sha256": "80f4f3794c85dfebb4c2fef0f515e9e9cae72114c19e46875d2003d53189cafc",
+      "size": 533
+    },
+    "source_identity.json": {
+      "sha256": "223f31f068b3c95b341a428a364a39f337a30e226df8e76bf6d7a31268fcadfd",
+      "size": 1978
+    },
+    "unit_checks.log": {
+      "sha256": "30fe95d23a7e20c30675651302b6d7baf717692eb2c62bd3f854c433c91f2c19",
+      "size": 13034
+    },
+    "verification.json": {
+      "sha256": "01f270ebd409af5b5582e81c5d029d5a5f56a9290544ebe27c9688b4ffa62c3c",
+      "size": 1706
+    }
+  }
+}

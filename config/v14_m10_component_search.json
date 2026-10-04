@@ -1,6 +1,6 @@
 {
   "format": "hiercp_component_group_experiment_design_v1",
-  "status": "HALF_A_SERVER_COMPLETE_HALF_B_ALLOCATION_FIX_VERIFIED_SERVER_RETRY_PENDING",
+  "status": "HALF_A_SERVER_COMPLETE_HALF_B_CAPACITY_FIX_VERIFIED_SERVER_RETRY_PENDING",
   "training_started": true,
   "new_cuda_smoke_performed": true,
   "baseline": {
@@ -189,8 +189,9 @@
   "half_B_full_training": false,
   "half_B_quality_verified": false,
   "half_B_allocation_fix_verification": "validation/v16_half_b_allocation_20261004/manifest.json",
-  "half_B_server_retry_experiment": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r2",
+  "half_B_server_retry_experiment": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3",
   "half_B_server_retry_allocation_policy": "current_allocation",
+  "half_B_capacity_fix_verification": "validation/v16_half_b_capacity_20261004/manifest.json",
   "debug_optimizer_updates_performed": 8,
   "server_training_started_by_agent": false,
   "verification": {

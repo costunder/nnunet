@@ -73,7 +73,7 @@ Entry: `tools/run_v1_half_b.py`. 고정 원래 baseline:
 새 실험 폴더:
 `/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004`.
 
-물리 GPU3, CUDA40GiB/RSS192GiB 한도에서 실행한다. Physical batch와 worker는 baseline의 실제 preflight를 읽어 같은 값으로 lock한다. 보고된 값은1/4이지만 요약 숫자를 가정하여 적용하지 않는다. 이것은 비교 조건이며 새 상위 구조의 throughput 최적값을 주장하지 않는다. 기본 정책은 동일 자원 fingerprint를 요구한다. 다른 동일 GPU 서버에서 최초 실행할 때는 명시적인 `--allocation-policy current_allocation`으로 현재 GPU·CPU·RAM 용량을 검사하고 두 자원 fingerprint를 함께 기록한다. 이는 baseline 측정의 처리량을 현재 서버에서 재현했다는 뜻이 아니다. 실패한 최초 실행의 manifest는 보존하고 별도 r2 폴더를 사용한다. 자세한 수정 근거는 `docs/v16_half_b_allocation_fix_20261004.md`에 있다. 입력·baseline cache·원본 source가 실제 proof와 다르면 명확한 오류로 중단하며 자동 재준비·축소·fallback을 하지 않는다.
+물리 GPU3, CUDA40GiB/RSS192GiB 한도에서 실행한다. Physical batch와 worker는 baseline의 실제 preflight를 읽어 같은 값으로 lock한다. 보고된 값은1/4이지만 요약 숫자를 가정하여 적용하지 않는다. 이것은 비교 조건이며 새 상위 구조의 throughput 최적값을 주장하지 않는다. 기본 정책은 동일 자원 fingerprint를 요구한다. 다른 동일 GPU 서버에서 최초 실행할 때는 명시적인 `--allocation-policy current_allocation`으로 현재 GPU·CPU·RAM 용량을 검사하고 두 자원 fingerprint를 함께 기록한다. VRAM 총량은 identity equality가 아니라 선언한 한도의 수용 여부를 검사한다. 이는 baseline 측정의 처리량을 현재 서버에서 재현했다는 뜻이 아니다. 실패한 최초 실행의 manifest는 보존하고 별도 `v16_m10_halfB_seed42_20261004_r3` 폴더를 사용한다. 자세한 수정 근거는 `docs/v16_half_b_allocation_fix_20261004.md`에 있다. 입력·baseline cache·원본 source가 실제 proof와 다르면 명확한 오류로 중단하며 자동 재준비·축소·fallback을 하지 않는다.
 
 Seed42,40epochs,84/21,outer26제외,pool128,curriculum8,원래 GT와 loss를 유지한다. Baseline·A 재학습, A+B, production CP, nnU-Net은 실행하지 않는다. 로컬에서 전체 학습 또는 전체 evaluation은 시작하지 않았다.
 
