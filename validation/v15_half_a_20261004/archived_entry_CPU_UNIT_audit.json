@@ -1,0 +1,20 @@
+{
+  "UNIT": true,
+  "archived_constructor": true,
+  "CPU_only": true,
+  "CT_run": false,
+  "GPU_run": false,
+  "training_run": false,
+  "source": "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+  "output": "D:\\AI project\\nnunet\\work\\half_a_entry_archived_CPU_UNIT_39435f8a311b46dfa2c1c0249fa5210b",
+  "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+  "source_files_preserved": true,
+  "original_native_initial_state_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+  "common_upper_initial_sha256": "8851dec2e9379de637075b16d0a285cf154c24ca2e2c4c9817f30ed4b3791890",
+  "new_parameters": 5127124,
+  "structural_optimizer_parameter_interface_verified": true,
+  "gradient_connectivity_tested": false,
+  "checks": 11,
+  "failures": 0,
+  "errors": 0
+}

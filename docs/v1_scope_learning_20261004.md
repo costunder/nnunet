@@ -80,6 +80,36 @@ CSV 입력, 전체 cohort 요청, 원본 복사·checkpoint marker·worker·epoc
 
 v2.2를 “전혀 학습되지 않는다”로 단정하지 않는다. 최신 짧은 검사에서는 train separation이 개선됐지만 held-out 성능은 개선되지 않았다. support 갱신 간격 등은 원인 후보이며 이10mm 결과로 단일 원인을 확정하지 않는다. 먼저 이 arm의 전체 학습 곡선을 기존 v1 결과와 비교한다.
 
+## 2026-10-04 서버 전체 학습 결과 — 사용자 터미널 기록
+
+실험 `/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004`의 서버 기록에서 40/40epoch 완료와 보존된 40개 epoch 기록이 보고됐다. 다음 값은 사용자가 전달한 터미널 요약이며, 로컬에서 서버 checkpoint와 원시 JSONL을 새로 읽어 독립 평가한 수치가 아니다.
+
+| 서버 validation | MRR | top1 | positive−best-other margin |
+|---|---:|---:|---:|
+| 초기 | 0.301521 | 0.055556 | −0.014954 |
+| best epoch11 | 1.000000 | 1.000000 | +14.371202 |
+| 마지막 epoch40 | 1.000000 | 1.000000 | +13.398003 |
+
+이 결과는 **10mm의 원본 source-anchor/curriculum8 순위 목표가 서버 학습에서도 학습됐다는 기준선**으로 사용한다. 앞의 로컬 DEBUG held-out 하락을 서버40epoch 결과로 잘못 일반화하지 않는다. MRR/top1=1은 이 후보 집합과 평가 방식에서의 수치이며, 전체128 후보의 관측 P/U 순위나 실제 CP 적합성·segmentation 정확도100%를 뜻하지 않는다. 기존 `quality_verified=false` smoke receipt는 수정하지 않는다. 설정된84/21 cohort와 실제 eligible sample/case 수 및 metric 집계 단위는 원시 cache manifest·epoch JSONL을 새 대조의 실행 계약에 결속해 확인한다.
+
+epoch 시간은 아직 전달되지 않았다. 위 수치만으로 30mm 대비 시간 단축률이나 다른 하드웨어 대비 가속을 계산하지 않는다. 기존 cache/weights/optimizer/epoch 기록은 보존하고 native/30mm/10mm 기준선을 자동 재학습하지 않는다.
+
+## 다음 대조 — 성공한10mm v1에서 v2.2 변경 묶음 찾기
+
+사용자가 요청한 방식은 한 부품씩 순차 교체하는 전체 탐색이 아니라 **변경 묶음의 절반과 나머지 절반을 대조하고, 성능이 나빠지는 묶음을 다시 나누는 실험**이다. 구체적 상태와 코드 경계는 `config/v14_m10_component_search.json`에 기록했다. 첫 절반 A의 구현·짧은 실제 CT/CUDA 검사·서버 실행 연결은 [v1.5 half A 기록](v15_half_a_learning_20261004.md)에 별도로 정리했다. 이 설계 JSON 자체는 전체 학습 완료나 성능 승인 receipt가 아니다.
+
+첫 architecture 비교의 기준선은 위의 완성된10mm v1.4다. A는 L0 입력·encoder·readout·pair fusion, B는 L1 support/prompt·L2 prototype·score 경로다. **먼저 `baseline+A`만 검사한다. 성능 저하가 재현되면 A를 다시 절반으로 나누고, 재현되지 않으면 나머지 `baseline+B`를 검사한다.** 각 단계에서 문제를 재현한 묶음만 좁힌다. 사용자의 이분 탐색 요청에 따라 A+B 조합 실험은 제외하고 기준선도 재학습하지 않는다. 모든 arm은 **v1 source-anchor GT, 후보8/pool128, 후보 순서·변형·difficulty/corruption, 원래 loss와40epoch를 유지**한다. 기존 v2.2의 P/U bank를 v1 정답으로 이름만 바꾸거나 GT를 donor compatibility로 재해석하지 않는다.
+
+10mm source/cache·split·bank·region 및 기준선의 실제 batch/worker lock을 검증해 재사용한다. 유지하는 모듈은 동일 seed42 초기 가중치로 맞추고, 교체 모듈의 초기화 출처·신규 parameter·neural hash를 기록한다. 모든 새 arm은 fresh optimizer/scheduler/scaler로 시작하며 epoch11/40 best를 새 모델의 exact resume로 쓰지 않는다. 기존과 다른 update schedule이 필요한 support 경로는 숨겨서 바꾸지 않고, support 출처·gradient/detach·refresh cadence를 명시한 별도 factor로 다룬다. 같은 물리 batch를 맞춰도 후보당 처리량과 optimization step 수의 의미가 같아야 한다.
+
+매 epoch 초기 대비 train/validation loss·MRR·top1·margin, case별 결과, 실제 epoch wall time·loader·GPU compute·validation·checkpoint·peak VRAM을 비교한다. worker 시간 합은 wall time과 중복 합산하지 않는다. 공통 validation 환자의 paired difference를 기록하며 임의 tolerance나 자동 PASS를 만들지 않는다. 어느 단계에서든 두 절반 모두 저하를 재현하지 못하면 **해당 조건에서 원인을 좁히지 못했다고 보고**한다. 임의 부품을 범인으로 정하거나 추가 조합·상호작용 실험을 자동 시작하지 않는다.
+
+큰 묶음이 좁혀지면 A를 입력/encoder와 readout/fusion으로, B를 L1과 L2/scorer로 나눈다. P/U supervision·balanced CE/alignment·P×U schedule 전환은 architecture 검색과 분리한 다음 실험이다. 다른 GT의 MRR 차이를 동일 정답에 대한 부품 고장으로 제출하지 않는다.
+
+코드 조사에서 실제 adapter 경계가 확인됐다. 원본 L0는 여러 의미의128D dictionary를 반환하고 현재 LocalCNN은 단일128D tensor를 반환한다. tensor 하나를 dictionary 모든 key로 복제해서 연결하면 원래 의미를 보존하지 못한다. 또한 원본 fixed48 ROI와 현재 native-spacing crop의 정규화·target erasure 계약이 다르다. **v2 CNN을 원본 dense ROI에 연결하는 대조와 실제 native-spacing v2.2 입력은 별도 이름과 계약**으로 구분한다. L1 patient graph와 prompt support의 topology도 별도 bridge가 필요하다.
+
+기존 `hiercp_v1x/group_search.py`는 metadata planner이고 v1.0→v1.3 runtime은 누적 변경이다. 이번에 별도 `half_a_model.py`, `half_a_training.py`, `half_a_entry.py`, `tools/run_v1_half_a.py`를 추가해 첫 A만 실행하도록 구현했다. 기존 SHA에 결속된 v1.4 helper와 202개 원본 source는 변경하지 않았다. A는 원본 fixed48 ROI·target erasure·role/shell 입력을 유지한 CNN bridge이며 native-spacing v2.2 전체 복제가 아니다. 실제 CT/CUDA 8-update 검사와 46개 단위·실행 계약 검사를 완료했다. B·A+B·40epoch 전체 학습·production CP·nnU-Net은 자동 실행하지 않았다. 기존 DEBUG receipt를 전체 품질 승인으로 승격하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

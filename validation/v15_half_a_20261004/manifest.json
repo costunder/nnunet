@@ -1,0 +1,44 @@
+{
+  "format": "hiercp_v15_half_A_evidence_manifest_v1",
+  "full_evaluation": false,
+  "full_training": false,
+  "payload": {
+    "archived_entry_CPU_UNIT_audit.json": {
+      "bytes": 872,
+      "sha256": "612cc1006a84704501101f0b3bc68d16f7680b8618b2e0bbb34b65fb310e331f"
+    },
+    "attempts.jsonl": {
+      "bytes": 4493,
+      "sha256": "3d9d170d0641f9f12fb8da2a02639725fa9cb18fd2584cf67d5dff50a407b738"
+    },
+    "curve.jsonl": {
+      "bytes": 5537,
+      "sha256": "6d8dd4862d35aa86539a83c28a7e2b52b32b508b7b5512743fb93a319ca23a0b"
+    },
+    "execution_contract.json": {
+      "bytes": 2486,
+      "sha256": "356c02398c8fe57b8900441dd08e47b0fa113f5f731f16afe00b59cb9a42db0b"
+    },
+    "report.json": {
+      "bytes": 128681,
+      "sha256": "4e3613baa60f6c3f5fac2800fa2c627a4bb59bc6b7a64474cf0571c3fd8b89c9"
+    },
+    "source_identity.json": {
+      "bytes": 3616,
+      "sha256": "fc0948e903edb001da65c91bcef22565bc127d4e245e365e5fa1b1bf003237d1"
+    },
+    "unit_checks.log": {
+      "bytes": 6387,
+      "sha256": "2d6a7c672c86e2e32242db0ed054b001d567b598664c3942bee13fbef8ea553d"
+    },
+    "updates.jsonl": {
+      "bytes": 26027,
+      "sha256": "00f4283e55e6810b5fe6f4ec0c7dad41f34b01bfeca174e25cb86cc76cf4ae1a"
+    },
+    "verification.json": {
+      "bytes": 1327,
+      "sha256": "e27ed0542f2901bd2a1cc04efef7e3b843f47047ec8c950173cdbcbdac523829"
+    }
+  },
+  "quality_verified": false
+}

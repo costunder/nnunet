@@ -1,0 +1,4513 @@
+{
+  "debug": true,
+  "smoke_test": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "status": "COMPLETE",
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "training_quality_verified": false,
+  "production_ready": false,
+  "production_checkpoint_written": false,
+  "diagnostic_initial_state_written": true,
+  "protocol": {
+    "initial_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+    "reference_updates": 2,
+    "train_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "validation_cases": [
+      "liver_31"
+    ],
+    "physical_sample_batch": 2,
+    "workers": 4,
+    "seed": 42,
+    "optimization_curriculum_epoch": 29,
+    "train_view_epoch": 29,
+    "validation_effective_view_epoch": 0,
+    "scheduler": null,
+    "baseline_model": "v1.0",
+    "experiment_version": "v1.4"
+  },
+  "margin_mm": 10.0,
+  "bounded_scope": {
+    "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+    "margin_mm": 10.0,
+    "context_outer_radius_mm": 10.0,
+    "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+    "implicit_depth_expansion": false,
+    "mandatory_surface_search": false,
+    "optional_roles": [
+      "source_liver_surface",
+      "target_liver_surface"
+    ],
+    "CNN_shape": [
+      48,
+      48,
+      48
+    ],
+    "coordinate_normalization_mm": 28.0,
+    "tumor_sdf_normalization_mm": 28.0,
+    "context_shells_mm": [
+      4.0,
+      12.0,
+      28.0
+    ],
+    "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "original_module_sha256": {
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    },
+    "debug": true,
+    "production_ready": false,
+    "quality_verified": false,
+    "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  },
+  "original_configuration": {
+    "method": "hiercp-full",
+    "seed": 42,
+    "labels": {
+      "liver": 1,
+      "tumor": 2
+    },
+    "ct_clip": [
+      -200.0,
+      250.0
+    ],
+    "graph": {
+      "patient_graph_contract": "patient_source_content_population_v2",
+      "patch_size": 48,
+      "context_radius_mm": 28.0,
+      "context_shells_mm": [
+        4.0,
+        12.0,
+        28.0
+      ],
+      "boundary_depth_mm": 3.0,
+      "candidate_k": 8,
+      "num_regions": 24,
+      "region_sample_voxels": 20000,
+      "region_lloyd_iters": 12,
+      "region_k": 4,
+      "num_prototypes": 16,
+      "prototype_top_m": 2,
+      "prototype_k": 4,
+      "prototype_lloyd_iters": 30,
+      "prototype_temperature": 0.5,
+      "max_lesions": null,
+      "graph_schema_version": "full_v22",
+      "geometry_contract": "level0_physical_closure_v2",
+      "adaptive_source_full_shape": true,
+      "adaptive_roi_margin_mm": 30.0,
+      "adaptive_roi_max_radius_mm": 64.0,
+      "adaptive_roi_max_voxels": 8000000,
+      "context_inner_radius_mm": 2.0,
+      "context_outer_radius_mm": 28.0,
+      "context_liver_surface_separation_mm": 1.0,
+      "context_radial_bins": 4,
+      "context_azimuth_bins": 8,
+      "context_elevation_bins": 4,
+      "liver_anchor_search_mm": 64.0,
+      "kdtree_leafsize": 32,
+      "canonical_full_graph": true,
+      "canonical_surface_spacing_mm": 2.0,
+      "canonical_interior_spacing_mm": 3.0,
+      "canonical_context_spacing_mm": 2.5,
+      "canonical_liver_spacing_mm": 4.0,
+      "canonical_node_limit": 250000,
+      "sample_context_nodes": 384,
+      "sample_hops": 2,
+      "sample_interface_radius_mm": 8.0,
+      "sample_hop_radius_mm": 6.0,
+      "surface_edge_radius_mm": 4.5,
+      "interior_edge_radius_mm": 5.5,
+      "context_edge_radius_mm": 6.0,
+      "interface_edge_radius_mm": 8.0,
+      "cross_edge_radius_mm": 7.0,
+      "liver_edge_radius_mm": 10.0,
+      "correspondence_radius_mm": 5.0,
+      "canonical_relation_edge_limit": 5000000,
+      "sample_relation_edge_limit": 500000
+    },
+    "cache": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "samples_per_case": 2,
+      "total_candidates": 8,
+      "candidate_pool_size": 128,
+      "easy_fraction": 0.34,
+      "inter_fraction": 0.33,
+      "intra_fraction": 0.33,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original"
+    },
+    "training": {
+      "val_fraction": 0.2,
+      "epochs": 40,
+      "batch_size": "auto",
+      "batch_size_candidates": "powers_of_two_to_cohort",
+      "batch_calibration_repeats": 3,
+      "batch_calibration_max_vram_fraction": 0.9,
+      "num_workers": "auto",
+      "num_worker_candidates": [
+        0,
+        2,
+        4,
+        8
+      ],
+      "loader_calibration_batches": 8,
+      "lr": 0.0001,
+      "weight_decay": 0.0001,
+      "amp": true,
+      "grad_clip": 5.0,
+      "easy_epochs": 8,
+      "inter_epochs": 18,
+      "intra_epochs": 28,
+      "model_mine_start_epoch": 29,
+      "semi_hard_low_percentile": 0.7,
+      "semi_hard_high_percentile": 0.95,
+      "cross_entropy_weight": 1.0,
+      "pairwise_weight": 1.0,
+      "ordinal_weight": 0.2,
+      "mined_weight": 0.5,
+      "consistency_weight": 0.1,
+      "fixed_validation_epoch": 29,
+      "checkpoint_metric_precision": 8,
+      "gradient_accumulation_steps": 1,
+      "target_effective_batch_size": null,
+      "fused_optimizer": true,
+      "pin_memory": true,
+      "prefetch_factor": 1,
+      "persistent_workers": true,
+      "cuda_prefetch": false
+    },
+    "model": {
+      "hidden_dim": 128,
+      "heads": 4,
+      "local_layers": 3,
+      "patient_layers": 2,
+      "prototype_layers": 2,
+      "dropout": 0.1,
+      "dense_base_channels": 12,
+      "dense_feature_dim": 32,
+      "dense_batch_size": 4,
+      "channels_last_3d": true,
+      "checkpoint_local_blocks": true,
+      "checkpoint_dense_encoder": true
+    },
+    "generation": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "num_copies": 1,
+      "num_candidates": 128,
+      "scoring_batch_size": "auto",
+      "scoring_batch_size_candidates": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "scoring_batch_calibration_repeats": 3,
+      "scoring_batch_max_vram_fraction": 0.9,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original",
+      "top_k": 1,
+      "temperature": 0.0,
+      "intensity_scale_range": [
+        0.95,
+        1.05
+      ],
+      "intensity_shift_range": [
+        -5.0,
+        5.0
+      ],
+      "blend_border": 0,
+      "amp": true,
+      "local_candidate_chunk_size": 8,
+      "pin_memory": true,
+      "cpu_prefetch_workers": 2,
+      "cpu_prefetch_cases": 2,
+      "save_queue_depth": 2,
+      "case_batch_size": 2
+    },
+    "runtime": {
+      "prepare_workers": "auto",
+      "deterministic": true,
+      "allow_tf32": false,
+      "cudnn_benchmark": false
+    }
+  },
+  "configuration_sha256": "8c6250eef1ac1c204a4c4da7c9cc7fea838b3d7ad450afd52267f88b9b60d34b",
+  "experiment": "Half-A: CNN L0 and real semantic bridge with preserved v1 upper model",
+  "half_a": {
+    "spec": {
+      "format": "hiercp_v1_half_a_v1",
+      "revision": 1,
+      "architecture": "v2CNN_on_preserved_v1_denseROI",
+      "bridge": "preserved_v1_role_shell_masked_mean_v1",
+      "input": "preserved_v1_5channel_fixed48_resampled_denseROI",
+      "ct": "channel0_minus1_plus1_to_zero_one_only_inside_channel2_organ",
+      "footprint": "actual_channel1_mask_not_center_or_sphere",
+      "channels": [
+        12,
+        24,
+        32
+      ],
+      "convolutions": [
+        2,
+        3,
+        3
+      ],
+      "hidden_dim": 128,
+      "readout": "organ_masked_mean_each_scale_shared_project",
+      "fusion": "shared_donor_target_signed_difference_product",
+      "role_sampling": "original_v1_sampler_original_normalized_role_grids",
+      "context_mask": "organ_excluding_actual_or_virtual_footprint",
+      "shell_partition": "original_x13_round_times3_clamp0to2",
+      "empty_sampled_shell": "zero_raw_mean_before_shared_projection",
+      "optional_real_liver_surface_absence": "zero_raw_mean_before_shared_projection_only_if_no_role_nodes",
+      "input_admission": "bound_original_10mm_scope_contract_marker_required",
+      "tumor": "pair_footprint_mean_with_mean_surface_interior_roles",
+      "context": "pair_context_role_with_liver_surface_role",
+      "relation": "pair_tumor_with_corresponding_c0_shell",
+      "fused": "pair_full_organ_donor_and_full_organ_recipient_means",
+      "old_l0_parameters": "replaced_entirely",
+      "local_graph_edges": "preserved_input_graph_unused_by_CNN_bridge",
+      "native_spacing_v22_equivalence": false
+    },
+    "contract_sha256": "3fdf7b5e592f9ee3ae04135463996b7d4692d322a5f54855f3eb23674453d574",
+    "source_sha256": {
+      "hiercp_v1x/half_a_model.py": "13104b0eb21ea441eb400ec99b9d3571c98b656c3fc4e5d68d32235697f60dfc",
+      "l0_exploration/model.py": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+      "l0_local_cnn/model.py": "51aa70d4fdfe9e7d1f25b9bd110adaa25c1ec1f264659888695853f9bf923e19"
+    }
+  },
+  "half_a_model_contract": {
+    "format": "hiercp_v1_half_a_v1",
+    "revision": 1,
+    "architecture": "v2CNN_on_preserved_v1_denseROI",
+    "bridge": "preserved_v1_role_shell_masked_mean_v1",
+    "input": "preserved_v1_5channel_fixed48_resampled_denseROI",
+    "ct": "channel0_minus1_plus1_to_zero_one_only_inside_channel2_organ",
+    "footprint": "actual_channel1_mask_not_center_or_sphere",
+    "channels": [
+      12,
+      24,
+      32
+    ],
+    "convolutions": [
+      2,
+      3,
+      3
+    ],
+    "hidden_dim": 128,
+    "readout": "organ_masked_mean_each_scale_shared_project",
+    "fusion": "shared_donor_target_signed_difference_product",
+    "role_sampling": "original_v1_sampler_original_normalized_role_grids",
+    "context_mask": "organ_excluding_actual_or_virtual_footprint",
+    "shell_partition": "original_x13_round_times3_clamp0to2",
+    "empty_sampled_shell": "zero_raw_mean_before_shared_projection",
+    "optional_real_liver_surface_absence": "zero_raw_mean_before_shared_projection_only_if_no_role_nodes",
+    "input_admission": "bound_original_10mm_scope_contract_marker_required",
+    "tumor": "pair_footprint_mean_with_mean_surface_interior_roles",
+    "context": "pair_context_role_with_liver_surface_role",
+    "relation": "pair_tumor_with_corresponding_c0_shell",
+    "fused": "pair_full_organ_donor_and_full_organ_recipient_means",
+    "old_l0_parameters": "replaced_entirely",
+    "local_graph_edges": "preserved_input_graph_unused_by_CNN_bridge",
+    "native_spacing_v22_equivalence": false,
+    "CNN_input_shape": [
+      5,
+      48,
+      48,
+      48
+    ],
+    "CNN_visible_channels": 1,
+    "dense_execution_chunk_size": 4,
+    "local_graph_layers_executed": 0,
+    "shared_project": [
+      68,
+      128
+    ],
+    "shared_pair_fuser": [
+      512,
+      256,
+      128
+    ],
+    "upper_hidden_dim": 128,
+    "upper_heads": 4,
+    "patient_layers": 2,
+    "prototype_layers": 2,
+    "original_GT_curriculum_loss": true,
+    "training_candidate_count": 8,
+    "candidate_pool_size": 128,
+    "target_erasure": "unchanged_original_v1_preparation",
+    "source_geometry": "unchanged_actual_original_footprint_and_10mm_scope",
+    "source_map_storage": "unique_source_pyramids_with_indexed_graph_owners",
+    "differences_from_native_v22_localCNN": [
+      "preserved adaptive native ROI resampled to fixed48, not native-spacing crops",
+      "original v1 target erasure and five-channel cached payload; only organ CT enters CNN",
+      "original sampled roles/shells bridge additional upper semantic inputs",
+      "same project and difference-product fuser shared across pair and bridge roles",
+      "unchanged original v1 L1/L2/scalar score and original anchor-ranking supervision"
+    ]
+  },
+  "source_proof": {
+    "source": "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "verified_files": {
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    }
+  },
+  "original_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+  "original_upper_initial_state_sha256": "8851dec2e9379de637075b16d0a285cf154c24ca2e2c4c9817f30ed4b3791890",
+  "upper_initial_state_preserved": true,
+  "caller_RNG_preserved_during_install": true,
+  "half_a_initial_neural_sha256": "6f1e7cf0dd90344bb5dbb2d9c0bb95698608cd18cd468fc2d523a7f5040caa69",
+  "supervision_sha256": "2f025efb9275368ac36ce5c7cbc4a42e60691c7bca54871dd09bc0473e42c3f3",
+  "model_parameters": 5127124,
+  "trainable_parameters": 5127124,
+  "group_parameters": {
+    "CNN": 119508,
+    "bridge_projection": 9088,
+    "bridge_fusion": 164736,
+    "local_encoder_total": 293332,
+    "L1": 2536832,
+    "L1_readout": 65920,
+    "L2": 1174912,
+    "L2_readout": 131456,
+    "scalar_score": 924672
+  },
+  "bridge_pooling": "parameter-free actual role/shell means; shared learned projection and fusion",
+  "bridge_has_independent_trainable_parameters": false,
+  "input": {
+    "scope": "provided_batch",
+    "sample_count": 2,
+    "case_ids": [
+      "liver_5",
+      "liver_6"
+    ],
+    "candidate_counts": {
+      "min": 8,
+      "max": 8,
+      "mean": 8.0,
+      "total": 16
+    },
+    "input_shapes": {
+      "source_patches": [
+        2,
+        5,
+        48,
+        48,
+        48
+      ],
+      "target_patches": [
+        16,
+        5,
+        48,
+        48,
+        48
+      ],
+      "difficulties": [
+        16
+      ]
+    },
+    "local_graphs": {
+      "available": true,
+      "graph_count": 16,
+      "nodes_per_graph": {
+        "min": 2169,
+        "max": 8598,
+        "mean": 4628.0,
+        "total": 74048
+      },
+      "edges_per_graph": {
+        "min": 174022,
+        "max": 655309,
+        "mean": 373628.0625,
+        "total": 5978049
+      },
+      "node_type_totals": {
+        "tumor_surface": 5176,
+        "tumor_interior": 2520,
+        "source_context": 31880,
+        "source_liver_surface": 2096,
+        "target_context": 27553,
+        "target_liver_surface": 4823
+      },
+      "edge_type_totals": {
+        "tumor_surface|surface_neighbor|tumor_surface": 110544,
+        "tumor_interior|interior_neighbor|tumor_interior": 54000,
+        "source_context|context_neighbor|source_context": 1592096,
+        "source_liver_surface|surface_neighbor|source_liver_surface": 52304,
+        "target_context|context_neighbor|target_context": 1340448,
+        "target_liver_surface|surface_neighbor|target_liver_surface": 143398,
+        "tumor_interior|supports|tumor_surface": 136536,
+        "tumor_surface|supported_by|tumor_interior": 136536,
+        "tumor_surface|interfaces_source|source_context": 408240,
+        "source_context|interfaces_tumor|tumor_surface": 408240,
+        "tumor_surface|interfaces_target|target_context": 333178,
+        "source_context|corresponds_to|target_context": 688255,
+        "source_context|near_liver_surface|source_liver_surface": 87752,
+        "source_liver_surface|anchors_context|source_context": 87752,
+        "target_context|near_liver_surface|target_liver_surface": 199385,
+        "target_liver_surface|anchors_context|target_context": 199385
+      },
+      "edge_execution_contracts": [
+        "hiercp_all_induced_edges_v1"
+      ],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "local_graphs_view2": {
+      "available": true,
+      "graph_count": 16,
+      "nodes_per_graph": {
+        "min": 2169,
+        "max": 8598,
+        "mean": 4628.0,
+        "total": 74048
+      },
+      "edges_per_graph": {
+        "min": 174022,
+        "max": 655309,
+        "mean": 373628.0625,
+        "total": 5978049
+      },
+      "node_type_totals": {
+        "tumor_surface": 5176,
+        "tumor_interior": 2520,
+        "source_context": 31880,
+        "source_liver_surface": 2096,
+        "target_context": 27553,
+        "target_liver_surface": 4823
+      },
+      "edge_type_totals": {
+        "tumor_surface|surface_neighbor|tumor_surface": 110544,
+        "tumor_interior|interior_neighbor|tumor_interior": 54000,
+        "source_context|context_neighbor|source_context": 1592096,
+        "source_liver_surface|surface_neighbor|source_liver_surface": 52304,
+        "target_context|context_neighbor|target_context": 1340448,
+        "target_liver_surface|surface_neighbor|target_liver_surface": 143398,
+        "tumor_interior|supports|tumor_surface": 136536,
+        "tumor_surface|supported_by|tumor_interior": 136536,
+        "tumor_surface|interfaces_source|source_context": 408240,
+        "source_context|interfaces_tumor|tumor_surface": 408240,
+        "tumor_surface|interfaces_target|target_context": 333178,
+        "source_context|corresponds_to|target_context": 688255,
+        "source_context|near_liver_surface|source_liver_surface": 87752,
+        "source_liver_surface|anchors_context|source_context": 87752,
+        "target_context|near_liver_surface|target_liver_surface": 199385,
+        "target_liver_surface|anchors_context|target_context": 199385
+      },
+      "edge_execution_contracts": [
+        "hiercp_all_induced_edges_v1"
+      ],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "patient_graphs": {
+      "available": true,
+      "graph_count": 2,
+      "nodes_per_graph": {
+        "min": 34,
+        "max": 40,
+        "mean": 37.0,
+        "total": 74
+      },
+      "edges_per_graph": {
+        "min": 432,
+        "max": 549,
+        "mean": 490.5,
+        "total": 981
+      },
+      "node_type_totals": {
+        "tumor": 2,
+        "candidate": 16,
+        "region": 48,
+        "lesion": 6,
+        "liver": 2
+      },
+      "edge_type_totals": {
+        "tumor|compatible_with|candidate": 16,
+        "candidate|matched_to|tumor": 16,
+        "candidate|spatial_neighbor|candidate": 112,
+        "candidate|belongs_to|region": 16,
+        "region|contains_candidate|candidate": 16,
+        "tumor|conditions|region": 48,
+        "region|context_for|tumor": 48,
+        "candidate|near|lesion": 48,
+        "lesion|near|candidate": 48,
+        "lesion|hosted_by|region": 6,
+        "region|hosts_lesion|lesion": 6,
+        "tumor|coexists_with|lesion": 6,
+        "lesion|coexists_with|tumor": 6,
+        "region|adjacent_to|region": 493,
+        "region|inside|liver": 48,
+        "liver|contains|region": 48
+      },
+      "edge_execution_contracts": [],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "prototype_graphs": {
+      "available": true,
+      "graph_count": 2,
+      "nodes_per_graph": {
+        "min": 48,
+        "max": 48,
+        "mean": 48.0,
+        "total": 96
+      },
+      "edges_per_graph": {
+        "min": 176,
+        "max": 176,
+        "mean": 176.0,
+        "total": 352
+      },
+      "node_type_totals": {
+        "candidate": 16,
+        "region": 48,
+        "prototype": 32
+      },
+      "edge_type_totals": {
+        "candidate|belongs_to|region": 16,
+        "region|contains_candidate|candidate": 16,
+        "region|assigned_to|prototype": 96,
+        "prototype|represents|region": 96,
+        "prototype|similar_to|prototype": 128
+      },
+      "edge_execution_contracts": [],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    }
+  },
+  "training_two_views": true,
+  "held_out_view_epoch": 0,
+  "physical_sample_batch": 2,
+  "physical_candidate_graph_batch": 16,
+  "gradient_accumulation_steps": 1,
+  "data_parallel_workers": 1,
+  "effective_sample_batch": 2,
+  "full_fixture_samples": 3,
+  "used_fixture_samples": 3,
+  "used_fixture_ratio": 1.0,
+  "dataset_scope": "selected actual-CT DEBUG fixture; not full production cohort",
+  "candidates_per_sample": 8,
+  "candidate_pool": 128,
+  "production_epochs_preserved": 40,
+  "fixed_optimization_curriculum_epoch": 29,
+  "workers": 4,
+  "cached_GPU_batch": true,
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "torch_version": "2.8.0+cu128",
+  "cuda_build": "12.8",
+  "device_total_bytes": 17094344704,
+  "cuda_limit_bytes": 12884901888,
+  "precision": {
+    "amp": true
+  },
+  "resources_at_start": {
+    "cpu_physical": 8,
+    "cpu_logical": 16,
+    "ram_total_bytes": 68640653312,
+    "ram_available_bytes": 42866667520,
+    "GPU_free_bytes": 15740174336,
+    "rss_limit_bytes": 34359738368,
+    "disk_free_bytes": 1428101742592
+  },
+  "preparation": {
+    "raw_load_and_depth_seconds": 74.41233720001765,
+    "bounded_canonical_preparation_seconds": 10.855204499996034,
+    "ROI_records": [
+      {
+        "case_id": "liver_5",
+        "candidate": "source",
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 1,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 0,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 3,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 2,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 4,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 5,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 7,
+        "shape": [
+          45,
+          35,
+          39
+        ],
+        "voxels": 61425,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 567
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 6,
+        "shape": [
+          43,
+          47,
+          45
+        ],
+        "voxels": 90945,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 1810
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": "source",
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 3,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 0,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 2,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 1,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 4,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 5,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 7,
+        "shape": [
+          77,
+          53,
+          43
+        ],
+        "voxels": 175483,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 9054
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 6,
+        "shape": [
+          71,
+          63,
+          61
+        ],
+        "voxels": 272853,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 20395
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": "source",
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 2,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 1,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 3,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 0,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 4,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 5,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 6,
+        "shape": [
+          45,
+          57,
+          29
+        ],
+        "voxels": 74385,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 2077
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 7,
+        "shape": [
+          37,
+          55,
+          25
+        ],
+        "voxels": 50875,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 688
+      }
+    ],
+    "supervision_sha256": "2f025efb9275368ac36ce5c7cbc4a42e60691c7bca54871dd09bc0473e42c3f3"
+  },
+  "bounded_cache_reused": false,
+  "bounded_cache_unavailable_reason": "The recorded v1.4 run did not serialize its bounded canonical samples.",
+  "sampled_view_preparation_seconds": 5.880646999983583,
+  "attempts": [
+    {
+      "attempt": 1,
+      "completed_updates": 1,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 1,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 11.870504252876822,
+          "bridge_projection": 1.9184630775893574,
+          "bridge_fusion": 4.790793790258352,
+          "local_encoder_total": 12.943765948842646,
+          "L1": 3.907618096959498,
+          "L1_readout": 0.3665143452429524,
+          "L2": 2.1786312771006178,
+          "L2_readout": 0.8191083055099568,
+          "scalar_score": 8.435022405063533
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 2,
+      "completed_updates": 2,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 2,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 8.47736516253848,
+          "bridge_projection": 1.6571793539127302,
+          "bridge_fusion": 4.126575598403553,
+          "local_encoder_total": 9.57290915445223,
+          "L1": 3.394221855272474,
+          "L1_readout": 0.3355540779798708,
+          "L2": 2.0815316623386364,
+          "L2_readout": 0.8856418085252639,
+          "scalar_score": 8.424080230882888
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 3,
+      "completed_updates": 3,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 3,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 9.36055313754187,
+          "bridge_projection": 1.7771569522331385,
+          "bridge_fusion": 4.76976059057398,
+          "local_encoder_total": 10.654992161658692,
+          "L1": 3.8434343409725553,
+          "L1_readout": 0.3427355602858659,
+          "L2": 2.225966359569999,
+          "L2_readout": 0.7672636734771647,
+          "scalar_score": 8.630390660232656
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 4,
+      "completed_updates": 4,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 4,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 9.307937396315053,
+          "bridge_projection": 1.484317195820151,
+          "bridge_fusion": 4.32308822908672,
+          "local_encoder_total": 10.369666723091722,
+          "L1": 3.5626447538462465,
+          "L1_readout": 0.35481893934091435,
+          "L2": 1.97373598192521,
+          "L2_readout": 0.8034135696630137,
+          "scalar_score": 8.089854525630008
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 5,
+      "completed_updates": 5,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 5,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 4.703917657246756,
+          "bridge_projection": 1.11802620164045,
+          "bridge_fusion": 4.432553265528838,
+          "local_encoder_total": 6.559295111935638,
+          "L1": 3.560522827412351,
+          "L1_readout": 0.3025723154508642,
+          "L2": 1.913469418701775,
+          "L2_readout": 0.8843668717011082,
+          "scalar_score": 7.750201777003842
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 6,
+      "completed_updates": 6,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 6,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 4.504653488644864,
+          "bridge_projection": 1.0397301985383827,
+          "bridge_fusion": 3.7918525125186524,
+          "local_encoder_total": 5.979221305087062,
+          "L1": 3.1419375803890137,
+          "L1_readout": 0.29347635481879275,
+          "L2": 1.863323632124848,
+          "L2_readout": 0.8685565997022621,
+          "scalar_score": 8.05573898996894
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 7,
+      "completed_updates": 7,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 7,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 6.224537108196113,
+          "bridge_projection": 1.620457824887423,
+          "bridge_fusion": 4.668016212694997,
+          "local_encoder_total": 7.9473971295973795,
+          "L1": 3.803041622890747,
+          "L1_readout": 0.32190644292914494,
+          "L2": 1.9996956874078864,
+          "L2_readout": 0.7653315781425708,
+          "scalar_score": 8.000105428356552
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    },
+    {
+      "attempt": 8,
+      "completed_updates": 8,
+      "status": "OPTIMIZER_UPDATED",
+      "optimizer_counter": 8,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0,
+      "gradient": {
+        "finite": true,
+        "norms": {
+          "CNN": 4.350541433074239,
+          "bridge_projection": 1.1637914369756364,
+          "bridge_fusion": 3.8532851571855624,
+          "local_encoder_total": 5.927008332393337,
+          "L1": 3.230047821436907,
+          "L1_readout": 0.3353510100552593,
+          "L2": 2.015885668666231,
+          "L2_readout": 0.6593672389533776,
+          "scalar_score": 7.753281762363403
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      }
+    }
+  ],
+  "updates": [
+    {
+      "step": 1,
+      "attempt": 1,
+      "loss": 3.7803542613983154,
+      "loss_terms": {
+        "loss": 3.7692008018493652,
+        "ce": 2.046875,
+        "pair": 1.1148757934570312,
+        "ordinal": 0.7197917699813843,
+        "mined": 0.9269835948944092,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11153465509414673,
+      "forward_seconds": 0.5894619000027888,
+      "backward_seconds": 0.4729230999946594,
+      "optimizer_seconds": 0.04306460000225343,
+      "update_seconds": 1.4094092000159435,
+      "gradient_groups": {
+        "CNN": 11.870504252876822,
+        "bridge_projection": 1.9184630775893574,
+        "bridge_fusion": 4.790793790258352,
+        "local_encoder_total": 12.943765948842646,
+        "L1": 3.907618096959498,
+        "L1_readout": 0.3665143452429524,
+        "L2": 2.1786312771006178,
+        "L2_readout": 0.8191083055099568,
+        "scalar_score": 8.435022405063533
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 11.870504252876822,
+          "bridge_projection": 1.9184630775893574,
+          "bridge_fusion": 4.790793790258352,
+          "local_encoder_total": 12.943765948842646,
+          "L1": 3.907618096959498,
+          "L1_readout": 0.3665143452429524,
+          "L2": 2.1786312771006178,
+          "L2_readout": 0.8191083055099568,
+          "scalar_score": 8.435022405063533
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.034566855448359995,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.009531779302467234,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.04057966179084128,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.05415192760482143,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.15755485553970963,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.025620042145857818,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.10822076787481967,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.03621318201737281,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.09613404539230122,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 16.109373092651367,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2087193600,
+      "peak_reserved_bytes": 2141192192,
+      "RSS_bytes": 4622270464,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 2,
+      "attempt": 2,
+      "loss": 3.8252029418945312,
+      "loss_terms": {
+        "loss": 3.8142213821411133,
+        "ce": 2.06884765625,
+        "pair": 1.1306231021881104,
+        "ordinal": 0.7150129675865173,
+        "mined": 0.9434962272644043,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.10981670022010803,
+      "forward_seconds": 0.667597299994668,
+      "backward_seconds": 0.36111949998303317,
+      "optimizer_seconds": 0.004959799989592284,
+      "update_seconds": 1.3290566999930888,
+      "gradient_groups": {
+        "CNN": 8.47736516253848,
+        "bridge_projection": 1.6571793539127302,
+        "bridge_fusion": 4.126575598403553,
+        "local_encoder_total": 9.57290915445223,
+        "L1": 3.394221855272474,
+        "L1_readout": 0.3355540779798708,
+        "L2": 2.0815316623386364,
+        "L2_readout": 0.8856418085252639,
+        "scalar_score": 8.424080230882888
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 8.47736516253848,
+          "bridge_projection": 1.6571793539127302,
+          "bridge_fusion": 4.126575598403553,
+          "local_encoder_total": 9.57290915445223,
+          "L1": 3.394221855272474,
+          "L1_readout": 0.3355540779798708,
+          "L2": 2.0815316623386364,
+          "L2_readout": 0.8856418085252639,
+          "scalar_score": 8.424080230882888
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.023093372204710454,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.007081134954334579,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.029189640685083066,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.03788774782632307,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.11442714877829555,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.01843087896474935,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.07756169156941277,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.02554474817844692,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.06770305515983904,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 13.392393112182617,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4623147008,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 3,
+      "attempt": 3,
+      "loss": 3.9132251739501953,
+      "loss_terms": {
+        "loss": 3.9014463424682617,
+        "ce": 2.115234375,
+        "pair": 1.166106104850769,
+        "ordinal": 0.7243269681930542,
+        "mined": 0.9504803419113159,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11778741329908371,
+      "forward_seconds": 0.5181967000244185,
+      "backward_seconds": 0.319926000025589,
+      "optimizer_seconds": 0.004790899984072894,
+      "update_seconds": 1.1224509000021499,
+      "gradient_groups": {
+        "CNN": 9.36055313754187,
+        "bridge_projection": 1.7771569522331385,
+        "bridge_fusion": 4.76976059057398,
+        "local_encoder_total": 10.654992161658692,
+        "L1": 3.8434343409725553,
+        "L1_readout": 0.3427355602858659,
+        "L2": 2.225966359569999,
+        "L2_readout": 0.7672636734771647,
+        "scalar_score": 8.630390660232656
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 9.36055313754187,
+          "bridge_projection": 1.7771569522331385,
+          "bridge_fusion": 4.76976059057398,
+          "local_encoder_total": 10.654992161658692,
+          "L1": 3.8434343409725553,
+          "L1_readout": 0.3427355602858659,
+          "L2": 2.225966359569999,
+          "L2_readout": 0.7672636734771647,
+          "scalar_score": 8.630390660232656
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.02023699020821584,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.005851177647528407,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.024000517129655556,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.031934258642424274,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.09458689880044302,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.014819536214122228,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.06364545046285482,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.020866707058495353,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.055738566632012064,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 14.437644004821777,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4623728640,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 4,
+      "attempt": 4,
+      "loss": 3.9028773307800293,
+      "loss_terms": {
+        "loss": 3.8923754692077637,
+        "ce": 2.1064453125,
+        "pair": 1.1601319313049316,
+        "ordinal": 0.7258617877960205,
+        "mined": 0.9612517952919006,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.10501867532730103,
+      "forward_seconds": 0.5300070999946911,
+      "backward_seconds": 0.3349752000067383,
+      "optimizer_seconds": 0.005146400013472885,
+      "update_seconds": 1.1224460999947041,
+      "gradient_groups": {
+        "CNN": 9.307937396315053,
+        "bridge_projection": 1.484317195820151,
+        "bridge_fusion": 4.32308822908672,
+        "local_encoder_total": 10.369666723091722,
+        "L1": 3.5626447538462465,
+        "L1_readout": 0.35481893934091435,
+        "L2": 1.97373598192521,
+        "L2_readout": 0.8034135696630137,
+        "scalar_score": 8.089854525630008
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 9.307937396315053,
+          "bridge_projection": 1.484317195820151,
+          "bridge_fusion": 4.32308822908672,
+          "local_encoder_total": 10.369666723091722,
+          "L1": 3.5626447538462465,
+          "L1_readout": 0.35481893934091435,
+          "L2": 1.97373598192521,
+          "L2_readout": 0.8034135696630137,
+          "scalar_score": 8.089854525630008
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.016337915216434663,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.004790299182879562,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.02092331762557084,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.026975167475688212,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.08239269367409353,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.012878604155339013,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.05500013560877191,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.01779618338664942,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.049149216547426995,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 13.796201705932617,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4605927424,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 5,
+      "attempt": 5,
+      "loss": 3.7162067890167236,
+      "loss_terms": {
+        "loss": 3.706139326095581,
+        "ce": 2.025390625,
+        "pair": 1.0944406986236572,
+        "ordinal": 0.6945388913154602,
+        "mined": 0.8948003053665161,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.10067423433065414,
+      "forward_seconds": 0.48889259999850765,
+      "backward_seconds": 0.3654138999991119,
+      "optimizer_seconds": 0.006128700013505295,
+      "update_seconds": 1.1558857999916654,
+      "gradient_groups": {
+        "CNN": 4.703917657246756,
+        "bridge_projection": 1.11802620164045,
+        "bridge_fusion": 4.432553265528838,
+        "local_encoder_total": 6.559295111935638,
+        "L1": 3.560522827412351,
+        "L1_readout": 0.3025723154508642,
+        "L2": 1.913469418701775,
+        "L2_readout": 0.8843668717011082,
+        "scalar_score": 7.750201777003842
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 4.703917657246756,
+          "bridge_projection": 1.11802620164045,
+          "bridge_fusion": 4.432553265528838,
+          "local_encoder_total": 6.559295111935638,
+          "L1": 3.560522827412351,
+          "L1_readout": 0.3025723154508642,
+          "L2": 1.913469418701775,
+          "L2_readout": 0.8843668717011082,
+          "scalar_score": 7.750201777003842
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.014789804800478704,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.004276674863757757,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.01814260884460365,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.023794590343497214,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.07262187355065765,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.01156977591577923,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.04970121837924266,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.016145102176655827,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.044102103941446064,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 10.968240737915039,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4606238720,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 6,
+      "attempt": 6,
+      "loss": 3.722865104675293,
+      "loss_terms": {
+        "loss": 3.713085412979126,
+        "ce": 2.0244140625,
+        "pair": 1.0954883098602295,
+        "ordinal": 0.7104595899581909,
+        "mined": 0.9021822214126587,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.09779663383960724,
+      "forward_seconds": 0.5168112000101246,
+      "backward_seconds": 0.31168240000260994,
+      "optimizer_seconds": 0.004903299995930865,
+      "update_seconds": 1.125359199999366,
+      "gradient_groups": {
+        "CNN": 4.504653488644864,
+        "bridge_projection": 1.0397301985383827,
+        "bridge_fusion": 3.7918525125186524,
+        "local_encoder_total": 5.979221305087062,
+        "L1": 3.1419375803890137,
+        "L1_readout": 0.29347635481879275,
+        "L2": 1.863323632124848,
+        "L2_readout": 0.8685565997022621,
+        "scalar_score": 8.05573898996894
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 4.504653488644864,
+          "bridge_projection": 1.0397301985383827,
+          "bridge_fusion": 3.7918525125186524,
+          "local_encoder_total": 5.979221305087062,
+          "L1": 3.1419375803890137,
+          "L1_readout": 0.29347635481879275,
+          "L2": 1.863323632124848,
+          "L2_readout": 0.8685565997022621,
+          "scalar_score": 8.05573898996894
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.012584998361526815,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.003880073658408958,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.01674820014133754,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.02130585279515022,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.06766457246804616,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.010921635030508922,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.04548503997423559,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.01497792265211883,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.040674167798773135,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 10.715888977050781,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4606185472,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 7,
+      "attempt": 7,
+      "loss": 3.7481777667999268,
+      "loss_terms": {
+        "loss": 3.7387242317199707,
+        "ce": 2.0361328125,
+        "pair": 1.100987434387207,
+        "ordinal": 0.6829838156700134,
+        "mined": 0.9300148487091064,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.0945359393954277,
+      "forward_seconds": 0.498969100008253,
+      "backward_seconds": 0.3405493999889586,
+      "optimizer_seconds": 0.005890000000363216,
+      "update_seconds": 1.1563477000163402,
+      "gradient_groups": {
+        "CNN": 6.224537108196113,
+        "bridge_projection": 1.620457824887423,
+        "bridge_fusion": 4.668016212694997,
+        "local_encoder_total": 7.9473971295973795,
+        "L1": 3.803041622890747,
+        "L1_readout": 0.32190644292914494,
+        "L2": 1.9996956874078864,
+        "L2_readout": 0.7653315781425708,
+        "scalar_score": 8.000105428356552
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 6.224537108196113,
+          "bridge_projection": 1.620457824887423,
+          "bridge_fusion": 4.668016212694997,
+          "local_encoder_total": 7.9473971295973795,
+          "L1": 3.803041622890747,
+          "L1_readout": 0.32190644292914494,
+          "L2": 1.9996956874078864,
+          "L2_readout": 0.7653315781425708,
+          "scalar_score": 8.000105428356552
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.01242296016043894,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.0039899202909558775,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.01639419663209542,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.020952782304215434,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.06437708798895485,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.010762184722955124,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.043753821264914276,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.013947679609844825,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.038221691703541984,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 12.09603500366211,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4606373888,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    },
+    {
+      "step": 8,
+      "attempt": 8,
+      "loss": 3.8719427585601807,
+      "loss_terms": {
+        "loss": 3.8622632026672363,
+        "ce": 2.0966796875,
+        "pair": 1.149797797203064,
+        "ordinal": 0.7043509483337402,
+        "mined": 0.9498305916786194,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.09679444134235382,
+      "forward_seconds": 0.48371560001396574,
+      "backward_seconds": 0.32247389998519793,
+      "optimizer_seconds": 0.004691500012995675,
+      "update_seconds": 1.0798994000069797,
+      "gradient_groups": {
+        "CNN": 4.350541433074239,
+        "bridge_projection": 1.1637914369756364,
+        "bridge_fusion": 3.8532851571855624,
+        "local_encoder_total": 5.927008332393337,
+        "L1": 3.230047821436907,
+        "L1_readout": 0.3353510100552593,
+        "L2": 2.015885668666231,
+        "L2_readout": 0.6593672389533776,
+        "scalar_score": 7.753281762363403
+      },
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 4.350541433074239,
+          "bridge_projection": 1.1637914369756364,
+          "bridge_fusion": 3.8532851571855624,
+          "local_encoder_total": 5.927008332393337,
+          "L1": 3.230047821436907,
+          "L1_readout": 0.3353510100552593,
+          "L2": 2.015885668666231,
+          "L2_readout": 0.6593672389533776,
+          "scalar_score": 7.753281762363403
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.011651055041265334,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "bridge_projection": {
+          "L2_change": 0.003762438294406178,
+          "changed_parameter_tensors": 4,
+          "parameter_tensors": 4
+        },
+        "bridge_fusion": {
+          "L2_change": 0.01545004922515783,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "local_encoder_total": {
+          "L2_change": 0.019713118640986474,
+          "changed_parameter_tensors": 34,
+          "parameter_tensors": 34
+        },
+        "L1": {
+          "L2_change": 0.06154354089419058,
+          "changed_parameter_tensors": 324,
+          "parameter_tensors": 324
+        },
+        "L1_readout": {
+          "L2_change": 0.010862692626344504,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "L2": {
+          "L2_change": 0.04206125958742012,
+          "changed_parameter_tensors": 130,
+          "parameter_tensors": 130
+        },
+        "L2_readout": {
+          "L2_change": 0.013368673041791984,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "scalar_score": {
+          "L2_change": 0.03582669998756863,
+          "changed_parameter_tensors": 7,
+          "parameter_tensors": 7
+        }
+      },
+      "gradient_before_clip": 10.501763343811035,
+      "amp_scale_before": 65536.0,
+      "amp_scale_after": 65536.0,
+      "peak_allocated_bytes": 2136559104,
+      "peak_reserved_bytes": 2174746624,
+      "RSS_bytes": 4606242816,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "scalar_score_calls": 1,
+        "scalar_score_rows": 16,
+        "L1_block_calls": 2,
+        "L2_block_calls": 2
+      },
+      "bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "bridge_view2_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "patient_candidate_nodes": 16
+    }
+  ],
+  "curve": [
+    {
+      "step": 0,
+      "train": {
+        "top1": 0.5,
+        "MRR": 0.6000000238418579,
+        "positive_minus_best_other": [
+          0.00201416015625,
+          -0.01727294921875
+        ],
+        "scores": [
+          [
+            0.04669189453125,
+            0.00775146484375,
+            0.0113677978515625,
+            0.007160186767578125,
+            0.044677734375,
+            0.02679443359375,
+            0.0416259765625,
+            0.042144775390625
+          ],
+          [
+            0.07110595703125,
+            0.04022216796875,
+            0.03936767578125,
+            0.0439453125,
+            0.08837890625,
+            0.0816650390625,
+            0.073486328125,
+            0.072509765625
+          ]
+        ],
+        "mean_margin": -0.00762939453125,
+        "loss": 3.794227361679077,
+        "ranking_loss": 3.794227361679077,
+        "consistency": 9.934107758624577e-09,
+        "loss_terms": {
+          "loss": 3.794227361679077,
+          "ce": 2.06640625,
+          "pair": 1.128343105316162,
+          "ordinal": 0.7102270722389221,
+          "mined": 0.9148648977279663,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.3333333432674408,
+        "positive_minus_best_other": [
+          -0.00244140625
+        ],
+        "scores": [
+          [
+            0.04705810546875,
+            0.03143310546875,
+            0.034576416015625,
+            0.01045989990234375,
+            0.044097900390625,
+            0.03155517578125,
+            0.04949951171875,
+            0.049468994140625
+          ]
+        ],
+        "mean_margin": -0.00244140625,
+        "loss": 3.8008687496185303,
+        "ranking_loss": 3.8008687496185303,
+        "consistency": 2.9802322387695312e-08,
+        "loss_terms": {
+          "loss": 3.8008687496185303,
+          "ce": 2.0703125,
+          "pair": 1.130807638168335,
+          "ordinal": 0.712329089641571,
+          "mined": 0.91456538438797,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    },
+    {
+      "step": 2,
+      "train": {
+        "top1": 0.5,
+        "MRR": 0.75,
+        "positive_minus_best_other": [
+          -0.0047607421875,
+          0.0057373046875
+        ],
+        "scores": [
+          [
+            0.1553955078125,
+            0.126708984375,
+            0.1309814453125,
+            0.129150390625,
+            0.154541015625,
+            0.151123046875,
+            0.16015625,
+            0.15087890625
+          ],
+          [
+            0.2210693359375,
+            0.1470947265625,
+            0.1485595703125,
+            0.1629638671875,
+            0.2034912109375,
+            0.2110595703125,
+            0.21484375,
+            0.21533203125
+          ]
+        ],
+        "mean_margin": 0.00048828125,
+        "loss": 3.7776033878326416,
+        "ranking_loss": 3.7776033878326416,
+        "consistency": -1.9868215517249155e-08,
+        "loss_terms": {
+          "loss": 3.7776033878326416,
+          "ce": 2.05859375,
+          "pair": 1.1221140623092651,
+          "ordinal": 0.7071964740753174,
+          "mined": 0.9109128713607788,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.0401611328125
+        ],
+        "scores": [
+          [
+            0.1529541015625,
+            0.1832275390625,
+            0.193115234375,
+            0.171875,
+            0.1512451171875,
+            0.160888671875,
+            0.1514892578125,
+            0.15478515625
+          ]
+        ],
+        "mean_margin": -0.0401611328125,
+        "loss": 3.8514928817749023,
+        "ranking_loss": 3.8514928817749023,
+        "consistency": 2.9802322387695312e-08,
+        "loss_terms": {
+          "loss": 3.8514928817749023,
+          "ce": 2.091796875,
+          "pair": 1.1488829851150513,
+          "ordinal": 0.7260900735855103,
+          "mined": 0.9311903119087219,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    },
+    {
+      "step": 4,
+      "train": {
+        "top1": 0.5,
+        "MRR": 0.75,
+        "positive_minus_best_other": [
+          -0.00048828125,
+          0.018798828125
+        ],
+        "scores": [
+          [
+            0.1295166015625,
+            0.0806884765625,
+            0.08245849609375,
+            0.07232666015625,
+            0.1231689453125,
+            0.12408447265625,
+            0.1300048828125,
+            0.12939453125
+          ],
+          [
+            0.2047119140625,
+            0.1053466796875,
+            0.09649658203125,
+            0.1051025390625,
+            0.1683349609375,
+            0.1695556640625,
+            0.183349609375,
+            0.1859130859375
+          ]
+        ],
+        "mean_margin": 0.0091552734375,
+        "loss": 3.7460741996765137,
+        "ranking_loss": 3.7460741996765137,
+        "consistency": -1.9868215517249155e-08,
+        "loss_terms": {
+          "loss": 3.7460741996765137,
+          "ce": 2.04296875,
+          "pair": 1.1094796657562256,
+          "ordinal": 0.7015630602836609,
+          "mined": 0.9066259860992432,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.0474853515625
+        ],
+        "scores": [
+          [
+            0.128173828125,
+            0.1588134765625,
+            0.1756591796875,
+            0.1651611328125,
+            0.12042236328125,
+            0.147216796875,
+            0.1236572265625,
+            0.1307373046875
+          ]
+        ],
+        "mean_margin": -0.0474853515625,
+        "loss": 3.8609819412231445,
+        "ranking_loss": 3.8609819412231445,
+        "consistency": 3.973643103449831e-08,
+        "loss_terms": {
+          "loss": 3.8609819412231445,
+          "ce": 2.095703125,
+          "pair": 1.1518875360488892,
+          "ordinal": 0.728611946105957,
+          "mined": 0.9353378415107727,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    },
+    {
+      "step": 8,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.001190185546875,
+          0.041534423828125
+        ],
+        "scores": [
+          [
+            -0.019866943359375,
+            -0.11102294921875,
+            -0.10662841796875,
+            -0.1158447265625,
+            -0.0323486328125,
+            -0.029449462890625,
+            -0.0234375,
+            -0.02105712890625
+          ],
+          [
+            0.07110595703125,
+            -0.1165771484375,
+            -0.135986328125,
+            -0.112548828125,
+            -0.0186767578125,
+            -0.00833892822265625,
+            0.0225372314453125,
+            0.029571533203125
+          ]
+        ],
+        "mean_margin": 0.0213623046875,
+        "loss": 3.679100513458252,
+        "ranking_loss": 3.679100513458252,
+        "consistency": -1.9868215517249155e-08,
+        "loss_terms": {
+          "loss": 3.679100513458252,
+          "ce": 2.01025390625,
+          "pair": 1.0823290348052979,
+          "ordinal": 0.6887539029121399,
+          "mined": 0.8975338935852051,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.08591461181640625
+        ],
+        "scores": [
+          [
+            -0.0723876953125,
+            -0.01800537109375,
+            0.01352691650390625,
+            0.0113983154296875,
+            -0.08013916015625,
+            -0.02337646484375,
+            -0.07781982421875,
+            -0.06524658203125
+          ]
+        ],
+        "mean_margin": -0.08591461181640625,
+        "loss": 3.9094901084899902,
+        "ranking_loss": 3.9094901084899902,
+        "consistency": -3.973643103449831e-08,
+        "loss_terms": {
+          "loss": 3.9094901084899902,
+          "ce": 2.11328125,
+          "pair": 1.1666520833969116,
+          "ordinal": 0.7375878691673279,
+          "mined": 0.9640777111053467,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    }
+  ],
+  "input_sha256": {
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\report.json": "d5138cc5f093340b55570adf640f81afa270b391237cd3c59784f4ace2f84415",
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\execution_contract.json": "3cf8fe28f05cc4b45a82e55f0e0dc10944a435ee2a18be8692c4649cf925ea60",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\report.json": "a615208724a67189abe2454cd481c574923ae1d0ae8165ee86261dca0435d35a",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\execution_contract.json": "c28aa65296b93a43f9f978d96ab1d02228f7d527db4ddd5f9b962293d26c4798",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_5_0000.nii.gz": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_5.nii.gz": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_6_0000.nii.gz": "da441b7b71fea9b654d3fbb405bdf19d562145297f896a3e906f7820cb59271e",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_6.nii.gz": "5847fb1c0641b1c6d19baefd9404e1c3f86108a902a8fccf4eb5fae177acac14",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_31_0000.nii.gz": "86c8f3b6ef777ef98f900c85676e5585b3298ecc53b827bccf7a53fde8b51cec",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_31.nii.gz": "b80998498bf9fb1210ee6690432fab58cd9dc1eeb06fe84c74b881922eedb8d9"
+  },
+  "fixture_sha256": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+  "reference_report_sha256": "d5138cc5f093340b55570adf640f81afa270b391237cd3c59784f4ace2f84415",
+  "current_sources_sha256": {
+    "tools/verify_v1_half_a_learning.py": "0f3b986031080e01ad80f25878b9383fed0fa864131df92d4dec23f7f272523a",
+    "tools/verify_v14_learning_replay.py": "f4772d90b9d9162b14507052d11513618f3944b7b60057ef8a4730aebfb95090",
+    "hiercp_v1x/half_a_model.py": "13104b0eb21ea441eb400ec99b9d3571c98b656c3fc4e5d68d32235697f60dfc",
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_learning_inputs.py": "0edd13901908124f02f6212998ee3b8599902f8c0392a96cbef309c6e4a63b9b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988"
+  },
+  "optimizer_fresh": true,
+  "exact_resume_claimed": false,
+  "native_retrained": false,
+  "bitwise_native_reproduction_claimed": false,
+  "baseline_retrained": false,
+  "timings_are_shared_GPU_debug_compute_only": true,
+  "completed_optimizer_updates": 8,
+  "attempted_backward_passes": 8,
+  "amp_overflow_skipped_attempts": 0,
+  "finite_complete_updates": true,
+  "missing_gradients": [],
+  "connected_trainable_parameter_tensors": 507,
+  "expected_trainable_parameter_tensors": 507,
+  "final_parameter_changes": {
+    "CNN": {
+      "L2_change": 0.10910155811695382,
+      "changed_parameter_tensors": 24,
+      "parameter_tensors": 24
+    },
+    "bridge_projection": {
+      "L2_change": 0.033428534902347186,
+      "changed_parameter_tensors": 4,
+      "parameter_tensors": 4
+    },
+    "bridge_fusion": {
+      "L2_change": 0.1374159245362504,
+      "changed_parameter_tensors": 6,
+      "parameter_tensors": 6
+    },
+    "local_encoder_total": {
+      "L2_change": 0.17861621775588285,
+      "changed_parameter_tensors": 34,
+      "parameter_tensors": 34
+    },
+    "L1": {
+      "L2_change": 0.5302677076232267,
+      "changed_parameter_tensors": 324,
+      "parameter_tensors": 324
+    },
+    "L1_readout": {
+      "L2_change": 0.0850569572601401,
+      "changed_parameter_tensors": 6,
+      "parameter_tensors": 6
+    },
+    "L2": {
+      "L2_change": 0.363348610574589,
+      "changed_parameter_tensors": 130,
+      "parameter_tensors": 130
+    },
+    "L2_readout": {
+      "L2_change": 0.11826392687115941,
+      "changed_parameter_tensors": 6,
+      "parameter_tensors": 6
+    },
+    "scalar_score": {
+      "L2_change": 0.3191707888624928,
+      "changed_parameter_tensors": 7,
+      "parameter_tensors": 7
+    }
+  },
+  "every_core_group_updated": true,
+  "every_core_group_had_nonzero_gradient": true,
+  "finite_zero_gradient_updates": [],
+  "final_neural_sha256": "07a43db6079254dca6cb9384cc14a7a2f51aa21425026ae1914eb05dd1c60d41",
+  "initial_train": {
+    "top1": 0.5,
+    "MRR": 0.6000000238418579,
+    "positive_minus_best_other": [
+      0.00201416015625,
+      -0.01727294921875
+    ],
+    "scores": [
+      [
+        0.04669189453125,
+        0.00775146484375,
+        0.0113677978515625,
+        0.007160186767578125,
+        0.044677734375,
+        0.02679443359375,
+        0.0416259765625,
+        0.042144775390625
+      ],
+      [
+        0.07110595703125,
+        0.04022216796875,
+        0.03936767578125,
+        0.0439453125,
+        0.08837890625,
+        0.0816650390625,
+        0.073486328125,
+        0.072509765625
+      ]
+    ],
+    "mean_margin": -0.00762939453125,
+    "loss": 3.794227361679077,
+    "ranking_loss": 3.794227361679077,
+    "consistency": 9.934107758624577e-09,
+    "loss_terms": {
+      "loss": 3.794227361679077,
+      "ce": 2.06640625,
+      "pair": 1.128343105316162,
+      "ordinal": 0.7102270722389221,
+      "mined": 0.9148648977279663,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 16
+  },
+  "initial_held_out": {
+    "top1": 0.0,
+    "MRR": 0.3333333432674408,
+    "positive_minus_best_other": [
+      -0.00244140625
+    ],
+    "scores": [
+      [
+        0.04705810546875,
+        0.03143310546875,
+        0.034576416015625,
+        0.01045989990234375,
+        0.044097900390625,
+        0.03155517578125,
+        0.04949951171875,
+        0.049468994140625
+      ]
+    ],
+    "mean_margin": -0.00244140625,
+    "loss": 3.8008687496185303,
+    "ranking_loss": 3.8008687496185303,
+    "consistency": 2.9802322387695312e-08,
+    "loss_terms": {
+      "loss": 3.8008687496185303,
+      "ce": 2.0703125,
+      "pair": 1.130807638168335,
+      "ordinal": 0.712329089641571,
+      "mined": 0.91456538438797,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 8
+  },
+  "final_train": {
+    "top1": 1.0,
+    "MRR": 1.0,
+    "positive_minus_best_other": [
+      0.001190185546875,
+      0.041534423828125
+    ],
+    "scores": [
+      [
+        -0.019866943359375,
+        -0.11102294921875,
+        -0.10662841796875,
+        -0.1158447265625,
+        -0.0323486328125,
+        -0.029449462890625,
+        -0.0234375,
+        -0.02105712890625
+      ],
+      [
+        0.07110595703125,
+        -0.1165771484375,
+        -0.135986328125,
+        -0.112548828125,
+        -0.0186767578125,
+        -0.00833892822265625,
+        0.0225372314453125,
+        0.029571533203125
+      ]
+    ],
+    "mean_margin": 0.0213623046875,
+    "loss": 3.679100513458252,
+    "ranking_loss": 3.679100513458252,
+    "consistency": -1.9868215517249155e-08,
+    "loss_terms": {
+      "loss": 3.679100513458252,
+      "ce": 2.01025390625,
+      "pair": 1.0823290348052979,
+      "ordinal": 0.6887539029121399,
+      "mined": 0.8975338935852051,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 16
+  },
+  "final_held_out": {
+    "top1": 0.0,
+    "MRR": 0.1666666716337204,
+    "positive_minus_best_other": [
+      -0.08591461181640625
+    ],
+    "scores": [
+      [
+        -0.0723876953125,
+        -0.01800537109375,
+        0.01352691650390625,
+        0.0113983154296875,
+        -0.08013916015625,
+        -0.02337646484375,
+        -0.07781982421875,
+        -0.06524658203125
+      ]
+    ],
+    "mean_margin": -0.08591461181640625,
+    "loss": 3.9094901084899902,
+    "ranking_loss": 3.9094901084899902,
+    "consistency": -3.973643103449831e-08,
+    "loss_terms": {
+      "loss": 3.9094901084899902,
+      "ce": 2.11328125,
+      "pair": 1.1666520833969116,
+      "ordinal": 0.7375878691673279,
+      "mined": 0.9640777111053467,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 8
+  },
+  "matched_update_comparisons": [
+    {
+      "step": 0,
+      "half_a": {
+        "train": {
+          "top1": 0.5,
+          "MRR": 0.6000000238418579,
+          "positive_minus_best_other": [
+            0.00201416015625,
+            -0.01727294921875
+          ],
+          "scores": [
+            [
+              0.04669189453125,
+              0.00775146484375,
+              0.0113677978515625,
+              0.007160186767578125,
+              0.044677734375,
+              0.02679443359375,
+              0.0416259765625,
+              0.042144775390625
+            ],
+            [
+              0.07110595703125,
+              0.04022216796875,
+              0.03936767578125,
+              0.0439453125,
+              0.08837890625,
+              0.0816650390625,
+              0.073486328125,
+              0.072509765625
+            ]
+          ],
+          "mean_margin": -0.00762939453125,
+          "loss": 3.794227361679077,
+          "ranking_loss": 3.794227361679077,
+          "consistency": 9.934107758624577e-09,
+          "loss_terms": {
+            "loss": 3.794227361679077,
+            "ce": 2.06640625,
+            "pair": 1.128343105316162,
+            "ordinal": 0.7102270722389221,
+            "mined": 0.9148648977279663,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.3333333432674408,
+          "positive_minus_best_other": [
+            -0.00244140625
+          ],
+          "scores": [
+            [
+              0.04705810546875,
+              0.03143310546875,
+              0.034576416015625,
+              0.01045989990234375,
+              0.044097900390625,
+              0.03155517578125,
+              0.04949951171875,
+              0.049468994140625
+            ]
+          ],
+          "mean_margin": -0.00244140625,
+          "loss": 3.8008687496185303,
+          "ranking_loss": 3.8008687496185303,
+          "consistency": 2.9802322387695312e-08,
+          "loss_terms": {
+            "loss": 3.8008687496185303,
+            "ce": 2.0703125,
+            "pair": 1.130807638168335,
+            "ordinal": 0.712329089641571,
+            "mined": 0.91456538438797,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "bounded_v14": {
+        "train": {
+          "top1": 0.0,
+          "MRR": 0.3499999940395355,
+          "positive_minus_best_other": [
+            -0.0050201416015625,
+            -0.0097503662109375
+          ],
+          "scores": [
+            [
+              0.01080322265625,
+              -0.01605224609375,
+              -0.001068115234375,
+              -0.00734710693359375,
+              0.004711151123046875,
+              -0.0036640167236328125,
+              0.0158233642578125,
+              0.00418853759765625
+            ],
+            [
+              0.0152130126953125,
+              0.01690673828125,
+              0.02496337890625,
+              0.024017333984375,
+              0.005458831787109375,
+              0.00928497314453125,
+              0.018096923828125,
+              0.0103607177734375
+            ]
+          ],
+          "mean_margin": -0.00738525390625
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.25,
+          "positive_minus_best_other": [
+            -0.02813720703125
+          ],
+          "scores": [
+            [
+              0.05712890625,
+              0.0631103515625,
+              0.056732177734375,
+              0.0546875,
+              0.0545654296875,
+              0.03857421875,
+              0.083251953125,
+              0.08526611328125
+            ]
+          ],
+          "mean_margin": -0.02813720703125
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": 0.2500000298023224,
+          "top1": 0.5,
+          "mean_margin": -0.000244140625
+        },
+        "validation": {
+          "MRR": 0.0833333432674408,
+          "top1": 0.0,
+          "mean_margin": 0.02569580078125
+        }
+      },
+      "loss_comparison_available": false
+    },
+    {
+      "step": 2,
+      "half_a": {
+        "train": {
+          "top1": 0.5,
+          "MRR": 0.75,
+          "positive_minus_best_other": [
+            -0.0047607421875,
+            0.0057373046875
+          ],
+          "scores": [
+            [
+              0.1553955078125,
+              0.126708984375,
+              0.1309814453125,
+              0.129150390625,
+              0.154541015625,
+              0.151123046875,
+              0.16015625,
+              0.15087890625
+            ],
+            [
+              0.2210693359375,
+              0.1470947265625,
+              0.1485595703125,
+              0.1629638671875,
+              0.2034912109375,
+              0.2110595703125,
+              0.21484375,
+              0.21533203125
+            ]
+          ],
+          "mean_margin": 0.00048828125,
+          "loss": 3.7776033878326416,
+          "ranking_loss": 3.7776033878326416,
+          "consistency": -1.9868215517249155e-08,
+          "loss_terms": {
+            "loss": 3.7776033878326416,
+            "ce": 2.05859375,
+            "pair": 1.1221140623092651,
+            "ordinal": 0.7071964740753174,
+            "mined": 0.9109128713607788,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.0401611328125
+          ],
+          "scores": [
+            [
+              0.1529541015625,
+              0.1832275390625,
+              0.193115234375,
+              0.171875,
+              0.1512451171875,
+              0.160888671875,
+              0.1514892578125,
+              0.15478515625
+            ]
+          ],
+          "mean_margin": -0.0401611328125,
+          "loss": 3.8514928817749023,
+          "ranking_loss": 3.8514928817749023,
+          "consistency": 2.9802322387695312e-08,
+          "loss_terms": {
+            "loss": 3.8514928817749023,
+            "ce": 2.091796875,
+            "pair": 1.1488829851150513,
+            "ordinal": 0.7260900735855103,
+            "mined": 0.9311903119087219,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "bounded_v14": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.012481689453125,
+            0.0357513427734375
+          ],
+          "scores": [
+            [
+              0.0618896484375,
+              -0.0277557373046875,
+              -0.0239105224609375,
+              -0.01500701904296875,
+              0.049407958984375,
+              0.02734375,
+              0.040679931640625,
+              0.03936767578125
+            ],
+            [
+              0.0640869140625,
+              0.013397216796875,
+              0.0283355712890625,
+              -0.011322021484375,
+              0.023834228515625,
+              0.0090179443359375,
+              0.0256500244140625,
+              0.01392364501953125
+            ]
+          ],
+          "mean_margin": 0.02411651611328125
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.020050048828125
+          ],
+          "scores": [
+            [
+              0.036956787109375,
+              0.044891357421875,
+              0.04681396484375,
+              0.039398193359375,
+              -0.0012073516845703125,
+              0.01320648193359375,
+              0.049530029296875,
+              0.0570068359375
+            ]
+          ],
+          "mean_margin": -0.020050048828125
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": -0.25,
+          "top1": -0.5,
+          "mean_margin": -0.02362823486328125
+        },
+        "validation": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": -0.020111083984375
+        }
+      },
+      "loss_comparison_available": false
+    },
+    {
+      "step": 4,
+      "half_a": {
+        "train": {
+          "top1": 0.5,
+          "MRR": 0.75,
+          "positive_minus_best_other": [
+            -0.00048828125,
+            0.018798828125
+          ],
+          "scores": [
+            [
+              0.1295166015625,
+              0.0806884765625,
+              0.08245849609375,
+              0.07232666015625,
+              0.1231689453125,
+              0.12408447265625,
+              0.1300048828125,
+              0.12939453125
+            ],
+            [
+              0.2047119140625,
+              0.1053466796875,
+              0.09649658203125,
+              0.1051025390625,
+              0.1683349609375,
+              0.1695556640625,
+              0.183349609375,
+              0.1859130859375
+            ]
+          ],
+          "mean_margin": 0.0091552734375,
+          "loss": 3.7460741996765137,
+          "ranking_loss": 3.7460741996765137,
+          "consistency": -1.9868215517249155e-08,
+          "loss_terms": {
+            "loss": 3.7460741996765137,
+            "ce": 2.04296875,
+            "pair": 1.1094796657562256,
+            "ordinal": 0.7015630602836609,
+            "mined": 0.9066259860992432,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.0474853515625
+          ],
+          "scores": [
+            [
+              0.128173828125,
+              0.1588134765625,
+              0.1756591796875,
+              0.1651611328125,
+              0.12042236328125,
+              0.147216796875,
+              0.1236572265625,
+              0.1307373046875
+            ]
+          ],
+          "mean_margin": -0.0474853515625,
+          "loss": 3.8609819412231445,
+          "ranking_loss": 3.8609819412231445,
+          "consistency": 3.973643103449831e-08,
+          "loss_terms": {
+            "loss": 3.8609819412231445,
+            "ce": 2.095703125,
+            "pair": 1.1518875360488892,
+            "ordinal": 0.728611946105957,
+            "mined": 0.9353378415107727,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "bounded_v14": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.0257720947265625,
+            0.0766143798828125
+          ],
+          "scores": [
+            [
+              0.052398681640625,
+              -0.10272216796875,
+              -0.10986328125,
+              -0.106689453125,
+              0.0266265869140625,
+              0.011199951171875,
+              0.0161285400390625,
+              0.0115509033203125
+            ],
+            [
+              0.0906982421875,
+              -0.0455322265625,
+              -0.007617950439453125,
+              -0.06427001953125,
+              0.0140838623046875,
+              -0.0055999755859375,
+              0.0037479400634765625,
+              -0.0140838623046875
+            ]
+          ],
+          "mean_margin": 0.0511932373046875
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.06072998046875
+          ],
+          "scores": [
+            [
+              -0.010467529296875,
+              0.050262451171875,
+              0.0440673828125,
+              0.0472412109375,
+              -0.068115234375,
+              -0.0302276611328125,
+              0.01364898681640625,
+              0.0309295654296875
+            ]
+          ],
+          "mean_margin": -0.06072998046875
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": -0.25,
+          "top1": -0.5,
+          "mean_margin": -0.0420379638671875
+        },
+        "validation": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": 0.01324462890625
+        }
+      },
+      "loss_comparison_available": false
+    },
+    {
+      "step": 8,
+      "half_a": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.001190185546875,
+            0.041534423828125
+          ],
+          "scores": [
+            [
+              -0.019866943359375,
+              -0.11102294921875,
+              -0.10662841796875,
+              -0.1158447265625,
+              -0.0323486328125,
+              -0.029449462890625,
+              -0.0234375,
+              -0.02105712890625
+            ],
+            [
+              0.07110595703125,
+              -0.1165771484375,
+              -0.135986328125,
+              -0.112548828125,
+              -0.0186767578125,
+              -0.00833892822265625,
+              0.0225372314453125,
+              0.029571533203125
+            ]
+          ],
+          "mean_margin": 0.0213623046875,
+          "loss": 3.679100513458252,
+          "ranking_loss": 3.679100513458252,
+          "consistency": -1.9868215517249155e-08,
+          "loss_terms": {
+            "loss": 3.679100513458252,
+            "ce": 2.01025390625,
+            "pair": 1.0823290348052979,
+            "ordinal": 0.6887539029121399,
+            "mined": 0.8975338935852051,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.08591461181640625
+          ],
+          "scores": [
+            [
+              -0.0723876953125,
+              -0.01800537109375,
+              0.01352691650390625,
+              0.0113983154296875,
+              -0.08013916015625,
+              -0.02337646484375,
+              -0.07781982421875,
+              -0.06524658203125
+            ]
+          ],
+          "mean_margin": -0.08591461181640625,
+          "loss": 3.9094901084899902,
+          "ranking_loss": 3.9094901084899902,
+          "consistency": -3.973643103449831e-08,
+          "loss_terms": {
+            "loss": 3.9094901084899902,
+            "ce": 2.11328125,
+            "pair": 1.1666520833969116,
+            "ordinal": 0.7375878691673279,
+            "mined": 0.9640777111053467,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "bounded_v14": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.1356201171875,
+            0.24267578125
+          ],
+          "scores": [
+            [
+              0.3125,
+              -0.2822265625,
+              -0.313720703125,
+              -0.305908203125,
+              0.1768798828125,
+              0.12353515625,
+              0.11175537109375,
+              0.12548828125
+            ],
+            [
+              0.46923828125,
+              -0.11181640625,
+              0.0675048828125,
+              -0.1273193359375,
+              0.2265625,
+              0.138671875,
+              0.11639404296875,
+              0.045440673828125
+            ]
+          ],
+          "mean_margin": 0.18914794921875
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.35052490234375
+          ],
+          "scores": [
+            [
+              -0.10687255859375,
+              0.24365234375,
+              0.1954345703125,
+              0.2305908203125,
+              -0.1976318359375,
+              -0.1259765625,
+              -0.0478515625,
+              0.04620361328125
+            ]
+          ],
+          "mean_margin": -0.35052490234375
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": -0.16778564453125
+        },
+        "validation": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": 0.26461029052734375
+        }
+      },
+      "loss_comparison_available": false
+    }
+  ],
+  "reference_full_debug_curve": [
+    {
+      "step": 0,
+      "train": {
+        "top1": 0.0,
+        "MRR": 0.3499999940395355,
+        "positive_minus_best_other": [
+          -0.0050201416015625,
+          -0.0097503662109375
+        ],
+        "scores": [
+          [
+            0.01080322265625,
+            -0.01605224609375,
+            -0.001068115234375,
+            -0.00734710693359375,
+            0.004711151123046875,
+            -0.0036640167236328125,
+            0.0158233642578125,
+            0.00418853759765625
+          ],
+          [
+            0.0152130126953125,
+            0.01690673828125,
+            0.02496337890625,
+            0.024017333984375,
+            0.005458831787109375,
+            0.00928497314453125,
+            0.018096923828125,
+            0.0103607177734375
+          ]
+        ],
+        "mean_margin": -0.00738525390625
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.25,
+        "positive_minus_best_other": [
+          -0.02813720703125
+        ],
+        "scores": [
+          [
+            0.05712890625,
+            0.0631103515625,
+            0.056732177734375,
+            0.0546875,
+            0.0545654296875,
+            0.03857421875,
+            0.083251953125,
+            0.08526611328125
+          ]
+        ],
+        "mean_margin": -0.02813720703125
+      }
+    },
+    {
+      "step": 2,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.012481689453125,
+          0.0357513427734375
+        ],
+        "scores": [
+          [
+            0.0618896484375,
+            -0.0277557373046875,
+            -0.0239105224609375,
+            -0.01500701904296875,
+            0.049407958984375,
+            0.02734375,
+            0.040679931640625,
+            0.03936767578125
+          ],
+          [
+            0.0640869140625,
+            0.013397216796875,
+            0.0283355712890625,
+            -0.011322021484375,
+            0.023834228515625,
+            0.0090179443359375,
+            0.0256500244140625,
+            0.01392364501953125
+          ]
+        ],
+        "mean_margin": 0.02411651611328125
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.020050048828125
+        ],
+        "scores": [
+          [
+            0.036956787109375,
+            0.044891357421875,
+            0.04681396484375,
+            0.039398193359375,
+            -0.0012073516845703125,
+            0.01320648193359375,
+            0.049530029296875,
+            0.0570068359375
+          ]
+        ],
+        "mean_margin": -0.020050048828125
+      }
+    },
+    {
+      "step": 4,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.0257720947265625,
+          0.0766143798828125
+        ],
+        "scores": [
+          [
+            0.052398681640625,
+            -0.10272216796875,
+            -0.10986328125,
+            -0.106689453125,
+            0.0266265869140625,
+            0.011199951171875,
+            0.0161285400390625,
+            0.0115509033203125
+          ],
+          [
+            0.0906982421875,
+            -0.0455322265625,
+            -0.007617950439453125,
+            -0.06427001953125,
+            0.0140838623046875,
+            -0.0055999755859375,
+            0.0037479400634765625,
+            -0.0140838623046875
+          ]
+        ],
+        "mean_margin": 0.0511932373046875
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.06072998046875
+        ],
+        "scores": [
+          [
+            -0.010467529296875,
+            0.050262451171875,
+            0.0440673828125,
+            0.0472412109375,
+            -0.068115234375,
+            -0.0302276611328125,
+            0.01364898681640625,
+            0.0309295654296875
+          ]
+        ],
+        "mean_margin": -0.06072998046875
+      }
+    },
+    {
+      "step": 8,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.1356201171875,
+          0.24267578125
+        ],
+        "scores": [
+          [
+            0.3125,
+            -0.2822265625,
+            -0.313720703125,
+            -0.305908203125,
+            0.1768798828125,
+            0.12353515625,
+            0.11175537109375,
+            0.12548828125
+          ],
+          [
+            0.46923828125,
+            -0.11181640625,
+            0.0675048828125,
+            -0.1273193359375,
+            0.2265625,
+            0.138671875,
+            0.11639404296875,
+            0.045440673828125
+          ]
+        ],
+        "mean_margin": 0.18914794921875
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.35052490234375
+        ],
+        "scores": [
+          [
+            -0.10687255859375,
+            0.24365234375,
+            0.1954345703125,
+            0.2305908203125,
+            -0.1976318359375,
+            -0.1259765625,
+            -0.0478515625,
+            0.04620361328125
+          ]
+        ],
+        "mean_margin": -0.35052490234375
+      }
+    },
+    {
+      "step": 12,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.65625,
+          0.91827392578125
+        ],
+        "scores": [
+          [
+            0.951171875,
+            -0.8115234375,
+            -0.83203125,
+            -0.83349609375,
+            0.294921875,
+            -0.3603515625,
+            -0.2271728515625,
+            -0.1925048828125
+          ],
+          [
+            1.0009765625,
+            -0.720703125,
+            -0.556640625,
+            -0.77197265625,
+            0.08270263671875,
+            -0.1763916015625,
+            -0.382080078125,
+            -0.5146484375
+          ]
+        ],
+        "mean_margin": 0.787261962890625
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -1.09765625
+        ],
+        "scores": [
+          [
+            -0.68603515625,
+            0.387451171875,
+            0.2095947265625,
+            0.41162109375,
+            -0.7705078125,
+            -0.71240234375,
+            -0.541015625,
+            -0.14453125
+          ]
+        ],
+        "mean_margin": -1.09765625
+      }
+    },
+    {
+      "step": 16,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          2.91796875,
+          2.62890625
+        ],
+        "scores": [
+          [
+            1.669921875,
+            -1.61328125,
+            -1.6181640625,
+            -1.61328125,
+            -1.3525390625,
+            -1.4794921875,
+            -1.388671875,
+            -1.248046875
+          ],
+          [
+            1.669921875,
+            -1.5703125,
+            -1.525390625,
+            -1.5927734375,
+            -0.958984375,
+            -1.1328125,
+            -1.3095703125,
+            -1.388671875
+          ]
+        ],
+        "mean_margin": 2.7734375
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1428571492433548,
+        "positive_minus_best_other": [
+          -1.94482421875
+        ],
+        "scores": [
+          [
+            -1.4912109375,
+            -0.0958251953125,
+            -0.50830078125,
+            0.45361328125,
+            -1.5205078125,
+            -1.4658203125,
+            -1.458984375,
+            -1.298828125
+          ]
+        ],
+        "mean_margin": -1.94482421875
+      }
+    }
+  ],
+  "baseline_total_updates": 16,
+  "comparison_final_step_matches": 8,
+  "process_peak_rss_bytes": 9867120640,
+  "total_wall_seconds": 107.71105370001169,
+  "GPU_peak_allocated_bytes": 2136559104,
+  "GPU_peak_reserved_bytes": 2174746624,
+  "samples_per_update": 2,
+  "candidate_graphs_per_update": 16,
+  "update_compute_samples_per_second": 1.6840589610057115,
+  "original_inputs_preserved": true,
+  "original_source_preserved": true,
+  "original_archive_preserved": true,
+  "experiment_sources_preserved": true,
+  "CNN_dependencies_preserved": true
+}

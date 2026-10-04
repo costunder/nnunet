@@ -1,0 +1,52 @@
+{
+  "debug": true,
+  "smoke_test": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "actual_CT_requested": true,
+  "actual_CUDA_requested": true,
+  "protocol": {
+    "initial_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+    "reference_updates": 2,
+    "train_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "validation_cases": [
+      "liver_31"
+    ],
+    "physical_sample_batch": 2,
+    "workers": 4,
+    "seed": 42,
+    "optimization_curriculum_epoch": 29,
+    "train_view_epoch": 29,
+    "validation_effective_view_epoch": 0,
+    "scheduler": null,
+    "baseline_model": "v1.0",
+    "experiment_version": "v1.4"
+  },
+  "arguments": {
+    "gpu": 0,
+    "reference": "work\\v14_matched_learning_DEBUG_20261004_r3\\report.json",
+    "fixture": "work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt",
+    "source": "work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+    "updates": 8,
+    "cuda_gib": 12.0,
+    "rss_gib": 32.0,
+    "wall_seconds": 600.0,
+    "output": "work\\v1_half_a_learning_DEBUG_20261004_r2"
+  },
+  "input_sha256": {
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\report.json": "d5138cc5f093340b55570adf640f81afa270b391237cd3c59784f4ace2f84415",
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\execution_contract.json": "3cf8fe28f05cc4b45a82e55f0e0dc10944a435ee2a18be8692c4649cf925ea60",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\report.json": "a615208724a67189abe2454cd481c574923ae1d0ae8165ee86261dca0435d35a",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\execution_contract.json": "c28aa65296b93a43f9f978d96ab1d02228f7d527db4ddd5f9b962293d26c4798",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a"
+  },
+  "original_configuration_sha256": "8c6250eef1ac1c204a4c4da7c9cc7fea838b3d7ad450afd52267f88b9b60d34b",
+  "intended_change": "replace only L0 neural first half; preserve original upper model, GT and complete loss",
+  "identity_sha256": "ba846a5e74a5babd72df1dbad4ffbe6d69766829254940b6a4284af7117898b6"
+}

@@ -1,0 +1,57 @@
+test_contract_identifies_dense_roi_bridge_and_native_difference (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_ct_conversion_preserves_real_masks_and_masks_external_ct (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_dense_shape_and_chunk_controls_are_not_silently_changed (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_exact_width_depth_and_no_old_graph_parameters (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_forward_admission_rejects_native_mixed_and_other_margin_graphs (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_install_replaces_l0_preserves_upper_objects_values_and_rng (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_local_extra_state_rejects_other_bridge (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_marker_rejects_missing_wrong_or_mutated_checkpoint (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_only_optional_real_surface_absence_has_an_empty_set_descriptor (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_optional_sampling_selects_present_maps_only_and_restores_order (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_role_and_shell_means_follow_distinct_support_without_dead_tokens (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_source_selection_shares_pyramid_storage_and_retains_duplicates (tests.test_v1_half_a_model.HalfAStaticUnit) ... ok
+test_configuration_gt_fixture_and_state_identity_preserved (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_contract_tampering_rejected (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_eight_update_run_compares_matching_steps_only (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_nonfinite_or_missing_eight_candidate_scores_rejected (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_only_complete_successful_update_evidence_accepted (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_recorded_exact_protocol_accepted_without_mutation (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_unverified_or_quality_claiming_reference_rejected (tests.test_v1_half_a_learning.HalfALearningContracts) ... ok
+test_bad_batch_metadata_is_rejected_before_score_publication (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_bad_expected_cohort_or_count_never_defaults (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_epoch_metadata_and_closed_recorder_are_explicit_errors (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_exact_original_scores_rows_and_pass_totals_without_mutation (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_extra_sample_and_wrong_final_cohort_are_rejected (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_forward_wrapper_calls_original_once_and_records_only_eval (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_mixed_score_device_or_dtype_is_rejected_without_cuda (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_one_detached_stacked_cpu_transfer_per_batch (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_partial_pass_blocks_epoch_change_then_completed_epochs_reset_ordinals (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_wrong_candidate_shape_nonfinite_and_dtype_are_rejected (tests.test_v1_half_a_case_metrics.CaseScoreRecorderUnit) ... ok
+test_actual_completed_publication_format_is_read_without_writing_baseline (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_baseline_race_during_checkpoint_read_is_detected (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_best_requires_full_run_completion_and_exact_uint8_scope_marker (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_calibration_from_another_checkpoint_cache_seed_or_invalid_measured_value_rejected (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_existing_unbound_output_and_overlapping_output_are_preserved (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_incomplete_or_differently_bound_last_state_is_rejected (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_loss_optimizer_curriculum_recipe_changes_cannot_claim_original_baseline (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_new_arm_changes_only_measured_execution_and_never_baseline_files (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_resealed_recipe_source_and_missing_implementation_cannot_silently_migrate (tests.test_v1_half_a_training.BaselineAndIsolationUnits) ... ok
+test_allocation_change_rejected_before_publishing_execution_lock (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... ok
+test_changed_existing_execution_lock_is_not_overwritten (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... ok
+test_controller_dispatches_only_one_half_a_child_on_success_and_failure (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... v1.5 half A |10mm | original GT8/pool128 |40epochs | L0 only | no cache preparation
+Ctrl+C stops foreground work; resume uses the last completed epoch. Existing baseline preserved.
+HALF-A RESULTS: D:\AI project\nnunet\work\half_A_dispatch_UNIT_v24_97g4\results\half_A
+BASELINE PRESERVED: D:\AI project\nnunet\work\UNIT_reference
+v1.5 half A |10mm | original GT8/pool128 |40epochs | L0 only | no cache preparation
+Ctrl+C stops foreground work; resume uses the last completed epoch. Existing baseline preserved.
+ok
+test_entry_exposes_no_prepare_complement_combined_or_scale_override_dispatch (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... ok
+test_execution_lock_records_inherited_measurement_and_repeat_preserves_bytes (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... ok
+test_materialized_cohort_preserves_original_index_and_reports_configured_absences (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... ok
+test_prerun_adapter_consumes_actual_archived_keys_without_mutating_original_report (tests.test_v1_half_a_training.ReportingResourceAndDispatchUnits) ... ok
+test_actual_archive_constructor_checkpoint_identity_and_reload (tests.test_v1_half_a_entry.ArchivedHalfAEntryUnit) ... ok
+
+----------------------------------------------------------------------
+Ran 46 tests in 17.065s
+
+OK

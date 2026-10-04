@@ -1,0 +1,192 @@
+{
+  "format": "hiercp_component_group_experiment_design_v1",
+  "status": "FIRST_HALF_A_IMPLEMENTED_CUDA_SMOKE_DONE_SERVER_RUN_PENDING",
+  "training_started": false,
+  "new_cuda_smoke_performed": true,
+  "baseline": {
+    "experiment_version": "v1.4",
+    "model_source_version": "v1.0",
+    "margin_mm": 10,
+    "server_experiment": "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "result_origin": "user_terminal_summary_20261004_not_independent_checkpoint_evaluation",
+    "completed_epochs_reported": 40,
+    "preserved_epoch_records_reported": 40,
+    "initial": {
+      "mrr": 0.301521,
+      "top1": 0.055556,
+      "margin": -0.014954
+    },
+    "best": {
+      "epoch": 11,
+      "mrr": 1.0,
+      "top1": 1.0,
+      "margin": 14.371202
+    },
+    "last": {
+      "epoch": 40,
+      "mrr": 1.0,
+      "top1": 1.0,
+      "margin": 13.398003
+    },
+    "reported_physical_batch": 1,
+    "reported_workers": 4,
+    "batch_worker_lock": "must_read_and_bind_actual_baseline_preflight_not_assume_summary",
+    "actual_eligible_sample_case_counts": "must_bind_baseline_cache_manifest",
+    "epoch_time": null,
+    "rerun_baseline": false,
+    "modify_original_results": false
+  },
+  "target_reference": {
+    "method": "v2.2 native local CNN with legacy prompt L1, clustered L2 and observed ranking",
+    "server_experiment": "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42",
+    "server_recipe_and_checkpoint_binding": "required_before_claiming_exact_target_reproduction",
+    "inspected_current_source_sha256": {
+      "l0_local_cnn/model.py": "51aa70d4fdfe9e7d1f25b9bd110adaa25c1ec1f264659888695853f9bf923e19",
+      "l0_exploration/model.py": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+      "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+      "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+      "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+      "l0_regions/training.py": "6e106f1828a854cdca06e2f664af819f80b533c7c5a144dee66eb7a4f3122bdb",
+      "config/v22_local_cnn.json": "39d4efe683ea509ec0554d3bee33b0b5cc80f9d6d55d649477b8ae247ce7a2db"
+    }
+  },
+  "architecture_stage": {
+    "target_contract": "v1_source_original_anchor_vs_curriculum_candidates",
+    "scope_margin_mm": 10,
+    "seed": 42,
+    "epochs": 40,
+    "configured_cohort": {
+      "train": 84,
+      "validation": 21,
+      "outer_excluded": 26
+    },
+    "candidates_per_sample": 8,
+    "candidate_pool": 128,
+    "gt_candidate_transform_difficulty_corruption": "preserve_actual_baseline_cache",
+    "loss": "original_v1_curriculum_ranking_plus_original_two_view_consistency",
+    "same_donor_contract": "preserve_original_source_and_candidate_assignment",
+    "groups": {
+      "A": {
+        "name": "L0 representation",
+        "factors": [
+          "input_and_encoder",
+          "readout_and_pair_fusion"
+        ],
+        "implementation_registered": true,
+        "executable": "tools/run_v1_half_a.py",
+        "experiment_version": "v1.5_half_A",
+        "actual_boundary": "v2CNN_on_preserved_v1_denseROI_with_original_role_shell_bridge",
+        "native_spacing_v22_equivalence": false
+      },
+      "B": {
+        "name": "upper hierarchy and scoring",
+        "factors": [
+          "L1_patient_to_prompt",
+          "L2_prototypes_and_scorer"
+        ],
+        "implementation_registered": false
+      }
+    },
+    "first_round": [
+      {
+        "arm": "baseline",
+        "replace": [],
+        "use_existing_completed_run": true
+      },
+      {
+        "arm": "A",
+        "replace": [
+          "A"
+        ],
+        "use_existing_completed_run": false
+      }
+    ],
+    "conditional_complement": {
+      "arm": "B",
+      "replace": [
+        "B"
+      ],
+      "run_only_if": "A_does_not_reproduce_degradation",
+      "use_existing_completed_run": false
+    },
+    "combined_arm_enabled": false,
+    "initialization": {
+      "common_modules": "same_verified_seed42_initial_tensors",
+      "changed_modules": "explicit_deterministic_initialization_with_parameter_and_state_hashes",
+      "optimizer_scheduler_scaler": "fresh_per_arm_with_original_recipe",
+      "reuse_trained_best_as_exact_resume": false,
+      "resume": "only_same_arm_identity_and_saved_recipe"
+    },
+    "support_policy": "explicit_training_only_classes_from_v1_anchor_curriculum; no_query_GT_edge; bind_fresh_stale_detach_and_refresh_as_factors",
+    "resources": "reuse_verified_baseline_physical_batch_and_worker_for_matched_comparison; log_actual_peaks_throughput_and_all_candidates; no_automatic_reduction"
+  },
+  "decision": {
+    "assume_monotone_failure": false,
+    "search": "adaptive_halving_of_the_group_that_reproduces_degradation",
+    "A_degrades": "subdivide_A; do_not_automatically_run_B_or_combined_arm",
+    "A_holds": "test_complement_B",
+    "B_degrades": "subdivide_B",
+    "A_and_B_hold": "report_failure_not_reproduced_under_fixed_v1_task; no_automatic_combination_or_interaction_experiment",
+    "recursive_step": "test_one_half_of_the_current_group; if_degradation_reproduces_recurse_into_that_half; otherwise_test_the_complement_before_recurse",
+    "neither_half_degrades": "report_not_localized; do_not_fabricate_a_single_bad_component",
+    "automatic_combination_experiments": false,
+    "automatic_quality_tolerance": null,
+    "automatic_pass_or_promotion": false
+  },
+  "objective_stage": {
+    "separate_from_architecture_search": true,
+    "source": "v1_original_source_anchor_and_curriculum",
+    "target": "v2.2_observed_tumor_P_vs_unobserved_U",
+    "U_means_CP_ineligible": false,
+    "P_means_external_donor_compatibility": false,
+    "relabel_existing_GT": false,
+    "changes_to_declare": [
+      "eligible_observed_anchor_dataset",
+      "unobserved_candidate_dataset",
+      "original_ranking_to_PxU_loss",
+      "balanced_observation_CE",
+      "alignment_weighting",
+      "tile_schedule",
+      "support_memory_refresh_and_gradient_policy"
+    ],
+    "compare_cross_target_MRR_as_identical_accuracy": false
+  },
+  "implementation_boundaries": [
+    "Add independent adapters and runner; preserve all SHA-bound v1.4 helpers",
+    "Archived HierarchicalBatch fixed48 five-channel ROI differs from LocalBatch native-spacing one-channel organ-masked crop",
+    "Declare CT normalization and original target-erasure separately; originalROI-adapted CNN is not exact native-spacing v2.2",
+    "Original L0 multi-role dictionary cannot be filled by duplicating one LocalCNN tensor into all semantic keys",
+    "Patient heterograph and prompt support label topology need real bridges",
+    "L2 cluster construction and cosine scorer form a coupled replacement",
+    "All forward outputs must participate in original loss, CUDA gradient and optimizer checks before server long runs"
+  ],
+  "required_measurements": [
+    "initial_and_epoch_train_loss_MRR_top1_margin",
+    "initial_and_epoch_validation_loss_MRR_top1_margin",
+    "case_level_scores_and_paired_difference",
+    "candidate_representation_spread",
+    "gradient_and_actual_parameter_updates",
+    "epoch_wall_seconds",
+    "loader_wait_seconds",
+    "sampling_worker_seconds_separate_from_wall",
+    "gpu_compute_seconds",
+    "validation_seconds",
+    "checkpoint_seconds",
+    "peak_VRAM_and_RSS",
+    "actual_sample_case_and_candidate_counts"
+  ],
+  "long_training_automatic_start": false,
+  "production_CP_automatic_start": false,
+  "nnunet_automatic_start": false,
+  "debug_optimizer_updates_performed": 8,
+  "server_training_started_by_agent": false,
+  "verification": {
+    "evidence": "validation/v15_half_a_20261004/manifest.json",
+    "unit_outer_checks": 46,
+    "actual_CT_CUDA_DEBUG_updates": 8,
+    "full_training": false,
+    "full_evaluation": false,
+    "quality_verified": false
+  }
+}

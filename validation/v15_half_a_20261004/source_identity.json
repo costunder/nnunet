@@ -1,0 +1,46 @@
+{
+  "current_runtime": {
+    "hiercp_v1x/half_a_case_metrics.py": "fcc18445e9be9906228b9a15372b6785bfdadbbb88be4fceb6263ae0f85e7ad9",
+    "hiercp_v1x/half_a_entry.py": "d3e09c182f084f099b65ec8d698fee421188d2895d612ed492c777ae4edc9d24",
+    "hiercp_v1x/half_a_model.py": "13104b0eb21ea441eb400ec99b9d3571c98b656c3fc4e5d68d32235697f60dfc",
+    "hiercp_v1x/half_a_training.py": "bb509a659ef645ef25c975333934f1e8ea17ec2b14d193a2700a69ec59ee9ed4",
+    "l0_exploration/model.py": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "tools/run_v1_half_a.py": "2069ca2ef7a34f94e257954a533cbe060de2d25b2886b59eee9232094b38f79c",
+    "tools/verify_v1_half_a_learning.py": "0f3b986031080e01ad80f25878b9383fed0fa864131df92d4dec23f7f272523a"
+  },
+  "current_unit_tests": {
+    "tests/test_v1_half_a_case_metrics.py": "41aa4b4dc9a3278c8240946b963dcd4c0ea556ccffeba7d650a9bcfd8eb70e95",
+    "tests/test_v1_half_a_entry.py": "f0df678ff07ea7a5d18665c9cbae169484040c00fb48590b10a523da52f03c34",
+    "tests/test_v1_half_a_learning.py": "fbf105d31d0c02b23223ba92d2d19abccd7402a468a1ebf340ee1f7a7af5d12b",
+    "tests/test_v1_half_a_model.py": "93bc4d03da6f941720f8dc8ce856725b0823992995eda37c2c1faf61304e4f88",
+    "tests/test_v1_half_a_training.py": "26d072f350e1207b3fec1a75cfe795fae9978e3319ec4e68f3e5c3f7b55e80dc"
+  },
+  "format": "hiercp_v15_half_A_source_identity_v1",
+  "frozen_original_helpers_identical_to_published_HEAD": {
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/experiment.py": "8f5876290e78e398d281fbf0a40253be34c826d5cd9faa1a2834701944a9bf60",
+    "hiercp_v1x/sampling_entry.py": "d021259ef40db419a3932cc5de1d69d3337f65899fc9b8629bd4b97e385d7bd5",
+    "hiercp_v1x/scope_learning_inputs.py": "0edd13901908124f02f6212998ee3b8599902f8c0392a96cbef309c6e4a63b9b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/scope_training_entry.py": "05ee89ef7a1cdef947401a082e2b60dced59977328f56b0ea004638695546a80",
+    "hiercp_v1x/snapshot_inventory.py": "06a3c3667d8fe6b4648d742d0da6fea45062596373c7cb7d3a35ade186019670",
+    "hiercp_v1x/telemetry_entry.py": "3fff96b889bf2ac2babd367b5363774643a6df98444a84056a9a2b989f02002f",
+    "tools/run_v14_scope_training.py": "3381a0e9aaba1b8017a25e11199637a3f4133827fb6a1b1dc55b32f5495ccbe8",
+    "tools/run_v1_bounded_training.py": "a47dacf6d000acd12c2eafba12eeb8e527d963d58765c6981c44b1c08819c9cd",
+    "versions/v1/pipeline_v1_source.zip": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e"
+  },
+  "full_evaluation": false,
+  "full_training": false,
+  "measured_GPU_report_sha256": "4e3613baa60f6c3f5fac2800fa2c627a4bb59bc6b7a64474cf0571c3fd8b89c9",
+  "measured_neural_path_sources": {
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/half_a_model.py": "13104b0eb21ea441eb400ec99b9d3571c98b656c3fc4e5d68d32235697f60dfc",
+    "hiercp_v1x/scope_learning_inputs.py": "0edd13901908124f02f6212998ee3b8599902f8c0392a96cbef309c6e4a63b9b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "tools/verify_v14_learning_replay.py": "f4772d90b9d9162b14507052d11513618f3944b7b60057ef8a4730aebfb95090",
+    "tools/verify_v1_half_a_learning.py": "0f3b986031080e01ad80f25878b9383fed0fa864131df92d4dec23f7f272523a"
+  },
+  "quality_verified": false,
+  "syntax_parse_verified": true
+}
