@@ -1,0 +1,6 @@
+{
+  "debug": true,
+  "quality_verified": false,
+  "production_ready": false,
+  "error": "Traceback (most recent call last):\n  File \"D:\\AI project\\nnunet\\tools\\verify_v14_learning_replay.py\", line 345, in main\n    result = execute(a, root, report, contract, manifest, protocol)\n  File \"D:\\AI project\\nnunet\\tools\\verify_v14_learning_replay.py\", line 265, in execute\n    grads = _gradient_groups(net)\n  File \"D:\\AI project\\nnunet\\hiercp_v1x\\scope_probe_support.py\", line 83, in _gradient_groups\n    raise AssertionError(\"Zero or nonfinite core-module gradient\")\nAssertionError: Zero or nonfinite core-module gradient\n"
+}

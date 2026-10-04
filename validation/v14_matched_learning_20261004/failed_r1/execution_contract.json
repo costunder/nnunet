@@ -1,0 +1,42 @@
+{
+  "debug": true,
+  "quality_verified": false,
+  "protocol": {
+    "initial_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+    "reference_updates": 2,
+    "train_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "validation_cases": [
+      "liver_31"
+    ],
+    "physical_sample_batch": 2,
+    "workers": 4,
+    "seed": 42,
+    "optimization_curriculum_epoch": 29,
+    "train_view_epoch": 29,
+    "validation_effective_view_epoch": 0,
+    "scheduler": null,
+    "baseline_model": "v1.0",
+    "experiment_version": "v1.4"
+  },
+  "arguments": {
+    "gpu": 0,
+    "reference": "work\\v1_graph_size104_CUDA_DEBUG_20261003\\report.json",
+    "fixture": "work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt",
+    "margin_mm": 10.0,
+    "updates": 16,
+    "cuda_gib": 12.0,
+    "rss_gib": 32.0,
+    "wall_seconds": 600.0,
+    "output": "work\\v14_matched_learning_DEBUG_20261004_r1"
+  },
+  "inputs": {
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\report.json": "a615208724a67189abe2454cd481c574923ae1d0ae8165ee86261dca0435d35a",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\execution_contract.json": "c28aa65296b93a43f9f978d96ab1d02228f7d527db4ddd5f9b962293d26c4798",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a"
+  },
+  "identity_sha256": "623b63d0d8d963104329dbf6fd99c097282391e6ee60845048620bf84f805ae7"
+}

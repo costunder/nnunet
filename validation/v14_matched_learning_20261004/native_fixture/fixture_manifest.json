@@ -1,0 +1,1776 @@
+{
+  "debug": true,
+  "full_training": false,
+  "production_ready": false,
+  "fixture_sha256": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+  "baseline": {
+    "source": "D:\\AI project\\nnunet\\work\\v1x_suite_20261003\\source\\v1.0",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "verified_files": {
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    }
+  },
+  "config": {
+    "method": "hiercp-full",
+    "seed": 42,
+    "labels": {
+      "liver": 1,
+      "tumor": 2
+    },
+    "ct_clip": [
+      -200.0,
+      250.0
+    ],
+    "graph": {
+      "patient_graph_contract": "patient_source_content_population_v2",
+      "patch_size": 48,
+      "context_radius_mm": 28.0,
+      "context_shells_mm": [
+        4.0,
+        12.0,
+        28.0
+      ],
+      "boundary_depth_mm": 3.0,
+      "candidate_k": 8,
+      "num_regions": 24,
+      "region_sample_voxels": 20000,
+      "region_lloyd_iters": 12,
+      "region_k": 4,
+      "num_prototypes": 16,
+      "prototype_top_m": 2,
+      "prototype_k": 4,
+      "prototype_lloyd_iters": 30,
+      "prototype_temperature": 0.5,
+      "max_lesions": null,
+      "graph_schema_version": "full_v22",
+      "geometry_contract": "level0_physical_closure_v2",
+      "adaptive_source_full_shape": true,
+      "adaptive_roi_margin_mm": 30.0,
+      "adaptive_roi_max_radius_mm": 64.0,
+      "adaptive_roi_max_voxels": 8000000,
+      "context_inner_radius_mm": 2.0,
+      "context_outer_radius_mm": 28.0,
+      "context_liver_surface_separation_mm": 1.0,
+      "context_radial_bins": 4,
+      "context_azimuth_bins": 8,
+      "context_elevation_bins": 4,
+      "liver_anchor_search_mm": 64.0,
+      "kdtree_leafsize": 32,
+      "canonical_full_graph": true,
+      "canonical_surface_spacing_mm": 2.0,
+      "canonical_interior_spacing_mm": 3.0,
+      "canonical_context_spacing_mm": 2.5,
+      "canonical_liver_spacing_mm": 4.0,
+      "canonical_node_limit": 250000,
+      "sample_context_nodes": 384,
+      "sample_hops": 2,
+      "sample_interface_radius_mm": 8.0,
+      "sample_hop_radius_mm": 6.0,
+      "surface_edge_radius_mm": 4.5,
+      "interior_edge_radius_mm": 5.5,
+      "context_edge_radius_mm": 6.0,
+      "interface_edge_radius_mm": 8.0,
+      "cross_edge_radius_mm": 7.0,
+      "liver_edge_radius_mm": 10.0,
+      "correspondence_radius_mm": 5.0,
+      "canonical_relation_edge_limit": 5000000,
+      "sample_relation_edge_limit": 500000
+    },
+    "cache": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "samples_per_case": 2,
+      "total_candidates": 8,
+      "candidate_pool_size": 128,
+      "easy_fraction": 0.34,
+      "inter_fraction": 0.33,
+      "intra_fraction": 0.33,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original"
+    },
+    "training": {
+      "val_fraction": 0.2,
+      "epochs": 40,
+      "batch_size": "auto",
+      "batch_size_candidates": "powers_of_two_to_cohort",
+      "batch_calibration_repeats": 3,
+      "batch_calibration_max_vram_fraction": 0.9,
+      "num_workers": "auto",
+      "num_worker_candidates": [
+        0,
+        2,
+        4,
+        8
+      ],
+      "loader_calibration_batches": 8,
+      "lr": 0.0001,
+      "weight_decay": 0.0001,
+      "amp": true,
+      "grad_clip": 5.0,
+      "easy_epochs": 8,
+      "inter_epochs": 18,
+      "intra_epochs": 28,
+      "model_mine_start_epoch": 29,
+      "semi_hard_low_percentile": 0.7,
+      "semi_hard_high_percentile": 0.95,
+      "cross_entropy_weight": 1.0,
+      "pairwise_weight": 1.0,
+      "ordinal_weight": 0.2,
+      "mined_weight": 0.5,
+      "consistency_weight": 0.1,
+      "fixed_validation_epoch": 29,
+      "checkpoint_metric_precision": 8,
+      "gradient_accumulation_steps": 1,
+      "target_effective_batch_size": null,
+      "fused_optimizer": true,
+      "pin_memory": true,
+      "prefetch_factor": 1,
+      "persistent_workers": true,
+      "cuda_prefetch": false
+    },
+    "model": {
+      "hidden_dim": 128,
+      "heads": 4,
+      "local_layers": 3,
+      "patient_layers": 2,
+      "prototype_layers": 2,
+      "dropout": 0.1,
+      "dense_base_channels": 12,
+      "dense_feature_dim": 32,
+      "dense_batch_size": 4,
+      "channels_last_3d": true,
+      "checkpoint_local_blocks": true,
+      "checkpoint_dense_encoder": true
+    },
+    "generation": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "num_copies": 1,
+      "num_candidates": 128,
+      "scoring_batch_size": "auto",
+      "scoring_batch_size_candidates": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "scoring_batch_calibration_repeats": 3,
+      "scoring_batch_max_vram_fraction": 0.9,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original",
+      "top_k": 1,
+      "temperature": 0.0,
+      "intensity_scale_range": [
+        0.95,
+        1.05
+      ],
+      "intensity_shift_range": [
+        -5.0,
+        5.0
+      ],
+      "blend_border": 0,
+      "amp": true,
+      "local_candidate_chunk_size": 8,
+      "pin_memory": true,
+      "cpu_prefetch_workers": 2,
+      "cpu_prefetch_cases": 2,
+      "save_queue_depth": 2,
+      "case_batch_size": 2
+    },
+    "runtime": {
+      "prepare_workers": "auto",
+      "deterministic": true,
+      "allow_tf32": false,
+      "cudnn_benchmark": false
+    }
+  },
+  "train_cases": [
+    "liver_5",
+    "liver_6"
+  ],
+  "validation_cases": [
+    "liver_31"
+  ],
+  "prototype_training_cases": [
+    "liver_5",
+    "liver_6"
+  ],
+  "prototype_count": 16,
+  "schema_checks": [
+    {
+      "case_id": "liver_5",
+      "candidates": 8,
+      "difficulties": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "source_component": 1,
+      "views": [
+        [
+          {
+            "nodes": 7188,
+            "edges": 511771,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2584,
+              "target_liver_surface": 953
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 129382,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 30600,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 8971,
+              "source_context|corresponds_to|target_context": 70230,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 22297,
+              "target_liver_surface|anchors_context|target_context": 22297
+            }
+          },
+          {
+            "nodes": 10485,
+            "edges": 735737,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 5499,
+              "target_liver_surface": 1335
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 281704,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 46312,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 5851,
+              "source_context|corresponds_to|target_context": 53328,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 60274,
+              "target_liver_surface|anchors_context|target_context": 60274
+            }
+          },
+          {
+            "nodes": 10020,
+            "edges": 690326,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 5043,
+              "target_liver_surface": 1326
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 262306,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 46340,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 4879,
+              "source_context|corresponds_to|target_context": 38237,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 55285,
+              "target_liver_surface|anchors_context|target_context": 55285
+            }
+          },
+          {
+            "nodes": 9946,
+            "edges": 697061,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 5183,
+              "target_liver_surface": 1112
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 273760,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 37544,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 5183,
+              "source_context|corresponds_to|target_context": 35910,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 58335,
+              "target_liver_surface|anchors_context|target_context": 58335
+            }
+          },
+          {
+            "nodes": 7161,
+            "edges": 506089,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2562,
+              "target_liver_surface": 948
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 128044,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 30508,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 8850,
+              "source_context|corresponds_to|target_context": 65973,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 22360,
+              "target_liver_surface|anchors_context|target_context": 22360
+            }
+          },
+          {
+            "nodes": 7416,
+            "edges": 501130,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2708,
+              "target_liver_surface": 1057
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 134396,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 32138,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 8692,
+              "source_context|corresponds_to|target_context": 65440,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 16235,
+              "target_liver_surface|anchors_context|target_context": 16235
+            }
+          },
+          {
+            "nodes": 7464,
+            "edges": 480216,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2874,
+              "target_liver_surface": 939
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 140678,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 30562,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 6836,
+              "source_context|corresponds_to|target_context": 26426,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 23860,
+              "target_liver_surface|anchors_context|target_context": 23860
+            }
+          },
+          {
+            "nodes": 7411,
+            "edges": 511972,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2859,
+              "target_liver_surface": 901
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 142972,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 28392,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 9026,
+              "source_context|corresponds_to|target_context": 62952,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 20318,
+              "target_liver_surface|anchors_context|target_context": 20318
+            }
+          }
+        ],
+        [
+          {
+            "nodes": 7188,
+            "edges": 511771,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2584,
+              "target_liver_surface": 953
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 129382,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 30600,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 8971,
+              "source_context|corresponds_to|target_context": 70230,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 22297,
+              "target_liver_surface|anchors_context|target_context": 22297
+            }
+          },
+          {
+            "nodes": 9979,
+            "edges": 691267,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 4993,
+              "target_liver_surface": 1335
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 257746,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 46312,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 5851,
+              "source_context|corresponds_to|target_context": 53614,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 49875,
+              "target_liver_surface|anchors_context|target_context": 49875
+            }
+          },
+          {
+            "nodes": 10020,
+            "edges": 693158,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 5043,
+              "target_liver_surface": 1326
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 263448,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 46340,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 4879,
+              "source_context|corresponds_to|target_context": 38251,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 56123,
+              "target_liver_surface|anchors_context|target_context": 56123
+            }
+          },
+          {
+            "nodes": 9931,
+            "edges": 697360,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 5168,
+              "target_liver_surface": 1112
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 271228,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 37544,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 5183,
+              "source_context|corresponds_to|target_context": 35923,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 59744,
+              "target_liver_surface|anchors_context|target_context": 59744
+            }
+          },
+          {
+            "nodes": 7161,
+            "edges": 506089,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2562,
+              "target_liver_surface": 948
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 128044,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 30508,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 8850,
+              "source_context|corresponds_to|target_context": 65973,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 22360,
+              "target_liver_surface|anchors_context|target_context": 22360
+            }
+          },
+          {
+            "nodes": 7416,
+            "edges": 501130,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2708,
+              "target_liver_surface": 1057
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 134396,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 32138,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 8692,
+              "source_context|corresponds_to|target_context": 65440,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 16235,
+              "target_liver_surface|anchors_context|target_context": 16235
+            }
+          },
+          {
+            "nodes": 7464,
+            "edges": 480216,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2874,
+              "target_liver_surface": 939
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 140678,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 30562,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 6836,
+              "source_context|corresponds_to|target_context": 26426,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 23860,
+              "target_liver_surface|anchors_context|target_context": 23860
+            }
+          },
+          {
+            "nodes": 7411,
+            "edges": 511972,
+            "nodes_by_role": {
+              "tumor_surface": 91,
+              "tumor_interior": 23,
+              "source_context": 2584,
+              "source_liver_surface": 953,
+              "target_context": 2859,
+              "target_liver_surface": 901
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2132,
+              "tumor_interior|interior_neighbor|tumor_interior": 298,
+              "source_context|context_neighbor|source_context": 129382,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+              "target_context|context_neighbor|target_context": 142972,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 28392,
+              "tumor_interior|supports|tumor_surface": 1523,
+              "tumor_surface|supported_by|tumor_interior": 1523,
+              "tumor_surface|interfaces_source|source_context": 8971,
+              "source_context|interfaces_tumor|tumor_surface": 8971,
+              "tumor_surface|interfaces_target|target_context": 9026,
+              "source_context|corresponds_to|target_context": 62952,
+              "source_context|near_liver_surface|source_liver_surface": 22297,
+              "source_liver_surface|anchors_context|source_context": 22297,
+              "target_context|near_liver_surface|target_liver_surface": 20318,
+              "target_liver_surface|anchors_context|target_context": 20318
+            }
+          }
+        ]
+      ],
+      "prepare_seconds": 62.137626299998374
+    },
+    {
+      "case_id": "liver_6",
+      "candidates": 8,
+      "difficulties": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "source_component": 6,
+      "views": [
+        [
+          {
+            "nodes": 19883,
+            "edges": 1315701,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 7094,
+              "target_liver_surface": 2441
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 365144,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 81700,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 39899,
+              "source_context|corresponds_to|target_context": 199136,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 14295,
+              "target_liver_surface|anchors_context|target_context": 14295
+            }
+          },
+          {
+            "nodes": 15462,
+            "edges": 1037039,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 3649,
+              "target_liver_surface": 1465
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 183546,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 49962,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 22412,
+              "source_context|corresponds_to|target_context": 108041,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 35923,
+              "target_liver_surface|anchors_context|target_context": 35923
+            }
+          },
+          {
+            "nodes": 15735,
+            "edges": 1064184,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 3858,
+              "target_liver_surface": 1529
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 193802,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 52670,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 25359,
+              "source_context|corresponds_to|target_context": 115497,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 37812,
+              "target_liver_surface|anchors_context|target_context": 37812
+            }
+          },
+          {
+            "nodes": 15490,
+            "edges": 1063835,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 3111,
+              "target_liver_surface": 2031
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 147532,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 75356,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 23766,
+              "source_context|corresponds_to|target_context": 95829,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 60060,
+              "target_liver_surface|anchors_context|target_context": 60060
+            }
+          },
+          {
+            "nodes": 19568,
+            "edges": 1289170,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 7245,
+              "target_liver_surface": 1975
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 373046,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 62568,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 39899,
+              "source_context|corresponds_to|target_context": 199731,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 6347,
+              "target_liver_surface|anchors_context|target_context": 6347
+            }
+          },
+          {
+            "nodes": 19040,
+            "edges": 1289426,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 6897,
+              "target_liver_surface": 1795
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 351668,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 56602,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 38818,
+              "source_context|corresponds_to|target_context": 205158,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 17974,
+              "target_liver_surface|anchors_context|target_context": 17974
+            }
+          },
+          {
+            "nodes": 20473,
+            "edges": 1344718,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 7667,
+              "target_liver_surface": 2458
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 388928,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 84236,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 32097,
+              "source_context|corresponds_to|target_context": 106343,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 65941,
+              "target_liver_surface|anchors_context|target_context": 65941
+            }
+          },
+          {
+            "nodes": 17480,
+            "edges": 1198690,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 5295,
+              "target_liver_surface": 1837
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 266112,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 61566,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 35798,
+              "source_context|corresponds_to|target_context": 125706,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 54138,
+              "target_liver_surface|anchors_context|target_context": 54138
+            }
+          }
+        ],
+        [
+          {
+            "nodes": 19883,
+            "edges": 1315701,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 7094,
+              "target_liver_surface": 2441
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 365144,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 81700,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 39899,
+              "source_context|corresponds_to|target_context": 199136,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 14295,
+              "target_liver_surface|anchors_context|target_context": 14295
+            }
+          },
+          {
+            "nodes": 15462,
+            "edges": 1037039,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 3649,
+              "target_liver_surface": 1465
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 183546,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 49962,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 22412,
+              "source_context|corresponds_to|target_context": 108041,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 35923,
+              "target_liver_surface|anchors_context|target_context": 35923
+            }
+          },
+          {
+            "nodes": 15735,
+            "edges": 1064184,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 3858,
+              "target_liver_surface": 1529
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 193802,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 52670,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 25359,
+              "source_context|corresponds_to|target_context": 115497,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 37812,
+              "target_liver_surface|anchors_context|target_context": 37812
+            }
+          },
+          {
+            "nodes": 15490,
+            "edges": 1063835,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 3111,
+              "target_liver_surface": 2031
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 147532,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 75356,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 23766,
+              "source_context|corresponds_to|target_context": 95829,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 60060,
+              "target_liver_surface|anchors_context|target_context": 60060
+            }
+          },
+          {
+            "nodes": 19568,
+            "edges": 1289170,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 7245,
+              "target_liver_surface": 1975
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 373046,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 62568,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 39899,
+              "source_context|corresponds_to|target_context": 199731,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 6347,
+              "target_liver_surface|anchors_context|target_context": 6347
+            }
+          },
+          {
+            "nodes": 19040,
+            "edges": 1289426,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 6897,
+              "target_liver_surface": 1795
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 351668,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 56602,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 38818,
+              "source_context|corresponds_to|target_context": 205158,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 17974,
+              "target_liver_surface|anchors_context|target_context": 17974
+            }
+          },
+          {
+            "nodes": 20473,
+            "edges": 1344718,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 7667,
+              "target_liver_surface": 2458
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 388928,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 84236,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 32097,
+              "source_context|corresponds_to|target_context": 106343,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 65941,
+              "target_liver_surface|anchors_context|target_context": 65941
+            }
+          },
+          {
+            "nodes": 17480,
+            "edges": 1198690,
+            "nodes_by_role": {
+              "tumor_surface": 532,
+              "tumor_interior": 281,
+              "source_context": 7094,
+              "source_liver_surface": 2441,
+              "target_context": 5295,
+              "target_liver_surface": 1837
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 10704,
+              "tumor_interior|interior_neighbor|tumor_interior": 6126,
+              "source_context|context_neighbor|source_context": 365144,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+              "target_context|context_neighbor|target_context": 266112,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 61566,
+              "tumor_interior|supports|tumor_surface": 14585,
+              "tumor_surface|supported_by|tumor_interior": 14585,
+              "tumor_surface|interfaces_source|source_context": 39899,
+              "source_context|interfaces_tumor|tumor_surface": 39899,
+              "tumor_surface|interfaces_target|target_context": 35798,
+              "source_context|corresponds_to|target_context": 125706,
+              "source_context|near_liver_surface|source_liver_surface": 14295,
+              "source_liver_surface|anchors_context|source_context": 14295,
+              "target_context|near_liver_surface|target_liver_surface": 54138,
+              "target_liver_surface|anchors_context|target_context": 54138
+            }
+          }
+        ]
+      ],
+      "prepare_seconds": 115.78370420000283
+    },
+    {
+      "case_id": "liver_31",
+      "candidates": 8,
+      "difficulties": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "source_component": 8,
+      "views": [
+        [
+          {
+            "nodes": 6706,
+            "edges": 581274,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2132,
+              "source_liver_surface": 965,
+              "target_context": 2507,
+              "target_liver_surface": 965
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 106224,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 126358,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 33450,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 7493,
+              "source_context|corresponds_to|target_context": 59029,
+              "source_context|near_liver_surface|source_liver_surface": 44714,
+              "source_liver_surface|anchors_context|source_context": 44714,
+              "target_context|near_liver_surface|target_liver_surface": 52858,
+              "target_liver_surface|anchors_context|target_context": 52858
+            }
+          },
+          {
+            "nodes": 9464,
+            "edges": 624380,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2339,
+              "source_liver_surface": 965,
+              "target_context": 4040,
+              "target_liver_surface": 1983
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 116532,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 212150,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 65464,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 12049,
+              "source_context|corresponds_to|target_context": 43699,
+              "source_context|near_liver_surface|source_liver_surface": 48938,
+              "source_liver_surface|anchors_context|source_context": 48938,
+              "target_context|near_liver_surface|target_liver_surface": 11517,
+              "target_liver_surface|anchors_context|target_context": 11517
+            }
+          },
+          {
+            "nodes": 9339,
+            "edges": 637339,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2359,
+              "source_liver_surface": 965,
+              "target_context": 3915,
+              "target_liver_surface": 1963
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 119924,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 204850,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 66926,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 12209,
+              "source_context|corresponds_to|target_context": 41096,
+              "source_context|near_liver_surface|source_liver_surface": 48636,
+              "source_liver_surface|anchors_context|source_context": 48636,
+              "target_context|near_liver_surface|target_liver_surface": 20743,
+              "target_liver_surface|anchors_context|target_context": 20743
+            }
+          },
+          {
+            "nodes": 9313,
+            "edges": 619334,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2458,
+              "source_liver_surface": 965,
+              "target_context": 4006,
+              "target_liver_surface": 1747
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 123840,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 209544,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 55462,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 12209,
+              "source_context|corresponds_to|target_context": 41259,
+              "source_context|near_liver_surface|source_liver_surface": 51518,
+              "source_liver_surface|anchors_context|source_context": 51518,
+              "target_context|near_liver_surface|target_liver_surface": 10204,
+              "target_liver_surface|anchors_context|target_context": 10204
+            }
+          },
+          {
+            "nodes": 6439,
+            "edges": 513204,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2365,
+              "source_liver_surface": 965,
+              "target_context": 1511,
+              "target_liver_surface": 1461
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 119560,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 71286,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 53708,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 7822,
+              "source_context|corresponds_to|target_context": 20128,
+              "source_context|near_liver_surface|source_liver_surface": 51656,
+              "source_liver_surface|anchors_context|source_context": 51656,
+              "target_context|near_liver_surface|target_liver_surface": 41906,
+              "target_liver_surface|anchors_context|target_context": 41906
+            }
+          },
+          {
+            "nodes": 6787,
+            "edges": 536341,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2371,
+              "source_liver_surface": 965,
+              "target_context": 1748,
+              "target_liver_surface": 1566
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 117190,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 83974,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 56598,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 8503,
+              "source_context|corresponds_to|target_context": 23438,
+              "source_context|near_liver_surface|source_liver_surface": 52504,
+              "source_liver_surface|anchors_context|source_context": 52504,
+              "target_context|near_liver_surface|target_liver_surface": 44027,
+              "target_liver_surface|anchors_context|target_context": 44027
+            }
+          },
+          {
+            "nodes": 7240,
+            "edges": 539568,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2390,
+              "source_liver_surface": 965,
+              "target_context": 2339,
+              "target_liver_surface": 1409
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 122096,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 115288,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 47482,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 4442,
+              "source_context|corresponds_to|target_context": 11122,
+              "source_context|near_liver_surface|source_liver_surface": 49571,
+              "source_liver_surface|anchors_context|source_context": 49571,
+              "target_context|near_liver_surface|target_liver_surface": 43210,
+              "target_liver_surface|anchors_context|target_context": 43210
+            }
+          },
+          {
+            "nodes": 7060,
+            "edges": 549597,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2200,
+              "source_liver_surface": 965,
+              "target_context": 2404,
+              "target_liver_surface": 1354
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 108874,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 119326,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 46606,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 7835,
+              "source_context|corresponds_to|target_context": 24792,
+              "source_context|near_liver_surface|source_liver_surface": 47842,
+              "source_liver_surface|anchors_context|source_context": 47842,
+              "target_context|near_liver_surface|target_liver_surface": 46452,
+              "target_liver_surface|anchors_context|target_context": 46452
+            }
+          }
+        ],
+        [
+          {
+            "nodes": 6636,
+            "edges": 581359,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2254,
+              "source_liver_surface": 965,
+              "target_context": 2315,
+              "target_liver_surface": 965
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 112612,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 117466,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 33450,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 7493,
+              "source_context|corresponds_to|target_context": 60424,
+              "source_context|near_liver_surface|source_liver_surface": 50178,
+              "source_liver_surface|anchors_context|source_context": 50178,
+              "target_context|near_liver_surface|target_liver_surface": 47991,
+              "target_liver_surface|anchors_context|target_context": 47991
+            }
+          },
+          {
+            "nodes": 9185,
+            "edges": 610488,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2060,
+              "source_liver_surface": 965,
+              "target_context": 4040,
+              "target_liver_surface": 1983
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 101338,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 212150,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 65464,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 12049,
+              "source_context|corresponds_to|target_context": 43199,
+              "source_context|near_liver_surface|source_liver_surface": 49839,
+              "source_liver_surface|anchors_context|source_context": 49839,
+              "target_context|near_liver_surface|target_liver_surface": 11517,
+              "target_liver_surface|anchors_context|target_context": 11517
+            }
+          },
+          {
+            "nodes": 9060,
+            "edges": 608936,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2080,
+              "source_liver_surface": 965,
+              "target_context": 3915,
+              "target_liver_surface": 1963
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 101884,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 204850,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 66926,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 12209,
+              "source_context|corresponds_to|target_context": 40587,
+              "source_context|near_liver_surface|source_liver_surface": 43709,
+              "source_liver_surface|anchors_context|source_context": 43709,
+              "target_context|near_liver_surface|target_liver_surface": 20743,
+              "target_liver_surface|anchors_context|target_context": 20743
+            }
+          },
+          {
+            "nodes": 9213,
+            "edges": 613488,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2358,
+              "source_liver_surface": 965,
+              "target_context": 4006,
+              "target_liver_surface": 1747
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 117488,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 209544,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 55462,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 12209,
+              "source_context|corresponds_to|target_context": 41067,
+              "source_context|near_liver_surface|source_liver_surface": 51867,
+              "source_liver_surface|anchors_context|source_context": 51867,
+              "target_context|near_liver_surface|target_liver_surface": 10204,
+              "target_liver_surface|anchors_context|target_context": 10204
+            }
+          },
+          {
+            "nodes": 6518,
+            "edges": 512823,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2444,
+              "source_liver_surface": 965,
+              "target_context": 1511,
+              "target_liver_surface": 1461
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 122464,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 71286,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 53708,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 7822,
+              "source_context|corresponds_to|target_context": 20139,
+              "source_context|near_liver_surface|source_liver_surface": 50008,
+              "source_liver_surface|anchors_context|source_context": 50008,
+              "target_context|near_liver_surface|target_liver_surface": 41906,
+              "target_liver_surface|anchors_context|target_context": 41906
+            }
+          },
+          {
+            "nodes": 6876,
+            "edges": 539758,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2460,
+              "source_liver_surface": 965,
+              "target_context": 1748,
+              "target_liver_surface": 1566
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 123590,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 83974,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 56598,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 8503,
+              "source_context|corresponds_to|target_context": 23515,
+              "source_context|near_liver_surface|source_liver_surface": 50974,
+              "source_liver_surface|anchors_context|source_context": 50974,
+              "target_context|near_liver_surface|target_liver_surface": 44027,
+              "target_liver_surface|anchors_context|target_context": 44027
+            }
+          },
+          {
+            "nodes": 7199,
+            "edges": 534922,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2349,
+              "source_liver_surface": 965,
+              "target_context": 2339,
+              "target_liver_surface": 1409
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 118958,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 115288,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 47482,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 4442,
+              "source_context|corresponds_to|target_context": 11122,
+              "source_context|near_liver_surface|source_liver_surface": 48817,
+              "source_liver_surface|anchors_context|source_context": 48817,
+              "target_context|near_liver_surface|target_liver_surface": 43210,
+              "target_liver_surface|anchors_context|target_context": 43210
+            }
+          },
+          {
+            "nodes": 7132,
+            "edges": 558279,
+            "nodes_by_role": {
+              "tumor_surface": 115,
+              "tumor_interior": 22,
+              "source_context": 2272,
+              "source_liver_surface": 965,
+              "target_context": 2404,
+              "target_liver_surface": 1354
+            },
+            "edges_by_relation": {
+              "tumor_surface|surface_neighbor|tumor_surface": 2642,
+              "tumor_interior|interior_neighbor|tumor_interior": 150,
+              "source_context|context_neighbor|source_context": 114160,
+              "source_liver_surface|surface_neighbor|source_liver_surface": 33450,
+              "target_context|context_neighbor|target_context": 119326,
+              "target_liver_surface|surface_neighbor|target_liver_surface": 46606,
+              "tumor_interior|supports|tumor_surface": 1174,
+              "tumor_surface|supported_by|tumor_interior": 1174,
+              "tumor_surface|interfaces_source|source_context": 7493,
+              "source_context|interfaces_tumor|tumor_surface": 7493,
+              "tumor_surface|interfaces_target|target_context": 7835,
+              "source_context|corresponds_to|target_context": 24820,
+              "source_context|near_liver_surface|source_liver_surface": 49526,
+              "source_liver_surface|anchors_context|source_context": 49526,
+              "target_context|near_liver_surface|target_liver_surface": 46452,
+              "target_liver_surface|anchors_context|target_context": 46452
+            }
+          }
+        ]
+      ],
+      "prepare_seconds": 28.904570999991847
+    }
+  ],
+  "source_records": [
+    {
+      "case_id": "liver_5",
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_5_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_5.nii.gz",
+      "image_sha256": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+      "label_sha256": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06"
+    },
+    {
+      "case_id": "liver_6",
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_6_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_6.nii.gz",
+      "image_sha256": "da441b7b71fea9b654d3fbb405bdf19d562145297f896a3e906f7820cb59271e",
+      "label_sha256": "5847fb1c0641b1c6d19baefd9404e1c3f86108a902a8fccf4eb5fae177acac14"
+    },
+    {
+      "case_id": "liver_31",
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_31_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_31.nii.gz",
+      "image_sha256": "86c8f3b6ef777ef98f900c85676e5585b3298ecc53b827bccf7a53fde8b51cec",
+      "label_sha256": "b80998498bf9fb1210ee6690432fab58cd9dc1eeb06fe84c74b881922eedb8d9"
+    }
+  ],
+  "region_prepare_seconds": {
+    "liver_5": 40.676454000000376,
+    "liver_6": 44.47716359999322,
+    "liver_31": 7.184818900001119
+  },
+  "preparation_seconds": 160.75826089999464,
+  "process_rss_bytes": 4766470144
+}

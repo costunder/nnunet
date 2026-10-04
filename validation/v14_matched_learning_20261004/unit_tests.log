@@ -1,0 +1,25 @@
+test_actual_ct_and_cuda_evidence_required (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_architecture_and_original_graph_must_match (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_cohort_and_batch_contract_must_match (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_debug_evidence_cannot_be_claimed_as_production (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_invalid_neural_identity_hash_rejected (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_matching_invalid_fixture_hash_rejected (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_missing_native_core_gradient_rejected (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_missing_or_invalid_native_learning_evidence_rejected (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_native_loss_and_runtime_must_match (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_nonfinite_ranking_metrics_or_scores_rejected (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_recorded_reference_accepted_without_mutating_metadata (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_validation_overlap_rejected_even_with_matching_cohort_fields (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_wrong_fixture_cannot_reuse_native_results (tests.test_v14_learning_replay.LearningReplayReferenceContracts) ... ok
+test_different_record_is_rejected_without_overwriting_it (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+test_failed_contract_verification_never_creates_version_sidecar (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+test_failed_prepare_never_launches_training (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+test_frozen_8c7e914_execution_helpers_still_match_preserved_receipt (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+test_same_single_prepare_and_train_commands_without_native_or_30mm_run (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+test_version_is_a_native_branch_and_does_not_mutate_training_contract (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+test_version_sidecar_preserves_existing_manifest_and_checkpoint_bytes (tests.test_v14_scope_version.VersionDisplayUnits) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 1.594s
+
+OK

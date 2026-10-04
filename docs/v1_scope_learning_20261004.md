@@ -10,6 +10,8 @@
 
 ## 실제 로컬 결과
 
+아래 결과는 이전 2-update smoke다. 이후 **native 원시 기록과 view·loss·optimizer 조건을 맞춰10mm16회 실제 CUDA update를 완료**했다. 최신 결과와 AMP overflow 진단은 [원본 조건 대조 보고서](v14_matched_learning_20261004.md)를 우선 읽는다. 최신 고정 train MRR은0.35→1.0, loss는3.8925→1.0871로 개선됐다. 작은 batch의 학습 경로 확인이며 전체 validation 품질 승인과 구분한다.
+
 실제 CT train 2환자(liver_5/liver_6), 별도 validation 1환자(liver_31)를 사용했다. RTX 5070 Ti CUDA에서 physical sample batch2, 후보 graph batch16, 원본 10,434,532 parameter 모델과 두 view로 **명시적 2-update smoke**를 수행했다. scheduler는 원본 T_max=40을 유지했다.
 
 | 지표 | 초기 | 1 update 뒤 | 2 update 뒤 |

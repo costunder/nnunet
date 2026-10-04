@@ -1,0 +1,6 @@
+{
+  "debug": true,
+  "quality_verified": false,
+  "production_ready": false,
+  "error": "Traceback (most recent call last):\n  File \"D:\\AI project\\nnunet\\tools\\verify_v14_learning_replay.py\", line 456, in main\n    result = execute(a, root, report, contract, manifest, protocol)\n  File \"D:\\AI project\\nnunet\\tools\\verify_v14_learning_replay.py\", line 275, in execute\n    disk_free_bytes=psutil.disk_usage(root).free, rss_limit_bytes=int(a.rss_gib*2**30)),\n  File \"D:\\AI project\\nnunet\\.venv\\lib\\site-packages\\psutil\\__init__.py\", line 2081, in disk_usage\n    return _psplatform.disk_usage(path)\n  File \"D:\\AI project\\nnunet\\.venv\\lib\\site-packages\\psutil\\_pswindows.py\", line 242, in disk_usage\n    total, used, free = cext.disk_usage(path)\nTypeError: argument 1 must be str, not WindowsPath\n"
+}
