@@ -18,6 +18,7 @@ FORMAT = 'hiercp_v14_m10_half_B_learning_v1'
 MARKER = 'v1x_half_b_digest'
 FILES = ('hiercp_v1x/half_b_training.py', 'hiercp_v1x/half_b_entry.py',
     'hiercp_v1x/half_b_model.py', 'hiercp_v1x/half_b_support.py',
+    'hiercp_v1x/half_b_allocation.py',
     'tools/run_v1_half_b.py', 'hiercp_v1x/half_a_training.py',
     'hiercp_v1x/half_a_case_metrics.py', 'hiercp_v1x/half_a_entry.py',
     'hiercp_v1x/scope_training_entry.py', 'hiercp_v1x/epoch_telemetry.py',
@@ -26,7 +27,7 @@ FILES = ('hiercp_v1x/half_b_training.py', 'hiercp_v1x/half_b_entry.py',
     'config/prompt_graph_v222_v1_l0.json', 'tools/local_cnn_device.py')
 
 
-def recipe(baseline, experiment, gpu, cuda_gib, rss_gib):
+def recipe(baseline, experiment, gpu, cuda_gib, rss_gib, allocation_policy='same_allocation'):
     baseline = Path(baseline).resolve(strict=True)
     root = Path(experiment).resolve()
     if root == baseline or root.is_relative_to(baseline) or baseline.is_relative_to(root):
@@ -35,6 +36,8 @@ def recipe(baseline, experiment, gpu, cuda_gib, rss_gib):
             or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0
             for v in (cuda_gib, rss_gib))):
         raise ValueError('Explicit physical GPU and positive finite CUDA/RSS budgets required')
+    if allocation_policy not in {'same_allocation', 'current_allocation'}:
+        raise ValueError('Explicit supported half-B allocation policy required')
     native, proof = baseline_proof(baseline)
     cfg = copy.deepcopy(native['config'])
     cfg['training']['batch_size'] = proof['execution']['physical_batch']
@@ -51,6 +54,7 @@ def recipe(baseline, experiment, gpu, cuda_gib, rss_gib):
         model_contract=model_contract(),
         implementation={name: digest(ROOT / name) for name in FILES},
         gpu=gpu, cuda_gib=float(cuda_gib), rss_gib=float(rss_gib),
+        allocation_policy=allocation_policy,
         learning_target='v1_source_original_anchor_vs_curriculum_candidates',
         target_supervision_changed=False, L0_loss_unchanged=True,
         native_v22_objective_equivalence=False,
@@ -64,8 +68,8 @@ def recipe(baseline, experiment, gpu, cuda_gib, rss_gib):
     return root, receipt
 
 
-def initialize(baseline, experiment, gpu, cuda_gib, rss_gib):
-    root, receipt = recipe(baseline, experiment, gpu, cuda_gib, rss_gib)
+def initialize(baseline, experiment, gpu, cuda_gib, rss_gib, allocation_policy='same_allocation'):
+    root, receipt = recipe(baseline, experiment, gpu, cuda_gib, rss_gib, allocation_policy)
     if (root / 'manifest.json').exists():
         if read(root / 'manifest.json') != receipt or read(root / 'config.json') != receipt['config']:
             raise ValueError('Existing B source/baseline/resource/recipe differs; no silent migration')
@@ -86,7 +90,7 @@ def verify(root, receipt=None):
     if actual.get('format') != FORMAT:
         raise ValueError('Half-B manifest required')
     _, expected = recipe(actual['baseline_experiment'], root,
-        actual['gpu'], actual['cuda_gib'], actual['rss_gib'])
+        actual['gpu'], actual['cuda_gib'], actual['rss_gib'], actual.get('allocation_policy', 'same_allocation'))
     if actual != expected or read(root / 'config.json') != expected['config']:
         raise ValueError('Half-B actual source/baseline/config/support/recipe identity changed')
     return actual

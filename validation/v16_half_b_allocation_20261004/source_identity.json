@@ -1,0 +1,21 @@
+{
+  "hiercp_v1x/half_b_training.py": "fce0b09fb8d69fc341097a39ff40fe45ac155a670300df1f244065a83a1bc177",
+  "hiercp_v1x/half_b_entry.py": "a4e5ee1b8d989f7afa66ba483b4cf96be074cbef386e903167740b761d43f145",
+  "hiercp_v1x/half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+  "hiercp_v1x/half_b_support.py": "20c5059e55e396f9fd8cbfaa2d4c079596a1024589078a015a96fd3e71bf7730",
+  "hiercp_v1x/half_b_allocation.py": "98b86e1ca836858655b26710b628b56c2aeb50e00417254acc93c46fd8905599",
+  "tools/run_v1_half_b.py": "dd4c59dca158a8e589eb01cbbbb8be18edab9e5283f81e5ec5d162388a9e603f",
+  "hiercp_v1x/half_a_training.py": "bb509a659ef645ef25c975333934f1e8ea17ec2b14d193a2700a69ec59ee9ed4",
+  "hiercp_v1x/half_a_case_metrics.py": "fcc18445e9be9906228b9a15372b6785bfdadbbb88be4fceb6263ae0f85e7ad9",
+  "hiercp_v1x/half_a_entry.py": "d3e09c182f084f099b65ec8d698fee421188d2895d612ed492c777ae4edc9d24",
+  "hiercp_v1x/scope_training_entry.py": "05ee89ef7a1cdef947401a082e2b60dced59977328f56b0ea004638695546a80",
+  "hiercp_v1x/epoch_telemetry.py": "142a66674bce1208a151d73b5610e2cfe848b5e427160be51eb99e900867a86c",
+  "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+  "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+  "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+  "l0_local_cnn/recommendation.py": "c6dd5c642277cfbca1a934d83f415e41315435a0dae19066ab15d7b2b5703b46",
+  "config/prompt_graph_v222_v1_l0.json": "b6205a175427d53bf23a72e7173adbaf5dbf9fa011c2df276d5158b2662ffd09",
+  "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+  "tests/test_v1_half_b_allocation.py": "757e42174038edad893b462bcfee4cae66f8332d4ea060f8cd8899a9f3adf5c8",
+  "tests/test_v1_half_b_allocation_entry.py": "15658c94f9f4b993472cf2fc3abf84b4ff93ee21d2781af7f86435f7f7001674"
+}

@@ -1,0 +1,37 @@
+6900, "canonical_nodes_two_views": 51600, "input_bytes_upper_bound": 256021968}, {"cache_file": "liver_88__000.pt", "candidate_count": 8, "canonical_edges_two_views": 1730202, "canonical_nodes_two_views": 23638, "input_bytes_upper_bound": 109889420}, {"cache_file": "liver_88__001.pt", "candidate_count": 8, "canonical_edges_two_views": 4126240, "canonical_nodes_two_views": 51096, "input_bytes_upper_bound": 247527256}, {"cache_file": "liver_92__000.pt", "candidate_count": 8, "canonical_edges_two_views": 1752770, "canonical_nodes_two_views": 22960, "input_bytes_upper_bound": 111069320}, {"cache_file": "liver_92__001.pt", "candidate_count": 8, "canonical_edges_two_views": 2411562, "canonical_nodes_two_views": 29876, "input_bytes_upper_bound": 148833088}, {"cache_file": "liver_93__000.pt", "candidate_count": 8, "canonical_edges_two_views": 3112616, "canonical_nodes_two_views": 39126, "input_bytes_upper_bound": 189287236}, {"cache_file": "liver_93__001.pt", "candidate_count": 8, "canonical_edges_two_views": 1496898, "canonical_nodes_two_views": 19102, "input_bytes_upper_bound": 96284004}, {"cache_file": "liver_94__000.pt", "candidate_count": 8, "canonical_edges_two_views": 3594176, "canonical_nodes_two_views": 47176, "input_bytes_upper_bound": 217248096}, {"cache_file": "liver_94__001.pt", "candidate_count": 8, "canonical_edges_two_views": 2929608, "canonical_nodes_two_views": 38454, "input_bytes_upper_bound": 178933316}, {"cache_file": "liver_95__000.pt", "candidate_count": 8, "canonical_edges_two_views": 432378, "canonical_nodes_two_views": 6870, "input_bytes_upper_bound": 35096820}, {"cache_file": "liver_95__001.pt", "candidate_count": 8, "canonical_edges_two_views": 702326, "canonical_nodes_two_views": 10282, "input_bytes_upper_bound": 50643820}, {"cache_file": "liver_97__000.pt", "candidate_count": 8, "canonical_edges_two_views": 14348684, "canonical_nodes_two_views": 171488, "input_bytes_upper_bound": 835162936}, {"cache_file": "liver_97__001.pt", "candidate_count": 8, "canonical_edges_two_views": 19571054, "canonical_nodes_two_views": 225154, "input_bytes_upper_bound": 1134377572}, {"cache_file": "liver_99__000.pt", "candidate_count": 8, "canonical_edges_two_views": 1584820, "canonical_nodes_two_views": 20468, "input_bytes_upper_bound": 101357072}, {"cache_file": "liver_99__001.pt", "candidate_count": 8, "canonical_edges_two_views": 2166706, "canonical_nodes_two_views": 27980, "input_bytes_upper_bound": 134889200}, {"cache_file": "liver_9__000.pt", "candidate_count": 8, "canonical_edges_two_views": 2674886, "canonical_nodes_two_views": 33050, "input_bytes_upper_bound": 163977484}, {"cache_file": "liver_9__001.pt", "candidate_count": 8, "canonical_edges_two_views": 2540206, "canonical_nodes_two_views": 31730, "input_bytes_upper_bound": 156269084}], "sample_count": 187, "scope": "all_supplied_train_and_validation_cache_files"}
+Traceback (most recent call last):
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/hiercp_v1x/telemetry_entry.py", line 244, in invocation_logs
+    yield stdout_path, stderr_path
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/hiercp_v1x/half_b_entry.py", line 287, in main
+    result = pipeline.main()
+  File "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004/source/v1.0/hiercp/pipeline.py", line 3453, in main
+    run_train(args)
+  File "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004/source/v1.0/hiercp/pipeline.py::<half-B-support-observation>", line 241, in run_train
+    output_path=args.output,
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/hiercp_v1x/half_b_entry.py", line 154, in checked
+    raise ValueError('Current allocation differs from baseline batch/worker measurement; no silent migration')
+ValueError: Current allocation differs from baseline batch/worker measurement; no silent migration
+Traceback (most recent call last):
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/hiercp_v1x/half_b_entry.py", line 310, in <module>
+    main()
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/hiercp_v1x/half_b_entry.py", line 287, in main
+    result = pipeline.main()
+  File "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004/source/v1.0/hiercp/pipeline.py", line 3453, in main
+    run_train(args)
+  File "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004/source/v1.0/hiercp/pipeline.py::<half-B-support-observation>", line 241, in run_train
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/hiercp_v1x/half_b_entry.py", line 154, in checked
+    raise ValueError('Current allocation differs from baseline batch/worker measurement; no silent migration')
+ValueError: Current allocation differs from baseline batch/worker measurement; no silent migration
+Traceback (most recent call last):
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/tools/run_v1_half_b.py", line 55, in <module>
+    main()
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/tools/run_v1_half_b.py", line 51, in main
+    run(root, receipt)
+  File "/home/aicompetition06/Medical/HierCP-v1-47bdb58/tools/run_v1_half_b.py", line 37, in run
+    raise RuntimeError(f'Half-B failed({code}); outputs preserved; no A/combined experiment started')
+RuntimeError: Half-B failed(1); outputs preserved; no A/combined experiment started
+(nnunet) aicompetition06@ece-a6gpu6:~/Medical/HierCP-v1-47bdb58$

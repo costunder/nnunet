@@ -1,0 +1,27 @@
+{
+  "format": "hiercp_half_B_allocation_evidence_v1",
+  "full_training": false,
+  "quality_verified": false,
+  "files": {
+    "actual_CUDA_admission.json": {
+      "sha256": "cb5c43ef779f4aea3e7a21bd7bde0ecc1dde14b35d5a240a8cccf56c37226b4b",
+      "size": 7256
+    },
+    "server_failure.txt": {
+      "sha256": "bcce141eee45a8e80b2465e6846b3abef272072ac0c1492e0ce8daa09e26ceb4",
+      "size": 5685
+    },
+    "source_identity.json": {
+      "sha256": "b553df1d6e0a5753991deadba22517c886888b9588f7f08fa7c5646f0078ec96",
+      "size": 1978
+    },
+    "unit_checks.log": {
+      "sha256": "51943714e676abd45b08098effa634a4e9dcba43a730b4a89013a66d770eaf22",
+      "size": 12359
+    },
+    "verification.json": {
+      "sha256": "8c31d385ae1160f52604bd64ed11d8a17e32960f46cef666e519c5138b1a83a5",
+      "size": 1993
+    }
+  }
+}

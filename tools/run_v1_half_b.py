@@ -45,9 +45,12 @@ def main():
     p.add_argument('--experiment', required=True)
     p.add_argument('--cuda-gib', type=float, required=True)
     p.add_argument('--rss-gib', type=float, required=True)
+    p.add_argument('--allocation-policy', choices=('same_allocation', 'current_allocation'),
+                   default='same_allocation',
+                   help='current_allocation admits a different same-hardware GPU allocation while keeping the measured batch/workers')
     a = p.parse_args()
     from hiercp_v1x.half_b_training import initialize
-    root, receipt = initialize(a.baseline, a.experiment, a.gpu, a.cuda_gib, a.rss_gib)
+    root, receipt = initialize(a.baseline, a.experiment, a.gpu, a.cuda_gib, a.rss_gib, a.allocation_policy)
     run(root, receipt)
 
 

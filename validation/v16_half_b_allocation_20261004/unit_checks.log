@@ -1,0 +1,77 @@
+test_actual_cpu_capacity_cannot_reduce_preserved_workers (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_configured_batch_workers_and_accumulation_cannot_change (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_cpu_or_other_selected_devices_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_cuda_availability_requires_true_boolean (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_declared_budgets_require_finite_positive_numbers (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_declared_cuda_budget_cannot_exceed_hardware (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_default_same_allocation_retains_exact_guard_and_reports_changes (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_every_stable_gpu_hardware_field_must_match (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_explicit_migration_accepts_identity_and_cpu_shape_changes_with_capacity (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_gpu_allocated_over_declared_budget_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_gpu_budget_uses_free_plus_allocated_without_changing_budget (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_gpu_unknown_negative_boolean_or_inconsistent_memory_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_host_budget_uses_process_rss_plus_effective_available_memory (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_missing_or_invalid_baseline_proof_cannot_supply_fallback_controls (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_multiple_or_unknown_visible_devices_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_nonfinite_or_non_json_snapshot_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_process_rss_over_budget_rejected_even_with_available_memory (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_return_is_json_safe_independent_and_validator_does_not_mutate_inputs (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_same_allocation_admission_preserves_all_controls (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_small_explicit_unit_budgets_supported_without_production_changes (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_supplied_baseline_fingerprint_must_match_verified_proof (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_unknown_invalid_host_facts_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_unknown_or_malformed_gpu_hardware_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_unknown_policy_rejected (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_zero_workers_still_requires_one_effective_cpu (tests.test_v1_half_b_allocation.HalfBAllocationUnits) ... ok
+test_insufficient_current_capacity_creates_no_execution_lock (tests.test_v1_half_b_allocation_entry.AllocationEntryUnits) ... ok
+test_migration_returns_actual_native_fingerprint_and_records_both (tests.test_v1_half_b_allocation_entry.AllocationEntryUnits) ... ok
+test_resume_same_allocation_tolerates_volatile_capacity_and_preserves_lock (tests.test_v1_half_b_allocation_entry.AllocationEntryUnits) ... ok
+test_started_allocation_lock_cannot_silently_change (tests.test_v1_half_b_allocation_entry.AllocationEntryUnits) ... ok
+test_current_policy_is_explicit_bound_and_changes_no_training_config (tests.test_v1_half_b_allocation_entry.AllocationRecipeUnits) ... ok
+test_invalid_policy_cannot_create_experiment (tests.test_v1_half_b_allocation_entry.AllocationRecipeUnits) ... ok
+test_policy_cannot_silently_change_an_existing_experiment (tests.test_v1_half_b_allocation_entry.AllocationRecipeUnits) ... ok
+test_changed_original_epoch_or_pass_boundary_rejected (tests.test_v1_half_b_training.HalfBObservationOverlayUnits) ... ok
+test_checked_overlay_keeps_original_full_loop_curriculum_and_loss (tests.test_v1_half_b_training.HalfBObservationOverlayUnits) ... ok
+test_exact_repeat_preserves_config_manifest_bytes (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+test_implementation_inventory_or_changed_source_digest_rejected (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+v1.6 half B |10mm | original L0/GT8/pool128/loss |40epochs | upper/scorer only | no prepare
+Ctrl+C stops foreground work; resume uses the last completed epoch. Baseline and A are preserved.
+HALF-B RESULTS: D:\AI project\nnunet\work\half_B_metadata_UNIT_zp0eg88b\UNIT_B\results\half_B
+test_only_one_B_child_and_no_prepare_A_combined_paths (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+test_recipe_only_resolves_measured_batch_workers_and_preserves_v1_target (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+test_resealed_model_loss_or_scope_config_change_rejected (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+test_resealed_target_support_flags_or_source_cannot_migrate_existing_B (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+test_resource_change_overlap_and_unbound_output_fail (tests.test_v1_half_b_training.HalfBRecipeUnits) ... ok
+test_failure_restores_rng_and_mixed_modes (tests.test_v1_half_b_training.HalfBSupportMechanicalUnits) ... ok
+test_partial_or_wrong_case_support_fails_without_binding_or_complete_receipt (tests.test_v1_half_b_training.HalfBSupportMechanicalUnits) ... ok
+{"format": "hiercp_half_B_full_training_support_refresh_v1", "stage": "half_B_support_refreshed", "generation": "epoch00_93949461c3184d8787981b8558ec2a38", "epoch": 0, "trigger": "UNIT_initial", "fixed_view_epoch": 0, "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation", "half_B_contract_sha256": "e6e7c31a158270a3329099235365299bb07dcaf27443ca9890cb0289982bfd65", "samples": 3, "candidate_embeddings": 24, "actual_training_patients": 3, "configured_training_patients": 84, "configured_but_not_materialized_cases": ["UNIT_train_3", "UNIT_train_4", "UNIT_train_5", "UNIT_train_6", "UNIT_train_7", "UNIT_train_8", "UNIT_train_9", "UNIT_train_10", "UNIT_train_11", "UNIT_train_12", "UNIT_train_13", "UNIT_train_14", "UNIT_train_15", "UNIT_train_16", "UNIT_train_17", "UNIT_train_18", "UNIT_train_19", "UNIT_train_20", "UNIT_train_21", "UNIT_train_22", "UNIT_train_23", "UNIT_train_24", "UNIT_train_25", "UNIT_train_26", "UNIT_train_27", "UNIT_train_28", "UNIT_train_29", "UNIT_train_30", "UNIT_train_31", "UNIT_train_32", "UNIT_train_33", "UNIT_train_34", "UNIT_train_35", "UNIT_train_36", "UNIT_train_37", "UNIT_train_38", "UNIT_train_39", "UNIT_train_40", "UNIT_train_41", "UNIT_train_42", "UNIT_train_43", "UNIT_train_44", "UNIT_train_45", "UNIT_train_46", "UNIT_train_47", "UNIT_train_48", "UNIT_train_49", "UNIT_train_50", "UNIT_train_51", "UNIT_train_52", "UNIT_train_53", "UNIT_train_54", "UNIT_train_55", "UNIT_train_56", "UNIT_train_57", "UNIT_train_58", "UNIT_train_59", "UNIT_train_60", "UNIT_train_61", "UNIT_train_62", "UNIT_train_63", "UNIT_train_64", "UNIT_train_65", "UNIT_train_66", "UNIT_train_67", "UNIT_train_68", "UNIT_train_69", "UNIT_train_70", "UNIT_train_71", "UNIT_train_72", "UNIT_train_73", "UNIT_train_74", "UNIT_train_75", "UNIT_train_76", "UNIT_train_77", "UNIT_train_78", "UNIT_train_79", "UNIT_train_80", "UNIT_train_81", "UNIT_train_82", "UNIT_train_83"], "case_sample_counts": {"UNIT_train_0": 1, "UNIT_train_1": 1, "UNIT_train_2": 1}, "physical_batch": 16, "workers": 8, "full_signed_training_cache": true, "validation_records_used": 0, "training_queries_consumed": 0, "optimizer_steps": 0, "embeddings_detached": true, "original_two_views": true, "model_mode_and_global_rng_restored": true, "tensor_sha256": "ddedf18c38cdde56d354850628d7e3befb37b75d7cec536aacf8af592f72710d", "content_sha256": "26f199079e734adbbff8edfcad3f4ce6773f2059bba4043d0a7bd55a6e3c5736", "wall_seconds": 0.022381499991752207, "resources": {"platform": "Windows-10-10.0.26200-SP0", "cpu_logical_cores": 16, "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')", "ram_total_bytes": 68640653312, "ram_available_bytes": 44568059904, "cgroup_memory_limit_bytes": "unavailable (not present)", "cgroup_memory_current_bytes": "unavailable (not present)", "cgroup_cpu_limit_cores": "unavailable (not present)", "cgroup_cpuset": "unavailable (not present)", "storage_path": "D:\\AI project\\nnunet\\work\\half_B_metadata_UNIT_b87xznkm\\UNIT_baseline\\shared\\cache", "storage_total_bytes": 1999206608896, "storage_used_bytes": 572762263552, "storage_free_bytes": 1426444345344, "scheduler_allocation": "unavailable", "container_hint": "unavailable", "cuda_visible_devices_env": "<unset>", "nvidia_visible_devices_env": "<unset>", "cuda_available": false, "gpu_utilization_percent": "unavailable (not exposed by PyTorch)", "cuda_visible_device_count": 0, "gpu_devices": [], "mig_visibility": "unavailable (CUDA unavailable)"}, "cuda_peak_allocated_bytes": null}
+test_refresh_binds_all_candidates_two_views_preserves_modes_rng_and_global_query_generators (tests.test_v1_half_b_training.HalfBSupportMechanicalUnits) ... ok
+test_manager_rejects_changed_bound_index_or_scope (tests.test_v1_half_b_training.HalfBSupportMetadataUnits) ... ok
+test_real_materialized_cohort_differs_from_configured_full84 (tests.test_v1_half_b_training.HalfBSupportMetadataUnits) ... ok
+test_refresh_schedule_initial_each_eval_and_resume_only_when_missing (tests.test_v1_half_b_training.HalfBSupportMetadataUnits) ... ok
+test_runtime_batch_workers_files_seed_or_precision_cannot_silently_change (tests.test_v1_half_b_training.HalfBSupportMetadataUnits) ... ok
+test_signed_cohort_rejects_missing_duplicate_foreign_or_wrong_sample_rows (tests.test_v1_half_b_training.HalfBSupportMetadataUnits) ... ok
+test_extra_case_must_be_real_unique_signed_inner_training_case (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_matching_successful_updates_only_and_support_confounds_are_explicit (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_original_queries_bank_full_candidates_scope_cannot_change (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_support_adds_third_training_case_without_changing_queries (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_two_support_tasks_or_duplicate_patient_rejected (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_unverified_or_quality_claiming_support_rejected (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_validation_patient_cannot_enter_support_even_when_resigned (tests.test_v1_half_b_learning.HalfBLearningContracts) ... ok
+test_actual_constructor_and_checkpoint_guards (tests.test_v1_half_b_entry.ActualArchiveEntry) ... ok
+test_incomplete_epoch_cannot_report_complete_resources (tests.test_v1_half_b_epoch_reporting.HalfBWholeEpochReporting) ... ok
+test_initial_refresh_not_counted_again_in_epoch (tests.test_v1_half_b_epoch_reporting.HalfBWholeEpochReporting) ... ok
+test_resume_reconstruction_and_end_refresh_both_count (tests.test_v1_half_b_epoch_reporting.HalfBWholeEpochReporting) ... ok
+test_complete_support_admission_receipt_and_whole_query_patient_exclusion (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_contract_preserves_scale_and_declares_semantic_bridge (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_install_preserves_actual_local_owner_state_and_caller_cpu_rng (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_marker_distinguishes_debug_production_and_rejects_another_arm (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_memory_mutation_duplicate_generation_and_loading_require_fresh_refresh (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_missing_incomplete_duplicated_wrong_class_and_validation_support_refused (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_production_refuses_debug_or_incomplete_signed_split_without_neural_call (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+test_query_admission_rejects_before_any_neural_call (tests.test_v1_half_b_model.HalfBMetadataUnit) ... ok
+
+----------------------------------------------------------------------
+Ran 68 tests in 17.584s
+
+OK

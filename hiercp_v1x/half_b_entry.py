@@ -7,6 +7,7 @@ import importlib
 import json
 from pathlib import Path
 import sys
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -143,23 +144,30 @@ def report_actual_encoder(pipeline, receipt):
 
 
 def bind_execution_resources(pipeline, receipt):
-    """Reuse measured comparison controls only under the same allocation."""
+    """Keep measured controls; explicitly admit and record current resources."""
     from .experiment import write_new
+    from .half_b_allocation import validate_allocation
     original = pipeline._calibration_resource_fingerprint
     expected = receipt['baseline_proof']['execution']['resource_fingerprint']
     @functools.wraps(original)
     def checked(report, *, device):
         actual = original(report, device=device)
-        if actual != expected:
-            raise ValueError('Current allocation differs from baseline batch/worker measurement; no silent migration')
-        lock = dict(format='hiercp_half_B_inherited_execution_lock_v1',
+        # The archived collector resolves this process's real cgroup v1/v2
+        # ancestors and scheduler CPU limits, including Singularity sessions.
+        from hiercp.preparation_runtime import snapshot
+        admission = validate_allocation(report, expected, actual, receipt, snapshot())
+        lock = dict(format='hiercp_half_B_inherited_execution_lock_v2',
             half_B_contract_sha256=receipt['contract_sha256'],
             origin='verified_completed_baseline_preflight', newly_calibrated=False,
             baseline_experiment=receipt['baseline_experiment'],
             physical_batch=receipt['baseline_proof']['execution']['physical_batch'],
             workers=receipt['baseline_proof']['execution']['workers'],
             gradient_accumulation_steps=receipt['config']['training']['gradient_accumulation_steps'],
-            data_parallel_workers=1, resource_fingerprint=actual)
+            data_parallel_workers=1, resource_fingerprint=actual,
+            baseline_resource_fingerprint=expected,
+            allocation_policy=receipt.get('allocation_policy', 'same_allocation'),
+            allocation_changed_from_baseline=actual != expected,
+            identical_throughput_measurement_claim=False)
         lock['effective_batch'] = lock['physical_batch'] * lock['gradient_accumulation_steps']
         path = Path(receipt['experiment'])/'execution_lock.json'
         if path.exists():
@@ -167,6 +175,14 @@ def bind_execution_resources(pipeline, receipt):
                 raise ValueError('Existing half-B execution lock changed')
         else:
             write_new(path, lock)
+        allocation_path = Path(receipt['experiment'])/'allocations'/f'admission_{uuid.uuid4().hex}.json'
+        write_new(allocation_path, dict(admission,
+            half_B_contract_sha256=receipt['contract_sha256'],
+            baseline_experiment=receipt['baseline_experiment']))
+        pipeline._print_report('HalfBExecutionAdmission', dict(admission,
+            receipt_path=str(allocation_path)))
+        # Bind the native signature to the actual allocation, never disguise
+        # a migrated run as the original measured baseline allocation.
         return actual
     pipeline._calibration_resource_fingerprint = checked
 

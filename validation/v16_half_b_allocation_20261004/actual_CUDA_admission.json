@@ -1,0 +1,186 @@
+{
+  "debug": true,
+  "scope": "actual CUDA kernel/resources and archived admission integration only",
+  "neural_training": false,
+  "optimizer_updates": 0,
+  "full_training": false,
+  "quality_verified": false,
+  "original_archived_pipeline_sha256": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+  "actual_GPU": {
+    "logical_index": 0,
+    "name": "NVIDIA GeForce RTX 5070 Ti",
+    "total_vram_bytes": 17094344704,
+    "multiprocessors": 70,
+    "compute_capability": "12.0",
+    "mig_instance": false
+  },
+  "actual_CPU_RAM": {
+    "rss_bytes": 723152896,
+    "available_memory_bytes": 44246130688,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 4.265625,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  },
+  "kernel_sum": 40800.0,
+  "current_allocation_admitted": true,
+  "native_signature_returns_actual_allocation": true,
+  "baseline_UUID_platform_counterfactual": true,
+  "statement": "Prior allocation identity fields are explicit DEBUG counterfactuals; current GPU/CPU/RAM measurements are real. No server dataset or model accuracy claim.",
+  "execution_controls_preserved": {
+    "physical_batch": 2,
+    "workers": 4,
+    "gradient_accumulation_steps": 1
+  },
+  "declared_DEBUG_budgets": {
+    "cuda_gib": 12,
+    "rss_gib": 24
+  },
+  "admission": {
+    "format": "hiercp_half_B_allocation_admission_v1",
+    "allocation_policy": "current_allocation",
+    "accepted": true,
+    "changed_fields": {
+      "cuda_visible_devices_env": {
+        "old": "DEBUG_recorded_prior_UUID_identity_change",
+        "new": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472"
+      },
+      "platform": {
+        "old": "DEBUG_recorded_prior_platform_identity_change",
+        "new": "Windows-10-10.0.26200-SP0"
+      }
+    },
+    "baseline_resource_fingerprint": {
+      "selected_device": "cuda",
+      "platform": "DEBUG_recorded_prior_platform_identity_change",
+      "cpu_logical_cores": 16,
+      "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')",
+      "ram_total_bytes": 68640653312,
+      "cgroup_memory_limit_bytes": "unavailable (not present)",
+      "cgroup_cpu_limit_cores": "unavailable (not present)",
+      "cgroup_cpuset": "unavailable (not present)",
+      "scheduler_allocation": "unavailable",
+      "container_hint": "unavailable",
+      "cuda_visible_devices_env": "DEBUG_recorded_prior_UUID_identity_change",
+      "nvidia_visible_devices_env": "<unset>",
+      "cuda_available": true,
+      "cuda_visible_device_count": 1,
+      "gpu_devices": [
+        {
+          "logical_index": 0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "total_vram_bytes": 17094344704,
+          "multiprocessors": 70,
+          "compute_capability": "12.0",
+          "mig_instance": false
+        }
+      ],
+      "mig_visibility": "not identifiable from PyTorch/environment"
+    },
+    "actual_resource_fingerprint": {
+      "selected_device": "cuda",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "cpu_logical_cores": 16,
+      "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')",
+      "ram_total_bytes": 68640653312,
+      "cgroup_memory_limit_bytes": "unavailable (not present)",
+      "cgroup_cpu_limit_cores": "unavailable (not present)",
+      "cgroup_cpuset": "unavailable (not present)",
+      "scheduler_allocation": "unavailable",
+      "container_hint": "unavailable",
+      "cuda_visible_devices_env": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+      "nvidia_visible_devices_env": "<unset>",
+      "cuda_available": true,
+      "cuda_visible_device_count": 1,
+      "gpu_devices": [
+        {
+          "logical_index": 0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "total_vram_bytes": 17094344704,
+          "multiprocessors": 70,
+          "compute_capability": "12.0",
+          "mig_instance": false
+        }
+      ],
+      "mig_visibility": "not identifiable from PyTorch/environment"
+    },
+    "preserved_execution": {
+      "physical_batch": 2,
+      "workers": 4,
+      "gradient_accumulation_steps": 1,
+      "data_parallel_workers": 1,
+      "effective_batch": 2
+    },
+    "declared_budgets": {
+      "cuda_gib": 12.0,
+      "rss_gib": 24.0,
+      "cuda_bytes": 12884901888,
+      "rss_bytes": 25769803776
+    },
+    "current_resources": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "cpu_logical_cores": 16,
+      "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')",
+      "ram_total_bytes": 68640653312,
+      "ram_available_bytes": 44249628672,
+      "cgroup_memory_limit_bytes": "unavailable (not present)",
+      "cgroup_memory_current_bytes": "unavailable (not present)",
+      "cgroup_cpu_limit_cores": "unavailable (not present)",
+      "cgroup_cpuset": "unavailable (not present)",
+      "storage_path": "D:\\AI project\\nnunet",
+      "storage_total_bytes": 1999206608896,
+      "storage_used_bytes": 572814258176,
+      "storage_free_bytes": 1426392350720,
+      "scheduler_allocation": "unavailable",
+      "container_hint": "unavailable",
+      "cuda_visible_devices_env": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+      "nvidia_visible_devices_env": "<unset>",
+      "cuda_available": true,
+      "gpu_utilization_percent": "unavailable (not exposed by PyTorch)",
+      "cuda_visible_device_count": 1,
+      "gpu_devices": [
+        {
+          "logical_index": 0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "total_vram_bytes": 17094344704,
+          "multiprocessors": 70,
+          "compute_capability": "12.0",
+          "mig_instance": false
+        }
+      ],
+      "mig_visibility": "not identifiable from PyTorch/environment",
+      "cuda_device": "cuda:0",
+      "cuda_allocated_bytes": 1024,
+      "cuda_reserved_bytes": 2097152,
+      "cuda_peak_allocated_bytes": 2560,
+      "cuda_peak_reserved_bytes": 2097152,
+      "cuda_free_bytes": 15694036992,
+      "cuda_total_bytes": 17094344704
+    },
+    "current_host_allocation": {
+      "rss_bytes": 723152896,
+      "available_memory_bytes": 44246130688,
+      "host_total_memory_bytes": 68640653312,
+      "cpu_capacity": 16,
+      "cpu_affinity_cores": 16,
+      "cpu_allocation_cores": 16.0,
+      "process_cpu_seconds": 4.265625,
+      "cgroup": {
+        "locations_resolved": false,
+        "values": {},
+        "missing_files": [],
+        "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+      }
+    },
+    "matched_performance_claim": false,
+    "new_calibration": false,
+    "receipt_path": "D:\\AI project\\nnunet\\work\\v16_half_b_allocation_CUDA_DEBUG_20261004_r1\\allocations\\admission_7bc71cb7d66046cabe04a7df6cee6327.json"
+  }
+}
