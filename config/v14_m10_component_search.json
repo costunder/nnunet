@@ -1,7 +1,7 @@
 {
   "format": "hiercp_component_group_experiment_design_v1",
-  "status": "FIRST_HALF_A_IMPLEMENTED_CUDA_SMOKE_DONE_SERVER_RUN_PENDING",
-  "training_started": false,
+  "status": "HALF_A_SERVER_COMPLETE_COMPLEMENT_B_IMPLEMENTED_CUDA_SMOKE_PASS_SERVER_PENDING",
+  "training_started": true,
   "new_cuda_smoke_performed": true,
   "baseline": {
     "experiment_version": "v1.4",
@@ -85,7 +85,11 @@
           "L1_patient_to_prompt",
           "L2_prototypes_and_scorer"
         ],
-        "implementation_registered": false
+        "implementation_registered": true,
+        "executable": "tools/run_v1_half_b.py",
+        "experiment_version": "v1.6_half_B",
+        "actual_boundary": "preserved_v1_L0_to_legacy_v222_prompt_cluster_cosine_logit_difference",
+        "native_v22_objective_equivalence": false
       }
     },
     "first_round": [
@@ -179,6 +183,11 @@
   "long_training_automatic_start": false,
   "production_CP_automatic_start": false,
   "nnunet_automatic_start": false,
+  "half_A_server_summary": "validation/v15_half_a_server_20261004/summary.json",
+  "half_B_verification": "validation/v16_half_b_20261004/manifest.json",
+  "half_B_actual_CT_CUDA_DEBUG_updates": 8,
+  "half_B_full_training": false,
+  "half_B_quality_verified": false,
   "debug_optimizer_updates_performed": 8,
   "server_training_started_by_agent": false,
   "verification": {

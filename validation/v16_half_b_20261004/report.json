@@ -1,0 +1,5547 @@
+{
+  "status": "COMPLETE",
+  "experiment": "HALF B: preserved v1 L0 + v2.2 prompt L1/L2/cosine score",
+  "debug": true,
+  "smoke_test": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "checkpoint_written": false,
+  "diagnostic_initial_state_written": true,
+  "original_configuration": {
+    "method": "hiercp-full",
+    "seed": 42,
+    "labels": {
+      "liver": 1,
+      "tumor": 2
+    },
+    "ct_clip": [
+      -200.0,
+      250.0
+    ],
+    "graph": {
+      "patient_graph_contract": "patient_source_content_population_v2",
+      "patch_size": 48,
+      "context_radius_mm": 28.0,
+      "context_shells_mm": [
+        4.0,
+        12.0,
+        28.0
+      ],
+      "boundary_depth_mm": 3.0,
+      "candidate_k": 8,
+      "num_regions": 24,
+      "region_sample_voxels": 20000,
+      "region_lloyd_iters": 12,
+      "region_k": 4,
+      "num_prototypes": 16,
+      "prototype_top_m": 2,
+      "prototype_k": 4,
+      "prototype_lloyd_iters": 30,
+      "prototype_temperature": 0.5,
+      "max_lesions": null,
+      "graph_schema_version": "full_v22",
+      "geometry_contract": "level0_physical_closure_v2",
+      "adaptive_source_full_shape": true,
+      "adaptive_roi_margin_mm": 30.0,
+      "adaptive_roi_max_radius_mm": 64.0,
+      "adaptive_roi_max_voxels": 8000000,
+      "context_inner_radius_mm": 2.0,
+      "context_outer_radius_mm": 28.0,
+      "context_liver_surface_separation_mm": 1.0,
+      "context_radial_bins": 4,
+      "context_azimuth_bins": 8,
+      "context_elevation_bins": 4,
+      "liver_anchor_search_mm": 64.0,
+      "kdtree_leafsize": 32,
+      "canonical_full_graph": true,
+      "canonical_surface_spacing_mm": 2.0,
+      "canonical_interior_spacing_mm": 3.0,
+      "canonical_context_spacing_mm": 2.5,
+      "canonical_liver_spacing_mm": 4.0,
+      "canonical_node_limit": 250000,
+      "sample_context_nodes": 384,
+      "sample_hops": 2,
+      "sample_interface_radius_mm": 8.0,
+      "sample_hop_radius_mm": 6.0,
+      "surface_edge_radius_mm": 4.5,
+      "interior_edge_radius_mm": 5.5,
+      "context_edge_radius_mm": 6.0,
+      "interface_edge_radius_mm": 8.0,
+      "cross_edge_radius_mm": 7.0,
+      "liver_edge_radius_mm": 10.0,
+      "correspondence_radius_mm": 5.0,
+      "canonical_relation_edge_limit": 5000000,
+      "sample_relation_edge_limit": 500000
+    },
+    "cache": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "samples_per_case": 2,
+      "total_candidates": 8,
+      "candidate_pool_size": 128,
+      "easy_fraction": 0.34,
+      "inter_fraction": 0.33,
+      "intra_fraction": 0.33,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original"
+    },
+    "training": {
+      "val_fraction": 0.2,
+      "epochs": 40,
+      "batch_size": "auto",
+      "batch_size_candidates": "powers_of_two_to_cohort",
+      "batch_calibration_repeats": 3,
+      "batch_calibration_max_vram_fraction": 0.9,
+      "num_workers": "auto",
+      "num_worker_candidates": [
+        0,
+        2,
+        4,
+        8
+      ],
+      "loader_calibration_batches": 8,
+      "lr": 0.0001,
+      "weight_decay": 0.0001,
+      "amp": true,
+      "grad_clip": 5.0,
+      "easy_epochs": 8,
+      "inter_epochs": 18,
+      "intra_epochs": 28,
+      "model_mine_start_epoch": 29,
+      "semi_hard_low_percentile": 0.7,
+      "semi_hard_high_percentile": 0.95,
+      "cross_entropy_weight": 1.0,
+      "pairwise_weight": 1.0,
+      "ordinal_weight": 0.2,
+      "mined_weight": 0.5,
+      "consistency_weight": 0.1,
+      "fixed_validation_epoch": 29,
+      "checkpoint_metric_precision": 8,
+      "gradient_accumulation_steps": 1,
+      "target_effective_batch_size": null,
+      "fused_optimizer": true,
+      "pin_memory": true,
+      "prefetch_factor": 1,
+      "persistent_workers": true,
+      "cuda_prefetch": false
+    },
+    "model": {
+      "hidden_dim": 128,
+      "heads": 4,
+      "local_layers": 3,
+      "patient_layers": 2,
+      "prototype_layers": 2,
+      "dropout": 0.1,
+      "dense_base_channels": 12,
+      "dense_feature_dim": 32,
+      "dense_batch_size": 4,
+      "channels_last_3d": true,
+      "checkpoint_local_blocks": true,
+      "checkpoint_dense_encoder": true
+    },
+    "generation": {
+      "source_selection": "random",
+      "source_pad": 2,
+      "num_copies": 1,
+      "num_candidates": 128,
+      "scoring_batch_size": "auto",
+      "scoring_batch_size_candidates": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "scoring_batch_calibration_repeats": 3,
+      "scoring_batch_max_vram_fraction": 0.9,
+      "max_draws": 50000,
+      "min_liver_coverage": 0.85,
+      "occupied_clearance_vox": 2,
+      "min_center_separation_mm": 0.0,
+      "min_center_separation_vox": 12.0,
+      "no_placement_policy": "retain_original",
+      "top_k": 1,
+      "temperature": 0.0,
+      "intensity_scale_range": [
+        0.95,
+        1.05
+      ],
+      "intensity_shift_range": [
+        -5.0,
+        5.0
+      ],
+      "blend_border": 0,
+      "amp": true,
+      "local_candidate_chunk_size": 8,
+      "pin_memory": true,
+      "cpu_prefetch_workers": 2,
+      "cpu_prefetch_cases": 2,
+      "save_queue_depth": 2,
+      "case_batch_size": 2
+    },
+    "runtime": {
+      "prepare_workers": "auto",
+      "deterministic": true,
+      "allow_tf32": false,
+      "cudnn_benchmark": false
+    }
+  },
+  "configuration_sha256": "8c6250eef1ac1c204a4c4da7c9cc7fea838b3d7ad450afd52267f88b9b60d34b",
+  "protocol": {
+    "initial_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+    "reference_updates": 2,
+    "train_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "validation_cases": [
+      "liver_31"
+    ],
+    "physical_sample_batch": 2,
+    "workers": 4,
+    "seed": 42,
+    "optimization_curriculum_epoch": 29,
+    "train_view_epoch": 29,
+    "validation_effective_view_epoch": 0,
+    "scheduler": null,
+    "baseline_model": "v1.0",
+    "experiment_version": "v1.4"
+  },
+  "bounded_scope": {
+    "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+    "margin_mm": 10.0,
+    "context_outer_radius_mm": 10.0,
+    "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+    "implicit_depth_expansion": false,
+    "mandatory_surface_search": false,
+    "optional_roles": [
+      "source_liver_surface",
+      "target_liver_surface"
+    ],
+    "CNN_shape": [
+      48,
+      48,
+      48
+    ],
+    "coordinate_normalization_mm": 28.0,
+    "tumor_sdf_normalization_mm": 28.0,
+    "context_shells_mm": [
+      4.0,
+      12.0,
+      28.0
+    ],
+    "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "original_module_sha256": {
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    },
+    "debug": true,
+    "production_ready": false,
+    "quality_verified": false,
+    "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  },
+  "margin_mm": 10.0,
+  "half_b": {
+    "spec": {
+      "format": "hiercp_v1_half_b_v1",
+      "revision": 1,
+      "architecture": "preserved_v1_L0_with_tracked_v22_legacy_prompt_cluster_cosine_upper",
+      "local_encoder": "actual_original_v1_object_state_and_forward_preserved",
+      "bridge": "genuine_original_v1_semantic_pair_fused128_no_new_projection",
+      "legacy_upper": "hiercp_v222.model.PromptGraphModel",
+      "hidden_dim": 128,
+      "heads": 4,
+      "task_layers": 2,
+      "alignment_layers": 2,
+      "temperature": 0.2,
+      "native_alignment_loss_weight_metadata": 1,
+      "L1": "legacy_RelationLayer_edge_is_support_true_relation_not_official_reference_L1",
+      "L2": "same_patient_masked_cross_patient_MHA_Residual_two_layers",
+      "clusters": "class_conditional_cosine_average_linkage_max_positive_silhouette_all_non_singleton_cuts_else_one",
+      "scorer": "native_patient_mass_weighted_cosine_mixture_logit1_minus_logit0",
+      "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+      "fixed_support_view_epoch": 0,
+      "support_classes": "original_v1_training_anchor_index0_class1_curriculum_indices1to7_class0",
+      "support_exclusion": "entire_query_patient_from_both_original_source_and_recipient_support",
+      "query_GT_in_forward": false,
+      "query_to_support_reverse_edges": false,
+      "support_embeddings_gradient": "detached_eval_no_grad_L0",
+      "query_L0_gradient": "live_original_forward",
+      "upper_gradient": "live_L1_L2_cosine_every_forward",
+      "teacher_plan": "detached_eval_L1_lazy_once_per_refresh_and_exclusion_key",
+      "batching": "complete_disjoint_L1_episodes_batched_masked_L2_and_episode_masked_cosine_mixtures",
+      "loss": "unchanged_original_v1_curriculum_ranking_plus_original_two_view_consistency",
+      "native_observation_CE_added": false,
+      "native_alignment_CE_added": false,
+      "native_v22_equivalence": false,
+      "removed_original_upper": [
+        "patient_encoder",
+        "prototype_encoder",
+        "patient_readout",
+        "population_readout",
+        "score_head"
+      ],
+      "tracked_upper_source_sha256": {
+        "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+        "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc"
+      }
+    },
+    "contract_sha256": "68b74e6ea5c452c97763d425d7d19d5525b1552f9f2a1d5090686ae29ac6a99d",
+    "source_sha256": {
+      "hiercp_v1x/half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+      "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+      "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+      "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+      "l0_local_cnn/recommendation.py": "c6dd5c642277cfbca1a934d83f415e41315435a0dae19066ab15d7b2b5703b46"
+    }
+  },
+  "half_b_model_contract": {
+    "format": "hiercp_v1_half_b_v1",
+    "revision": 1,
+    "architecture": "preserved_v1_L0_with_tracked_v22_legacy_prompt_cluster_cosine_upper",
+    "local_encoder": "actual_original_v1_object_state_and_forward_preserved",
+    "bridge": "genuine_original_v1_semantic_pair_fused128_no_new_projection",
+    "legacy_upper": "hiercp_v222.model.PromptGraphModel",
+    "hidden_dim": 128,
+    "heads": 4,
+    "task_layers": 2,
+    "alignment_layers": 2,
+    "temperature": 0.2,
+    "native_alignment_loss_weight_metadata": 1,
+    "L1": "legacy_RelationLayer_edge_is_support_true_relation_not_official_reference_L1",
+    "L2": "same_patient_masked_cross_patient_MHA_Residual_two_layers",
+    "clusters": "class_conditional_cosine_average_linkage_max_positive_silhouette_all_non_singleton_cuts_else_one",
+    "scorer": "native_patient_mass_weighted_cosine_mixture_logit1_minus_logit0",
+    "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+    "fixed_support_view_epoch": 0,
+    "support_classes": "original_v1_training_anchor_index0_class1_curriculum_indices1to7_class0",
+    "support_exclusion": "entire_query_patient_from_both_original_source_and_recipient_support",
+    "query_GT_in_forward": false,
+    "query_to_support_reverse_edges": false,
+    "support_embeddings_gradient": "detached_eval_no_grad_L0",
+    "query_L0_gradient": "live_original_forward",
+    "upper_gradient": "live_L1_L2_cosine_every_forward",
+    "teacher_plan": "detached_eval_L1_lazy_once_per_refresh_and_exclusion_key",
+    "batching": "complete_disjoint_L1_episodes_batched_masked_L2_and_episode_masked_cosine_mixtures",
+    "loss": "unchanged_original_v1_curriculum_ranking_plus_original_two_view_consistency",
+    "native_observation_CE_added": false,
+    "native_alignment_CE_added": false,
+    "native_v22_equivalence": false,
+    "removed_original_upper": [
+      "patient_encoder",
+      "prototype_encoder",
+      "patient_readout",
+      "population_readout",
+      "score_head"
+    ],
+    "tracked_upper_source_sha256": {
+      "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+      "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc"
+    },
+    "original_input_shape": [
+      5,
+      48,
+      48,
+      48
+    ],
+    "original_local_layers": 3,
+    "original_dense_execution_chunk_size": 4,
+    "training_candidates_per_sample": 8,
+    "candidate_pool_size": 128,
+    "configured_train_cases": 84,
+    "configured_validation_cases": 21,
+    "production_epochs": 40,
+    "upper_only_initialization": "fresh_seed42_forked_RNG",
+    "differences_from_native_v22": [
+      "original v1 L0, five-channel fixed48 ROI and target erasure are preserved",
+      "original source-anchor/curriculum support classes replace observed-tumor P/U classes",
+      "original ranking and view consistency replace native observation/alignment CE objectives",
+      "support is complete original training-cache anchor/curriculum candidates",
+      "prompt teacher plans are bound to the explicit original support refresh policy"
+    ]
+  },
+  "native_equivalence_claimed": false,
+  "original_L0_object_preserved": true,
+  "original_L0_initial_state_preserved": true,
+  "caller_RNG_preserved_during_install": true,
+  "original_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+  "original_L0_initial_sha256": "55db4ebcb8d3b6d0f5339a97175b660703be94eed88abec1d6ebf0a4ba2498a4",
+  "half_b_initial_neural_sha256": "b77756be56376fddc055779e38dfc836ed498bc2938a2d1d467279e8abe7462f",
+  "supervision_sha256": "2f025efb9275368ac36ce5c7cbc4a42e60691c7bca54871dd09bc0473e42c3f3",
+  "model_parameters": 6433126,
+  "trainable_parameters": 6433126,
+  "group_parameters": {
+    "CNN": 120804,
+    "L0": 4038912,
+    "original_L0_total": 5600740,
+    "role_attention_pool": 33280,
+    "shell_attention_pool": 49920,
+    "local_fusion": 230272,
+    "v222_L1": 402562,
+    "v222_L2": 132096,
+    "v222_L2_updates": 297472,
+    "v222_upper_total": 832386
+  },
+  "score_has_trainable_parameters": false,
+  "bridge_has_trainable_parameters": false,
+  "score_semantics": "native patient-mass-weighted cosine-mixture logit1 minus logit0",
+  "added_alignment_or_query_CE_loss": false,
+  "original_complete_ranking_consistency_loss": true,
+  "input": {
+    "scope": "provided_batch",
+    "sample_count": 2,
+    "case_ids": [
+      "liver_5",
+      "liver_6"
+    ],
+    "candidate_counts": {
+      "min": 8,
+      "max": 8,
+      "mean": 8.0,
+      "total": 16
+    },
+    "input_shapes": {
+      "source_patches": [
+        2,
+        5,
+        48,
+        48,
+        48
+      ],
+      "target_patches": [
+        16,
+        5,
+        48,
+        48,
+        48
+      ],
+      "difficulties": [
+        16
+      ]
+    },
+    "local_graphs": {
+      "available": true,
+      "graph_count": 16,
+      "nodes_per_graph": {
+        "min": 2169,
+        "max": 8598,
+        "mean": 4628.0,
+        "total": 74048
+      },
+      "edges_per_graph": {
+        "min": 174022,
+        "max": 655309,
+        "mean": 373628.0625,
+        "total": 5978049
+      },
+      "node_type_totals": {
+        "tumor_surface": 5176,
+        "tumor_interior": 2520,
+        "source_context": 31880,
+        "source_liver_surface": 2096,
+        "target_context": 27553,
+        "target_liver_surface": 4823
+      },
+      "edge_type_totals": {
+        "tumor_surface|surface_neighbor|tumor_surface": 110544,
+        "tumor_interior|interior_neighbor|tumor_interior": 54000,
+        "source_context|context_neighbor|source_context": 1592096,
+        "source_liver_surface|surface_neighbor|source_liver_surface": 52304,
+        "target_context|context_neighbor|target_context": 1340448,
+        "target_liver_surface|surface_neighbor|target_liver_surface": 143398,
+        "tumor_interior|supports|tumor_surface": 136536,
+        "tumor_surface|supported_by|tumor_interior": 136536,
+        "tumor_surface|interfaces_source|source_context": 408240,
+        "source_context|interfaces_tumor|tumor_surface": 408240,
+        "tumor_surface|interfaces_target|target_context": 333178,
+        "source_context|corresponds_to|target_context": 688255,
+        "source_context|near_liver_surface|source_liver_surface": 87752,
+        "source_liver_surface|anchors_context|source_context": 87752,
+        "target_context|near_liver_surface|target_liver_surface": 199385,
+        "target_liver_surface|anchors_context|target_context": 199385
+      },
+      "edge_execution_contracts": [
+        "hiercp_all_induced_edges_v1"
+      ],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "local_graphs_view2": {
+      "available": true,
+      "graph_count": 16,
+      "nodes_per_graph": {
+        "min": 2169,
+        "max": 8598,
+        "mean": 4628.0,
+        "total": 74048
+      },
+      "edges_per_graph": {
+        "min": 174022,
+        "max": 655309,
+        "mean": 373628.0625,
+        "total": 5978049
+      },
+      "node_type_totals": {
+        "tumor_surface": 5176,
+        "tumor_interior": 2520,
+        "source_context": 31880,
+        "source_liver_surface": 2096,
+        "target_context": 27553,
+        "target_liver_surface": 4823
+      },
+      "edge_type_totals": {
+        "tumor_surface|surface_neighbor|tumor_surface": 110544,
+        "tumor_interior|interior_neighbor|tumor_interior": 54000,
+        "source_context|context_neighbor|source_context": 1592096,
+        "source_liver_surface|surface_neighbor|source_liver_surface": 52304,
+        "target_context|context_neighbor|target_context": 1340448,
+        "target_liver_surface|surface_neighbor|target_liver_surface": 143398,
+        "tumor_interior|supports|tumor_surface": 136536,
+        "tumor_surface|supported_by|tumor_interior": 136536,
+        "tumor_surface|interfaces_source|source_context": 408240,
+        "source_context|interfaces_tumor|tumor_surface": 408240,
+        "tumor_surface|interfaces_target|target_context": 333178,
+        "source_context|corresponds_to|target_context": 688255,
+        "source_context|near_liver_surface|source_liver_surface": 87752,
+        "source_liver_surface|anchors_context|source_context": 87752,
+        "target_context|near_liver_surface|target_liver_surface": 199385,
+        "target_liver_surface|anchors_context|target_context": 199385
+      },
+      "edge_execution_contracts": [
+        "hiercp_all_induced_edges_v1"
+      ],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "patient_graphs": {
+      "available": true,
+      "graph_count": 2,
+      "nodes_per_graph": {
+        "min": 34,
+        "max": 40,
+        "mean": 37.0,
+        "total": 74
+      },
+      "edges_per_graph": {
+        "min": 432,
+        "max": 549,
+        "mean": 490.5,
+        "total": 981
+      },
+      "node_type_totals": {
+        "tumor": 2,
+        "candidate": 16,
+        "region": 48,
+        "lesion": 6,
+        "liver": 2
+      },
+      "edge_type_totals": {
+        "tumor|compatible_with|candidate": 16,
+        "candidate|matched_to|tumor": 16,
+        "candidate|spatial_neighbor|candidate": 112,
+        "candidate|belongs_to|region": 16,
+        "region|contains_candidate|candidate": 16,
+        "tumor|conditions|region": 48,
+        "region|context_for|tumor": 48,
+        "candidate|near|lesion": 48,
+        "lesion|near|candidate": 48,
+        "lesion|hosted_by|region": 6,
+        "region|hosts_lesion|lesion": 6,
+        "tumor|coexists_with|lesion": 6,
+        "lesion|coexists_with|tumor": 6,
+        "region|adjacent_to|region": 493,
+        "region|inside|liver": 48,
+        "liver|contains|region": 48
+      },
+      "edge_execution_contracts": [],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "prototype_graphs": {
+      "available": true,
+      "graph_count": 2,
+      "nodes_per_graph": {
+        "min": 48,
+        "max": 48,
+        "mean": 48.0,
+        "total": 96
+      },
+      "edges_per_graph": {
+        "min": 176,
+        "max": 176,
+        "mean": 176.0,
+        "total": 352
+      },
+      "node_type_totals": {
+        "candidate": 16,
+        "region": 48,
+        "prototype": 32
+      },
+      "edge_type_totals": {
+        "candidate|belongs_to|region": 16,
+        "region|contains_candidate|candidate": 16,
+        "region|assigned_to|prototype": 96,
+        "prototype|represents|region": 96,
+        "prototype|similar_to|prototype": 128
+      },
+      "edge_execution_contracts": [],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    }
+  },
+  "support_input": {
+    "scope": "provided_batch",
+    "sample_count": 3,
+    "case_ids": [
+      "liver_5",
+      "liver_6",
+      "liver_1"
+    ],
+    "candidate_counts": {
+      "min": 8,
+      "max": 8,
+      "mean": 8.0,
+      "total": 24
+    },
+    "input_shapes": {
+      "source_patches": [
+        3,
+        5,
+        48,
+        48,
+        48
+      ],
+      "target_patches": [
+        24,
+        5,
+        48,
+        48,
+        48
+      ],
+      "difficulties": [
+        24
+      ]
+    },
+    "local_graphs": {
+      "available": true,
+      "graph_count": 24,
+      "nodes_per_graph": {
+        "min": 743,
+        "max": 8598,
+        "mean": 3358.4583333333335,
+        "total": 80603
+      },
+      "edges_per_graph": {
+        "min": 23525,
+        "max": 655309,
+        "mean": 258031.70833333334,
+        "total": 6192761
+      },
+      "node_type_totals": {
+        "tumor_surface": 5304,
+        "tumor_interior": 2592,
+        "source_context": 34496,
+        "source_liver_surface": 2544,
+        "target_context": 30163,
+        "target_liver_surface": 5504
+      },
+      "edge_type_totals": {
+        "tumor_surface|surface_neighbor|tumor_surface": 111472,
+        "tumor_interior|interior_neighbor|tumor_interior": 54448,
+        "source_context|context_neighbor|source_context": 1647808,
+        "source_liver_surface|surface_neighbor|source_liver_surface": 57200,
+        "target_context|context_neighbor|target_context": 1396592,
+        "target_liver_surface|surface_neighbor|target_liver_surface": 154644,
+        "tumor_interior|supports|tumor_surface": 137584,
+        "tumor_surface|supported_by|tumor_interior": 137584,
+        "tumor_surface|interfaces_source|source_context": 415520,
+        "source_context|interfaces_tumor|tumor_surface": 415520,
+        "tumor_surface|interfaces_target|target_context": 340843,
+        "source_context|corresponds_to|target_context": 716654,
+        "source_context|near_liver_surface|source_liver_surface": 94104,
+        "source_liver_surface|anchors_context|source_context": 94104,
+        "target_context|near_liver_surface|target_liver_surface": 209342,
+        "target_liver_surface|anchors_context|target_context": 209342
+      },
+      "edge_execution_contracts": [
+        "hiercp_all_induced_edges_v1"
+      ],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "local_graphs_view2": {
+      "available": true,
+      "graph_count": 24,
+      "nodes_per_graph": {
+        "min": 743,
+        "max": 8598,
+        "mean": 3358.4583333333335,
+        "total": 80603
+      },
+      "edges_per_graph": {
+        "min": 23525,
+        "max": 655309,
+        "mean": 258031.70833333334,
+        "total": 6192761
+      },
+      "node_type_totals": {
+        "tumor_surface": 5304,
+        "tumor_interior": 2592,
+        "source_context": 34496,
+        "source_liver_surface": 2544,
+        "target_context": 30163,
+        "target_liver_surface": 5504
+      },
+      "edge_type_totals": {
+        "tumor_surface|surface_neighbor|tumor_surface": 111472,
+        "tumor_interior|interior_neighbor|tumor_interior": 54448,
+        "source_context|context_neighbor|source_context": 1647808,
+        "source_liver_surface|surface_neighbor|source_liver_surface": 57200,
+        "target_context|context_neighbor|target_context": 1396592,
+        "target_liver_surface|surface_neighbor|target_liver_surface": 154644,
+        "tumor_interior|supports|tumor_surface": 137584,
+        "tumor_surface|supported_by|tumor_interior": 137584,
+        "tumor_surface|interfaces_source|source_context": 415520,
+        "source_context|interfaces_tumor|tumor_surface": 415520,
+        "tumor_surface|interfaces_target|target_context": 340843,
+        "source_context|corresponds_to|target_context": 716654,
+        "source_context|near_liver_surface|source_liver_surface": 94104,
+        "source_liver_surface|anchors_context|source_context": 94104,
+        "target_context|near_liver_surface|target_liver_surface": 209342,
+        "target_liver_surface|anchors_context|target_context": 209342
+      },
+      "edge_execution_contracts": [
+        "hiercp_all_induced_edges_v1"
+      ],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "patient_graphs": {
+      "available": true,
+      "graph_count": 3,
+      "nodes_per_graph": {
+        "min": 34,
+        "max": 45,
+        "mean": 39.666666666666664,
+        "total": 119
+      },
+      "edges_per_graph": {
+        "min": 432,
+        "max": 620,
+        "mean": 533.6666666666666,
+        "total": 1601
+      },
+      "node_type_totals": {
+        "tumor": 3,
+        "candidate": 24,
+        "region": 72,
+        "lesion": 17,
+        "liver": 3
+      },
+      "edge_type_totals": {
+        "tumor|compatible_with|candidate": 24,
+        "candidate|matched_to|tumor": 24,
+        "candidate|spatial_neighbor|candidate": 168,
+        "candidate|belongs_to|region": 24,
+        "region|contains_candidate|candidate": 24,
+        "tumor|conditions|region": 72,
+        "region|context_for|tumor": 72,
+        "candidate|near|lesion": 136,
+        "lesion|near|candidate": 136,
+        "lesion|hosted_by|region": 17,
+        "region|hosts_lesion|lesion": 17,
+        "tumor|coexists_with|lesion": 17,
+        "lesion|coexists_with|tumor": 17,
+        "region|adjacent_to|region": 709,
+        "region|inside|liver": 72,
+        "liver|contains|region": 72
+      },
+      "edge_execution_contracts": [],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    },
+    "prototype_graphs": {
+      "available": true,
+      "graph_count": 3,
+      "nodes_per_graph": {
+        "min": 48,
+        "max": 48,
+        "mean": 48.0,
+        "total": 144
+      },
+      "edges_per_graph": {
+        "min": 176,
+        "max": 176,
+        "mean": 176.0,
+        "total": 528
+      },
+      "node_type_totals": {
+        "candidate": 24,
+        "region": 72,
+        "prototype": 48
+      },
+      "edge_type_totals": {
+        "candidate|belongs_to|region": 24,
+        "region|contains_candidate|candidate": 24,
+        "region|assigned_to|prototype": 144,
+        "prototype|represents|region": 144,
+        "prototype|similar_to|prototype": 192
+      },
+      "edge_execution_contracts": [],
+      "graphs_exceeding_legacy_sample_relation_edge_limit": 0,
+      "edges_dropped_by_limit": 0
+    }
+  },
+  "query_train_cases": [
+    "liver_5",
+    "liver_6"
+  ],
+  "held_out_cases": [
+    "liver_31"
+  ],
+  "support_train_cases": [
+    "liver_5",
+    "liver_6",
+    "liver_1"
+  ],
+  "support_only_cases": [
+    "liver_1"
+  ],
+  "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+  "support_fixed_view_epoch": 0,
+  "query_training_view_epoch": 29,
+  "held_out_view_epoch": 0,
+  "query_patient_always_excluded_from_support": true,
+  "support_labels": "original ranking task: candidate0 class1, other seven class0; no biological absence claim",
+  "support_full_signed_training_cache": false,
+  "support_debug_subset": true,
+  "support_sample_count": 3,
+  "support_candidate_count": 24,
+  "physical_sample_batch": 2,
+  "physical_candidate_graph_batch": 16,
+  "gradient_accumulation_steps": 1,
+  "data_parallel_workers": 1,
+  "effective_sample_batch": 2,
+  "production_epochs_preserved": 40,
+  "fixed_optimization_curriculum_epoch": 29,
+  "candidate_pool": 128,
+  "candidates_per_sample": 8,
+  "workers": 4,
+  "cached_query_GPU_batch": true,
+  "cached_support_CPU_batch": true,
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "torch_version": "2.8.0+cu128",
+  "cuda_build": "12.8",
+  "device_total_bytes": 17094344704,
+  "cuda_limit_bytes": 12884901888,
+  "RSS_limit_bytes": 34359738368,
+  "precision": {
+    "amp": true
+  },
+  "resources_at_start": {
+    "cpu_physical": 8,
+    "cpu_logical": 16,
+    "ram_total_bytes": 68640653312,
+    "ram_available_bytes": 43035111424,
+    "GPU_free_bytes": 14672723968
+  },
+  "source_proof": {
+    "source": "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "verified_files": {
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    }
+  },
+  "preparation": {
+    "raw_load_and_depth_seconds": 57.47438049997436,
+    "bounded_canonical_preparation_seconds": 8.62266609998187,
+    "ROI_records": [
+      {
+        "case_id": "liver_5",
+        "candidate": "source",
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 2,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 3,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 1,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 0,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 4,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 5,
+        "shape": [
+          39,
+          41,
+          41
+        ],
+        "voxels": 65559,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 540
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 7,
+        "shape": [
+          45,
+          35,
+          39
+        ],
+        "voxels": 61425,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 567
+      },
+      {
+        "case_id": "liver_5",
+        "candidate": 6,
+        "shape": [
+          43,
+          47,
+          45
+        ],
+        "voxels": 90945,
+        "spacing_mm": [
+          0.96875,
+          0.96875,
+          0.7999879717826843
+        ],
+        "full_footprint_voxels": 1810
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": "source",
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 0,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 1,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 3,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 2,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 4,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 5,
+        "shape": [
+          61,
+          55,
+          53
+        ],
+        "voxels": 177815,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 8241
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 7,
+        "shape": [
+          77,
+          53,
+          43
+        ],
+        "voxels": 175483,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 9054
+      },
+      {
+        "case_id": "liver_6",
+        "candidate": 6,
+        "shape": [
+          71,
+          63,
+          61
+        ],
+        "voxels": 272853,
+        "spacing_mm": [
+          0.873046875,
+          0.873046875,
+          1.0
+        ],
+        "full_footprint_voxels": 20395
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": "source",
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 0,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 1,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 2,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 3,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 4,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 5,
+        "shape": [
+          39,
+          47,
+          29
+        ],
+        "voxels": 53157,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 596
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 7,
+        "shape": [
+          37,
+          55,
+          25
+        ],
+        "voxels": 50875,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 688
+      },
+      {
+        "case_id": "liver_31",
+        "candidate": 6,
+        "shape": [
+          45,
+          57,
+          29
+        ],
+        "voxels": 74385,
+        "spacing_mm": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "full_footprint_voxels": 2077
+      }
+    ],
+    "supervision_sha256": "2f025efb9275368ac36ce5c7cbc4a42e60691c7bca54871dd09bc0473e42c3f3"
+  },
+  "optimizer_fresh": true,
+  "initial_support_extension": {
+    "format": "hiercp_v1_half_b_support_extension_DEBUG_v1",
+    "status": "COMPLETE",
+    "debug": true,
+    "actual_CT": true,
+    "actual_CUDA": false,
+    "full_training": false,
+    "full_evaluation": false,
+    "quality_verified": false,
+    "production_ready": false,
+    "checkpoint_written": false,
+    "support_fixture_sha256": "2a02b6e9c13da3c74ebd37e25780bb6c3ec1bed58285b83ff88eda077f81183e",
+    "original_fixture_sha256": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+    "original_supervision_sha256": "2f025efb9275368ac36ce5c7cbc4a42e60691c7bca54871dd09bc0473e42c3f3",
+    "original_configuration_sha256": "8c6250eef1ac1c204a4c4da7c9cc7fea838b3d7ad450afd52267f88b9b60d34b",
+    "configuration": {
+      "method": "hiercp-full",
+      "seed": 42,
+      "labels": {
+        "liver": 1,
+        "tumor": 2
+      },
+      "ct_clip": [
+        -200.0,
+        250.0
+      ],
+      "graph": {
+        "patient_graph_contract": "patient_source_content_population_v2",
+        "patch_size": 48,
+        "context_radius_mm": 28.0,
+        "context_shells_mm": [
+          4.0,
+          12.0,
+          28.0
+        ],
+        "boundary_depth_mm": 3.0,
+        "candidate_k": 8,
+        "num_regions": 24,
+        "region_sample_voxels": 20000,
+        "region_lloyd_iters": 12,
+        "region_k": 4,
+        "num_prototypes": 16,
+        "prototype_top_m": 2,
+        "prototype_k": 4,
+        "prototype_lloyd_iters": 30,
+        "prototype_temperature": 0.5,
+        "max_lesions": null,
+        "graph_schema_version": "full_v22",
+        "geometry_contract": "level0_physical_closure_v2",
+        "adaptive_source_full_shape": true,
+        "adaptive_roi_margin_mm": 30.0,
+        "adaptive_roi_max_radius_mm": 64.0,
+        "adaptive_roi_max_voxels": 8000000,
+        "context_inner_radius_mm": 2.0,
+        "context_outer_radius_mm": 28.0,
+        "context_liver_surface_separation_mm": 1.0,
+        "context_radial_bins": 4,
+        "context_azimuth_bins": 8,
+        "context_elevation_bins": 4,
+        "liver_anchor_search_mm": 64.0,
+        "kdtree_leafsize": 32,
+        "canonical_full_graph": true,
+        "canonical_surface_spacing_mm": 2.0,
+        "canonical_interior_spacing_mm": 3.0,
+        "canonical_context_spacing_mm": 2.5,
+        "canonical_liver_spacing_mm": 4.0,
+        "canonical_node_limit": 250000,
+        "sample_context_nodes": 384,
+        "sample_hops": 2,
+        "sample_interface_radius_mm": 8.0,
+        "sample_hop_radius_mm": 6.0,
+        "surface_edge_radius_mm": 4.5,
+        "interior_edge_radius_mm": 5.5,
+        "context_edge_radius_mm": 6.0,
+        "interface_edge_radius_mm": 8.0,
+        "cross_edge_radius_mm": 7.0,
+        "liver_edge_radius_mm": 10.0,
+        "correspondence_radius_mm": 5.0,
+        "canonical_relation_edge_limit": 5000000,
+        "sample_relation_edge_limit": 500000
+      },
+      "cache": {
+        "source_selection": "random",
+        "source_pad": 2,
+        "samples_per_case": 2,
+        "total_candidates": 8,
+        "candidate_pool_size": 128,
+        "easy_fraction": 0.34,
+        "inter_fraction": 0.33,
+        "intra_fraction": 0.33,
+        "max_draws": 50000,
+        "min_liver_coverage": 0.85,
+        "occupied_clearance_vox": 2,
+        "min_center_separation_mm": 0.0,
+        "min_center_separation_vox": 12.0,
+        "no_placement_policy": "retain_original"
+      },
+      "training": {
+        "val_fraction": 0.2,
+        "epochs": 40,
+        "batch_size": "auto",
+        "batch_size_candidates": "powers_of_two_to_cohort",
+        "batch_calibration_repeats": 3,
+        "batch_calibration_max_vram_fraction": 0.9,
+        "num_workers": "auto",
+        "num_worker_candidates": [
+          0,
+          2,
+          4,
+          8
+        ],
+        "loader_calibration_batches": 8,
+        "lr": 0.0001,
+        "weight_decay": 0.0001,
+        "amp": true,
+        "grad_clip": 5.0,
+        "easy_epochs": 8,
+        "inter_epochs": 18,
+        "intra_epochs": 28,
+        "model_mine_start_epoch": 29,
+        "semi_hard_low_percentile": 0.7,
+        "semi_hard_high_percentile": 0.95,
+        "cross_entropy_weight": 1.0,
+        "pairwise_weight": 1.0,
+        "ordinal_weight": 0.2,
+        "mined_weight": 0.5,
+        "consistency_weight": 0.1,
+        "fixed_validation_epoch": 29,
+        "checkpoint_metric_precision": 8,
+        "gradient_accumulation_steps": 1,
+        "target_effective_batch_size": null,
+        "fused_optimizer": true,
+        "pin_memory": true,
+        "prefetch_factor": 1,
+        "persistent_workers": true,
+        "cuda_prefetch": false
+      },
+      "model": {
+        "hidden_dim": 128,
+        "heads": 4,
+        "local_layers": 3,
+        "patient_layers": 2,
+        "prototype_layers": 2,
+        "dropout": 0.1,
+        "dense_base_channels": 12,
+        "dense_feature_dim": 32,
+        "dense_batch_size": 4,
+        "channels_last_3d": true,
+        "checkpoint_local_blocks": true,
+        "checkpoint_dense_encoder": true
+      },
+      "generation": {
+        "source_selection": "random",
+        "source_pad": 2,
+        "num_copies": 1,
+        "num_candidates": 128,
+        "scoring_batch_size": "auto",
+        "scoring_batch_size_candidates": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "scoring_batch_calibration_repeats": 3,
+        "scoring_batch_max_vram_fraction": 0.9,
+        "max_draws": 50000,
+        "min_liver_coverage": 0.85,
+        "occupied_clearance_vox": 2,
+        "min_center_separation_mm": 0.0,
+        "min_center_separation_vox": 12.0,
+        "no_placement_policy": "retain_original",
+        "top_k": 1,
+        "temperature": 0.0,
+        "intensity_scale_range": [
+          0.95,
+          1.05
+        ],
+        "intensity_shift_range": [
+          -5.0,
+          5.0
+        ],
+        "blend_border": 0,
+        "amp": true,
+        "local_candidate_chunk_size": 8,
+        "pin_memory": true,
+        "cpu_prefetch_workers": 2,
+        "cpu_prefetch_cases": 2,
+        "save_queue_depth": 2,
+        "case_batch_size": 2
+      },
+      "runtime": {
+        "prepare_workers": "auto",
+        "deterministic": true,
+        "allow_tf32": false,
+        "cudnn_benchmark": false
+      }
+    },
+    "query_train_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "validation_cases": [
+      "liver_31"
+    ],
+    "additional_support_only_cases": [
+      "liver_1"
+    ],
+    "support_train_cases": [
+      "liver_5",
+      "liver_6",
+      "liver_1"
+    ],
+    "prototype_training_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "prototype_bank_fingerprint": "352136e3d3be1504169ea1e588e4746f2e91f37f2047148ebcc9182db6c1f188",
+    "prototype_bank_unchanged": true,
+    "candidate_count": 8,
+    "candidate_pool_size": 128,
+    "native_supervision_sha256": "a55ec279fa82db5f721e0ee4ce798c2ea89f294356ed87857cdde696fbdd1387",
+    "bounded_scope": {
+      "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+      "margin_mm": 10.0,
+      "context_outer_radius_mm": 10.0,
+      "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+      "implicit_depth_expansion": false,
+      "mandatory_surface_search": false,
+      "optional_roles": [
+        "source_liver_surface",
+        "target_liver_surface"
+      ],
+      "CNN_shape": [
+        48,
+        48,
+        48
+      ],
+      "coordinate_normalization_mm": 28.0,
+      "tumor_sdf_normalization_mm": 28.0,
+      "context_shells_mm": [
+        4.0,
+        12.0,
+        28.0
+      ],
+      "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+      "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+      "original_module_sha256": {
+        "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+        "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+        "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+        "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+        "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+        "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+        "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+        "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+        "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+        "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+        "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+        "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+        "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+        "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+        "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+        "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+        "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+        "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+        "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+        "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+        "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+        "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+        "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+        "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+        "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+        "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+        "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+        "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+        "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+        "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+      },
+      "debug": true,
+      "production_ready": false,
+      "quality_verified": false,
+      "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+    },
+    "source_records": [
+      {
+        "case_id": "liver_1",
+        "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_1_0000.nii.gz",
+        "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_1.nii.gz",
+        "image_sha256": "86931dc0e9559d28b626482bcbb74783f0452d08137e011644875db6e3bfab42",
+        "label_sha256": "6bf80c133bddaef6a3af616f82185c3da20b2b655d382c4feaff61d2c0a5cfe7"
+      }
+    ],
+    "raw_index_sha256": "dad79e3cc53ecc899a2304c5cd7b00b4fbdc8bbd0708b2932b9288fe795bc611",
+    "raw_training_split": [
+      "liver_1",
+      "liver_2",
+      "liver_5",
+      "liver_6",
+      "liver_7",
+      "liver_9",
+      "liver_10",
+      "liver_15",
+      "liver_18",
+      "liver_20",
+      "liver_21",
+      "liver_23",
+      "liver_24",
+      "liver_27",
+      "liver_28",
+      "liver_30",
+      "liver_32",
+      "liver_36",
+      "liver_39",
+      "liver_40",
+      "liver_41",
+      "liver_43",
+      "liver_45",
+      "liver_46",
+      "liver_47",
+      "liver_49",
+      "liver_51",
+      "liver_52",
+      "liver_55",
+      "liver_56",
+      "liver_57",
+      "liver_58",
+      "liver_59",
+      "liver_60",
+      "liver_62",
+      "liver_64",
+      "liver_65",
+      "liver_66",
+      "liver_68",
+      "liver_69",
+      "liver_71",
+      "liver_72",
+      "liver_73",
+      "liver_74",
+      "liver_75",
+      "liver_76",
+      "liver_78",
+      "liver_80",
+      "liver_81",
+      "liver_83",
+      "liver_85",
+      "liver_86",
+      "liver_87",
+      "liver_88",
+      "liver_91",
+      "liver_92",
+      "liver_93",
+      "liver_94",
+      "liver_95",
+      "liver_97",
+      "liver_100",
+      "liver_101",
+      "liver_103",
+      "liver_104",
+      "liver_105",
+      "liver_106",
+      "liver_107",
+      "liver_108",
+      "liver_111",
+      "liver_112",
+      "liver_114",
+      "liver_116",
+      "liver_117",
+      "liver_118",
+      "liver_120",
+      "liver_121",
+      "liver_122",
+      "liver_123",
+      "liver_124",
+      "liver_125",
+      "liver_126",
+      "liver_127",
+      "liver_129",
+      "liver_130"
+    ],
+    "source_proof": {
+      "source": "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+      "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+      "verified_files": {
+        "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+        "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+        "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+        "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+        "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+        "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+        "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+        "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+        "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+        "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+        "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+        "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+        "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+        "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+        "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+        "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+        "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+        "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+        "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+        "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+        "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+        "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+        "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+        "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+        "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+        "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+        "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+        "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+        "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+        "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+        "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+      }
+    },
+    "preparation": {
+      "raw_load_and_depth_seconds": 5.856888199981768,
+      "bounded_canonical_preparation_seconds": 0.9103267000173219,
+      "ROI_records": [
+        {
+          "case_id": "liver_1",
+          "candidate": "source",
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 1,
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 2,
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 0,
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 3,
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 4,
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 5,
+          "shape": [
+            43,
+            45,
+            11
+          ],
+          "voxels": 21285,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 80
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 7,
+          "shape": [
+            41,
+            39,
+            11
+          ],
+          "voxels": 17589,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 62
+        },
+        {
+          "case_id": "liver_1",
+          "candidate": 6,
+          "shape": [
+            45,
+            47,
+            11
+          ],
+          "voxels": 23265,
+          "spacing_mm": [
+            0.6757810115814209,
+            0.6757810115814209,
+            5.0
+          ],
+          "full_footprint_voxels": 162
+        }
+      ],
+      "supervision_sha256": "a55ec279fa82db5f721e0ee4ce798c2ea89f294356ed87857cdde696fbdd1387"
+    },
+    "process_peak_rss_bytes": 2772242432,
+    "total_wall_seconds": 34.36495289998129,
+    "resources": {
+      "cpu_physical": 8,
+      "cpu_logical": 16,
+      "RAM_total_bytes": 68640653312,
+      "workers": 4,
+      "rss_limit_bytes": 34359738368
+    },
+    "GPU_context_initialized": false,
+    "input_sha256": {
+      "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+      "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a",
+      "D:\\AI project\\nnunet\\work\\v222_raw_ct_r3_training_20260923\\context\\index_vram_affine.json": "dad79e3cc53ecc899a2304c5cd7b00b4fbdc8bbd0708b2932b9288fe795bc611",
+      "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_1_0000.nii.gz": "86931dc0e9559d28b626482bcbb74783f0452d08137e011644875db6e3bfab42",
+      "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_1.nii.gz": "6bf80c133bddaef6a3af616f82185c3da20b2b655d382c4feaff61d2c0a5cfe7"
+    },
+    "original_inputs_preserved": true,
+    "source_preserved": true,
+    "identity_sha256": "a98055da02cba9e4a2df5414eee0c5c5d0aeeb7f1503f59997d80e93c5fb0b2b"
+  },
+  "support_refreshes": [
+    {
+      "after_successful_update": 0,
+      "generation": "DEBUG_successful_update_0",
+      "seconds": 1.7719365000375547,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_0",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 1967116800,
+      "peak_reserved_bytes": 2141192192
+    },
+    {
+      "after_successful_update": 1,
+      "generation": "DEBUG_successful_update_1",
+      "seconds": 1.3861238000099547,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_1",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056978432,
+      "peak_reserved_bytes": 2791309312
+    },
+    {
+      "after_successful_update": 2,
+      "generation": "DEBUG_successful_update_2",
+      "seconds": 1.3658596000168473,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_2",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056971264,
+      "peak_reserved_bytes": 2791309312
+    },
+    {
+      "after_successful_update": 3,
+      "generation": "DEBUG_successful_update_3",
+      "seconds": 1.4044681999948807,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_3",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056978432,
+      "peak_reserved_bytes": 2793406464
+    },
+    {
+      "after_successful_update": 4,
+      "generation": "DEBUG_successful_update_4",
+      "seconds": 1.3920821999781765,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_4",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056971264,
+      "peak_reserved_bytes": 2793406464
+    },
+    {
+      "after_successful_update": 5,
+      "generation": "DEBUG_successful_update_5",
+      "seconds": 1.4737636999925599,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_5",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056978432,
+      "peak_reserved_bytes": 2793406464
+    },
+    {
+      "after_successful_update": 6,
+      "generation": "DEBUG_successful_update_6",
+      "seconds": 1.4346368999686092,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_6",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056971264,
+      "peak_reserved_bytes": 2793406464
+    },
+    {
+      "after_successful_update": 7,
+      "generation": "DEBUG_successful_update_7",
+      "seconds": 1.5347641000407748,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_7",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056971264,
+      "peak_reserved_bytes": 2793406464
+    },
+    {
+      "after_successful_update": 8,
+      "generation": "DEBUG_successful_update_8",
+      "seconds": 1.37664400000358,
+      "shape": [
+        24,
+        128
+      ],
+      "detached": true,
+      "original_fixed_two_views": true,
+      "admission": {
+        "generation": "DEBUG_successful_update_8",
+        "epoch": 0,
+        "manifest_sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+        "support_policy": "fixed_epoch0_two_original_views_eval_no_grad_full_train_initial_then_after_each_train_before_validation",
+        "fixed_view_epoch": 0,
+        "support_candidates": 24,
+        "support_source_samples": 3,
+        "support_patients": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "debug": true,
+        "full_signed_training_cache": false,
+        "cached_exclusion_teacher_plans": 0,
+        "query_GT_labels_used": false,
+        "detached_L0_memory": true,
+        "live_upper_states_cached": false
+      },
+      "physical_sample_batch": 3,
+      "physical_candidate_graph_batch": 24,
+      "peak_allocated_bytes": 2056971264,
+      "peak_reserved_bytes": 2793406464
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 1,
+      "optimizer_counter": 1,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 2,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 2,
+      "optimizer_counter": 2,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 3,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 3,
+      "optimizer_counter": 3,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 4,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 4,
+      "optimizer_counter": 4,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 5,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 5,
+      "optimizer_counter": 5,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 6,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 6,
+      "optimizer_counter": 6,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 7,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 7,
+      "optimizer_counter": 7,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    },
+    {
+      "attempt": 8,
+      "status": "OPTIMIZER_UPDATED",
+      "completed_updates": 8,
+      "optimizer_counter": 8,
+      "scale_before": 65536.0,
+      "scale_after": 65536.0
+    }
+  ],
+  "updates": [
+    {
+      "step": 1,
+      "attempt": 1,
+      "loss": 4.049078941345215,
+      "loss_terms": {
+        "loss": 4.0359930992126465,
+        "ce": 2.163844585418701,
+        "pair": 1.2061653137207031,
+        "ordinal": 0.7387236952781677,
+        "mined": 1.0364774465560913,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.13086047768592834,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 13.806667008522222,
+          "L0": 4.741819546376425,
+          "original_L0_total": 21.15240921378444,
+          "role_attention_pool": 0.1844077319292063,
+          "shell_attention_pool": 0.2608078490302789,
+          "local_fusion": 10.535660630840749,
+          "v222_L1": 5.624716278274685,
+          "v222_L2": 0.8799199232971153,
+          "v222_L2_updates": 2.496538615194271,
+          "v222_upper_total": 6.310232468650428
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 13.806667008522222,
+        "L0": 4.741819546376425,
+        "original_L0_total": 21.15240921378444,
+        "role_attention_pool": 0.1844077319292063,
+        "shell_attention_pool": 0.2608078490302789,
+        "local_fusion": 10.535660630840749,
+        "v222_L1": 5.624716278274685,
+        "v222_L2": 0.8799199232971153,
+        "v222_L2_updates": 2.496538615194271,
+        "v222_upper_total": 6.310232468650428
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.034753406829345544,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.2006312026743205,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.23458373505566335,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.018200381090938397,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.018209235864904052,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.04798184455501311,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.06335607798445994,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.03631066749246809,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.05452983992932069,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.09115108700784577,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 22.073591232299805,
+      "forward_seconds": 2.64707989996532,
+      "backward_seconds": 7.188367900031153,
+      "optimizer_seconds": 0.06887000001734123,
+      "update_seconds": 10.342053000000305,
+      "peak_allocated_bytes": 2621601280,
+      "peak_reserved_bytes": 2766143488,
+      "RSS_bytes": 6003888128,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 2,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 2,
+      "attempt": 2,
+      "loss": 3.7855942249298096,
+      "loss_terms": {
+        "loss": 3.7736926078796387,
+        "ce": 2.049354076385498,
+        "pair": 1.1154770851135254,
+        "ordinal": 0.7310190200805664,
+        "mined": 0.9253151416778564,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11901544034481049,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 12.861153917346252,
+          "L0": 4.012040889847845,
+          "original_L0_total": 19.03390041949108,
+          "role_attention_pool": 0.17148506008163944,
+          "shell_attention_pool": 0.1970631558737788,
+          "local_fusion": 9.216756754076028,
+          "v222_L1": 4.963872645405871,
+          "v222_L2": 0.7812317960684643,
+          "v222_L2_updates": 2.085110203870121,
+          "v222_upper_total": 5.522361486170591
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 12.861153917346252,
+        "L0": 4.012040889847845,
+        "original_L0_total": 19.03390041949108,
+        "role_attention_pool": 0.17148506008163944,
+        "shell_attention_pool": 0.1970631558737788,
+        "local_fusion": 9.216756754076028,
+        "v222_L1": 4.963872645405871,
+        "v222_L2": 0.7812317960684643,
+        "v222_L2_updates": 2.085110203870121,
+        "v222_upper_total": 5.522361486170591
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.025744345655221525,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.14549564224326922,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.17065354471191044,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.013933858586414735,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.013856420764182706,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.03437623664798555,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.045838662687703965,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.026042761920435493,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.039144092732515755,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.06567403919227015,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 19.818824768066406,
+      "forward_seconds": 2.494605700019747,
+      "backward_seconds": 7.1812867999542505,
+      "optimizer_seconds": 0.005291299952659756,
+      "update_seconds": 10.099424800020643,
+      "peak_allocated_bytes": 2669798912,
+      "peak_reserved_bytes": 2791309312,
+      "RSS_bytes": 5980831744,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 4,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 3,
+      "attempt": 3,
+      "loss": 3.689012289047241,
+      "loss_terms": {
+        "loss": 3.67703914642334,
+        "ce": 2.0044639110565186,
+        "pair": 1.077497959136963,
+        "ordinal": 0.6922499537467957,
+        "mined": 0.9132547378540039,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11973065137863159,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 10.932336572318512,
+          "L0": 3.3776653261191742,
+          "original_L0_total": 15.894219088559344,
+          "role_attention_pool": 0.16711647939744312,
+          "shell_attention_pool": 0.11907479562894195,
+          "local_fusion": 7.562516338080177,
+          "v222_L1": 4.444153316205466,
+          "v222_L2": 0.7739819659939832,
+          "v222_L2_updates": 1.9455486398822195,
+          "v222_upper_total": 4.982861205230987
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 10.932336572318512,
+        "L0": 3.3776653261191742,
+        "original_L0_total": 15.894219088559344,
+        "role_attention_pool": 0.16711647939744312,
+        "shell_attention_pool": 0.11907479562894195,
+        "local_fusion": 7.562516338080177,
+        "v222_L1": 4.444153316205466,
+        "v222_L2": 0.7739819659939832,
+        "v222_L2_updates": 1.9455486398822195,
+        "v222_upper_total": 4.982861205230987
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.021072471668792215,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.12216422747868638,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.14324542314473998,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.01243045297103092,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.013136146659911781,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.028666195707821206,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.03756719419297018,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.021558119219086434,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.03284083397621944,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.054365576044126486,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 16.656984329223633,
+      "forward_seconds": 2.572458300041035,
+      "backward_seconds": 7.2500066999928094,
+      "optimizer_seconds": 0.006513500004075468,
+      "update_seconds": 10.250902400002815,
+      "peak_allocated_bytes": 2669806080,
+      "peak_reserved_bytes": 2791309312,
+      "RSS_bytes": 5975498752,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 2,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 4,
+      "attempt": 4,
+      "loss": 3.3515048027038574,
+      "loss_terms": {
+        "loss": 3.3407444953918457,
+        "ce": 1.837005376815796,
+        "pair": 0.944698691368103,
+        "ordinal": 0.6462033987045288,
+        "mined": 0.8595997095108032,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.10760298371315002,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 11.147340923764114,
+          "L0": 3.934549870139837,
+          "original_L0_total": 17.8810838318469,
+          "role_attention_pool": 0.17057808318313197,
+          "shell_attention_pool": 0.2330427933926148,
+          "local_fusion": 9.238020493237022,
+          "v222_L1": 5.4685934520916435,
+          "v222_L2": 0.8644180600339966,
+          "v222_L2_updates": 2.4634953274783604,
+          "v222_upper_total": 6.164569588767533
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 11.147340923764114,
+        "L0": 3.934549870139837,
+        "original_L0_total": 17.8810838318469,
+        "role_attention_pool": 0.17057808318313197,
+        "shell_attention_pool": 0.2330427933926148,
+        "local_fusion": 9.238020493237022,
+        "v222_L1": 5.4685934520916435,
+        "v222_L2": 0.8644180600339966,
+        "v222_L2_updates": 2.4634953274783604,
+        "v222_upper_total": 6.164569588767533
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.019366020452361857,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.11039569135403932,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.1293575065480599,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.011453137336137667,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.012013284152625406,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.025416137714754625,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.03345791679201704,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.018466310119651223,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.02927400535160222,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.048148262330371235,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 18.91388511657715,
+      "forward_seconds": 2.7855938999564387,
+      "backward_seconds": 7.098175699997228,
+      "optimizer_seconds": 0.00537680002162233,
+      "update_seconds": 10.36017100000754,
+      "peak_allocated_bytes": 2669798912,
+      "peak_reserved_bytes": 2793406464,
+      "RSS_bytes": 5975683072,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 4,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 5,
+      "attempt": 5,
+      "loss": 3.391704797744751,
+      "loss_terms": {
+        "loss": 3.380706787109375,
+        "ce": 1.8632488250732422,
+        "pair": 0.9539280533790588,
+        "ordinal": 0.6301428079605103,
+        "mined": 0.8750027418136597,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.1099795401096344,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 12.038985716070407,
+          "L0": 3.8413527467167925,
+          "original_L0_total": 18.252212461936363,
+          "role_attention_pool": 0.1512185493805328,
+          "shell_attention_pool": 0.2333934994160314,
+          "local_fusion": 8.895831226832088,
+          "v222_L1": 5.459373502621811,
+          "v222_L2": 0.9074801337910233,
+          "v222_L2_updates": 2.4918840953293446,
+          "v222_upper_total": 6.16387050837918
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 12.038985716070407,
+        "L0": 3.8413527467167925,
+        "original_L0_total": 18.252212461936363,
+        "role_attention_pool": 0.1512185493805328,
+        "shell_attention_pool": 0.2333934994160314,
+        "local_fusion": 8.895831226832088,
+        "v222_L1": 5.459373502621811,
+        "v222_L2": 0.9074801337910233,
+        "v222_L2_updates": 2.4918840953293446,
+        "v222_upper_total": 6.16387050837918
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.01785741062028672,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.10158414182287591,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.11878944410694406,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.010455951159695012,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.010128239889467129,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.02300216532243866,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.030207387298284125,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.016973441973904196,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.026308649954809398,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.04351375725755288,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 19.264904022216797,
+      "forward_seconds": 2.5032198999542743,
+      "backward_seconds": 7.82677640003385,
+      "optimizer_seconds": 0.008067200018558651,
+      "update_seconds": 10.822684599959757,
+      "peak_allocated_bytes": 2669806080,
+      "peak_reserved_bytes": 2793406464,
+      "RSS_bytes": 5976911872,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 2,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 6,
+      "attempt": 6,
+      "loss": 2.927133560180664,
+      "loss_terms": {
+        "loss": 2.91585636138916,
+        "ce": 1.6272433996200562,
+        "pair": 0.7938956022262573,
+        "ordinal": 0.6551392078399658,
+        "mined": 0.7273794412612915,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11277278512716293,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 12.648907102494203,
+          "L0": 4.573934510433403,
+          "original_L0_total": 19.95072726466129,
+          "role_attention_pool": 0.18967154512127277,
+          "shell_attention_pool": 0.2799027021553163,
+          "local_fusion": 10.006713683339246,
+          "v222_L1": 5.329257023273432,
+          "v222_L2": 0.9307217892733884,
+          "v222_L2_updates": 2.1777498291429462,
+          "v222_upper_total": 5.893000851324549
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 12.648907102494203,
+        "L0": 4.573934510433403,
+        "original_L0_total": 19.95072726466129,
+        "role_attention_pool": 0.18967154512127277,
+        "shell_attention_pool": 0.2799027021553163,
+        "local_fusion": 10.006713683339246,
+        "v222_L1": 5.329257023273432,
+        "v222_L2": 0.9307217892733884,
+        "v222_L2_updates": 2.1777498291429462,
+        "v222_upper_total": 5.893000851324549
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.017394603701793694,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.09551783995106006,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.11225333692067266,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.008846286600803261,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.009946003786491324,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.02227983901324838,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.02920038798301256,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.01605272501127327,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.025251014393581097,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.04181668181872361,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 20.802860260009766,
+      "forward_seconds": 2.7723726000403985,
+      "backward_seconds": 7.876812999951653,
+      "optimizer_seconds": 0.006621400010772049,
+      "update_seconds": 11.071107700001448,
+      "peak_allocated_bytes": 2669798912,
+      "peak_reserved_bytes": 2793406464,
+      "RSS_bytes": 5976965120,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 4,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 7,
+      "attempt": 7,
+      "loss": 2.5606091022491455,
+      "loss_terms": {
+        "loss": 2.548676013946533,
+        "ce": 1.4323772192001343,
+        "pair": 0.6429324150085449,
+        "ordinal": 0.6358225345611572,
+        "mined": 0.6924037933349609,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11933185905218124,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 14.68430150574408,
+          "L0": 4.770784265586735,
+          "original_L0_total": 21.941569733033067,
+          "role_attention_pool": 0.3322519298183634,
+          "shell_attention_pool": 0.4225398098746642,
+          "local_fusion": 10.66896120566533,
+          "v222_L1": 6.03247120525465,
+          "v222_L2": 1.0517507858601125,
+          "v222_L2_updates": 2.516135251764092,
+          "v222_upper_total": 6.710516384367677
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 14.68430150574408,
+        "L0": 4.770784265586735,
+        "original_L0_total": 21.941569733033067,
+        "role_attention_pool": 0.3322519298183634,
+        "shell_attention_pool": 0.4225398098746642,
+        "local_fusion": 10.66896120566533,
+        "v222_L1": 6.03247120525465,
+        "v222_L2": 1.0517507858601125,
+        "v222_L2_updates": 2.516135251764092,
+        "v222_upper_total": 6.710516384367677
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.01696405600838087,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.09032705460476942,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.10668050379661712,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.007962943513002326,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.009002027770603679,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.02162527641626901,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.028686532698161078,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.015667406963373504,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.024576130292087477,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.04090275865484842,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 22.944791793823242,
+      "forward_seconds": 2.6640510000288486,
+      "backward_seconds": 7.8201205000514165,
+      "optimizer_seconds": 0.0058874000096693635,
+      "update_seconds": 10.900787900027353,
+      "peak_allocated_bytes": 2669798912,
+      "peak_reserved_bytes": 2793406464,
+      "RSS_bytes": 5977182208,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 4,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    },
+    {
+      "step": 8,
+      "attempt": 8,
+      "loss": 2.2093939781188965,
+      "loss_terms": {
+        "loss": 2.197751522064209,
+        "ce": 1.2627956867218018,
+        "pair": 0.5305511951446533,
+        "ordinal": 0.5871317386627197,
+        "mined": 0.5739563703536987,
+        "active_max_difficulty": 3.0
+      },
+      "consistency": 0.11642555892467499,
+      "gradient_observation": {
+        "finite": true,
+        "norms": {
+          "CNN": 19.695154326175693,
+          "L0": 5.709500868220643,
+          "original_L0_total": 27.022627144257065,
+          "role_attention_pool": 0.38064636286205367,
+          "shell_attention_pool": 0.39446290529465217,
+          "local_fusion": 11.974876120996536,
+          "v222_L1": 6.8085366152520095,
+          "v222_L2": 1.2160644020132076,
+          "v222_L2_updates": 2.9651566528340423,
+          "v222_upper_total": 7.65757271515688
+        },
+        "zero_groups": [],
+        "nonfinite_groups": [],
+        "norm_reduction_dtype": "float64"
+      },
+      "gradient_groups": {
+        "CNN": 19.695154326175693,
+        "L0": 5.709500868220643,
+        "original_L0_total": 27.022627144257065,
+        "role_attention_pool": 0.38064636286205367,
+        "shell_attention_pool": 0.39446290529465217,
+        "local_fusion": 11.974876120996536,
+        "v222_L1": 6.8085366152520095,
+        "v222_L2": 1.2160644020132076,
+        "v222_L2_updates": 2.9651566528340423,
+        "v222_upper_total": 7.65757271515688
+      },
+      "actual_parameter_updates": {
+        "CNN": {
+          "L2_change": 0.015436915490106163,
+          "changed_parameter_tensors": 24,
+          "parameter_tensors": 24
+        },
+        "L0": {
+          "L2_change": 0.08865609226474948,
+          "changed_parameter_tensors": 480,
+          "parameter_tensors": 480
+        },
+        "original_L0_total": {
+          "L2_change": 0.10463212763872547,
+          "changed_parameter_tensors": 602,
+          "parameter_tensors": 612
+        },
+        "role_attention_pool": {
+          "L2_change": 0.007727698268385712,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 12
+        },
+        "shell_attention_pool": {
+          "L2_change": 0.008440821665500255,
+          "changed_parameter_tensors": 12,
+          "parameter_tensors": 18
+        },
+        "local_fusion": {
+          "L2_change": 0.021717818834187344,
+          "changed_parameter_tensors": 6,
+          "parameter_tensors": 6
+        },
+        "v222_L1": {
+          "L2_change": 0.028920659104221095,
+          "changed_parameter_tensors": 36,
+          "parameter_tensors": 36
+        },
+        "v222_L2": {
+          "L2_change": 0.015534585600854686,
+          "changed_parameter_tensors": 8,
+          "parameter_tensors": 8
+        },
+        "v222_L2_updates": {
+          "L2_change": 0.024871288054827273,
+          "changed_parameter_tensors": 20,
+          "parameter_tensors": 20
+        },
+        "v222_upper_total": {
+          "L2_change": 0.0411949347918539,
+          "changed_parameter_tensors": 65,
+          "parameter_tensors": 65
+        }
+      },
+      "gradient_before_clip": 28.086666107177734,
+      "forward_seconds": 2.4801213999744505,
+      "backward_seconds": 7.166333000001032,
+      "optimizer_seconds": 0.0054842999670654535,
+      "update_seconds": 10.058192300028168,
+      "peak_allocated_bytes": 2669798912,
+      "peak_reserved_bytes": 2793406464,
+      "RSS_bytes": 5977849856,
+      "sample_scores": 2,
+      "candidate_scores": 16,
+      "neural_execution": {
+        "CNN_calls": 5,
+        "CNN_ROIs": 18,
+        "L0_block_calls": 6,
+        "v222_L1_calls": 4,
+        "v222_L2_calls": 4
+      },
+      "original_bridge_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      },
+      "original_second_view_embeddings": {
+        "tumor": [
+          16,
+          128
+        ],
+        "source_context": [
+          16,
+          128
+        ],
+        "target_context": [
+          16,
+          128
+        ],
+        "source_relation": [
+          16,
+          128
+        ],
+        "target_relation": [
+          16,
+          128
+        ],
+        "source_c0": [
+          16,
+          128
+        ],
+        "source_c1": [
+          16,
+          128
+        ],
+        "source_c2": [
+          16,
+          128
+        ],
+        "target_c0": [
+          16,
+          128
+        ],
+        "target_c1": [
+          16,
+          128
+        ],
+        "target_c2": [
+          16,
+          128
+        ],
+        "fused": [
+          16,
+          128
+        ]
+      }
+    }
+  ],
+  "curve": [
+    {
+      "step": 0,
+      "train": {
+        "top1": 0.0,
+        "MRR": 0.1875,
+        "positive_minus_best_other": [
+          -0.04936182498931885,
+          -0.21402323246002197
+        ],
+        "scores": [
+          [
+            -1.016400933265686,
+            -0.9670391082763672,
+            -1.0433340072631836,
+            -1.0501551628112793,
+            -1.0036135911941528,
+            -1.1054843664169312,
+            -1.0098234415054321,
+            -1.1328861713409424
+          ],
+          [
+            -1.0658332109451294,
+            -1.0093238353729248,
+            -1.0299800634384155,
+            -0.9720660448074341,
+            -0.9179736375808716,
+            -0.8518099784851074,
+            -0.9905943274497986,
+            -1.0093780755996704
+          ]
+        ],
+        "mean_margin": -0.1316925287246704,
+        "loss": 3.9010205268859863,
+        "ranking_loss": 3.9010205268859863,
+        "consistency": 1.2914340175029793e-07,
+        "loss_terms": {
+          "loss": 3.9010205268859863,
+          "ce": 2.111250400543213,
+          "pair": 1.1634777784347534,
+          "ordinal": 0.7254300117492676,
+          "mined": 0.9624130725860596,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1428571492433548,
+        "positive_minus_best_other": [
+          -0.17176556587219238
+        ],
+        "scores": [
+          [
+            -1.045198678970337,
+            -0.8734331130981445,
+            -0.950088381767273,
+            -0.9528316855430603,
+            -0.9371496438980103,
+            -0.9274439215660095,
+            -1.0535922050476074,
+            -0.975105881690979
+          ]
+        ],
+        "mean_margin": -0.17176556587219238,
+        "loss": 4.007137775421143,
+        "ranking_loss": 4.007137775421143,
+        "consistency": 1.2914340175029793e-07,
+        "loss_terms": {
+          "loss": 4.007137775421143,
+          "ce": 2.161858320236206,
+          "pair": 1.2043640613555908,
+          "ordinal": 0.7416626811027527,
+          "mined": 0.9851655960083008,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    },
+    {
+      "step": 2,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.022587835788726807,
+          0.0916743278503418
+        ],
+        "scores": [
+          [
+            -0.9357683062553406,
+            -1.235473394393921,
+            -1.2598943710327148,
+            -1.2792950868606567,
+            -0.9583561420440674,
+            -1.012798547744751,
+            -1.0144810676574707,
+            -1.0360599756240845
+          ],
+          [
+            -0.9524914026260376,
+            -1.2081656455993652,
+            -1.124488115310669,
+            -1.1767997741699219,
+            -1.0441657304763794,
+            -1.0752263069152832,
+            -1.1126798391342163,
+            -1.1482346057891846
+          ]
+        ],
+        "mean_margin": 0.0571310818195343,
+        "loss": 3.5162620544433594,
+        "ranking_loss": 3.5162620544433594,
+        "consistency": 1.1920928955078125e-07,
+        "loss_terms": {
+          "loss": 3.5162620544433594,
+          "ce": 1.9309709072113037,
+          "pair": 1.020753264427185,
+          "ordinal": 0.6864738464355469,
+          "mined": 0.8544865846633911,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.125,
+        "positive_minus_best_other": [
+          -0.27553635835647583
+        ],
+        "scores": [
+          [
+            -1.1411157846450806,
+            -0.8655794262886047,
+            -0.9023842811584473,
+            -0.9026308059692383,
+            -1.108031988143921,
+            -1.0928800106048584,
+            -1.0862114429473877,
+            -0.9836448431015015
+          ]
+        ],
+        "mean_margin": -0.27553635835647583,
+        "loss": 4.145084381103516,
+        "ranking_loss": 4.145084381103516,
+        "consistency": 1.1920928955078125e-07,
+        "loss_terms": {
+          "loss": 4.145084381103516,
+          "ce": 2.215527296066284,
+          "pair": 1.246510624885559,
+          "ordinal": 0.7585662007331848,
+          "mined": 1.0626661777496338,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    },
+    {
+      "step": 4,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.03482908010482788,
+          0.3757669925689697
+        ],
+        "scores": [
+          [
+            -0.5562033653259277,
+            -1.1952308416366577,
+            -1.2055408954620361,
+            -1.2591016292572021,
+            -0.5910324454307556,
+            -0.6622717380523682,
+            -0.6925219297409058,
+            -0.7552968263626099
+          ],
+          [
+            -0.3605523109436035,
+            -1.0808764696121216,
+            -0.903605043888092,
+            -1.0116630792617798,
+            -0.7363193035125732,
+            -0.7971323132514954,
+            -0.8086255192756653,
+            -0.9220274090766907
+          ]
+        ],
+        "mean_margin": 0.2052980363368988,
+        "loss": 3.0931320190429688,
+        "ranking_loss": 3.0931320190429688,
+        "consistency": 1.0927518445669193e-07,
+        "loss_terms": {
+          "loss": 3.0931320190429688,
+          "ce": 1.7220265865325928,
+          "pair": 0.8594347238540649,
+          "ordinal": 0.6509807705879211,
+          "mined": 0.7629491090774536,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1428571492433548,
+        "positive_minus_best_other": [
+          -0.47203880548477173
+        ],
+        "scores": [
+          [
+            -0.9554937481880188,
+            -0.48345494270324707,
+            -0.5326595306396484,
+            -0.5162367820739746,
+            -0.9729837775230408,
+            -0.9472086429595947,
+            -0.9131284356117249,
+            -0.7205421924591064
+          ]
+        ],
+        "mean_margin": -0.47203880548477173,
+        "loss": 4.371685028076172,
+        "ranking_loss": 4.371685028076172,
+        "consistency": 1.0927518445669193e-07,
+        "loss_terms": {
+          "loss": 4.371685028076172,
+          "ce": 2.300602912902832,
+          "pair": 1.3097811937332153,
+          "ordinal": 0.8106262683868408,
+          "mined": 1.1983510255813599,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    },
+    {
+      "step": 8,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.5652123093605042,
+          1.4410028457641602
+        ],
+        "scores": [
+          [
+            0.3991541266441345,
+            -2.1505510807037354,
+            -2.132840394973755,
+            -2.167301893234253,
+            -0.16605818271636963,
+            -0.8447994589805603,
+            -0.846698522567749,
+            -1.0059053897857666
+          ],
+          [
+            1.2784852981567383,
+            -1.689495325088501,
+            -1.3524377346038818,
+            -1.7953033447265625,
+            -0.16251754760742188,
+            -0.46672165393829346,
+            -1.0373479127883911,
+            -1.546565294265747
+          ]
+        ],
+        "mean_margin": 1.0031075775623322,
+        "loss": 1.314638376235962,
+        "ranking_loss": 1.314638376235962,
+        "consistency": 8.940696716308594e-08,
+        "loss_terms": {
+          "loss": 1.314638376235962,
+          "ce": 0.7589805126190186,
+          "pair": 0.27203553915023804,
+          "ordinal": 0.6816408634185791,
+          "mined": 0.2945882976055145,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 16
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -1.6583689451217651
+        ],
+        "scores": [
+          [
+            -1.5828465223312378,
+            0.07552242279052734,
+            -0.37721413373947144,
+            0.017820358276367188,
+            -1.8452281951904297,
+            -1.830378532409668,
+            -1.3195363283157349,
+            -0.4563314914703369
+          ]
+        ],
+        "mean_margin": -1.6583689451217651,
+        "loss": 6.082269668579102,
+        "ranking_loss": 6.082269668579102,
+        "consistency": 1.1920928955078125e-07,
+        "loss_terms": {
+          "loss": 6.082269668579102,
+          "ce": 3.0195467472076416,
+          "pair": 1.770133376121521,
+          "ordinal": 1.1441595554351807,
+          "mined": 2.1275153160095215,
+          "active_max_difficulty": 3.0
+        },
+        "loss_epoch": 29,
+        "candidate_graphs": 8
+      }
+    }
+  ],
+  "input_sha256": {
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\report.json": "d5138cc5f093340b55570adf640f81afa270b391237cd3c59784f4ace2f84415",
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\execution_contract.json": "3cf8fe28f05cc4b45a82e55f0e0dc10944a435ee2a18be8692c4649cf925ea60",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\report.json": "a615208724a67189abe2454cd481c574923ae1d0ae8165ee86261dca0435d35a",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\execution_contract.json": "c28aa65296b93a43f9f978d96ab1d02228f7d527db4ddd5f9b962293d26c4798",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a",
+    "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\support_manifest_DEBUG.json": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+    "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\support_fixture_DEBUG.pt": "2a02b6e9c13da3c74ebd37e25780bb6c3ec1bed58285b83ff88eda077f81183e",
+    "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\execution_contract.json": "7a13677dc98eb0433cbdad94e44714a872b83467161714dde38368f484207919",
+    "D:\\AI project\\nnunet\\work\\v222_raw_ct_r3_training_20260923\\context\\index_vram_affine.json": "dad79e3cc53ecc899a2304c5cd7b00b4fbdc8bbd0708b2932b9288fe795bc611",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_5_0000.nii.gz": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_5.nii.gz": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_6_0000.nii.gz": "da441b7b71fea9b654d3fbb405bdf19d562145297f896a3e906f7820cb59271e",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_6.nii.gz": "5847fb1c0641b1c6d19baefd9404e1c3f86108a902a8fccf4eb5fae177acac14",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_31_0000.nii.gz": "86c8f3b6ef777ef98f900c85676e5585b3298ecc53b827bccf7a53fde8b51cec",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_31.nii.gz": "b80998498bf9fb1210ee6690432fab58cd9dc1eeb06fe84c74b881922eedb8d9",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_1_0000.nii.gz": "86931dc0e9559d28b626482bcbb74783f0452d08137e011644875db6e3bfab42",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_1.nii.gz": "6bf80c133bddaef6a3af616f82185c3da20b2b655d382c4feaff61d2c0a5cfe7"
+  },
+  "current_sources_sha256": {
+    "tools/verify_v1_half_b_learning.py": "2e90b34faf12dcb4fee1ac78ad1863bdab80295048dd2299f0b02d0855552b2d",
+    "tools/prepare_v1_half_b_support_debug.py": "e96f7ac746ccf46e924818c5dbcb48e429d68aa08d35bbc810d53bdff988774d",
+    "tools/verify_v1_half_a_learning.py": "0f3b986031080e01ad80f25878b9383fed0fa864131df92d4dec23f7f272523a",
+    "hiercp_v1x/half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+    "hiercp_v1x/half_b_support.py": "20c5059e55e396f9fd8cbfaa2d4c079596a1024589078a015a96fd3e71bf7730",
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_learning_inputs.py": "0edd13901908124f02f6212998ee3b8599902f8c0392a96cbef309c6e4a63b9b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988"
+  },
+  "completed_optimizer_updates": 8,
+  "attempted_backward_passes": 8,
+  "amp_overflow_skipped_attempts": 0,
+  "finite_complete_updates": true,
+  "missing_gradients": [],
+  "connected_trainable_parameter_tensors": 677,
+  "expected_trainable_parameter_tensors": 677,
+  "final_parameter_changes": {
+    "CNN": {
+      "L2_change": 0.1283578925017835,
+      "changed_parameter_tensors": 24,
+      "parameter_tensors": 24
+    },
+    "L0": {
+      "L2_change": 0.7372965507083729,
+      "changed_parameter_tensors": 480,
+      "parameter_tensors": 480
+    },
+    "original_L0_total": {
+      "L2_change": 0.8650546623076538,
+      "changed_parameter_tensors": 602,
+      "parameter_tensors": 612
+    },
+    "role_attention_pool": {
+      "L2_change": 0.07239291205553763,
+      "changed_parameter_tensors": 12,
+      "parameter_tensors": 12
+    },
+    "shell_attention_pool": {
+      "L2_change": 0.07676656743905898,
+      "changed_parameter_tensors": 12,
+      "parameter_tensors": 18
+    },
+    "local_fusion": {
+      "L2_change": 0.17030147947898583,
+      "changed_parameter_tensors": 6,
+      "parameter_tensors": 6
+    },
+    "v222_L1": {
+      "L2_change": 0.22585145377648908,
+      "changed_parameter_tensors": 36,
+      "parameter_tensors": 36
+    },
+    "v222_L2": {
+      "L2_change": 0.12295805460839837,
+      "changed_parameter_tensors": 8,
+      "parameter_tensors": 8
+    },
+    "v222_L2_updates": {
+      "L2_change": 0.19463500377736223,
+      "changed_parameter_tensors": 20,
+      "parameter_tensors": 20
+    },
+    "v222_upper_total": {
+      "L2_change": 0.32257002565335147,
+      "changed_parameter_tensors": 65,
+      "parameter_tensors": 65
+    }
+  },
+  "every_core_group_updated": true,
+  "every_core_group_had_nonzero_gradient": true,
+  "final_neural_sha256": "8f46940389c569039fe790995cdb26b19331ff6ae943181c29c62996b5a7f298",
+  "initial_train": {
+    "top1": 0.0,
+    "MRR": 0.1875,
+    "positive_minus_best_other": [
+      -0.04936182498931885,
+      -0.21402323246002197
+    ],
+    "scores": [
+      [
+        -1.016400933265686,
+        -0.9670391082763672,
+        -1.0433340072631836,
+        -1.0501551628112793,
+        -1.0036135911941528,
+        -1.1054843664169312,
+        -1.0098234415054321,
+        -1.1328861713409424
+      ],
+      [
+        -1.0658332109451294,
+        -1.0093238353729248,
+        -1.0299800634384155,
+        -0.9720660448074341,
+        -0.9179736375808716,
+        -0.8518099784851074,
+        -0.9905943274497986,
+        -1.0093780755996704
+      ]
+    ],
+    "mean_margin": -0.1316925287246704,
+    "loss": 3.9010205268859863,
+    "ranking_loss": 3.9010205268859863,
+    "consistency": 1.2914340175029793e-07,
+    "loss_terms": {
+      "loss": 3.9010205268859863,
+      "ce": 2.111250400543213,
+      "pair": 1.1634777784347534,
+      "ordinal": 0.7254300117492676,
+      "mined": 0.9624130725860596,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 16
+  },
+  "initial_held_out": {
+    "top1": 0.0,
+    "MRR": 0.1428571492433548,
+    "positive_minus_best_other": [
+      -0.17176556587219238
+    ],
+    "scores": [
+      [
+        -1.045198678970337,
+        -0.8734331130981445,
+        -0.950088381767273,
+        -0.9528316855430603,
+        -0.9371496438980103,
+        -0.9274439215660095,
+        -1.0535922050476074,
+        -0.975105881690979
+      ]
+    ],
+    "mean_margin": -0.17176556587219238,
+    "loss": 4.007137775421143,
+    "ranking_loss": 4.007137775421143,
+    "consistency": 1.2914340175029793e-07,
+    "loss_terms": {
+      "loss": 4.007137775421143,
+      "ce": 2.161858320236206,
+      "pair": 1.2043640613555908,
+      "ordinal": 0.7416626811027527,
+      "mined": 0.9851655960083008,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 8
+  },
+  "final_train": {
+    "top1": 1.0,
+    "MRR": 1.0,
+    "positive_minus_best_other": [
+      0.5652123093605042,
+      1.4410028457641602
+    ],
+    "scores": [
+      [
+        0.3991541266441345,
+        -2.1505510807037354,
+        -2.132840394973755,
+        -2.167301893234253,
+        -0.16605818271636963,
+        -0.8447994589805603,
+        -0.846698522567749,
+        -1.0059053897857666
+      ],
+      [
+        1.2784852981567383,
+        -1.689495325088501,
+        -1.3524377346038818,
+        -1.7953033447265625,
+        -0.16251754760742188,
+        -0.46672165393829346,
+        -1.0373479127883911,
+        -1.546565294265747
+      ]
+    ],
+    "mean_margin": 1.0031075775623322,
+    "loss": 1.314638376235962,
+    "ranking_loss": 1.314638376235962,
+    "consistency": 8.940696716308594e-08,
+    "loss_terms": {
+      "loss": 1.314638376235962,
+      "ce": 0.7589805126190186,
+      "pair": 0.27203553915023804,
+      "ordinal": 0.6816408634185791,
+      "mined": 0.2945882976055145,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 16
+  },
+  "final_held_out": {
+    "top1": 0.0,
+    "MRR": 0.1666666716337204,
+    "positive_minus_best_other": [
+      -1.6583689451217651
+    ],
+    "scores": [
+      [
+        -1.5828465223312378,
+        0.07552242279052734,
+        -0.37721413373947144,
+        0.017820358276367188,
+        -1.8452281951904297,
+        -1.830378532409668,
+        -1.3195363283157349,
+        -0.4563314914703369
+      ]
+    ],
+    "mean_margin": -1.6583689451217651,
+    "loss": 6.082269668579102,
+    "ranking_loss": 6.082269668579102,
+    "consistency": 1.1920928955078125e-07,
+    "loss_terms": {
+      "loss": 6.082269668579102,
+      "ce": 3.0195467472076416,
+      "pair": 1.770133376121521,
+      "ordinal": 1.1441595554351807,
+      "mined": 2.1275153160095215,
+      "active_max_difficulty": 3.0
+    },
+    "loss_epoch": 29,
+    "candidate_graphs": 8
+  },
+  "matched_update_comparisons": [
+    {
+      "step": 0,
+      "bounded_v14": {
+        "train": {
+          "top1": 0.0,
+          "MRR": 0.3499999940395355,
+          "positive_minus_best_other": [
+            -0.0050201416015625,
+            -0.0097503662109375
+          ],
+          "scores": [
+            [
+              0.01080322265625,
+              -0.01605224609375,
+              -0.001068115234375,
+              -0.00734710693359375,
+              0.004711151123046875,
+              -0.0036640167236328125,
+              0.0158233642578125,
+              0.00418853759765625
+            ],
+            [
+              0.0152130126953125,
+              0.01690673828125,
+              0.02496337890625,
+              0.024017333984375,
+              0.005458831787109375,
+              0.00928497314453125,
+              0.018096923828125,
+              0.0103607177734375
+            ]
+          ],
+          "mean_margin": -0.00738525390625
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.25,
+          "positive_minus_best_other": [
+            -0.02813720703125
+          ],
+          "scores": [
+            [
+              0.05712890625,
+              0.0631103515625,
+              0.056732177734375,
+              0.0546875,
+              0.0545654296875,
+              0.03857421875,
+              0.083251953125,
+              0.08526611328125
+            ]
+          ],
+          "mean_margin": -0.02813720703125
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": -0.16249999403953552,
+          "top1": 0.0,
+          "mean_margin": -0.12430727481842041
+        },
+        "validation": {
+          "MRR": -0.1071428507566452,
+          "top1": 0.0,
+          "mean_margin": -0.14362835884094238
+        }
+      },
+      "loss_comparison_available": false,
+      "half_b": {
+        "train": {
+          "top1": 0.0,
+          "MRR": 0.1875,
+          "positive_minus_best_other": [
+            -0.04936182498931885,
+            -0.21402323246002197
+          ],
+          "scores": [
+            [
+              -1.016400933265686,
+              -0.9670391082763672,
+              -1.0433340072631836,
+              -1.0501551628112793,
+              -1.0036135911941528,
+              -1.1054843664169312,
+              -1.0098234415054321,
+              -1.1328861713409424
+            ],
+            [
+              -1.0658332109451294,
+              -1.0093238353729248,
+              -1.0299800634384155,
+              -0.9720660448074341,
+              -0.9179736375808716,
+              -0.8518099784851074,
+              -0.9905943274497986,
+              -1.0093780755996704
+            ]
+          ],
+          "mean_margin": -0.1316925287246704,
+          "loss": 3.9010205268859863,
+          "ranking_loss": 3.9010205268859863,
+          "consistency": 1.2914340175029793e-07,
+          "loss_terms": {
+            "loss": 3.9010205268859863,
+            "ce": 2.111250400543213,
+            "pair": 1.1634777784347534,
+            "ordinal": 0.7254300117492676,
+            "mined": 0.9624130725860596,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1428571492433548,
+          "positive_minus_best_other": [
+            -0.17176556587219238
+          ],
+          "scores": [
+            [
+              -1.045198678970337,
+              -0.8734331130981445,
+              -0.950088381767273,
+              -0.9528316855430603,
+              -0.9371496438980103,
+              -0.9274439215660095,
+              -1.0535922050476074,
+              -0.975105881690979
+            ]
+          ],
+          "mean_margin": -0.17176556587219238,
+          "loss": 4.007137775421143,
+          "ranking_loss": 4.007137775421143,
+          "consistency": 1.2914340175029793e-07,
+          "loss_terms": {
+            "loss": 4.007137775421143,
+            "ce": 2.161858320236206,
+            "pair": 1.2043640613555908,
+            "ordinal": 0.7416626811027527,
+            "mined": 0.9851655960083008,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "support_cohort_differs_from_baseline": true,
+      "score_scale_differs_from_baseline": true
+    },
+    {
+      "step": 2,
+      "bounded_v14": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.012481689453125,
+            0.0357513427734375
+          ],
+          "scores": [
+            [
+              0.0618896484375,
+              -0.0277557373046875,
+              -0.0239105224609375,
+              -0.01500701904296875,
+              0.049407958984375,
+              0.02734375,
+              0.040679931640625,
+              0.03936767578125
+            ],
+            [
+              0.0640869140625,
+              0.013397216796875,
+              0.0283355712890625,
+              -0.011322021484375,
+              0.023834228515625,
+              0.0090179443359375,
+              0.0256500244140625,
+              0.01392364501953125
+            ]
+          ],
+          "mean_margin": 0.02411651611328125
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.020050048828125
+          ],
+          "scores": [
+            [
+              0.036956787109375,
+              0.044891357421875,
+              0.04681396484375,
+              0.039398193359375,
+              -0.0012073516845703125,
+              0.01320648193359375,
+              0.049530029296875,
+              0.0570068359375
+            ]
+          ],
+          "mean_margin": -0.020050048828125
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": 0.03301456570625305
+        },
+        "validation": {
+          "MRR": -0.0416666716337204,
+          "top1": 0.0,
+          "mean_margin": -0.25548630952835083
+        }
+      },
+      "loss_comparison_available": false,
+      "half_b": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.022587835788726807,
+            0.0916743278503418
+          ],
+          "scores": [
+            [
+              -0.9357683062553406,
+              -1.235473394393921,
+              -1.2598943710327148,
+              -1.2792950868606567,
+              -0.9583561420440674,
+              -1.012798547744751,
+              -1.0144810676574707,
+              -1.0360599756240845
+            ],
+            [
+              -0.9524914026260376,
+              -1.2081656455993652,
+              -1.124488115310669,
+              -1.1767997741699219,
+              -1.0441657304763794,
+              -1.0752263069152832,
+              -1.1126798391342163,
+              -1.1482346057891846
+            ]
+          ],
+          "mean_margin": 0.0571310818195343,
+          "loss": 3.5162620544433594,
+          "ranking_loss": 3.5162620544433594,
+          "consistency": 1.1920928955078125e-07,
+          "loss_terms": {
+            "loss": 3.5162620544433594,
+            "ce": 1.9309709072113037,
+            "pair": 1.020753264427185,
+            "ordinal": 0.6864738464355469,
+            "mined": 0.8544865846633911,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.125,
+          "positive_minus_best_other": [
+            -0.27553635835647583
+          ],
+          "scores": [
+            [
+              -1.1411157846450806,
+              -0.8655794262886047,
+              -0.9023842811584473,
+              -0.9026308059692383,
+              -1.108031988143921,
+              -1.0928800106048584,
+              -1.0862114429473877,
+              -0.9836448431015015
+            ]
+          ],
+          "mean_margin": -0.27553635835647583,
+          "loss": 4.145084381103516,
+          "ranking_loss": 4.145084381103516,
+          "consistency": 1.1920928955078125e-07,
+          "loss_terms": {
+            "loss": 4.145084381103516,
+            "ce": 2.215527296066284,
+            "pair": 1.246510624885559,
+            "ordinal": 0.7585662007331848,
+            "mined": 1.0626661777496338,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "support_cohort_differs_from_baseline": true,
+      "score_scale_differs_from_baseline": true
+    },
+    {
+      "step": 4,
+      "bounded_v14": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.0257720947265625,
+            0.0766143798828125
+          ],
+          "scores": [
+            [
+              0.052398681640625,
+              -0.10272216796875,
+              -0.10986328125,
+              -0.106689453125,
+              0.0266265869140625,
+              0.011199951171875,
+              0.0161285400390625,
+              0.0115509033203125
+            ],
+            [
+              0.0906982421875,
+              -0.0455322265625,
+              -0.007617950439453125,
+              -0.06427001953125,
+              0.0140838623046875,
+              -0.0055999755859375,
+              0.0037479400634765625,
+              -0.0140838623046875
+            ]
+          ],
+          "mean_margin": 0.0511932373046875
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.06072998046875
+          ],
+          "scores": [
+            [
+              -0.010467529296875,
+              0.050262451171875,
+              0.0440673828125,
+              0.0472412109375,
+              -0.068115234375,
+              -0.0302276611328125,
+              0.01364898681640625,
+              0.0309295654296875
+            ]
+          ],
+          "mean_margin": -0.06072998046875
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": 0.1541047990322113
+        },
+        "validation": {
+          "MRR": -0.0238095223903656,
+          "top1": 0.0,
+          "mean_margin": -0.41130882501602173
+        }
+      },
+      "loss_comparison_available": false,
+      "half_b": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.03482908010482788,
+            0.3757669925689697
+          ],
+          "scores": [
+            [
+              -0.5562033653259277,
+              -1.1952308416366577,
+              -1.2055408954620361,
+              -1.2591016292572021,
+              -0.5910324454307556,
+              -0.6622717380523682,
+              -0.6925219297409058,
+              -0.7552968263626099
+            ],
+            [
+              -0.3605523109436035,
+              -1.0808764696121216,
+              -0.903605043888092,
+              -1.0116630792617798,
+              -0.7363193035125732,
+              -0.7971323132514954,
+              -0.8086255192756653,
+              -0.9220274090766907
+            ]
+          ],
+          "mean_margin": 0.2052980363368988,
+          "loss": 3.0931320190429688,
+          "ranking_loss": 3.0931320190429688,
+          "consistency": 1.0927518445669193e-07,
+          "loss_terms": {
+            "loss": 3.0931320190429688,
+            "ce": 1.7220265865325928,
+            "pair": 0.8594347238540649,
+            "ordinal": 0.6509807705879211,
+            "mined": 0.7629491090774536,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1428571492433548,
+          "positive_minus_best_other": [
+            -0.47203880548477173
+          ],
+          "scores": [
+            [
+              -0.9554937481880188,
+              -0.48345494270324707,
+              -0.5326595306396484,
+              -0.5162367820739746,
+              -0.9729837775230408,
+              -0.9472086429595947,
+              -0.9131284356117249,
+              -0.7205421924591064
+            ]
+          ],
+          "mean_margin": -0.47203880548477173,
+          "loss": 4.371685028076172,
+          "ranking_loss": 4.371685028076172,
+          "consistency": 1.0927518445669193e-07,
+          "loss_terms": {
+            "loss": 4.371685028076172,
+            "ce": 2.300602912902832,
+            "pair": 1.3097811937332153,
+            "ordinal": 0.8106262683868408,
+            "mined": 1.1983510255813599,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "support_cohort_differs_from_baseline": true,
+      "score_scale_differs_from_baseline": true
+    },
+    {
+      "step": 8,
+      "bounded_v14": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.1356201171875,
+            0.24267578125
+          ],
+          "scores": [
+            [
+              0.3125,
+              -0.2822265625,
+              -0.313720703125,
+              -0.305908203125,
+              0.1768798828125,
+              0.12353515625,
+              0.11175537109375,
+              0.12548828125
+            ],
+            [
+              0.46923828125,
+              -0.11181640625,
+              0.0675048828125,
+              -0.1273193359375,
+              0.2265625,
+              0.138671875,
+              0.11639404296875,
+              0.045440673828125
+            ]
+          ],
+          "mean_margin": 0.18914794921875
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -0.35052490234375
+          ],
+          "scores": [
+            [
+              -0.10687255859375,
+              0.24365234375,
+              0.1954345703125,
+              0.2305908203125,
+              -0.1976318359375,
+              -0.1259765625,
+              -0.0478515625,
+              0.04620361328125
+            ]
+          ],
+          "mean_margin": -0.35052490234375
+        }
+      },
+      "difference": {
+        "train": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": 0.8139596283435822
+        },
+        "validation": {
+          "MRR": 0.0,
+          "top1": 0.0,
+          "mean_margin": -1.3078440427780151
+        }
+      },
+      "loss_comparison_available": false,
+      "half_b": {
+        "train": {
+          "top1": 1.0,
+          "MRR": 1.0,
+          "positive_minus_best_other": [
+            0.5652123093605042,
+            1.4410028457641602
+          ],
+          "scores": [
+            [
+              0.3991541266441345,
+              -2.1505510807037354,
+              -2.132840394973755,
+              -2.167301893234253,
+              -0.16605818271636963,
+              -0.8447994589805603,
+              -0.846698522567749,
+              -1.0059053897857666
+            ],
+            [
+              1.2784852981567383,
+              -1.689495325088501,
+              -1.3524377346038818,
+              -1.7953033447265625,
+              -0.16251754760742188,
+              -0.46672165393829346,
+              -1.0373479127883911,
+              -1.546565294265747
+            ]
+          ],
+          "mean_margin": 1.0031075775623322,
+          "loss": 1.314638376235962,
+          "ranking_loss": 1.314638376235962,
+          "consistency": 8.940696716308594e-08,
+          "loss_terms": {
+            "loss": 1.314638376235962,
+            "ce": 0.7589805126190186,
+            "pair": 0.27203553915023804,
+            "ordinal": 0.6816408634185791,
+            "mined": 0.2945882976055145,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 16
+        },
+        "validation": {
+          "top1": 0.0,
+          "MRR": 0.1666666716337204,
+          "positive_minus_best_other": [
+            -1.6583689451217651
+          ],
+          "scores": [
+            [
+              -1.5828465223312378,
+              0.07552242279052734,
+              -0.37721413373947144,
+              0.017820358276367188,
+              -1.8452281951904297,
+              -1.830378532409668,
+              -1.3195363283157349,
+              -0.4563314914703369
+            ]
+          ],
+          "mean_margin": -1.6583689451217651,
+          "loss": 6.082269668579102,
+          "ranking_loss": 6.082269668579102,
+          "consistency": 1.1920928955078125e-07,
+          "loss_terms": {
+            "loss": 6.082269668579102,
+            "ce": 3.0195467472076416,
+            "pair": 1.770133376121521,
+            "ordinal": 1.1441595554351807,
+            "mined": 2.1275153160095215,
+            "active_max_difficulty": 3.0
+          },
+          "loss_epoch": 29,
+          "candidate_graphs": 8
+        }
+      },
+      "support_cohort_differs_from_baseline": true,
+      "score_scale_differs_from_baseline": true
+    }
+  ],
+  "reference_full_debug_curve": [
+    {
+      "step": 0,
+      "train": {
+        "top1": 0.0,
+        "MRR": 0.3499999940395355,
+        "positive_minus_best_other": [
+          -0.0050201416015625,
+          -0.0097503662109375
+        ],
+        "scores": [
+          [
+            0.01080322265625,
+            -0.01605224609375,
+            -0.001068115234375,
+            -0.00734710693359375,
+            0.004711151123046875,
+            -0.0036640167236328125,
+            0.0158233642578125,
+            0.00418853759765625
+          ],
+          [
+            0.0152130126953125,
+            0.01690673828125,
+            0.02496337890625,
+            0.024017333984375,
+            0.005458831787109375,
+            0.00928497314453125,
+            0.018096923828125,
+            0.0103607177734375
+          ]
+        ],
+        "mean_margin": -0.00738525390625
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.25,
+        "positive_minus_best_other": [
+          -0.02813720703125
+        ],
+        "scores": [
+          [
+            0.05712890625,
+            0.0631103515625,
+            0.056732177734375,
+            0.0546875,
+            0.0545654296875,
+            0.03857421875,
+            0.083251953125,
+            0.08526611328125
+          ]
+        ],
+        "mean_margin": -0.02813720703125
+      }
+    },
+    {
+      "step": 2,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.012481689453125,
+          0.0357513427734375
+        ],
+        "scores": [
+          [
+            0.0618896484375,
+            -0.0277557373046875,
+            -0.0239105224609375,
+            -0.01500701904296875,
+            0.049407958984375,
+            0.02734375,
+            0.040679931640625,
+            0.03936767578125
+          ],
+          [
+            0.0640869140625,
+            0.013397216796875,
+            0.0283355712890625,
+            -0.011322021484375,
+            0.023834228515625,
+            0.0090179443359375,
+            0.0256500244140625,
+            0.01392364501953125
+          ]
+        ],
+        "mean_margin": 0.02411651611328125
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.020050048828125
+        ],
+        "scores": [
+          [
+            0.036956787109375,
+            0.044891357421875,
+            0.04681396484375,
+            0.039398193359375,
+            -0.0012073516845703125,
+            0.01320648193359375,
+            0.049530029296875,
+            0.0570068359375
+          ]
+        ],
+        "mean_margin": -0.020050048828125
+      }
+    },
+    {
+      "step": 4,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.0257720947265625,
+          0.0766143798828125
+        ],
+        "scores": [
+          [
+            0.052398681640625,
+            -0.10272216796875,
+            -0.10986328125,
+            -0.106689453125,
+            0.0266265869140625,
+            0.011199951171875,
+            0.0161285400390625,
+            0.0115509033203125
+          ],
+          [
+            0.0906982421875,
+            -0.0455322265625,
+            -0.007617950439453125,
+            -0.06427001953125,
+            0.0140838623046875,
+            -0.0055999755859375,
+            0.0037479400634765625,
+            -0.0140838623046875
+          ]
+        ],
+        "mean_margin": 0.0511932373046875
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.06072998046875
+        ],
+        "scores": [
+          [
+            -0.010467529296875,
+            0.050262451171875,
+            0.0440673828125,
+            0.0472412109375,
+            -0.068115234375,
+            -0.0302276611328125,
+            0.01364898681640625,
+            0.0309295654296875
+          ]
+        ],
+        "mean_margin": -0.06072998046875
+      }
+    },
+    {
+      "step": 8,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.1356201171875,
+          0.24267578125
+        ],
+        "scores": [
+          [
+            0.3125,
+            -0.2822265625,
+            -0.313720703125,
+            -0.305908203125,
+            0.1768798828125,
+            0.12353515625,
+            0.11175537109375,
+            0.12548828125
+          ],
+          [
+            0.46923828125,
+            -0.11181640625,
+            0.0675048828125,
+            -0.1273193359375,
+            0.2265625,
+            0.138671875,
+            0.11639404296875,
+            0.045440673828125
+          ]
+        ],
+        "mean_margin": 0.18914794921875
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -0.35052490234375
+        ],
+        "scores": [
+          [
+            -0.10687255859375,
+            0.24365234375,
+            0.1954345703125,
+            0.2305908203125,
+            -0.1976318359375,
+            -0.1259765625,
+            -0.0478515625,
+            0.04620361328125
+          ]
+        ],
+        "mean_margin": -0.35052490234375
+      }
+    },
+    {
+      "step": 12,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          0.65625,
+          0.91827392578125
+        ],
+        "scores": [
+          [
+            0.951171875,
+            -0.8115234375,
+            -0.83203125,
+            -0.83349609375,
+            0.294921875,
+            -0.3603515625,
+            -0.2271728515625,
+            -0.1925048828125
+          ],
+          [
+            1.0009765625,
+            -0.720703125,
+            -0.556640625,
+            -0.77197265625,
+            0.08270263671875,
+            -0.1763916015625,
+            -0.382080078125,
+            -0.5146484375
+          ]
+        ],
+        "mean_margin": 0.787261962890625
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1666666716337204,
+        "positive_minus_best_other": [
+          -1.09765625
+        ],
+        "scores": [
+          [
+            -0.68603515625,
+            0.387451171875,
+            0.2095947265625,
+            0.41162109375,
+            -0.7705078125,
+            -0.71240234375,
+            -0.541015625,
+            -0.14453125
+          ]
+        ],
+        "mean_margin": -1.09765625
+      }
+    },
+    {
+      "step": 16,
+      "train": {
+        "top1": 1.0,
+        "MRR": 1.0,
+        "positive_minus_best_other": [
+          2.91796875,
+          2.62890625
+        ],
+        "scores": [
+          [
+            1.669921875,
+            -1.61328125,
+            -1.6181640625,
+            -1.61328125,
+            -1.3525390625,
+            -1.4794921875,
+            -1.388671875,
+            -1.248046875
+          ],
+          [
+            1.669921875,
+            -1.5703125,
+            -1.525390625,
+            -1.5927734375,
+            -0.958984375,
+            -1.1328125,
+            -1.3095703125,
+            -1.388671875
+          ]
+        ],
+        "mean_margin": 2.7734375
+      },
+      "validation": {
+        "top1": 0.0,
+        "MRR": 0.1428571492433548,
+        "positive_minus_best_other": [
+          -1.94482421875
+        ],
+        "scores": [
+          [
+            -1.4912109375,
+            -0.0958251953125,
+            -0.50830078125,
+            0.45361328125,
+            -1.5205078125,
+            -1.4658203125,
+            -1.458984375,
+            -1.298828125
+          ]
+        ],
+        "mean_margin": -1.94482421875
+      }
+    }
+  ],
+  "baseline_total_updates": 16,
+  "process_peak_rss_bytes": 9425092608,
+  "total_wall_seconds": 182.48959650000324,
+  "GPU_peak_allocated_bytes": 2669806080,
+  "GPU_peak_reserved_bytes": 2793406464,
+  "update_compute_samples_per_second": 0.1906911182084009,
+  "original_inputs_preserved": true,
+  "original_source_preserved": true,
+  "original_archive_preserved": true,
+  "experiment_sources_preserved": true,
+  "upper_dependencies_preserved": true
+}

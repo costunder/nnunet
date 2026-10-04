@@ -1,0 +1,51 @@
+{
+  "format": "hiercp_half_B_validation_evidence_v1",
+  "full_training": false,
+  "quality_verified": false,
+  "files": {
+    "attempts.jsonl": {
+      "sha256": "c81e9043bf45266843200654f123ca7860a03369f05f0e25b6f31f9c81e25aa9",
+      "size": 1152
+    },
+    "CUDA_parity.json": {
+      "sha256": "7fca895e9f43a7441fc0d4b62e21d65270e2ec02b60d92e619ebdeaa7520e180",
+      "size": 1065
+    },
+    "curve.jsonl": {
+      "sha256": "82334c81d94b6db98b856e9a15351548ff8321d0d72b6b5b13e51894a46abbcf",
+      "size": 5963
+    },
+    "execution_contract.json": {
+      "sha256": "79ab628dfac691b64579260125c1ed9c11193afe684e8f5215b80ba25fef9497",
+      "size": 3417
+    },
+    "report.json": {
+      "sha256": "8a2868c7a5e3af3ea6cbf94042923b675afed7d20807a6a1d28f4d20a9419bdf",
+      "size": 169320
+    },
+    "source_identity.json": {
+      "sha256": "ff87ff96c0d5577013c20e4db2d98e337c4f4387bdfd87765626d56ead2b7a1d",
+      "size": 2410
+    },
+    "support_preparation_DEBUG.json": {
+      "sha256": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+      "size": 20654
+    },
+    "support_refreshes.jsonl": {
+      "sha256": "72dbf3d1d50b83cf721fde3eb55c1d0e34d5db965990a1936d59c5b9fda58e66",
+      "size": 8215
+    },
+    "unit_checks.log": {
+      "sha256": "48903cc7bec03381f4e62dc982958730e916d1a59dc28062810d6e4140991662",
+      "size": 8463
+    },
+    "updates.jsonl": {
+      "sha256": "f6491ea5d2bddaebbaf04bfa5d7a06a5a0fb62231521ee7ecf226fda6f24f2ae",
+      "size": 27205
+    },
+    "verification.json": {
+      "sha256": "5872386b6f2c2436e6f1edd8b9cdc2382991095d67e69fa1c9752b56dd8285bf",
+      "size": 1801
+    }
+  }
+}

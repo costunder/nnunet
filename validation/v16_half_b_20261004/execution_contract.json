@@ -1,0 +1,61 @@
+{
+  "debug": true,
+  "smoke_test": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "protocol": {
+    "initial_neural_sha256": "e44c87fcda4c59731fd4be16cab8ea82964c1e47b3cfb1b271ee287e756404f9",
+    "reference_updates": 2,
+    "train_cases": [
+      "liver_5",
+      "liver_6"
+    ],
+    "validation_cases": [
+      "liver_31"
+    ],
+    "physical_sample_batch": 2,
+    "workers": 4,
+    "seed": 42,
+    "optimization_curriculum_epoch": 29,
+    "train_view_epoch": 29,
+    "validation_effective_view_epoch": 0,
+    "scheduler": null,
+    "baseline_model": "v1.0",
+    "experiment_version": "v1.4"
+  },
+  "arguments": {
+    "gpu": 0,
+    "reference": "work\\v14_matched_learning_DEBUG_20261004_r3\\report.json",
+    "fixture": "work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt",
+    "support_manifest": "work\\v1_half_b_support_DEBUG_20261004_r1\\support_manifest_DEBUG.json",
+    "source": "work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+    "updates": 8,
+    "cuda_gib": 12.0,
+    "rss_gib": 32.0,
+    "wall_seconds": 600.0,
+    "output": "work\\v1_half_b_learning_DEBUG_20261004_r1",
+    "support_fixture": "work\\v1_half_b_support_DEBUG_20261004_r1\\support_fixture_DEBUG.pt"
+  },
+  "input_sha256": {
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\report.json": "d5138cc5f093340b55570adf640f81afa270b391237cd3c59784f4ace2f84415",
+    "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\execution_contract.json": "3cf8fe28f05cc4b45a82e55f0e0dc10944a435ee2a18be8692c4649cf925ea60",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\report.json": "a615208724a67189abe2454cd481c574923ae1d0ae8165ee86261dca0435d35a",
+    "D:\\AI project\\nnunet\\work\\v1_graph_size104_CUDA_DEBUG_20261003\\execution_contract.json": "c28aa65296b93a43f9f978d96ab1d02228f7d527db4ddd5f9b962293d26c4798",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+    "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a",
+    "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\support_manifest_DEBUG.json": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765",
+    "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\support_fixture_DEBUG.pt": "2a02b6e9c13da3c74ebd37e25780bb6c3ec1bed58285b83ff88eda077f81183e",
+    "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\execution_contract.json": "7a13677dc98eb0433cbdad94e44714a872b83467161714dde38368f484207919",
+    "D:\\AI project\\nnunet\\work\\v222_raw_ct_r3_training_20260923\\context\\index_vram_affine.json": "dad79e3cc53ecc899a2304c5cd7b00b4fbdc8bbd0708b2932b9288fe795bc611"
+  },
+  "intended_change": "original v1 L0 + v2.2 L1/L2/cosine scoring; complete original ranking+consistency only",
+  "explicit_DEBUG_differences": [
+    "one real extra train support-only case",
+    "selected support cohort3",
+    "query fixture2train/1held reused",
+    "successful updates fixed explicitly; production40 unchanged"
+  ],
+  "identity_sha256": "b6b141d790a58b912d7c7200428787a57054a6419be0dfbd61e8289ac0461456"
+}

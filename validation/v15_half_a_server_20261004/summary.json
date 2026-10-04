@@ -1,0 +1,18 @@
+{
+  "format": "hiercp_half_A_user_server_terminal_summary_v1",
+  "origin": "user_supplied_terminal_summary_20261004",
+  "independent_checkpoint_or_raw_metric_verification": false,
+  "experiment": "/home/aicompetition06/Medical/experiments/v15_m10_halfA_seed42_20261004",
+  "initial_validation": {"loss": 3.808948, "MRR": 0.472355, "top1": 0.25, "margin": -0.011617},
+  "best_validation": {"epoch": 29, "loss": 0.388641, "MRR": 0.972222, "top1": 0.944444, "margin": 12.054579},
+  "last_train": {"epoch": 40, "loss": 0.007613, "MRR": 1.0, "top1": 1.0, "margin": 14.995719},
+  "last_validation": {"epoch": 40, "loss": 0.384854, "MRR": 0.958333, "top1": 0.916667, "margin": 11.820597},
+  "last_epoch_minutes": 4.05,
+  "mean_epoch_minutes": null,
+  "completed_epoch_records": 40,
+  "target_epochs": 40,
+  "full_training_complete_reported": true,
+  "interpretation": "A learns under the fixed v1 task; severe v2.2 ranking failure is not reproduced. Modest reduction relative to reported original v1 remains; no arbitrary quality acceptance threshold applied.",
+  "next_authorized_arm": "B_only",
+  "combined_arm_authorized": false
+}

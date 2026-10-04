@@ -1,0 +1,27 @@
+{
+  "origin": "observed_actual_tools_exec_command_result",
+  "actual_CUDA": true,
+  "actual_CT": false,
+  "debug_algebra_only": true,
+  "tests_passed": 3,
+  "dropout": 0,
+  "full_training": false,
+  "quality_verified": false,
+  "mixed_episodes": {
+    "score_max_abs": 4.76837158e-07,
+    "query_gradient_max_abs": 4.47034836e-08,
+    "parameter_gradient_max_abs": 9.53674316e-07
+  },
+  "checkpointed_training": {
+    "score_max_abs": 3.57627869e-07,
+    "query_gradient_max_abs": 5.21540642e-08,
+    "parameter_gradient_max_abs": 5.96046448e-07
+  },
+  "initialization_preserves_initialized_CUDA_RNG": true,
+  "source_sha256": {
+    "hiercp_v1x/half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+    "tests/test_v1_half_b_model.py": "7ba2ce487185716334f186f7d0b7444ff9276345c8b5d1c944b3aa686a650260",
+    "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+    "hiercp_v222/clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc"
+  }
+}
