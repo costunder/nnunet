@@ -106,16 +106,66 @@ bounded30은 outer30과 runtime scope patch를 사용하므로 원본 native30�
 학습·prototype case IDs와 현재 평가 21case의 교집합부터 확인해야 한다.
 훈련에 사용한 case를 held-out이라고 표시하거나 비교 cohort를 몰래 줄이지
 않는다. 기존 checkpoint의 구조·범위·BEST·source 계약을 확인한 뒤에만
-native 전용 GPU 평가기에 연결한다. `tools/inspect_native_v1_checkpoint.py`는
-기록된 위 두 경로와 native suite 경로를 모두 조회하고 checkpoint의 실제
+native 전용 GPU 평가기에 연결한다. 초기 `3a50628`의
+`tools/inspect_native_v1_checkpoint.py`는 기록된 위 두 경로와 native suite
+경로를 모두 조회하도록 작성됐으며 checkpoint의 실제
 구조·범위·학습 완료 필드·training/prototype 환자 겹침을 출력한다.
 폴더 이름이나 현재 옆에 있는 config를 학습 설정의 증거로 삼지 않는다.
 명시적 저장 train case IDs 또는 checkpoint SHA로 결속된 cache index의
 실제 case_id가 없으면 학습 환자 목록은 UNKNOWN으로 남긴다.
 조회기 UNIT **11개 PASS**이며 새 metadata 보고서는 원본 실험 디렉터리 밖에
 exclusive create로 저장한다. 18개 경쟁자 분석 검사와 합계 **29개 PASS**다.
-지금은 원본 checkpoint와 평가 대상 metadata를 읽는 서버 조회만 준비했으며,
+`3a50628`에서는 원본 checkpoint와 평가 대상 metadata를 읽는 서버 조회만 준비했으며,
 30mm GPU 평가나 새로운 40epoch 학습을 시작하지 않았다.
+
+## 원본 30mm 조회의 실제 서버 결과와 출력 정정 — 2026-10-06
+
+사용자가 `3a50628` 조회의 서버 출력을 제공했다. 이 절은 그 출력에 대한
+기록이며, 로컬에서 서버 원시 JSON이나 서버 checkpoint를 읽은 결과가 아니다.
+원시 조회 보고서는
+`/home/aicompetition06/Medical/experiments/v1_native30_inspection_20261005_235901.json`이다.
+
+| 실제 checkpoint | 서버 조회 | 저장된 선택 epoch | 완료 표시 | 저장된 범위 |
+| --- | --- | ---: | --- | --- |
+| `/home/aicompetition06/Medical/HierCP/work/full/model.pt` | READ_CPU_METADATA | 30 | true | native ROI30 / context28 |
+| `/home/aicompetition06/Medical/HierCP/work/paired_basic_vs_hiercp/folds/fold_0/gnn/model.pt` | READ_CPU_METADATA | 24 | true | native ROI30 / context28 |
+
+**예전 원본 30mm checkpoint 두 개는 존재하고 실제로 읽혔다.** 별도의
+`v1_native_nested416_seed42_20261003/native/results/v1.0/checkpoint_best.pt`만
+MISSING이었다. 이는 이전 준비 실패가 기록된 최근 native suite 경로다.
+오래전 완료한 30mm 실험의 checkpoint와 같은 파일이 아니다. 그 별도 경로를
+기본 후보에 함께 넣은 출력이 사용자의 평가 대상과 맞지 않았다. 기본 조회를
+위 두 역사적 모델로 한정하고, 최근 suite는 명시적 옵션으로만 조회한다.
+
+`architecture=UNKNOWN`은 가중치가 없다는 의미가 아니다. 보존된 이전 원본
+pipeline의 `static_checkpoint_metadata`는 `method`, `framework`, `model_kwargs`,
+`graph_config`, `ct_clip`, `prototype_training_cases`, `prototype_fingerprint`를
+저장하며 `architecture_version`은 저장하지 않았다. 실제 구조 인자는 저장된
+`model_kwargs`에서 읽을 수 있다. 이것과 실제 모델 strict load 및 연산 검증은
+다른 확인이므로 구조 tag의 부재를 실행 실패로 표시하지도, 모델 검증 완료로
+바꾸지도 않는다. `preflight` sidecar의 부재 역시 읽은 checkpoint 파일의
+부재가 아니다.
+
+이전 검사기의 training ID 복원은 새로운 `cache_publication.index_sha256`
+필드를 요구했지만 옛 저장 형식에는 그 필드가 없다. 옛 checkpoint의 실제
+`training_signature.train_cache_files`와 현재 cache index의 명시적
+`entries.case_id`/`split`을 대조하는 정보는 별도 재구성 evidence로 남긴다.
+이는 파일명에서 환자 ID를 추측하는 방법이 아니다. 단, 학습 당시 index bytes의
+SHA 결속은 없으므로 명시적으로 저장된 training case IDs 또는 SHA 결속된
+evidence와 동일한 강도의 독립성 확인으로 승격하지 않는다.
+
+서버 출력에서 full 모델의 prototype 환자와 현재 21case의 교집합은 17명,
+paired fold0 모델의 prototype 교집합은 0명이었다. 이 숫자는 prototype
+교집합이며 optimizer 학습 환자 수를 뜻하지 않는다. paired fold0가 우선
+대조 대상이지만 현재 21case와 실제 학습 split의 대응 및 원본 연산 경로는
+별도로 확인해야 한다. 현재 10mm 전용 GPU 평가기에 경로만 바꿔 넣지 않는다.
+
+이번 조회로 원본 30mm의 128후보 점수, MRR, Hit@1은 아직 측정되지 않았다.
+가중치 재생성, 재학습, 기존 checkpoint 수정·삭제는 수행하지 않는다.
+조회 출력 수정의 로컬 UNIT 검사 **16/16 PASS**다. 기본 두 파일·최근 suite
+명시적 선택·구형 tag 부재·비어 있는 state dict·부가 JSON 부재·보조 mapping과
+held-out 판정의 분리·입력 변조 및 원본 보존을 검사했다. UNIT fixture 검사이며
+서버 checkpoint 재조회나 CUDA 모델 평가를 수행한 결과가 아니다.
 
 ## 작업 완료 체크리스트
 

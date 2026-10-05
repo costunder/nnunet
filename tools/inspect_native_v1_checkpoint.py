@@ -27,14 +27,14 @@ def sha(path):
     return digest.hexdigest()
 
 
-def known_candidates(medical_root):
+def known_candidates(medical_root, *, include_recent_native=False):
     """Literal paths from preserved launchers/terminal records, not existence claims."""
     medical = Path(medical_root).resolve()
     legacy = medical / "HierCP"
     native = medical / "experiments/v1_native_nested416_seed42_20261003/native"
     full = legacy / "work/full"
     paired = legacy / "work/paired_basic_vs_hiercp/folds/fold_0/gnn"
-    return [
+    candidates = [
         dict(label="historical_full", checkpoint=full / "model.pt", preserved_root=legacy,
              prototype=full / "prototype.pt",
              sidecars={"config": legacy / "config/train.json", "split": full / "split.json",
@@ -49,7 +49,9 @@ def known_candidates(medical_root):
                        "cache_config": paired / "graphs/config.json",
                        "cache_index": paired / "graphs/index.json"},
              recorded_origin="recovered terminal ee0258b7-a9e4-40b2-a0e7-506017907681; model.last.pt completed40/40 at that recorded time"),
-        dict(label="native_suite_20261003", checkpoint=native / "results/v1.0/checkpoint_best.pt", preserved_root=native,
+    ]
+    if include_recent_native:
+        candidates.append(dict(label="native_suite_20261003", checkpoint=native / "results/v1.0/checkpoint_best.pt", preserved_root=native,
              prototype=native / "shared/prototype_bank.pt",
              sidecars={"config": native / "configs/v1.0.json", "split": native / "shared/split.json",
                        "manifest": native / "manifest.json",
@@ -58,8 +60,8 @@ def known_candidates(medical_root):
                        "preflight": native / "results/v1.0/checkpoint_best.pt.preflight.json",
                        "cache_config": native / "shared/cache/config.json",
                        "cache_index": native / "shared/cache/index.json"},
-             recorded_origin="run_v1_native_nested416_server.sh default native path; launcher contract alone does not establish training completion"),
-    ]
+             recorded_origin="run_v1_native_nested416_server.sh default native path; launcher contract alone does not establish training completion"))
+    return candidates
 
 
 def _ids(value, label):
@@ -132,6 +134,12 @@ def extract_metadata(payload, *, heldout_case_ids=None):
         training_case_evidence=evidence, prototype_training_cases=prototype_ids,
         prototype_cases_are_optimizer_training_proof=False,
         heldout_reference_available=heldout is not None)
+    result["architecture_identity"] = dict(
+        status="SAVED_ARCHITECTURE_TAG" if "architecture_version" in saved else "ARCHITECTURE_TAG_NOT_RECORDED",
+        saved_architecture_tag=saved.get("architecture_version"), saved_method=saved.get("method"),
+        saved_framework=saved.get("framework"), model_kwargs_present=isinstance(saved.get("model_kwargs"), Mapping),
+        model_kwargs=saved.get("model_kwargs"), strict_model_load_executed=False,
+        model_operator_compatibility_verified=False)
     if isinstance(signature, Mapping) and "seed" in signature:
         result["seed_evidence"]["checkpoint.training_signature.seed"] = _json_metadata(signature["seed"], "signature seed")
     _update_training_status(result, heldout)
@@ -191,25 +199,17 @@ def _read_sidecar(path):
     return result, content
 
 
-def _bound_cache_ids(payload, sidecars, contents):
-    """Read literal case_id fields only when the saved checkpoint binds index bytes."""
-    index = contents.get("cache_index")
-    expected_sha = _at(payload, ("cache_publication", "index_sha256"))
-    files = _at(payload, ("training_signature", "train_cache_files"))
-    if index is None or expected_sha is None or files is None:
-        return None
-    observed_sha = sidecars["cache_index"].get("sha256_before")
-    if observed_sha != expected_sha:
-        raise ValueError("Adjacent cache index differs from checkpoint's saved index SHA256")
+def _literal_cache_case_ids(index, files):
+    """Match saved literal filenames to explicit current index case_id fields."""
     files = _ids(files, "training_signature.train_cache_files")
     entries = index.get("entries")
     if not isinstance(entries, list) or not entries:
-        raise ValueError("SHA-bound cache index lacks actual entry metadata")
+        raise ValueError("Cache index lacks actual entry metadata")
     by_file = {}
     for entry in entries:
         if (not isinstance(entry, Mapping) or not isinstance(entry.get("path"), str)
                 or not entry["path"] or entry["path"] in by_file):
-            raise ValueError("SHA-bound cache index has invalid/duplicate literal entry path")
+            raise ValueError("Cache index has invalid/duplicate literal entry path")
         by_file[entry["path"]] = entry
     selected = []
     for filename in files:
@@ -218,9 +218,48 @@ def _bound_cache_ids(payload, sidecars, contents):
                 or not isinstance(entry.get("case_id"), str) or not entry["case_id"]):
             raise ValueError("Saved train_cache_files lacks matching explicit training case_id entry")
         selected.append(entry["case_id"])
+    return sorted(set(selected)), len(files)
+
+
+def _bound_cache_ids(payload, sidecars, contents):
+    """Read literal case_id fields only when the saved checkpoint binds index bytes."""
+    index = contents.get("cache_index")
+    expected_sha = _at(payload, ("cache_publication", "index_sha256"))
+    files = _at(payload, ("training_signature", "train_cache_files"))
+    if index is None or expected_sha is None or files is None:
+        return None
+    sidecar = sidecars["cache_index"]
+    if sidecar.get("status") != "READ" or not sidecar.get("file_preserved"):
+        raise ValueError("SHA-bound cache index was not successfully read and preserved")
+    observed_sha = sidecar.get("sha256_before")
+    if observed_sha != expected_sha:
+        raise ValueError("Adjacent cache index differs from checkpoint's saved index SHA256")
+    case_ids, count = _literal_cache_case_ids(index, files)
     return dict(source="checkpoint.train_cache_files + SHA-bound cache_index.entries.case_id",
-                case_ids=sorted(set(selected)), index_sha256=observed_sha,
-                training_cache_files=len(files), filename_patient_inference=False)
+                case_ids=case_ids, index_sha256=observed_sha,
+                training_cache_files=count, filename_patient_inference=False)
+
+
+def _reconstructed_cache_ids(payload, sidecars, contents, heldout):
+    """Separate current mapping evidence; never establish historical independence."""
+    result = dict(status="UNAVAILABLE", training_time_hash_binding=False,
+                  historical_optimizer_training_verified=False, filename_patient_inference=False,
+                  used_for_heldout_independence=False, case_ids=None, current_mapping_reference_overlap=None)
+    if _at(payload, ("cache_publication", "index_sha256")) is not None:
+        result.update(status="NOT_APPLICABLE", reason="Saved cache index SHA is handled as separate bound evidence")
+        return result
+    files = _at(payload, ("training_signature", "train_cache_files"))
+    index = contents.get("cache_index")
+    sidecar = sidecars.get("cache_index", {})
+    if files is None or index is None or sidecar.get("status") != "READ" or not sidecar.get("file_preserved"):
+        result["reason"] = "Saved train_cache_files and successfully read current cache index are both required"
+        return result
+    case_ids, count = _literal_cache_case_ids(index, files)
+    result.update(status="RECONSTRUCTED_CURRENT_MAPPING_NO_TRAINING_TIME_HASH_BINDING",
+                  source="checkpoint.train_cache_files + current cache_index.entries.case_id",
+                  case_ids=case_ids, current_index_sha256=sidecar["sha256_before"], training_cache_files=count,
+                  current_mapping_reference_overlap=sorted(set(case_ids) & heldout) if heldout is not None else None)
+    return result
 
 
 def _cpu_load(path):
@@ -232,16 +271,18 @@ def inspect_candidate(spec, *, heldout_case_ids=None, load_checkpoint=None):
     """Inspect one literal candidate, report failures, and verify original bytes."""
     path = Path(spec["checkpoint"])
     result = dict(label=spec["label"], path=str(path), preserved_root=str(spec['preserved_root']), recorded_origin=spec["recorded_origin"],
-                  status="MISSING", errors=[], selected_for_evaluation=False)
+                  status="MISSING", errors=[], selected_for_evaluation=False,
+                  checkpoint_file_present=False, checkpoint_metadata_read=False)
     loader = _cpu_load if load_checkpoint is None else load_checkpoint
     try:
         if path.is_symlink() or not path.is_file():
             raise FileNotFoundError(f"Known regular checkpoint unavailable: {path}")
+        result["checkpoint_file_present"] = True
         result.update(sha256_before=sha(path), size_bytes=path.stat().st_size)
         payload = loader(path)
         metadata = extract_metadata(payload, heldout_case_ids=heldout_case_ids)
         result.update(status="READ_CPU_METADATA", load_settings=dict(map_location="cpu", weights_only=False, mmap=True),
-                      metadata=metadata)
+                      metadata=metadata, checkpoint_metadata_read=True)
         sidecars, contents = {}, {}
         for label, sidecar in spec["sidecars"].items():
             sidecars[label], contents[label] = _read_sidecar(Path(sidecar))
@@ -250,6 +291,15 @@ def inspect_candidate(spec, *, heldout_case_ids=None, load_checkpoint=None):
         if evidence is not None:
             metadata["training_case_evidence"].append(evidence)
             _update_training_status(metadata, set(heldout_case_ids) if heldout_case_ids is not None else None)
+        try:
+            metadata["reconstructed_current_training_mapping"] = _reconstructed_cache_ids(
+                payload, sidecars, contents, set(heldout_case_ids) if heldout_case_ids is not None else None)
+        except Exception as error:
+            metadata["reconstructed_current_training_mapping"] = dict(
+                status="ERROR", errors=[_error("reconstruct_current_cache_mapping", error)],
+                training_time_hash_binding=False, used_for_heldout_independence=False,
+                historical_optimizer_training_verified=False, filename_patient_inference=False,
+                case_ids=None, current_mapping_reference_overlap=None)
         prototype = Path(spec["prototype"])
         result["known_adjacent_prototype"] = dict(path=str(prototype), exists=prototype.is_file(),
                                                   loaded=False, role="recorded adjacent artifact; filename alone does not bind trained bank")
@@ -285,7 +335,7 @@ def inspect_reference_summary(path, *, debug=False):
                 original_files_sha256=checked["original_files_sha256"], neural_forward_executed=False)
 
 
-def inspect_known(medical_root, *, reference_summary=None, debug=False, load_checkpoint=None):
+def inspect_known(medical_root, *, reference_summary=None, debug=False, include_recent_native=False, load_checkpoint=None):
     reference = dict(status="UNKNOWN", reason="No reference summary supplied; held-out identity overlap cannot be determined")
     heldout = None
     if reference_summary is not None:
@@ -295,9 +345,13 @@ def inspect_known(medical_root, *, reference_summary=None, debug=False, load_che
         except Exception as error:
             reference = dict(path=str(reference_summary), status="ERROR", errors=[_error("verify_reference_summary", error)])
     candidates = [inspect_candidate(spec, heldout_case_ids=heldout, load_checkpoint=load_checkpoint)
-                  for spec in known_candidates(medical_root)]
+                  for spec in known_candidates(medical_root, include_recent_native=include_recent_native)]
     return dict(format=FORMAT, medical_root=str(Path(medical_root).resolve()), debug=debug,
                 reference=reference, candidates=candidates, candidate_count=len(candidates),
+                include_recent_native=include_recent_native,
+                checkpoint_files_present=sum(row["checkpoint_file_present"] for row in candidates),
+                checkpoint_metadata_read=sum(row["checkpoint_metadata_read"] for row in candidates),
+                checkpoint_state_dicts_present=sum(row.get("metadata", {}).get("state_dict_present", False) for row in candidates),
                 known_paths_are_existence_claims=False, checkpoint_selected=False,
                 evaluation_started=False, neural_forward_executed=False, training_started=False,
                 GPU_used=False, optimizer_instantiated=False, optimizer_state_restored=False, quality_verified=False,
@@ -330,11 +384,18 @@ def main():
     parser.add_argument("--reference-summary", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--include-recent-native", action="store_true",
+                        help="Also inspect the separately launched 20261003 native suite; default is the two historical checkpoints")
     args = parser.parse_args()
-    report = inspect_known(args.medical_root, reference_summary=args.reference_summary, debug=args.debug)
+    report = inspect_known(args.medical_root, reference_summary=args.reference_summary, debug=args.debug,
+                           include_recent_native=args.include_recent_native)
     write_new_report(args.output, report)
     print("V1 checkpoint inspection | CPU metadata only | no selection / forward / training", flush=True)
     print("Reference: " + report["reference"]["status"], flush=True)
+    count = report["candidate_count"]
+    print(f"Checkpoint files: {report['checkpoint_files_present']}/{count} present "
+          f"| metadata: {report['checkpoint_metadata_read']}/{count} read "
+          f"| saved state_dict weights: {report['checkpoint_state_dicts_present']}/{count}", flush=True)
     for row in report["candidates"]:
         metadata = row.get("metadata", {})
         saved=metadata.get('saved_fields',{})
@@ -343,9 +404,21 @@ def main():
               f"| train IDs={metadata.get('training_case_status', 'UNKNOWN')} "
               f"| held-out={metadata.get('heldout_independence', 'UNKNOWN')} | {row['path']}", flush=True)
         if metadata:
-            print('  architecture='+str(saved.get('architecture_version','UNKNOWN'))
+            architecture = metadata["architecture_identity"]
+            print('  architecture tag='+architecture['status']
+                  +' | saved tag='+str(architecture['saved_architecture_tag'])
+                  +' | saved method='+str(architecture['saved_method'])
+                  +' | saved model_kwargs='+json.dumps(architecture['model_kwargs'],sort_keys=True)
+                  +' | strict model load / operator compatibility: unverified'
                   +' | train overlap='+json.dumps(metadata.get('training_heldout_overlap'))
                   +' | prototype overlap='+json.dumps(metadata.get('prototype_heldout_overlap')),flush=True)
+            mapping = metadata.get("reconstructed_current_training_mapping", {})
+            print('  Current cache mapping: '+mapping.get('status','UNAVAILABLE')
+                  +' | mapped_count='+str(len(mapping['case_ids']) if mapping.get('case_ids') is not None else 'UNKNOWN')
+                  +' | reference overlap='+json.dumps(mapping.get('current_mapping_reference_overlap'))
+                  +' | auxiliary evidence; excluded from held-out independence verdict',flush=True)
+            for error in mapping.get("errors", []):
+                print(f"  MAPPING ERROR: {error['type']}: {error['message']}", flush=True)
         for error in row["errors"]:
             print(f"  ERROR {error['phase']}: {error['type']}: {error['message']}", flush=True)
         for label, sidecar in row.get("adjacent_JSON", {}).items():
@@ -353,7 +426,8 @@ def main():
                 if sidecar['status']!='MISSING':
                     print(f"  ADJACENT {label}: {error['type']}: {error['message']}", flush=True)
         missing=[label for label,item in row.get('adjacent_JSON',{}).items() if item['status']=='MISSING']
-        if missing:print('  Missing adjacent JSON: '+', '.join(missing)+' (details in REPORT)',flush=True)
+        if missing:print('  Optional adjacent JSON absent: '+', '.join(missing)
+                         +' (does not mean checkpoint weights are missing; details in REPORT)',flush=True)
     for error in report["reference"].get("errors", []):
         print(f"REFERENCE ERROR: {error['type']}: {error['message']}", flush=True)
     print("REPORT: " + str(args.output.resolve()), flush=True)

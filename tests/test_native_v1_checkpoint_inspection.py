@@ -1,5 +1,7 @@
 """UNIT fake checkpoint bytes/metadata only; no trained or medical evidence."""
 import copy
+from contextlib import redirect_stdout
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -7,12 +9,13 @@ import unittest
 from unittest.mock import patch
 
 from tools.inspect_native_v1_checkpoint import (
-    extract_metadata, inspect_candidate, inspect_known, known_candidates, sha, write_new_report,
+    extract_metadata, inspect_candidate, inspect_known, known_candidates, main, sha, write_new_report,
 )
 
 
 def metadata_fixture():
-    return dict(architecture_version="UNIT_architecture", state_dict={"UNIT_weight": object()},
+    return dict(architecture_version="UNIT_architecture", method="UNIT_legacy_hiercp", framework="UNIT_PyG",
+                state_dict={"UNIT_weight": object()},
                 graph_config=dict(adaptive_roi_margin_mm=30., context_outer_radius_mm=28.,
                                   context_shells_mm=[4., 12., 28.]),
                 model_kwargs=dict(hidden_dim=128, local_layers=3), ct_clip=[-200., 250.],
@@ -22,6 +25,21 @@ def metadata_fixture():
 
 
 class NativeMetadataUnit(unittest.TestCase):
+    def test_legacy_absent_tag_retains_saved_method_and_kwargs_without_compatibility_claim(self):
+        payload = metadata_fixture()
+        del payload["architecture_version"]
+        result = extract_metadata(payload)
+        architecture = result["architecture_identity"]
+        self.assertEqual(architecture["status"], "ARCHITECTURE_TAG_NOT_RECORDED")
+        self.assertEqual(architecture["saved_method"], payload["method"])
+        self.assertEqual(architecture["model_kwargs"], payload["model_kwargs"])
+        self.assertTrue(architecture["model_kwargs_present"])
+        self.assertFalse(architecture["strict_model_load_executed"])
+        self.assertFalse(architecture["model_operator_compatibility_verified"])
+        self.assertTrue(result["state_dict_present"])
+        payload["state_dict"] = {}
+        self.assertFalse(extract_metadata(payload)["state_dict_present"])
+
     def test_original_native30_distinguished_from_bounded30(self):
         original = metadata_fixture()
         result = extract_metadata(original, heldout_case_ids=["heldout_1"])
@@ -88,7 +106,7 @@ class KnownCheckpointUnit(unittest.TestCase):
         spec["checkpoint"].parent.mkdir(parents=True, exist_ok=True)
         spec["checkpoint"].write_bytes(b"UNIT_checkpoint_bytes_not_a_trained_model")
 
-    def test_all_three_known_candidates_are_examined_without_selection(self):
+    def test_default_two_historical_candidates_are_examined_without_selection(self):
         seen = []
         for spec in self.specs:
             self.create_checkpoint(spec)
@@ -97,7 +115,11 @@ class KnownCheckpointUnit(unittest.TestCase):
             return metadata_fixture()
         result = inspect_known(self.root, load_checkpoint=loader)
         self.assertEqual(seen, [spec["checkpoint"] for spec in self.specs])
-        self.assertEqual(result["candidate_count"], 3)
+        self.assertEqual(result["candidate_count"], 2)
+        self.assertFalse(result["include_recent_native"])
+        self.assertEqual(result["checkpoint_files_present"], 2)
+        self.assertEqual(result["checkpoint_metadata_read"], 2)
+        self.assertEqual(result["checkpoint_state_dicts_present"], 2)
         self.assertEqual(result["inspection_errors"], 0)
         self.assertTrue(all(row["file_preserved"] for row in result["candidates"]))
         self.assertFalse(result["checkpoint_selected"])
@@ -105,6 +127,19 @@ class KnownCheckpointUnit(unittest.TestCase):
         self.assertFalse(result["neural_forward_executed"])
         self.assertFalse(result["GPU_used"])
         self.assertTrue(all(row["metadata"]["training_case_status"] == "UNKNOWN" for row in result["candidates"]))
+        self.assertTrue(all(row["adjacent_JSON"]["preflight"]["status"] == "MISSING" for row in result["candidates"]))
+
+    def test_recent_native_is_a_separate_explicit_opt_in(self):
+        self.assertEqual([spec["label"] for spec in self.specs], ["historical_full", "historical_paired_fold0"])
+        expanded = known_candidates(self.root, include_recent_native=True)
+        self.assertEqual([spec["label"] for spec in expanded],
+                         ["historical_full", "historical_paired_fold0", "native_suite_20261003"])
+        for spec in expanded:
+            self.create_checkpoint(spec)
+        result = inspect_known(self.root, include_recent_native=True, load_checkpoint=lambda _: metadata_fixture())
+        self.assertTrue(result["include_recent_native"])
+        self.assertEqual(result["candidate_count"], 3)
+        self.assertEqual(result["checkpoint_metadata_read"], 3)
 
     def test_missing_and_load_failure_are_per_file_explicit_no_fallback(self):
         self.create_checkpoint(self.specs[0])
@@ -114,8 +149,10 @@ class KnownCheckpointUnit(unittest.TestCase):
             raise RuntimeError("UNIT mmap unsupported")
         result = inspect_known(self.root, load_checkpoint=loader)
         self.assertEqual(seen, [self.specs[0]["checkpoint"]])
-        self.assertEqual([row["status"] for row in result["candidates"]], ["ERROR", "MISSING", "MISSING"])
-        self.assertEqual(result["inspection_errors"], 3)
+        self.assertEqual([row["status"] for row in result["candidates"]], ["ERROR", "MISSING"])
+        self.assertEqual(result["inspection_errors"], 2)
+        self.assertEqual(result["checkpoint_files_present"], 1)
+        self.assertEqual(result["checkpoint_metadata_read"], 0)
         self.assertTrue(result["candidates"][0]["file_preserved"])
         self.assertIn("mmap unsupported", result["candidates"][0]["errors"][0]["message"])
 
@@ -158,13 +195,80 @@ class KnownCheckpointUnit(unittest.TestCase):
         self.assertEqual(result["candidates"][0]["status"], "READ_CPU_METADATA")
         self.assertEqual(result["candidates"][0]["metadata"]["heldout_independence"], "UNKNOWN")
 
+    def test_current_index_mapping_never_promotes_unknown_training_independence(self):
+        spec = self.specs[0]
+        self.create_checkpoint(spec)
+        index = spec["sidecars"]["cache_index"]
+        index.parent.mkdir(parents=True, exist_ok=True)
+        index.write_text(json.dumps(dict(entries=[dict(path="liver_31_MUST_NOT_INFER.pt",
+            case_id="actual_heldout", split="train")])), encoding="utf8")
+        payload = metadata_fixture()
+        result = inspect_candidate(spec, heldout_case_ids=["actual_heldout"], load_checkpoint=lambda _: payload)
+        metadata = result["metadata"]
+        mapping = metadata["reconstructed_current_training_mapping"]
+        self.assertEqual(result["status"], "READ_CPU_METADATA")
+        self.assertEqual(mapping["status"], "RECONSTRUCTED_CURRENT_MAPPING_NO_TRAINING_TIME_HASH_BINDING")
+        self.assertEqual(mapping["case_ids"], ["actual_heldout"])
+        self.assertEqual(mapping["current_mapping_reference_overlap"], ["actual_heldout"])
+        self.assertFalse(mapping["training_time_hash_binding"])
+        self.assertFalse(mapping["historical_optimizer_training_verified"])
+        self.assertFalse(mapping["used_for_heldout_independence"])
+        self.assertFalse(mapping["filename_patient_inference"])
+        self.assertEqual(metadata["training_case_evidence"], [])
+        self.assertIsNone(metadata["training_case_ids"])
+        self.assertIsNone(metadata["training_heldout_overlap"])
+        self.assertEqual(metadata["heldout_independence"], "UNKNOWN")
+        unrelated = inspect_candidate(spec, heldout_case_ids=["other_heldout"], load_checkpoint=lambda _: payload)
+        self.assertEqual(unrelated["metadata"]["reconstructed_current_training_mapping"]["current_mapping_reference_overlap"], [])
+        self.assertEqual(unrelated["metadata"]["heldout_independence"], "UNKNOWN")
+        payload["training_case_ids"] = ["saved_train"]
+        explicit = inspect_candidate(spec, heldout_case_ids=["actual_heldout"], load_checkpoint=lambda _: payload)
+        self.assertEqual(explicit["metadata"]["training_case_ids"], ["saved_train"])
+        self.assertEqual(explicit["metadata"]["heldout_independence"], "NO_OVERLAP_IN_EXPLICIT_SAVED_IDS")
+
+    def test_invalid_current_mapping_is_an_explicit_auxiliary_error_after_metadata_read(self):
+        spec = self.specs[0]
+        self.create_checkpoint(spec)
+        index = spec["sidecars"]["cache_index"]
+        index.parent.mkdir(parents=True, exist_ok=True)
+        index.write_text(json.dumps(dict(entries=[dict(path="liver_31_MUST_NOT_INFER.pt",
+            case_id="actual_case", split="val")])), encoding="utf8")
+        result = inspect_candidate(spec, load_checkpoint=lambda _: metadata_fixture())
+        mapping = result["metadata"]["reconstructed_current_training_mapping"]
+        self.assertEqual(result["status"], "READ_CPU_METADATA")
+        self.assertTrue(result["checkpoint_metadata_read"])
+        self.assertTrue(result["file_preserved"])
+        self.assertEqual(mapping["status"], "ERROR")
+        self.assertEqual(mapping["errors"][0]["phase"], "reconstruct_current_cache_mapping")
+        self.assertEqual(result["metadata"]["heldout_independence"], "UNKNOWN")
+
+    def test_terminal_distinguishes_existing_weights_from_optional_legacy_metadata(self):
+        for spec in self.specs:
+            self.create_checkpoint(spec)
+        payload = metadata_fixture()
+        del payload["architecture_version"]
+        output = self.root / "UNIT_cli_inspection.json"
+        printed = io.StringIO()
+        with patch("sys.argv", ["inspect_native_v1_checkpoint", "--medical-root", str(self.root),
+                                "--output", str(output)]), \
+                patch("tools.inspect_native_v1_checkpoint._cpu_load", return_value=payload), redirect_stdout(printed):
+            main()
+        text = printed.getvalue()
+        self.assertIn("Checkpoint files: 2/2 present | metadata: 2/2 read | saved state_dict weights: 2/2", text)
+        self.assertIn("ARCHITECTURE_TAG_NOT_RECORDED", text)
+        self.assertIn("saved method=UNIT_legacy_hiercp", text)
+        self.assertIn('"hidden_dim": 128', text)
+        self.assertIn("Optional adjacent JSON absent:", text)
+        self.assertIn("does not mean checkpoint weights are missing", text)
+        self.assertNotIn("native_suite_20261003", text)
+
     def test_exclusive_new_report_never_overwrites_checkpoint_or_results(self):
         for spec in self.specs:
             self.create_checkpoint(spec)
         report = inspect_known(self.root, load_checkpoint=lambda _: metadata_fixture())
         output = self.root / "new_inspection.json"
         write_new_report(output, report)
-        self.assertEqual(json.loads(output.read_text(encoding="utf8"))["candidate_count"], 3)
+        self.assertEqual(json.loads(output.read_text(encoding="utf8"))["candidate_count"], 2)
         before = output.read_bytes()
         with self.assertRaises(FileExistsError):
             write_new_report(output, report)
