@@ -29,9 +29,11 @@ v1은 source의 원래 anchor와 선별·관계 corruption 후보를 비교한�
 
 `tools/export_v1_v22_transition_receipt.py`는 이미 알려진 native 실패 실험과 baseline/A/B의 실제 설정을 읽는 자료 수집 명령이다. GPU forward, backward, optimizer, 학습 재개 또는 CP를 실행하지 않는다. 기존 CT, checkpoint, 결과 파일은 읽기만 하고 새로운 출력 폴더에 자료를 보존한다.
 
-native의 experiment manifest에 결속된 checkpoint를 선택한다. 임의 최신 파일 검색은 하지 않는다. checkpoint의 전체 tensor 값 대신 metadata를 읽고, 실제 inventory와 실행 설정, epoch 기록, source SHA를 묶는다. ZIP에는 CT·주석·가중치 파일을 넣지 않는다. 현재 코드가 saved source identity와 다르거나 필수 실행 정보가 없으면 미결 항목으로 보고하고 exact reproduction/production ready로 승격하지 않는다.
+native의 experiment manifest에 결속된 checkpoint를 선택한다. 임의 최신 파일 검색은 하지 않는다. checkpoint의 전체 tensor 값 대신 metadata를 읽고, 실제 inventory와 실행 설정, epoch 기록, source SHA를 서버의 새 폴더에 보존한다. 기본 CLI는 ZIP을 만들지 않는다. `--archive`를 명시한 경우에만 서버 내부에 별도 압축본을 만든다. CT·주석·가중치 파일은 복사하지 않는다. 현재 코드가 saved source identity와 다르거나 필수 실행 정보가 없으면 미결 항목으로 보고하고 exact reproduction/production ready로 승격하지 않는다.
 
 대상은 `/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42`이다. baseline은 `v1_m10_seed42_20261004`, A는 `v15_m10_halfA_seed42_20261004`, B는 `v16_m10_halfB_seed42_20261004_r3`이다. 사용자에게 같은 경로를 다시 묻지 않는다.
+
+`bash tools/run_v17_transition_terminal_server.sh` 한 번으로 알려진 네 실험의 자료 수집과 터미널 요약 출력을 수행한다. 사용자에게 ZIP 다운로드나 첨부를 요구하지 않는다. 요약은 실제 batch·epoch·step, input/GT/loss/support, 전체 inventory 개수, 학습 기록, 미결 출처 항목을 보여준다. 긴 목록은 출력만 집계하며 전체 원문과 JSON은 서버에 보존한다. console용 JSON은 원래 receipt manifest와 분리해 옆 파일로 기록한다. 출력 줄 수 제한은 모델·데이터 규모 제한이 아니다.
 
 실제 서버 receipt를 받기 전에는 현재 개발 checkout을 실패 실험의 정확한 학습 recipe라고 가정하지 않는다. 이번 변경은 전체 누락 목록과 실제 recipe를 확인할 실행 경로이며, 전체 전환 학습 arm의 완료 보고가 아니다. 기존 A/B 전체 학습, 로컬 smoke, 자료 결속 검사를 서로 구분한다.
 
@@ -40,6 +42,8 @@ native의 experiment manifest에 결속된 checkpoint를 선택한다. 임의 �
 2026-10-05에 `tests.test_v1_transition_inventory` 23개와 `tests.test_native_transition_receipt` 23개, 총 46개의 metadata/contract 단위 검사를 실행해 통과했다. 실제 PyTorch checkpoint serialization의 metadata 로딩, 전체 14,102개 fixture inventory 보존, 모든 epoch 기록 수집, 원본 파일 보존, source 불일치와 누락의 명시적 보고를 포함한다. wrapper 설정·실제 batch·저장된 epoch/step/cursor·학습 schedule을 대조하고 수집 종료 시 checkpoint SHA를 다시 검사한다. fixture는 단위 검사 입력이며 실제 CT나 서버 성능 결과로 사용하지 않았다.
 
 CLI help도 실행했다. 새로운 전체 전환 arm의 CT forward/backward, optimizer update, GPU smoke, 서버 학습, 공통 평가를 실행한 것은 아니다. 단위 검사 통과를 이들 단계의 완료로 표시하지 않는다. 실제 실패 실험의 recipe 결속과 양쪽 입력 bridge 연결이 남아 있다.
+
+같은 날 터미널 출력 경로를 추가한 뒤 inventory 23개, receipt 24개, terminal reporter 16개, CLI 3개, 총 66개 metadata 단위 검사가 통과했다. 표시 경로를 실제 sibling JSON 경로로 맞춘 최종 수정 후 reporter·CLI 19개도 다시 통과했다. 서버 wrapper의 shell syntax 검사와 CLI help를 확인했다. 기본 실행은 ZIP을 만들지 않고 알려진 네 실험의 기존 설정·결과를 터미널에 출력하며, 전체 자료는 서버에 보존한다. 실제 서버에서 이 새 명령을 실행하거나 새로운 neural 비교를 수행한 결과는 아니다.
 
 ## 작업 완료 체크리스트
 

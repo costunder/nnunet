@@ -465,7 +465,10 @@ def native_execution_bindings(manifest, inventory, payload, execution, schedule)
     return checks, missing
 
 
-def export_receipt(native_run, baseline, half_a, half_b, output, *, source_roots=(), checkpoint_reader=checkpoint_metadata):
+def export_receipt(native_run, baseline, half_a, half_b, output, *, source_roots=(), checkpoint_reader=checkpoint_metadata,
+                   create_archive=True):
+    if type(create_archive) is not bool:
+        raise ValueError('Archive selection must be an explicit boolean')
     collection_started = perf_counter()
     roots = {name: Path(path).resolve() for name, path in
              (('native', native_run), ('baseline', baseline), ('half_A', half_a), ('half_B', half_b))}
@@ -640,11 +643,13 @@ def export_receipt(native_run, baseline, half_a, half_b, output, *, source_roots
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('xb') as stream:
             stream.write(raw)
-    bundle = output / 'transition_receipt.zip'
-    with ZipFile(bundle, 'x', compression=ZIP_DEFLATED) as zipped:
-        for name, raw in sorted(collector.payload.items()):
-            zipped.writestr(name, raw)
-    validate_receipt(bundle)
+    bundle = None
+    if create_archive:
+        bundle = output / 'transition_receipt.zip'
+        with ZipFile(bundle, 'x', compression=ZIP_DEFLATED) as zipped:
+            for name, raw in sorted(collector.payload.items()):
+                zipped.writestr(name, raw)
+    validate_receipt(bundle if bundle is not None else output)
     return report, bundle
 
 

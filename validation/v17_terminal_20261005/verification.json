@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-05",
+  "scope": "metadata collection and compact terminal display only",
+  "unit_tests": {
+    "modules": {
+      "tests.test_v1_transition_inventory": 23,
+      "tests.test_native_transition_receipt": 24,
+      "tests.test_transition_terminal_report": 16,
+      "tests.test_transition_terminal_cli": 3
+    },
+    "total": 66,
+    "status": "PASS",
+    "elapsed_seconds": 33.635,
+    "exit_code": 0,
+    "after_final_display_path_change": {
+      "modules": ["tests.test_transition_terminal_report", "tests.test_transition_terminal_cli"],
+      "total": 19,
+      "status": "PASS",
+      "elapsed_seconds": 0.247,
+      "exit_code": 0
+    }
+  },
+  "cli_help": "PASS",
+  "shell_syntax": {
+    "script": "tools/run_v17_transition_terminal_server.sh",
+    "check": "sh -n",
+    "status": "PASS",
+    "full_server_execution": false
+  },
+  "default_zip_created": false,
+  "summary_outside_immutable_receipt_manifest": true,
+  "existing_experiment_files_modified": false,
+  "ct_data_used": false,
+  "neural_forward_executed": false,
+  "optimizer_updates": 0,
+  "gpu_smoke_executed": false,
+  "server_command_executed": false,
+  "training_started": false,
+  "full_evaluation_executed": false,
+  "quality_verified": false,
+  "production_ready": false
+}

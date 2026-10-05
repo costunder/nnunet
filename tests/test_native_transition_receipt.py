@@ -134,6 +134,16 @@ class NativeReceiptMetadataTests(unittest.TestCase):
             self.assertEqual(copied, self.inventory)
             self.assertFalse(any(name.endswith('.pt') or name.endswith('.nii.gz') for name in zipped.namelist()))
 
+    def test_default_cli_collection_can_preserve_complete_metadata_without_a_zip(self):
+        result, bundle = self.export(create_archive=False)
+        self.assertIsNone(bundle)
+        directory = self.root / 'receipt_out'
+        self.assertFalse((directory / 'transition_receipt.zip').exists())
+        self.assertEqual(receipt.validate_receipt(directory), result)
+        copied = json.loads((directory / 'native/inventory/index.json').read_text(encoding='utf8'))
+        self.assertEqual(copied, self.inventory)
+        self.assertEqual(len(copied['records']), 14102)
+
     def test_all_epoch_invocations_and_case_scores_are_preserved(self):
         results = self.roots['B'] / 'results/half_B'
         for name in ('epoch_telemetry_01.jsonl', 'epoch_telemetry_02.jsonl',
