@@ -158,7 +158,9 @@ def validate_native_assignments(inventory):
     """Compare every assigned donor with the actual native seed-fixed algorithm."""
     if inventory.get('config', {}).get('seed') != 42:
         raise ValueError('Bound native seed42 configuration required')
-    from l0_regions.donor_data import assignment
+    # Use the identical signed assignment function without importing the
+    # current preparation/model stack into a historical model namespace.
+    from .native30_data_contract import assignment
     expected = {row['id']: row for row in assignment(inventory, 42)}
     actual = {row['id']: row for row in inventory['records']}
     if set(actual) != set(expected) or any(
