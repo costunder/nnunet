@@ -1,0 +1,547 @@
+{
+  "format": "historical_full128_actual_CT_CUDA_mechanical_smoke_v1",
+  "status": "PASS",
+  "debug": true,
+  "unit_tests": 63,
+  "actual_CUDA": true,
+  "actual_CT": true,
+  "full_evaluation": false,
+  "training_started": false,
+  "optimizer_updates": 0,
+  "quality_verified": false,
+  "production_ready": false,
+  "original_experiments_preserved": true,
+  "scope": "one held-out actual CT: all 8 P plus 128 U; all four full-size architectures",
+  "weight_origin": {
+    "V1_A_B": "fresh seed42 full-size untrained models: mechanical smoke only",
+    "C": "existing genuine DEBUG own-task BEST; not a trained production model"
+  },
+  "GPU": "NVIDIA GeForce RTX 5070 Ti",
+  "request_sha256": "8bee84e1894a99fa436feca1bc302f4de9ab6a2e8b0af515a627b7f4588a54c8",
+  "summary_sha256": "74e96137e705e19ba6aa68dbc12420b9c497fd8af4d7bf3a095d8cffff504781",
+  "execution_source_sha256": {
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/contracts.py": "58ac2c92ed9dcfb58473d22c3517bc1ac74f79ae3fc012a705e3792a7eddf53b",
+    "hiercp_v1x/epoch_telemetry.py": "142a66674bce1208a151d73b5610e2cfe848b5e427160be51eb99e900867a86c",
+    "hiercp_v1x/experiment.py": "8f5876290e78e398d281fbf0a40253be34c826d5cd9faa1a2834701944a9bf60",
+    "hiercp_v1x/graph_size.py": "0605716ec6f019d8ab85fe981de100ae90a37db489ef6e56fe87fa60a1eb4089",
+    "hiercp_v1x/half_a_model.py": "13104b0eb21ea441eb400ec99b9d3571c98b656c3fc4e5d68d32235697f60dfc",
+    "hiercp_v1x/half_a_training.py": "bb509a659ef645ef25c975333934f1e8ea17ec2b14d193a2700a69ec59ee9ed4",
+    "hiercp_v1x/half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+    "hiercp_v1x/half_b_support.py": "20c5059e55e396f9fd8cbfaa2d4c079596a1024589078a015a96fd3e71bf7730",
+    "hiercp_v1x/historical_c_checkpoint.py": "961692a7313b16dfde64fcb122fabf027bc3a6f3a93af1e4842710072c8a2c18",
+    "hiercp_v1x/historical_checkpoint.py": "d217f390f34da3aa79ddfdc3a136dfe1bf54837db1429ffb7679ccf61d77a69d",
+    "hiercp_v1x/historical_evaluation.py": "5751fd6119b119d8a01f637dc5a86c8168f28b61ab5789936ecf9f38a392f1f5",
+    "hiercp_v1x/historical_patient_graph.py": "4fb90b126de90135e35525f5d9ec94a095821feb8cf3bb20f8e73766384402f4",
+    "hiercp_v1x/native_transition_receipt.py": "637a8158ba4ea3947f05990f30ba857a83475ca07d402591d762af3b439a910d",
+    "hiercp_v1x/nested_graph_size.py": "1b614e6882f783ffe38a167b36142c51ed81a8454d474a2585daa6692266851e",
+    "hiercp_v1x/results.py": "1d43a3899fa3e9a0a30e6a29445c57a01cb697e292fca037626c7a06d7c7e704",
+    "hiercp_v1x/sampling_entry.py": "d021259ef40db419a3932cc5de1d69d3337f65899fc9b8629bd4b97e385d7bd5",
+    "hiercp_v1x/sampling_runtime.py": "c4c9d832d6a12317e3adb368b3560d0aec66f6a4a4a1f80be9c6e1df12d50311",
+    "hiercp_v1x/scope_learning_inputs.py": "0edd13901908124f02f6212998ee3b8599902f8c0392a96cbef309c6e4a63b9b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/scope_training_entry.py": "05ee89ef7a1cdef947401a082e2b60dced59977328f56b0ea004638695546a80",
+    "hiercp_v1x/snapshot_inventory.py": "06a3c3667d8fe6b4648d742d0da6fea45062596373c7cb7d3a35ade186019670",
+    "hiercp_v1x/transition_c_training.py": "39a84c54b2a1da9884895b72959e8dd89506b607732eb40e18f481290606425c",
+    "hiercp_v1x/transition_evaluation.py": "da7a00a341d1a8fa083e1c0903d2974aeef0a22ced0271a5ca97c7d2b5511392",
+    "hiercp_v1x/transition_model.py": "fc98caa89cdc59cf011acee5ba947b2c1775727939241ddca7aec5e284b9d1f2",
+    "hiercp_v1x/transition_native_local.py": "74e8ab3cf927c8698ef88a3ca2b67392fe283a62df5f8c0dd7dfba3289112dbc",
+    "hiercp_v1x/transition_preparation_storage.py": "2adc1070a176f0392b9b206668c95f641ad6b4481d7187e0588be675e602a345",
+    "hiercp_v1x/transition_reference.py": "f83c07973da6abc1868cd417a89a809f9c416a6f05d0e09c18b12f99d70a1fd0",
+    "hiercp_v1x/transition_reference_identity.py": "60dae8f9d2d3ce0187da3bc24a05fbebf2f8d763851c8683c84e27f3c6d6d8c4",
+    "hiercp_v1x/transition_runtime.py": "36605ebac7b70208fc50cc7e425b95266329e8304a5bb732437d0441a68a733b",
+    "hiercp_v1x/transition_timing.py": "af562a2d9f26b166dfa3806f155bf8e9c7ad4ba1c1ded23e69d96016fb5ff734",
+    "hiercp_v1x/transition_v1_data.py": "9950d9487b2ffc340e4efb46a0089a40a4742741aa4345ebdf35f7565322c186",
+    "hiercp_v1x/transition_v1_empty_context.py": "a12763fbeec8ba03545c8a3579cfa2de5bab767efdb39c17053a8fae3826104d",
+    "hiercp_v1x/transition_v1_local.py": "0cede7d0639b845b8318fc118d0a5dddc3a2cd1888bf9e080878a4877a42b762",
+    "hiercp_v22/data.py": "0fa999191f452f525233f8227e1bcb3a8ef989064d3d36f1ab0c566f0976f9a9",
+    "hiercp_v22/donors.py": "b3ba23a31904b1617b30abe1de1311cd593b37e1ccbc637ef929300ea03f51fa",
+    "hiercp_v22/local.py": "d37138ee5464950a8e9544c187502165e6732857f4f5234c0e289937be2f012d",
+    "hiercp_v22/sample.py": "2bd7541094af140873bc0daa6237d5e8419129aa6d37ecb7171b8e56bee3f9ab",
+    "hiercp_v22/schema.py": "3f05b0d1ba0335c12bb4bbb1dcbe8b6f6f59be17549ee567da7e36419d20c8db",
+    "hiercp_v22/spatial.py": "869b04bc4f7fed9b7ce7bdbe91c2d25b4e00566a81efdc009a55e4900fe55cb3",
+    "hiercp_v22/storage.py": "39229a40504dafef4cd89f13784e42361f41bc64ce7d93139ea115f0e8a0454a",
+    "hiercp_v22/volumes.py": "ac4ed51ee58ff68efbbd69f2fb86f00bd8ff9a3264fe18f95ee97b7f18bd9c89",
+    "hiercp_v222/contracts.py": "21a54c95a01ecb211dff1b851d64341113d2aba6a7a2d0f992b8d6f169d77993",
+    "hiercp_v222/deterministic_sampling.py": "90e34002e2f58082cb9272c403650c02b7f7242253779d6f4017984c2f4c66c3",
+    "hiercp_v222/model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+    "hiercp_v222/placement.py": "bb9cae758b339de2ccc8d32d7a4f0b3b906bea499bc1e0e3db6ba6eb2588131c",
+    "hiercp_v222/training.py": "ff82cf35adbcee359da4dc0046f35b96434c4fcfea070588f2fea52bff34234a",
+    "hiercp_v222/v1_cache.py": "c473fef21ac60e6fce7401bc6cc34f1126c23e269dd66674ded485440b9220b7",
+    "hiercp_v222/v1_execution.py": "320c69f40ee386deac6d6989cae6c2d51fdacb5393768c316fbb4c73b65b390b",
+    "hiercp_v222/v1_local.py": "2bb724171ee0b8c8ae1892eebe6487db68f393a270d3d0708b2ad06417b0641d",
+    "hiercp_v222/v1_training.py": "3c13a598d2352d2a854b94a1d38186fabf6ea4b1ff9b93ce0b24a2cbe51c1ea3",
+    "l0_exploration/data.py": "791e68e927465236d844dbff816596697641cc1e5b9264ff23bf2513f76eed89",
+    "l0_exploration/model.py": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+    "l0_ezsp/identity.py": "5883d5bee96983b7579794af0d7de9c9223e9dd6a4a4735e0ac05174d83e560e",
+    "l0_ezsp/validation.py": "04e5ce485c990772e092c96f14e6ebe9a8e4bc00f121c806d6226f827de26be8",
+    "l0_local_cnn/artifact.py": "00f09f953cc1fb8d3f0e4a8f3837917dde7bb34ee1256afcdc9a56a62a0f8dda",
+    "l0_local_cnn/data.py": "907d1ea35e138cb07a2af017bab8c76f7fd4149a9ed000a1d7d7d76c693df03c",
+    "l0_local_cnn/model.py": "51aa70d4fdfe9e7d1f25b9bd110adaa25c1ec1f264659888695853f9bf923e19",
+    "l0_regions/donor_data.py": "73f683fde9997fd223bccf1f047d6bb4051840efe7104a4a09089fd03c54bbee",
+    "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+    "l0_regions/execution_pipeline.py": "6676c70b30f7fd560963c6d8280795b7ae2cf608b4e3749b6944e62f28e275d1",
+    "l0_regions/resident.py": "914b89ad9cfc87f6bfb6ebc0b79b53d029b305bb634011fdbf407336eed5adb7",
+    "l0_regions/sparse.py": "6524b1239f93f4b647e9ac14ba93e8e14761429b49cd65eb3d14c67240733e05",
+    "l0_regions/support_episodes.py": "3947ef3776850510c1f6af595a2d8d1134e1a5babf3654c415488557f391e3e1",
+    "l0_regions/training.py": "6e106f1828a854cdca06e2f664af819f80b533c7c5a144dee66eb7a4f3122bdb",
+    "l0_regions/training_data.py": "dda32285f52302e7831901a3118d6044f337f92b5a1100adf4f982d3796c3df9",
+    "l0_sage/encoder.py": "42a640aac444203c3e125563e0209448f87e4813a3af07a28ef68c484f167265",
+    "tools/evaluate_v17_historical_full128.py": "0589825f9118f306db9e02e018deaa0bb40b8fad5eb62b3f11a7bde16cc05dfa",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "tools/reuse_v17_D_preparation.py": "e07bc307b9ef691a67e527fcfc0a636565d48ece9643d239f892ebff4563dce3",
+    "tools/run_local_cnn_experiment.py": "ac029ff2514fda5d5be6b7db72cf92c02b559c1b56f75c10ea2e6f06e6b81814",
+    "tools/run_v17_crossed_training.py": "e2f8e09ac7d975234e62cc76bc8672e5b5bba13f481444fdd0eabe351d135428",
+    "tools/run_v1_bounded_training.py": "a47dacf6d000acd12c2eafba12eeb8e527d963d58765c6981c44b1c08819c9cd",
+    "tools/run_v222_process_runtime.py": "119eb055ca2963312a05395025920d636891f8da5f552235e750605b28c957c5",
+    "tools/v222_resume_guard.py": "64397e86fa8d164176de433d1b3a1727100088364267a6e2ae724c68bea00ec5",
+    "tools/v222_review_contracts.py": "7d5d37e96474e8d45bac749601b4c6497bc2e4a3d9b80d488e53ba5fe9e63b44",
+    "tools/v222_runtime_cache.py": "aeeca2d5cc738a6f98107861eade686dd7c0e5decee52aaa41a004ea340749dd",
+    "tools/v22_artifacts.py": "851bbae592013d16914fde0b91bf5ef1f533df0fca0dfcfe946ce94877b8aebf",
+    "tools/v22_calibration.py": "2a5d8fa8956b94419660f1ef7fbeee279bd62129aa7d07aab082eab982e2acda",
+    "tools/v22_candidate_order.py": "4454e2175792e7b9e09d3249f62cbd0478193ff9033962639cf270b8b57f552c",
+    "tools/v22_debug_profile.py": "1eb90e2ae4638f0b324587a882455b4ce150b3a4ac881a72dc72c2a804d1fc54",
+    "tools/v22_pair_audit.py": "1ff47de3f68942e956755a210743e312df2d719292f0826420decb8b18840021",
+    "tools/v22_rank_objective.py": "11adc325971bafc35d470fa0719c4a8e21e456219cf583969f3674a4999c268a",
+    "tools/v22_ranking_steps.py": "d490f6e0e6b2b2c7b9ca826ef1419ee25fb562d45ac74f56db9f73d05957f892",
+    "tools/v22_ranking_training.py": "4c3688fb1d46da86a0b0243c66de48b307cae5247047ac8d1ce3e6ce92010580",
+    "tools/v22_resume_integrity.py": "deead455b5d33b1aeea7bdc2de456a0cf45077b987bb1369377e2da75c1788b8",
+    "tools/v22_resume_state.py": "628f41dd10a7d28493ed1c75f72d548967761c5c2b9b4c24be9d093377d7252d",
+    "tools/v22_runtime_receipts.py": "93c94f7c99039369224cc46d256b2d8d5122ab2bb12b4fe24a1935a45917a66a"
+  },
+  "seconds": 318.3974698999664,
+  "arms": {
+    "V1": {
+      "report_sha256": "bec1bb7fd1c44017d5fab7f5942509b5d73f5370b15fc68609a00943d36579db",
+      "denominators": {
+        "cases": 1,
+        "rank_evaluable_cases": 1,
+        "zero_P_cases": 0,
+        "observed_P": 8,
+        "unobserved_U": 128,
+        "P_U_pairs": 1024,
+        "case_hit_at_1": 1,
+        "observed_micro_recall": 8
+      },
+      "metrics_DEBUG_not_quality": {
+        "case_first_P_mrr": 0.07142857142857142,
+        "case_hit_at_1": 0,
+        "observed_micro_recall_at_1": 0,
+        "observed_micro_recall_at_5": 0,
+        "observed_micro_recall_at_10": 0,
+        "P_U_pair_win_rate": 0.583984375,
+        "P_U_pair_tie_rate": 0,
+        "P_U_softplus_loss": 0.6916164840019453,
+        "score_std": 0.013905038593032385,
+        "score_min": -0.044158935546875,
+        "score_max": 0.021026611328125
+      },
+      "parameters": 10434532,
+      "selected_candidate_batch": 4,
+      "peak_cuda_bytes": 240778240,
+      "support_policy": "original_train_only_prototype_bank",
+      "annotation_derived_recipient_graph": true,
+      "original_evidence_preserved": true,
+      "elapsed_seconds": 73.95917879999615,
+      "calibration": {
+        "arm": "V1",
+        "unit": "candidate observations",
+        "trials": [
+          {
+            "physical_batch": 2,
+            "observations_per_second": 7.873622067062814,
+            "seconds": 0.25401269999565557,
+            "peak_cuda_bytes": 169353728,
+            "accepted": true,
+            "input_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "local_graphs": 4,
+            "calibration_record_ids": [
+              "liver_31:65",
+              "liver_31:66"
+            ]
+          },
+          {
+            "physical_batch": 4,
+            "observations_per_second": 11.694470270596131,
+            "seconds": 0.3420419999747537,
+            "peak_cuda_bytes": 240630784,
+            "accepted": true,
+            "input_shape": [
+              4,
+              5,
+              48,
+              48,
+              48
+            ],
+            "local_graphs": 8,
+            "calibration_record_ids": [
+              "liver_31:12",
+              "liver_31:120",
+              "liver_31:121",
+              "liver_31:122"
+            ]
+          }
+        ],
+        "selected_batch": 4,
+        "training_batch_changed": false,
+        "L0_only_chunking": true,
+        "upper_whole_case": true
+      },
+      "checkpoint_receipt": {
+        "debug": true,
+        "selected_epoch": null,
+        "completed_epochs": 0,
+        "optimizer_imported": false,
+        "weight_origin": "fresh_seed42_full_model_untrained_mechanical_smoke_only",
+        "architecture": "hiercp_source_content_population_metric_v5|bounded_scope_021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131",
+        "total_parameters": 10434532,
+        "files_preserved": {
+          "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+          "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a"
+        },
+        "checkpoint_written": false
+      }
+    },
+    "A": {
+      "report_sha256": "864fb120ec7ab98d4c390c890f3f87edfa97d2f40538a48c6d3a58e73ae25814",
+      "denominators": {
+        "cases": 1,
+        "rank_evaluable_cases": 1,
+        "zero_P_cases": 0,
+        "observed_P": 8,
+        "unobserved_U": 128,
+        "P_U_pairs": 1024,
+        "case_hit_at_1": 1,
+        "observed_micro_recall": 8
+      },
+      "metrics_DEBUG_not_quality": {
+        "case_first_P_mrr": 0.25,
+        "case_hit_at_1": 0,
+        "observed_micro_recall_at_1": 0,
+        "observed_micro_recall_at_5": 0.125,
+        "observed_micro_recall_at_10": 0.25,
+        "P_U_pair_win_rate": 0.828125,
+        "P_U_pair_tie_rate": 0.001953125,
+        "P_U_softplus_loss": 0.680668528356923,
+        "score_std": 0.026345276338374933,
+        "score_min": 0.00806427001953125,
+        "score_max": 0.123291015625
+      },
+      "parameters": 5127124,
+      "selected_candidate_batch": 4,
+      "peak_cuda_bytes": 214261248,
+      "support_policy": "original_train_only_prototype_bank",
+      "annotation_derived_recipient_graph": true,
+      "original_evidence_preserved": true,
+      "elapsed_seconds": 68.8174404000165,
+      "calibration": {
+        "arm": "A",
+        "unit": "candidate observations",
+        "trials": [
+          {
+            "physical_batch": 2,
+            "observations_per_second": 17.740955435990003,
+            "seconds": 0.11273350002011284,
+            "peak_cuda_bytes": 125816832,
+            "accepted": true,
+            "input_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "local_graphs": 4,
+            "calibration_record_ids": [
+              "liver_31:65",
+              "liver_31:66"
+            ]
+          },
+          {
+            "physical_batch": 4,
+            "observations_per_second": 27.154193047595477,
+            "seconds": 0.1473069000057876,
+            "peak_cuda_bytes": 214113792,
+            "accepted": true,
+            "input_shape": [
+              4,
+              5,
+              48,
+              48,
+              48
+            ],
+            "local_graphs": 8,
+            "calibration_record_ids": [
+              "liver_31:12",
+              "liver_31:120",
+              "liver_31:121",
+              "liver_31:122"
+            ]
+          }
+        ],
+        "selected_batch": 4,
+        "training_batch_changed": false,
+        "L0_only_chunking": true,
+        "upper_whole_case": true
+      },
+      "checkpoint_receipt": {
+        "debug": true,
+        "selected_epoch": null,
+        "completed_epochs": 0,
+        "optimizer_imported": false,
+        "weight_origin": "fresh_seed42_full_model_untrained_mechanical_smoke_only",
+        "architecture": "hiercp_source_content_population_metric_v5|bounded_scope_021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131|half_A_v2CNN_on_preserved_v1_denseROI_preserved_v1_role_shell_masked_mean_v1_r1",
+        "total_parameters": 5127124,
+        "files_preserved": {
+          "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+          "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a"
+        },
+        "checkpoint_written": false
+      }
+    },
+    "B": {
+      "report_sha256": "06fbc99af007ed3f3f8d1a8cfdc49b9598702feedf18acffce11f593c3196eea",
+      "denominators": {
+        "cases": 1,
+        "rank_evaluable_cases": 1,
+        "zero_P_cases": 0,
+        "observed_P": 8,
+        "unobserved_U": 128,
+        "P_U_pairs": 1024,
+        "case_hit_at_1": 1,
+        "observed_micro_recall": 8
+      },
+      "metrics_DEBUG_not_quality": {
+        "case_first_P_mrr": 0.03125,
+        "case_hit_at_1": 0,
+        "observed_micro_recall_at_1": 0,
+        "observed_micro_recall_at_5": 0,
+        "observed_micro_recall_at_10": 0,
+        "P_U_pair_win_rate": 0.3203125,
+        "P_U_pair_tie_rate": 0,
+        "P_U_softplus_loss": 0.710542968594709,
+        "score_std": 0.05548894472002136,
+        "score_min": -1.1446250677108765,
+        "score_max": -0.8561362624168396
+      },
+      "parameters": 6433126,
+      "selected_candidate_batch": 4,
+      "peak_cuda_bytes": 225850880,
+      "support_policy": "original_anchor_curriculum_full_train_bank",
+      "annotation_derived_recipient_graph": false,
+      "original_evidence_preserved": true,
+      "elapsed_seconds": 25.16781329998048,
+      "calibration": {
+        "arm": "B",
+        "unit": "candidate observations",
+        "trials": [
+          {
+            "physical_batch": 2,
+            "observations_per_second": 11.588788078121702,
+            "seconds": 0.17258060001768172,
+            "peak_cuda_bytes": 153733120,
+            "accepted": true,
+            "input_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "local_graphs": 4,
+            "calibration_record_ids": [
+              "liver_31:65",
+              "liver_31:66"
+            ]
+          },
+          {
+            "physical_batch": 4,
+            "observations_per_second": 17.672528055622585,
+            "seconds": 0.2263399999937974,
+            "peak_cuda_bytes": 225703424,
+            "accepted": true,
+            "input_shape": [
+              4,
+              5,
+              48,
+              48,
+              48
+            ],
+            "local_graphs": 8,
+            "calibration_record_ids": [
+              "liver_31:12",
+              "liver_31:120",
+              "liver_31:121",
+              "liver_31:122"
+            ]
+          }
+        ],
+        "selected_batch": 4,
+        "training_batch_changed": false,
+        "L0_only_chunking": true,
+        "upper_whole_case": true
+      },
+      "checkpoint_receipt": {
+        "debug": true,
+        "selected_epoch": null,
+        "completed_epochs": 0,
+        "optimizer_imported": false,
+        "weight_origin": "fresh_seed42_full_model_untrained_mechanical_smoke_only",
+        "architecture": "hiercp_source_content_population_metric_v5|bounded_scope_021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131|half_B_preserved_v1_L0_with_tracked_v22_legacy_prompt_cluster_cosine_upper_r1",
+        "total_parameters": 6433126,
+        "files_preserved": {
+          "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture.pt": "32f2d28feea3d29c4293b2b9841e1c2062dd1f36fa780211644b9761297ce646",
+          "D:\\AI project\\nnunet\\work\\v1x_real_CT_DEBUG_20261003_prepare\\fixture_manifest.json": "3c5718a47ce8b930e04981a5e3373a0fc7de08efc1aef9fd975d2001194c5e2a",
+          "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\support_fixture_DEBUG.pt": "2a02b6e9c13da3c74ebd37e25780bb6c3ec1bed58285b83ff88eda077f81183e",
+          "D:\\AI project\\nnunet\\work\\v1_half_b_support_DEBUG_20261004_r1\\support_manifest_DEBUG.json": "f5c23852b36e6f3dd6bdc88c8058634873bff6fcd0f02a43457eb028b0d16765"
+        },
+        "checkpoint_written": false
+      }
+    },
+    "C": {
+      "report_sha256": "0f636c3a33bbea3e6f8522a97a041871e7ba3298fe0417ba14f6f121ed04034a",
+      "denominators": {
+        "cases": 1,
+        "rank_evaluable_cases": 1,
+        "zero_P_cases": 0,
+        "observed_P": 8,
+        "unobserved_U": 128,
+        "P_U_pairs": 1024,
+        "case_hit_at_1": 1,
+        "observed_micro_recall": 8
+      },
+      "metrics_DEBUG_not_quality": {
+        "case_first_P_mrr": 0.16666666666666666,
+        "case_hit_at_1": 0,
+        "observed_micro_recall_at_1": 0,
+        "observed_micro_recall_at_5": 0,
+        "observed_micro_recall_at_10": 0.25,
+        "P_U_pair_win_rate": 0.5693359375,
+        "P_U_pair_tie_rate": 0,
+        "P_U_softplus_loss": 0.691937884034315,
+        "score_std": 0.021198457804597448,
+        "score_min": -0.31831061840057373,
+        "score_max": -0.20574608445167542
+      },
+      "parameters": 1125718,
+      "selected_candidate_batch": 4,
+      "peak_cuda_bytes": 90203136,
+      "support_policy": "original_anchor_curriculum_full_train_bank",
+      "annotation_derived_recipient_graph": false,
+      "original_evidence_preserved": true,
+      "elapsed_seconds": 1.3643012999673374,
+      "calibration": {
+        "arm": "C",
+        "unit": "candidate observations",
+        "trials": [
+          {
+            "physical_batch": 2,
+            "observations_per_second": 96.89077495343342,
+            "seconds": 0.02064180001616478,
+            "peak_cuda_bytes": 58739200,
+            "accepted": true,
+            "input_shape": [
+              3,
+              1,
+              42,
+              49,
+              40
+            ],
+            "local_graphs": 0,
+            "calibration_record_ids": [
+              "liver_31:0",
+              "liver_31:1"
+            ]
+          },
+          {
+            "physical_batch": 4,
+            "observations_per_second": 97.53623473660028,
+            "seconds": 0.0410103999893181,
+            "peak_cuda_bytes": 90135552,
+            "accepted": true,
+            "input_shape": [
+              5,
+              1,
+              42,
+              49,
+              40
+            ],
+            "local_graphs": 0,
+            "calibration_record_ids": [
+              "liver_31:0",
+              "liver_31:1",
+              "liver_31:10",
+              "liver_31:100"
+            ]
+          }
+        ],
+        "selected_batch": 4,
+        "training_batch_changed": false,
+        "L0_only_chunking": true,
+        "upper_whole_case": true
+      },
+      "checkpoint_receipt": {
+        "run_identity_sha256": "bbcb58301ae2e4782fe53bb2e74f7072b9654c1021b4f3a03543561c90cb3726",
+        "selected_own_epoch": 1,
+        "selected_own_update": 2,
+        "selection": {
+          "epoch": 1,
+          "update": 2,
+          "metric": [
+            0.25,
+            0,
+            -0.00907126,
+            -3.81080699,
+            0
+          ]
+        },
+        "debug": true,
+        "complete40_verified": false,
+        "optimizer_updates": 0,
+        "source_checkpoint_written": false,
+        "support_GT": "source anchor index0 versus original curriculum comparison indices1..7",
+        "published_common_observed_bank_reused": false,
+        "same_as_published_C_common_evaluation": false,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\v17_C_cuda_DEBUG_20261005_r4\\training\\checkpoint_best_own.pt",
+        "checkpoint_sha256": "0a3945fb0f3b9da9bb8037a9c2e77a385cf95a1291f3bbb3f94cdafc9083a814",
+        "strict_state_loaded": true,
+        "support_policy": "native_single_view_full_original_curriculum_training_cache",
+        "support_candidates": 24,
+        "support_samples": 3,
+        "support_patient_case_ids": [
+          "liver_5",
+          "liver_6",
+          "liver_1"
+        ],
+        "support_batch_samples": 2,
+        "support_reencoded_at_best_weights": true,
+        "query_only_L0_chunking": true,
+        "scoring": "faithful C upper.score using original source-anchor/curriculum support",
+        "published_C_common_comparison": "same query cohort; different support labels and bank",
+        "source_artifacts_sha256": {
+          "D:\\AI project\\nnunet\\work\\v17_C_cuda_DEBUG_20261005_r4\\manifest.json": "ef31386e6712383cdf1a4cceba89aedc050fedf7dbd73431bc772818bd0c8b7b",
+          "D:\\AI project\\nnunet\\work\\v17_C_cuda_DEBUG_20261005_r4\\training\\c_training_contract.json": "0abee236de6ae2886d3246e119dc61be74b85ca5fff1942142abfd0ddf0a5d32",
+          "D:\\AI project\\nnunet\\work\\v17_C_cuda_DEBUG_20261005_r4\\training\\checkpoint_best_own.pt": "0a3945fb0f3b9da9bb8037a9c2e77a385cf95a1291f3bbb3f94cdafc9083a814"
+        },
+        "execution_source_sha256": {
+          "D:\\AI project\\nnunet\\hiercp_v1x\\transition_c_training.py": "39a84c54b2a1da9884895b72959e8dd89506b607732eb40e18f481290606425c",
+          "D:\\AI project\\nnunet\\hiercp_v1x\\transition_native_local.py": "74e8ab3cf927c8698ef88a3ca2b67392fe283a62df5f8c0dd7dfba3289112dbc",
+          "D:\\AI project\\nnunet\\hiercp_v1x\\transition_model.py": "fc98caa89cdc59cf011acee5ba947b2c1775727939241ddca7aec5e284b9d1f2",
+          "D:\\AI project\\nnunet\\hiercp_v1x\\half_b_model.py": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+          "D:\\AI project\\nnunet\\hiercp_v222\\model.py": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+          "D:\\AI project\\nnunet\\hiercp_v222\\clustering.py": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+          "D:\\AI project\\nnunet\\l0_local_cnn\\model.py": "51aa70d4fdfe9e7d1f25b9bd110adaa25c1ec1f264659888695853f9bf923e19",
+          "D:\\AI project\\nnunet\\l0_exploration\\model.py": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+          "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0\\hiercp\\loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81"
+        },
+        "source_experiment_preserved": true
+      }
+    }
+  }
+}
