@@ -1,0 +1,70 @@
+{
+  "format": "v17_actual_completion_and_resume_checks_v1",
+  "created_UTC": "2026-10-05T04:55:04.887929+00:00",
+  "smoke_verification_sha256": "ca1e67b2815012649122ac78476416c8c045725c64ac5db41d1461e69047262d",
+  "C_resume": {
+    "command_completed": true,
+    "additional_optimizer_updates": 0,
+    "updates_before": 2,
+    "updates_after": 2,
+    "backward_attempts_before": 4,
+    "backward_attempts_after": 4,
+    "model_tensor_sha256_before": "cbae1b3f7193ef15475fb351a9486ff61da6c33193e7eb3993cd3c40e24ccdf3",
+    "model_tensor_sha256_after": "cbae1b3f7193ef15475fb351a9486ff61da6c33193e7eb3993cd3c40e24ccdf3",
+    "neural_parameters_preserved": true,
+    "before_checkpoint_file_hash_captured": false,
+    "checkpoint_file_bitwise_identity_claimed": false,
+    "reports": [
+      {
+        "path": "work/v17_C_cuda_DEBUG_20261005_r4/training/c_training_report_1015896fb7f346f193659ec52a7fabde.json",
+        "sha256": "5583f3497c06ca3a002337e1bf72621155998ce93341e31425ae7fb9d69a5266"
+      },
+      {
+        "path": "work/v17_C_cuda_DEBUG_20261005_r4/training/c_training_report_59923b6eb3ab4445a8ac95faae4f10f4.json",
+        "sha256": "c12e89b6382b7b2a254e1804d68abfbe3efc6ecdbf76b748744dc71055fe9b7f"
+      }
+    ],
+    "scope": "Actual completed own-resume; parameter state equal, tiny evaluation float differences not claimed bitwise equal"
+  },
+  "D_resume": {
+    "command_completed": true,
+    "stdout_completion": "DEBUG already completed 2 successful updates; no additional update.",
+    "additional_optimizer_updates": 0,
+    "updates_before": 2,
+    "updates_after": 2,
+    "checkpoint_sha256_before": "1b0498b484c138a3eeb62980a64e706755f11ad357d72843c4b6f560001b8201",
+    "checkpoint_sha256_after": "1b0498b484c138a3eeb62980a64e706755f11ad357d72843c4b6f560001b8201",
+    "checkpoint_bytes_preserved": true
+  },
+  "unit_tests": {
+    "transition_unique_tests_passed": 98,
+    "collector_unique_tests_passed": 15,
+    "total_unique_tests_passed": 113,
+    "scope": "Previously completed unit runs in this task, not new GPU runs; repeated subset is not counted twice",
+    "transition_suites": [
+      "tests.test_transition_c_training",
+      "tests.test_transition_evaluation",
+      "tests.test_transition_native_local",
+      "tests.test_transition_reference",
+      "tests.test_transition_terminal_cli",
+      "tests.test_transition_terminal_report",
+      "tests.test_transition_timing",
+      "tests.test_transition_v1_local",
+      "tests.test_transition_v1_preparation"
+    ],
+    "collector_suite": "tests.test_v17_crossed_smoke_collector"
+  },
+  "static_checks": {
+    "AST_files": 22,
+    "AST_PASS": true,
+    "server_shell_LF_only": true,
+    "server_shell_syntax_PASS": true,
+    "server_shell_sha256": "7e8824d3d5b328c2a6228911be66caa903a0127e25aa3ba4bc3bd6f2c503d410"
+  },
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "preserved_originals": true,
+  "no_CP_or_nnUNet_started": true
+}

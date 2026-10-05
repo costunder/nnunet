@@ -1,0 +1,1502 @@
+{
+  "format": "hiercp_transition_whole128_evaluation_v1",
+  "task": "native_observed_P_vs_unobserved_U",
+  "GT_is_donor_compatibility": false,
+  "original_eight_candidate_metrics": false,
+  "debug": true,
+  "full_128_U_per_case": true,
+  "production_full_inner_val": false,
+  "quality_verified": false,
+  "full_training_complete": false,
+  "cohort": {
+    "case_ids": [
+      "liver_31"
+    ],
+    "debug": true,
+    "production_full_inner_val": false,
+    "inventory_metadata_sha256": "335dbbacee95e0f1080cc5d815c995262154357caa65aaf5945d9580336cc854",
+    "cohort_sha256": "5c926e477f992ae6354fb359b64699e7a3779e458d9151bbc8416ff217f8244d",
+    "native_assignment": {
+      "policy": "same_donor_live_v1",
+      "seed": 42,
+      "records": 14102,
+      "assignment_sha256": "42bf63fd09587bdb18491242ac783b8d3be5b53d8a1c37491e3cedeb80d9beb1"
+    },
+    "records": 136,
+    "observed_P": 8,
+    "unobserved_U": 128
+  },
+  "denominators": {
+    "cases": 1,
+    "rank_evaluable_cases": 1,
+    "zero_P_cases": 0,
+    "observed_P": 8,
+    "unobserved_U": 128,
+    "P_U_pairs": 1024,
+    "case_hit_at_1": 1,
+    "observed_micro_recall": 8
+  },
+  "metrics": {
+    "case_first_P_mrr": 0.16666666666666666,
+    "case_hit_at_1": 0.0,
+    "observed_micro_recall_at_1": 0.0,
+    "observed_micro_recall_at_5": 0.0,
+    "observed_micro_recall_at_10": 0.25,
+    "P_U_pair_win_rate": 0.5703125,
+    "P_U_pair_tie_rate": 0.0,
+    "P_U_softplus_loss": 0.6916661772506012,
+    "score_std": 0.02361671488994967,
+    "score_min": -0.32415634393692017,
+    "score_max": -0.20080715417861938
+  },
+  "native_metrics": {
+    "ranking_pairwise_loss": 0.6916661262512207,
+    "ranking_pairs": 1024,
+    "ranking_mrr": 0.16666666666666666,
+    "ranking_mean_observed_rank": 59.5,
+    "ranking_evaluable_cases": 1,
+    "ranking_cases_without_observed": 0,
+    "ranking_recall_at_1": 0.0,
+    "ranking_recall_at_5": 0.0,
+    "ranking_recall_at_10": 0.25
+  },
+  "cases": [
+    {
+      "case_id": "liver_31",
+      "eligible_observed": 8,
+      "rank_evaluable": true,
+      "observed_ranks": [
+        6,
+        7,
+        23,
+        26,
+        68,
+        114,
+        115,
+        117
+      ],
+      "first_observed_rank": 6,
+      "reciprocal_rank": 0.16666666666666666,
+      "recall_at_1": 0.0,
+      "recall_at_5": 0.0,
+      "recall_at_10": 0.25,
+      "observed_P": 8,
+      "unobserved_U": 128,
+      "records": 136,
+      "score_std": 0.02361671488994967,
+      "score_min": -0.32415634393692017,
+      "score_max": -0.20080715417861938,
+      "scored_record_ids": [
+        "liver_31:0",
+        "liver_31:1",
+        "liver_31:10",
+        "liver_31:100",
+        "liver_31:101",
+        "liver_31:102",
+        "liver_31:103",
+        "liver_31:104",
+        "liver_31:105",
+        "liver_31:106",
+        "liver_31:107",
+        "liver_31:108",
+        "liver_31:109",
+        "liver_31:11",
+        "liver_31:110",
+        "liver_31:111",
+        "liver_31:112",
+        "liver_31:113",
+        "liver_31:114",
+        "liver_31:115",
+        "liver_31:116",
+        "liver_31:117",
+        "liver_31:118",
+        "liver_31:119",
+        "liver_31:12",
+        "liver_31:120",
+        "liver_31:121",
+        "liver_31:122",
+        "liver_31:123",
+        "liver_31:124",
+        "liver_31:125",
+        "liver_31:126",
+        "liver_31:127",
+        "liver_31:128",
+        "liver_31:129",
+        "liver_31:13",
+        "liver_31:130",
+        "liver_31:131",
+        "liver_31:132",
+        "liver_31:133",
+        "liver_31:134",
+        "liver_31:135",
+        "liver_31:14",
+        "liver_31:15",
+        "liver_31:16",
+        "liver_31:17",
+        "liver_31:18",
+        "liver_31:19",
+        "liver_31:2",
+        "liver_31:20",
+        "liver_31:21",
+        "liver_31:22",
+        "liver_31:23",
+        "liver_31:24",
+        "liver_31:25",
+        "liver_31:26",
+        "liver_31:27",
+        "liver_31:28",
+        "liver_31:29",
+        "liver_31:3",
+        "liver_31:30",
+        "liver_31:31",
+        "liver_31:32",
+        "liver_31:33",
+        "liver_31:34",
+        "liver_31:35",
+        "liver_31:36",
+        "liver_31:37",
+        "liver_31:38",
+        "liver_31:39",
+        "liver_31:4",
+        "liver_31:40",
+        "liver_31:41",
+        "liver_31:42",
+        "liver_31:43",
+        "liver_31:44",
+        "liver_31:45",
+        "liver_31:46",
+        "liver_31:47",
+        "liver_31:48",
+        "liver_31:49",
+        "liver_31:5",
+        "liver_31:50",
+        "liver_31:51",
+        "liver_31:52",
+        "liver_31:53",
+        "liver_31:54",
+        "liver_31:55",
+        "liver_31:56",
+        "liver_31:57",
+        "liver_31:58",
+        "liver_31:59",
+        "liver_31:6",
+        "liver_31:60",
+        "liver_31:61",
+        "liver_31:62",
+        "liver_31:63",
+        "liver_31:64",
+        "liver_31:65",
+        "liver_31:66",
+        "liver_31:67",
+        "liver_31:68",
+        "liver_31:69",
+        "liver_31:7",
+        "liver_31:70",
+        "liver_31:71",
+        "liver_31:72",
+        "liver_31:73",
+        "liver_31:74",
+        "liver_31:75",
+        "liver_31:76",
+        "liver_31:77",
+        "liver_31:78",
+        "liver_31:79",
+        "liver_31:8",
+        "liver_31:80",
+        "liver_31:81",
+        "liver_31:82",
+        "liver_31:83",
+        "liver_31:84",
+        "liver_31:85",
+        "liver_31:86",
+        "liver_31:87",
+        "liver_31:88",
+        "liver_31:89",
+        "liver_31:9",
+        "liver_31:90",
+        "liver_31:91",
+        "liver_31:92",
+        "liver_31:93",
+        "liver_31:94",
+        "liver_31:95",
+        "liver_31:96",
+        "liver_31:97",
+        "liver_31:98",
+        "liver_31:99"
+      ],
+      "ordered_record_ids": [
+        "liver_31:97",
+        "liver_31:55",
+        "liver_31:75",
+        "liver_31:116",
+        "liver_31:73",
+        "liver_31:7",
+        "liver_31:1",
+        "liver_31:102",
+        "liver_31:114",
+        "liver_31:58",
+        "liver_31:117",
+        "liver_31:67",
+        "liver_31:104",
+        "liver_31:86",
+        "liver_31:69",
+        "liver_31:89",
+        "liver_31:36",
+        "liver_31:9",
+        "liver_31:128",
+        "liver_31:44",
+        "liver_31:65",
+        "liver_31:108",
+        "liver_31:3",
+        "liver_31:129",
+        "liver_31:133",
+        "liver_31:4",
+        "liver_31:10",
+        "liver_31:27",
+        "liver_31:38",
+        "liver_31:19",
+        "liver_31:74",
+        "liver_31:95",
+        "liver_31:46",
+        "liver_31:78",
+        "liver_31:122",
+        "liver_31:60",
+        "liver_31:113",
+        "liver_31:87",
+        "liver_31:93",
+        "liver_31:13",
+        "liver_31:21",
+        "liver_31:101",
+        "liver_31:33",
+        "liver_31:66",
+        "liver_31:48",
+        "liver_31:84",
+        "liver_31:124",
+        "liver_31:76",
+        "liver_31:131",
+        "liver_31:56",
+        "liver_31:106",
+        "liver_31:88",
+        "liver_31:26",
+        "liver_31:30",
+        "liver_31:98",
+        "liver_31:79",
+        "liver_31:29",
+        "liver_31:92",
+        "liver_31:37",
+        "liver_31:45",
+        "liver_31:115",
+        "liver_31:109",
+        "liver_31:12",
+        "liver_31:15",
+        "liver_31:71",
+        "liver_31:43",
+        "liver_31:53",
+        "liver_31:2",
+        "liver_31:83",
+        "liver_31:110",
+        "liver_31:112",
+        "liver_31:126",
+        "liver_31:82",
+        "liver_31:57",
+        "liver_31:107",
+        "liver_31:20",
+        "liver_31:54",
+        "liver_31:51",
+        "liver_31:35",
+        "liver_31:28",
+        "liver_31:52",
+        "liver_31:121",
+        "liver_31:59",
+        "liver_31:68",
+        "liver_31:123",
+        "liver_31:72",
+        "liver_31:130",
+        "liver_31:31",
+        "liver_31:96",
+        "liver_31:42",
+        "liver_31:8",
+        "liver_31:70",
+        "liver_31:47",
+        "liver_31:18",
+        "liver_31:105",
+        "liver_31:134",
+        "liver_31:24",
+        "liver_31:118",
+        "liver_31:25",
+        "liver_31:132",
+        "liver_31:80",
+        "liver_31:22",
+        "liver_31:61",
+        "liver_31:135",
+        "liver_31:39",
+        "liver_31:127",
+        "liver_31:103",
+        "liver_31:14",
+        "liver_31:120",
+        "liver_31:85",
+        "liver_31:17",
+        "liver_31:11",
+        "liver_31:40",
+        "liver_31:6",
+        "liver_31:0",
+        "liver_31:100",
+        "liver_31:5",
+        "liver_31:81",
+        "liver_31:94",
+        "liver_31:34",
+        "liver_31:91",
+        "liver_31:32",
+        "liver_31:99",
+        "liver_31:90",
+        "liver_31:16",
+        "liver_31:62",
+        "liver_31:41",
+        "liver_31:49",
+        "liver_31:111",
+        "liver_31:125",
+        "liver_31:119",
+        "liver_31:64",
+        "liver_31:50",
+        "liver_31:77",
+        "liver_31:63",
+        "liver_31:23"
+      ],
+      "case_scores": [
+        {
+          "record_id": "liver_31:0",
+          "candidate_key": "c611b63bb0b9391a5c0e652ff03c6d457e7078aa6c88f6edcbe617b4a86772c2",
+          "score": -0.2758782207965851,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:1",
+          "candidate_key": "3b77d0007b134e81f6db6688c7334cdaead34e0f9eef0e9bb02ba7cc2aa3ad6c",
+          "score": -0.21897685527801514,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:10",
+          "candidate_key": "a5de85ff278fd247ce0aa0ec0479b63608c907d7e83a17389911b91312f154e5",
+          "score": -0.23082652688026428,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:100",
+          "candidate_key": "e1326791a7e97bd1d8a44ef3f76883efbbe6fa6b4025f259f72ba29085b3344e",
+          "score": -0.2771424353122711,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:101",
+          "candidate_key": "638f6aeeef40aca586fb24d905055ee7522e0ceb776c2e470ae980d7e5d17b17",
+          "score": -0.23298367857933044,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:102",
+          "candidate_key": "1dd6c473c41c8c73b3f3e315e350934b93a98ec17cb07fd64c9b22f9020b0c2d",
+          "score": -0.21902453899383545,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:103",
+          "candidate_key": "d0d834e8a94c04972d504463c0936baa870b8c7157f55891e20cc64602819e7d",
+          "score": -0.2614174485206604,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:104",
+          "candidate_key": "fc60cd867b81dc544d67a9305599f94e862784b7d7bde45158dcf8b294a42249",
+          "score": -0.22363948822021484,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:105",
+          "candidate_key": "2066082a203f6fe400be6e0db88b08ff9804496ab992e91dde1531a04dd44a6f",
+          "score": -0.25711679458618164,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:106",
+          "candidate_key": "5de22d16b322f2f57a1d3488ac370f0415ddcd15b53523ae9ea0b4c3fc9a0eee",
+          "score": -0.2376731038093567,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:107",
+          "candidate_key": "ea0ddad55d6902b340f0ad97932b6373535aad8e4e7f4d097eae902f722a48de",
+          "score": -0.24801093339920044,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:108",
+          "candidate_key": "ba670c65c31578631f6cb6bd75cf626a2ea37d281652ed6f4eb4c64f092aa1e7",
+          "score": -0.22889801859855652,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:109",
+          "candidate_key": "e94e2dee090b2a301ac7d8665c4c52fa279c1094c05dc77baac0ad281be86665",
+          "score": -0.2424284815788269,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:11",
+          "candidate_key": "ef17bb9326837010c217e2f736952f00459a3a3cc92f3ed62b014fcb97b139c6",
+          "score": -0.26926106214523315,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:110",
+          "candidate_key": "d8a44819271e27bce09427ec9ff8b63cca64a020340aa86af57e6360bfd4467f",
+          "score": -0.24614927172660828,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:111",
+          "candidate_key": "ef1625890a1d89f1af12d951fd0687c469ce3c260043c4de30e36302cec187cd",
+          "score": -0.29206734895706177,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:112",
+          "candidate_key": "cad2285ba81ce347c5204c75cd14e8fd3c46b17ffd1aa0771b90060f95d8779e",
+          "score": -0.24640625715255737,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:113",
+          "candidate_key": "c60dce794bddf6658cb977f1b1605b30c36a7a77f91a2722b4166cccef1e37bc",
+          "score": -0.23211026191711426,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:114",
+          "candidate_key": "4c0f872f1e2be896b255d0ca101f18c405e8f7d98dd63a6095725dfd71afab53",
+          "score": -0.21975106000900269,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:115",
+          "candidate_key": "e81b45982ca3de5a25ae55b35b9700f729bdf9227a547e832ebeabba61830f81",
+          "score": -0.2422066628932953,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:116",
+          "candidate_key": "c24128e5204d1b0eac4a014e1f2ac63be8ee33ec6fddc9eb16bb4030783fcabb",
+          "score": -0.21395322680473328,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:117",
+          "candidate_key": "f9650784c443896faebf928e0cbba3eee8d5d820e3300cf5d35ac676e2c08fde",
+          "score": -0.2207956314086914,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:118",
+          "candidate_key": "045aa188b060eec619806a8da1e6d42c974f0d0bea5ec3a4f992d0f7cdff78a5",
+          "score": -0.2582702934741974,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:119",
+          "candidate_key": "6d44949e13afba4701c95c6ff0dd8f3ed6df52523c403d6e885a6baa8d25454a",
+          "score": -0.30049222707748413,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:12",
+          "candidate_key": "5a7a4365da0131680f97e5857b29bd363d8fa2b14283591f2602c91fc207a5d5",
+          "score": -0.24266865849494934,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:120",
+          "candidate_key": "79dfaa875e470c1e95bad8a1559c074d1249394060beaaab4af49bef1a919fc9",
+          "score": -0.2651394009590149,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:121",
+          "candidate_key": "18d82d552af8a324ef77423a212b6427a5c1cd034ff82e2c366549c4d4f7b111",
+          "score": -0.25168749690055847,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:122",
+          "candidate_key": "1232ab2802035d23119ef4748033544f3ed36613d8297b509f471bd4210190c8",
+          "score": -0.23185256123542786,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:123",
+          "candidate_key": "862f79af6b117b0fd414c13e49d87f4c0b805b901109c6748c4439abb70f2c80",
+          "score": -0.252096563577652,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:124",
+          "candidate_key": "97a25b4a503d2669dc70323bae68179467b573fcde41b5ead8c7711f2cf2b752",
+          "score": -0.23406073451042175,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:125",
+          "candidate_key": "28b160be80590d924793e70d2b088b9c33423833a79f1e5602d228686e2cb478",
+          "score": -0.29327473044395447,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:126",
+          "candidate_key": "8e25bfec3798b50c6d54b3b2b08fcef333a46ad3451503ed05f184a8b5e1926f",
+          "score": -0.24705159664154053,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:127",
+          "candidate_key": "3a1dd4e970af3dc2865f79d67829283caa550409b5b61f5c68a96a510baf78b1",
+          "score": -0.26115041971206665,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:128",
+          "candidate_key": "65976792a25a4a7251ff4b5f78c5b04ae30bd4bf3f0634b58c4afc81a31c0902",
+          "score": -0.22679227590560913,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:129",
+          "candidate_key": "03f3983baa273379405942b49cc78af7ac79d52ca065736f3f5bab2d39d5e0a2",
+          "score": -0.23034361004829407,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:13",
+          "candidate_key": "0c772ece8f9d64bccc4ad8fd0d8edc256be11ff4329d9f2071cda8f9cd767d8a",
+          "score": -0.23228713870048523,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:130",
+          "candidate_key": "0a6dd6e6589b8e88079fef30497cfd895491b077db122ee72e317c6bd8dd7154",
+          "score": -0.252850741147995,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:131",
+          "candidate_key": "c355982bcd7dde259a928ef2da4817eb247dabe15a9ec2797a1f72179a31df57",
+          "score": -0.23610007762908936,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:132",
+          "candidate_key": "8af2d38a8e0ece031e90d7b117782239a176e80f975f130431ea8d557cc3b28c",
+          "score": -0.25940442085266113,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:133",
+          "candidate_key": "59e423fdeb12fbdc17134aa55880154bebd8705394b037302ffe8a3ae9a7869d",
+          "score": -0.23040920495986938,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:134",
+          "candidate_key": "fd8c359cb43145ac07e8c05bc1c708a4e9ecbb38ca6200ca831153926916d9b7",
+          "score": -0.25735753774642944,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:135",
+          "candidate_key": "5516d4bab0d992f4a8a9de3410fa865919101251add24760dc8aa94e0b3f18d5",
+          "score": -0.26057571172714233,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:14",
+          "candidate_key": "0816f81d7eb72e74cb4454cd3bdffc095f1f1f6774c39bfec7d4f80c9bb7baf5",
+          "score": -0.2622452974319458,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:15",
+          "candidate_key": "43ef5467eb4e7e6c89f0b7cc79fc3955372e98d42a436611152c8d76bd628ad8",
+          "score": -0.24275845289230347,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:16",
+          "candidate_key": "ecf360adea8bc78e70415f9ef301eb1bb98e293d8518faabd3c2a9048d5726c5",
+          "score": -0.2831631004810333,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:17",
+          "candidate_key": "47b3e2c4b1c923ebcf808d5d5c9698550c648a1ab5af57d52f3443f2a3623398",
+          "score": -0.2688843607902527,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:18",
+          "candidate_key": "d2a36ad62444ddc9b6bb6c2ed977869f209ea8e14756207e2a85a1dc07b453e2",
+          "score": -0.25699758529663086,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:19",
+          "candidate_key": "d2873e9f6f43301f274050d535b8a84f4b912f5ea20b57a9f2c31e5ce5eadc9c",
+          "score": -0.2314503788948059,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:2",
+          "candidate_key": "89d3f5f0b6dd10f59632b9799140798b9a00f8c2b92c25e64630eb801d9fb10d",
+          "score": -0.24535447359085083,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:20",
+          "candidate_key": "9a3a17b2f5bbf5a0901e329c5712f334c07cf0445692730da1a7bc06c4a44ab5",
+          "score": -0.2504056990146637,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:21",
+          "candidate_key": "bbdc9afd41f9b806afe382bbcfe49f5294a82369ec0d47d51ea356dc087d2139",
+          "score": -0.23229238390922546,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:22",
+          "candidate_key": "4992776b0a865c68c75478f4247fa9357c7ac4262f82775b080ff1865afa808d",
+          "score": -0.2605082392692566,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:23",
+          "candidate_key": "0babe8043c5cce8a695e6b053f325faa7c4f6d85c5da5268a766e15b57e4f0c0",
+          "score": -0.32415634393692017,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:24",
+          "candidate_key": "321707d33592d56f5e0ff00d71c8a107b8b98dffcdd59c6d2f44ae924c545974",
+          "score": -0.257925808429718,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:25",
+          "candidate_key": "f1f3ccd478fbdc81ed4136efb98658dfc1d3075bff949ba0bfef15435d3c7676",
+          "score": -0.2592294216156006,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:26",
+          "candidate_key": "54a2252164f514a02feca2c69b18f61820b8058d945e270872a21cbb5c19c757",
+          "score": -0.23905980587005615,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:27",
+          "candidate_key": "e67b6dc1eeee26a4556ba3911301c0beedb5b77bd40f8a8fb2a4abcfde5c0dfa",
+          "score": -0.23119157552719116,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:28",
+          "candidate_key": "902995673f1c9bb0e4c6d7bf50c9143566ec970efe813a8536318d9d9f6992f2",
+          "score": -0.25151509046554565,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:29",
+          "candidate_key": "103b6c663212033427666ef9ab6e9e376bbf93312362506b4a7e8acfdebef952",
+          "score": -0.24128904938697815,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:3",
+          "candidate_key": "aaad83b8f55c3b45a3fde6071e277b04c55bae1e99f08d804748c9a6a2b0b883",
+          "score": -0.22951743006706238,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:30",
+          "candidate_key": "79269198ccb2bd8fef61afb52fba6918a4680430ff3cd715abaf93a276a00d34",
+          "score": -0.23956406116485596,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:31",
+          "candidate_key": "a876faefd95395f8424de450f30050d7c68420ea2eb28934482f517885d93beb",
+          "score": -0.2546176016330719,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:32",
+          "candidate_key": "c519124700cd6a00f8fb7b05b2315e6e6f0cbe7da92d2658c0cf7fba404cf0cc",
+          "score": -0.28199630975723267,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:33",
+          "candidate_key": "e58b0ee75401b2831432e45d595766a9419c1895182a4e2a4b6c8456c43ada9d",
+          "score": -0.23310473561286926,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:34",
+          "candidate_key": "05ef6c5abacf39e45cc53d3bf4ad5a09de0f9e3ff3da43296bb92a9c94cc0dec",
+          "score": -0.2778688669204712,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:35",
+          "candidate_key": "2c4908a74ab1dd8a29b7fbcc93281b4e06f23e95ac94504b08d1a964aed94d42",
+          "score": -0.2510301172733307,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:36",
+          "candidate_key": "9b0acc0d612802428a384d67ea4681b23371bec1fcb38ea2b81b01830ae76bee",
+          "score": -0.22631466388702393,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:37",
+          "candidate_key": "2e0f8e3bad624e462329a7dd7f969541a2d543ebc4000500eca1a4425a7529f5",
+          "score": -0.24160009622573853,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:38",
+          "candidate_key": "8246ee8af0a89b7a7a97ef49706fd72b49fc4fa51784cbbbb687890b69ba747d",
+          "score": -0.23142871260643005,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:39",
+          "candidate_key": "7dcc2fc3d5a5f31264a8dec4e984be9fd2c1e4fd805458497a4eb33faa40d469",
+          "score": -0.26092368364334106,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:4",
+          "candidate_key": "d92bf7891fc46eea4fd94efea65f1f26baf6400537c90c1cca8b59aa0569e712",
+          "score": -0.2307601273059845,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:40",
+          "candidate_key": "bc6137763eda6ba4aaf6bda38a94bc0ed4f9e50371b984b53bf4b01b5ba2c6c0",
+          "score": -0.27015382051467896,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:41",
+          "candidate_key": "9dc317b71db24e89be89186bbab0841c1f69867854856b4d3a994ba3fab671ee",
+          "score": -0.2881389856338501,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:42",
+          "candidate_key": "97a1c836ae83cb4c51f9dc2ef85390ee69d65cc89c2692d1ea8621ccc54bb5f0",
+          "score": -0.2552494406700134,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:43",
+          "candidate_key": "e01fdc9d4b35816837e253d70dc2c51bf1b480b73839ac4b5185b5a146eb4424",
+          "score": -0.2427912950515747,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:44",
+          "candidate_key": "bb248f7a4386a8bd361bab04bab327a608fc06eec4a9f8f86ee4d99765473e3d",
+          "score": -0.2271292507648468,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:45",
+          "candidate_key": "e30079b8f11edb793d500e0c5988e149e39c20f986011c7eaadaf2a0c8241429",
+          "score": -0.24204516410827637,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:46",
+          "candidate_key": "69afbda4439f22dc3eafd8a45d6fd9234e339979e4cbd40c2d116eb4b971b808",
+          "score": -0.23162588477134705,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:47",
+          "candidate_key": "0996eea8716c45b7439b9edc572a11e77f417035c4503b1ccff3991554ac9e56",
+          "score": -0.2568192780017853,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:48",
+          "candidate_key": "79459984d1ad9e46bacac51c692ea4583a3ee5c58e1e39395aea420ee73ea3a1",
+          "score": -0.23370444774627686,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:49",
+          "candidate_key": "75fd645938b4a312555ec183f269e2cb5cd5bc836a345218bfc116e26554701d",
+          "score": -0.2896002233028412,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:5",
+          "candidate_key": "779652d5791c2f89ef53a877f41fce90946d79cc55e5660f707a296c2b95b008",
+          "score": -0.27720001339912415,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:50",
+          "candidate_key": "3e10e7b9833b191c2a058220e68a7138cc157b432f450973ce8e1b8e9d6b7cf4",
+          "score": -0.3110613226890564,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:51",
+          "candidate_key": "49938237c03d3f810b64f7ec88c683bc6a857bbade3924615b3d056722b0d639",
+          "score": -0.250789999961853,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:52",
+          "candidate_key": "d18b1a6e003f1187fcafc6c700b003250aa4974e0c7d4f28c019df940991fcec",
+          "score": -0.25153791904449463,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:53",
+          "candidate_key": "0acb5dd4969e73b59dc96abb19ff827b4507ebaae79a6327392a4faf1ad8bce0",
+          "score": -0.24439984560012817,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:54",
+          "candidate_key": "5d6a1ee1e7a6b6b3d683ad3ff50dc4765dc62104a2d12b78d0ce6e76f734da2c",
+          "score": -0.25065839290618896,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:55",
+          "candidate_key": "fd8f29c28cdba0ad43ab96d41d9663b65fae3921701d4eb907db5274b3b1098a",
+          "score": -0.20801836252212524,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:56",
+          "candidate_key": "9e1e467dde8f19df5785f6c39dacc75e19d227d9ff657d3f073837482b46fd55",
+          "score": -0.2368522584438324,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:57",
+          "candidate_key": "5987282321db1a45403cd66a6ef838f09b6914f00122b6911cc6b370be1df58a",
+          "score": -0.24722886085510254,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:58",
+          "candidate_key": "8ba5f38ec2ca3310c39ead5073eb405e2c9337ae1e399978fac73a5ed75f98b8",
+          "score": -0.2202962338924408,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:59",
+          "candidate_key": "5f9c16074f4075a972d21113f6abe585e935d61161fc19321b1a8ea91a728829",
+          "score": -0.2517649233341217,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:6",
+          "candidate_key": "c04d31493af0c07779d33b5ef1374bc1f45467340fa480a08d6e013d7a38c90a",
+          "score": -0.273284912109375,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:60",
+          "candidate_key": "05a3b2bbefb44a828646e71a426345b97d2fbf5910aa34c390e17103ebe1124a",
+          "score": -0.2318633794784546,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:61",
+          "candidate_key": "4e3d135a7d0f164f08bcbbad20af630053b50c41e6ebfe041d2f8060b5901a28",
+          "score": -0.26051849126815796,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:62",
+          "candidate_key": "d15384460e61b9b3669bd3a327f8443ed19f556a03bb04fe60b9e034dc8409e4",
+          "score": -0.2875833511352539,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:63",
+          "candidate_key": "c6f65b95aeabd8d1ce1ea1728426afb749f7ebf32a134e2437acc7a0608f4369",
+          "score": -0.31917402148246765,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:64",
+          "candidate_key": "d63a5068832c9e7db5dff91172d73f5d0bd2eb6ec076607b3c2d3d79cfa35eb5",
+          "score": -0.3100242018699646,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:65",
+          "candidate_key": "fac62175dd15d07f92b92a0d1b7d605979e63c007c4eac2c11c1ecb45cb4c2cd",
+          "score": -0.22771134972572327,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:66",
+          "candidate_key": "a2d3ab762c596022c927f5e80a11a573fa4ba9c58422cec17966171e8ce4ddba",
+          "score": -0.233367919921875,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:67",
+          "candidate_key": "4426f07cc9157e3d1f574722f39ab607e8e7a9ea6ad122f43d26dd42eccfdb13",
+          "score": -0.2219899594783783,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:68",
+          "candidate_key": "c0af44e8775ba7df28457c2d4feb9b01be410386c6fd2cbdbe19052fd209eff8",
+          "score": -0.2519657611846924,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:69",
+          "candidate_key": "6940e8a16cdc711e2e68da837aa5d99302976a7ad8cb47bfc7201ae918b1d1bf",
+          "score": -0.22464802861213684,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:7",
+          "candidate_key": "4c4a3bfe0685efe8efe3f0ce23b4eb81b9dc46b44008627d74aa302382e3e85d",
+          "score": -0.2180059552192688,
+          "observed": 1
+        },
+        {
+          "record_id": "liver_31:70",
+          "candidate_key": "389f2f1fa73fd8384bd8645e19972b64fed5a888941d441073f80d50ca619037",
+          "score": -0.25658589601516724,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:71",
+          "candidate_key": "cb20c93779aac39eef991603fa6c4f17dc2c9d2b8fcba6c8b49afa089a056d61",
+          "score": -0.2427765429019928,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:72",
+          "candidate_key": "f4d28085a44d4cbeae89c3186a4ee549b6835fff276946adfb42a1e2061a3d7a",
+          "score": -0.252473384141922,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:73",
+          "candidate_key": "c6ede3f2fd31cd96cb89b8f9e2a2cccf8f62bca53e5b9d9a12b9b9367020a0cb",
+          "score": -0.21500462293624878,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:74",
+          "candidate_key": "e43fdf0b92baf1dfe5ea1933835ad0e7e1ef2497e1311ff1059be6a43e0038da",
+          "score": -0.23150482773780823,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:75",
+          "candidate_key": "7a13c653e432db5bf55fbf5b844bd9f611b773a474770382178784b874cac7d8",
+          "score": -0.21124780178070068,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:76",
+          "candidate_key": "5661401a16a21390eb09b9cbef9e7d95931bcf1415d377e43db0c2071245b5ba",
+          "score": -0.23436686396598816,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:77",
+          "candidate_key": "0179fdaa8da66ca18ee5a50f123e2229a2ca7429d789a1b397552269402ddfa0",
+          "score": -0.31221652030944824,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:78",
+          "candidate_key": "76fdf4f29db51e5bedcf10ecbdc77e31298af4027308a52a3e5cc9aada443269",
+          "score": -0.2316455841064453,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:79",
+          "candidate_key": "4071320240b234568e1be7b19d714b4cafdab0f7bbd74f5c91b13dd402f14984",
+          "score": -0.23991787433624268,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:8",
+          "candidate_key": "f709c99eedc9ffe06ad6c5fb7b7b5cdfa76c429e88a1ede52a130e80cacbec2b",
+          "score": -0.2557702660560608,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:80",
+          "candidate_key": "35e56d1f6beac232ee6eec7de06243f50f8b2f62f9ad55c239ea5cad2df2a95e",
+          "score": -0.2601286470890045,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:81",
+          "candidate_key": "2306207642db44add45e65b1f6925cb2c05cfec8268ae95b4a189059e8ed0bd3",
+          "score": -0.2772718369960785,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:82",
+          "candidate_key": "ee338cf7826e889b718bcc6f122b47390375267154b10dda7271a61fad75dddd",
+          "score": -0.2470817267894745,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:83",
+          "candidate_key": "a81e2b4ceeda452053d95d92719529be1b8966029ed9e6af2f04da7ec96b2639",
+          "score": -0.2461376190185547,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:84",
+          "candidate_key": "03a6595e4cd264de00fec60ec94b7ad41872ab2749681a9b1ef39c390aeae5f2",
+          "score": -0.2339746356010437,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:85",
+          "candidate_key": "ccc9a8d42c12e358d2301416935c2127eef64b0f54e03fb0e5e57b28149423c3",
+          "score": -0.2653271555900574,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:86",
+          "candidate_key": "bda09f74d62864189763f15106c2b2539e2de387ddb371b37706a3554bbc97f3",
+          "score": -0.2243885099887848,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:87",
+          "candidate_key": "20264c3a37a33191507cafe6658528b30fb36d43c8e94a99d20d9828b8b04e6b",
+          "score": -0.2321823239326477,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:88",
+          "candidate_key": "964aac13733b1d7985f77551f8e0183a3baed03b571935cf0d30c70804d043b1",
+          "score": -0.2380824089050293,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:89",
+          "candidate_key": "2f299619654a390e053b54d6445d6b92eb00cdfdac95ee9852c0c778795f152a",
+          "score": -0.2262744903564453,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:9",
+          "candidate_key": "afc3fdc238e275273897a736267bcc3b8d4ebe4e3875e5dcd2b8eb26484a80a1",
+          "score": -0.2264409065246582,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:90",
+          "candidate_key": "0eecfe9ed75d13ebe6b495c11dcdacb9154375a083f304b2d482e0b46b774a54",
+          "score": -0.282841295003891,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:91",
+          "candidate_key": "dea502f355a3850f476a34eda7f08983de1719bf4a0b48bbecd803c5523699ac",
+          "score": -0.2793635129928589,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:92",
+          "candidate_key": "eb270048eec9783d27e29893e134919e2a7c42836be3d7fe0032705d10690ca3",
+          "score": -0.2415308952331543,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:93",
+          "candidate_key": "b806c6f8db3096894e67f9c025489ab8136992e7776c8c826a74777c3d62c64a",
+          "score": -0.2322448492050171,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:94",
+          "candidate_key": "da119a9cf1cf60d0b4042c075956c182758d2cf3dc2342189b3d2263fa6a77ee",
+          "score": -0.2774108052253723,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:95",
+          "candidate_key": "3238f97cd98b5e978ffe4deeaf6e3a552372d088998e1f4e115ee0a732c07632",
+          "score": -0.23156142234802246,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:96",
+          "candidate_key": "efb4be11410b14f49499d5997c006e83f1c2da8714eb0237f5a587bf030c3e1d",
+          "score": -0.25520336627960205,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:97",
+          "candidate_key": "bd53ec7850ce8df5b138cc1031dd992fb0b8925469a8d3bbb34a08bfa5ac9029",
+          "score": -0.20080715417861938,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:98",
+          "candidate_key": "1a8018024306bcdf9d180de4ef8ee3b731dc21be7b9e8c2f203e9320de10f807",
+          "score": -0.23969590663909912,
+          "observed": 0
+        },
+        {
+          "record_id": "liver_31:99",
+          "candidate_key": "12853771e4f4454cf05ccdf1eada7c2d712dbfb3c8ff07cd24a6556c0f7d0801",
+          "score": -0.2819976508617401,
+          "observed": 0
+        }
+      ]
+    }
+  ],
+  "tie_policy": "score_desc_geometry_sha256_v1",
+  "pair_loss_precision": "stable float64 softplus; native_metrics preserves native FP32 reference",
+  "scores_sha256": "792711a0cd7af6fb0404d62bce91906735c807e5e0ddef648258f6287982925a",
+  "scoring_contract": {
+    "format": "hiercp_transition_whole_case_scoring_v1",
+    "scored_record_ids": [
+      "liver_31:0",
+      "liver_31:1",
+      "liver_31:10",
+      "liver_31:100",
+      "liver_31:101",
+      "liver_31:102",
+      "liver_31:103",
+      "liver_31:104",
+      "liver_31:105",
+      "liver_31:106",
+      "liver_31:107",
+      "liver_31:108",
+      "liver_31:109",
+      "liver_31:11",
+      "liver_31:110",
+      "liver_31:111",
+      "liver_31:112",
+      "liver_31:113",
+      "liver_31:114",
+      "liver_31:115",
+      "liver_31:116",
+      "liver_31:117",
+      "liver_31:118",
+      "liver_31:119",
+      "liver_31:12",
+      "liver_31:120",
+      "liver_31:121",
+      "liver_31:122",
+      "liver_31:123",
+      "liver_31:124",
+      "liver_31:125",
+      "liver_31:126",
+      "liver_31:127",
+      "liver_31:128",
+      "liver_31:129",
+      "liver_31:13",
+      "liver_31:130",
+      "liver_31:131",
+      "liver_31:132",
+      "liver_31:133",
+      "liver_31:134",
+      "liver_31:135",
+      "liver_31:14",
+      "liver_31:15",
+      "liver_31:16",
+      "liver_31:17",
+      "liver_31:18",
+      "liver_31:19",
+      "liver_31:2",
+      "liver_31:20",
+      "liver_31:21",
+      "liver_31:22",
+      "liver_31:23",
+      "liver_31:24",
+      "liver_31:25",
+      "liver_31:26",
+      "liver_31:27",
+      "liver_31:28",
+      "liver_31:29",
+      "liver_31:3",
+      "liver_31:30",
+      "liver_31:31",
+      "liver_31:32",
+      "liver_31:33",
+      "liver_31:34",
+      "liver_31:35",
+      "liver_31:36",
+      "liver_31:37",
+      "liver_31:38",
+      "liver_31:39",
+      "liver_31:4",
+      "liver_31:40",
+      "liver_31:41",
+      "liver_31:42",
+      "liver_31:43",
+      "liver_31:44",
+      "liver_31:45",
+      "liver_31:46",
+      "liver_31:47",
+      "liver_31:48",
+      "liver_31:49",
+      "liver_31:5",
+      "liver_31:50",
+      "liver_31:51",
+      "liver_31:52",
+      "liver_31:53",
+      "liver_31:54",
+      "liver_31:55",
+      "liver_31:56",
+      "liver_31:57",
+      "liver_31:58",
+      "liver_31:59",
+      "liver_31:6",
+      "liver_31:60",
+      "liver_31:61",
+      "liver_31:62",
+      "liver_31:63",
+      "liver_31:64",
+      "liver_31:65",
+      "liver_31:66",
+      "liver_31:67",
+      "liver_31:68",
+      "liver_31:69",
+      "liver_31:7",
+      "liver_31:70",
+      "liver_31:71",
+      "liver_31:72",
+      "liver_31:73",
+      "liver_31:74",
+      "liver_31:75",
+      "liver_31:76",
+      "liver_31:77",
+      "liver_31:78",
+      "liver_31:79",
+      "liver_31:8",
+      "liver_31:80",
+      "liver_31:81",
+      "liver_31:82",
+      "liver_31:83",
+      "liver_31:84",
+      "liver_31:85",
+      "liver_31:86",
+      "liver_31:87",
+      "liver_31:88",
+      "liver_31:89",
+      "liver_31:9",
+      "liver_31:90",
+      "liver_31:91",
+      "liver_31:92",
+      "liver_31:93",
+      "liver_31:94",
+      "liver_31:95",
+      "liver_31:96",
+      "liver_31:97",
+      "liver_31:98",
+      "liver_31:99"
+    ],
+    "l0_only_chunking": true,
+    "upper_chunking": false,
+    "upper_execution": "single_joint_case",
+    "query_GT_in_forward": false,
+    "upper_invocations": 1,
+    "l0_batch_size": 16,
+    "cases": [
+      {
+        "case_id": "liver_31",
+        "records": 136,
+        "l0_chunks": 9,
+        "upper_invocations": 1,
+        "callback_contract": {
+          "format": "hiercp_transition_whole_case_scoring_v1",
+          "scored_record_ids": [
+            "liver_31:0",
+            "liver_31:1",
+            "liver_31:10",
+            "liver_31:100",
+            "liver_31:101",
+            "liver_31:102",
+            "liver_31:103",
+            "liver_31:104",
+            "liver_31:105",
+            "liver_31:106",
+            "liver_31:107",
+            "liver_31:108",
+            "liver_31:109",
+            "liver_31:11",
+            "liver_31:110",
+            "liver_31:111",
+            "liver_31:112",
+            "liver_31:113",
+            "liver_31:114",
+            "liver_31:115",
+            "liver_31:116",
+            "liver_31:117",
+            "liver_31:118",
+            "liver_31:119",
+            "liver_31:12",
+            "liver_31:120",
+            "liver_31:121",
+            "liver_31:122",
+            "liver_31:123",
+            "liver_31:124",
+            "liver_31:125",
+            "liver_31:126",
+            "liver_31:127",
+            "liver_31:128",
+            "liver_31:129",
+            "liver_31:13",
+            "liver_31:130",
+            "liver_31:131",
+            "liver_31:132",
+            "liver_31:133",
+            "liver_31:134",
+            "liver_31:135",
+            "liver_31:14",
+            "liver_31:15",
+            "liver_31:16",
+            "liver_31:17",
+            "liver_31:18",
+            "liver_31:19",
+            "liver_31:2",
+            "liver_31:20",
+            "liver_31:21",
+            "liver_31:22",
+            "liver_31:23",
+            "liver_31:24",
+            "liver_31:25",
+            "liver_31:26",
+            "liver_31:27",
+            "liver_31:28",
+            "liver_31:29",
+            "liver_31:3",
+            "liver_31:30",
+            "liver_31:31",
+            "liver_31:32",
+            "liver_31:33",
+            "liver_31:34",
+            "liver_31:35",
+            "liver_31:36",
+            "liver_31:37",
+            "liver_31:38",
+            "liver_31:39",
+            "liver_31:4",
+            "liver_31:40",
+            "liver_31:41",
+            "liver_31:42",
+            "liver_31:43",
+            "liver_31:44",
+            "liver_31:45",
+            "liver_31:46",
+            "liver_31:47",
+            "liver_31:48",
+            "liver_31:49",
+            "liver_31:5",
+            "liver_31:50",
+            "liver_31:51",
+            "liver_31:52",
+            "liver_31:53",
+            "liver_31:54",
+            "liver_31:55",
+            "liver_31:56",
+            "liver_31:57",
+            "liver_31:58",
+            "liver_31:59",
+            "liver_31:6",
+            "liver_31:60",
+            "liver_31:61",
+            "liver_31:62",
+            "liver_31:63",
+            "liver_31:64",
+            "liver_31:65",
+            "liver_31:66",
+            "liver_31:67",
+            "liver_31:68",
+            "liver_31:69",
+            "liver_31:7",
+            "liver_31:70",
+            "liver_31:71",
+            "liver_31:72",
+            "liver_31:73",
+            "liver_31:74",
+            "liver_31:75",
+            "liver_31:76",
+            "liver_31:77",
+            "liver_31:78",
+            "liver_31:79",
+            "liver_31:8",
+            "liver_31:80",
+            "liver_31:81",
+            "liver_31:82",
+            "liver_31:83",
+            "liver_31:84",
+            "liver_31:85",
+            "liver_31:86",
+            "liver_31:87",
+            "liver_31:88",
+            "liver_31:89",
+            "liver_31:9",
+            "liver_31:90",
+            "liver_31:91",
+            "liver_31:92",
+            "liver_31:93",
+            "liver_31:94",
+            "liver_31:95",
+            "liver_31:96",
+            "liver_31:97",
+            "liver_31:98",
+            "liver_31:99"
+          ],
+          "l0_only_chunking": true,
+          "upper_chunking": false,
+          "upper_execution": "single_joint_case",
+          "query_GT_in_forward": false,
+          "upper_invocations": 1
+        }
+      }
+    ],
+    "verification_scope": "wrapper enforces complete-case callback; callback source and real-CT smoke audit required"
+  },
+  "execution_contract_bound": true,
+  "scoring_callbacks_executed": true,
+  "callback_internal_execution_verified": true,
+  "raw_CT_execution_verified": true,
+  "model_sha256": "cbae1b3f7193ef15475fb351a9486ff61da6c33193e7eb3993cd3c40e24ccdf3",
+  "initial_upper_sha256": "2144d0fcaf4bbf0db5492f093d26534bccd5b1b04593295282e497a4a181baae",
+  "support_records": 401,
+  "support_GT": "native observed P/unobserved U",
+  "upper_support_policy": "full inner-train bank; exclude query patient on both support recipient and donor sides",
+  "C_curriculum_support_reused": false,
+  "full_evaluation": false,
+  "evaluation_artifact": "D:\\AI project\\nnunet\\work\\v17_C_cuda_DEBUG_20261005_r4\\training\\common128_epoch_002_step_2_6578188558134035ba1213d6d0ae544e.json"
+}
