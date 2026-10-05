@@ -27,7 +27,8 @@ IDENTITY_KEYS = ("format", "arm", "debug", "scope", "native_inventory_sha256",
                  "native_experiment_binding", "source", "settings", "hardware",
                  "original_curriculum_binding")
 ALLOWED_EXECUTION_CHANGES = frozenset(("hiercp_v1x/transition_v1_data.py", "hiercp_v1x/transition_preparation_storage.py",
-    "tools/run_v17_crossed_training.py", "tools/reuse_v17_D_preparation.py"))
+    "tools/run_v17_crossed_training.py", "tools/reuse_v17_D_preparation.py",
+    "hiercp_v1x/transition_reference_identity.py"))
 PUBLISHED_PREPARATION_COMMIT = "aa280829d018ed0f4426a03d59f794b724d76bb0"
 # These are hashes of the actual published checkout bytes, with its explicit
 # .gitattributes CRLF rules applied, independently verified against git archive.
@@ -37,6 +38,7 @@ PUBLISHED_LOCAL_MODULE_SHA256 = "8bfe9466d23bab7f33fb11678dc3017f0a6cde1c375d48e
 PUBLISHED_BOUNDED_SCOPE_SHA256 = "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b"
 _LOCAL_MODULE = "hiercp_v1x/transition_v1_local.py"
 _ABSENCE_MODULE = "hiercp_v1x/transition_v1_empty_context.py"
+_REFERENCE_IDENTITY_MODULE = "hiercp_v1x/transition_reference_identity.py"
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 _SEGMENT = re.compile(r"segments/[0-9a-f]{32}\Z")
 
@@ -131,6 +133,56 @@ def _measurements(row):
         raise ValueError("Reused canonical bounds are invalid")
 
 
+def _manifest_admission(old, new, output):
+    """Separate reference endpoint progress from exact D preparation controls.
+
+    All old/new values are preserved in an owned diagnostic file before a
+    rejection. Only the narrowly checked native reference endpoint may advance;
+    hardware, budgets, model/scope, source and original curriculum remain exact.
+    No checkpoint or trained tensor is imported from the reference experiment.
+    """
+    from hiercp_v1x.transition_reference_identity import compare_reference, structured_differences
+    differences, rejected, reference_comparison = [], [], None
+    for key in IDENTITY_KEYS:
+        if key not in old or key not in new:
+            rejected.append(key)
+        old_item = {key: old[key]} if key in old else {}
+        new_item = {key: new[key]} if key in new else {}
+        found = structured_differences(old_item, new_item)
+        differences.extend(found)
+        if key == "native_experiment_binding" and key in old and key in new:
+            reference_comparison = compare_reference(old[key], new[key])
+            if reference_comparison["admissible"]:
+                continue
+            if not found:
+                rejected.append(key)
+        rejected.extend(item["path"] for item in found)
+    result = dict(format="v17_D_preparation_manifest_comparison_v1",
+        admitted=not rejected, changed_fields=[item["path"] for item in differences],
+        rejected_fields=rejected, differences=differences,
+        allowed_difference="Validated native checkpoint progress only; immutable native recipe and D controls exact",
+        graph_preparation_request_checked_separately=True, neural_weights_imported=False)
+    if reference_comparison is not None:
+        result["native_reference_comparison"] = reference_comparison
+    if differences or rejected:
+        filename = "reuse_identity_comparison_" + hashlib.sha256(_json(result)).hexdigest() + ".json"
+        path = output / filename
+        if path.exists():
+            if _load(_real(path)) != result:
+                raise ValueError("Existing reuse identity diagnostic changed: " + str(path))
+        else:
+            _write(path, result)
+        print(json.dumps(dict(stage="D_preparation_identity_comparison", admitted=not rejected,
+            changed_fields=result["changed_fields"], rejected_fields=rejected, report=str(path)),
+            ensure_ascii=False, allow_nan=False), flush=True)
+    if rejected:
+        raise ValueError("D preparation immutable identity differs at " + ", ".join(rejected)
+                         + ("; reference reasons: " + "; ".join(reference_comparison["rejected_fields"])
+                            if reference_comparison and not reference_comparison["admissible"] else "")
+                         + "; complete old/new values recorded in " + str(path))
+    return result
+
+
 def _continuation(request, expected_request, old_sources, new_sources):
     """Admit only storage-only reuse or the one published absence extension.
 
@@ -169,7 +221,9 @@ def _continuation(request, expected_request, old_sources, new_sources):
             or new_sources.get(_ABSENCE_MODULE) != adapter["module_sha256"]
             or new_sources.get("tools/reuse_v17_D_preparation.py") != _sha(Path(__file__))
             or new_sources.get("hiercp_v1x/bounded_scope.py") != PUBLISHED_BOUNDED_SCOPE_SHA256
-            or set(new_sources) - set(old_sources) != {_ABSENCE_MODULE}):
+            or new_sources.get(_REFERENCE_IDENTITY_MODULE) != _sha(
+                Path(__file__).resolve().parents[1] / _REFERENCE_IDENTITY_MODULE)
+            or set(new_sources) - set(old_sources) != {_ABSENCE_MODULE, _REFERENCE_IDENTITY_MODULE}):
         raise ValueError("New recipient-absence execution inventory is not bound to its actual modules")
     return dict(format="v17_D_published_nonempty_context_continuation_v1",
                 old_release_commit=PUBLISHED_PREPARATION_COMMIT,
@@ -229,6 +283,7 @@ def import_preparation(source, destination, expected_request, *, expected_rows, 
     new run. The caller supplies the exact current preparation request, ordered
     native rows, and new run manifest. Only admitted execution-source hashes may differ;
     neural recipe, source snapshot, data, hardware and settings stay identical.
+    A validated reference checkpoint may advance without invalidating geometry.
     A failure preserves any newly linked files for inspection and never changes
     old files. A complete import is identified by reuse_receipt.json.
     """
@@ -273,14 +328,13 @@ def import_preparation(source, destination, expected_request, *, expected_rows, 
 
     manifest_path = _real(root.parent / "manifest.json")
     manifest = _load(manifest_path)
+    manifest_comparison = _manifest_admission(manifest, expected_identity, parent)
     if (manifest.get("format") != "v17_crossed_training_identity_v1" or manifest.get("arm") != "D"
             or manifest.get("debug") is not request["debug"]
             or manifest.get("scope") != request["scope_contract"]
             or manifest.get("native_inventory_sha256") != request["input_inventory_sha256"]
-            or manifest.get("source", {}).get("archive_sha256") != archive
-            or any(key not in manifest or key not in expected_identity
-                   or manifest[key] != expected_identity[key] for key in IDENTITY_KEYS)):
-        raise ValueError("Old D run recipe/data/source/hardware/settings differs; no automatic migration")
+            or manifest.get("source", {}).get("archive_sha256") != archive):
+        raise ValueError("Old D manifest is not bound to its preparation request format/arm/debug/scope/inventory/archive")
     old_sources, new_sources = manifest.get("sources"), expected_identity.get("sources")
     if not isinstance(old_sources, dict) or not isinstance(new_sources, dict) or not old_sources or not new_sources:
         raise ValueError("Both exact execution-source inventories are required")
@@ -398,6 +452,7 @@ def import_preparation(source, destination, expected_request, *, expected_rows, 
                    training_or_checkpoint_imported=False, all_rows_complete_here=False,
                    pending_observations=len(rows)-len(imported), publication_requires_provider_preflight=True,
                    imported_native_ordinals=[int(name[:6]) for name, _ in imported])
+    receipt["manifest_comparison"] = manifest_comparison
     if continuation is not None:
         receipt["recipient_absence_continuation"] = continuation
     if dest.exists():

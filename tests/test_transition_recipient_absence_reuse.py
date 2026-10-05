@@ -15,6 +15,7 @@ import torch
 from hiercp_v22.storage import encode
 from hiercp_v1x import transition_v1_local as local
 from tests import test_transition_preparation_reuse as fixtures
+from tests.test_transition_reference_identity import reference
 from tools import reuse_v17_D_preparation as reuse
 
 
@@ -37,6 +38,8 @@ class RecipientAbsenceReuseUNIT(unittest.TestCase):
         f.new_identity = copy.deepcopy(f.identity)
         f.new_identity["sources"][reuse._LOCAL_MODULE] = f.request["local_identity"]["module_sha256"]
         f.new_identity["sources"][reuse._ABSENCE_MODULE] = f.request["local_identity"]["recipient_absence_adapter"]["module_sha256"]
+        f.new_identity["sources"][reuse._REFERENCE_IDENTITY_MODULE] = reuse._sha(
+            Path(reuse.__file__).resolve().parents[1] / reuse._REFERENCE_IDENTITY_MODULE)
         f.new_identity["sources"]["tools/reuse_v17_D_preparation.py"] = reuse._sha(Path(reuse.__file__))
         self.write_metadata()
         self.records = []
@@ -110,6 +113,85 @@ class RecipientAbsenceReuseUNIT(unittest.TestCase):
         self.assertTrue(os.path.samefile(f.source_file, f.dest / f.source_relative))
         self.assertEqual(before, {str(p.relative_to(f.old)): reuse._sha(p) for p in f.old.rglob("*") if p.is_file()})
         self.assertEqual(result, f.run_import())
+
+    def endpoint_metadata_UNIT(self, **new_cursor):
+        """UNIT receipt metadata for the full import path; no trained result."""
+        f = self.fixture
+        old, new = reference(), reference(**new_cursor)
+        for value in (old, new):
+            value["inventory_sha256"] = f.request["input_inventory_sha256"]
+            value["metadata_files"]["inventory"]["sha256"] = value["inventory_sha256"]
+        new["checkpoint_sha256"] = "f" * 64
+        new["checkpoint_recorded_content_sha256"] = "0" * 64
+        f.identity["native_experiment_binding"] = old
+        f.new_identity["native_experiment_binding"] = new
+        self.write_metadata()
+
+    def test_full_import_after_valid_reference_progress_preserves_old_files(self):
+        f = self.fixture
+        self.endpoint_metadata_UNIT(epoch=7, cursor=5)
+        f.receipt(0); f.receipt(1)
+        before = {str(p.relative_to(f.old)): reuse._sha(p) for p in f.old.rglob("*") if p.is_file()}
+        result = f.run_import()
+        self.assertEqual(result["imported_completed_observations"], 2)
+        self.assertTrue(result["manifest_comparison"]["admitted"])
+        self.assertIn("native_experiment_binding.saved_cursor.step",
+                      result["manifest_comparison"]["changed_fields"])
+        self.assertFalse(result["training_or_checkpoint_imported"])
+        self.assertEqual(before, {str(p.relative_to(f.old)): reuse._sha(p)
+                                for p in f.old.rglob("*") if p.is_file()})
+        self.assertEqual(result, f.run_import())
+
+    def test_full_import_after_valid_reference_phase_change(self):
+        f = self.fixture
+        self.endpoint_metadata_UNIT(epoch=3, cursor=10, phase="validation")
+        f.new_identity["native_experiment_binding"]["checks"].update(
+            post_optimization_cursor_complete=True, post_optimization_epoch_below_target=True)
+        self.write_metadata(); f.receipt(0)
+        self.assertEqual(f.run_import()["imported_completed_observations"], 1)
+
+    def test_invalid_reference_rejection_records_exact_old_and_new_values(self):
+        f = self.fixture
+        self.endpoint_metadata_UNIT(epoch=3, cursor=2)
+        value = f.new_identity["native_experiment_binding"]
+        value["metadata_files"]["execution_contract"]["sha256"] = "7" * 64
+        self.write_metadata(); f.receipt(0)
+        with self.assertRaisesRegex(ValueError, "metadata_files.execution_contract.sha256"):
+            f.run_import()
+        reports = list(f.dest.parent.glob("reuse_identity_comparison_*.json"))
+        self.assertEqual(len(reports), 1)
+        report = json.loads(reports[0].read_text())
+        self.assertFalse(report["admitted"])
+        difference = next(x for x in report["differences"]
+                          if x["path"].endswith("metadata_files.execution_contract.sha256"))
+        self.assertEqual(difference["old"], "a" * 64)
+        self.assertEqual(difference["new"], "7" * 64)
+        self.assertFalse(f.dest.exists())
+
+    def test_hardware_difference_is_reported_without_import(self):
+        f = self.fixture
+        f.new_identity["hardware"]["total_memory"] += 1
+        self.write_metadata()
+        with self.assertRaisesRegex(ValueError, "hardware.total_memory"):
+            f.run_import()
+        report = json.loads(next(f.dest.parent.glob("reuse_identity_comparison_*.json")).read_text())
+        self.assertEqual(report["rejected_fields"], ["hardware.total_memory"])
+        self.assertFalse(f.dest.exists())
+
+    def test_identity_helper_hash_must_match_actual_file(self):
+        self.fixture.new_identity["sources"][reuse._REFERENCE_IDENTITY_MODULE] = "7" * 64
+        self.write_metadata(); self.fixture.rejected()
+
+    def test_invalid_equal_production_reference_cannot_bypass_validation(self):
+        f = self.fixture
+        self.endpoint_metadata_UNIT(epoch=2, cursor=3)
+        f.new_identity["native_experiment_binding"] = copy.deepcopy(f.identity["native_experiment_binding"])
+        f.identity["native_experiment_binding"]["admitted"] = False
+        f.new_identity["native_experiment_binding"]["admitted"] = False
+        self.write_metadata()
+        with self.assertRaisesRegex(ValueError, "validated production reference"):
+            f.run_import()
+        self.assertFalse(f.dest.exists())
 
     def test_uncompleted_graph_is_never_deserialized_or_imported(self):
         f = self.fixture

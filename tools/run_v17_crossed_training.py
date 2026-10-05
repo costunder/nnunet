@@ -269,7 +269,20 @@ def main():
     with exclusive(a.output):
         manifest=a.output/'manifest.json'
         if manifest.exists():
-            if json.loads(manifest.read_text())!=identity:raise ValueError('Existing crossed arm settings/data/source differ')
+            from hiercp_v1x.transition_reference_identity import bind_manifest_reference, compare_reference
+            previous=json.loads(manifest.read_text(encoding='utf8'))
+            current_reference=identity['native_experiment_binding']
+            identity=bind_manifest_reference(previous,identity)
+            comparison=compare_reference(previous['native_experiment_binding'],current_reference)
+            if not comparison['exact']:
+                # The experiment/checkpoint identity stays frozen at creation.
+                # A live reference admission is provenance, never trained state
+                # to import, a replacement baseline, or a change to D geometry.
+                append(a.output/'reference_admissions.jsonl',dict(
+                    format='v17_reference_endpoint_observation_v1',comparison=comparison,
+                    current_admission=current_reference,experiment_identity_preserved=True,
+                    model_or_optimizer_imported=False))
+                print('Reference checkpoint advanced; crossed identity and training state preserved.',flush=True)
         else:write_json(manifest,identity)
         append(a.output/'resources.jsonl',resources);print(json.dumps(resources),flush=True)
         if (a.output/'training/training_complete.json').exists():
