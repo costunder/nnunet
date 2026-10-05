@@ -76,12 +76,44 @@ class Native30MetadataTests(unittest.TestCase):
         value["epoch"] = value["best_epoch"] = 24
         self.assertEqual(native.validate_native30_metadata(value, "model.pt")["selected_epoch"], 24)
 
-    def test_saved_seed_is_not_filled_from_current_config(self):
-        for signature in (None, {"seed": 43, "run_mode": "production"}, {"seed": 42, "run_mode": "debug"}):
+    def test_legacy_missing_signature_and_fields_remain_unknown(self):
+        for signature in (None, {}, {"format": "legacy"}, {"seed": None, "run_mode": None}):
+            with self.subTest(signature=signature):
+                value = fixture()
+                value["training_signature"] = signature
+                result = native.validate_native30_metadata(value, "model.pt")
+                self.assertEqual(result["training_seed"], "UNKNOWN")
+                self.assertEqual(result["training_seed_origin"], "UNKNOWN")
+                self.assertEqual(result["training_seed_evidence"], {})
+                self.assertEqual(result["training_run_mode"], "UNKNOWN")
+                self.assertNotIn("seed", result)
+        value.pop("training_signature")
+        self.assertFalse(native.validate_native30_metadata(value, "model.pt")["training_signature_present"])
+
+    def test_known_historical_seed_is_retained_without_becoming_evaluation_seed(self):
+        for signature, top_seed, expected in ((None, 43, 43), ({"seed": 41}, None, 41),
+                                              ({"seed": 42}, 42, 42)):
             value = fixture()
             value["training_signature"] = signature
-            with self.assertRaisesRegex(ValueError, "training_signature seed42"):
-                native.validate_native30_metadata(value, "model.pt")
+            if top_seed is not None:
+                value["seed"] = top_seed
+            result = native.validate_native30_metadata(value, "model.pt")
+            self.assertEqual(result["training_seed"], expected)
+            self.assertTrue(result["training_seed_evidence"])
+
+    def test_malformed_or_conflicting_historical_evidence_rejected(self):
+        for patch, message in (({"training_signature": []}, "must be a mapping"),
+                               ({"training_signature": {"seed": True}}, "must be an integer"),
+                               ({"training_signature": {"seed": "42"}}, "must be an integer"),
+                               ({"seed": 43}, "Conflicting saved"),
+                               ({"training_signature": {"run_mode": "debug"}}, "non-production"),
+                               ({"run_mode": "benchmark"}, "non-production"),
+                               ({"training_signature": {"ablation_mode": "local_only"}}, "ablation")):
+            with self.subTest(patch=patch):
+                value = fixture()
+                value.update(patch)
+                with self.assertRaisesRegex(ValueError, message):
+                    native.validate_native30_metadata(value, "model.pt")
 
     def test_missing_full_completion_or_different_selected_epoch_rejected(self):
         for field, bad in (("training_complete", False), ("completed_epoch", 39),
@@ -209,6 +241,58 @@ class Native30SourceIdentityTests(unittest.TestCase):
             sys.modules[escaped.__name__] = escaped
             with self.assertRaisesRegex(ValueError, "another source"):
                 native.verify_native30_source()
+
+
+class Native30EvaluationSettingsTests(unittest.TestCase):
+    def source_config(self):
+        # Explicit execution-setting UNIT fixture; no neural run or checkpoint.
+        return {"seed": 42, "training": {"amp": True}, "cache": {"source_pad": 4}}
+
+    def test_missing_signature_production_config_has_no_second_keyerror(self):
+        for signature in (None, {}, {"seed": 43}, {"run_mode": "production"}):
+            value = fixture()
+            value["training_signature"] = signature
+            before = copy.deepcopy(value)
+            receipt = native.validate_native30_metadata(value, "model.pt")
+            config, settings = native._evaluation_configuration(value, self.source_config())
+            self.assertEqual(config["seed"], 42)
+            self.assertEqual(settings["evaluation_seed"], 42)
+            self.assertFalse(settings["evaluation_seed_is_training_provenance"])
+            self.assertEqual(receipt["training_seed"], 43 if signature == {"seed": 43} else "UNKNOWN")
+            self.assertEqual(settings["source_pad_at_training"], "UNKNOWN")
+            self.assertEqual(value["model_kwargs"], before["model_kwargs"])
+            self.assertEqual(value["graph_config"], before["graph_config"])
+            self.assertTrue(torch.equal(value["state_dict"]["metadata_UNIT_only"], before["state_dict"]["metadata_UNIT_only"]))
+            config["model"]["hidden_dim"] = -1
+            config["graph"]["adaptive_roi_margin_mm"] = -1
+            self.assertEqual(value["model_kwargs"], before["model_kwargs"])
+            self.assertEqual(value["graph_config"], before["graph_config"])
+
+    def test_signature_entirely_absent_uses_explicit_execution_settings(self):
+        value = fixture()
+        value.pop("training_signature")
+        config, settings = native._evaluation_configuration(value, self.source_config())
+        self.assertEqual(config["cache"]["source_pad"], 4)
+        self.assertEqual(settings["source_pad_at_training"], "UNKNOWN")
+
+    def test_explicit_saved_padding_retained_and_mismatch_rejected(self):
+        value = fixture()
+        value["training_signature"]["cache"] = {"source_pad": 4}
+        _, settings = native._evaluation_configuration(value, self.source_config())
+        self.assertEqual(settings["source_pad_at_training"], 4)
+        for saved in ({"source_pad": 5}, {"source_pad": True}, {"source_pad": -1}, []):
+            value["training_signature"]["cache"] = saved
+            with self.subTest(saved=saved), self.assertRaisesRegex(ValueError, "padding|cache"):
+                native._evaluation_configuration(value, self.source_config())
+
+    def test_no_silent_evaluation_defaults(self):
+        for field, bad in (("seed", None), ("seed", True), ("seed", 43),
+                           ("training", {}), ("training", {"amp": 1}),
+                           ("cache", {}), ("cache", {"source_pad": True})):
+            source = self.source_config()
+            source[field] = bad
+            with self.subTest(field=field, bad=bad), self.assertRaises(ValueError):
+                native._evaluation_configuration(fixture(), source)
 
 
 if __name__ == "__main__":

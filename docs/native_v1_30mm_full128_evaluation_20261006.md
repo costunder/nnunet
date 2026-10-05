@@ -68,6 +68,31 @@ case가 없거나 original metadata/integrity가 다르면 실패하며 그 cach
 최종 CUDA DEBUG는 먼저 실제 원본 연산으로 만든 두 환자의 region cache를 재사용했다.
 서버 기본 명령은 새 평가 output에서 필요한 validation/donor region을 한 번 준비한다.
 
+## 서버 legacy checkpoint 호환성 수정
+
+첫 서버 실행은 실제 `model.pt`를 읽은 뒤, evaluation loader가 과거 파일에
+`training_signature.seed=42/run_mode=production`을 필수로 요구해 중단됐다.
+현재 선택한 원본 소스가 해당 형식을 저장한다는 사실만으로 과거 checkpoint도 그 형식을
+가졌다고 요구한 조건이 잘못이었다. 이는 CUDA·graph·ranking 실패 결과가 아니다.
+
+수정은 과거 기록과 현재 실행 설정을 분리한다. signature나 seed/run_mode가 저장되지
+않았으면 training metadata를 UNKNOWN으로 기록한다. 실제로 저장된 seed는 그대로
+남기며, 서로 모순되는 저장 seed나 명시적 debug/ablation 기록은 거부한다. 현재 평가의
+seed42는 명시 원본 `config/train.json`에서 읽고 학습 당시 seed의 증거로 사용하지 않는다.
+누락된 signature에 대한 직접 indexing도 제거했다. 원본 signature 형식 자체에 source_pad가
+없으므로, 평가 padding4와 학습 당시 padding UNKNOWN을 구분한다.
+
+가중치 strict load, 완료40epoch/BEST, 저장된 model/graph/CT clip, 실제 prototype fingerprint와
+case IDs, 원본 ROI30/context28, 동일 전체21 P+128U 계약은 유지한다. 평가 시작 전에
+`checkpoint_receipt.json`을 남기고 실제 저장 training seed와 evaluation seed를 출력한다.
+원본 checkpoint나 실패 output은 수정하지 않으며 새 output에 재실행한다.
+
+이번 수정의 회귀 검사는 74 PASS다. 누락 signature·부분 필드·현재 seed와 다른 과거 seed,
+모순/잘못된 metadata, optional cache와 설정 보존을 UNIT으로 확인했다. 실제 trained 서버
+weights는 로컬에 없으므로 해당 weights의 strict load와 전체21 평가 완료는 아직 미검증이다.
+앞서 완료한 실제 CT/CUDA DEBUG 증거는 그대로 보존하며 이번 metadata 검사로 새 GPU
+실행이나 ranking 품질이 검증됐다고 표시하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

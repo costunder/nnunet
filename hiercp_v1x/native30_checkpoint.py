@@ -181,6 +181,79 @@ def verify_native30_source(proof=None):
             "generated_runtime_modules": generated, "source_preserved": True}
 
 
+def _saved_training_metadata(payload):
+    """Read historical evidence without requiring a later checkpoint format.
+
+    This is evaluation, not an exact training resume. Missing historical tags
+    remain UNKNOWN; current execution settings cannot fill them in.
+    """
+    signature = payload.get("training_signature")
+    if signature is not None and not isinstance(signature, Mapping):
+        raise ValueError("Saved training_signature must be a mapping when present")
+    signature = {} if signature is None else signature
+    seeds, modes = {}, {}
+    for origin, fields in (("checkpoint", payload), ("checkpoint.training_signature", signature)):
+        seed, mode = fields.get("seed"), fields.get("run_mode")
+        if seed is not None:
+            if type(seed) is not int:
+                raise ValueError("Saved historical training seed must be an integer: " + origin)
+            seeds[origin + ".seed"] = seed
+        if mode is not None:
+            if mode != "production":
+                raise ValueError("Explicit non-production training metadata is not the selected native30 full run: " + origin)
+            modes[origin + ".run_mode"] = mode
+    if len(set(seeds.values())) > 1:
+        raise ValueError("Conflicting saved historical training seed evidence")
+    if signature.get("ablation_mode", "full") != "full":
+        raise ValueError("Explicit saved ablation is not the selected native30 full model")
+    return dict(training_signature_present=payload.get("training_signature") is not None,
+                training_seed=next(iter(seeds.values()), "UNKNOWN"),
+                training_seed_origin=list(seeds) if seeds else "UNKNOWN",
+                training_seed_evidence=seeds,
+                training_run_mode="production" if modes else "UNKNOWN",
+                training_run_mode_evidence=modes)
+
+
+def _evaluation_configuration(payload, source_config):
+    """Keep actual saved model/graph and explicit current evaluation settings."""
+    evaluation_seed = source_config.get("seed")
+    if type(evaluation_seed) is not int or evaluation_seed != 42:
+        raise ValueError("Explicit original source config seed42 required for the common evaluation")
+    amp = source_config.get("training", {}).get("amp")
+    if type(amp) is not bool:
+        raise ValueError("Explicit actual source/config/train.json training.amp execution setting required")
+    cache = source_config.get("cache")
+    if (not isinstance(cache, Mapping) or type(cache.get("source_pad")) is not int
+            or cache["source_pad"] < 0):
+        raise ValueError("Explicit actual original source/config/train.json cache.source_pad required")
+    # Older BEST files may have no signature, and the original signature format
+    # does not itself require a cache field. Never index an absent signature.
+    signature = payload.get("training_signature")
+    if signature is not None and not isinstance(signature, Mapping):
+        raise ValueError("Saved training_signature must be a mapping when present")
+    saved_cache = {} if signature is None else signature.get("cache", {})
+    if not isinstance(saved_cache, Mapping):
+        raise ValueError("Saved training_signature.cache must be a mapping when present")
+    saved_pad = saved_cache.get("source_pad")
+    if saved_pad is not None:
+        if type(saved_pad) is not int or saved_pad < 0:
+            raise ValueError("Saved source padding must be a nonnegative integer")
+        if saved_pad != cache["source_pad"]:
+            raise ValueError("Saved source padding differs from explicitly supplied original source config")
+    config = {"seed": evaluation_seed, "model": copy.deepcopy(payload["model_kwargs"]),
+              "graph": copy.deepcopy(payload["graph_config"]), "ct_clip": list(map(float, payload["ct_clip"])),
+              "training": {"amp": amp}, "cache": copy.deepcopy(cache)}
+    settings = dict(evaluation_seed=evaluation_seed,
+                    evaluation_seed_origin="current explicitly selected original source/config/train.json",
+                    evaluation_seed_is_training_provenance=False,
+                    AMP_execution_setting=amp, AMP_setting_origin="current explicitly selected source/config/train.json",
+                    source_pad=cache["source_pad"],
+                    source_pad_setting_origin="current explicitly selected original source/config/train.json cache.source_pad",
+                    source_pad_at_training=saved_pad if saved_pad is not None else "UNKNOWN",
+                    AMP_setting_is_training_provenance=False)
+    return config, settings
+
+
 def validate_native30_metadata(payload, checkpoint_path):
     """Validate saved BEST metadata and real tensors without constructing a model."""
     import torch
@@ -218,10 +291,7 @@ def validate_native30_metadata(payload, checkpoint_path):
     selection = payload.get("best_selection")
     if not isinstance(selection, Mapping) or not selection:
         raise ValueError("Saved own-task BEST selection metadata required")
-    signature = payload.get("training_signature")
-    if (not isinstance(signature, Mapping) or type(signature.get("seed")) is not int
-            or signature["seed"] != 42 or signature.get("run_mode") != "production"):
-        raise ValueError("Saved original production training_signature seed42 required")
+    training_metadata = _saved_training_metadata(payload)
     return dict(format=FORMAT, selected_epoch=payload["epoch"], completed_epochs=40,
                 checkpoint_selection="explicit existing own-task BEST model.pt",
                 selection_task="original_source_anchor_vs_curriculum_candidates",
@@ -231,7 +301,7 @@ def validate_native30_metadata(payload, checkpoint_path):
                 saved_model_kwargs=_json(kwargs, "model_kwargs"), saved_graph_config=_json(graph, "graph_config"),
                 ct_clip=list(map(float, clip)), prototype_training_cases=list(cases),
                 prototype_fingerprint=fingerprint, original_native_roi30_context28=True,
-                seed=signature["seed"], seed_origin="saved checkpoint training_signature",
+                **training_metadata,
                 optimizer_imported=False, optimizer_instantiated=False, training_started=False,
                 checkpoint_written=False, quality_verified=False, production_ready=False,
                 strict_loading_is_training_source_equivalence_proof=False,
@@ -253,17 +323,7 @@ def load_native30(checkpoint, prototype, original_source, budget, device="cuda")
     payload = torch.load(checkpoint, map_location="cpu", weights_only=False, mmap=True)
     receipt = validate_native30_metadata(payload, checkpoint)
     source_config = json.loads((source / "config/train.json").read_text(encoding="utf8"))
-    amp = source_config.get("training", {}).get("amp")
-    if type(amp) is not bool:
-        raise ValueError("Explicit actual source/config/train.json training.amp execution setting required")
-    cache_config = source_config.get("cache")
-    if (not isinstance(cache_config, Mapping) or type(cache_config.get("source_pad")) is not int
-            or cache_config["source_pad"] < 0):
-        raise ValueError("Explicit actual original source/config/train.json cache.source_pad required")
-    saved_cache = payload["training_signature"].get("cache", {})
-    saved_pad = saved_cache.get("source_pad") if isinstance(saved_cache, Mapping) else None
-    if saved_pad is not None and saved_pad != cache_config["source_pad"]:
-        raise ValueError("Saved source padding differs from explicitly supplied original source config")
+    config, settings = _evaluation_configuration(payload, source_config)
     model_class = _model_class(source)
     model = model_class(**copy.deepcopy(payload["model_kwargs"]))
     # No partial load, injected revision buffer or retry with another model.
@@ -274,9 +334,6 @@ def load_native30(checkpoint, prototype, original_source, budget, device="cuda")
             or set(bank.training_case_ids) != set(receipt["prototype_training_cases"])):
         raise ValueError("Actual native30 prototype fingerprint/case IDs differ from saved BEST")
     bank.validate()
-    config = {"seed": receipt["seed"], "model": copy.deepcopy(payload["model_kwargs"]), "graph": copy.deepcopy(payload["graph_config"]),
-              "ct_clip": list(receipt["ct_clip"]), "training": {"amp": amp},
-              "cache": copy.deepcopy(cache_config)}
     graph_config = importlib.import_module("hiercp.schema").graph_config_from_dict(config["graph"])
     graph_config.validate()
     model.to(selected_device).eval()
@@ -292,11 +349,7 @@ def load_native30(checkpoint, prototype, original_source, budget, device="cuda")
                    state_loaded_strict=True, state_schema_compatible=True,
                    total_parameters=sum(parameter.numel() for parameter in model.parameters()),
                    trainable_parameters=sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
-                   AMP_execution_setting=amp, AMP_setting_origin="current explicitly selected source/config/train.json",
-                   source_pad=cache_config["source_pad"],
-                   source_pad_setting_origin="current explicitly selected original source/config/train.json cache.source_pad",
-                   source_pad_at_training=saved_pad if saved_pad is not None else "UNKNOWN",
-                   AMP_setting_is_training_provenance=False, actual_CUDA=True)
+                   **settings, actual_CUDA=True)
     del payload
     return SimpleNamespace(model=model, config=config, bank=bank, prototype_bank=bank,
                            receipt=receipt, checkpoint=receipt, source=source, source_proof=proof)

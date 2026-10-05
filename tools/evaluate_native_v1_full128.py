@@ -106,6 +106,12 @@ def evaluate(a):
     torch.backends.cudnn.benchmark = bool(runtime.get('cudnn_benchmark', False))
     bundle = (load_debug_native30(a.original_source, original_config, a.prototype, budget)
               if debug else load_native30(a.checkpoint, a.prototype, a.original_source, budget))
+    write_new(a.output / 'checkpoint_receipt.json', bundle.receipt)
+    if not debug:
+        print('NATIVE30 CHECKPOINT | BEST epoch=' + str(bundle.receipt['selected_epoch'])
+              + ' | saved training seed=' + str(bundle.receipt['training_seed'])
+              + ' | evaluation seed=' + str(bundle.receipt['evaluation_seed'])
+              + ' | strict weights/prototype=PASS', flush=True)
     model = bundle.model.eval()
     geometry = Native30Geometry(a.inventory, bundle.config, bundle.source,
         workers=a.workers, resident_bytes=int(a.resident_gib * 2**30), rss_bytes=rss_bytes,
