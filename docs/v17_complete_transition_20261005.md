@@ -47,6 +47,8 @@ native 실제 설정은 10mm, CNN channels 12/24/32, convolutions 2/3/3, hidden1
 
 기존 baseline/A/B는 모두40epoch 기록이 있고 전체 학습 완료를 보고한다. 각각 best MRR/top1은1/1, 0.972222/0.944444, 1/1이다. 이는 원래8후보 과제의 결과이며, native P+128U 평가를 통과한 결과가 아니다. 기존 `evaluate_v1_sampling_pair.py`도8후보 검사이므로 이름만 바꿔 전체128 평가로 취급하지 않는다. 새 전체 변경 이분 arm의 입력 bridge와 공통 평가 계약은 아직 미구현·미검증 상태다. 수집 완료를 이유로 runnable/quality/production flags를 올리거나 기존 baseline/A/B를 자동 재학습하지 않는다.
 
+추가 코드 대조에서 수집기 표시 오류를 확인했다. 서버 출력의 native `top1`은 `ranking_recall_at_1`을 공통 표시 key로 변환한 값이며 실제 case top1 정확도가 아니다. `tools/v22_rank_objective.py:ranking_metrics`는 모든 관측P의 순위로 micro recall을 계산한다. 따라서0.007407은135개P 중1개이며,21case가 모두 평가 가능하더라도 R@1의 상한은21/135=0.155556이다. native MRR는 P가 있는 case마다 첫P의 reciprocal rank를 평균하고, v1 top1/MRR는 original-anchor8후보 sample마다 계산한다. 수집기의 native 표시를 `MRR(first_P)`와 `R@1(observed_P)`로 수정했다. 원본 서버 출력·저장된 수치·모델·GT는 바꾸지 않는다. 이 수정 때문에 서버 자료를 다시 수집할 필요는 없다.
+
 ## 이번 변경의 검증
 
 2026-10-05에 `tests.test_v1_transition_inventory` 23개와 `tests.test_native_transition_receipt` 23개, 총 46개의 metadata/contract 단위 검사를 실행해 통과했다. 실제 PyTorch checkpoint serialization의 metadata 로딩, 전체 14,102개 fixture inventory 보존, 모든 epoch 기록 수집, 원본 파일 보존, source 불일치와 누락의 명시적 보고를 포함한다. wrapper 설정·실제 batch·저장된 epoch/step/cursor·학습 schedule을 대조하고 수집 종료 시 checkpoint SHA를 다시 검사한다. fixture는 단위 검사 입력이며 실제 CT나 서버 성능 결과로 사용하지 않았다.

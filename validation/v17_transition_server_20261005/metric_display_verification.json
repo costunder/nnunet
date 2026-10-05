@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-05",
+  "scope": "saved-metadata terminal metric names only; model and metric algebra unchanged",
+  "source_checked": "tools/v22_rank_objective.py:ranking_metrics",
+  "native_display_labels": ["MRR(first_P)", "R@1(observed_P)"],
+  "native_recall_denominator": "all observed positive anchors",
+  "v1_top1_denominator": "original eight-candidate samples",
+  "unit_test_modules": ["tests.test_transition_terminal_report", "tests.test_transition_terminal_cli"],
+  "unit_tests": 20,
+  "unit_test_status": "PASS",
+  "elapsed_seconds": 0.281,
+  "exit_code": 0,
+  "submitted_server_output_preserved_byte_for_byte": true,
+  "original_server_output_sha256": "8ae1fe4289165b3f5ac613b04e822820cb9069ad0bb48638edd36e64be913e6c",
+  "model_or_GT_changed": false,
+  "gpu_execution": false,
+  "training_started": false,
+  "evaluation_executed": false,
+  "quality_verified": false
+}

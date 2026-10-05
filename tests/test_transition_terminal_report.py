@@ -75,6 +75,15 @@ class TransitionTerminalMetadataTests(unittest.TestCase):
         self.assertEqual(sum(summary['split_counts'][key]['records'] for key in ('inner_train', 'inner_val')), 14102)
         self.assertEqual(summary['split_counts']['outer']['inventoried_cases'], 0)
 
+    def test_native_observed_recall_is_not_displayed_as_v1_top1_accuracy(self):
+        summary = self.summary()
+        text = render_terminal_summary(summary)
+        lines = [line for line in text.splitlines() if line.startswith('Native ') and 'validation' in line]
+        self.assertTrue(lines)
+        self.assertTrue(all('R@1(observed_P)=' in line and 'top1=' not in line for line in lines))
+        self.assertIn('baseline initial | MRR=UNKNOWN top1=UNKNOWN', text)
+        self.assertIn('not case top1 accuracy', summary['native']['metric_semantics']['top1'])
+
     def test_all_40_epoch_rows_and_reported_checkpoint_selection(self):
         self.telemetry()
         result = self.summary()['comparisons'][0]

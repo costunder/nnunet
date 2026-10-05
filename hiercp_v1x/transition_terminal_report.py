@@ -206,6 +206,10 @@ def build_terminal_summary(receipt, output_dir):
     history = state.get('validation_history')
     history = history if isinstance(history, list) else []
     native['saved_validation_history'] = history
+    native['metric_semantics'] = dict(
+        MRR='case mean reciprocal rank of first observed P; cases without P excluded',
+        top1='compatibility key for ranking_recall_at_1: micro recall over observed P, not case top1 accuracy',
+        loss='within-case observed-P/unobserved-U pairwise loss')
     valid_history = [row for row in history if isinstance(row, dict) and type(row.get('epoch')) is int]
     native['initial_validation'] = _metric(state.get('initial_validation'))
     native['latest_validation'] = None if not valid_history else dict(
@@ -239,9 +243,10 @@ def _brief(value, width=500):
     return encoded if len(encoded) <= width else encoded[:width] + ' ... [full JSON preserved]'
 
 
-def _display_metrics(value):
+def _display_metrics(value, *, native=False):
     metrics = _mapping(value)
-    return ' '.join(name + '=' + ('UNKNOWN' if metrics.get(name) is None else f"{metrics[name]:.6f}")
+    labels = {'MRR': 'MRR(first_P)', 'top1': 'R@1(observed_P)'} if native else {}
+    return ' '.join(labels.get(name, name) + '=' + ('UNKNOWN' if metrics.get(name) is None else f"{metrics[name]:.6f}")
                     for name in ('MRR', 'top1', 'margin', 'loss'))
 
 
@@ -278,9 +283,10 @@ def render_terminal_summary(summary):
                                                                  for key in ('physical_batch', 'effective_batch', 'accumulation')}),
              'Complete inventory: ' + _brief({key: inventory.get(key) for key in ('records', 'unique_ids', 'observed_positive', 'unobserved_comparison')}),
              'Split counts: ' + _brief(native.get('split_counts'), 1000),
-             'Native initial validation | ' + _display_metrics(native.get('initial_validation')),
+             'Native initial validation | ' + _display_metrics(native.get('initial_validation'), native=True),
              'Native last validation epoch=' + str(_mapping(native.get('latest_validation')).get('epoch', 'UNKNOWN'))
-             + ' | ' + _display_metrics(_mapping(native.get('latest_validation')).get('metrics')),
+             + ' | ' + _display_metrics(_mapping(native.get('latest_validation')).get('metrics'), native=True),
+             'Native R@1 denominator=all observed P; v1 top1 denominator=original eight-candidate samples',
              'Source root checks: ' + _brief(summary.get('source_check_counts'), 1000),
              'Missing fields: ' + str(len(summary.get('required_fields_missing', [])))
              + ' | categories: ' + _brief(summary.get('required_field_categories'), 1000),
