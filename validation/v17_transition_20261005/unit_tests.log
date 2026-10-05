@@ -1,0 +1,53 @@
+test_all_input_task_objective_support_and_evaluation_axes_present (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_axis_shared_between_halves_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_bad_cohort_hash_and_outer_test_consumption_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_changed_gt_cannot_be_claimed_identical (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_complete_halves_cover_every_named_factor_once (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_duplicate_inside_half_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_existing_ab_cannot_be_reported_as_full_transition (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_full_control_fields_required (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_inventory_is_copy_without_ready_or_quality_promotion (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_metadata_cannot_set_runnable_true (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_missing_actual_source_is_not_replaced_with_placeholder (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_missing_label_or_eval_axis_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_modifying_old_bridge_coverage_is_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_original_archive_cannot_be_silently_replaced (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_physical_batch_numbers_without_work_unit_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_plan_declares_changed_gt_and_nonmonotonic_interactions (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_plan_digest_binds_control_policy (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_runtime_factors_are_included_in_exact_partition (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_scope_seed_epochs_are_not_silently_reduced (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_semantics_do_not_relabel_observations_as_cp_suitability (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_source_bindings_capture_actual_bytes_and_detect_change (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_source_sha_alone_does_not_register_smoke (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_unknown_half_and_unknown_axis_rejected (tests.test_v1_transition_inventory.CompleteTransitionInventoryTests) ... ok
+test_real_torch_serialization_exports_shapes_without_tensor_values (tests.test_native_transition_receipt.FakeCheckpointMetadataUnitTests) ... ok
+test_all_epoch_invocations_and_case_scores_are_preserved (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_bound_metadata_preserves_entire_inventory_and_never_claims_neural_quality (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_comparison_manifest_missing_declared_helpers_is_unknown (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_duplicate_and_traversal_zip_members_are_rejected (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... C:\Users\user\miniconda3\envs\py\lib\zipfile.py:1528: UserWarning: Duplicate name: 'receipt.json'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+ok
+test_every_wrapper_setting_mismatch_is_not_exact_bound (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_execution_and_schedule_resolved_batch_mismatch_rejected (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_explicit_resume_from_is_used_for_unsaved_bound_attempt (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_inventory_binding_mismatch_is_reported_without_relabeling (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_manifest_rejects_modified_or_unlisted_bytes (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_mismatched_source_is_not_silently_admitted (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_missing_core_and_runtime_inventory_cannot_be_marked_matched (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_missing_current_saved_checkpoint_does_not_revert_to_older (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_missing_native_evidence_is_a_diagnostic_receipt (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_missing_settings_and_saved_state_fields_are_not_defaulted (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_native_checkpoint_changed_after_metadata_read_is_unknown (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_native_inventory_required_metadata_cannot_be_synthesized (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_no_newest_checkpoint_search_or_unbound_foreign_attempt (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_original_input_bytes_are_preserved (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_output_overwrite_and_nested_input_are_rejected (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_physical_batch_and_saved_training_cursor_mismatch_rejected (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_sha_resealed_quality_promotion_is_still_rejected (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+test_unsafe_manifest_path_is_rejected (tests.test_native_transition_receipt.NativeReceiptMetadataTests) ... ok
+
+----------------------------------------------------------------------
+Ran 46 tests in 24.490s
+
+OK

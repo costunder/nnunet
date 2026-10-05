@@ -1,0 +1,576 @@
+{
+  "format": "hiercp_v17_complete_transition_design_v1",
+  "status": "COMPLETE_CHANGE_INVENTORY_NATIVE_SERVER_RECIPE_PENDING",
+  "inventory": {
+    "format": "hiercp_complete_v1_m10_to_localcnn_v22_transition_v1",
+    "baseline": "completed_v1_m10",
+    "target": "native_localcnn_v22_same_donor_live_v1",
+    "baseline_task": "v1_source_original_anchor_vs_curriculum_candidates",
+    "target_task": "v22_observed_eligible_tumor_P_vs_unobserved_U",
+    "target_semantics": {
+      "P": "actual observed eligible tumor anchor",
+      "U": "unobserved comparison center",
+      "P_is_donor_compatibility_GT": false,
+      "U_is_CP_ineligible_GT": false
+    },
+    "factors": [
+      {
+        "name": "donor_condition",
+        "domain": "input",
+        "baseline": "source tumor and its own original anchor",
+        "target": "independent inner-train donor fixed per recipient; P/U labels independent of donor",
+        "source_files": [
+          "l0_regions/donor_data.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "physical_input_sampling",
+        "domain": "input",
+        "baseline": "adaptive physical ROI resampled to fixed 48 cubed",
+        "target": "native-spacing variable crops; no image resizing",
+        "source_files": [
+          "l0_local_cnn/data.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "input_channels",
+        "domain": "input",
+        "baseline": "five-channel v1 payload including geometric masks",
+        "target": "one CT channel masked by liver; separate organ validity mask",
+        "source_files": [
+          "l0_local_cnn/data.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "partial",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "recipient_tumor_erasure",
+        "domain": "input",
+        "baseline": "original v1 target erasure retained",
+        "target": "native observed CT crop; no v1 target-erasure operation",
+        "source_files": [
+          "l0_local_cnn/data.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "role_shell_geometry",
+        "domain": "input",
+        "baseline": "six local roles, physical shells and handcrafted node features",
+        "target": "no sampled roles, shells, handcrafted features or local graph",
+        "source_files": [
+          "l0_local_cnn/model.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "partial",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "local_encoder",
+        "domain": "L0",
+        "baseline": "original dense v1 encoder",
+        "target": "OrganPyramid channels 12/24/32; convolutions 2/3/3",
+        "source_files": [
+          "l0_exploration/model.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "local_message_passing",
+        "domain": "L0",
+        "baseline": "three-layer heterogeneous local GAT",
+        "target": "no local graph message passing; CNN maps supply features",
+        "source_files": [
+          "l0_local_cnn/model.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "local_readout",
+        "domain": "L0",
+        "baseline": "role/shell attention readouts plus handcrafted context",
+        "target": "organ masked mean per pyramid scale then 68-to-128 projection",
+        "source_files": [
+          "l0_local_cnn/model.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "partial",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "pair_fusion",
+        "domain": "L0",
+        "baseline": "original multiple semantic pair and fused outputs",
+        "target": "one donor/recipient difference-product fusion to 128D",
+        "source_files": [
+          "l0_local_cnn/model.py",
+          "hiercp_v1x/half_a_model.py"
+        ],
+        "existing_half_A": "partial",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "upper_L1",
+        "domain": "upper",
+        "baseline": "v1 patient graph semantics and heterogeneous GAT",
+        "target": "tracked legacy prompt RelationLayer twice; not official PRODIGY reference",
+        "source_files": [
+          "hiercp_v222/model.py",
+          "hiercp_v1x/half_b_model.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "covered"
+      },
+      {
+        "name": "upper_L2",
+        "domain": "upper",
+        "baseline": "v1 region/prototype graph and population encoder",
+        "target": "tracked two cross-patient alignment layers and class-conditional clusters",
+        "source_files": [
+          "hiercp_v222/model.py",
+          "hiercp_v222/clustering.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "covered"
+      },
+      {
+        "name": "scalar_score",
+        "domain": "upper",
+        "baseline": "direct v1 scalar head",
+        "target": "patient-mass cosine mixture logit1 minus logit0",
+        "source_files": [
+          "hiercp_v222/model.py",
+          "hiercp_v1x/half_b_model.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "covered"
+      },
+      {
+        "name": "GT_semantics",
+        "domain": "task",
+        "baseline": "v1_source_original_anchor_vs_curriculum_candidates",
+        "target": "v22_observed_eligible_tumor_P_vs_unobserved_U",
+        "source_files": [
+          "l0_regions/donor_learning.py",
+          "config/prompt_graph_v222_v1_l0.json"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "training_sample_population",
+        "domain": "task",
+        "baseline": "selected source samples; original samples_per_case=2",
+        "target": "all retained observed P and 128 U per recipient, including cases without P",
+        "source_files": [
+          "l0_local_cnn/data.py",
+          "l0_regions/donor_learning.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "training_candidate_set",
+        "domain": "task",
+        "baseline": "anchor plus seven curriculum comparisons from target pool 128",
+        "target": "every P times all 128 U; both comparison sides encoded live",
+        "source_files": [
+          "l0_regions/donor_learning.py",
+          "l0_local_cnn/data.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "comparison_corruption",
+        "domain": "task",
+        "baseline": "original relation-corrupted curriculum negatives",
+        "target": "original unobserved centers without v1 relation corruption",
+        "source_files": [
+          "versions/v1/pipeline_v1_source.zip",
+          "l0_local_cnn/data.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "ranking_loss",
+        "domain": "objective",
+        "baseline": "listwise, difficulty-margin pairwise, ordinal and mined objectives",
+        "target": "global all-P/U softplus pair mean with explicit tile normalization",
+        "source_files": [
+          "versions/v1/pipeline_v1_source.zip",
+          "l0_regions/donor_learning.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "observation_alignment_auxiliaries",
+        "domain": "objective",
+        "baseline": "no native observation/alignment CE",
+        "target": "balanced observation CE inverse presentation multiplicity plus native alignment CE",
+        "source_files": [
+          "l0_regions/donor_learning.py",
+          "hiercp_v222/model.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "two_view_consistency",
+        "domain": "objective",
+        "baseline": "original two graph views and six-term consistency",
+        "target": "native LocalCNN single crop-pair representation without v1 consistency",
+        "source_files": [
+          "l0_local_cnn/model.py",
+          "l0_regions/donor_learning.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "support_labels_population",
+        "domain": "support",
+        "baseline": "no native observation support; original v1 upper context",
+        "target": "training-only observed-P/U detached L0 memory, exclude recipient and donor patient groups",
+        "source_files": [
+          "hiercp_v1x/half_b_support.py",
+          "l0_regions/training.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "partial"
+      },
+      {
+        "name": "support_refresh",
+        "domain": "support",
+        "baseline": "original v1 patient/region prototype preparation",
+        "target": "all training L0 memory initially and each epoch; detached teacher cluster plans",
+        "source_files": [
+          "l0_regions/training.py",
+          "hiercp_v1x/half_b_model.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "partial"
+      },
+      {
+        "name": "support_episode_selection",
+        "domain": "support",
+        "baseline": "original v1 context; B bridge uses all eligible anchor/curriculum support",
+        "target": "explicit native support_patients policy during optimization; full support evaluation",
+        "source_files": [
+          "l0_regions/support_episodes.py",
+          "l0_regions/training.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "update_schedule",
+        "domain": "schedule",
+        "baseline": "v1 difficulty curriculum, eight-candidate samples and two views",
+        "target": "complete case-wise P times U live tiles; repeated CE compensated; alignment follows native tile weighting",
+        "source_files": [
+          "l0_regions/donor_learning.py",
+          "l0_regions/training.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "optimizer_LR_schedule",
+        "domain": "schedule",
+        "baseline": "original AdamW plus CosineAnnealingLR",
+        "target": "native AdamW with constant configured LR; no original cosine scheduler",
+        "source_files": [
+          "versions/v1/pipeline_v1_source.zip",
+          "l0_regions/training.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "precision_and_scaler",
+        "domain": "execution",
+        "baseline": "original AMP autocast plus GradScaler",
+        "target": "native FP32 optimization without original autocast/scaler path",
+        "source_files": [
+          "versions/v1/pipeline_v1_source.zip",
+          "l0_regions/training.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "physical_batch_unit_and_work",
+        "domain": "execution",
+        "baseline": "measured v1 cache-sample batch; each sample includes eight candidates and two views",
+        "target": "measured native observation-row batch and live P/U tiling; explicit actual candidate work",
+        "source_files": [
+          "l0_regions/donor_learning.py",
+          "l0_regions/training.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "activation_storage",
+        "domain": "execution",
+        "baseline": "original CNN/local graph activation checkpointing and captured RNG policy",
+        "target": "native explicit retained/checkpointed policy from actual run receipt; never infer from hardware capacity",
+        "source_files": [
+          "l0_regions/training.py",
+          "tools/run_local_cnn.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "evaluation_candidate_universe",
+        "domain": "evaluation",
+        "baseline": "fixed full-difficulty eight-candidate v1 validation",
+        "target": "each held-out recipient's all P plus 128 U scored once without corruption",
+        "source_files": [
+          "l0_regions/training.py",
+          "tools/v22_rank_objective.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      },
+      {
+        "name": "checkpoint_selection",
+        "domain": "evaluation",
+        "baseline": "original v1 MRR/top1/margin tie-breaking",
+        "target": "native same_donor_live_v1 MRR then R@1 then negative pairwise loss",
+        "source_files": [
+          "l0_regions/donor_learning.py"
+        ],
+        "existing_half_A": "not_covered",
+        "existing_half_B": "not_covered"
+      }
+    ],
+    "source_files": [
+      "hiercp_v1x/transition_inventory.py",
+      "versions/v1/pipeline_v1_source.zip",
+      "hiercp_v1x/bounded_scope.py",
+      "hiercp_v1x/scope_training_entry.py",
+      "hiercp_v1x/half_a_model.py",
+      "hiercp_v1x/half_b_model.py",
+      "hiercp_v1x/half_b_support.py",
+      "l0_local_cnn/data.py",
+      "l0_local_cnn/model.py",
+      "l0_exploration/model.py",
+      "l0_regions/donor_data.py",
+      "l0_regions/donor_learning.py",
+      "l0_regions/training.py",
+      "l0_regions/support_episodes.py",
+      "hiercp_v222/model.py",
+      "hiercp_v222/clustering.py",
+      "tools/v22_rank_objective.py",
+      "tools/v22_candidate_order.py",
+      "tools/run_local_cnn.py",
+      "config/prompt_graph_v222_v1_l0.json"
+    ],
+    "scope": "complete transition design inventory; existing A/B are architecture bridges",
+    "runnable": false,
+    "quality_verified": false,
+    "training_started": false
+  },
+  "existing_A_B_coverage": {
+    "fully_covered": [
+      "local_encoder",
+      "local_message_passing",
+      "upper_L1",
+      "upper_L2",
+      "scalar_score"
+    ],
+    "partially_covered": [
+      "input_channels",
+      "role_shell_geometry",
+      "local_readout",
+      "pair_fusion",
+      "support_labels_population",
+      "support_refresh"
+    ],
+    "not_covered": [
+      "donor_condition",
+      "physical_input_sampling",
+      "recipient_tumor_erasure",
+      "GT_semantics",
+      "training_sample_population",
+      "training_candidate_set",
+      "comparison_corruption",
+      "ranking_loss",
+      "observation_alignment_auxiliaries",
+      "two_view_consistency",
+      "support_episode_selection",
+      "update_schedule",
+      "optimizer_LR_schedule",
+      "precision_and_scaler",
+      "physical_batch_unit_and_work",
+      "activation_storage",
+      "evaluation_candidate_universe",
+      "checkpoint_selection"
+    ],
+    "all_transition_changes_covered": false,
+    "native_endpoint_equivalence": false
+  },
+  "new_groups": {
+    "half_A": [
+      "physical_input_sampling",
+      "input_channels",
+      "recipient_tumor_erasure",
+      "role_shell_geometry",
+      "local_encoder",
+      "local_message_passing",
+      "local_readout",
+      "pair_fusion",
+      "upper_L1",
+      "upper_L2",
+      "scalar_score"
+    ],
+    "half_B": [
+      "donor_condition",
+      "GT_semantics",
+      "training_sample_population",
+      "training_candidate_set",
+      "comparison_corruption",
+      "ranking_loss",
+      "observation_alignment_auxiliaries",
+      "two_view_consistency",
+      "support_labels_population",
+      "support_refresh",
+      "support_episode_selection",
+      "update_schedule",
+      "optimizer_LR_schedule",
+      "precision_and_scaler",
+      "physical_batch_unit_and_work",
+      "activation_storage",
+      "evaluation_candidate_universe",
+      "checkpoint_selection"
+    ]
+  },
+  "new_group_names": {
+    "half_A": "input_representation_forward",
+    "half_B": "task_training_evaluation"
+  },
+  "source_bindings": {
+    "hiercp_v1x/transition_inventory.py": {
+      "sha256": "b5dc040d056b8516650a1afac6a270ac8b8e3ddaf59b19037184ef4bff8d6744",
+      "bytes": 23333
+    },
+    "versions/v1/pipeline_v1_source.zip": {
+      "sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+      "bytes": 2226151
+    },
+    "hiercp_v1x/bounded_scope.py": {
+      "sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+      "bytes": 15917
+    },
+    "hiercp_v1x/scope_training_entry.py": {
+      "sha256": "05ee89ef7a1cdef947401a082e2b60dced59977328f56b0ea004638695546a80",
+      "bytes": 28156
+    },
+    "hiercp_v1x/half_a_model.py": {
+      "sha256": "13104b0eb21ea441eb400ec99b9d3571c98b656c3fc4e5d68d32235697f60dfc",
+      "bytes": 26612
+    },
+    "hiercp_v1x/half_b_model.py": {
+      "sha256": "36e2b35221e3c4963eaa73bbd0eeb5077518edbc4d9d156593c0f76d783a38c9",
+      "bytes": 29815
+    },
+    "hiercp_v1x/half_b_support.py": {
+      "sha256": "20c5059e55e396f9fd8cbfaa2d4c079596a1024589078a015a96fd3e71bf7730",
+      "bytes": 24162
+    },
+    "l0_local_cnn/data.py": {
+      "sha256": "907d1ea35e138cb07a2af017bab8c76f7fd4149a9ed000a1d7d7d76c693df03c",
+      "bytes": 11221
+    },
+    "l0_local_cnn/model.py": {
+      "sha256": "51aa70d4fdfe9e7d1f25b9bd110adaa25c1ec1f264659888695853f9bf923e19",
+      "bytes": 3909
+    },
+    "l0_exploration/model.py": {
+      "sha256": "47026f59c94205e935c12efda8a6b1bd4de51de8aa00dc7174fad1420b83e4ff",
+      "bytes": 11550
+    },
+    "l0_regions/donor_data.py": {
+      "sha256": "73f683fde9997fd223bccf1f047d6bb4051840efe7104a4a09089fd03c54bbee",
+      "bytes": 9920
+    },
+    "l0_regions/donor_learning.py": {
+      "sha256": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+      "bytes": 5651
+    },
+    "l0_regions/training.py": {
+      "sha256": "6e106f1828a854cdca06e2f664af819f80b533c7c5a144dee66eb7a4f3122bdb",
+      "bytes": 41634
+    },
+    "l0_regions/support_episodes.py": {
+      "sha256": "3947ef3776850510c1f6af595a2d8d1134e1a5babf3654c415488557f391e3e1",
+      "bytes": 8000
+    },
+    "hiercp_v222/model.py": {
+      "sha256": "53d4d95220eab2ba643424a3e161fac4b91ba6a44f8ec7a108fa44dd9dce0a7d",
+      "bytes": 18108
+    },
+    "hiercp_v222/clustering.py": {
+      "sha256": "a7d73761eeecadcda9ef0b2e0657e62068d260af42b1d519103fa0d1ddf211fc",
+      "bytes": 7311
+    },
+    "tools/v22_rank_objective.py": {
+      "sha256": "11adc325971bafc35d470fa0719c4a8e21e456219cf583969f3674a4999c268a",
+      "bytes": 7313
+    },
+    "tools/v22_candidate_order.py": {
+      "sha256": "4454e2175792e7b9e09d3249f62cbd0478193ff9033962639cf270b8b57f552c",
+      "bytes": 1201
+    },
+    "tools/run_local_cnn.py": {
+      "sha256": "a3993a8d105c2e0f1c7a59f82789d385f44514d7a23ad2b68d983c9d6aa1deed",
+      "bytes": 3964
+    },
+    "config/prompt_graph_v222_v1_l0.json": {
+      "sha256": "b6205a175427d53bf23a72e7173adbaf5dbf9fa011c2df276d5158b2662ffd09",
+      "bytes": 3125
+    }
+  },
+  "native_run": "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42",
+  "baseline": "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004",
+  "half_A": "/home/aicompetition06/Medical/experiments/v15_m10_halfA_seed42_20261004",
+  "half_B": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3",
+  "server_receipt_tool": "tools/export_v1_v22_transition_receipt.py",
+  "server_recipe_bound": false,
+  "executable_training_arms": [],
+  "training_started": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "common_evaluation_bound": false,
+  "GT_semantics": {
+    "v1": "v1_source_original_anchor_vs_curriculum_candidates",
+    "v22": "v22_observed_eligible_tumor_P_vs_unobserved_U",
+    "same_GT": false,
+    "P_is_donor_compatibility_GT": false,
+    "U_is_CP_ineligible_GT": false
+  },
+  "next_required": [
+    "actual_native_checkpoint_recipe_and_source_bytes",
+    "actual_two_way_data_model_bridges",
+    "matched_evaluation_contract",
+    "real_CT_CUDA_update_and_metric_checks"
+  ],
+  "automatic_old_baseline_or_A_B_retraining": false,
+  "automatic_long_training": false
+}

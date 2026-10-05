@@ -1,0 +1,32 @@
+{
+  "format": "hiercp_v17_transition_metadata_verification_v1",
+  "date": "2026-10-05",
+  "scope": "UNIT metadata and source contract only; no new neural model validation",
+  "command": ".venv/Scripts/python.exe -B -m unittest tests.test_v1_transition_inventory tests.test_native_transition_receipt -v",
+  "exit_code": 0,
+  "tests": 46,
+  "transition_inventory_tests": 23,
+  "read_only_receipt_tests": 23,
+  "python_ast_files": 5,
+  "full_transition_axes": 29,
+  "existing_AB_coverage": {
+    "complete": 5,
+    "partial": 6,
+    "not_covered": 18
+  },
+  "new_group_axes": {
+    "input_representation_forward": 11,
+    "task_training_evaluation": 18
+  },
+  "source_bindings_verified": 20,
+  "full_transition_arms_implemented": false,
+  "new_real_CT_neural_execution": false,
+  "new_CUDA_smoke_executed": false,
+  "server_native_recipe_bound": false,
+  "optimizer_updates": 0,
+  "training_started": false,
+  "full_evaluation_executed": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "original_results_modified": false
+}
