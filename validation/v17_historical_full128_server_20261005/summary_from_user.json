@@ -1,0 +1,22 @@
+{
+  "format": "user_supplied_historical_full128_terminal_summary_v1",
+  "origin": "human user pasted server terminal output in this chat",
+  "server": "ece-a6gpu6",
+  "code_commit": "16f7eb824050a71eaaf5946ecb7d334e761e805e",
+  "summary_path": "/home/aicompetition06/Medical/experiments/v17_V1_A_B_C_full128_20261005_212328/summary.json",
+  "own_task_best_checkpoints_evaluated": true,
+  "full_evaluation_reported": true,
+  "raw_server_JSON_independently_read": false,
+  "training_started_this_turn": false,
+  "quality_verified": false,
+  "MRR_definition": "case-first observed P among all P+128U; exclude zero-P cases from rank denominator",
+  "arms": {
+    "V1": {"MRR": 0.233839, "Hit_at_1": 0.125000, "pair_win": 0.596528, "loss": 1.935892},
+    "A": {"MRR": 0.146013, "Hit_at_1": 0.062500, "pair_win": 0.621470, "loss": 3.393549},
+    "B": {"MRR": 0.226487, "Hit_at_1": 0.125000, "pair_win": 0.561574, "loss": 1.234715},
+    "C": {"MRR": 0.195354, "Hit_at_1": 0.125000, "pair_win": 0.562500, "loss": 1.131561}
+  },
+  "annotation_aware_arms": ["V1", "A"],
+  "original_anchor_curriculum_support_arms": ["B", "C"],
+  "caveat": "Not an 8-to-128 candidate-count-only contrast, not blind CP suitability evaluation, and not a new training run. Exact denominators and uncertainty require saved raw reports."
+}
