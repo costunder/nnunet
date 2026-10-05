@@ -1,0 +1,11 @@
+{
+  "format": "hiercp_half_B_user_server_summary_manifest_v1",
+  "origin": "user_supplied_terminal_summary_20261005",
+  "independent_checkpoint_or_raw_metric_verification": false,
+  "files": {
+    "summary.json": {
+      "size": 1926,
+      "sha256": "aee2d909a0df3200b0ae3dff55fd222359947e0be1c0c1db1d83528608f4ccd4"
+    }
+  }
+}

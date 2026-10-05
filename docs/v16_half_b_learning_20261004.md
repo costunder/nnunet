@@ -77,6 +77,12 @@ Entry: `tools/run_v1_half_b.py`. 고정 원래 baseline:
 
 Seed42,40epochs,84/21,outer26제외,pool128,curriculum8,원래 GT와 loss를 유지한다. Baseline·A 재학습, A+B, production CP, nnU-Net은 실행하지 않는다. 로컬에서 전체 학습 또는 전체 evaluation은 시작하지 않았다.
 
+## 서버40epoch 결과 수신: 2026-10-05
+
+사용자가 `v16_m10_halfB_seed42_20261004_r3/results/half_B`의 전체 학습 완료 기록과40/40 epoch를 보냈다. BEST epoch20 validation은 loss0.130164/MRR1.0/top1 1.0/margin10.340888, 마지막 epoch40 validation은 loss0.068598/MRR1.0/top1 1.0/margin8.808204이다. 초기 validation MRR0.249074/top1 0.027778에서 실제로 순위가 학습됐다. 마지막 epoch 시간은15.83분이며 평균 시간 또는 baseline 대비 배속이 아니다.
+
+B는 고정 v1 source-anchor/curriculum task에서 기존 v2.2의 심한 학습 실패를 재현하지 않았다. 서버 checkpoint·원시 metric 파일의 독립 평가, native v2.2 P/U objective 재현,128후보 CP 품질 검증은 아니다. [서버 결과와 이분 대조 판정](v16_half_b_server_result_20261005.md)에 A/B 비교, 남은 입력·학습 계약의 차이 및 판정 한계를 기록했다. 기존 DEBUG 증거와 실패한 r1/r2 결과는 변경하지 않았고 새 장기 학습을 시작하지 않았다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

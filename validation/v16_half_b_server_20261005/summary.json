@@ -1,0 +1,54 @@
+{
+  "format": "hiercp_half_B_user_server_terminal_summary_v1",
+  "origin": "user_supplied_terminal_summary_20261005",
+  "independent_checkpoint_or_raw_metric_verification": false,
+  "experiment": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3",
+  "results": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3/results/half_B",
+  "published_runner_commit": "c0212ee791b341893a0bca9e0376f13809e1ccf3",
+  "actual_server_checked_out_commit_verified": false,
+  "initial_validation": {
+    "loss": 3.86478,
+    "MRR": 0.249074,
+    "top1": 0.027778,
+    "margin": -0.084152
+  },
+  "best_validation": {
+    "epoch": 20,
+    "loss": 0.130164,
+    "MRR": 1,
+    "top1": 1,
+    "margin": 10.340888
+  },
+  "last_train": {
+    "epoch": 40,
+    "loss": 0.006447,
+    "MRR": 1,
+    "top1": 1,
+    "margin": 7.86264
+  },
+  "last_validation": {
+    "epoch": 40,
+    "loss": 0.068598,
+    "MRR": 1,
+    "top1": 1,
+    "margin": 8.808204
+  },
+  "last_epoch_minutes": 15.83,
+  "mean_epoch_minutes": null,
+  "completed_epoch_records": 40,
+  "target_epochs": 40,
+  "full_training_complete_reported": true,
+  "full_evaluation_complete_reported": false,
+  "terminal_host": "ece-a6gpu6",
+  "server_GPU_model_and_index_verified_from_this_summary": false,
+  "stderr_excerpt": {
+    "optimization_last_progress": "151/151 [11:22<00:00, 2.61s/batch]",
+    "validation_last_progress": "33/36 [00:43<00:06, 2.07s/batch]",
+    "traceback_present_in_supplied_excerpt": false,
+    "excerpt_is_not_full_invocation_log": true
+  },
+  "interpretation": "Legacy v2.2 L1/L2/scorer learns the preserved v1 source-anchor/curriculum task. Severe original v2.2 failure is not reproduced by B alone; this is not an exact native v2.2 reproduction or 128-candidate CP quality evaluation.",
+  "single_bad_component_localized": false,
+  "automatic_combined_arm_started": false,
+  "new_training_started_by_agent": false
+}
