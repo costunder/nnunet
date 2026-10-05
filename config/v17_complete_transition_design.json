@@ -1,6 +1,6 @@
 {
   "format": "hiercp_v17_complete_transition_design_v1",
-  "status": "COMPLETE_CHANGE_INVENTORY_NATIVE_SERVER_RECIPE_PENDING",
+  "status": "NATIVE_SERVER_RECIPE_REPORTED_BOUND_COMPLETE_BRIDGES_PENDING",
   "inventory": {
     "format": "hiercp_complete_v1_m10_to_localcnn_v22_transition_v1",
     "baseline": "completed_v1_m10",
@@ -552,7 +552,21 @@
   "half_A": "/home/aicompetition06/Medical/experiments/v15_m10_halfA_seed42_20261004",
   "half_B": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3",
   "server_receipt_tool": "tools/export_v1_v22_transition_receipt.py",
-  "server_recipe_bound": false,
+  "server_recipe_bound": true,
+  "server_recipe_binding_evidence": {
+    "kind": "user_supplied_server_collector_terminal_output",
+    "artifact": "validation/v17_transition_server_20261005/server_terminal.txt",
+    "sha256": "8ae1fe4289165b3f5ac613b04e822820cb9069ad0bb48638edd36e64be913e6c",
+    "collector_commit": "61444030d03dc7e35a4a90102a70f0b44af506e8",
+    "receipt_on_server": "/home/aicompetition06/Medical/experiments/v17_transition_receipt_20261005_112021_1163352/receipt.json",
+    "summary_on_server": "/home/aicompetition06/Medical/experiments/v17_transition_receipt_20261005_112021_1163352.terminal_summary.json",
+    "exact_native_recipe_bound_reported": true,
+    "required_fields_missing_reported": 0,
+    "failed_bindings_reported": 0,
+    "source_files_per_root_reported": 121,
+    "source_mismatches_reported": 0,
+    "full_server_receipt_independently_loaded_locally": false
+  },
   "executable_training_arms": [],
   "training_started": false,
   "quality_verified": false,
@@ -566,7 +580,6 @@
     "U_is_CP_ineligible_GT": false
   },
   "next_required": [
-    "actual_native_checkpoint_recipe_and_source_bytes",
     "actual_two_way_data_model_bridges",
     "matched_evaluation_contract",
     "real_CT_CUDA_update_and_metric_checks"

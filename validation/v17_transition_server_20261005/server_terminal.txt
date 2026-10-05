@@ -1,0 +1,71 @@
+
+(nnunet) aicompetition06@ece-a6gpu6:~/Medical/HierCP-transition-fba6ad8_20261005_105938$ CP_CODE_DIR="/home/aicompetition06/Medical/HierCP-transition-6144403_$(date +%Y%m%d_%H%M%S)"
+
+conda activate nnunet &&
+git -C /home/aicompetition06/Medical/HierCP-v1-47bdb58 fetch origin codex/v222-server-r6 &&
+git -C /home/aicompetition06/Medical/HierCP-v1-47bdb58 worktree add \
+  --detach "$CP_CODE_DIR" 61444030d03dc7e35a4a90102a70f0b44af506e8 &&
+cd "$CP_CODE_DIR" &&
+bash tools/run_v17_transition_terminal_server.sh
+remote: Enumerating objects: 25, done.
+remote: Counting objects: 100% (25/25), done.
+remote: Compressing objects: 100% (8/8), done.
+remote: Total 17 (delta 8), reused 17 (delta 8), pack-reused 0 (from 0)
+Unpacking objects: 100% (17/17), 19.62 KiB | 410.00 KiB/s, done.
+From https://github.com/costunder/nnunet
+ * branch            codex/v222-server-r6 -> FETCH_HEAD
+   fba6ad8..6144403  codex/v222-server-r6 -> origin/codex/v222-server-r6
+Preparing worktree (detached HEAD 6144403)
+Updating files: 100% (1152/1152), done.
+HEAD is now at 6144403 Print server transition settings without ZIP transfer
+READ-ONLY METADATA EXPORT | no neural forward, GPU allocation, or training
+=== TRANSITION RECEIPT | SAVED METADATA ONLY ===
+Neural forward=NO | optimizer updates=0 | new training=NO | new evaluation=NO
+Full server summary: /home/aicompetition06/Medical/experiments/v17_transition_receipt_20261005_112021_1163352.terminal_summary.json
+Native checkpoint: /home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/attempts/0001/checkpoint_latest.pt
+Saved epoch/step/phase/cursor/batch: {"batch":32,"epoch":39,"next_batch":533,"phase":"refresh_memory","selected_epoch":null,"step":21320}
+Exact native recipe bound: true
+L0: {"architecture":"paired_native_local_cnn_v1","channels":[12,24,32],"convolutions":[2,3,3],"fusion":"donor_target_difference_product","hidden_dim":128,"initialization":"fresh_seed42","input":"native_spacing_organ_only","learning_policy":"same_donor_live_v1","margin_mm":10.0,"readout":"organ_masked_mean_each_scale"}
+Upper config: {"alignment_layers":2,"alignment_loss_weight":1,"label_count":2,"prototype_score":"patient_mass_weighted_logsumexp_within_observation_class","task_layers":2,"temperature":0.2}
+GT: P=observed tumor; U=unobserved comparison; neither is donor-specific CP suitability
+Recorded label contract: ["no_tumor_observed_at_comparison_center","small_tumor_observed_at_anchor"]
+Ranking: {"auxiliary":"global balanced CE; inverse schedule multiplicity per observation","donor":"one fixed train-only donor per case; independent of observation class","normalization":"epoch objective: global pair mean and global balanced observation mean","objective":"same_donor_live_v1","observation_auxiliary_weight":1.0,"query_scope":"all observations; retain cases without eligible positive","ranking":"all within-case observed/unobserved pairs exactly once per epoch","ranking_weight":1.0,"reference" ... [full JSON preserved]
+Learning policy: "same_donor_live_v1"
+Support: {"evaluation":"full eligible inner-train support, once per query patient","exclusion":"query patient on both recipient and donor sides","observations":"all eligible rows of selected patients","patients":16,"policy":"patient_episode_v1","refresh":"one selection and frozen cluster plan per query-patient episode","selection":"class-covered least-used patients; seeded epoch tie order"}
+Request resources: {"batch_candidates":[32],"cuda_gib":40.0,"debug":false,"device_cache_gib":8.0,"resident_gib":128.0,"rss_gib":192.0,"support_patients":16,"workers":16}
+Saved resources: {"cuda_bytes":42949672960,"rss_bytes":206158430208}
+Execution/cache: {"checkpoints":"every update; immutable packed CPU snapshot; one ordered writer; flush on pause/phase/return","device_cache_bytes":8589934592,"gradient_check":"one finite decision per update","mode":"overlapped","sage_workspace_bytes":67108864}
+Precision: "FP32" | activation: "retained"
+Configured LR: 0.0001 | saved optimizer LR: [0.0001]
+Declared batch candidates/workers/epochs: {"candidates":[32],"epochs":40,"workers":16}
+Resolved physical/effective/accumulation: {"accumulation":1,"effective_batch":32,"physical_batch":32}
+Complete inventory: {"observed_positive":662,"records":14102,"unique_ids":14102,"unobserved_comparison":13440}
+Split counts: {"inner_train":{"P":527,"U":10752,"available":true,"declared_cases":84,"inventoried_cases":84,"records":11279},"inner_val":{"P":135,"U":2688,"available":true,"declared_cases":21,"inventoried_cases":21,"records":2823},"outer_fold":{"available":false,"reason":"split_case_list_missing"},"outer_train":{"P":662,"U":13440,"available":true,"declared_cases":105,"inventoried_cases":105,"records":14102},"outer_val":{"P":0,"U":0,"available":true,"declared_cases":26,"inventoried_cases":0,"records":0}}
+Native initial validation | MRR=0.116764 top1=0.000000 margin=UNKNOWN loss=0.693194
+Native last validation epoch=39 | MRR=0.146376 top1=0.007407 margin=UNKNOWN loss=0.693147
+Source root checks: [{"expected_files":121,"matches_checkpoint_source":true,"mismatches":0,"required_source_fields_missing":0,"root":"/home/aicompetition06/Medical/HierCP-transition-6144403_20261005_112017"},{"expected_files":121,"matches_checkpoint_source":true,"mismatches":0,"required_source_fields_missing":0,"root":"/home/aicompetition06/Medical/HierCP-v1-47bdb58"},{"expected_files":121,"matches_checkpoint_source":true,"mismatches":0,"required_source_fields_missing":0,"root":"/home/aicompetition06/Medical/HierCP-cnn-cd26119"}]
+Missing fields: 0 | categories: {}
+Failed bindings: 0
+Collection errors: 0 | parsing failures: 0
+--- Existing comparison evidence (v1 eight-candidate metrics) ---
+baseline | records=40/40 | all40=true | full training reported=true
+baseline initial | MRR=0.301521 top1=0.055556 margin=-0.014954 loss=3.823015
+baseline best epoch=11 | MRR=1.000000 top1=1.000000 margin=14.371202 loss=0.099708
+baseline last recorded epoch=40 | MRR=1.000000 top1=1.000000 margin=13.398003 loss=0.022420
+baseline last wall seconds=712.8630050341599 | conflicting epoch records=0
+half_A | records=40/40 | all40=true | full training reported=true
+half_A initial | MRR=0.472355 top1=0.250000 margin=-0.011617 loss=3.808948
+half_A best epoch=29 | MRR=0.972222 top1=0.944444 margin=12.054579 loss=0.388641
+half_A last recorded epoch=40 | MRR=0.958333 top1=0.916667 margin=11.820597 loss=0.384854
+half_A last wall seconds=243.22996180993505 | conflicting epoch records=0
+half_B | records=40/40 | all40=true | full training reported=true
+half_B initial | MRR=0.249074 top1=0.027778 margin=-0.084152 loss=3.864780
+half_B best epoch=20 | MRR=1.000000 top1=1.000000 margin=10.340888 loss=0.130164
+half_B last recorded epoch=40 | MRR=1.000000 top1=1.000000 margin=8.808204 loss=0.068598
+half_B last wall seconds=949.6297989720479 | conflicting epoch records=0
+Complete missing-field names, source mismatches and parse errors are preserved in the server summary JSON.
+Metadata does not establish new model quality, GPU validity or production readiness.
+=== END TRANSITION RECEIPT ===
+SERVER SUMMARY JSON: /home/aicompetition06/Medical/experiments/v17_transition_receipt_20261005_112021_1163352.terminal_summary.json
+FULL SERVER METADATA: /home/aicompetition06/Medical/experiments/v17_transition_receipt_20261005_112021_1163352/receipt.json
+(nnunet) aicompetition06@ece-a6gpu6:~/Medical/HierCP-transition-6144403_20261005_112017$

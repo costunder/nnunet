@@ -35,7 +35,17 @@ native의 experiment manifest에 결속된 checkpoint를 선택한다. 임의 �
 
 `bash tools/run_v17_transition_terminal_server.sh` 한 번으로 알려진 네 실험의 자료 수집과 터미널 요약 출력을 수행한다. 사용자에게 ZIP 다운로드나 첨부를 요구하지 않는다. 요약은 실제 batch·epoch·step, input/GT/loss/support, 전체 inventory 개수, 학습 기록, 미결 출처 항목을 보여준다. 긴 목록은 출력만 집계하며 전체 원문과 JSON은 서버에 보존한다. console용 JSON은 원래 receipt manifest와 분리해 옆 파일로 기록한다. 출력 줄 수 제한은 모델·데이터 규모 제한이 아니다.
 
-실제 서버 receipt를 받기 전에는 현재 개발 checkout을 실패 실험의 정확한 학습 recipe라고 가정하지 않는다. 이번 변경은 전체 누락 목록과 실제 recipe를 확인할 실행 경로이며, 전체 전환 학습 arm의 완료 보고가 아니다. 기존 A/B 전체 학습, 로컬 smoke, 자료 결속 검사를 서로 구분한다.
+서버 collector의 실제 출력은 아래에 기록했다. 이번 변경은 전체 누락 목록과 실제 recipe를 확인할 실행 경로이며, 전체 전환 학습 arm의 완료 보고가 아니다. 기존 A/B 전체 학습, 로컬 smoke, 자료 결속 검사를 서로 구분한다.
+
+## 2026-10-05 서버 자료 수집 결과
+
+사용자가 제출한 `6144403` 실행 출력의 원본 bytes를 `validation/v17_transition_server_20261005/server_terminal.txt`에 보존했다. SHA256은 `8ae1fe4289165b3f5ac613b04e822820cb9069ad0bb48638edd36e64be913e6c`이다. 서버 collector는 `exact_native_recipe_bound=true`, source 121개 일치, 필수 누락·binding 실패·수집 오류·파싱 오류 0을 보고했다. 따라서 설정 수집 단계는 끝났다. 전체 서버 receipt JSON을 로컬에서 별도로 읽었다는 주장은 하지 않는다.
+
+native 실제 설정은 10mm, CNN channels 12/24/32, convolutions 2/3/3, hidden128, L1/L2 각2층, same-donor-live, 전체 P/U objective다. 실제 physical/effective batch는32, accumulation1, workers16, FP32, retained activation, 상수 LR1e-4, 학습 support16patients, 평가 full train support다. 전체 inventory14,102개 중 train84case/11,279rows/P527/U10,752, validation21case/2,823rows/P135/U2,688이다. outer26case는 이 inventory에 없으며 평가하지 않았다.
+
+저장 cursor는 zero-based epoch39/step21,320/next_batch533/refresh_memory다. 실제 loop에서 epoch는 validation 후 증가하므로 40번째 epoch의 optimization은 끝났지만 해당 refresh·validation·final memory 완료는 이 checkpoint로 확인되지 않는다. 마지막 저장 validation은 epoch39이며 MRR0.146376, R@1 0.007407, pairwise loss0.693147이다. 초기 validation은 MRR0.116764, R@1 0, loss0.693194다. 이 수치는 점수 분리가 매우 약하다는 근거지만 특정 레이어나 후보 개수가 원인이라는 단독 증거는 아니다.
+
+기존 baseline/A/B는 모두40epoch 기록이 있고 전체 학습 완료를 보고한다. 각각 best MRR/top1은1/1, 0.972222/0.944444, 1/1이다. 이는 원래8후보 과제의 결과이며, native P+128U 평가를 통과한 결과가 아니다. 기존 `evaluate_v1_sampling_pair.py`도8후보 검사이므로 이름만 바꿔 전체128 평가로 취급하지 않는다. 새 전체 변경 이분 arm의 입력 bridge와 공통 평가 계약은 아직 미구현·미검증 상태다. 수집 완료를 이유로 runnable/quality/production flags를 올리거나 기존 baseline/A/B를 자동 재학습하지 않는다.
 
 ## 이번 변경의 검증
 
