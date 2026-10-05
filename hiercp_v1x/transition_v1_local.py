@@ -83,8 +83,10 @@ def local_contract() -> dict:
 
 
 def source_identity() -> dict:
+    from .transition_v1_empty_context import identity
     return dict(contract=local_contract(), module_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-                contract_sha256=hashlib.sha256(_json(local_contract())).hexdigest())
+                contract_sha256=hashlib.sha256(_json(local_contract())).hexdigest(),
+                recipient_absence_adapter=identity())
 
 
 def _runtime(*, expected_snapshot_root=None, scope_contract=None):
@@ -109,6 +111,8 @@ def _runtime(*, expected_snapshot_root=None, scope_contract=None):
             raise ValueError("Actual original six-role schema required")
         _RUNTIME = dict(local=local, schema=schema, sample=sample, model=model, spatial=spatial,
                         snapshot=snapshot, scope=copy.deepcopy(active))
+        from .transition_v1_empty_context import install
+        install(_RUNTIME)
     elif (_RUNTIME["scope"] != active or expected_snapshot_root is not None
           and _RUNTIME["snapshot"] != Path(expected_snapshot_root).resolve(strict=True)):
         raise RuntimeError("Use a fresh isolated worker for a different original input contract")
@@ -402,6 +406,9 @@ def pair_record(target, source, donor_spacing, prepared: PreparedDonor, center, 
                  source_occupied_voxels_preserved=True, recipient_occupied_voxels_preserved=True,
                  target_erasure=True, observed_GT_used=False,
                  original_build_local_graph_used=True, complete_original_radius_topology=True)
+    from .transition_v1_empty_context import PROOF_KEY
+    if PROOF_KEY in built.target_local:
+        audit["recipient_context_absence"] = copy.deepcopy(built.target_local[PROOF_KEY])
     record = dict(format=FORMAT, encoder_id=ENCODER_ID, case_id=target.paths.case_id,
         donor_case_id=donor_id, component_id=int(source.component_id), center=center.tolist(), seed=base["seed"],
         graph_config=config.to_dict(), scope_contract=prepared.scope_contract, input_provenance=bound,
@@ -425,6 +432,10 @@ def validate_record(record):
         return
     if record["content_binding"].get("graph_sha256") != _graph_hash(record):
         raise ValueError("D canonical CT/graph/assignment content changed")
+    from .transition_v1_empty_context import validate_local_proof
+    proof = validate_local_proof(record["source_local"], record["target_local"])
+    if record.get("audit", {}).get("recipient_context_absence") != proof:
+        raise ValueError("Recipient context audit and canonical geometry proof differ")
     for name in ("source_patch", "target_patch"):
         value = record.get(name)
         if (not isinstance(value, Tensor) or value.device.type != "cpu" or value.shape != (5, 48, 48, 48)

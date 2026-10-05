@@ -1,0 +1,58 @@
+{
+  "format": "v17_reuse_published_checkout_provenance_DEBUG_v1",
+  "completed": true,
+  "debug": true,
+  "published_commit": "aa280829d018ed0f4426a03d59f794b724d76bb0",
+  "source_inventory_count": 176,
+  "source_inventory_sha256": "f5ffde4c3bd64750094cb822bbc4d7f42d4c58bcfbbe90883ecf755aeb2f9ef8",
+  "unit_fixture_exact_archive_runtime_closure": true,
+  "gitattributes_sha256": "65f9180863d30caf150e838d20fe479eeda17a636b4ddf1a20c350009a2e8863",
+  "archive_probe_core_autocrlf": false,
+  "explicit_checkout_conversion": [
+    {
+      "path": "tools/online_eval_provenance.py",
+      "attribute_rule": "/tools/online_eval_provenance.py text eol=crlf",
+      "published_blob_sha256": "f624ffe37adc708ba5495b1b6bb9c59df74b841109442994379acd175ba75d91",
+      "published_checkout_sha256": "72f14498dd932254ebaccd35ce157f8ca3c340a38f14a9c2e36798482480ea01",
+      "blob_CRLF_count": 0,
+      "checkout_CRLF_count": 295,
+      "current_checkout_identical": true
+    },
+    {
+      "path": "tools/online_eval_v2.py",
+      "attribute_rule": "/tools/online_eval_v2.py text eol=crlf",
+      "published_blob_sha256": "f43334655e9f14b3b0a2fd279b1309c96617d7a881ec1ebd39aac911b20ba74d",
+      "published_checkout_sha256": "a8fb594a3bbf288b39cd4fb50ea39eaffa509147075705ec8a96bd640ab2d0a8",
+      "blob_CRLF_count": 0,
+      "checkout_CRLF_count": 1775,
+      "current_checkout_identical": true
+    },
+    {
+      "path": "tools/online_raw_bank_preparation.py",
+      "attribute_rule": "/tools/online_raw_bank_preparation.py text eol=crlf",
+      "published_blob_sha256": "484c572e4ea5132248eb09c71c16b5e8131bf1c673c59e782704e3380c1fcb6e",
+      "published_checkout_sha256": "c4c8950d0ac7849c8a712f2993d0c75b80333d7e151941f3980c39f7918db150",
+      "blob_CRLF_count": 0,
+      "checkout_CRLF_count": 153,
+      "current_checkout_identical": true
+    }
+  ],
+  "current_runtime_source_count": 177,
+  "current_runtime_source_sha256": "525f0da5f95069ef12fe8278472f3f49d9c6c1ab15f1acf42bf536e1c7f02cdb",
+  "admitted_execution_changes": {
+    "hiercp_v1x/transition_v1_empty_context.py": {
+      "old": null,
+      "new": "a12763fbeec8ba03545c8a3579cfa2de5bab767efdb39c17053a8fae3826104d"
+    },
+    "hiercp_v1x/transition_v1_local.py": {
+      "old": "8bfe9466d23bab7f33fb11678dc3017f0a6cde1c375d48e86957198ee2a30d49",
+      "new": "0cede7d0639b845b8318fc118d0a5dddc3a2cd1888bf9e080878a4877a42b762"
+    },
+    "tools/reuse_v17_D_preparation.py": {
+      "old": "dcdfb760b8a95fd08d717c1be392df5af031fc87a4881234970a750ff1938354",
+      "new": "641cf95d00ecf34be0391bd4cb603271b93eb87e2905b42a90d6c15f299928d1"
+    }
+  },
+  "original_scope_source_bytes_unchanged": true,
+  "production_graph_or_training_executed": false
+}

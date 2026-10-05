@@ -1,0 +1,71 @@
+test_absence_adapter_must_be_in_current_execution_closure (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_compatibility_respects_explicit_RSS_admission (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_current_adapter_hash_tamper_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_current_local_identity_cannot_be_invented (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_extra_execution_module_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_fixture_is_exact_published_176_source_inventory (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_new_adapter_hash_in_manifest_must_match_actual_file (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_new_model_graph_contract_change_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_new_scope_change_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_nonfinite_context_is_rejected_even_with_rebound_content_hash (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_old_audit_cannot_add_new_absence_marker (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_old_count_cannot_hide_empty_target_context (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_old_empty_donor_context_cannot_be_relabelled (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_old_empty_target_context_cannot_be_relabelled (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_old_record_cannot_add_new_absence_marker (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_old_record_scope_marker_is_required (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 2 completed observations | workers=2 | unchanged10mm/source/target bytes
+D verified original nonempty context | 2/2
+D read-only reuse compatibility | 2 completed observations | workers=2 | unchanged10mm/source/target bytes
+D verified original nonempty context | 2/2
+test_read_only_compatibility_import_checks_every_completed_row (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_record_assignment_and_binding_are_checked (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+test_record_content_binding_tamper_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+D read-only reuse compatibility | 1 completed observations | workers=2 | unchanged10mm/source/target bytes
+D verified original nonempty context | 1/1
+test_uncompleted_graph_is_never_deserialized_or_imported (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_unpublished_execution_inventory_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_unpublished_local_source_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_unrelated_neural_execution_change_is_rejected (tests.test_transition_recipient_absence_reuse.RecipientAbsenceReuseUNIT) ... ok
+test_active_old_run_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_bad_segment_paths_are_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_calling_process_destination_lock_is_admitted (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_changed_graph_bytes_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_changed_gt_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_complete_import_leaves_publication_to_provider (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_destination_manifest_must_be_owned (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_duplicate_json_key_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_empty_ledger_imports_no_uncommitted_files (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_existing_destination_is_rejected_without_overwrite (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_extent_mismatch_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_measurement_inconsistent_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_missing_graph_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_missing_hash_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_nested_destination_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_neural_source_change_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_other_destination_process_lock_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_partial_import_has_exact_links_and_no_uncommitted_rows (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_request_change_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_reused_completion_receipt_tamper_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_reused_import_receipt_tamper_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_row_population_change_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_same_import_is_idempotent_after_provider_continuation (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_settings_hardware_snapshot_change_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_shared_file_symlink_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... skipped "OS does not grant symlink creation: [WinError 1314] Ŭ���̾�Ʈ�� �ʿ��� ������ ������ ���� �ʽ��ϴ�: 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\UNIT_D_reuse_09scrkt9\\\\UNIT_target.pt.gz' -> 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\UNIT_D_reuse_09scrkt9\\\\old\\\\canonical_cache\\\\segments\\\\55555555555555555555555555555555\\\\shared_sources\\\\6666666666666666666666666666666666666666666666666666666666666666.pt.gz'"
+test_symlink_guard_rejects_reference_before_resolution (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_wrong_ordinal_is_rejected (tests.test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+
+----------------------------------------------------------------------
+Ran 50 tests in 4.005s
+
+OK (skipped=1)

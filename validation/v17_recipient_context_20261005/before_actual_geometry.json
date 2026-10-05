@@ -1,0 +1,248 @@
+{
+  "format": "v17_actual_failed_recipient_context_DEBUG_v1",
+  "debug": true,
+  "observation": {
+    "id": "liver_106:2",
+    "case_id": "liver_106",
+    "patient_group": "case:liver_106",
+    "component": null,
+    "center": [
+      164,
+      302,
+      444
+    ],
+    "target": 0,
+    "donor_case_id": "liver_117",
+    "donor_component": 14,
+    "donor_group": "case:liver_117",
+    "bounds": {
+      "nodes": 0,
+      "edges": 0,
+      "bytes": 442496
+    },
+    "DEBUG_schedule_bounds_scope": "original CNN-only patch file; D graph cost measured independently"
+  },
+  "source": {
+    "source": "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "verified_files": {
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    }
+  },
+  "scope": {
+    "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+    "margin_mm": 10.0,
+    "context_outer_radius_mm": 10.0,
+    "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+    "implicit_depth_expansion": false,
+    "mandatory_surface_search": false,
+    "optional_roles": [
+      "source_liver_surface",
+      "target_liver_surface"
+    ],
+    "CNN_shape": [
+      48,
+      48,
+      48
+    ],
+    "coordinate_normalization_mm": 28.0,
+    "tumor_sdf_normalization_mm": 28.0,
+    "context_shells_mm": [
+      4.0,
+      12.0,
+      28.0
+    ],
+    "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "original_module_sha256": {
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    },
+    "debug": true,
+    "production_ready": false,
+    "quality_verified": false,
+    "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  },
+  "local_identity": {
+    "contract": {
+      "format": "native_PU_actual_original_v1_local_two_view_10mm_v1",
+      "encoder": "actual_archived_v1_six_role_local_encoder_on_native_PU",
+      "original_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+      "width": 128,
+      "heads": 4,
+      "local_layers": 3,
+      "dense_base_channels": 12,
+      "dense_feature_dim": 32,
+      "dense_execution_chunk_size": 4,
+      "dense_input_shape": [
+        5,
+        48,
+        48,
+        48
+      ],
+      "dropout": 0.1,
+      "checkpoint_dense_encoder": false,
+      "checkpoint_local_blocks": false,
+      "activation_storage": "native endpoint retained; actual explicit model flags recorded in checkpoint extra_state",
+      "roles": [
+        "tumor_surface",
+        "tumor_interior",
+        "source_context",
+        "source_liver_surface",
+        "target_context",
+        "target_liver_surface"
+      ],
+      "handcrafted_dim": 16,
+      "ROI_margin_mm": 10.0,
+      "original_coordinate_normalization_mm": 28.0,
+      "original_shells_mm": [
+        4.0,
+        12.0,
+        28.0
+      ],
+      "source_CT": "actual donor CT; original normalization and five channels",
+      "target_CT": "actual recipient CT with original donor-footprint target erasure",
+      "footprint": "full original donor mask regridded about explicit anchor to recipient spacing",
+      "graph": "actual original canonical radius edges and native two-hop sampled views; no new caps",
+      "views_per_observation": 2,
+      "dense_maps_shared_between_views": true,
+      "bridge": "mean of the two genuine original semantic fused128 vectors",
+      "view_consistency": "actual original six-key cosine mean; runner adds original weight0.1",
+      "view_consistency_weight": 0.1,
+      "query_GT_in_forward": false,
+      "observed_unobserved_labels": "unchanged native labels supplied only to external objective",
+      "native_total_assignment_count": 14102,
+      "native_comparisons_per_recipient": 128,
+      "native_equivalence": false,
+      "original_task_equivalence": false,
+      "differences": [
+        "native all-observed-P/128U task replaces original anchor/curriculum task",
+        "external training donor/recipient replace original same-case placement",
+        "native upper consumes one real fused128 view mean",
+        "original erasure/five-channel/graph input block remains distinct from native raw CT CNN"
+      ]
+    },
+    "module_sha256": "8bfe9466d23bab7f33fb11678dc3017f0a6cde1c375d48e86957198ee2a30d49",
+    "contract_sha256": "bdf4d8b530fd8ab18e066198e4b33e40251058b260b5b8a246e3bf61bd5b00e4"
+  },
+  "geometry_measurements": [
+    {
+      "native_shape": [
+        47,
+        51,
+        39
+      ],
+      "organ_voxels": 50796,
+      "full_footprint_voxels": 558,
+      "annulus_liver_voxels": 18406,
+      "eligible_deep_context_voxels": 11892,
+      "actual_liver_surface_voxels": 11820,
+      "maximum_annulus_depth_mm": 16.710716247558594,
+      "canonical_nodes": {
+        "surface": 63,
+        "interior": 14,
+        "context": 445,
+        "liver_surface": 193
+      },
+      "semantic_mask_sha256": "1a0ca52505f5b77846ca9bbe0b1a7edb8f7170e4338d71fc7750f12503cd3388",
+      "organ_sha256": "fb930f191f42a75b6fcf6eb6f909782371b501d69b422f8d7df80b58987428c8",
+      "footprint_sha256": "2c014b610f90444cc6de4e8fc3e739a6d2f71bb963ca619eacb4c48a64093054",
+      "boundary_depth_mm": 3.0,
+      "surface_separation_mm": 1.0,
+      "context_inner_mm": 2.0,
+      "context_outer_mm": 10.0
+    },
+    {
+      "native_shape": [
+        45,
+        49,
+        39
+      ],
+      "organ_voxels": 3599,
+      "full_footprint_voxels": 538,
+      "annulus_liver_voxels": 1567,
+      "eligible_deep_context_voxels": 0,
+      "actual_liver_surface_voxels": 3143,
+      "maximum_annulus_depth_mm": 3.200000047683716,
+      "canonical_nodes": {
+        "surface": 60,
+        "interior": 15,
+        "context": 0,
+        "liver_surface": 78
+      },
+      "semantic_mask_sha256": "a6f2848e2def405ff1a1ea908d4a13ffec56e9e3a7e8c4384759b26df2636fd6",
+      "organ_sha256": "3143e649245d39aa6705a3555730c6793d63cbb0ab84ea53d60811ad12e8c013",
+      "footprint_sha256": "46612dace5aeba527362728c7b7b4e46e05e86bbd6f73f70da9ef96ec00fa3b5",
+      "boundary_depth_mm": 3.0,
+      "surface_separation_mm": 1.0,
+      "context_inner_mm": 2.0,
+      "context_outer_mm": 10.0
+    }
+  ],
+  "error": "D original geometry admission failed for liver_106:2; donor=liver_117 component=14 recipient_center=[164, 302, 444]; no row skipped: V22 context coordinates are invalid: (0, 3)",
+  "constructed": false,
+  "wall_seconds": 8.62443110003369,
+  "rss_bytes": 5029572608,
+  "training_started": false,
+  "production_ready": false,
+  "original_files_modified": false,
+  "GT_center_donor_margin_changed": false
+}
