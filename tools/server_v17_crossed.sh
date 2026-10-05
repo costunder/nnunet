@@ -44,6 +44,11 @@ printf 'batch unit=%s | explicit candidates=%s\n' "$CP_BATCH_UNIT" "$CP_PHYSICAL
 printf 'baseline=%s\nnative=%s\nnew output=%s\n' "$CP_BASELINE" "$CP_NATIVE_RUN" "$CP_OUTPUT"
 printf 'Production40 epochs; whole native P+128U benchmark; no other arm starts.\n'
 
+crossed_preparation_reuse=()
+if [[ -n "${CP_REUSE_PREPARATION:-}" ]]; then
+  crossed_preparation_reuse=(--reuse-preparation "$CP_REUSE_PREPARATION")
+fi
+
 python -B -u tools/run_v17_crossed_training.py \
   --arm "$CP_ARM" \
   --baseline "$CP_BASELINE" \
@@ -52,6 +57,7 @@ python -B -u tools/run_v17_crossed_training.py \
   --gpu "$CP_GPU" \
   --workers "$CP_WORKERS" \
   --physical-batch-candidates "${crossed_physical_batch_candidates[@]}" \
+  "${crossed_preparation_reuse[@]}" \
   --cuda-gib "$CP_CUDA_GIB" \
   --rss-gib "$CP_RSS_GIB" \
   --resident-gib "$CP_RESIDENT_GIB"

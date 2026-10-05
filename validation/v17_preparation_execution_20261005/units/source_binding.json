@@ -1,0 +1,24 @@
+{
+  "tests_run": 157,
+  "tests_passed": 156,
+  "tests_skipped": 1,
+  "tests_failed": 0,
+  "log_sha256": "75b90f51cdb1be3743f8fb3656aea7d817cef475d536df0755103cac0d963ebe",
+  "test_source_sha256": {
+    "tests/test_transition_c_training.py": "a8fe2c5154806496192e7ada1df4e6886c4accae312c2eaad276cdd1484691d5",
+    "tests/test_transition_evaluation.py": "4399f84bc07dda720d43eaf9380af28ca526323384cf4f9b7765397dd552dbd2",
+    "tests/test_transition_native_local.py": "6721311e6530bf510bb69499a3f7722f0fb179c8d952e8badefc17e1c7325553",
+    "tests/test_transition_preparation_parallel.py": "bc89cda659ae6d1dd5e02e1540f05fa84569c7b162b8530b196a76aa5b9bfb44",
+    "tests/test_transition_preparation_reuse.py": "afacc49df28919f1f7eacbe4e9458e27933a2566e64dd7da57f78bfcf13e4c2f",
+    "tests/test_transition_preparation_storage.py": "c1cf164eed7af9f623e1b7e9b8fad86671fa35e2b031f0476410f128fb3d248a",
+    "tests/test_transition_reference.py": "5edd16c3c82830d1a6216c3af3f6e1f41de6b633be87dc9bdd927dbb18a1be70",
+    "tests/test_transition_resident_ledger.py": "b77e5553c2940a82b7e524a284adb93365ea13e34b3b2c6940e677e4fb9c8793",
+    "tests/test_transition_terminal_cli.py": "4d8d3ad9f38919d8806fa10851071c8d28fefd9c1bf6ed6a8bdc1def27f2ea68",
+    "tests/test_transition_terminal_report.py": "29ce4cda4f10b50d98f17bce16c6930551a5f493cacdd34b152ed9def3223605",
+    "tests/test_transition_timing.py": "6eda1d1da8801ac9ef494ff2b1d704dc9689bdd06aca8d7a467306fca53950fe",
+    "tests/test_transition_v1_local.py": "f416f43560afb6173b6dbc4f883feca4b4c5decff6b6ac9bb8c832e8b764a433",
+    "tests/test_transition_v1_preparation.py": "564f0d361a024777be7ea28b5043cb64bf218032dd2e55ceba7caa015a9f52c2"
+  },
+  "source_binding_scope": "Current frozen test sources and log bytes; no GPU quality inference",
+  "stdlib_AST_test_source_files": 13
+}

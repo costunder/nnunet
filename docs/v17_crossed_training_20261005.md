@@ -113,6 +113,34 @@ D의 원본 그래프 준비는 DEBUG537 observations/1074 sampled views 전체�
 
 다음 실행은 Git에 게시한 정확한 commit의 `tools/server_v17_crossed.sh`에서 선택한 C 또는 D 한 arm만 시작한다. script의 `CP_CODE_COMMIT` 검사는 실제 checkout과 다르면 중단한다. `CP_GPU`, `CP_ARM`, arm별 고정 `CP_OUTPUT`을 명시하며 같은 출력으로 재실행하면 그 arm의 checkpoint를 사용한다. 최종 서버 명령의 commit 값은 게시 후 확인된 실제 SHA를 사용한다. D 전체 graph 준비와 full-shape batch32/실제 할당 자원 preflight,40epoch 학습, 전체21case 공통 평가는 남아 있다. 두 arm을 자동 실행하거나 CP/nnU-Net으로 자동 진행하지 않는다.
 
+## 2026-10-05 D 준비 실행 비용 수정
+
+실험은 v1.7 D 그대로다. 10mm full donor footprint+margin, 원본 여섯 역할/연결/두 view, 전체14,102 P/U 관측, 후보128, physical batch32,40epoch와 모델·loss·GT는 바꾸지 않았다. 이번 수정은 준비의 반복 작업 및 저장 실행에만 적용한다. 이전 실행과 원시 근거는 보존한다.
+
+원시537개 준비 로그에서는 growing resident cache의 전체 재집계가 chunk 전후 두 경계에서528.450초를 차지했다. 매 관측의 `write_publish_seconds`에도 동일 집계가 포함됐으므로 그 필드 전체를 디스크 병목이라고 해석하면 안 된다. 기존 writer는 donor를 디스크에 한 번만 저장했지만, 매 관측마다 동일 donor를 다시 직렬화하고 hash했다. Recipient canonical graph build는 이미 병렬이었고, 이후 두 view materialization·직렬화·압축·저장은 직렬이었다.
+
+`transition_v1_data.py`는 공유 storage/NumPy backing allocation의 owner와 겹치는 주소 범위를 증분 ledger로 관리한다. cache mutation 때만 등록/해제하고, report/admission은 누적 byte 수를 읽는다. active batch는 cache에서 퇴거해도 resident admission에 포함된다. `transition_preparation_storage.py`는 provider가 소유한 immutable CPU donor의 tensor 객체/storage/version/layout와 metadata를 확인해 donor 직렬화를 재사용한다. 변경·교체·지원되지 않는 값은 원본 직렬화/hash 경로를 사용한다. NumPy metadata는 매 검사에서 content hash를 확인한다. 원본 generic storage는 변경하지 않았다. `.data`나 외부 NumPy alias를 통한 donor 변경을 지원한다고 주장하지 않는다.
+
+독립된 row의 두 view 검사·직렬화·gzip 저장을 workers만큼 병렬 처리하고, 완성된 receipt와 progress는 원래 ordinal 순서로 발행한다. 실패 row는 완료로 세지 않고, uncommitted 파일과 기존 완료 receipt는 보존한다. 각 worker는 sampled view가 살아 있을 때 RSS 한도를 검사한다. node/edge/관측을 자르는 fallback은 없다.
+
+실제 보존 CT canonical cache를 사용한 CPU DEBUG 측정:
+
+| 측정 경계 | 기존 | 수정 | 보존 검사 |
+| --- | ---: | ---: | --- |
+| 동일32관측/64개 view의 sampling+저장 | 4.588초 | 2.960초 | 압축 graph/source SHA, bounds, sampled N/E 일치 |
+| 동일 donor 직렬화 횟수 | 32회 | 1회 | byte-exact source identity 일치 |
+| 537개 cached record의 메모리 report 1회 | 2.432초 | 0.004673초 | physical bytes 1,054,304,254 일치 |
+
+Ledger 최초537개 등록 비용1.842초는 별도로 측정했다. CPU16 logical/torch CPU2 threads/parallel16, peak RSS1.96GiB였다. 이 측정에는 raw CT canonical graph construction이 포함되지 않는다. 따라서1.55배 post-build 가속이나520배 report 가속을 전체14,102 준비/epoch 가속으로 환산하지 않는다. 서버의 torch threads16 및 실제 contention에서 전체 준비 개선 폭은 아직 미측정이다.
+
+실제 RTX5070Ti CUDA DEBUG는 전체401개 train support와136개 validation 관측(P8+128U), 원본 두 view를 유지했다. 명시적 physical observation batch2에서2 optimizer update를 수행했고,677개 trainable tensor 모두 gradient를 받았으며 L0/L1/L2/L2 update 가중치가 변했다. 전체21case 평가나40epoch 품질 증거로 승격하지 않는다. 기존 C/D smoke와 이번 D 실행의 P/U 평가 수치는 같은 범위에서 일치했다.
+
+`--reuse-preparation`은 중단 후 잠금이 해제된 이전 준비의 **완료 receipt만** 검증하고 새 output에 hardlink한다. 준비 request/local source/10mm/GT/donor/ordinal/두 view 측정/파일 SHA·size를 확인한다. 기존 checkpoint·index·uncommitted row는 이관하지 않는다. 전체 coverage 후 provider가 새 index를 발행한다. 실제537관측/541파일/341,444,422 bytes를 graph 복사·deserialize 없이12.056초에 import했다. 같은 new output에서 재실행할 때는 import receipt와 원본 hardlink를 다시 검사하고 자체 checkpoint를 이어 쓴다. 다른 소스·설정의 결과를 강제로 수입하거나 실행 중인 이전 잠금을 제거하지 않는다.
+
+서버에서는 현재 foreground 준비에 Ctrl+C를 한 번 입력하고 shell prompt가 돌아온 뒤, 새 worktree에서 `CP_REUSE_PREPARATION=<이전 output>/canonical_cache`, 별도의 고정 `CP_OUTPUT`, `CP_GPU=3`, `CP_ARM=D`로 실행한다. 이미 완료한 관측은 재구성하지 않고, 남은 관측을 준비한 다음 원래40epoch 학습으로 이어진다. 다른 arm/CP/nnU-Net은 자동 시작하지 않는다. 새 근거는 기존 smoke를 덮어쓰지 않는 `validation/v17_preparation_execution_20261005`에 기록한다.
+
+최종 회귀 검사는157개 실행 중156 PASS/1 SKIP였다. SKIP은 Windows 실제 symlink 생성 권한이며, 별도 symlink-before-resolution 거부 검사는 PASS다. 병렬 실행 barrier, 순서가 뒤집힌 저장의 ordinal receipt, shared-source 용량1회 집계, sampled-view RSS 검사와 실패 보존/정확한 재개를 확인했다.18개 Python 파일 AST와 Linux LF/Bash 문법도 확인했다. 실제 r3의 과거 prepared-cache SHA admission 체인을 따른 별도 STORAGE DEBUG에서는537개 import10.731초, provider 전체 preflight2.772초, 동일 import+preflight 재시작7.110초였다. 이 STORAGE 검사는 full CLI/GPU 검사로 부르지 않으며, CUDA 검사는 위의 별도 실제 D2-update 실행이다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

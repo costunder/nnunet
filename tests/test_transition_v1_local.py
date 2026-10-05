@@ -211,23 +211,26 @@ class TransitionLocalMetadataUnit(unittest.TestCase):
                 calls = 0
                 def __init__(self, root, minimum_free_bytes):
                     self.root = root
+                    import threading
+                    self.lock = threading.Lock()
                 def write(self, relative, record, source_key):
                     file = self.root / relative
                     file.parent.mkdir(parents=True, exist_ok=True)
                     with file.open("xb") as stream:
                         stream.write(("UNIT_graph_file_" + record["UNIT_payload"]).encode())
                     source = self.root / "UNIT_shared_source.pt"
-                    if not source.exists():
-                        with source.open("xb") as stream:
-                            stream.write(b"UNIT_metadata_storage_only")
-                    type(self).calls += 1
-                    if type(self).interrupted and type(self).calls == 2:
+                    with self.lock:
+                        if not source.exists():
+                            with source.open("xb") as stream:
+                                stream.write(b"UNIT_metadata_storage_only")
+                        type(self).calls += 1
+                    if type(self).interrupted and record["UNIT_payload"] == rows[1]["id"]:
                         raise RuntimeError("UNIT explicit interrupted preparation")
                     return dict(path=relative, sha256=_sha(file), bounds=dict(nodes=0, edges=0, bytes=0),
                                 shared_source=dict(path=source.name, sha256=_sha(source), content_sha256="b" * 64))
             output = folder / "canonical"
             unit_views = tuple(graph_metadata(view=view) for view in (0, 1))
-            with patch("hiercp_v22.storage.GraphWriter", UnitWriter), patch.object(local, "materialize_pair", return_value=(unit_views, None, None)):
+            with patch("hiercp_v1x.transition_preparation_storage.GraphWriter", UnitWriter), patch.object(local, "materialize_pair", return_value=(unit_views, None, None)):
                 first = UnitProvider(ds, workers=2, resident_bytes=1024**3, rss_bytes=2*1024**3)
                 with self.assertRaisesRegex(RuntimeError, "UNIT explicit interrupted"):
                     first.preflight(output, minimum_free_bytes=1)

@@ -1,0 +1,241 @@
+test_bound_receipt_recovers_atomic_write_tail_without_mutating_scientific_cursor (test_transition_c_training.ExactEpochWallContracts) ... ok
+test_closing_receipt_recovers_history_wall_and_leaves_next_epoch_inactive (test_transition_c_training.ExactEpochWallContracts) ... ok
+test_continuous_wall_counts_operations_and_writer_wait_but_not_downtime (test_transition_c_training.ExactEpochWallContracts) ... ok
+test_invalid_or_backwards_elapsed_measurements_are_refused (test_transition_c_training.ExactEpochWallContracts) ... ok
+test_overlapped_phases_never_double_count_continuous_epoch_wall (test_transition_c_training.ExactEpochWallContracts) ... ok
+test_rehashed_wrong_teacher_ownership_cannot_be_resumed (test_transition_c_training.SupportRestartState) ... ok
+test_snapshot_is_detached_and_own_digest_rejects_mutation (test_transition_c_training.SupportRestartState) ... ok
+test_untrained_restart_does_not_invent_a_support_bank (test_transition_c_training.SupportRestartState) ... ok
+test_best_selection_uses_margin_then_actual_ranking_and_rounding (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_debug_bounds_are_explicit_and_do_not_change_production_epochs (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_materialized_cohort_preserves_configured_unmaterialized_patients (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_measured_original_sample_batch_one_remains_eight_queries (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_no_implicit_cpu_worker_or_short_production_fallback (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_pause_file_and_callback_restored_even_on_failure (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_scoped_sigint_sets_flag_and_restores_previous_handler (test_transition_c_training.TrainingMetadataContracts) ... ok
+test_actual_native_assignment_verified_not_just_any_training_donor (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_external_execution_contract_rejects_eight_upper_chunks (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_full_scores_separate_case_hit_and_micro_recall (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_independent_donor_and_patient_leakage_rejected (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_missing_U_and_missing_P_and_extra_record_rejected (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_missing_extra_and_nonfinite_scores_rejected (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_new_crossed_ledger_contains_every29_factor_once_and_declares_coupling (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_production_defaults_all21_with_all128U (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_row_permutation_keeps_metrics (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_small_fixture_needs_explicit_debug (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_ties_have_gt_independent_order_and_real_zero_std (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_wrong_U_center_and_raw_sha_rejected (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_wrong_observed_component_and_center_rejected (test_transition_evaluation.Whole128MetadataUnit) ... ok
+test_l0_only_chunks_and_upper_once_per_complete_case (test_transition_evaluation.Whole128ScoringUNIT) ... 
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+whole P+128U evaluation: 100%|##########| 3/3 [00:00<00:00, 1499.75case/s]
+ok
+test_rejects_chunked_upper_and_truncated_scores (test_transition_evaluation.Whole128ScoringUNIT) ... 
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+ok
+test_rejects_wrong_provider_binding_or_GT (test_transition_evaluation.Whole128ScoringUNIT) ... 
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+whole P+128U evaluation:   0%|          | 0/3 [00:00<?, ?case/s]
+ok
+test_actual_raw_voxels_order_geometry_and_readonly_metadata (test_transition_native_local.NativeGeometryContracts) ... ok
+test_dependency_closed_changes_are_explicit (test_transition_native_local.NativeGeometryContracts) ... ok
+test_invalid_native_center_spacing_margin_rejected (test_transition_native_local.NativeGeometryContracts) ... ok
+test_native_boundary_clips_ct_domain_without_moving_anchor (test_transition_native_local.NativeGeometryContracts) ... ok
+test_native_formula_matches_real_voxel_bbox_margin (test_transition_native_local.NativeGeometryContracts) ... ok
+test_report_corruption_metadata_serializes_without_mutating_tensors (test_transition_native_local.NativeGeometryContracts) ... ok
+
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D actual preparation measurements: D:\AI project\nnunet\work\transition_D_parallel_UNIT_complete_00cf8e1de15942e3acb95ad711cead7e\canonical\preparation_metrics_93cc5b3dfe5d4b3d81edcf88ffcde00d.jsonl
+
+D actual original canonical preparation:   0%|          | 0/7 [00:00<?, ?observation/s]
+D actual original canonical preparation:   0%|          | 0/7 [00:00<?, ?observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  29%|##8       | 2/7 [00:00<00:00, 62.80observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  57%|#####7    | 4/7 [00:00<00:00, 73.57observation/s, case=UNIT-recipient-a, completed_cases=1]                                  
+D actual original canonical preparation:  57%|#####7    | 4/7 [00:00<00:00, 73.57observation/s, case=UNIT-recipient-b, completed_cases=1, execution_rows=2, phase=building]
+D actual original canonical preparation:  86%|########5 | 6/7 [00:00<00:00, 76.77observation/s, case=UNIT-recipient-b, completed_cases=1, execution_rows=1, phase=building]
+D actual original canonical preparation: 100%|##########| 7/7 [00:00<00:00, 75.39observation/s, case=UNIT-recipient-b, completed_cases=2]                                  
+D actual original canonical preparation: 100%|##########| 7/7 [00:00<00:00, 75.39observation/s, case=UNIT-recipient-b, completed_cases=2]
+test_shared_source_disk_bytes_are_counted_once_in_parallel_stage (test_transition_preparation_parallel.ParallelPreparationUNIT) ... ok
+test_signed_receipts_and_index_keep_original_order_despite_reverse_completion (test_transition_preparation_parallel.ParallelPreparationUNIT) ... ok
+test_two_view_materialization_and_storage_are_actually_concurrent (test_transition_preparation_parallel.ParallelPreparationUNIT) ... ok
+test_worker_failure_preserves_completed_receipt_and_refuses_complete_index (test_transition_preparation_parallel.ParallelPreparationUNIT) ... 
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D actual preparation measurements: D:\AI project\nnunet\work\transition_D_parallel_UNIT_failure_b77c20a0c761489db87e0a98e51b5191\canonical\preparation_metrics_43a72fb4244f48f2a114ce7fdb522d4a.jsonl
+
+D actual original canonical preparation:   0%|          | 0/7 [00:00<?, ?observation/s]
+D actual original canonical preparation:   0%|          | 0/7 [00:00<?, ?observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  14%|#4        | 1/7 [00:00<00:00, 48.07observation/s, case=UNIT-recipient-a, disk_GiB=0, phase=stored, rss_GiB=0.654, sampled_edges=7, sampled_nodes=12]
+
+D resume exact completed file checks:   0%|          | 0/1 [00:00<?, ?observation/s]
+D resume exact completed file checks: 100%|##########| 1/1 [00:00<00:00, 989.46observation/s]
+D actual preparation measurements: D:\AI project\nnunet\work\transition_D_parallel_UNIT_failure_b77c20a0c761489db87e0a98e51b5191\canonical\preparation_metrics_59e1eec107fd4c7c99812010d27f925d.jsonl
+
+D actual original canonical preparation:  14%|#4        | 1/7 [00:00<?, ?observation/s]
+D actual original canonical preparation:  14%|#4        | 1/7 [00:00<?, ?observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  43%|####2     | 3/7 [00:00<00:00, 71.41observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=1, phase=building]
+D actual original canonical preparation:  57%|#####7    | 4/7 [00:00<00:00, 69.75observation/s, case=UNIT-recipient-a, completed_cases=1]                                  
+D actual original canonical preparation:  57%|#####7    | 4/7 [00:00<00:00, 69.75observation/s, case=UNIT-recipient-b, completed_cases=1, execution_rows=2, phase=building]
+D actual original canonical preparation:  86%|########5 | 6/7 [00:00<00:00, 73.52observation/s, case=UNIT-recipient-b, completed_cases=1, execution_rows=1, phase=building]
+D actual original canonical preparation: 100%|##########| 7/7 [00:00<00:00, 75.94observation/s, case=UNIT-recipient-b, completed_cases=2]                                  
+D actual original canonical preparation: 100%|##########| 7/7 [00:00<00:00, 75.94observation/s, case=UNIT-recipient-b, completed_cases=2]
+ok
+test_worker_rss_guard_runs_while_both_sampled_views_are_alive (test_transition_preparation_parallel.ParallelPreparationUNIT) ... ok
+test_active_old_run_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_bad_segment_paths_are_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_calling_process_destination_lock_is_admitted (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_changed_graph_bytes_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_changed_gt_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_complete_import_leaves_publication_to_provider (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_destination_manifest_must_be_owned (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_duplicate_json_key_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_empty_ledger_imports_no_uncommitted_files (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_existing_destination_is_rejected_without_overwrite (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_extent_mismatch_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_measurement_inconsistent_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_missing_graph_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_missing_hash_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_nested_destination_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_neural_source_change_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_other_destination_process_lock_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_partial_import_has_exact_links_and_no_uncommitted_rows (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_request_change_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_reused_completion_receipt_tamper_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_reused_import_receipt_tamper_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_row_population_change_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_same_import_is_idempotent_after_provider_continuation (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_settings_hardware_snapshot_change_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_shared_file_symlink_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... skipped "OS does not grant symlink creation: [WinError 1314] Ŭ���̾�Ʈ�� �ʿ��� ������ ������ ���� �ʽ��ϴ�: 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\UNIT_D_reuse_r56ng6g_\\\\UNIT_target.pt.gz' -> 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\UNIT_D_reuse_r56ng6g_\\\\old\\\\canonical_cache\\\\segments\\\\55555555555555555555555555555555\\\\shared_sources\\\\6666666666666666666666666666666666666666666666666666666666666666.pt.gz'"
+test_symlink_guard_rejects_reference_before_resolution (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_wrong_ordinal_is_rejected (test_transition_preparation_reuse.PreparationReuseUnit) ... ok
+test_concurrent_standard_tensor_mutation_during_serialization_refused (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_disk_reserve_and_existing_output_still_refuse_no_overwrite (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_equal_replacement_tensor_reencodes_and_checks_bytes (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_exact_format_reference_digest_bounds_and_full_roundtrip (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_independent_payloads_parallel_share_one_source_publication (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_memo_eviction_only_repeats_serialization_never_omits_data (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_mutable_numpy_metadata_is_hashed_each_check_and_change_refused (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_nested_graph_edge_mutation_is_refused (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_nested_metadata_mutation_is_refused (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_original_graphwriter_and_optimized_writer_have_exact_reference_and_payload_bytes (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_replaced_changed_tensor_is_refused (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_same_immutable_donor_serializes_once_each_observation_still_serializes (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_source_tensor_inplace_mutation_is_refused (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_tensor_stride_offset_storage_changes_reencode_and_refuse (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_weak_references_do_not_keep_donor_tensors_resident (test_transition_preparation_storage.CheckedDonorStorageUNIT) ... ok
+test_real_fake_tensor_load_exports_shapes_without_values (test_transition_reference.ActualCpuMetadataReaderUnit) ... ok
+test_actual_schedule_sizes_and_source_coverage_required (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_actual_server_cursor_is_partial_after40_optimizer_epochs (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_admission_is_pure_and_has_no_weight_payload (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_batch_schedule_and_accumulation_are_not_guessed (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_epoch_step_and_phase_tampering_rejected (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_initial_state_needs_zero_updates (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_invalid_file_identity_is_rejected (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_missing_checkpoint_recipe_is_never_invented (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_missing_setting_and_cursor_are_explicit (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_no_debug_or_short_training_reference (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_recipe_binding_rejects_each_changed_checkpoint_field (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_reject_bool_disguised_as_numeric_recipe_or_execution (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_request_inventory_and_localcnn_must_be_bound (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_request_settings_each_match_actual_execution (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_request_source_must_equal_saved_checkpoint_source (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_saved_complete_phase_is_distinct_from_final_memory (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_source_omission_from_both_endpoints_is_explicitly_missing (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_tensor_value_reader_is_never_admitted (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_unsafe_or_nonhex_source_is_rejected (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_wrong_format_or_learning_policy_is_rejected (test_transition_reference.ReferenceMetadataUnit) ... ok
+test_many_nonoverlapping_insertions_use_cached_aggregate (test_transition_resident_ledger.IntervalUnionUNIT) ... ok
+test_nested_bridge_gaps_and_distinct_device_domains (test_transition_resident_ledger.IntervalUnionUNIT) ... ok
+test_partial_overlap_duplicate_and_removal_are_exact (test_transition_resident_ledger.IntervalUnionUNIT) ... ok
+test_randomized_add_remove_matches_independent_union_oracle (test_transition_resident_ledger.IntervalUnionUNIT) ... ok
+test_accounted_cache_replacement_pop_lru_and_clear (test_transition_resident_ledger.OwnerStorageUNIT) ... ok
+test_numpy_views_negative_stride_and_torch_alias_count_backing_once (test_transition_resident_ledger.OwnerStorageUNIT) ... ok
+test_prepared_donor_source_masks_share_raw_and_record_storage (test_transition_resident_ledger.OwnerStorageUNIT) ... ok
+test_torch_views_numpy_conversion_keep_full_storage_alive (test_transition_resident_ledger.OwnerStorageUNIT) ... ok
+test_active_records_stay_admitted_after_cache_eviction (test_transition_resident_ledger.ProviderResidencyUNIT) ... ok
+test_oversized_complete_active_record_raises_without_truncating (test_transition_resident_ledger.ProviderResidencyUNIT) ... ok
+test_raw_donor_record_overlap_is_not_double_counted_or_evicted (test_transition_resident_ledger.ProviderResidencyUNIT) ... ok
+test_reporting_and_room_checks_do_not_walk_accumulated_records (test_transition_resident_ledger.ProviderResidencyUNIT) ... ok
+test_archive_is_only_requested_by_explicit_flag (test_transition_terminal_cli.TransitionTerminalCLIUnitTests) ... ok
+test_default_is_no_archive_and_prints_summary_without_dumping_record_inventory (test_transition_terminal_cli.TransitionTerminalCLIUnitTests) ... ok
+test_previous_summary_is_preserved_before_collection (test_transition_terminal_cli.TransitionTerminalCLIUnitTests) ... ok
+test_all_40_epoch_rows_and_reported_checkpoint_selection (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_changed_saved_evidence_is_not_reported_as_valid_metric (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_complete_cursor_and_exact_native_configuration_are_preserved (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_conflicting_latest_epoch_is_unknown_instead_of_older_fallback (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_duplicate_identical_epoch_metrics_do_not_inflate_epoch_count (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_each_original_comparison_arm_is_read (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_full_inventory_and_all_split_case_counts_are_used (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_malformed_saved_metadata_has_explicit_failure (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_many_missing_source_fields_preserved_with_compact_output (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_missing_metrics_are_unknown_not_zero (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_missing_optimizer_lr_is_unknown (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_native_observed_recall_is_not_displayed_as_v1_top1_accuracy (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_no_neural_or_quality_promotion (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_nonfinite_metric_is_unknown (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_original_initial_validation_schema (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_reporter_does_not_change_input_or_write_files (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_unsafe_saved_member_rejected (test_transition_terminal_report.TransitionTerminalMetadataTests) ... ok
+test_another_cursor_or_changed_receipt_is_rejected (test_transition_timing.DCheckpointWallContracts) ... ok
+test_exact_bound_write_tail_recovers_without_process_downtime (test_transition_timing.DCheckpointWallContracts) ... ok
+test_missing_or_interrupted_receipt_retains_explicit_lower_bound (test_transition_timing.DCheckpointWallContracts) ... ok
+test_nonlocal_journal_or_backwards_elapsed_is_rejected (test_transition_timing.DCheckpointWallContracts) ... ok
+test_ordered_writer_publishes_receipt_after_successful_checkpoint (test_transition_timing.DCheckpointWallContracts) ... ok
+test_complete_two_view_disjoint_collation_shares_one_original_source (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_content_digest_matches_native_and_detects_shared_tensor_mutation (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_full14102_population_and_all128U_are_required (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_incremental_storage_resume_is_exact_and_preserves_uncommitted_files (test_transition_v1_local.TransitionLocalMetadataUnit) ... 
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D actual preparation measurements: D:\AI project\nnunet\work\UNIT_D_resume_mc7ifu3j\canonical\preparation_metrics_6bf60210eb9e4e459ceebd006782040e.jsonl
+
+D actual original canonical preparation:   0%|          | 0/3 [00:00<?, ?observation/s]
+D actual original canonical preparation:   0%|          | 0/3 [00:00<?, ?observation/s, case=UNIT-case, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  33%|###3      | 1/3 [00:00<00:00, 55.56observation/s, case=UNIT-case, disk_GiB=0, phase=stored, rss_GiB=0.662, sampled_edges=0, sampled_nodes=12]
+
+D resume exact completed file checks:   0%|          | 0/1 [00:00<?, ?observation/s]
+D resume exact completed file checks: 100%|##########| 1/1 [00:00<00:00, 90.92observation/s]
+D actual preparation measurements: D:\AI project\nnunet\work\UNIT_D_resume_mc7ifu3j\canonical\preparation_metrics_6f3aaced703b47e69e3742b5d6d1069a.jsonl
+
+D actual original canonical preparation:  33%|###3      | 1/3 [00:00<?, ?observation/s]
+D actual original canonical preparation:  33%|###3      | 1/3 [00:00<?, ?observation/s, case=UNIT-case, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation: 100%|##########| 3/3 [00:00<00:00, 80.00observation/s, case=UNIT-case, completed_cases=1]                          
+D actual original canonical preparation: 100%|##########| 3/3 [00:00<00:00, 80.00observation/s, case=UNIT-case, completed_cases=1]
+ok
+test_original_input_contract_is_not_ct_only_or_native_equivalence (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_physical_anchor_transport_records_both_orientation_frames (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_query_class_metadata_is_excluded_from_neural_record_provenance (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_resident_byte_accounting_counts_shared_storage_once (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+test_source_audit_binds_actual_anchor_full_mask_ct_and_donor_mm (test_transition_v1_local.TransitionLocalMetadataUnit) ... ok
+
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D resume exact completed file checks: 0observation [00:00, ?observation/s]
+D actual preparation measurements: D:\AI project\nnunet\work\transition_D_preparation_UNIT_0eedb07309dc4b15b763ab541c24dbd9\canonical\preparation_metrics_a41ee1fc4fcc4dc0be455d78e3d40787.jsonl
+
+D actual original canonical preparation:   0%|          | 0/7 [00:00<?, ?observation/s]
+D actual original canonical preparation:   0%|          | 0/7 [00:00<?, ?observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  29%|##8       | 2/7 [00:00<00:00, 66.66observation/s, case=UNIT-recipient-a, completed_cases=0, execution_rows=2, phase=building]
+D actual original canonical preparation:  57%|#####7    | 4/7 [00:00<00:00, 76.93observation/s, case=UNIT-recipient-a, completed_cases=1]                                  
+D actual original canonical preparation:  57%|#####7    | 4/7 [00:00<00:00, 76.93observation/s, case=UNIT-recipient-b, completed_cases=1, execution_rows=2, phase=building]
+D actual original canonical preparation:  86%|########5 | 6/7 [00:00<00:00, 81.08observation/s, case=UNIT-recipient-b, completed_cases=1, execution_rows=1, phase=building]
+D actual original canonical preparation: 100%|##########| 7/7 [00:00<00:00, 78.64observation/s, case=UNIT-recipient-b, completed_cases=2]                                  
+D actual original canonical preparation: 100%|##########| 7/7 [00:00<00:00, 77.77observation/s, case=UNIT-recipient-b, completed_cases=2]
+test_actual_heterogeneous_two_views_define_measurement_arrays (test_transition_v1_preparation.CompletePreparationMechanicalUNIT) ... ok
+test_index_array_measurement_corruption_refused_on_admission (test_transition_v1_preparation.CompletePreparationMechanicalUNIT) ... ok
+test_measured_cost_sums_exact_selected_canonical_rows_without_loading (test_transition_v1_preparation.CompletePreparationMechanicalUNIT) ... ok
+test_missing_wrong_or_boolean_measured_stats_are_refused (test_transition_v1_preparation.CompletePreparationMechanicalUNIT) ... ok
+test_telemetry_records_actual_UNIT_bytes_RSS_disk_and_phase_timings (test_transition_v1_preparation.CompletePreparationMechanicalUNIT) ... ok
+test_whole_population_streamed_in_worker_bounded_chunks (test_transition_v1_preparation.CompletePreparationMechanicalUNIT) ... ok
+
+----------------------------------------------------------------------
+Ran 157 tests in 24.776s
+
+OK (skipped=1)

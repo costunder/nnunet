@@ -104,7 +104,7 @@ class CompletePreparationMechanicalUNIT(unittest.TestCase):
         cls.ds=unit_dataset(cls.root)
         cls.provider=UnitProvider(cls.ds,workers=2,resident_bytes=1024**3,rss_bytes=2*1024**3)
         cls.output=cls.root/'canonical'
-        with patch('hiercp_v22.storage.GraphWriter',UnitWriter),\
+        with patch('hiercp_v1x.transition_preparation_storage.GraphWriter',UnitWriter),\
                 patch.object(data.local,'materialize_pair',side_effect=unit_payload):
             cls.path=cls.provider.preflight(cls.output,minimum_free_bytes=1)
         cls.index=json.loads(cls.path.read_text(encoding='utf8'))

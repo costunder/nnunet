@@ -1,0 +1,21 @@
+{
+  "format": "actual_r3_admitted_cache_STORAGE_reference_DEBUG_v1",
+  "debug": true,
+  "storage_only": true,
+  "source_canonical_cache": "D:\\AI project\\nnunet\\work\\v17_D_cuda_DEBUG_20261005_r1\\canonical_cache",
+  "source_index_sha256": "6d88a71c696ee35bc7bcfba8f73bdcd3da42657e644249cc6ed292c137ae1bcc",
+  "actual_neural_admission_manifest": "D:\\AI project\\nnunet\\work\\v17_D_cuda_DEBUG_20261005_r3\\manifest.json",
+  "actual_neural_admission_manifest_sha256": "cd3956a24d0d87929b0262a6373d8ec488ca4fdaea0f27f9596f427e79301b1b",
+  "actual_neural_run_reused_prepared_cache": {
+    "path": "D:\\AI project\\nnunet\\work\\v17_D_cuda_DEBUG_20261005_r1\\canonical_cache\\index.json",
+    "sha256": "6d88a71c696ee35bc7bcfba8f73bdcd3da42657e644249cc6ed292c137ae1bcc",
+    "read_only": true
+  },
+  "reference_manifest_is_exact_r3_copy": true,
+  "graph_bytes_copied": 0,
+  "graph_deserialization": false,
+  "new_neural_run": false,
+  "new_production_run": false,
+  "graph_files": 541,
+  "all537_completed_receipts": true
+}

@@ -1,0 +1,15 @@
+{
+  "report": "work\\v17_preparation_execution_DEBUG_20261005\\report.json",
+  "complete": true,
+  "old_serial_wall_seconds": 4.5881820999784395,
+  "new_parallel16_wall_seconds": 2.960314499970991,
+  "post_stage_improvement_ratio": 1.5498968437385285,
+  "source_encode_calls": {
+    "old": 32,
+    "new": 1
+  },
+  "actual32_byte_SHA_and_sampled_N_E_parity": true,
+  "original_inputs_preserved": true,
+  "training_started": false,
+  "scope": "CPU actual-cache post-build DEBUG only"
+}

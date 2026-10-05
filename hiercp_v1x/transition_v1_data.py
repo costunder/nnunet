@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import copy
 import hashlib
 import json
@@ -226,32 +227,284 @@ class NativeObservationDataset:
                 "scope_contract": self.scope_contract, "local_contract": local.local_contract()}
 
 
+class _IntervalNode:
+    """One covered address interval; a deterministic treap avoids global scans."""
+    __slots__ = ("start", "end", "count", "priority", "left", "right", "covered")
+
+    def __init__(self, start, end, count):
+        self.start, self.end, self.count = start, end, count
+        # Address mixing never consumes the experiment's Python/NumPy/Torch RNG.
+        mixed = (start ^ (end << 1)) & ((1 << 64) - 1)
+        mixed = ((mixed ^ (mixed >> 30)) * 0xbf58476d1ce4e5b9) & ((1 << 64) - 1)
+        mixed = ((mixed ^ (mixed >> 27)) * 0x94d049bb133111eb) & ((1 << 64) - 1)
+        self.priority = mixed ^ (mixed >> 31)
+        self.left = self.right = None
+        self.covered = end - start
+
+
+def _interval_update(node):
+    if node is not None:
+        node.covered = (node.end - node.start
+                        + (0 if node.left is None else node.left.covered)
+                        + (0 if node.right is None else node.right.covered))
+    return node
+
+
+def _interval_merge(left, right):
+    if left is None:
+        return right
+    if right is None:
+        return left
+    if left.priority <= right.priority:
+        left.right = _interval_merge(left.right, right)
+        return _interval_update(left)
+    right.left = _interval_merge(left, right.left)
+    return _interval_update(right)
+
+
+def _interval_split(node, position):
+    """Split by interval start, after splitting any crossing interval itself."""
+    if node is None:
+        return None, None
+    if node.start < position:
+        node.right, right = _interval_split(node.right, position)
+        return _interval_update(node), right
+    left, node.left = _interval_split(node.left, position)
+    return left, _interval_update(node)
+
+
+def _interval_cut(root, position):
+    node, previous = root, None
+    while node is not None:
+        if node.start < position:
+            previous, node = node, node.right
+        else:
+            node = node.left
+    if previous is None or previous.end <= position:
+        return root
+    before, remaining = _interval_split(root, previous.start)
+    _, after = _interval_split(remaining, previous.start + 1)
+    first = _IntervalNode(previous.start, position, previous.count)
+    second = _IntervalNode(position, previous.end, previous.count)
+    return _interval_merge(_interval_merge(before, first), _interval_merge(second, after))
+
+
+def _interval_rows(root):
+    stack, node = [], root
+    while stack or node is not None:
+        while node is not None:
+            stack.append(node)
+            node = node.left
+        node = stack.pop()
+        yield node.start, node.end, node.count
+        node = node.right
+
+
+class _StorageIntervalUnion:
+    """Incremental union of live storage ranges, including partial aliases.
+
+    Exact shared storages use a reference-count dictionary. A new partially
+    overlapping range touches only its overlapping treap intervals, never all
+    previously cached records or all physical address ranges.
+    """
+    def __init__(self):
+        self._roots, self._references = {}, {}
+        self.total_bytes = 0
+
+    def _change(self, storage, delta):
+        domain, start, end = storage
+        root = self._roots.get(domain)
+        previous_bytes = 0 if root is None else root.covered
+        root = _interval_cut(_interval_cut(root, start), end)
+        before, remaining = _interval_split(root, start)
+        middle, after = _interval_split(remaining, end)
+        replacement, cursor = None, start
+        for first, last, count in _interval_rows(middle):
+            if cursor < first:
+                if delta < 0:
+                    raise RuntimeError("Resident storage reference accounting underflow")
+                replacement = _interval_merge(replacement, _IntervalNode(cursor, first, 1))
+            count += delta
+            if count < 0:
+                raise RuntimeError("Resident storage reference accounting underflow")
+            if count:
+                replacement = _interval_merge(replacement, _IntervalNode(first, last, count))
+            cursor = last
+        if cursor < end:
+            if delta < 0:
+                raise RuntimeError("Resident storage reference accounting underflow")
+            replacement = _interval_merge(replacement, _IntervalNode(cursor, end, 1))
+        root = _interval_merge(_interval_merge(before, replacement), after)
+        if root is None:
+            self._roots.pop(domain, None)
+        else:
+            self._roots[domain] = root
+        self.total_bytes += (0 if root is None else root.covered) - previous_bytes
+
+    def add(self, storage):
+        count = self._references.get(storage, 0)
+        if not count:
+            self._change(storage, 1)
+        self._references[storage] = count + 1
+
+    def remove(self, storage):
+        count = self._references.get(storage, 0)
+        if not count:
+            raise RuntimeError("Resident storage owner was removed more than once")
+        if count == 1:
+            self._change(storage, -1)
+            del self._references[storage]
+        else:
+            self._references[storage] = count - 1
+
+
+def _storage_footprint(value):
+    """Inspect one immutable owner once, retaining whole backing allocations."""
+    ranges, visited = set(), set()
+
+    def visit(item):
+        identity = id(item)
+        if identity in visited:
+            return
+        visited.add(identity)
+        if torch.is_tensor(item):
+            storage = item.untyped_storage()
+            start, size = storage.data_ptr(), storage.nbytes()
+            if size:
+                ranges.add((str(item.device), start, start + size))
+        elif isinstance(item, np.ndarray):
+            root = item
+            while isinstance(root.base, np.ndarray):
+                root = root.base
+            if torch.is_tensor(root.base):
+                visit(root.base)  # tensor.numpy() still owns the complete tensor storage.
+            elif root.size:
+                bounds = (np.byte_bounds(root) if hasattr(np, "byte_bounds")
+                          else np.lib.array_utils.byte_bounds(root))
+                ranges.add(("cpu", int(bounds[0]), int(bounds[1])))
+        elif isinstance(item, Mapping):
+            for child in item.values():
+                visit(child)
+        elif isinstance(item, (tuple, list)):
+            for child in item:
+                visit(child)
+        elif isinstance(item, local.PreparedDonor):
+            original = item.original
+            for child in (original.source_footprint, original.source_patch, original.canonical_nodes,
+                          original.canonical_edges, item.source_patch):
+                visit(child)
+        elif hasattr(item, "full_mask"):
+            for child in (item.full_mask, item.patch_mask, item.patch_image):
+                visit(child)
+
+    visit(value)
+    return tuple(ranges)
+
+
 def _bytes(value, seen=None):
-    seen = set() if seen is None else seen
-    if torch.is_tensor(value):
-        storage = value.untyped_storage()
-        key = ("tensor", str(value.device), storage.data_ptr())
-        if key in seen:
-            return 0
-        seen.add(key)
-        return storage.nbytes()
-    if isinstance(value, np.ndarray):
-        key = ("numpy", int(value.__array_interface__["data"][0]))
-        if key in seen:
-            return 0
-        seen.add(key)
-        return value.nbytes
-    if isinstance(value, Mapping):
-        return sum(_bytes(item, seen) for item in value.values())
-    if isinstance(value, (tuple, list)):
-        return sum(_bytes(item, seen) for item in value)
-    if isinstance(value, local.PreparedDonor):
-        original = value.original
-        return _bytes((original.source_footprint, original.source_patch, original.canonical_nodes,
-                       original.canonical_edges, value.source_patch), seen)
-    if hasattr(value, "full_mask"):
-        return _bytes((value.full_mask, value.patch_mask, value.patch_image), seen)
-    return 0
+    """One-owner storage estimate with NumPy/tensor alias deduplication."""
+    union = _StorageIntervalUnion()
+    if seen is not None:
+        for storage in seen:
+            union.add(storage)
+    before = union.total_bytes
+    ranges = _storage_footprint(value)
+    for storage in ranges:
+        union.add(storage)
+    if seen is not None:
+        seen.update(ranges)
+    return union.total_bytes - before
+
+
+class _ResidentStorageLedger:
+    """Owner reference counts for raw, record, donor and their exact unions."""
+    def __init__(self):
+        self._groups = {name: _StorageIntervalUnion()
+                        for name in ("raw", "record", "donor", "canonical", "all")}
+        self._members, self._objects = {}, {}
+        self._temporary_ordinal = 0
+
+    def put(self, token, value, category):
+        if token in self._members:
+            self.remove(token)
+        identity = id(value)
+        known = self._objects.get(identity)
+        if known is None:
+            ranges, owners = _storage_footprint(value), 0
+        else:
+            _, ranges, owners = known
+        # Retain the object while registered: a transient donor tuple's id must
+        # never be recycled into another owner's cached footprint.
+        self._objects[identity] = value, ranges, owners + 1
+        groups = (category, "all") if category == "raw" else (category, "canonical", "all")
+        for group in groups:
+            for storage in ranges:
+                self._groups[group].add(storage)
+        self._members[token] = identity, ranges, groups
+
+    def remove(self, token):
+        identity, ranges, groups = self._members.pop(token)
+        for group in groups:
+            for storage in ranges:
+                self._groups[group].remove(storage)
+        value, ranges, owners = self._objects[identity]
+        if owners == 1:
+            del self._objects[identity]
+        else:
+            self._objects[identity] = value, ranges, owners - 1
+
+    def bytes(self, group):
+        return self._groups[group].total_bytes
+
+    @contextmanager
+    def active(self, records):
+        # This ledger is mutated only by the serial provider/cache owner.
+        tokens = []
+        try:
+            for record in records:
+                self._temporary_ordinal += 1
+                token = "active", self._temporary_ordinal
+                self.put(token, record, "record")
+                tokens.append(token)
+            yield
+        finally:
+            for token in reversed(tokens):
+                self.remove(token)
+
+
+class _AccountedCache(OrderedDict):
+    """Incremental storage registration at cache mutation, never at reporting."""
+    def __init__(self, ledger, category, extract, values=()):
+        self.ledger, self.category, self.extract = ledger, category, extract
+        super().__init__()
+        self.update(values)
+
+    def __setitem__(self, key, value):
+        self.ledger.put((self.category, key), self.extract(value), self.category)
+        super().__setitem__(key, value)
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self.ledger.remove((self.category, key))
+
+    def pop(self, key, *default):
+        if key not in self:
+            if default:
+                return default[0]
+            raise KeyError(key)
+        value = self[key]
+        del self[key]
+        return value
+
+    def popitem(self, last=True):
+        if not self:
+            raise KeyError("dictionary is empty")
+        key = next(reversed(self)) if last else next(iter(self))
+        return key, self.pop(key)
+
+    def clear(self):
+        while self:
+            self.popitem()
 
 
 class OriginalInputProvider:
@@ -263,8 +516,9 @@ class OriginalInputProvider:
             raise ValueError("Native D dataset, parallel readers>=2 and explicit resident/RSS budgets required")
         self.ds = dataset
         self.workers, self.resident_bytes, self.rss_bytes = workers, resident_bytes, rss_bytes
-        self._records = OrderedDict()
-        self._donors = OrderedDict()
+        self._resident = _ResidentStorageLedger()
+        self._records = _AccountedCache(self._resident, "record", lambda value: value[0])
+        self._donors = _AccountedCache(self._resident, "donor", lambda value: value[:2])
         self._cached_bytes = 0
         self._raw = None
         self._crop_store = None
@@ -281,15 +535,21 @@ class OriginalInputProvider:
             raise ValueError("Signed native input inventory changed after D admission")
 
     def _memory_measurement(self, active_records=()):
-        cached = [value[0] for value in self._records.values()]
-        donors = [(value[0], value[1]) for value in self._donors.values()]
-        raw = [] if self._raw is None else list(self._raw.cache.values())
-        return dict(rss_bytes=psutil.Process().memory_info().rss,
-                    raw_resident_bytes=_bytes(raw),
-                    canonical_record_resident_bytes=_bytes((cached, active_records)),
-                    prepared_donor_resident_bytes=_bytes(donors),
-                    canonical_resident_bytes=_bytes((cached, active_records, donors)),
-                    resident_limit_bytes=self.resident_bytes, rss_limit_bytes=self.rss_bytes)
+        self._account_raw_cache()
+        with self._resident.active(active_records):
+            self._cached_bytes = self._resident.bytes("canonical")
+            return dict(rss_bytes=psutil.Process().memory_info().rss,
+                        raw_resident_bytes=self._resident.bytes("raw"),
+                        canonical_record_resident_bytes=self._resident.bytes("record"),
+                        prepared_donor_resident_bytes=self._resident.bytes("donor"),
+                        canonical_resident_bytes=self._cached_bytes,
+                        total_resident_bytes=self._resident.bytes("all"),
+                        resident_limit_bytes=self.resident_bytes, rss_limit_bytes=self.rss_bytes)
+
+    def _account_raw_cache(self):
+        if self._raw is not None and not isinstance(self._raw.cache, _AccountedCache):
+            self._raw.cache = _AccountedCache(self._resident, "raw", lambda value: value,
+                                             self._raw.cache.items())
 
     def _initialize_raw(self):
         if self._raw is not None:
@@ -315,30 +575,30 @@ class OriginalInputProvider:
                 return value
         self._crop_store = CropStore(self.ds.meta, self.workers, self.resident_bytes, self.rss_bytes)
         self._raw = OriginalRawStore(self.ds.meta, self.workers, self.rss_bytes)
+        self._account_raw_cache()
         self._crop_store.raw = self._raw
 
-    def _make_room(self, active_cases=()):
+    def _make_room(self, active_cases=(), active_records=()):
         active = set(active_cases)
-        self._cached_bytes = _bytes(([value[0] for value in self._records.values()],
-                                     [(value[0], value[1]) for value in self._donors.values()]))
-        raw_bytes = 0 if self._raw is None else sum(_bytes(value) for value in self._raw.cache.values())
-        while self._records and raw_bytes + self._cached_bytes > self.resident_bytes:
-            self._records.popitem(last=False)
-            self._cached_bytes = _bytes(([value[0] for value in self._records.values()],
-                                         [(value[0], value[1]) for value in self._donors.values()]))
-        while self._donors and raw_bytes + self._cached_bytes > self.resident_bytes:
-            key = next((key for key in self._donors if key[0] not in active), None)
-            if key is None:
-                break
-            self._donors.pop(key)
-            self._cached_bytes = _bytes(([value[0] for value in self._records.values()],
-                                         [(value[0], value[1]) for value in self._donors.values()]))
-        if self._raw is not None:
-            for case in list(self._raw.cache):
-                if case not in active and raw_bytes + self._cached_bytes > self.resident_bytes:
-                    raw_bytes -= _bytes(self._raw.cache.pop(case))
-        if raw_bytes + self._cached_bytes > self.resident_bytes:
-            raise MemoryError("Complete active D donor/recipient batch exceeds resident budget; no cropping or skip")
+        self._account_raw_cache()
+        # A returned record can remain live after its cache owner is evicted.
+        # Admit that complete active batch as well; shared raw/donor arrays are
+        # counted once across every owner, including torch.from_numpy aliases.
+        with self._resident.active(active_records):
+            while self._records and self._resident.bytes("all") > self.resident_bytes:
+                self._records.popitem(last=False)
+            while self._donors and self._resident.bytes("all") > self.resident_bytes:
+                key = next((key for key in self._donors if key[0] not in active), None)
+                if key is None:
+                    break
+                self._donors.pop(key)
+            if self._raw is not None:
+                for case in list(self._raw.cache):
+                    if case not in active and self._resident.bytes("all") > self.resident_bytes:
+                        self._raw.cache.pop(case)
+            if self._resident.bytes("all") > self.resident_bytes:
+                raise MemoryError("Complete active D donor/recipient batch exceeds resident budget; no cropping or skip")
+        self._cached_bytes = self._resident.bytes("canonical")
         self._guard()
 
     def _provenance(self, row):
@@ -368,7 +628,7 @@ class OriginalInputProvider:
         prepared = local.prepare_donor(volume["case"], source, volume["organ"], volume["depth"], self.ds.base)
         size = _bytes((source, prepared))
         self._donors[key] = source, prepared, size
-        self._cached_bytes += size
+        self._cached_bytes = self._resident.bytes("canonical")
         return source, prepared
 
     def _build(self, row):
@@ -466,15 +726,15 @@ class OriginalInputProvider:
             for row, record in zip(missing, records):
                 size = _bytes(record)
                 self._records[row["id"]] = record, size
-                self._cached_bytes += size
+            self._cached_bytes = self._resident.bytes("canonical")
         result = []
         for row in rows:
-            record, size = self._records.pop(row["id"])
-            self._records[row["id"]] = record, size
+            record, size = self._records[row["id"]]
+            self._records.move_to_end(row["id"])
             result.append(record)
         # Returned complete records stay owned by the caller even if cache
         # eviction occurs. Eviction changes residency, never data inclusion.
-        self._make_room()
+        self._make_room(active_records=result)
         return result
 
     def get(self, ids, *, epoch=0):
@@ -507,6 +767,14 @@ class OriginalInputProvider:
                 yield batch
             yield future.result()
 
+    def preparation_request(self):
+        """Exact preparation identity, also usable before launching workers."""
+        rows = self.ds.rows if self.ds.debug else self.ds.meta["records"]
+        return dict(format=FORMAT, input_inventory=str(self.ds.path),
+            input_inventory_sha256=self.ds.index_sha256, assignment_sha256=self.ds.assignment_sha256,
+            prepared_assignment_sha256=assignment_digest(rows), prepared_observations=len(rows), debug=self.ds.debug,
+            scope_contract=self.ds.scope_contract, local_identity=local.source_identity(), base=self.ds.base)
+
     def preflight(self, output, *, minimum_free_bytes):
         """Prepare all rows, resume signed completed receipts without overwrite.
 
@@ -524,10 +792,7 @@ class OriginalInputProvider:
             return self.cache_index
         rows = self.ds.rows if self.ds.debug else self.ds.meta["records"]
         expected_digest = assignment_digest(rows)
-        request = dict(format=FORMAT, input_inventory=str(self.ds.path),
-            input_inventory_sha256=self.ds.index_sha256, assignment_sha256=self.ds.assignment_sha256,
-            prepared_assignment_sha256=expected_digest, prepared_observations=len(rows), debug=self.ds.debug,
-            scope_contract=self.ds.scope_contract, local_identity=local.source_identity(), base=self.ds.base)
+        request = self.preparation_request()
         request_path = root / "prepare_request.json"
         if root.exists():
             if request_path.exists():
@@ -586,7 +851,7 @@ class OriginalInputProvider:
         segment = "segments/" + uuid.uuid4().hex
         segment_root = root / segment
         segment_root.mkdir(parents=True, exist_ok=False)
-        from hiercp_v22.storage import GraphWriter
+        from .transition_preparation_storage import GraphWriter
         writer = GraphWriter(segment_root, minimum_free_bytes=minimum_free_bytes)
         # All observations from one recipient share the native fixed donor. CPU
         # recipient graph preparation is parallel; each actual row is preserved.
@@ -594,7 +859,37 @@ class OriginalInputProvider:
         case_sizes = {case: sum(row["case_id"] == case for row in rows) for case in cases}
         completed_counts = {case: sum(row["case_id"] == case for row in completed.values()) for case in cases}
         ordinals = {row["id"]: index for index, row in enumerate(rows)}
+        def prepare_and_store(item):
+            row, record = item
+            sample_started = time.perf_counter()
+            payload = local.materialize_pair(record, epoch=0)  # Both genuine views, no neural run.
+            measured = _sampled_measurement(payload)
+            self._guard()  # Include in-flight sampled views in the process RSS guard.
+            sample_seconds = time.perf_counter() - sample_started
+            del payload
+            canonical_bytes = _bytes(record)
+            source_bytes = _bytes((record.get("source_local"), record.get("source_patch")))
+            target_bytes = _bytes((record.get("target_local"), record.get("target_patch")))
+            ordinal = ordinals[row["id"]]
+            write_started = time.perf_counter()
+            stored = writer.write(f"graphs/{row['case_id']}/{ordinal:06d}.pt.gz", record,
+                                  f"{row['donor_case_id']}:{row['donor_component']}")
+            source_path = (segment_root / stored["shared_source"]["path"]).resolve(strict=True)
+            graph_compressed_bytes = (segment_root / stored["path"]).stat().st_size
+            source_compressed_bytes = source_path.stat().st_size
+            storage_seconds = time.perf_counter() - write_started
+            self._guard()
+            stored = ({key: copy.deepcopy(row[key]) for key in ASSIGNMENT_KEYS} | stored | measured
+                      | dict(segment=segment, canonical_tensor_bytes=canonical_bytes,
+                             source_canonical_tensor_bytes=source_bytes,
+                             target_canonical_tensor_bytes=target_bytes,
+                             compressed_graph_bytes=graph_compressed_bytes,
+                             compressed_shared_source_bytes=source_compressed_bytes))
+            return dict(row=row, ordinal=ordinal, stored=stored, measured=measured,
+                        sample_seconds=sample_seconds, storage_seconds=storage_seconds,
+                        source_path=source_path, write_started=write_started)
         try:
+          with ThreadPoolExecutor(max_workers=self.workers) as post_build_pool:
             for case in cases:
                 actual = [row for row in rows if row["case_id"] == case and row["id"] not in completed]
                 # Worker-sized execution chunks bound in-flight preparation,
@@ -610,33 +905,20 @@ class OriginalInputProvider:
                     build_seconds = time.perf_counter() - build_started
                     report("chunk_built", case_id=case, execution_observations=len(requested),
                            build_seconds=build_seconds, **self._memory_measurement(records))
-                    for row, record in zip(requested, records):
-                        sample_started = time.perf_counter()
-                        payload = local.materialize_pair(record, epoch=0)  # Both genuine views, no neural run.
-                        measured = _sampled_measurement(payload)
-                        sample_seconds = time.perf_counter() - sample_started
-                        del payload
-                        canonical_bytes = _bytes(record)
-                        source_bytes = _bytes((record.get("source_local"), record.get("source_patch")))
-                        target_bytes = _bytes((record.get("target_local"), record.get("target_patch")))
-                        ordinal = ordinals[row["id"]]
-                        relative = f"graphs/{case}/{ordinal:06d}.pt.gz"
-                        write_started = time.perf_counter()
-                        stored = writer.write(relative, record, f"{row['donor_case_id']}:{row['donor_component']}")
-                        source_path = (segment_root / stored["shared_source"]["path"]).resolve(strict=True)
-                        graph_compressed_bytes = (segment_root / stored["path"]).stat().st_size
-                        source_compressed_bytes = source_path.stat().st_size
+                    post_build_started = time.perf_counter()
+                    # Independent two-view sampling, serialization, hashing and
+                    # compression run concurrently. Only complete receipts and
+                    # aggregate progress are published in signed ordinal order.
+                    for prepared in post_build_pool.map(prepare_and_store, zip(requested, records)):
+                        row, ordinal, stored = prepared["row"], prepared["ordinal"], prepared["stored"]
+                        measured, source_path = prepared["measured"], prepared["source_path"]
+                        graph_compressed_bytes = stored["compressed_graph_bytes"]
+                        source_compressed_bytes = stored["compressed_shared_source_bytes"]
                         new_source_bytes = 0 if source_path in seen_source_files else source_compressed_bytes
                         seen_source_files.add(source_path)
                         written = graph_compressed_bytes + new_source_bytes
                         cumulative_disk += written
                         invocation_disk += written
-                        stored = ({key: copy.deepcopy(row[key]) for key in ASSIGNMENT_KEYS} | stored | measured
-                                  | dict(segment=segment, canonical_tensor_bytes=canonical_bytes,
-                                         source_canonical_tensor_bytes=source_bytes,
-                                         target_canonical_tensor_bytes=target_bytes,
-                                         compressed_graph_bytes=graph_compressed_bytes,
-                                         compressed_shared_source_bytes=source_compressed_bytes))
                         _publish_new_json(ledger / f"{ordinal:06d}.json", stored)
                         completed[row["id"]] = stored
                         completed_counts[case] += 1
@@ -651,18 +933,26 @@ class OriginalInputProvider:
                                sampled_nodes=measured["sampled_view_nodes"], sampled_edges=measured["sampled_view_edges"],
                                sampled_two_view_nodes=measured["sampled_two_view_nodes"],
                                sampled_two_view_edges=measured["sampled_two_view_edges"],
-                               canonical_tensor_bytes=canonical_bytes, source_canonical_tensor_bytes=source_bytes,
-                               target_canonical_tensor_bytes=target_bytes,
+                               canonical_tensor_bytes=stored["canonical_tensor_bytes"],
+                               source_canonical_tensor_bytes=stored["source_canonical_tensor_bytes"],
+                               target_canonical_tensor_bytes=stored["target_canonical_tensor_bytes"],
                                compressed_graph_bytes=graph_compressed_bytes,
                                compressed_shared_source_bytes=source_compressed_bytes,
                                newly_written_shared_source_bytes=new_source_bytes,
                                build_chunk_seconds=build_seconds, execution_observations=len(requested),
-                               materialize_two_view_seconds=sample_seconds,
-                               write_publish_seconds=time.perf_counter() - write_started,
+                               materialize_two_view_seconds=prepared["sample_seconds"],
+                               storage_write_seconds=prepared["storage_seconds"],
+                               write_publish_seconds=time.perf_counter() - prepared["write_started"],
                                **memory)
+                    report("chunk_post_build_completed", case_id=case,
+                           execution_observations=len(requested),
+                           post_build_wall_seconds=time.perf_counter() - post_build_started,
+                           source_encode_calls=getattr(writer, "source_encode_calls", None),
+                           source_memo_hits=getattr(writer, "source_memo_hits", None),
+                           **self._memory_measurement(records))
                     # The previous execution chunk must not stay alive while
                     # Python evaluates construction of the following chunk.
-                    del records, record
+                    del records, prepared
                 progress.set_postfix(case=case, completed_cases=sum(
                     completed_counts[other] == case_sizes[other] for other in cases))
             report("all_observations_completed", **self._memory_measurement())

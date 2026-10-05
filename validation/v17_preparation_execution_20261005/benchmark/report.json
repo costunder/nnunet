@@ -1,0 +1,2551 @@
+{
+  "debug": true,
+  "scope": "actual existing canonical cache post-build execution and accounting only",
+  "raw_CT_geometry_rebuilt": false,
+  "GPU_neural_run": false,
+  "training_started": false,
+  "production_ready": false,
+  "quality_verified": false,
+  "original_inputs_preserved": true,
+  "input_index": "work\\v17_D_cuda_DEBUG_20261005_r1\\canonical_cache\\index.json",
+  "input_index_sha256": "6d88a71c696ee35bc7bcfba8f73bdcd3da42657e644249cc6ed292c137ae1bcc",
+  "source_snapshot_proof": {
+    "source": "D:\\AI project\\nnunet\\work\\v14_matched_learning_DEBUG_20261004_r3\\source\\v1.0",
+    "archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "verified_files": {
+      "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    }
+  },
+  "scope_contract": {
+    "format": "hiercp_v1_bounded_bbox_scope_debug_v1",
+    "margin_mm": 10.0,
+    "context_outer_radius_mm": 10.0,
+    "ROI": "full transformed footprint bounding box + ceil(margin/spacing) on each side; odd native shape",
+    "implicit_depth_expansion": false,
+    "mandatory_surface_search": false,
+    "optional_roles": [
+      "source_liver_surface",
+      "target_liver_surface"
+    ],
+    "CNN_shape": [
+      48,
+      48,
+      48
+    ],
+    "coordinate_normalization_mm": 28.0,
+    "tumor_sdf_normalization_mm": 28.0,
+    "context_shells_mm": [
+      4.0,
+      12.0,
+      28.0
+    ],
+    "source_archive_sha256": "5157bafe641e9189824826532a3b055ea560f5c5dfc299374842a3bd1d20a22e",
+    "adapter_sha256": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "original_module_sha256": {
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+      "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+      "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+      "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+      "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+      "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+      "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+      "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+      "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+      "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+      "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+      "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+      "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+      "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+      "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+      "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+      "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+      "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+      "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+      "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+      "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+      "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+      "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+      "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+      "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+      "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+      "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2"
+    },
+    "debug": true,
+    "production_ready": false,
+    "quality_verified": false,
+    "contract_sha256": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  },
+  "resources": {
+    "cpu_logical": 16,
+    "available_RAM_bytes": 47584800768,
+    "torch_version": "2.8.0+cu128",
+    "torch_CPU_threads": 2,
+    "CPU_post_stage_workers": 16,
+    "rss_limit_bytes": 34359738368,
+    "GPU_used": false,
+    "peak_process_RSS_bytes": 2102005760
+  },
+  "selected_case": "liver_1",
+  "actual_subset_observations": 32,
+  "total_existing_DEBUG_observations": 537,
+  "verified_input_load_seconds": 7.496189699973911,
+  "old_serial": {
+    "complete": true,
+    "actual_observations": 32,
+    "actual_sampled_graphs": 64,
+    "workers": 1,
+    "wall_seconds": 4.5881820999784395,
+    "source_encode_calls": 32,
+    "source_memo_hits": 0,
+    "shared_source_files": 1,
+    "materialize_seconds_sum": 3.5407539000734687,
+    "write_seconds_sum": 1.045996499946341,
+    "records": [
+      {
+        "observation_id": "liver_1:0",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2227,
+            2227
+          ],
+          "sampled_view_edges": [
+            152380,
+            152380
+          ],
+          "sampled_two_view_nodes": 4454,
+          "sampled_two_view_edges": 304760
+        },
+        "stored": {
+          "path": "graphs/000000.pt.gz",
+          "sha256": "3c5f3d19a681814fe1dd07a3810b546b5875daa7337d57a3dfd81d922494d57c",
+          "bounds": {
+            "nodes": 2227,
+            "edges": 152380,
+            "bytes": 7143386
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.08860919997096062,
+        "lossless_write_seconds": 0.05746889999136329
+      },
+      {
+        "observation_id": "liver_1:1",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2475,
+            2475
+          ],
+          "sampled_view_edges": [
+            165278,
+            165278
+          ],
+          "sampled_two_view_nodes": 4950,
+          "sampled_two_view_edges": 330556
+        },
+        "stored": {
+          "path": "graphs/000001.pt.gz",
+          "sha256": "d31fc8395805a5e97b239b98c7851355054b63970a874de2557af8e0e3021d61",
+          "bounds": {
+            "nodes": 2475,
+            "edges": 165278,
+            "bytes": 7381002
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.10501729999668896,
+        "lossless_write_seconds": 0.031037000007927418
+      },
+      {
+        "observation_id": "liver_1:10",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2342,
+            2342
+          ],
+          "sampled_view_edges": [
+            160616,
+            160616
+          ],
+          "sampled_two_view_nodes": 4684,
+          "sampled_two_view_edges": 321232
+        },
+        "stored": {
+          "path": "graphs/000002.pt.gz",
+          "sha256": "307f9b5a257947b5495a20788c00938a8e5388d88c4fca9d554740f237c219ea",
+          "bounds": {
+            "nodes": 2342,
+            "edges": 160616,
+            "bytes": 7289652
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11605100001906976,
+        "lossless_write_seconds": 0.027505100006237626
+      },
+      {
+        "observation_id": "liver_1:100",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2379,
+            2379
+          ],
+          "sampled_view_edges": [
+            162731,
+            162731
+          ],
+          "sampled_two_view_nodes": 4758,
+          "sampled_two_view_edges": 325462
+        },
+        "stored": {
+          "path": "graphs/000003.pt.gz",
+          "sha256": "d7294b2b1d9590d6e2859a13f0dc29a62617ed7cc080c7f2b64eb4844f1fbde9",
+          "bounds": {
+            "nodes": 2379,
+            "edges": 162731,
+            "bytes": 7328154
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.09269309998489916,
+        "lossless_write_seconds": 0.03820469998754561
+      },
+      {
+        "observation_id": "liver_1:101",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2544,
+            2544
+          ],
+          "sampled_view_edges": [
+            167842,
+            167842
+          ],
+          "sampled_two_view_nodes": 5088,
+          "sampled_two_view_edges": 335684
+        },
+        "stored": {
+          "path": "graphs/000004.pt.gz",
+          "sha256": "265de393076edb489e25dc28446d104493b2dbd58b0cc2308b7b8caae9050c48",
+          "bounds": {
+            "nodes": 2544,
+            "edges": 167842,
+            "bytes": 7430720
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.10531459999037907,
+        "lossless_write_seconds": 0.02848969999467954
+      },
+      {
+        "observation_id": "liver_1:102",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2418,
+            2418
+          ],
+          "sampled_view_edges": [
+            163288,
+            163288
+          ],
+          "sampled_two_view_nodes": 4836,
+          "sampled_two_view_edges": 326576
+        },
+        "stored": {
+          "path": "graphs/000005.pt.gz",
+          "sha256": "4d0ee38704d1deb067ec54a1c06980a94f64c33e9e8d511ce4eb4201b6a20351",
+          "bounds": {
+            "nodes": 2418,
+            "edges": 163288,
+            "bytes": 7341980
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.10278889996698126,
+        "lossless_write_seconds": 0.028893499984405935
+      },
+      {
+        "observation_id": "liver_1:103",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2486,
+            2486
+          ],
+          "sampled_view_edges": [
+            168072,
+            168072
+          ],
+          "sampled_two_view_nodes": 4972,
+          "sampled_two_view_edges": 336144
+        },
+        "stored": {
+          "path": "graphs/000006.pt.gz",
+          "sha256": "ea90ceaa80db7a10bb0ebd358861ef4a3c092d842ca1c20272058044b968a321",
+          "bounds": {
+            "nodes": 2486,
+            "edges": 168072,
+            "bytes": 7427092
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.10669789998792112,
+        "lossless_write_seconds": 0.03186220000497997
+      },
+      {
+        "observation_id": "liver_1:104",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2561,
+            2561
+          ],
+          "sampled_view_edges": [
+            168064,
+            168064
+          ],
+          "sampled_two_view_nodes": 5122,
+          "sampled_two_view_edges": 336128
+        },
+        "stored": {
+          "path": "graphs/000007.pt.gz",
+          "sha256": "6003ebcf6fe49a4a51674f3cd8daf7a185dd1e3225d5e6eff8e5a9dd28fb0554",
+          "bounds": {
+            "nodes": 2561,
+            "edges": 168064,
+            "bytes": 7436414
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1206330000422895,
+        "lossless_write_seconds": 0.033542599994689226
+      },
+      {
+        "observation_id": "liver_1:105",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2333,
+            2333
+          ],
+          "sampled_view_edges": [
+            154956,
+            154956
+          ],
+          "sampled_two_view_nodes": 4666,
+          "sampled_two_view_edges": 309912
+        },
+        "stored": {
+          "path": "graphs/000008.pt.gz",
+          "sha256": "17c4ae175d44ce07b02d99804db758a204b0a43d527d9e350774a6de90cb2790",
+          "bounds": {
+            "nodes": 2333,
+            "edges": 154956,
+            "bytes": 7197958
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.09257080004317686,
+        "lossless_write_seconds": 0.026986500015482306
+      },
+      {
+        "observation_id": "liver_1:106",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2583,
+            2583
+          ],
+          "sampled_view_edges": [
+            169404,
+            169404
+          ],
+          "sampled_two_view_nodes": 5166,
+          "sampled_two_view_edges": 338808
+        },
+        "stored": {
+          "path": "graphs/000009.pt.gz",
+          "sha256": "9946163134f882c9a6e33ca5a0526f013a8fc86ea2d200be7705c9cb792e10ba",
+          "bounds": {
+            "nodes": 2583,
+            "edges": 169404,
+            "bytes": 7460626
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11307810002472252,
+        "lossless_write_seconds": 0.031752799986861646
+      },
+      {
+        "observation_id": "liver_1:107",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2380,
+            2380
+          ],
+          "sampled_view_edges": [
+            156662,
+            156662
+          ],
+          "sampled_two_view_nodes": 4760,
+          "sampled_two_view_edges": 313324
+        },
+        "stored": {
+          "path": "graphs/000010.pt.gz",
+          "sha256": "9af40da996533b9217a76e110b12fc377d8a532f95f9c870ded5c0c7db8015be",
+          "bounds": {
+            "nodes": 2380,
+            "edges": 156662,
+            "bytes": 7231176
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.08896429999731481,
+        "lossless_write_seconds": 0.029983599961269647
+      },
+      {
+        "observation_id": "liver_1:108",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2401,
+            2401
+          ],
+          "sampled_view_edges": [
+            158539,
+            158539
+          ],
+          "sampled_two_view_nodes": 4802,
+          "sampled_two_view_edges": 317078
+        },
+        "stored": {
+          "path": "graphs/000011.pt.gz",
+          "sha256": "6ede2f32f82addee7687d3eeed5b2e064a289e0fc10de8a2f6446b7be8413eaa",
+          "bounds": {
+            "nodes": 2401,
+            "edges": 158539,
+            "bytes": 7263854
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1112686000415124,
+        "lossless_write_seconds": 0.036793400009628385
+      },
+      {
+        "observation_id": "liver_1:109",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2378,
+            2378
+          ],
+          "sampled_view_edges": [
+            160638,
+            160638
+          ],
+          "sampled_two_view_nodes": 4756,
+          "sampled_two_view_edges": 321276
+        },
+        "stored": {
+          "path": "graphs/000012.pt.gz",
+          "sha256": "0b8f8ca2e8d942f399aa3c7128723398b3845a68b62c0f527542a185a5f39d5b",
+          "bounds": {
+            "nodes": 2378,
+            "edges": 160638,
+            "bytes": 7294540
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.13031500001670793,
+        "lossless_write_seconds": 0.03136070002801716
+      },
+      {
+        "observation_id": "liver_1:11",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2243,
+            2243
+          ],
+          "sampled_view_edges": [
+            154742,
+            154742
+          ],
+          "sampled_two_view_nodes": 4486,
+          "sampled_two_view_edges": 309484
+        },
+        "stored": {
+          "path": "graphs/000013.pt.gz",
+          "sha256": "c08135e8c37d28bd3713f44f620538ed2175c98249ffbcee7a7ce8a22fc59b45",
+          "bounds": {
+            "nodes": 2243,
+            "edges": 154742,
+            "bytes": 7183194
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.08747189998393878,
+        "lossless_write_seconds": 0.029123299987986684
+      },
+      {
+        "observation_id": "liver_1:110",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2253,
+            2253
+          ],
+          "sampled_view_edges": [
+            155190,
+            155190
+          ],
+          "sampled_two_view_nodes": 4506,
+          "sampled_two_view_edges": 310380
+        },
+        "stored": {
+          "path": "graphs/000014.pt.gz",
+          "sha256": "72286b6d3ead03d7a42a33dadb06562aa329ac42f35f79a90dbbf8ef07f686c1",
+          "bounds": {
+            "nodes": 2253,
+            "edges": 155190,
+            "bytes": 7191622
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.10048530000494793,
+        "lossless_write_seconds": 0.03262239997275174
+      },
+      {
+        "observation_id": "liver_1:111",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2537,
+            2537
+          ],
+          "sampled_view_edges": [
+            167838,
+            167838
+          ],
+          "sampled_two_view_nodes": 5074,
+          "sampled_two_view_edges": 335676
+        },
+        "stored": {
+          "path": "graphs/000015.pt.gz",
+          "sha256": "616aa9a637e6710e802d0c684c04bd16e257dfad7fb538407eea160cd7c7d7be",
+          "bounds": {
+            "nodes": 2537,
+            "edges": 167838,
+            "bytes": 7429774
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11965920001966879,
+        "lossless_write_seconds": 0.029308500001206994
+      },
+      {
+        "observation_id": "liver_1:112",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2480,
+            2480
+          ],
+          "sampled_view_edges": [
+            169644,
+            169644
+          ],
+          "sampled_two_view_nodes": 4960,
+          "sampled_two_view_edges": 339288
+        },
+        "stored": {
+          "path": "graphs/000016.pt.gz",
+          "sha256": "f182cf789d7afeb122648f5a7ce9b980bad5ef9d036f51717532bf970ea71fbf",
+          "bounds": {
+            "nodes": 2480,
+            "edges": 169644,
+            "bytes": 7451488
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.13064869999652728,
+        "lossless_write_seconds": 0.035597699985373765
+      },
+      {
+        "observation_id": "liver_1:113",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2487,
+            2487
+          ],
+          "sampled_view_edges": [
+            164633,
+            164633
+          ],
+          "sampled_two_view_nodes": 4974,
+          "sampled_two_view_edges": 329266
+        },
+        "stored": {
+          "path": "graphs/000017.pt.gz",
+          "sha256": "f313c83a4f83a5f42011999e3c71f96bbd1aceb7545d9d5c3e472ff0dd0ef94c",
+          "bounds": {
+            "nodes": 2487,
+            "edges": 164633,
+            "bytes": 7372194
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.12954210001043975,
+        "lossless_write_seconds": 0.033402000030037016
+      },
+      {
+        "observation_id": "liver_1:114",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            1964,
+            1964
+          ],
+          "sampled_view_edges": [
+            134883,
+            134883
+          ],
+          "sampled_two_view_nodes": 3928,
+          "sampled_two_view_edges": 269766
+        },
+        "stored": {
+          "path": "graphs/000018.pt.gz",
+          "sha256": "514521403bd66b461486966adf5d9345626f99ba9a3a615244dabcd02f0d1ab7",
+          "bounds": {
+            "nodes": 1964,
+            "edges": 134883,
+            "bytes": 6830296
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.09477239998523146,
+        "lossless_write_seconds": 0.036913499992806464
+      },
+      {
+        "observation_id": "liver_1:115",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2394,
+            2394
+          ],
+          "sampled_view_edges": [
+            156286,
+            156286
+          ],
+          "sampled_two_view_nodes": 4788,
+          "sampled_two_view_edges": 312572
+        },
+        "stored": {
+          "path": "graphs/000019.pt.gz",
+          "sha256": "34ea9bf880ab19eb025805286e68844063f37e070c3b2d377e338d7c4a32df03",
+          "bounds": {
+            "nodes": 2394,
+            "edges": 156286,
+            "bytes": 7226924
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.12168420001398772,
+        "lossless_write_seconds": 0.028886299987789243
+      },
+      {
+        "observation_id": "liver_1:116",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2398,
+            2398
+          ],
+          "sampled_view_edges": [
+            160472,
+            160472
+          ],
+          "sampled_two_view_nodes": 4796,
+          "sampled_two_view_edges": 320944
+        },
+        "stored": {
+          "path": "graphs/000020.pt.gz",
+          "sha256": "7de8945545062f7543d02e7c96d4bf74ee2075ebb1ac1d4e80c4b3f856bfe347",
+          "bounds": {
+            "nodes": 2398,
+            "edges": 160472,
+            "bytes": 7294404
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1151763999951072,
+        "lossless_write_seconds": 0.027870100049767643
+      },
+      {
+        "observation_id": "liver_1:117",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2553,
+            2553
+          ],
+          "sampled_view_edges": [
+            172783,
+            172783
+          ],
+          "sampled_two_view_nodes": 5106,
+          "sampled_two_view_edges": 345566
+        },
+        "stored": {
+          "path": "graphs/000021.pt.gz",
+          "sha256": "1f62a9a8f20b1eb10bee2615c99ad4c3191dc74e55a09498943d078f03f37811",
+          "bounds": {
+            "nodes": 2553,
+            "edges": 172783,
+            "bytes": 7510910
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1433692999999039,
+        "lossless_write_seconds": 0.035809399967547506
+      },
+      {
+        "observation_id": "liver_1:118",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2298,
+            2298
+          ],
+          "sampled_view_edges": [
+            155193,
+            155193
+          ],
+          "sampled_two_view_nodes": 4596,
+          "sampled_two_view_edges": 310386
+        },
+        "stored": {
+          "path": "graphs/000022.pt.gz",
+          "sha256": "92f83df43a11b9f8173324febb27d9914a197bb83b193c9ed925bd1c1f722750",
+          "bounds": {
+            "nodes": 2298,
+            "edges": 155193,
+            "bytes": 7197340
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.09068880003178492,
+        "lossless_write_seconds": 0.029608900018502027
+      },
+      {
+        "observation_id": "liver_1:119",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2450,
+            2450
+          ],
+          "sampled_view_edges": [
+            167423,
+            167423
+          ],
+          "sampled_two_view_nodes": 4900,
+          "sampled_two_view_edges": 334846
+        },
+        "stored": {
+          "path": "graphs/000023.pt.gz",
+          "sha256": "254c930d3f4da67992e0ddcd14b2f9b3adf2bf121aa4e92166ef1c66959eb05c",
+          "bounds": {
+            "nodes": 2450,
+            "edges": 167423,
+            "bytes": 7412172
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.10504440002841875,
+        "lossless_write_seconds": 0.030547400005161762
+      },
+      {
+        "observation_id": "liver_1:12",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2437,
+            2437
+          ],
+          "sampled_view_edges": [
+            160168,
+            160168
+          ],
+          "sampled_two_view_nodes": 4874,
+          "sampled_two_view_edges": 320336
+        },
+        "stored": {
+          "path": "graphs/000024.pt.gz",
+          "sha256": "b0cffea0d3c135ebef25cd6d0a371645274f8c5d5da8846d33c84ba8ab2b9680",
+          "bounds": {
+            "nodes": 2437,
+            "edges": 160168,
+            "bytes": 7294454
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.09270919999107718,
+        "lossless_write_seconds": 0.030235499958507717
+      },
+      {
+        "observation_id": "liver_1:120",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2520,
+            2520
+          ],
+          "sampled_view_edges": [
+            169158,
+            169158
+          ],
+          "sampled_two_view_nodes": 5040,
+          "sampled_two_view_edges": 338316
+        },
+        "stored": {
+          "path": "graphs/000025.pt.gz",
+          "sha256": "6752d4e681bc85cf405819da993a7c43f1a69dfeccb8eb63e506a867d73af059",
+          "bounds": {
+            "nodes": 2520,
+            "edges": 169158,
+            "bytes": 7448752
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11458910000510514,
+        "lossless_write_seconds": 0.030883500003255904
+      },
+      {
+        "observation_id": "liver_1:121",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2615,
+            2615
+          ],
+          "sampled_view_edges": [
+            171316,
+            171316
+          ],
+          "sampled_two_view_nodes": 5230,
+          "sampled_two_view_edges": 342632
+        },
+        "stored": {
+          "path": "graphs/000026.pt.gz",
+          "sha256": "b0687b580cd105f0a259292adbd625f9fcc2925b7d353942b4267a7ea8d44d5e",
+          "bounds": {
+            "nodes": 2615,
+            "edges": 171316,
+            "bytes": 7495250
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1343265000032261,
+        "lossless_write_seconds": 0.03454339999007061
+      },
+      {
+        "observation_id": "liver_1:122",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2706,
+            2706
+          ],
+          "sampled_view_edges": [
+            174681,
+            174681
+          ],
+          "sampled_two_view_nodes": 5412,
+          "sampled_two_view_edges": 349362
+        },
+        "stored": {
+          "path": "graphs/000027.pt.gz",
+          "sha256": "218942ce25b1cc6652f3c0b7bdca160f48ec199d0ca3c4c5f568847591589a79",
+          "bounds": {
+            "nodes": 2706,
+            "edges": 174681,
+            "bytes": 7560556
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11566749995108694,
+        "lossless_write_seconds": 0.03242499998304993
+      },
+      {
+        "observation_id": "liver_1:123",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2492,
+            2492
+          ],
+          "sampled_view_edges": [
+            167376,
+            167376
+          ],
+          "sampled_two_view_nodes": 4984,
+          "sampled_two_view_edges": 334752
+        },
+        "stored": {
+          "path": "graphs/000028.pt.gz",
+          "sha256": "f1ea847b6bce01bf2dbb38c4828a5024668e3646b74e37e716d4ae1ad4b957bc",
+          "bounds": {
+            "nodes": 2492,
+            "edges": 167376,
+            "bytes": 7416712
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11145480000413954,
+        "lossless_write_seconds": 0.04201340000145137
+      },
+      {
+        "observation_id": "liver_1:124",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2591,
+            2591
+          ],
+          "sampled_view_edges": [
+            171733,
+            171733
+          ],
+          "sampled_two_view_nodes": 5182,
+          "sampled_two_view_edges": 343466
+        },
+        "stored": {
+          "path": "graphs/000029.pt.gz",
+          "sha256": "8314011ad22f2804d162b7879a7826ea09026fc1f74cb05aea2093a188fe00cf",
+          "bounds": {
+            "nodes": 2591,
+            "edges": 171733,
+            "bytes": 7498898
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.11235509999096394,
+        "lossless_write_seconds": 0.034166399971581995
+      },
+      {
+        "observation_id": "liver_1:125",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2581,
+            2581
+          ],
+          "sampled_view_edges": [
+            168844,
+            168844
+          ],
+          "sampled_two_view_nodes": 5162,
+          "sampled_two_view_edges": 337688
+        },
+        "stored": {
+          "path": "graphs/000030.pt.gz",
+          "sha256": "7cad870c9976b4be7f919440882369e8541079df0cc8b92cf2ec7ba2cfbda91b",
+          "bounds": {
+            "nodes": 2581,
+            "edges": 168844,
+            "bytes": 7451414
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1338666999945417,
+        "lossless_write_seconds": 0.030016300035640597
+      },
+      {
+        "observation_id": "liver_1:126",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2561,
+            2561
+          ],
+          "sampled_view_edges": [
+            168308,
+            168308
+          ],
+          "sampled_two_view_nodes": 5122,
+          "sampled_two_view_edges": 336616
+        },
+        "stored": {
+          "path": "graphs/000031.pt.gz",
+          "sha256": "3ca0875e96aad07a497468dcf5a655a51d14419f3b4e18c5627890c17639876a",
+          "bounds": {
+            "nodes": 2561,
+            "edges": 168308,
+            "bytes": 7440318
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 0.1132404999807477,
+        "lossless_write_seconds": 0.028142800030764192
+      }
+    ]
+  },
+  "new_parallel16": {
+    "complete": true,
+    "actual_observations": 32,
+    "actual_sampled_graphs": 64,
+    "workers": 16,
+    "wall_seconds": 2.960314499970991,
+    "source_encode_calls": 1,
+    "source_memo_hits": 31,
+    "shared_source_files": 1,
+    "materialize_seconds_sum": 43.497702500084415,
+    "write_seconds_sum": 3.0465237999451347,
+    "records": [
+      {
+        "observation_id": "liver_1:0",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2227,
+            2227
+          ],
+          "sampled_view_edges": [
+            152380,
+            152380
+          ],
+          "sampled_two_view_nodes": 4454,
+          "sampled_two_view_edges": 304760
+        },
+        "stored": {
+          "path": "graphs/000000.pt.gz",
+          "sha256": "3c5f3d19a681814fe1dd07a3810b546b5875daa7337d57a3dfd81d922494d57c",
+          "bounds": {
+            "nodes": 2227,
+            "edges": 152380,
+            "bytes": 7143386
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4364840000052936,
+        "lossless_write_seconds": 0.15650909999385476
+      },
+      {
+        "observation_id": "liver_1:1",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2475,
+            2475
+          ],
+          "sampled_view_edges": [
+            165278,
+            165278
+          ],
+          "sampled_two_view_nodes": 4950,
+          "sampled_two_view_edges": 330556
+        },
+        "stored": {
+          "path": "graphs/000001.pt.gz",
+          "sha256": "d31fc8395805a5e97b239b98c7851355054b63970a874de2557af8e0e3021d61",
+          "bounds": {
+            "nodes": 2475,
+            "edges": 165278,
+            "bytes": 7381002
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.5014130999916233,
+        "lossless_write_seconds": 0.10030149994418025
+      },
+      {
+        "observation_id": "liver_1:10",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2342,
+            2342
+          ],
+          "sampled_view_edges": [
+            160616,
+            160616
+          ],
+          "sampled_two_view_nodes": 4684,
+          "sampled_two_view_edges": 321232
+        },
+        "stored": {
+          "path": "graphs/000002.pt.gz",
+          "sha256": "307f9b5a257947b5495a20788c00938a8e5388d88c4fca9d554740f237c219ea",
+          "bounds": {
+            "nodes": 2342,
+            "edges": 160616,
+            "bytes": 7289652
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4793598999967799,
+        "lossless_write_seconds": 0.12193459999980405
+      },
+      {
+        "observation_id": "liver_1:100",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2379,
+            2379
+          ],
+          "sampled_view_edges": [
+            162731,
+            162731
+          ],
+          "sampled_two_view_nodes": 4758,
+          "sampled_two_view_edges": 325462
+        },
+        "stored": {
+          "path": "graphs/000003.pt.gz",
+          "sha256": "d7294b2b1d9590d6e2859a13f0dc29a62617ed7cc080c7f2b64eb4844f1fbde9",
+          "bounds": {
+            "nodes": 2379,
+            "edges": 162731,
+            "bytes": 7328154
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.485722299956251,
+        "lossless_write_seconds": 0.11004100000718608
+      },
+      {
+        "observation_id": "liver_1:101",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2544,
+            2544
+          ],
+          "sampled_view_edges": [
+            167842,
+            167842
+          ],
+          "sampled_two_view_nodes": 5088,
+          "sampled_two_view_edges": 335684
+        },
+        "stored": {
+          "path": "graphs/000004.pt.gz",
+          "sha256": "265de393076edb489e25dc28446d104493b2dbd58b0cc2308b7b8caae9050c48",
+          "bounds": {
+            "nodes": 2544,
+            "edges": 167842,
+            "bytes": 7430720
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4693456999957561,
+        "lossless_write_seconds": 0.12264300003880635
+      },
+      {
+        "observation_id": "liver_1:102",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2418,
+            2418
+          ],
+          "sampled_view_edges": [
+            163288,
+            163288
+          ],
+          "sampled_two_view_nodes": 4836,
+          "sampled_two_view_edges": 326576
+        },
+        "stored": {
+          "path": "graphs/000005.pt.gz",
+          "sha256": "4d0ee38704d1deb067ec54a1c06980a94f64c33e9e8d511ce4eb4201b6a20351",
+          "bounds": {
+            "nodes": 2418,
+            "edges": 163288,
+            "bytes": 7341980
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.553345000022091,
+        "lossless_write_seconds": 0.07165180001175031
+      },
+      {
+        "observation_id": "liver_1:103",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2486,
+            2486
+          ],
+          "sampled_view_edges": [
+            168072,
+            168072
+          ],
+          "sampled_two_view_nodes": 4972,
+          "sampled_two_view_edges": 336144
+        },
+        "stored": {
+          "path": "graphs/000006.pt.gz",
+          "sha256": "ea90ceaa80db7a10bb0ebd358861ef4a3c092d842ca1c20272058044b968a321",
+          "bounds": {
+            "nodes": 2486,
+            "edges": 168072,
+            "bytes": 7427092
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.5619423000025563,
+        "lossless_write_seconds": 0.15214150003157556
+      },
+      {
+        "observation_id": "liver_1:104",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2561,
+            2561
+          ],
+          "sampled_view_edges": [
+            168064,
+            168064
+          ],
+          "sampled_two_view_nodes": 5122,
+          "sampled_two_view_edges": 336128
+        },
+        "stored": {
+          "path": "graphs/000007.pt.gz",
+          "sha256": "6003ebcf6fe49a4a51674f3cd8daf7a185dd1e3225d5e6eff8e5a9dd28fb0554",
+          "bounds": {
+            "nodes": 2561,
+            "edges": 168064,
+            "bytes": 7436414
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4606285000336356,
+        "lossless_write_seconds": 0.1304002000251785
+      },
+      {
+        "observation_id": "liver_1:105",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2333,
+            2333
+          ],
+          "sampled_view_edges": [
+            154956,
+            154956
+          ],
+          "sampled_two_view_nodes": 4666,
+          "sampled_two_view_edges": 309912
+        },
+        "stored": {
+          "path": "graphs/000008.pt.gz",
+          "sha256": "17c4ae175d44ce07b02d99804db758a204b0a43d527d9e350774a6de90cb2790",
+          "bounds": {
+            "nodes": 2333,
+            "edges": 154956,
+            "bytes": 7197958
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4681112000253052,
+        "lossless_write_seconds": 0.11267429997678846
+      },
+      {
+        "observation_id": "liver_1:106",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2583,
+            2583
+          ],
+          "sampled_view_edges": [
+            169404,
+            169404
+          ],
+          "sampled_two_view_nodes": 5166,
+          "sampled_two_view_edges": 338808
+        },
+        "stored": {
+          "path": "graphs/000009.pt.gz",
+          "sha256": "9946163134f882c9a6e33ca5a0526f013a8fc86ea2d200be7705c9cb792e10ba",
+          "bounds": {
+            "nodes": 2583,
+            "edges": 169404,
+            "bytes": 7460626
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4772140000131913,
+        "lossless_write_seconds": 0.11729049996938556
+      },
+      {
+        "observation_id": "liver_1:107",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2380,
+            2380
+          ],
+          "sampled_view_edges": [
+            156662,
+            156662
+          ],
+          "sampled_two_view_nodes": 4760,
+          "sampled_two_view_edges": 313324
+        },
+        "stored": {
+          "path": "graphs/000010.pt.gz",
+          "sha256": "9af40da996533b9217a76e110b12fc377d8a532f95f9c870ded5c0c7db8015be",
+          "bounds": {
+            "nodes": 2380,
+            "edges": 156662,
+            "bytes": 7231176
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.469539400015492,
+        "lossless_write_seconds": 0.1086292999680154
+      },
+      {
+        "observation_id": "liver_1:108",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2401,
+            2401
+          ],
+          "sampled_view_edges": [
+            158539,
+            158539
+          ],
+          "sampled_two_view_nodes": 4802,
+          "sampled_two_view_edges": 317078
+        },
+        "stored": {
+          "path": "graphs/000011.pt.gz",
+          "sha256": "6ede2f32f82addee7687d3eeed5b2e064a289e0fc10de8a2f6446b7be8413eaa",
+          "bounds": {
+            "nodes": 2401,
+            "edges": 158539,
+            "bytes": 7263854
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.472089099988807,
+        "lossless_write_seconds": 0.10513530002208427
+      },
+      {
+        "observation_id": "liver_1:109",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2378,
+            2378
+          ],
+          "sampled_view_edges": [
+            160638,
+            160638
+          ],
+          "sampled_two_view_nodes": 4756,
+          "sampled_two_view_edges": 321276
+        },
+        "stored": {
+          "path": "graphs/000012.pt.gz",
+          "sha256": "0b8f8ca2e8d942f399aa3c7128723398b3845a68b62c0f527542a185a5f39d5b",
+          "bounds": {
+            "nodes": 2378,
+            "edges": 160638,
+            "bytes": 7294540
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4480397999868728,
+        "lossless_write_seconds": 0.1239633999648504
+      },
+      {
+        "observation_id": "liver_1:11",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2243,
+            2243
+          ],
+          "sampled_view_edges": [
+            154742,
+            154742
+          ],
+          "sampled_two_view_nodes": 4486,
+          "sampled_two_view_edges": 309484
+        },
+        "stored": {
+          "path": "graphs/000013.pt.gz",
+          "sha256": "c08135e8c37d28bd3713f44f620538ed2175c98249ffbcee7a7ce8a22fc59b45",
+          "bounds": {
+            "nodes": 2243,
+            "edges": 154742,
+            "bytes": 7183194
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4413237000117078,
+        "lossless_write_seconds": 0.11131450004177168
+      },
+      {
+        "observation_id": "liver_1:110",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2253,
+            2253
+          ],
+          "sampled_view_edges": [
+            155190,
+            155190
+          ],
+          "sampled_two_view_nodes": 4506,
+          "sampled_two_view_edges": 310380
+        },
+        "stored": {
+          "path": "graphs/000014.pt.gz",
+          "sha256": "72286b6d3ead03d7a42a33dadb06562aa329ac42f35f79a90dbbf8ef07f686c1",
+          "bounds": {
+            "nodes": 2253,
+            "edges": 155190,
+            "bytes": 7191622
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.4341987000079826,
+        "lossless_write_seconds": 0.10945649998029694
+      },
+      {
+        "observation_id": "liver_1:111",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2537,
+            2537
+          ],
+          "sampled_view_edges": [
+            167838,
+            167838
+          ],
+          "sampled_two_view_nodes": 5074,
+          "sampled_two_view_edges": 335676
+        },
+        "stored": {
+          "path": "graphs/000015.pt.gz",
+          "sha256": "616aa9a637e6710e802d0c684c04bd16e257dfad7fb538407eea160cd7c7d7be",
+          "bounds": {
+            "nodes": 2537,
+            "edges": 167838,
+            "bytes": 7429774
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.417388400004711,
+        "lossless_write_seconds": 0.1182983000180684
+      },
+      {
+        "observation_id": "liver_1:112",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2480,
+            2480
+          ],
+          "sampled_view_edges": [
+            169644,
+            169644
+          ],
+          "sampled_two_view_nodes": 4960,
+          "sampled_two_view_edges": 339288
+        },
+        "stored": {
+          "path": "graphs/000016.pt.gz",
+          "sha256": "f182cf789d7afeb122648f5a7ce9b980bad5ef9d036f51717532bf970ea71fbf",
+          "bounds": {
+            "nodes": 2480,
+            "edges": 169644,
+            "bytes": 7451488
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.309642400010489,
+        "lossless_write_seconds": 0.045653500012122095
+      },
+      {
+        "observation_id": "liver_1:113",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2487,
+            2487
+          ],
+          "sampled_view_edges": [
+            164633,
+            164633
+          ],
+          "sampled_two_view_nodes": 4974,
+          "sampled_two_view_edges": 329266
+        },
+        "stored": {
+          "path": "graphs/000017.pt.gz",
+          "sha256": "f313c83a4f83a5f42011999e3c71f96bbd1aceb7545d9d5c3e472ff0dd0ef94c",
+          "bounds": {
+            "nodes": 2487,
+            "edges": 164633,
+            "bytes": 7372194
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2273637999896891,
+        "lossless_write_seconds": 0.10043569997651502
+      },
+      {
+        "observation_id": "liver_1:114",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            1964,
+            1964
+          ],
+          "sampled_view_edges": [
+            134883,
+            134883
+          ],
+          "sampled_two_view_nodes": 3928,
+          "sampled_two_view_edges": 269766
+        },
+        "stored": {
+          "path": "graphs/000018.pt.gz",
+          "sha256": "514521403bd66b461486966adf5d9345626f99ba9a3a615244dabcd02f0d1ab7",
+          "bounds": {
+            "nodes": 1964,
+            "edges": 134883,
+            "bytes": 6830296
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.1505614999914542,
+        "lossless_write_seconds": 0.04826920002233237
+      },
+      {
+        "observation_id": "liver_1:115",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2394,
+            2394
+          ],
+          "sampled_view_edges": [
+            156286,
+            156286
+          ],
+          "sampled_two_view_nodes": 4788,
+          "sampled_two_view_edges": 312572
+        },
+        "stored": {
+          "path": "graphs/000019.pt.gz",
+          "sha256": "34ea9bf880ab19eb025805286e68844063f37e070c3b2d377e338d7c4a32df03",
+          "bounds": {
+            "nodes": 2394,
+            "edges": 156286,
+            "bytes": 7226924
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2763772000325844,
+        "lossless_write_seconds": 0.07233480003196746
+      },
+      {
+        "observation_id": "liver_1:116",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2398,
+            2398
+          ],
+          "sampled_view_edges": [
+            160472,
+            160472
+          ],
+          "sampled_two_view_nodes": 4796,
+          "sampled_two_view_edges": 320944
+        },
+        "stored": {
+          "path": "graphs/000020.pt.gz",
+          "sha256": "7de8945545062f7543d02e7c96d4bf74ee2075ebb1ac1d4e80c4b3f856bfe347",
+          "bounds": {
+            "nodes": 2398,
+            "edges": 160472,
+            "bytes": 7294404
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2415249000187032,
+        "lossless_write_seconds": 0.09879899997031316
+      },
+      {
+        "observation_id": "liver_1:117",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2553,
+            2553
+          ],
+          "sampled_view_edges": [
+            172783,
+            172783
+          ],
+          "sampled_two_view_nodes": 5106,
+          "sampled_two_view_edges": 345566
+        },
+        "stored": {
+          "path": "graphs/000021.pt.gz",
+          "sha256": "1f62a9a8f20b1eb10bee2615c99ad4c3191dc74e55a09498943d078f03f37811",
+          "bounds": {
+            "nodes": 2553,
+            "edges": 172783,
+            "bytes": 7510910
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2841156999929808,
+        "lossless_write_seconds": 0.06082900002365932
+      },
+      {
+        "observation_id": "liver_1:118",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2298,
+            2298
+          ],
+          "sampled_view_edges": [
+            155193,
+            155193
+          ],
+          "sampled_two_view_nodes": 4596,
+          "sampled_two_view_edges": 310386
+        },
+        "stored": {
+          "path": "graphs/000022.pt.gz",
+          "sha256": "92f83df43a11b9f8173324febb27d9914a197bb83b193c9ed925bd1c1f722750",
+          "bounds": {
+            "nodes": 2298,
+            "edges": 155193,
+            "bytes": 7197340
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2107222999911755,
+        "lossless_write_seconds": 0.06877600000007078
+      },
+      {
+        "observation_id": "liver_1:119",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2450,
+            2450
+          ],
+          "sampled_view_edges": [
+            167423,
+            167423
+          ],
+          "sampled_two_view_nodes": 4900,
+          "sampled_two_view_edges": 334846
+        },
+        "stored": {
+          "path": "graphs/000023.pt.gz",
+          "sha256": "254c930d3f4da67992e0ddcd14b2f9b3adf2bf121aa4e92166ef1c66959eb05c",
+          "bounds": {
+            "nodes": 2450,
+            "edges": 167423,
+            "bytes": 7412172
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2539830000023358,
+        "lossless_write_seconds": 0.08715059998212382
+      },
+      {
+        "observation_id": "liver_1:12",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2437,
+            2437
+          ],
+          "sampled_view_edges": [
+            160168,
+            160168
+          ],
+          "sampled_two_view_nodes": 4874,
+          "sampled_two_view_edges": 320336
+        },
+        "stored": {
+          "path": "graphs/000024.pt.gz",
+          "sha256": "b0cffea0d3c135ebef25cd6d0a371645274f8c5d5da8846d33c84ba8ab2b9680",
+          "bounds": {
+            "nodes": 2437,
+            "edges": 160168,
+            "bytes": 7294454
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.3170357000199147,
+        "lossless_write_seconds": 0.040285600000061095
+      },
+      {
+        "observation_id": "liver_1:120",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2520,
+            2520
+          ],
+          "sampled_view_edges": [
+            169158,
+            169158
+          ],
+          "sampled_two_view_nodes": 5040,
+          "sampled_two_view_edges": 338316
+        },
+        "stored": {
+          "path": "graphs/000025.pt.gz",
+          "sha256": "6752d4e681bc85cf405819da993a7c43f1a69dfeccb8eb63e506a867d73af059",
+          "bounds": {
+            "nodes": 2520,
+            "edges": 169158,
+            "bytes": 7448752
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2446764999767765,
+        "lossless_write_seconds": 0.08846359996823594
+      },
+      {
+        "observation_id": "liver_1:121",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2615,
+            2615
+          ],
+          "sampled_view_edges": [
+            171316,
+            171316
+          ],
+          "sampled_two_view_nodes": 5230,
+          "sampled_two_view_edges": 342632
+        },
+        "stored": {
+          "path": "graphs/000026.pt.gz",
+          "sha256": "b0687b580cd105f0a259292adbd625f9fcc2925b7d353942b4267a7ea8d44d5e",
+          "bounds": {
+            "nodes": 2615,
+            "edges": 171316,
+            "bytes": 7495250
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2675593000021763,
+        "lossless_write_seconds": 0.07444050000049174
+      },
+      {
+        "observation_id": "liver_1:122",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2706,
+            2706
+          ],
+          "sampled_view_edges": [
+            174681,
+            174681
+          ],
+          "sampled_two_view_nodes": 5412,
+          "sampled_two_view_edges": 349362
+        },
+        "stored": {
+          "path": "graphs/000027.pt.gz",
+          "sha256": "218942ce25b1cc6652f3c0b7bdca160f48ec199d0ca3c4c5f568847591589a79",
+          "bounds": {
+            "nodes": 2706,
+            "edges": 174681,
+            "bytes": 7560556
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.3125154000008479,
+        "lossless_write_seconds": 0.04129260004265234
+      },
+      {
+        "observation_id": "liver_1:123",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2492,
+            2492
+          ],
+          "sampled_view_edges": [
+            167376,
+            167376
+          ],
+          "sampled_two_view_nodes": 4984,
+          "sampled_two_view_edges": 334752
+        },
+        "stored": {
+          "path": "graphs/000028.pt.gz",
+          "sha256": "f1ea847b6bce01bf2dbb38c4828a5024668e3646b74e37e716d4ae1ad4b957bc",
+          "bounds": {
+            "nodes": 2492,
+            "edges": 167376,
+            "bytes": 7416712
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.253200699982699,
+        "lossless_write_seconds": 0.07918229995993897
+      },
+      {
+        "observation_id": "liver_1:124",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2591,
+            2591
+          ],
+          "sampled_view_edges": [
+            171733,
+            171733
+          ],
+          "sampled_two_view_nodes": 5182,
+          "sampled_two_view_edges": 343466
+        },
+        "stored": {
+          "path": "graphs/000029.pt.gz",
+          "sha256": "8314011ad22f2804d162b7879a7826ea09026fc1f74cb05aea2093a188fe00cf",
+          "bounds": {
+            "nodes": 2591,
+            "edges": 171733,
+            "bytes": 7498898
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.258122600032948,
+        "lossless_write_seconds": 0.07441499998094514
+      },
+      {
+        "observation_id": "liver_1:125",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2581,
+            2581
+          ],
+          "sampled_view_edges": [
+            168844,
+            168844
+          ],
+          "sampled_two_view_nodes": 5162,
+          "sampled_two_view_edges": 337688
+        },
+        "stored": {
+          "path": "graphs/000030.pt.gz",
+          "sha256": "7cad870c9976b4be7f919440882369e8541079df0cc8b92cf2ec7ba2cfbda91b",
+          "bounds": {
+            "nodes": 2581,
+            "edges": 168844,
+            "bytes": 7451414
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.2027094999793917,
+        "lossless_write_seconds": 0.09780940000200644
+      },
+      {
+        "observation_id": "liver_1:126",
+        "actual_sampled_measurements": {
+          "sampled_measurement_format": "actual_original_two_view_epoch0_counts_v1",
+          "measurement_epoch": 0,
+          "sampled_view_nodes": [
+            2561,
+            2561
+          ],
+          "sampled_view_edges": [
+            168308,
+            168308
+          ],
+          "sampled_two_view_nodes": 5122,
+          "sampled_two_view_edges": 336616
+        },
+        "stored": {
+          "path": "graphs/000031.pt.gz",
+          "sha256": "3ca0875e96aad07a497468dcf5a655a51d14419f3b4e18c5627890c17639876a",
+          "bounds": {
+            "nodes": 2561,
+            "edges": 168308,
+            "bytes": 7440318
+          },
+          "shared_source": {
+            "path": "shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz",
+            "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+            "content_sha256": "7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4"
+          }
+        },
+        "materialize_two_views_seconds": 1.1114469000021927,
+        "lossless_write_seconds": 0.096002199978102
+      }
+    ]
+  },
+  "parity": {
+    "complete": true,
+    "actual_observations": 32,
+    "records": [
+      {
+        "observation_id": "liver_1:0",
+        "compressed_graph_sha256": "3c5f3d19a681814fe1dd07a3810b546b5875daa7337d57a3dfd81d922494d57c",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:1",
+        "compressed_graph_sha256": "d31fc8395805a5e97b239b98c7851355054b63970a874de2557af8e0e3021d61",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:10",
+        "compressed_graph_sha256": "307f9b5a257947b5495a20788c00938a8e5388d88c4fca9d554740f237c219ea",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:100",
+        "compressed_graph_sha256": "d7294b2b1d9590d6e2859a13f0dc29a62617ed7cc080c7f2b64eb4844f1fbde9",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:101",
+        "compressed_graph_sha256": "265de393076edb489e25dc28446d104493b2dbd58b0cc2308b7b8caae9050c48",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:102",
+        "compressed_graph_sha256": "4d0ee38704d1deb067ec54a1c06980a94f64c33e9e8d511ce4eb4201b6a20351",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:103",
+        "compressed_graph_sha256": "ea90ceaa80db7a10bb0ebd358861ef4a3c092d842ca1c20272058044b968a321",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:104",
+        "compressed_graph_sha256": "6003ebcf6fe49a4a51674f3cd8daf7a185dd1e3225d5e6eff8e5a9dd28fb0554",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:105",
+        "compressed_graph_sha256": "17c4ae175d44ce07b02d99804db758a204b0a43d527d9e350774a6de90cb2790",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:106",
+        "compressed_graph_sha256": "9946163134f882c9a6e33ca5a0526f013a8fc86ea2d200be7705c9cb792e10ba",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:107",
+        "compressed_graph_sha256": "9af40da996533b9217a76e110b12fc377d8a532f95f9c870ded5c0c7db8015be",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:108",
+        "compressed_graph_sha256": "6ede2f32f82addee7687d3eeed5b2e064a289e0fc10de8a2f6446b7be8413eaa",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:109",
+        "compressed_graph_sha256": "0b8f8ca2e8d942f399aa3c7128723398b3845a68b62c0f527542a185a5f39d5b",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:11",
+        "compressed_graph_sha256": "c08135e8c37d28bd3713f44f620538ed2175c98249ffbcee7a7ce8a22fc59b45",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:110",
+        "compressed_graph_sha256": "72286b6d3ead03d7a42a33dadb06562aa329ac42f35f79a90dbbf8ef07f686c1",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:111",
+        "compressed_graph_sha256": "616aa9a637e6710e802d0c684c04bd16e257dfad7fb538407eea160cd7c7d7be",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:112",
+        "compressed_graph_sha256": "f182cf789d7afeb122648f5a7ce9b980bad5ef9d036f51717532bf970ea71fbf",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:113",
+        "compressed_graph_sha256": "f313c83a4f83a5f42011999e3c71f96bbd1aceb7545d9d5c3e472ff0dd0ef94c",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:114",
+        "compressed_graph_sha256": "514521403bd66b461486966adf5d9345626f99ba9a3a615244dabcd02f0d1ab7",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:115",
+        "compressed_graph_sha256": "34ea9bf880ab19eb025805286e68844063f37e070c3b2d377e338d7c4a32df03",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:116",
+        "compressed_graph_sha256": "7de8945545062f7543d02e7c96d4bf74ee2075ebb1ac1d4e80c4b3f856bfe347",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:117",
+        "compressed_graph_sha256": "1f62a9a8f20b1eb10bee2615c99ad4c3191dc74e55a09498943d078f03f37811",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:118",
+        "compressed_graph_sha256": "92f83df43a11b9f8173324febb27d9914a197bb83b193c9ed925bd1c1f722750",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:119",
+        "compressed_graph_sha256": "254c930d3f4da67992e0ddcd14b2f9b3adf2bf121aa4e92166ef1c66959eb05c",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:12",
+        "compressed_graph_sha256": "b0cffea0d3c135ebef25cd6d0a371645274f8c5d5da8846d33c84ba8ab2b9680",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:120",
+        "compressed_graph_sha256": "6752d4e681bc85cf405819da993a7c43f1a69dfeccb8eb63e506a867d73af059",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:121",
+        "compressed_graph_sha256": "b0687b580cd105f0a259292adbd625f9fcc2925b7d353942b4267a7ea8d44d5e",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:122",
+        "compressed_graph_sha256": "218942ce25b1cc6652f3c0b7bdca160f48ec199d0ca3c4c5f568847591589a79",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:123",
+        "compressed_graph_sha256": "f1ea847b6bce01bf2dbb38c4828a5024668e3646b74e37e716d4ae1ad4b957bc",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:124",
+        "compressed_graph_sha256": "8314011ad22f2804d162b7879a7826ea09026fc1f74cb05aea2093a188fe00cf",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:125",
+        "compressed_graph_sha256": "7cad870c9976b4be7f919440882369e8541079df0cc8b92cf2ec7ba2cfbda91b",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      },
+      {
+        "observation_id": "liver_1:126",
+        "compressed_graph_sha256": "3ca0875e96aad07a497468dcf5a655a51d14419f3b4e18c5627890c17639876a",
+        "compressed_shared_source_sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+        "byte_exact_parity": true,
+        "sampled_N_E_parity": true
+      }
+    ]
+  },
+  "post_stage_improvement_ratio": 1.5498968437385285,
+  "memory_accounting": {
+    "preserved_old_commit": "c32158ef1bb75c78a7b657d7c95da36d2f01cf33",
+    "preserved_old_source_normalized_text_sha256": "697952dc9b5d5be21069c17023af891925b1b8bf0e294dc0939cde7b59c33492",
+    "scope": "actual canonical tensors only; raw CT/prepared donor objects absent; per-report32active records",
+    "measurements": [
+      {
+        "actual_cached_observations": 128,
+        "active_complete_records": 32,
+        "repeats": 10,
+        "canonical_physical_bytes": 188581128,
+        "physical_byte_parity": true,
+        "ledger_registration_seconds": 0.3572039999999106,
+        "old_scan_seconds_mean": 0.6885161399957724,
+        "new_incremental_report_seconds_mean": 0.004447059991071001,
+        "improvement_ratio": 154.82501728742244
+      },
+      {
+        "actual_cached_observations": 256,
+        "active_complete_records": 32,
+        "repeats": 10,
+        "canonical_physical_bytes": 417996132,
+        "physical_byte_parity": true,
+        "ledger_registration_seconds": 0.8118912999634631,
+        "old_scan_seconds_mean": 1.2294406600180081,
+        "new_incremental_report_seconds_mean": 0.004667600011453032,
+        "improvement_ratio": 263.3988895795039
+      },
+      {
+        "actual_cached_observations": 537,
+        "active_complete_records": 32,
+        "repeats": 10,
+        "canonical_physical_bytes": 1054304254,
+        "physical_byte_parity": true,
+        "ledger_registration_seconds": 1.8417254000087269,
+        "old_scan_seconds_mean": 2.4318589499976953,
+        "new_incremental_report_seconds_mean": 0.00467299998854287,
+        "improvement_ratio": 520.4063676353646
+      }
+    ]
+  },
+  "complete": true,
+  "source_files": {
+    "tools/benchmark_v17_preparation_execution.py": "ccb0beb0c7953aad1a628f4b01c84b0772a56dc8a62b7b0019b50e9cce89d388",
+    "hiercp_v1x/transition_v1_data.py": "9950d9487b2ffc340e4efb46a0089a40a4742741aa4345ebdf35f7565322c186",
+    "hiercp_v1x/transition_preparation_storage.py": "2adc1070a176f0392b9b206668c95f641ad6b4481d7187e0588be675e602a345",
+    "hiercp_v1x/transition_v1_local.py": "8bfe9466d23bab7f33fb11678dc3017f0a6cde1c375d48e86957198ee2a30d49",
+    "hiercp_v22/storage.py": "39229a40504dafef4cd89f13784e42361f41bc64ce7d93139ea115f0e8a0454a"
+  },
+  "limitations": [
+    "No raw CT donor/recipient canonical graph construction was timed",
+    "This does not estimate total14102 preparation, optimizer/epoch time or ranking quality",
+    "First32 actual same-case observations are explicitly DEBUG; no production subset applied",
+    "Parallel speed depends on hardware and contention; threaded per-row durations overlap",
+    "Memory benchmark contains actual canonical records, no raw CT or prepared donor buffers"
+  ]
+}

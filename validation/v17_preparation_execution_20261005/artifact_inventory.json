@@ -1,0 +1,166 @@
+{
+  "format": "v17_preparation_metadata_inventory_v1",
+  "files": {
+    "benchmark/report.json": {
+      "sha256": "637487dbd7f0ba41a2f1ae2ca629b7cfc35e55950ecd2b80e11df93f4235b876",
+      "size": 103003,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_preparation_execution_DEBUG_20261005\\report.json",
+      "payload_or_checkpoint": false
+    },
+    "benchmark/summary.json": {
+      "sha256": "793d730d5c8b5fe09b974b0a66b47da4a54ba3b6eb9fe67a0ecc482f7148f46a",
+      "size": 497,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_preparation_execution_DEBUG_20261005\\summary.json",
+      "payload_or_checkpoint": false
+    },
+    "reuse/actual_storage_probe.json": {
+      "sha256": "b924e871ee60a930c1728802bd47d9f873aaf949e75f496a37ae82bbdba06c38",
+      "size": 6387,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_actual_storage_reuse_DEBUG_20261005_143301\\actual_storage_probe.json",
+      "payload_or_checkpoint": false
+    },
+    "reuse/reuse_receipt.json": {
+      "sha256": "725670e564e489133d42c956fc5e6de91eaf764a8b4100c82b8c0daf10a32395",
+      "size": 6341,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_actual_storage_reuse_DEBUG_20261005_143301\\canonical_cache\\reuse_receipt.json",
+      "payload_or_checkpoint": false
+    },
+    "reuse/prepare_request.json": {
+      "sha256": "6043b9a84c77a24a69219d8f5461324a7cde89c26013a2331e9d3e9efcd8ed7b",
+      "size": 8700,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_actual_storage_reuse_DEBUG_20261005_143301\\canonical_cache\\prepare_request.json",
+      "payload_or_checkpoint": false
+    },
+    "units/final_UNIT.log": {
+      "sha256": "75b90f51cdb1be3743f8fb3656aea7d817cef475d536df0755103cac0d963ebe",
+      "size": 27247,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_UNIT_20261005_r2.log",
+      "payload_or_checkpoint": false
+    },
+    "previous/manifest.json": {
+      "sha256": "cd3956a24d0d87929b0262a6373d8ec488ca4fdaea0f27f9596f427e79301b1b",
+      "size": 22933,
+      "copied_from": "D:\\AI project\\nnunet\\validation\\v17_crossed_training_20261005\\D\\manifest.json",
+      "payload_or_checkpoint": false
+    },
+    "static/verification.json": {
+      "sha256": "f5038d8557e322f86c7f19682ece02a89802fc5bb5a214ae8c8e444b0e00bd19",
+      "size": 3405,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_static_20261005.json",
+      "payload_or_checkpoint": false
+    },
+    "admitted_reuse/actual_admitted_reuse_verification.json": {
+      "sha256": "6e19b992ec768f36f02b2d2dfe66fa394f202046d593ece56d6fa0f49fb7e82e",
+      "size": 1796,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_admitted_reuse_STORAGE_DEBUG_20261005_144456\\actual_admitted_reuse_verification.json",
+      "payload_or_checkpoint": false
+    },
+    "admitted_reuse/STORAGE_REFERENCE_PROVENANCE.json": {
+      "sha256": "9d6ba8653b93ecc425b46b4fe6b1ae2ddfba8cbff9a681a8cdb1760edc1b52ec",
+      "size": 1042,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_admitted_reuse_STORAGE_DEBUG_20261005_144456\\admitted_reference\\STORAGE_REFERENCE_PROVENANCE.json",
+      "payload_or_checkpoint": false
+    },
+    "admitted_reuse/provider_index.json": {
+      "sha256": "f3ee6515cfbb8bb1dbe850bc2cd7f7c08a71af33c74c8c24145708b5cc36c731",
+      "size": 840587,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_admitted_reuse_STORAGE_DEBUG_20261005_144456\\new_storage_run\\canonical_cache\\index.json",
+      "payload_or_checkpoint": false
+    },
+    "admitted_reuse/reuse_receipt.json": {
+      "sha256": "d7081047ccb602d228a2ff0ac2739fe049db1951d907727913b5142eeaddb24c",
+      "size": 6400,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_admitted_reuse_STORAGE_DEBUG_20261005_144456\\new_storage_run\\canonical_cache\\reuse_receipt.json",
+      "payload_or_checkpoint": false
+    },
+    "D/manifest.json": {
+      "sha256": "19ae4d7611b6a4f00a9e12fd3222663e24cae5b2469f55c86b554dd747b4225b",
+      "size": 23163,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\manifest.json",
+      "payload_or_checkpoint": false
+    },
+    "D/resources.jsonl": {
+      "sha256": "a8c128f8fecd1dadaab7d250005fb99debd755645a27edbf580d20e10b28698f",
+      "size": 747,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\resources.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/model_execution.jsonl": {
+      "sha256": "981a93034bf31703f5569852fa6ce252d19acbb72632cd096a56348299dc39c3",
+      "size": 1687,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\model_execution.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/calibration.jsonl": {
+      "sha256": "c5dd9ef716caf9dba37f2d08bbfe2af07c5899210a4546646624ffac92edd1b6",
+      "size": 556,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\calibration.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/checkpoint_timing.jsonl": {
+      "sha256": "05b3156cec57027d08c5460aedd8c8d1d994c72a31834932d0531c7155fa27fd",
+      "size": 747,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\checkpoint_timing.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/curve.jsonl": {
+      "sha256": "99bcd07272e93b5b869c2e59f2aa6174b6539d8bcd53cdbdfb3d0a32e973d0f2",
+      "size": 411,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\curve.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/d_checkpoint_wall_90b8a475f9064266bf6a90e37d4af16d.jsonl": {
+      "sha256": "152a950433f4457da00ca80f23040e5fa2c5fa13cc1aaababe6c69f7310d3168",
+      "size": 2430,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\d_checkpoint_wall_90b8a475f9064266bf6a90e37d4af16d.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/DEBUG_final_full128_1a2d21e3d0024e698f8bf00adce39655.json": {
+      "sha256": "03bc1af756632f85856917760680e0b5802d397c6688fba36ba68a6ab18d3b1f",
+      "size": 48759,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\DEBUG_final_full128_1a2d21e3d0024e698f8bf00adce39655.json",
+      "payload_or_checkpoint": false
+    },
+    "D/training/DEBUG_neural_execution.jsonl": {
+      "sha256": "025bbdc16af1483010766ab11e5a065889a4df2c5c5ccd9d92eb09e09771119d",
+      "size": 1031,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\DEBUG_neural_execution.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/memory_timing.jsonl": {
+      "sha256": "0d6871f9be2767bcffae18142054660e6a7c6f028b2ca94234db6a5d6a632a75",
+      "size": 21757,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\memory_timing.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/status.jsonl": {
+      "sha256": "30dae88348fe22df5110b4a53e07248c7dcfa598ed939bd9a8081fe936b4cab1",
+      "size": 72,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\status.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "D/training/updates.jsonl": {
+      "sha256": "177922cb176704ba4ffbfe14805bb099f5b1a2b79184b235d135949a8f3d6937",
+      "size": 4186,
+      "copied_from": "D:\\AI project\\nnunet\\work\\v17_fastprep_D_cuda_DEBUG_20261005_r2\\training\\updates.jsonl",
+      "payload_or_checkpoint": false
+    },
+    "reuse/hardlink_file_verification.json": {
+      "sha256": "0eb303796e70924c79fccbc5296cc1268848db1a5f6f8dd1d1ff401143bf6984",
+      "size": 125195,
+      "generated_metadata": true
+    },
+    "units/source_binding.json": {
+      "sha256": "48978a9b3819d1ceaa53e639e0cbad0510591dbe53f568507f901cffe6ec684a",
+      "size": 1840,
+      "generated_metadata": true
+    },
+    "verification.json": {
+      "sha256": "2775ff4583f23220064d6e1d9ec66a32d835fa0877b94e1028485f0b21f59f91",
+      "size": 57293,
+      "generated_metadata": true
+    }
+  },
+  "self_excluded": true,
+  "no_CT_tensor_graph_checkpoint_payloads_copied": true
+}

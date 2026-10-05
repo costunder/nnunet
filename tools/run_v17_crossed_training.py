@@ -142,13 +142,17 @@ def main():
                    help='C: complete eight-candidate samples; D: observation rows, each two real graphs')
     p.add_argument('--prepared-cache',type=Path,
                    help='D only: read-only reuse of a complete byte/assignment/source-bound canonical index')
+    p.add_argument('--reuse-preparation',type=Path,
+                   help='D only: import verified completed receipts from an interrupted preparation into a new arm output')
     for name in ('cuda-gib','rss-gib','resident-gib'):p.add_argument('--'+name,type=float,required=True)
     p.add_argument('--debug',action='store_true');p.add_argument('--debug-updates',type=int)
     p.add_argument('--debug-original-fixture',type=Path);p.add_argument('--debug-support-fixture',type=Path)
     p.add_argument('--debug-train-cases',nargs='+');p.add_argument('--debug-validation-cases',nargs='+')
     a=p.parse_args()
-    if a.prepared_cache is not None and a.arm!='D':
+    if (a.prepared_cache is not None or a.reuse_preparation is not None) and a.arm!='D':
         raise ValueError('Prepared canonical graphs belong only to D original input')
+    if a.prepared_cache is not None and a.reuse_preparation is not None:
+        raise ValueError('Choose a complete prepared cache or interrupted preparation reuse, not both')
     if (a.workers<2 or not 0<a.resident_gib<a.rss_gib or a.cuda_gib<=0
             or a.physical_batch_candidates!=sorted(set(a.physical_batch_candidates))
             or min(a.physical_batch_candidates)<(1 if a.arm=='C' else 2)):
@@ -248,6 +252,10 @@ def main():
     if a.prepared_cache is not None:
         a.prepared_cache=a.prepared_cache.resolve(strict=True)
         identity['reused_prepared_cache']=dict(path=str(a.prepared_cache),sha256=sha(a.prepared_cache),read_only=True)
+    if a.reuse_preparation is not None:
+        a.reuse_preparation=a.reuse_preparation.resolve(strict=True)
+        identity['reused_preparation']=dict(path=str(a.reuse_preparation),
+            request_sha256=sha(a.reuse_preparation/'prepare_request.json'),read_only=True)
     train_files,val_files,config,binding=inputs(a,source)
     if not a.debug and (set(binding['training_case_ids'])!=set(inventory['split']['inner_train'])
                         or set(binding['validation_case_ids'])!=set(inventory['split']['inner_val'])):
@@ -346,6 +354,12 @@ def main():
             cache=a.prepared_cache if a.prepared_cache is not None else a.output/'canonical_cache/index.json'
             if not cache.exists():
                 provider=OriginalInputProvider(all_ds,**kwargs)
+                if a.reuse_preparation is not None:
+                    from tools.reuse_v17_D_preparation import import_preparation
+                    request=provider.preparation_request()
+                    import_preparation(a.reuse_preparation,cache.parent,request,
+                        expected_rows=all_ds.rows if a.debug else all_ds.meta['records'],
+                        expected_identity=identity)
                 cache=provider.preflight(cache.parent,minimum_free_bytes=int(inventory['config']['minimum_free_gb']*2**30))
                 del provider
             train_loader=OriginalInputProvider(train_ds,cache_index=cache,**kwargs)

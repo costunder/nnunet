@@ -1,0 +1,2718 @@
+{
+  "actual_imported_observations": 537,
+  "actual_hardlinked_files": 541,
+  "all541_file_SHA_size_and_hardlink_identity_verified": true,
+  "all537_signed_metadata_receipts_byte_equal": true,
+  "graph_bytes_copied": 0,
+  "graph_deserialization": false,
+  "graph_reconstruction": false,
+  "original_source_preserved": true,
+  "provider_preflight_still_required": true,
+  "files": {
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000000.pt.gz": {
+      "sha256": "ee60cd4698c6eb0d72091f46312a5acdb9349eb34361f94113655bc19e17e9ed",
+      "size": 470948,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/shared_sources/7c4308bd4815014b1862805f671732dc0560f45924ae88a897dcfd6201616fa4.pt.gz": {
+      "sha256": "052975f8dd1793dcdded1b0fa0138a801e46066a1710e18ee59e05ec2dd96594",
+      "size": 638113,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000001.pt.gz": {
+      "sha256": "61e2416f351f0f2ebc35fed8d62ad0cdf0f08199d10e5a19ce509bcd6fd05ed5",
+      "size": 530715,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000002.pt.gz": {
+      "sha256": "1527f3edb8683157a56c41d8805b0e32e02f6fff36b7e377561e75262e0a8e5c",
+      "size": 473816,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000003.pt.gz": {
+      "sha256": "29cb1241af1d8e4f53fe9a870c0b44e1959baae2cb70cd71c43b1fa1747258ac",
+      "size": 487506,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000004.pt.gz": {
+      "sha256": "ca5200169495bf0b786e7494f2223a2bf6ee8f94f3062b7a182bba75980b1293",
+      "size": 518709,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000005.pt.gz": {
+      "sha256": "b253aa2a3da681b60ddc044c2affa1f57cb00d27df2813e07e1ac71e8eb532d9",
+      "size": 481748,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000006.pt.gz": {
+      "sha256": "5df69ff3565f1df0bbbb733a0c36eef7f51edef1e8aa3c2155bb7579a5d0ed43",
+      "size": 533034,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000007.pt.gz": {
+      "sha256": "eab3d26cedaec4bcbf7f8304c56df1697e92d474831ab61aa93e9af9ed603990",
+      "size": 569488,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000008.pt.gz": {
+      "sha256": "47acae1897c19267fc5b25a3647d8e5b86c342d74f99527a08d4212d8b9f0c64",
+      "size": 510610,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000009.pt.gz": {
+      "sha256": "33a99e4d82ec249080c71bd9572863ebedf4644279235c6311b527c94841dcfd",
+      "size": 548558,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000010.pt.gz": {
+      "sha256": "e0622346c0b3eb94ffa6537193d32e3da3c381542d7f4932808709a325d4836e",
+      "size": 521211,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000011.pt.gz": {
+      "sha256": "6b6cf278e3e8b4b50344e1b4403624da6649e802fc6ff8c8c6c52fb839faead2",
+      "size": 537573,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000012.pt.gz": {
+      "sha256": "a246d5eb16b188f4c24940cc7ab6d81925511271447084c0fa3e0dc1dd39462c",
+      "size": 461464,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000013.pt.gz": {
+      "sha256": "d53316f9a105df7e7fe11fc06762c6646bc7da2b69cce7f0ac698b5b3455cf19",
+      "size": 474097,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000014.pt.gz": {
+      "sha256": "c628d749e155047c88cd59d08006a0525e0761cd3534f4ea6d9306db8494022c",
+      "size": 482272,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000015.pt.gz": {
+      "sha256": "8b737e6f027a8490dc05fa26ba31ed029b2ed7ea10c444dee3414f30439cea4c",
+      "size": 539791,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000016.pt.gz": {
+      "sha256": "28ce90cfd1253f07dd78af0fb68e913cfe62ee1f1178eba36f43c6f493b8480f",
+      "size": 524203,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000017.pt.gz": {
+      "sha256": "e96f7a58071242910bea1e09416827e7277d5b660bba43b2ed88b8d6ed73103f",
+      "size": 531838,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000018.pt.gz": {
+      "sha256": "da2f1b02885318ea3fb3f99ed1c96b1325eae18ac7bcb9c033e2be2b7220b526",
+      "size": 420423,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000019.pt.gz": {
+      "sha256": "9ab4b716f6ab3b95e11da89cd84b11b6573f795bb28a5de9774144cabeed0f3e",
+      "size": 527095,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000020.pt.gz": {
+      "sha256": "9ebb94d3da4d9f07b682cd07e910b8a350b5552e316398eb4ae5590ca4e420ca",
+      "size": 506723,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000021.pt.gz": {
+      "sha256": "47d8ce226e102cd915dcbe30f00c08ac502dae262259a3eb42fe5d00532d8426",
+      "size": 546212,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000022.pt.gz": {
+      "sha256": "fa67428b0c36c57e19d84042ac75a5e639e6ce4697fa6b26bdf437a3f0244ddf",
+      "size": 485046,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000023.pt.gz": {
+      "sha256": "5c1d7d731a6fca94aa9c81d657be0a7bc88561511d511694dcb2c9ecbe72cdff",
+      "size": 530609,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000024.pt.gz": {
+      "sha256": "3c23bd93a03c1b39500b8e84c314e57990b9a23ca39cd09fe2b0fe0886061ea2",
+      "size": 528452,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000025.pt.gz": {
+      "sha256": "6c6bb7b8cb79a2ed8fc784b85eef266feaebfc5f8b8395e39ee1face10198c8a",
+      "size": 534386,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000026.pt.gz": {
+      "sha256": "f953323058832cece1a2e62764aab594cfa82b87e976ffacc6249d8d8dc59038",
+      "size": 549101,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000027.pt.gz": {
+      "sha256": "6457b9815c2a99cc61e64224b4190e35a488e8740bf92130b9dd74b346ab2c29",
+      "size": 583989,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000028.pt.gz": {
+      "sha256": "2dd5b0e501e6a192f67205c3d42f0d4a10e506809d39b84a58c7fad800320446",
+      "size": 518610,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000029.pt.gz": {
+      "sha256": "838a09d6cd3a3585662d77b28f6b406988101359f24aa87cd01db137f97adf33",
+      "size": 572951,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000030.pt.gz": {
+      "sha256": "112b39bf5b8e09d2e01d72d59e0be5cf93010374d9f7d5b79562a3507e2ec38f",
+      "size": 548307,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000031.pt.gz": {
+      "sha256": "5de556357f62d3619989372b03cfc93bf2fb9e7a4ac656206f0c5d588413c135",
+      "size": 525244,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000032.pt.gz": {
+      "sha256": "11d39ac6c5e9d9815d64b65da272d32bef22828fa2e88a88af930d803d00885a",
+      "size": 542402,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000033.pt.gz": {
+      "sha256": "73ec4a9f6f06609113ec7e14e15187b6a4ea99a247f7a431d7920ed39ac7ab12",
+      "size": 435907,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000034.pt.gz": {
+      "sha256": "dd1f665be525d5ff2a8a88645a1c75449eef0c02cded1aab05178cc831160506",
+      "size": 461885,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000035.pt.gz": {
+      "sha256": "ef9ec84545174d5acbd65a4642a702714efde395f3887d397d49571cbe51a581",
+      "size": 581526,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000036.pt.gz": {
+      "sha256": "d9fc53f7c7f0ffae6480a0e0a85e1d6da16f0e7fdafaff6423a5863d29b474b3",
+      "size": 513521,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000037.pt.gz": {
+      "sha256": "509fb6bdc51ed6e30fbdb8a9337aa9c8a709b565024836c41c4129828e01fc18",
+      "size": 555632,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000038.pt.gz": {
+      "sha256": "44109fe99041dd6d0785022f521c0781cefbc03be09a11c3908d6c3113b0ed09",
+      "size": 521432,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000039.pt.gz": {
+      "sha256": "88dd455ec2c45872b817bf110ede716e9cc74294b6042113a61a54131ee655d1",
+      "size": 504080,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000040.pt.gz": {
+      "sha256": "c69a4d4e0a07543b7722f6db253a4e260a308b393ee7ebb4f4a64baeafdff7b7",
+      "size": 485962,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000041.pt.gz": {
+      "sha256": "5234381e08daa435efe83dbf604e3b521876edbf925661bcb36bc4fa7b731073",
+      "size": 522620,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000042.pt.gz": {
+      "sha256": "e5aa469fba244aa5114094dfc85eb39099bd24dff9399dcd8d67b408088b3fb7",
+      "size": 585225,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000043.pt.gz": {
+      "sha256": "89b9f57ab5b87f30292a7a80a85267dba9f62ffa29e294ad4f29a2843f5316ef",
+      "size": 492881,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000044.pt.gz": {
+      "sha256": "5a9461376253f21f5e85db431e8cff77a918e48e049c4ba888b134cffd052822",
+      "size": 570032,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000045.pt.gz": {
+      "sha256": "5d0b822b37214e853a8900c89745f7e7d7b55c287436a09dc3e0e5a4a7943bab",
+      "size": 563939,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000046.pt.gz": {
+      "sha256": "5c81255792bec598432804b8601c0dadcc54768603396167c985e925928ebc65",
+      "size": 549599,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000047.pt.gz": {
+      "sha256": "0f79a8da97dbabc5e412e30d577244845fbcbbc6a7e1059abc434071a8eba1c8",
+      "size": 494940,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000048.pt.gz": {
+      "sha256": "fd9984831074edec82cb26fc720f4109f62191bb5c3da2fb916c10ee2e574a64",
+      "size": 509867,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000049.pt.gz": {
+      "sha256": "dc8fd7a07a436289db804ee1bc93bc41e2fe5830ac08dd1ae084e516ea38faa8",
+      "size": 572734,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000050.pt.gz": {
+      "sha256": "ae8eb001b109cb6f03ec23c947b51f865ad5ab1e3c8db1092344b0feb21c8b39",
+      "size": 561670,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000051.pt.gz": {
+      "sha256": "94baf23594f3578581cc88a1980e41e271d6b7c18393cc55a1e9b653d767fc49",
+      "size": 552007,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000052.pt.gz": {
+      "sha256": "c1d8016f4f6887f5dc80cf918403f6a6d721f17f32b48fded59f868e7cd3761c",
+      "size": 488100,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000053.pt.gz": {
+      "sha256": "40d6607dbcb435bdcced9c5e2b428e70c88414d0567b9b1497e07432ec6f4f26",
+      "size": 394166,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000054.pt.gz": {
+      "sha256": "405033d9cf7b3bdcbe2eac43d8aa1ad70f20128a102d90294d92c7ddebf0ba40",
+      "size": 474394,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000055.pt.gz": {
+      "sha256": "0d5b01c9e9c242516c458983339524cb844f8f86ee51dfdc1b8dd40d772ad684",
+      "size": 422074,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000056.pt.gz": {
+      "sha256": "8d83eaad459aac054688220994b9f442dbc471be8ea8847c1161ef105915bc4b",
+      "size": 575584,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000057.pt.gz": {
+      "sha256": "a2ca9bdfc5ab17971ceed2ae12355fae4981d4d33c029c0d3b42ef37c61a4b9e",
+      "size": 557833,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000058.pt.gz": {
+      "sha256": "8a23bb2a01c0d4d07b779c106887bf7735c96eb44ea62a3ee106c366ebddab59",
+      "size": 479361,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000059.pt.gz": {
+      "sha256": "4236396126f95624340fcb7855f7249f35b9b649dce80622a11f0728f7f17ea9",
+      "size": 534313,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000060.pt.gz": {
+      "sha256": "504d9c847c432df4fc8fba90bea6cc8c14c4c766f75e1433b9dff7bfbbc4a820",
+      "size": 465568,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000061.pt.gz": {
+      "sha256": "b31b788b672ddd81afc1cb6fc2122caca1567f18c8cbebc400754c55767e8d48",
+      "size": 452522,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000062.pt.gz": {
+      "sha256": "074691936ad09c03f49de71bc806dbe032100c7154d9cea1848071d5fa7124cf",
+      "size": 459223,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000063.pt.gz": {
+      "sha256": "51d2cf1f15efc9acca2f1547ed6e4f84cbadc2cd4988e90b84c4dbc0050c6bb2",
+      "size": 573580,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000064.pt.gz": {
+      "sha256": "0e9e8b9dd3524c93028d44cabbce4abaa1d664c55dd37f6b892cc2d0e8c33d04",
+      "size": 472053,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000065.pt.gz": {
+      "sha256": "df1672f328b1d777752c6a4715160b5eaa49aa8afb35ec8248353a772a98434b",
+      "size": 552911,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000066.pt.gz": {
+      "sha256": "ac8de5ac033bade634d4d906881fb1274c54a646643c9d1aba3d82f530bca5c4",
+      "size": 542567,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000067.pt.gz": {
+      "sha256": "ac0ac2635167037df2db636951ed7c47438a756a208fefbda838c2b3ecdb0f99",
+      "size": 477615,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000068.pt.gz": {
+      "sha256": "62201a6a9644fa8f10601a94fa4449eb47cd28ab9c102e47aee44fd3d891db7d",
+      "size": 510134,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000069.pt.gz": {
+      "sha256": "67f58b403b6f5f8d1ec545bf98f27851075e58c94b0cee866c9070e30d7cfa3d",
+      "size": 528491,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000070.pt.gz": {
+      "sha256": "29c623166f8fe50b4b502deec8c77a068a18bd008b8db369a6eef06bb5e80ce6",
+      "size": 514473,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000071.pt.gz": {
+      "sha256": "faa4f4a0b8ee495589a69da620f378751ca4ebddc106404567ada108b6b33f2f",
+      "size": 540620,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000072.pt.gz": {
+      "sha256": "8aff5013e1df76f691cc027f0bef19f9b372b139b3e719d74654a4f4ad537b65",
+      "size": 513605,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000073.pt.gz": {
+      "sha256": "fc1f6a5409462e5c5ff86cabf52d65a79c16f8c9a956dcd116a8d5079b21c7d1",
+      "size": 532578,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000074.pt.gz": {
+      "sha256": "af7809f90f8cdde1d2e1da42855b5fbbd9767dcbd270f8878f9a9a5f46a71b94",
+      "size": 449065,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000075.pt.gz": {
+      "sha256": "12662918d1febe5cecc2434039092799f15636a54a86f5b9de9e5b95fa71a06e",
+      "size": 531009,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000076.pt.gz": {
+      "sha256": "4733ba98c1e52ec3190aa52cb4d4d9c84e5c73c79472253591e98ee6b90eaf42",
+      "size": 558590,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000077.pt.gz": {
+      "sha256": "a726afdb9f7d92a681fa1f0095b6aaed10069103001621399d26c1bb2f4d4b93",
+      "size": 552733,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000078.pt.gz": {
+      "sha256": "1adae6d665c55a3c62d85cbd6a8d4651cabfa2cf92b2ebe83676a632081467b5",
+      "size": 549049,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000079.pt.gz": {
+      "sha256": "2c9ba3d598791d6dfb6af3181f5b9a52ee5479a3ef35f1e18fe66597f1fd5b54",
+      "size": 568683,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000080.pt.gz": {
+      "sha256": "96712400b68c55a63cd99911a5426bc0532b61712b605579fdb45f877bff4da4",
+      "size": 560295,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000081.pt.gz": {
+      "sha256": "73cc336c56c15deeb7cc457ed231dac3ee6126c1829784373e37910475f45b88",
+      "size": 541075,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000082.pt.gz": {
+      "sha256": "a74a50cb4e8876a3e9868dd4bc2a841a33fc0d43673ec7e009da96a173818f62",
+      "size": 552522,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000083.pt.gz": {
+      "sha256": "de621815df409bd9f9ce8c8d60b919474673297fe5274fe83740473c9c0611a4",
+      "size": 561922,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000084.pt.gz": {
+      "sha256": "808dd7ecad94c186afc772bcede4fb6f45eebe6923dcf5458fde3316792de0ab",
+      "size": 562680,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000085.pt.gz": {
+      "sha256": "3c52cf4e574d301782d0a71fe0d417cdfbe655e0b8a6d0b1279738454a4c6239",
+      "size": 477446,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000086.pt.gz": {
+      "sha256": "5e4f04e560cc9eae60cc72889d6e487f3bc3d7815442116f0dff095bb31c46c6",
+      "size": 532510,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000087.pt.gz": {
+      "sha256": "518f3c4a9b6f24458a366802ff75236c81a9bf26971ebaa5d4d2c11bebf74017",
+      "size": 392696,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000088.pt.gz": {
+      "sha256": "6c083268e4d0f8fed5e928cd1dc78fd509fa5dca702945efd77428799f314121",
+      "size": 565801,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000089.pt.gz": {
+      "sha256": "159ee69066d7c89ef1168657f0995fe2fc8a33b67c6075b532b49cb5ba38e1da",
+      "size": 566847,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000090.pt.gz": {
+      "sha256": "03f8cd908a3c0ceb38184d2cedc8c29a22fa243f00ee7266ded26efeca7f827c",
+      "size": 474437,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000091.pt.gz": {
+      "sha256": "cfd4b4d9ece6e782cc26cf691d3869204113bf9d0b824868350222c249d21800",
+      "size": 471025,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000092.pt.gz": {
+      "sha256": "30fca78959cd6e8a9537395be965ac20177e28b0a3c4ca80be397939fb7ff149",
+      "size": 524766,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000093.pt.gz": {
+      "sha256": "9df53c32af653c4d1f8b36b7085e60c8daf078e6f4713de7130a1afab841983d",
+      "size": 568364,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000094.pt.gz": {
+      "sha256": "307fc695a24611567aacfa0a385b0a2f47e097a31384d4b5eb09c6a7d9d7676a",
+      "size": 485254,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000095.pt.gz": {
+      "sha256": "881bc545a89af694d489fa39e675018ae9ecc763decc49f03c822dbbcccec614",
+      "size": 537250,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000096.pt.gz": {
+      "sha256": "070270d6dad8f91faf40226b9c5f91d98e164167397cbcb646f3b373635f6c10",
+      "size": 548579,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000097.pt.gz": {
+      "sha256": "b648eeffc8febda764378c5ebbc89080676514d6dd0d216d72a81de619893245",
+      "size": 502512,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000098.pt.gz": {
+      "sha256": "397a97e6e5471ef039ac67176441df0cd7a5fc6aaeacc23bfacd1d0ecf881140",
+      "size": 504729,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000099.pt.gz": {
+      "sha256": "06d59867fd840d7268d14ce4aa9cdfa08522fa9f308f12c97be9c963dfd8c090",
+      "size": 531756,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000100.pt.gz": {
+      "sha256": "8f1865cd2f4c795f1c903ce1031ae2943c6195230c29b8d4360cddbf2d182bc8",
+      "size": 570159,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000101.pt.gz": {
+      "sha256": "c698904a443e11092b0861438e802147b0dcba80e1c64796441bfd7616d739ae",
+      "size": 412374,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000102.pt.gz": {
+      "sha256": "a487484ab743e3299aab43ee34d070a19e9e885f8bafcf6b83ccdbd3cdb7ac7f",
+      "size": 477476,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000103.pt.gz": {
+      "sha256": "bb6cf2a70250f3ae2c9197a566a0bf32628078ad6f7efd3970f0e3f71067e376",
+      "size": 570711,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000104.pt.gz": {
+      "sha256": "cd0eaff35239c9b514605921051f80157b46315268859028322b902ff6179029",
+      "size": 569282,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000105.pt.gz": {
+      "sha256": "18f9482493c31f0c23dfa4d2c57f721d654f29aa1be714485b3d86081aee48df",
+      "size": 505677,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000106.pt.gz": {
+      "sha256": "dacc1924897a6bb98e55f909b8443e95f702080144772e9e3c2363f557886f88",
+      "size": 533140,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000107.pt.gz": {
+      "sha256": "f63d30a59b669dbb67b02aea7d6e6421959818e7f73d335624e5c736ae5276e8",
+      "size": 476317,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000108.pt.gz": {
+      "sha256": "bfacd7d50575d13128f3acf703b1d5519ec6d209a95dd232e02e5f51dae43c23",
+      "size": 464691,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000109.pt.gz": {
+      "sha256": "3fb6b4a7bfdcffe0dc7b91403cd57dd487ccf4e98de7d3a2b29002521ce8755e",
+      "size": 560533,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000110.pt.gz": {
+      "sha256": "5bf63bdfb84fc47d4d40a78d266f3a2e0660e0dbd850b1e19ebb8559ebbd91c8",
+      "size": 522578,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000111.pt.gz": {
+      "sha256": "c242c0536c3ea8c5205d01e7ec66242a0b312a67e405f902b8c65c773b5e119f",
+      "size": 458126,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000112.pt.gz": {
+      "sha256": "4e7b897bc796c3c63039d8a502ab88837535491dbec195c4145bddfc9c2c271d",
+      "size": 518469,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000113.pt.gz": {
+      "sha256": "92ae154a1c017e2bdda72d1f94aba6a9b52add6e7a8ce4ce03f08b186c426110",
+      "size": 551689,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000114.pt.gz": {
+      "sha256": "51b669faf1e102b43a97a97c820122b9307025666c388a9f999cd2d3019dc910",
+      "size": 541767,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000115.pt.gz": {
+      "sha256": "7e190c029f2f21b9c75056302fe64dec023658d3db7fbe845c69b784a47bd31a",
+      "size": 509372,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000116.pt.gz": {
+      "sha256": "3ec5ead624bf649883a119d96c03a1c2ff1c695363fd090dba6a3f3e5ee52b05",
+      "size": 516593,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000117.pt.gz": {
+      "sha256": "8ae59e375cb4c15ded99d677ac08091eee35e1ae82ba3b6f1462fc9652a9ffa2",
+      "size": 562727,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000118.pt.gz": {
+      "sha256": "a15729781cd814a99ccb1e13414cac37f5899e2061cf04cd78b50bf65ed30625",
+      "size": 538791,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000119.pt.gz": {
+      "sha256": "e4c8f313986df1360842fafec8f5b3ad7c2dfda9e3539e8a3bb3ef50234adb19",
+      "size": 533944,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000120.pt.gz": {
+      "sha256": "c39af2e3195986468838856285aaee4b2d3b5dbed52439378aaebe706514018a",
+      "size": 547529,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000121.pt.gz": {
+      "sha256": "1a17c7b59711a52a753abe87f7d121bb699a0e4a52d6c078e38e0c1fad385973",
+      "size": 511924,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000122.pt.gz": {
+      "sha256": "5de6b522d5ed426caf34cc1174ec8f650e85f3739473c00bb1c422e49d715ed8",
+      "size": 440405,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000123.pt.gz": {
+      "sha256": "904ed9dd36c8fefba2588ab8ece9bae2dcf8715d4f7cf64b3fcdd6476d0f9733",
+      "size": 564282,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000124.pt.gz": {
+      "sha256": "e6ee87a68fc39aeaab8c6166996e67a53c68488d8fe350d7741c02e9c05ccb54",
+      "size": 497969,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000125.pt.gz": {
+      "sha256": "26739641967e525acaa9c48406546624649f51332e4c7a744b1c75b8b27c2e5e",
+      "size": 564119,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000126.pt.gz": {
+      "sha256": "a7fe435a6991ab386f8e9ed90524faedcb2ccb3ac29d0c0f7c0b0a8750dd5fda",
+      "size": 550888,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000127.pt.gz": {
+      "sha256": "feb4554b604ed11f5f779db135c2bf56b74e05624e0f1e934ebc8bde92d02359",
+      "size": 551688,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000128.pt.gz": {
+      "sha256": "a344aa2938e8dc6a1bafb7708c3c32c544fd520170b355502044ef6cd35a7e21",
+      "size": 557430,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000129.pt.gz": {
+      "sha256": "843026001597d690b319c002bed479d4fa54df23ef61e2a8ecaa41bd5e337635",
+      "size": 566086,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000130.pt.gz": {
+      "sha256": "43b37732a58618c547150b9ff3c74f3760dc5db524d0f5da99998a200b7947c2",
+      "size": 558979,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000131.pt.gz": {
+      "sha256": "a4a1911d6538aacf303fbeb41e47ccc8a8ebb0fe695a43aa4528ba6259e18acb",
+      "size": 448175,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000132.pt.gz": {
+      "sha256": "167370820df64b06e01294a596f4717e5ccb96ce6e2c07d46ebc6e8844f6469a",
+      "size": 556709,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000133.pt.gz": {
+      "sha256": "57511df1be443612e99223677614af5d95b9a57654070cee3b49c0b204038352",
+      "size": 496126,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000134.pt.gz": {
+      "sha256": "d24bbbf1b851f09f2288d2711dbf06e5e6b5b79ec0327e469d5e104693777932",
+      "size": 554135,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000135.pt.gz": {
+      "sha256": "db24ee76dc468054a3e1a9bbcab666dd5e25fc8c3e48b06acd51b5bdc7bb3ca5",
+      "size": 513642,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000136.pt.gz": {
+      "sha256": "a49d643fe35f83313b7e2742fabdf05104e250f7202989f1f63b0fb16273552f",
+      "size": 495603,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000137.pt.gz": {
+      "sha256": "b0f537bc92d5a5e52e17804d92342a1fd70d0e53d39065d98180e414441e8ec4",
+      "size": 445622,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_1/000138.pt.gz": {
+      "sha256": "03c36a64afe4936aee5f6d75714a8ac1bad3d7e9b22647e187fd7badc805c3ba",
+      "size": 552527,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000139.pt.gz": {
+      "sha256": "fa747604437967d558c0916961ff08cae01fa30419918e57105aab42bb8a904d",
+      "size": 578204,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/shared_sources/8459f0752084583c52b1d94e607707b3ad40580375f33b6410ec0d57714f9235.pt.gz": {
+      "sha256": "46f863b0d3e36e50b281bc5dc3ee938eb7121db64d239a5536febbabee7b2a69",
+      "size": 603883,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000140.pt.gz": {
+      "sha256": "6314288411fe05e0e9bc56e0a95c5ea1d1f576f4e1abe103da1554d8d2f064d9",
+      "size": 551338,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000141.pt.gz": {
+      "sha256": "2a59042497e5c726ae40c66c62dce64ade38ab28b988753a0e42402d415cfe30",
+      "size": 661033,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000142.pt.gz": {
+      "sha256": "f94a64d07436adc9e3592ca268ad675085b7d346c0948b4bedb41979b6f2d757",
+      "size": 559660,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000143.pt.gz": {
+      "sha256": "a746c72167fc74a165719f15601e28871a3bcaec1122ece153d0cbf3d072a40c",
+      "size": 592623,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000144.pt.gz": {
+      "sha256": "a17c899882c3a655494f1729eb7f34ecaf0f74b5efd53b21fa9e2269b18aa6a5",
+      "size": 581877,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000145.pt.gz": {
+      "sha256": "9879acb13ee17b09fae10831db10b21d9b99278e1176514673a86a5a804c763b",
+      "size": 446389,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000146.pt.gz": {
+      "sha256": "12d60c99b4c93d73ae348138cbc127c409ded22a226e08eb9646548f394fecbf",
+      "size": 530166,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000147.pt.gz": {
+      "sha256": "1c53889a823ca0ef6773e8ced285696264e07e5bf761cfee2b0006033f0881ea",
+      "size": 415978,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000148.pt.gz": {
+      "sha256": "a899cac714fcdd439ab3a29ca2d205a79c5e3faefdd419b38f37899192ee5ea9",
+      "size": 628151,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000149.pt.gz": {
+      "sha256": "759ffa4ebaa6f3c51e6a86766d762ea534a4f151a5fd029ee0da96ae66ceb7a8",
+      "size": 470598,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000150.pt.gz": {
+      "sha256": "86d5de5120f3cae93ce0c6fd81ce3ea30e75ec1da7a990e7a250d6ef1fd9a9bf",
+      "size": 668149,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000151.pt.gz": {
+      "sha256": "452790de1c5aeace3af01f86ff9f9bbab3f738f9e339bcbee0f3fb61947a719d",
+      "size": 494925,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000152.pt.gz": {
+      "sha256": "b3c07cce8277695e9a93691b923c5e8b1b933a9d40e895c4c437a72c402ef776",
+      "size": 585538,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000153.pt.gz": {
+      "sha256": "abc5999675dffa78b36436e43b76a7f39f3f34d17e16bc29be911514ba699ff4",
+      "size": 551814,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000154.pt.gz": {
+      "sha256": "807da167915974b2b63621fdb3adcdf212dcb33e12dc56a85bd84c2eedfe1302",
+      "size": 586143,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000155.pt.gz": {
+      "sha256": "24ccd312a24dbafb21631dfac1f27b46f36ad7b37a1251b88414af0553744b25",
+      "size": 606844,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000156.pt.gz": {
+      "sha256": "6af1d9d919936ffcca987b47682d5f18e03bbe39481398fe8e251f24571e52b3",
+      "size": 637078,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000157.pt.gz": {
+      "sha256": "3600fe1915f6e6a06d94c817af00faab640c51a102ad49535bd4667cb8b51d39",
+      "size": 525558,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000158.pt.gz": {
+      "sha256": "6c17d76258c16c986996c491bc7d9c2a16f515feaf3943913e04ac66aaa93470",
+      "size": 631784,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000159.pt.gz": {
+      "sha256": "e0ea7623ea9cb0fa8dc805c4682b8a0b1ac678179140514c6b452ca77044e0f1",
+      "size": 572910,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000160.pt.gz": {
+      "sha256": "b272af8e091e3dde807d9c4c1b24ceb07bf767385930c6fe38db69e03c1d431b",
+      "size": 607541,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000161.pt.gz": {
+      "sha256": "0bef4892fc6226832dab0318d40475c8ba8fe0d0cfa80f39d05d18d914039c15",
+      "size": 597874,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000162.pt.gz": {
+      "sha256": "2d88c83d1251425dd0759b788bbd91430a37d8f080a6153765a5c3cf4eb065f5",
+      "size": 566828,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000163.pt.gz": {
+      "sha256": "423ba9fd38cb59e6b849606a69a3e74d49bdb033da32d7b3e467f0d806b060a7",
+      "size": 616711,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000164.pt.gz": {
+      "sha256": "ba2f161d2d40be1db094b2e4bef407244f05d8f7d4bd4b842f534bba97fa6299",
+      "size": 618760,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000165.pt.gz": {
+      "sha256": "ddfd1484a5be3ca11c00d0f0ee1f1c31b6be0bcebee00afcc1ba52ce9e6f0e99",
+      "size": 658051,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000166.pt.gz": {
+      "sha256": "3a841f085abe663df275c9deec13dcc5ae9d95d2b5315e0b8c34f06dcafff1e8",
+      "size": 634867,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000167.pt.gz": {
+      "sha256": "5e5c8eda151978508026183ebab384880b206b49cd1a96be0fd3e4442e6bc7e8",
+      "size": 593882,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000168.pt.gz": {
+      "sha256": "bce912d6a6a54a2296f1c87b5a220b2e9d8360a8915d15ee62d5743bbb96761d",
+      "size": 654658,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000169.pt.gz": {
+      "sha256": "c26f8d29ffde20e29dfb4fda03fe4110efc7da09b665c12285888f9df0f9074b",
+      "size": 371486,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000170.pt.gz": {
+      "sha256": "dc1e6527517fca3ed51b1fc3d7cde8c8c2d537855df7428fdaa50e539bd72b44",
+      "size": 624459,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000171.pt.gz": {
+      "sha256": "49f8ec9e01cf56d0df7fceb90e7a9b28eea658f40dcb95d6e4cc3a4582d917ff",
+      "size": 604533,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000172.pt.gz": {
+      "sha256": "958684f2bb11960989f0df0034097ae9d79b85c96447babeb3afca828a792c2f",
+      "size": 422130,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000173.pt.gz": {
+      "sha256": "c4fe822ddb81e08342cb5236955074c5fa9b565d3b715247037677244c30d259",
+      "size": 653813,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000174.pt.gz": {
+      "sha256": "9403e0edf5b3bdd857a437f8ed2b4becae2d782037891437f29f264a76485601",
+      "size": 611421,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000175.pt.gz": {
+      "sha256": "372ee2e82abd39735d40d8fd2c247e95a2fafaac180e0079c915d8ec56cf5a68",
+      "size": 435303,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000176.pt.gz": {
+      "sha256": "a029ca9aaa68d07107297386478c1438f543efdcfdd00b0379529282fba0dc3a",
+      "size": 577793,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000177.pt.gz": {
+      "sha256": "272d64437fc3d6430f1ee4d335c7c32fee7c2580cabb2ebae6febe090a211e32",
+      "size": 621009,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000178.pt.gz": {
+      "sha256": "dda83f0f1372aa10b43fc4e9e737085b0a95705f4d561e9fe1c6b9aa8af3553b",
+      "size": 638398,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000179.pt.gz": {
+      "sha256": "a7ecdc59930f187e25528676395927df72c929da6e1b7c0cf0844501534171c2",
+      "size": 506525,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000180.pt.gz": {
+      "sha256": "1765c531a4dd1407a5f99def333c174244c0b6447037381272d5e7738502bc88",
+      "size": 651937,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000181.pt.gz": {
+      "sha256": "90f45edb296fd3f398e05dfc4dd45bc5335483b167e76b04601a6b8dbea94d34",
+      "size": 632519,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000182.pt.gz": {
+      "sha256": "3cda4032ba15d9c8a9421e57943da5d7e90e13b6bff751c728289757dfd5df2e",
+      "size": 588447,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000183.pt.gz": {
+      "sha256": "65ed8668ad0529b39a40cc6e26e81b166819efdcec4b1f5001ea8c7528ce5b22",
+      "size": 551519,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000184.pt.gz": {
+      "sha256": "52d3100bd75da016c2fa41804574634bbf0415c8ce3072bc5deed9d560453ef3",
+      "size": 484592,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000185.pt.gz": {
+      "sha256": "88e199fdfba014689c81deddba921286fc5aaad67975d57d067758520ea88210",
+      "size": 415212,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000186.pt.gz": {
+      "sha256": "d2b4234ee55b1906731303d5759fd831c3f9207cdca4189d677f7a122e10cb3c",
+      "size": 619782,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000187.pt.gz": {
+      "sha256": "625e9c9a852384b0fe5077987b32ad9bfef7b3f427054a4b7f206554cf2ea6bd",
+      "size": 639056,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000188.pt.gz": {
+      "sha256": "76ff2dab0c2ac3fa348dd6e0fd819a72666fa8dc2b2f0271f5ede0910cfd6269",
+      "size": 529982,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000189.pt.gz": {
+      "sha256": "5450c048360bf3d26183f8ad32ccdb4c861911dcdbcb2c43ab4c0a02f8bcb110",
+      "size": 590755,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000190.pt.gz": {
+      "sha256": "5025da0b4d93e64a2a9ee92b15d99dd00237fb6cf3a1421f5c46f27039c05b87",
+      "size": 535893,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000191.pt.gz": {
+      "sha256": "5349aeb8f3e6c37fd995112b03305c65959f0c1c1007ee84f6322533d6a27331",
+      "size": 516832,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000192.pt.gz": {
+      "sha256": "d4dea9bc7f348ab231db53379bcb9f6393d97a0ffd03e1878f440fa97dd0ee61",
+      "size": 607623,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000193.pt.gz": {
+      "sha256": "02bc86e0fa78a7013db2d131ef22b797e2bea62c05261626905214e12e0140c7",
+      "size": 570632,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000194.pt.gz": {
+      "sha256": "4fa99826ee00db1cab8a721d13e80b14bc6b6fc1df8ebf09d9b483990f8a92fe",
+      "size": 471333,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000195.pt.gz": {
+      "sha256": "4dc5401162229cdeea0414f396ca301be7d69e26067936e5e79916e36d6d65db",
+      "size": 661850,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000196.pt.gz": {
+      "sha256": "3956e2a70d6e6f71b6ce265663e22f83de3a13fd7d93332700faefa01c88d7b5",
+      "size": 588416,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000197.pt.gz": {
+      "sha256": "39ad74a0e103adb229c18e10c1ba8e833026ae828d621a596d2fa344a988c347",
+      "size": 611398,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000198.pt.gz": {
+      "sha256": "5c125f5a2ad51122ee14d9f29f01f18e61f47972b6c51ad7b630543cc3bd513c",
+      "size": 637569,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000199.pt.gz": {
+      "sha256": "d2b2067b240e9c4eb60585c1bea7ddbc21a4166462368723f464d00f4d4a2b78",
+      "size": 477736,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000200.pt.gz": {
+      "sha256": "77404aa2d1766b5cfd7ae300c6f67b62f52a7a8ef8e148d43f06a1ca2273a37c",
+      "size": 418176,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000201.pt.gz": {
+      "sha256": "c34b3262d391adad5e040bb8bd4d073854958ef9c085a7aa530cbde326a51fa2",
+      "size": 531914,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000202.pt.gz": {
+      "sha256": "6762ba65149e90ad262ebe4410d9ea27b68eb0e740b53b1b3b27ef9de8591aef",
+      "size": 646026,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000203.pt.gz": {
+      "sha256": "2ff4e2057f0fa438c9a910a20472f5dc0efc479ad4929d8a9301635ad98c90fb",
+      "size": 626963,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000204.pt.gz": {
+      "sha256": "d4874dc2b1f4dd77ce189abfaebae180c34beae7683bb392757cc8b06aa747ec",
+      "size": 521972,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000205.pt.gz": {
+      "sha256": "319288faa94aebc3f1b20da3df1d38f448bc731212a23eee653292d626b74c11",
+      "size": 574191,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000206.pt.gz": {
+      "sha256": "bb2f226a1e5d5f8f4967485ea7eaa6336b6e64a205c1f7832b3e4be68a04a6ed",
+      "size": 582382,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000207.pt.gz": {
+      "sha256": "7fce8b9a04f9e58e4fe00560c4698244e7252bec145c7441fe6fe1da60a4e5d6",
+      "size": 511171,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000208.pt.gz": {
+      "sha256": "6f88e23bebc617981888ffab31515add5fc2d83fa8b66f557cd400c47fee8bdb",
+      "size": 594341,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000209.pt.gz": {
+      "sha256": "a69671efcb09b7309e34d5db2413104c6a44b32a762c6de298cc2c925d786858",
+      "size": 656023,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000210.pt.gz": {
+      "sha256": "6717b9d68e4dea2b7e54520aa3c5a246ce2b6ef83b378946ef4afd58a4dc9c6a",
+      "size": 575854,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000211.pt.gz": {
+      "sha256": "b703cc0f9ea209f50104bdf8747035455028076e9f699a5140457115de637ce5",
+      "size": 592227,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000212.pt.gz": {
+      "sha256": "8bf5400ecbcd422adf2bbb32ec09a449ef1aef1dc2bade01c5e455bcea21a8f1",
+      "size": 647337,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000213.pt.gz": {
+      "sha256": "fff0687ceeb3dae0df27b3d5d085c895e1978bf729b9d57d99e7659e804f4351",
+      "size": 626071,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000214.pt.gz": {
+      "sha256": "c0e9b5ad077bcb3fdc0d6740ce3690afdd4875a9349ea1986e2d02736a5453f6",
+      "size": 515218,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000215.pt.gz": {
+      "sha256": "5c111c8af9dc362c3562f1c7846214bd0794467bebacb9f6b254df2b5f4dcb71",
+      "size": 519225,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000216.pt.gz": {
+      "sha256": "3363b522dbf426e6cdea001d5e2a2e804347faf0728c0360bce260cb93e697f4",
+      "size": 622204,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000217.pt.gz": {
+      "sha256": "69779c6718998169789df717b903e227a80427687b97134c1cd4f8d6425cb021",
+      "size": 633341,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000218.pt.gz": {
+      "sha256": "84caa1b49a470f297fbf3fc749f6b4fd07e9e4d62466d39af1a0a8cca333b625",
+      "size": 619644,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000219.pt.gz": {
+      "sha256": "c73fbd246645b035d12a91e9fd9f021c9c60da0ad992da6604fca4afa27a8fa6",
+      "size": 498150,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000220.pt.gz": {
+      "sha256": "b43349ca4b0d297f170dbd4aad873eb78d36b287c82001ffb37632e328d0d7d3",
+      "size": 578084,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000221.pt.gz": {
+      "sha256": "82b04014a188b1ccbd849429436110f89f71cc17acef0860e55b6dcac92d4a22",
+      "size": 522703,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000222.pt.gz": {
+      "sha256": "c53eec085d21096c6743045aa1d19c9b22c3daffefd92b26b4cde47282402416",
+      "size": 558125,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000223.pt.gz": {
+      "sha256": "60f22fb1102afac88dd1f893c3a777f945db0503e45d8096d154583f03dbde24",
+      "size": 644492,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000224.pt.gz": {
+      "sha256": "379f976756236bd1467893506ce9233d9a1a5a8d75e591d24d59023490a83cbe",
+      "size": 631323,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000225.pt.gz": {
+      "sha256": "2c90611d7a84d545ee988e126a1e66eee2864f83eea6ec63acadb0e5f3b97b5d",
+      "size": 612995,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000226.pt.gz": {
+      "sha256": "5cfb2450ad7afcc71ca7ad52d95c474d5f6a55af8b426ea15737cd4ec5a25ec7",
+      "size": 529584,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000227.pt.gz": {
+      "sha256": "228f2e2254a4663c6d30499c801404d6d3c67944aaa4939a447bde5e38a58f99",
+      "size": 526671,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000228.pt.gz": {
+      "sha256": "71d3111dcb81bd2a36447d896e7bb0e571f15df8e39a9fcd9a50f4b21c39e531",
+      "size": 629582,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000229.pt.gz": {
+      "sha256": "3f4d32670534809cbffe1df5ebba8afea2bfbdf9823bf43e41f7b7c9510498ec",
+      "size": 581937,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000230.pt.gz": {
+      "sha256": "0c0d98e4960ab271817ab83868ca414411adea41a69557e540c063c31ca7a937",
+      "size": 655873,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000231.pt.gz": {
+      "sha256": "fe04a444cd1df2e1bbc9f2fe93226444bf579fb97fd25a1d25d4068ff0102b24",
+      "size": 591798,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000232.pt.gz": {
+      "sha256": "762cbea81792b7dff23750c15db82d56858253d2cc7417bff96f72da3bf864c5",
+      "size": 631999,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000233.pt.gz": {
+      "sha256": "d460699c7f1158ec085a6ad48f0e65ef23b0ac7230cee020adbc32f98445e262",
+      "size": 617918,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000234.pt.gz": {
+      "sha256": "f5cb02acd6ed8daadbaf73e9b4a67289313536b09e833cf52555192749fc5ed3",
+      "size": 579366,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000235.pt.gz": {
+      "sha256": "99fb0a23421162ff9abe1d9c709c003e43a5a1514e4dcb88fd230ee18266c879",
+      "size": 471877,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000236.pt.gz": {
+      "sha256": "c11b10f64bb88ed5554513e327a7ff1a6b6a84efd640ed97d562267e25668dff",
+      "size": 436090,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000237.pt.gz": {
+      "sha256": "65d2b27e782fedd87c3405902252d68d39d98c54149c85afd81a04b43daaf108",
+      "size": 597080,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000238.pt.gz": {
+      "sha256": "d4c86b61e50f769897547c1c13e80d34f73b3ecfc16b52caa391f419f88efb9f",
+      "size": 648362,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000239.pt.gz": {
+      "sha256": "1c4ef5111327ada10a10bd7900e6e9b9745674ce7eed5e9c705890662811afaa",
+      "size": 540311,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000240.pt.gz": {
+      "sha256": "6a11d86c881be59f4e7aca30058a7401b686fcc926780b1f0afa6a573c0e5516",
+      "size": 578111,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000241.pt.gz": {
+      "sha256": "83c5224f665808f4138d00f7d89cb0be427c1fcc98691443e35be31a59686390",
+      "size": 605650,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000242.pt.gz": {
+      "sha256": "5cd36a61eada7fb6080ceef4ede2c9970741d502bb8ea26229870b3d130d4246",
+      "size": 571510,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000243.pt.gz": {
+      "sha256": "f7927556d6bed6fed6da83cc3c49522f5312221b7f883dde6f8b925a046b8055",
+      "size": 627864,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000244.pt.gz": {
+      "sha256": "2319352ccf28294641162229989aab50313dfcebe5a0ed9da78b7313249ec6a7",
+      "size": 450489,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000245.pt.gz": {
+      "sha256": "594096bf29edc4afebaa04583ff4386be7deab57039acc1de9e043addf63991f",
+      "size": 598733,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000246.pt.gz": {
+      "sha256": "b0dffd5d1696bb49065281fd18b2096eefc8c9eb8897ac46e8cc933dcabaab82",
+      "size": 477221,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000247.pt.gz": {
+      "sha256": "7d73f7565aade8a475428c177f8efff42d18f28c433f6a90f44f3201feb1354c",
+      "size": 565181,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000248.pt.gz": {
+      "sha256": "ee8711962a5a5b741751d3fd136b946c3e2b87b039e8feda9736e57500e0ebb1",
+      "size": 543073,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000249.pt.gz": {
+      "sha256": "acfd4326cdd717bc614d4097d9d455ce469f697253088b393f38a5de636330b2",
+      "size": 552031,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000250.pt.gz": {
+      "sha256": "330503fba82279ab32b2cedf29eaa1ac6ba5e29ac47cec5d626c75fb3c42ccbe",
+      "size": 536967,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000251.pt.gz": {
+      "sha256": "e94f0abec5780c254b9af76a86c0b52248a11676bb60fdaf9662e04a5ea047d2",
+      "size": 618246,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000252.pt.gz": {
+      "sha256": "4d354560558929598459e1fe2314c7e5b9afb8297a25ca342fc5a04a1e3c8148",
+      "size": 491650,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000253.pt.gz": {
+      "sha256": "2317156c601fd56443a46cf1e338d2e6b87775e381d2fdfd3c39497cb5f336e8",
+      "size": 538230,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000254.pt.gz": {
+      "sha256": "dc3882bfb027c11559a016caeb5e7f7d7e39f551a25d3f40ec503e02ec0cdaf0",
+      "size": 515329,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000255.pt.gz": {
+      "sha256": "c2bab0d9d9e4efb9d74b31950830afb9aadd41196568584c41c7e92b2d6087e3",
+      "size": 545828,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000256.pt.gz": {
+      "sha256": "a9fde267eb7689592666f57efaa1cb6d9621eb8bfd5d36c2d7155d6433cb0ff1",
+      "size": 658922,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000257.pt.gz": {
+      "sha256": "d2acc485b9750778f77da658ccab2ed4bba738a08d93c9f1752f19868e8bad49",
+      "size": 615233,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000258.pt.gz": {
+      "sha256": "38c1e1023f4b9f10aedd6c61e76da7f3069383d2dc749da2d7060e55d02bcf3b",
+      "size": 585492,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000259.pt.gz": {
+      "sha256": "31c06c3ea74b4ed8e7b365dbb8a1897a9cd766a07beb4afe1e9f594c300c8682",
+      "size": 415612,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000260.pt.gz": {
+      "sha256": "eb2759b816e19c0cbddb0527ce60ec5c2b6d0e83eba856958101347ce946db4a",
+      "size": 513094,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000261.pt.gz": {
+      "sha256": "4f577b6952d9ec3911f3c61153ec82314c38a624d0814d6c91bd8154213374a7",
+      "size": 652155,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000262.pt.gz": {
+      "sha256": "3e35d7e50c86512a10771b0968e9e948621db42ac092a94a5ce5268402636d09",
+      "size": 514546,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000263.pt.gz": {
+      "sha256": "586da9c337d478a8bf7c8eabcff311949720521d73280b78bfd1197a3bb1c99a",
+      "size": 438065,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000264.pt.gz": {
+      "sha256": "caaec6e3bc08a1a02ccb5733d90636ff286ae71a447e51b1b1909855889c10b6",
+      "size": 650323,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000265.pt.gz": {
+      "sha256": "8e14343907cd2d36d6a43869c56bb1a288f60f8266e5942851c2d2eedf0d2b56",
+      "size": 519007,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000266.pt.gz": {
+      "sha256": "eb6904bfb066393e310255bbffaf0c79819b578a007968c6d5e64865ca6861f1",
+      "size": 588456,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000267.pt.gz": {
+      "sha256": "4633579c8938d898c757d45b2eedcc9b39841af430130e3514986b4eafe2c6ef",
+      "size": 542166,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000268.pt.gz": {
+      "sha256": "eb29fb2a6aee878dce3f4a68ec3c2c4e602153f7b225302f57f82fe9d0edaea1",
+      "size": 599574,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000269.pt.gz": {
+      "sha256": "19cc166ae2a8a94a744a8c913c2f33af862b200bd173798d7bd3fa6f133c49d8",
+      "size": 502400,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000270.pt.gz": {
+      "sha256": "171651a63d6eda78387eeb3a01bb43c28250933b2c5469d324c7af307746d094",
+      "size": 560067,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000271.pt.gz": {
+      "sha256": "ab1b5f7ea2cef0c0157bc9c50a749d359558686312069d5cafd0521082210daf",
+      "size": 573627,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000272.pt.gz": {
+      "sha256": "ef466d9a56cbc50a7de7e74a59581bf2795f7c21a80076e953e14133fa1ce232",
+      "size": 513533,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000273.pt.gz": {
+      "sha256": "2bb0587d00af4da4f609e4bd2fc2ff07d31f8047215502f4f39c94a37eb93b59",
+      "size": 498164,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_31/000274.pt.gz": {
+      "sha256": "5f6cd6ee0d7137fad1ae537e938a66f29c5547151008ec10ce2a36c067dc322c",
+      "size": 450991,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000275.pt.gz": {
+      "sha256": "2021f2c78b38c85b83da3f8ada52479de9fd75402066c705f49f9bbf4e07b2bf",
+      "size": 710004,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/shared_sources/804ef3075f149b8c2294db011c47c5d70ed209efab291c8cbf6b58c0be0395a5.pt.gz": {
+      "sha256": "c92e6f97c849965f35fde0991557af64dad19add92254f04bf467adf48f34f58",
+      "size": 577608,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000276.pt.gz": {
+      "sha256": "4e8c6a7c291da5ca0809447525d5e09d17baa7d2436490e94d94c7a1e0e72298",
+      "size": 641539,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000277.pt.gz": {
+      "sha256": "bd7fe7534cd280b9a8ca8414dc4f4abbb0b6781951a164e0b743b0ff5da46f28",
+      "size": 653214,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000278.pt.gz": {
+      "sha256": "5914bd277f40528fd5311278fdda0c25f276cb60adf9509cd1af6406dcf07ef4",
+      "size": 727308,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000279.pt.gz": {
+      "sha256": "ce3f5866baab3f301a82ddb7288c993078b50e58f65a03135cfb8ef474998f44",
+      "size": 721661,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000280.pt.gz": {
+      "sha256": "394aef0d54427948e5bedaa3bcd60cab212d63a7bae2b8cab740a578ca0155d3",
+      "size": 576139,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000281.pt.gz": {
+      "sha256": "87efab34642ba24f185d827debd60bffa61bbff2a85b5d293f37b69189dfbb2f",
+      "size": 507353,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000282.pt.gz": {
+      "sha256": "c242ea6a02f475ee9aa855b30efc27d9aceda6e19754b6e35a1d1ab80c83a73c",
+      "size": 719195,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000283.pt.gz": {
+      "sha256": "d913cd7147d36ff2bf6475d9966580b0edd6426409a32d1a1d472c54f3fc0de8",
+      "size": 748523,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000284.pt.gz": {
+      "sha256": "fad148c542126f055397fc9ec5c544d40d0e4363eccf9a3cc8b49b8b0ef9a0ca",
+      "size": 727405,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000285.pt.gz": {
+      "sha256": "0bb949cbdbd7a95c2570bd5829fbf466d69e946acc2f5b1a1714c0d542248b36",
+      "size": 749950,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000286.pt.gz": {
+      "sha256": "de8605c41381f080b813cd68c0c46f070e4ed7e3a82df2ba25eac66e8adad39a",
+      "size": 605851,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000287.pt.gz": {
+      "sha256": "d38b92e62852fb52148b077f7997b9c3131ec6acdda6b267ea9df58ae67f5ca2",
+      "size": 648969,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000288.pt.gz": {
+      "sha256": "7c8b9f79e275174a7337dc03432392e73f51082fae97ec8445db0758f6f4a608",
+      "size": 487782,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000289.pt.gz": {
+      "sha256": "17a63a4cf180745b7be56e19d2c4b8c5ccd8af8013f392ea8a8a5e36fcc9103a",
+      "size": 485401,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000290.pt.gz": {
+      "sha256": "d40880ecca796db4674ca12c90a02180213444f903f08a3d98fd194a9d4c05bf",
+      "size": 558887,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000291.pt.gz": {
+      "sha256": "071f7a09a34d51ee2605260c4087f278fab428bd749710c032c68a61b3a1c3cc",
+      "size": 732161,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000292.pt.gz": {
+      "sha256": "62bde7e3e10c791c21a521364f90733a4ea9d7a0ae1f3bd21799a52dda49db3a",
+      "size": 687523,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000293.pt.gz": {
+      "sha256": "f1dfa8a331a3efd8164e88ca23a559952b4c5fb4f8b14f150e59f129a4710bd4",
+      "size": 712080,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000294.pt.gz": {
+      "sha256": "8ee8664a7647e83a1e5dbc5c05e17b5b587803884f4e65b61f1a77d93b88b41d",
+      "size": 720576,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000295.pt.gz": {
+      "sha256": "d73309bcfbe603779f5b85943d9f6749a09c0c8031052d8ee647908bef5ff435",
+      "size": 710136,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000296.pt.gz": {
+      "sha256": "3cc847e85b48f0ecb31897f7bbc603d3c3790069b8b8f98604406d6617ab4b2b",
+      "size": 697121,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000297.pt.gz": {
+      "sha256": "ceaad289d9d9e7da025247acfb96468a96382b63d952366d6c1136b6ef6d68f9",
+      "size": 698212,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000298.pt.gz": {
+      "sha256": "5bae01b1065f6b9ddc3980fd1844d9bc564380cc477d17f3251b9d99aee21d84",
+      "size": 525511,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000299.pt.gz": {
+      "sha256": "064dea2451831df5051efdee05f187cc4f86dc706925694acaeb60ae93dd9542",
+      "size": 580601,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000300.pt.gz": {
+      "sha256": "786f957e2ec02d039d4a7f0e4fe7636e380dc26485b0ad2e3c667115ebf80533",
+      "size": 589934,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000301.pt.gz": {
+      "sha256": "765e8a7fe3ba4d9a83dfebeb98185e30ac2038db5c432f013cc6fd374ce2b795",
+      "size": 719527,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000302.pt.gz": {
+      "sha256": "cce889acfb8649d5f28bfbd0401aa580ac0f8055eade5639d4a2dba9845d2f5c",
+      "size": 697422,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000303.pt.gz": {
+      "sha256": "c77be5741d21d65fe0e75fbc60a863d309160676b10b8ac24887741e43dfb443",
+      "size": 644277,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000304.pt.gz": {
+      "sha256": "4a3fd5efe0877795e7c45309735e0d91c9300897938ce5dce13b1fd8dd68efb6",
+      "size": 741111,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000305.pt.gz": {
+      "sha256": "2a3159edee76733c4e1103e67b18ee8f82e39825f9873278be86719722cbc409",
+      "size": 506560,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000306.pt.gz": {
+      "sha256": "68834593afdc39a6dd8ca77cb456b3660f9dae6bcc3b2e21141906a0c6a55c8c",
+      "size": 720216,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000307.pt.gz": {
+      "sha256": "df05dd310b0551ab41b594df917dc884c58c81bf5f25e634610ddd726098b8c8",
+      "size": 740652,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000308.pt.gz": {
+      "sha256": "c395ec4e0b4a814562c6eecb32db52eab7e6bf437889799b25292d771a4d341f",
+      "size": 595023,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000309.pt.gz": {
+      "sha256": "f313dfbad0ea2985400d12dba2f3c14378d6874c0570c332738e25542ad0510b",
+      "size": 719475,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000310.pt.gz": {
+      "sha256": "e08b5a2cadfddb01ecdb9fc79572de1cd671f5515d5c98c9e2279e0929abb7da",
+      "size": 711748,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000311.pt.gz": {
+      "sha256": "a46b649aa9e92b6bf19ef5f444ed1fa00462d35e2c8788c0b6707f5d8559e6a7",
+      "size": 564226,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000312.pt.gz": {
+      "sha256": "e17a198835d78c390d6a7a24268102fa07f07eefc38707f7a29ac34d9b8f54b0",
+      "size": 727152,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000313.pt.gz": {
+      "sha256": "77f97b6878465cefdd13b1606abc4b5455221023abc0bdae6a2e925f47070751",
+      "size": 685131,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000314.pt.gz": {
+      "sha256": "401fb3e5fa50476b09b76d138b227bcf7c0f46f47dee03921d4e4a771bedfa59",
+      "size": 626484,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000315.pt.gz": {
+      "sha256": "d823e62bcdfc8fcb39827f2eab6106c2d944b540158717028117c31680c20eeb",
+      "size": 595074,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000316.pt.gz": {
+      "sha256": "18366aa1a104b08e1102f7b922efe596bb08d1bd1467de5919bbde65971b1232",
+      "size": 527701,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000317.pt.gz": {
+      "sha256": "979cfee809f8c0e628bed0f5931d0939103200d844bce3d7e82bbc8e26c0f71c",
+      "size": 714319,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000318.pt.gz": {
+      "sha256": "49ce1b74a53b2a9bd46e8b86773f1d85cd872ea404a8528b3102c2f0a70a96ab",
+      "size": 692719,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000319.pt.gz": {
+      "sha256": "c8ea0b7e99ecfc577b94557d66bb7287c4c328029a899a343b2ca7e716594435",
+      "size": 642451,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000320.pt.gz": {
+      "sha256": "7fdb763f7727b14b390074c6d82743cea7a0980efd09fdbe4900a1f32fd1af3a",
+      "size": 668175,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000321.pt.gz": {
+      "sha256": "7f4881cc2a75b6eeecc04df513617c9e9ec8c31bfed3a2fb53e600844174223a",
+      "size": 696958,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000322.pt.gz": {
+      "sha256": "eefc827322ef2f1246a55fec26ad875841ac568c90ce03e46afb960eaa64e376",
+      "size": 666260,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000323.pt.gz": {
+      "sha256": "45b532ec871158098427b0e825df755933a0e9a2bff48eb2a004a7c6b1818eb7",
+      "size": 705153,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000324.pt.gz": {
+      "sha256": "975a925d37fccf1c9d475cc35fb98164cf83551fb044c35697999cfc72464f1b",
+      "size": 692418,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000325.pt.gz": {
+      "sha256": "3eb12571e92ec906e1529d14acccb01f5c583ab5758f20d1b3e0a95a68870fb3",
+      "size": 604658,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000326.pt.gz": {
+      "sha256": "679f62f4b0ca77614fd089fdb3d317d1dca29a7e9c74c7f6b32698faecfff06f",
+      "size": 715639,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000327.pt.gz": {
+      "sha256": "be2e1ebf8f03598d224f987d8c78fdb9e28c4ec85cb832e554110fa5d3d689db",
+      "size": 750415,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000328.pt.gz": {
+      "sha256": "59773b9e280ce700fe1de632c2a0aefca6707a15a622d54683896e336e73d154",
+      "size": 674075,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000329.pt.gz": {
+      "sha256": "82471435a0ad8023b52c3a9da6405166da189642d393571ecc06f6afeb9c9631",
+      "size": 701735,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000330.pt.gz": {
+      "sha256": "3a3b01f254a0a62e1a51cfa5d18bd6e74023d4695945c3d805ed82fe44badedb",
+      "size": 707827,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000331.pt.gz": {
+      "sha256": "4b286d02c69e3a1452c213e59e6f7116ef0d6fa05d6a842bb7207494c2e50df3",
+      "size": 701192,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000332.pt.gz": {
+      "sha256": "bbd8c63d2417ba7f00c78501827d9373b02ed8bf7c2d6a53d2c6719fd548ff60",
+      "size": 611425,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000333.pt.gz": {
+      "sha256": "011503167419ca072f755bfd6abbbbab90d5da214390c600be74e4b5d6280d2e",
+      "size": 722098,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000334.pt.gz": {
+      "sha256": "5a45532698e4c300fc1ca5f3ce615d7313d4adbbdd5cc3efee6db693be112cf2",
+      "size": 718267,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000335.pt.gz": {
+      "sha256": "dfc5a47f1050b6a81f687675e0264f1561f6511c5c26bc32845ed80efe34fb41",
+      "size": 729157,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000336.pt.gz": {
+      "sha256": "adc51c801ddd2831240cc74c527a471f6c959343fd4eb630dcffa26150fccd97",
+      "size": 708373,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000337.pt.gz": {
+      "sha256": "171d61ce5e359ab2c2cbfb2ecc4c6506c663eb162542b8ab5abacb74020da2f9",
+      "size": 702442,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000338.pt.gz": {
+      "sha256": "cd971a3be8a00712dc80f185f46798d0d55369b8f8d94707d3ee33e6a6d0ee5f",
+      "size": 524686,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000339.pt.gz": {
+      "sha256": "5edaab0ad817ebf3671953ef612bd23053a7f90629a639d1404b584527cce854",
+      "size": 525540,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000340.pt.gz": {
+      "sha256": "f4b5a6785479391bcb7703f2aeea5614e1a05248d6c7877f02c8f9f5683b0a31",
+      "size": 580421,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000341.pt.gz": {
+      "sha256": "e6f367cf0415d4383d654e4f386d23dba9cdee3ba1cd2cdb323383e350c51a92",
+      "size": 565139,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000342.pt.gz": {
+      "sha256": "6fc6d9fcaffaed5830ea8e5048eb2d1c6dd7ddf79442076bb4ccb51786a431da",
+      "size": 721403,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000343.pt.gz": {
+      "sha256": "c19419afa9ba4ebc1f2372015384b06c4c0d07a7d84934ace35555713b159d86",
+      "size": 705372,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000344.pt.gz": {
+      "sha256": "c06f4fbcb7fe2641a7b9477ca99b8d7177946b7e3465b53fb147858d8ba5af74",
+      "size": 714168,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000345.pt.gz": {
+      "sha256": "8556c57b68c4f210774e7aa8bb356d14e0d98556f77706cbf56514d999d4202d",
+      "size": 741767,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000346.pt.gz": {
+      "sha256": "4c15a33f379887d99f5e4a9ee54bb5da9804a4e3b32060e794b1c30af80f645d",
+      "size": 527436,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000347.pt.gz": {
+      "sha256": "22c0f28d38231242c8275dabb0c87834e988beabcea8a10a54d1f8239b196f53",
+      "size": 713392,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000348.pt.gz": {
+      "sha256": "fbcce849186ab387523988189d98af4e00e62a191147892f65f93db9059c847a",
+      "size": 690310,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000349.pt.gz": {
+      "sha256": "a9e2ffb15076d35ec1e30363119c0b8a263089484b173952438842430ba622df",
+      "size": 723461,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000350.pt.gz": {
+      "sha256": "841099e1e970b35290cbee10f301af6d21ea7f0f3f29f136d486205e5491246a",
+      "size": 545221,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000351.pt.gz": {
+      "sha256": "0ec9a9d2d934a017e2ded8bee2dc713ee03937cf69ee0cc31f1f19934c814356",
+      "size": 700051,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000352.pt.gz": {
+      "sha256": "608358484626214d72500881969e1e8e115019a8c93115f4be5c59cd9733f91e",
+      "size": 723313,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000353.pt.gz": {
+      "sha256": "ef871c748fbc6e15d95eee443a89ce45ba97ddc610d61596418abcc5184bed4d",
+      "size": 718863,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000354.pt.gz": {
+      "sha256": "5453c6636b68b5568a3e20ab1049aca120faf5e66da2d5e8c3369d2bc193cfcd",
+      "size": 613566,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000355.pt.gz": {
+      "sha256": "a6479d7a6f8fbea00809ba3484a2c254f68c3e4751e0ad705b6c5d2af9cd34a3",
+      "size": 518231,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000356.pt.gz": {
+      "sha256": "d0336e1bc1e3270a435438852df303a318e88a3a0ce0db0f1768a093e90a9208",
+      "size": 713939,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000357.pt.gz": {
+      "sha256": "ce53250e2b91c1e3388789d48032b3fd993822a83490cc7781a82498798515b1",
+      "size": 693750,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000358.pt.gz": {
+      "sha256": "2085632353672541c4e6fa8c1a1f28ddd87ffa8fd7cba76f1d06733b76cd3d7f",
+      "size": 727452,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000359.pt.gz": {
+      "sha256": "c9d5c831b0918266bde8ec83ffae765acb472f381ab673ce9e87d10bd413c715",
+      "size": 720810,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000360.pt.gz": {
+      "sha256": "fa2bb51d15c108adfa4bcc14384fe53d241c572a7c8a3a20080ac74c5c7bc15d",
+      "size": 717593,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000361.pt.gz": {
+      "sha256": "434942eb9345c349d5b2a2aaf24e5c9cd007868ef4c5ac274909267ac94beb78",
+      "size": 724131,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000362.pt.gz": {
+      "sha256": "099b94ec5958c7c9c4a58139687e9528583c73b204741a94c72c81e1a685d55e",
+      "size": 700935,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000363.pt.gz": {
+      "sha256": "6cd5fe78639f0b01eab36a6ee9899c189f750ac99f38bfacc12a4494843bde84",
+      "size": 728512,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000364.pt.gz": {
+      "sha256": "688bfb73006d5ba4e784c693ac97da9bc142c0fb7a90724b1930fde7ef5ca354",
+      "size": 471415,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000365.pt.gz": {
+      "sha256": "02efe75fa6cae8845f89c1f3086878d33b2cc03750e5819fa05621190bc72057",
+      "size": 585549,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000366.pt.gz": {
+      "sha256": "9a5630435718ca6d18615b421e9cabdae23df68c39a315cae56d601d531dade7",
+      "size": 627557,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000367.pt.gz": {
+      "sha256": "a95079c89c72aca7b55e192948c5fa1674e5d356869a4c38898b3e5230935452",
+      "size": 709726,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000368.pt.gz": {
+      "sha256": "22ceaa12a7b607e13b210a3a3f25df14160ad46803362ac9b0614b3223e7013d",
+      "size": 528050,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000369.pt.gz": {
+      "sha256": "71d1f64414d9c8938c0511c85cb36983f4341941db144f67f9169830171487e1",
+      "size": 553208,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000370.pt.gz": {
+      "sha256": "0d5c792e945005dfa221d0c026bcbd4662ac9e969ba17cf4c471a1c5017e0fb3",
+      "size": 738589,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000371.pt.gz": {
+      "sha256": "1ad3d2c1e15388d156c2864944fe95bdc1ffdadbcd4e68b1edb1a1ef00da105f",
+      "size": 734196,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000372.pt.gz": {
+      "sha256": "e2ecb6edd13c471ac4b03d409e45168a0d1e2d06585019c5732991ed579c69e9",
+      "size": 735601,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000373.pt.gz": {
+      "sha256": "dd8cbfd923b3911f9536e15e8df8bd497578eb17723b391c0299f0f3c1a0b32f",
+      "size": 527666,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000374.pt.gz": {
+      "sha256": "ed8d729c3bcd801a2022bf87fbbd744a1664897b7a132a37b5265fdee3f5f691",
+      "size": 679327,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000375.pt.gz": {
+      "sha256": "a3aecd4c39c08986bc4d41f96f6339d31438d433e7f8ec2ade7643d3e43ac511",
+      "size": 714794,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000376.pt.gz": {
+      "sha256": "e6d6431eebe4ab2c02a714a8d8894c9b4080b440e5fc60019fab0d3501131bf4",
+      "size": 715915,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000377.pt.gz": {
+      "sha256": "058e10478dc6f21579ce21774c502d7fa3895fd55eb821bb77100d71bb31cdf0",
+      "size": 713680,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000378.pt.gz": {
+      "sha256": "5e52b9eef74786305d728bdcee4f7bf6abd36e121be6f042253c41b903532d03",
+      "size": 640860,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000379.pt.gz": {
+      "sha256": "ae036c0a6802a2c6c5b053b377779da122e83133d6aa18b0b71825e7f4402420",
+      "size": 601151,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000380.pt.gz": {
+      "sha256": "2cdfa3ef88f4eea47031232a4053e594e77bcd76724f29aa81305bbcfb68a0ef",
+      "size": 575011,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000381.pt.gz": {
+      "sha256": "a720687ed4b2b922ec8a66775139dd3a538fa7b59c4ccdbcf828550fe0d789ec",
+      "size": 647142,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000382.pt.gz": {
+      "sha256": "079b3ff842ef6544dc8a0022ca026b2e197382d5996ffeac0d7722c9553ba112",
+      "size": 709740,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000383.pt.gz": {
+      "sha256": "f26c06db93e757acc5beb0ab5199e1ba222d73aee61caa60f7e432bbb5aec1d3",
+      "size": 603648,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000384.pt.gz": {
+      "sha256": "004a374dc1430deea5d9794c3080c6cfcf62394d72cb8030b75a0b8befbe0fcf",
+      "size": 679739,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000385.pt.gz": {
+      "sha256": "84a7410c576d1a2fe86262f1816cccfce101e954044837b20f3117a53251f5b5",
+      "size": 602537,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000386.pt.gz": {
+      "sha256": "1da621c3c4aae591062084bcc12ae859d6f14a4aeeb849f344a45b66b52a0711",
+      "size": 715852,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000387.pt.gz": {
+      "sha256": "4e89b9bb38002c91c5393ba1cc45686309f64edf6a9c6ffaac3a7507ba31ae90",
+      "size": 684488,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000388.pt.gz": {
+      "sha256": "46736d0d7d0653fe2fd3e0c3ceb38041462ca44d6526c32f213aaee3c65515a8",
+      "size": 736332,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000389.pt.gz": {
+      "sha256": "96df8a4caf8a569c0580538178e5027bd5cf7d6573c827a33ac7d4e81ea792ec",
+      "size": 596219,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000390.pt.gz": {
+      "sha256": "08127eaa0678b09c65d6838cf4b9e40e8670d364e78bc257861bf3a0325e3ed3",
+      "size": 664061,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000391.pt.gz": {
+      "sha256": "0862ded6bc510ff831219b2b43b1f4d2faf11eb1a5a4876ac377a8817f3bbd12",
+      "size": 715129,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000392.pt.gz": {
+      "sha256": "5b0bb274ea9f6f8ee7d5b2f0dd9c6aca5d1859327e050f0b2d5bdc2cc537eec4",
+      "size": 700935,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000393.pt.gz": {
+      "sha256": "fbac7576ae3ccc383f94f412938a1ed20de2852b063d81f53cd9351da876b2ca",
+      "size": 687660,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000394.pt.gz": {
+      "sha256": "4962264554fb225fc39b3e312e9424782af25d61a00ef26093c67b426fa3e1da",
+      "size": 715013,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000395.pt.gz": {
+      "sha256": "7064a9b26a7979fe4780c3f0bf8d57c95b208af48f1e26127519360831da545b",
+      "size": 580432,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000396.pt.gz": {
+      "sha256": "a46c76df2be3e922479b794f1ae61136055665c5852c5bd79a87ecd607993076",
+      "size": 587293,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000397.pt.gz": {
+      "sha256": "255bba3f4f1a31abd9c6b1e8fb33cbdd4a3cd16b3a5190f5618e1b21812ef6f0",
+      "size": 710786,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000398.pt.gz": {
+      "sha256": "8aa9fe7b4997b06eb3fb4796804ce4bd0f379c01f3c59ccc9333ecda5c802b9a",
+      "size": 739441,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000399.pt.gz": {
+      "sha256": "9ea9f965e01f9b752d7a24328b52836570f4e1908369f256d8e8ed0bf451cf7a",
+      "size": 717861,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000400.pt.gz": {
+      "sha256": "58f7e153a17a10898fa43ce4e9795d34e1970ee101c839b4b96bcf7635bbeb5a",
+      "size": 682828,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000401.pt.gz": {
+      "sha256": "d50ad23a54b90d84cdceba9c77b724b4e1bf5e3edbf3d5766992bc5e987d27cf",
+      "size": 606806,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000402.pt.gz": {
+      "sha256": "f933e2c1b47b25d3c0347d5b2119a660b03365df14cf8522bfdf2e58ef66db4c",
+      "size": 714770,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_5/000403.pt.gz": {
+      "sha256": "21800892fe3af8f889e7da06b43f1d5b52e2cdac85dc5d476811d97e234c118e",
+      "size": 733727,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000404.pt.gz": {
+      "sha256": "d27515584c261fe3f19090cf3c2b2a28f4dad57e502b50106c1d1586f1ce7ff2",
+      "size": 660655,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/shared_sources/4a6585a2352d630dbfe92863268924cbc741695dd141eb6541ae55a4174874b7.pt.gz": {
+      "sha256": "cb81d571c3b5ef82923a7e2be695f538f5d7059375909ad2275fdb44b959c777",
+      "size": 906387,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000405.pt.gz": {
+      "sha256": "6ff5bdf1bc84d3d7215cac2dc5174d55247edd37b176c71e72bdd1fa8338e7a1",
+      "size": 490683,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000406.pt.gz": {
+      "sha256": "6ca76f93614c8e35e9891715fdf2a4a36cc3e1144b3248698c2665d8ee5be73c",
+      "size": 583543,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000407.pt.gz": {
+      "sha256": "5d8decfe0dbbd63f488778aa6bac036814de49780320bbd25f8cbf9abb6d0610",
+      "size": 849592,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000408.pt.gz": {
+      "sha256": "31cb58ebe9dd44eeacfc7280ad173dc2611c1d17a67be8583f7ee4ec1cdf55f8",
+      "size": 599933,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000409.pt.gz": {
+      "sha256": "a023997b65ab671786058dd3e8dbb777abd60e17603f00bae728011acd5dc9dc",
+      "size": 731547,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000410.pt.gz": {
+      "sha256": "4e17f7d72697ffb3f67070b6a385274378f651ca9d7dd332b71c72681b0da906",
+      "size": 653724,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000411.pt.gz": {
+      "sha256": "afeca05038b1def44cc671c2da9265ad0b079841b402918ed51e46e4690c0803",
+      "size": 857337,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000412.pt.gz": {
+      "sha256": "2c0db7b8ce5a5959520fd800512682a5e11c1217d16dc013db4d0042c46409c5",
+      "size": 638375,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000413.pt.gz": {
+      "sha256": "e5a416baf6d594e33b41cd6808896c6565e28b8de37745a445a7ec080e83373f",
+      "size": 876885,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000414.pt.gz": {
+      "sha256": "1518513f94249ded3ca4cc54f49384e02be4638e09ca14238524756f661eecd4",
+      "size": 644261,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000415.pt.gz": {
+      "sha256": "8e25338dc3e12cb8cacc029d20f0755df16de4f18cc0e7e0e61dcd7db5c83161",
+      "size": 612021,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000416.pt.gz": {
+      "sha256": "c880e8687ea6ee6d9bb9b6dc10baa0d830f115d5715e28365e033c2a763f4cd4",
+      "size": 890223,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000417.pt.gz": {
+      "sha256": "5e97094a400521e8aaf470339ffbfb2e671698f48a2699a18f698895d68dc95c",
+      "size": 896485,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000418.pt.gz": {
+      "sha256": "a53a7e960dd32ec1e90174da0b592be3e7ac93ca45e799534960cd752866a144",
+      "size": 839796,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000419.pt.gz": {
+      "sha256": "f321786650abe8bb9dda0a025f6c59f05516bf3e0eb8b1602ff870803a81e057",
+      "size": 896957,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000420.pt.gz": {
+      "sha256": "bd61d33fa9c28a437c695cbe3c7a4be3803bf055e42982057c05c571e70519a9",
+      "size": 795104,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000421.pt.gz": {
+      "sha256": "d9a49bd416e4435ce9dc2e0f22536fe5d8211bb12407bc1948c6d317a8f9a266",
+      "size": 893407,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000422.pt.gz": {
+      "sha256": "830ae19bdaa40b64c8d79e75fb213313ed5ca2b822586d8303e8831528b1cd18",
+      "size": 882601,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000423.pt.gz": {
+      "sha256": "f31427fca6183a21877e139d1242faf760fb8d114cb26ddc696a5226bbe6fbc3",
+      "size": 829133,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000424.pt.gz": {
+      "sha256": "421e5ff42b5ab58058498a7c0a058fbdc0975614922534564d941f04da21abdf",
+      "size": 721296,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000425.pt.gz": {
+      "sha256": "8a540a4272b892f548e5230c9c5a92024bc5f37235f85ccac6827676db85dc70",
+      "size": 903618,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000426.pt.gz": {
+      "sha256": "d0ea0799726c0c4128c456ad797e11843f6e74dc47e8ac0e797ee2d5300829ac",
+      "size": 887651,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000427.pt.gz": {
+      "sha256": "2b0c40ed58f0d6a037bf90d1eccd22553340e03be27ce633278d3c99f9d3af65",
+      "size": 754308,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000428.pt.gz": {
+      "sha256": "05dfaa95f2a34e6273928be1c3e3ed0bbe1d9cf080e9d2c9d588fc47f4ec6a9d",
+      "size": 745336,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000429.pt.gz": {
+      "sha256": "4671b9af1e5b079d9be63a75cd1e118a8c619c5c0040e6cd3a6782a6ffec299a",
+      "size": 776181,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000430.pt.gz": {
+      "sha256": "0aa3434788f4f75a8d1a2b6640191d3ad4009913c762de66ecad6ef030f06d54",
+      "size": 862642,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000431.pt.gz": {
+      "sha256": "0df28575a2334d6f61a95664908ea66056257c4b0356383775f2278a45d9e66b",
+      "size": 749606,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000432.pt.gz": {
+      "sha256": "7952794442321071ffa22865e751d00f87e8cb2b6f5c87e4a574bd8ebbdd7a36",
+      "size": 617834,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000433.pt.gz": {
+      "sha256": "0c5f4b4e1586f6179a38c0edc932f358c7eafb54d276c27a2b446308dc7f371d",
+      "size": 885624,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000434.pt.gz": {
+      "sha256": "db69224535b7b0c703d60aab0464b953cc7b1c1efb219872e739bad029fdf2e2",
+      "size": 704205,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000435.pt.gz": {
+      "sha256": "60143472cf0a94936a7f6b0f956768b036801582cd745a3eaaeb93a0ca4fdea1",
+      "size": 847569,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000436.pt.gz": {
+      "sha256": "00653ccb14a2ffe08fdf404b1abe32c133b7122eebd9981ac0232785109c0528",
+      "size": 927873,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000437.pt.gz": {
+      "sha256": "bb49d2e23457d61184f531fb8c96ab6e806572b62e6cc863e8f9c9003a68299f",
+      "size": 858560,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000438.pt.gz": {
+      "sha256": "784c7d572d82f32321f743e37e7ee890d084ed384937b985a31525da1cbd857c",
+      "size": 714726,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000439.pt.gz": {
+      "sha256": "3e3d50ed6d57b1600025ca443f40e07d83e129f1e2e4088603327eb0dfda7092",
+      "size": 661900,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000440.pt.gz": {
+      "sha256": "f6532b8f125caaebdcd72a089e3bb8da5ed287dcb95f2fff5a123ebe24d455ea",
+      "size": 740005,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000441.pt.gz": {
+      "sha256": "689d8b7dbccc28e88fb51f304ef238c7bd5d09cab5bc6d6d6af7af4ae128eefe",
+      "size": 813325,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000442.pt.gz": {
+      "sha256": "f72449bc89600fd412daab1cd38b85b2ebc9e16cf79cda56ac8c7cfece745808",
+      "size": 901081,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000443.pt.gz": {
+      "sha256": "6e838e1fc49c03eeeada983c1991045cab2cbea1fb5152dfba1edffdb9eb486f",
+      "size": 731741,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000444.pt.gz": {
+      "sha256": "73bcee438f82dcb7586bad25dd2cf0f3f9101ed44eeefe0b958b6477c199f174",
+      "size": 707766,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000445.pt.gz": {
+      "sha256": "137d79519ab5e0755fda2e1dc27996d662635dfaefb4c86d013f33d7204fdc23",
+      "size": 544512,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000446.pt.gz": {
+      "sha256": "395f870175c7182c5206b7ba3042325e88be805b7468060b841ececee5cca318",
+      "size": 903001,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000447.pt.gz": {
+      "sha256": "fd5e5dbef106da9bc55abaa57c31cf38e2e213c683b6f46ef0c817e3435dea99",
+      "size": 762037,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000448.pt.gz": {
+      "sha256": "7a58e14029c1a4d063ac87ea02d1ba3d04f90e728b3898ac537e40faa90eeb66",
+      "size": 806919,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000449.pt.gz": {
+      "sha256": "193de24494e9066db201788f5226e009769921a483f2557d2d102d284d3cde1e",
+      "size": 761369,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000450.pt.gz": {
+      "sha256": "e5d4fe8bfc32209198ab3a01f0c9aaaa3c69557ceef6748372541976b807be9d",
+      "size": 869746,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000451.pt.gz": {
+      "sha256": "de058a3c3cbd11e3a61cf019e38ed52e4f0b2f1402b8127e6b8d200ce0b8fda0",
+      "size": 702635,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000452.pt.gz": {
+      "sha256": "95c2a6af04651880e0693dda6003b73e85f26ca182fcaea15d493b5e0b2a85c4",
+      "size": 879146,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000453.pt.gz": {
+      "sha256": "dfcde86c1ec08dec91dd8f90021fda763890720143880e001d9c30125fa4bcb5",
+      "size": 636552,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000454.pt.gz": {
+      "sha256": "0b2aeea0f971e035dc138e6f9d7a41ab92ffc0f848e426817dda8717e49d70d1",
+      "size": 586926,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000455.pt.gz": {
+      "sha256": "57e85962d0607ef21f0b698b77034558dc3eee8f70064df632efe45d9355e49c",
+      "size": 763588,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000456.pt.gz": {
+      "sha256": "c35ac2c35b706367f7791f35b5fefdca90508472b9af6a70bdef0a44a0d57850",
+      "size": 667442,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000457.pt.gz": {
+      "sha256": "c5f233b9829fe6c4a10ffdd26ee8f991fe21fe03ad5fd7e6f8206365699218f2",
+      "size": 886948,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000458.pt.gz": {
+      "sha256": "19a642a06f3fc5e19687a054a2dc3ef8033fd12198fd02dc99b9015dfb782a69",
+      "size": 895064,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000459.pt.gz": {
+      "sha256": "573cf310d6d948a91dc0dcc166d67741ca2a760cd93b8a9de397e045236a6372",
+      "size": 585289,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000460.pt.gz": {
+      "sha256": "86c8d56514dbcc6ff39a6f996db5949285ce9ee33fa6f4972403763658fab785",
+      "size": 899502,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000461.pt.gz": {
+      "sha256": "67c5ba529381c52ef07046c1323ee897bc8a3fe162e6d7321fbea12cb7fb9a65",
+      "size": 782623,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000462.pt.gz": {
+      "sha256": "0505195a8394979b01d880ed9eccc7e3487bdd1b2f2682bcec07a6d7816ab295",
+      "size": 816429,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000463.pt.gz": {
+      "sha256": "1961892fd3491ea6bd0e6593cf0365ead3af1398abe060704cd3b6acc213d786",
+      "size": 667653,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000464.pt.gz": {
+      "sha256": "c0753dca8ae19742d7368b684d7c8fb06b8c9269075d5712bf6eccf0f5b823ae",
+      "size": 699312,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000465.pt.gz": {
+      "sha256": "4935c2bba69635c5a3a148e1064a43764b853a8be4fa572d464b1bc9b5276ffe",
+      "size": 908411,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000466.pt.gz": {
+      "sha256": "55d449fcb2f2492fed877230d62f109ef61f3b9a93c5ef35bc0c9cc1e679d920",
+      "size": 881255,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000467.pt.gz": {
+      "sha256": "e3b24927f773096f13fd252f5fd598dd02c708559ac887c1d986aa663d52d67c",
+      "size": 860797,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000468.pt.gz": {
+      "sha256": "a39311361d69787026ee3e0ab04fbe7dbe77851a1598811e18f6411add073d8c",
+      "size": 793299,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000469.pt.gz": {
+      "sha256": "6f2f614db83022d4484501cd4a697623de82fee70b481630c4885b53380d5d3e",
+      "size": 638967,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000470.pt.gz": {
+      "sha256": "41df3481051610c1a18b8e9c304f978890e48ba3b5bbd487a439103402218a02",
+      "size": 881711,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000471.pt.gz": {
+      "sha256": "9ce939b9b6f21d627aa60c78c8887e75fce1b5d1f0a8acf19483bd80b1eed92b",
+      "size": 737351,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000472.pt.gz": {
+      "sha256": "1a3bad1b69281288f9b6908713707e352990092d9b31d5a48a01c10c4b70229e",
+      "size": 667472,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000473.pt.gz": {
+      "sha256": "089a1cb64ed5085f703a9edc52dcb47a34caaee073e32ca0c7e9a2db63b93e1c",
+      "size": 923057,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000474.pt.gz": {
+      "sha256": "676fc7710c6b3584ea86546db82a43fd6df05bc7d522d8c1baefff3de80636f1",
+      "size": 892245,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000475.pt.gz": {
+      "sha256": "f79172fdd9d9e4278e0980676fece1ee1fd543f713611001391ef0328521e6b7",
+      "size": 602691,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000476.pt.gz": {
+      "sha256": "8db757d2a7345ad638501f5fef4a92348ed45ef2dabc029ee89a4a2b3d4fe4f9",
+      "size": 870236,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000477.pt.gz": {
+      "sha256": "d42be364a4c680c8df459ae6d46c32671b614b8d019160eafa91fa5f46364b47",
+      "size": 889627,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000478.pt.gz": {
+      "sha256": "b6017fa5b2fafb9c1ceb150514b4f37157ea61487f95a74ddce25faae65ab603",
+      "size": 700161,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000479.pt.gz": {
+      "sha256": "31f7aba8f583c72c991d7a7e1f40e0728e913ea2a4186623ca05ee9a170ec7e9",
+      "size": 902705,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000480.pt.gz": {
+      "sha256": "7a2417a2f021d0b6576efcac940a3da5165703b3aa711e542bd157518bb795f8",
+      "size": 910175,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000481.pt.gz": {
+      "sha256": "a2c11cb4ae7e902166d1709ad3c1cece1c5ff19507f9c08a6179b9b01f375a9a",
+      "size": 781458,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000482.pt.gz": {
+      "sha256": "99a7c1de6d07a3c93a7aa949a56e374987be0a90d1079d552da5d02d277f210d",
+      "size": 589628,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000483.pt.gz": {
+      "sha256": "a0ca4fbd840d82e18b64b3e9dcd8fe1afb34a538f6b26088a5b1177376e2ada9",
+      "size": 751829,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000484.pt.gz": {
+      "sha256": "0b9abfdd9326d000484ce6b5a4a6d8a67c5ee03574b03e577c77e1f5e0bcd95f",
+      "size": 874718,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000485.pt.gz": {
+      "sha256": "87e197852d19cee8c802077f091a5c6c94a43e7a9f72d3fbfa051592b03c968d",
+      "size": 881075,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000486.pt.gz": {
+      "sha256": "d2ae628eeea91013a39bb59827f8167e55cc87e73af5ac9b5aa5e372a7eda24c",
+      "size": 825974,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000487.pt.gz": {
+      "sha256": "572e780271224de70dfe28b4af874cdc4af8e713b49dc8fdb98c272c56efccf2",
+      "size": 579664,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000488.pt.gz": {
+      "sha256": "b73070d88a510de1f96ee7699a849315772b929f4ed579d6d319314d9ac7f255",
+      "size": 927830,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000489.pt.gz": {
+      "sha256": "6ace91654a5b0006945e76177d65b262dd4b5fd3e630f1fde26057f1ab425866",
+      "size": 871388,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000490.pt.gz": {
+      "sha256": "6127846ce428f76fa3deb91796565e66cdb5e957cabc5f0cf64bb8b257526a05",
+      "size": 885508,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000491.pt.gz": {
+      "sha256": "3f94c95d508e39127d17220a123ebe7c620b70360be48c5d0e815dcaa6281375",
+      "size": 742618,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000492.pt.gz": {
+      "sha256": "10273ad8b1998599fab096e49357bc3042ea2ab9eb85e1673aea0f878d761d09",
+      "size": 857825,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000493.pt.gz": {
+      "sha256": "be9ea06d7a7ab0d41a58d8a65fa732b689e93967a923c4ba40c995e9e01b748a",
+      "size": 834092,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000494.pt.gz": {
+      "sha256": "f9fd1a7d9a856c51f3deeb4395d845801c798a28c878b344fd098d1aac917ccd",
+      "size": 715488,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000495.pt.gz": {
+      "sha256": "ea2adf5d00b2465318ce3ca835042ac00a417fe1a168a41bb3447fc1bae10f9c",
+      "size": 876798,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000496.pt.gz": {
+      "sha256": "5764867d99a2d036fbae2931ca9d854e76b144ad3b1c829bdaa453bbb8505e1b",
+      "size": 891961,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000497.pt.gz": {
+      "sha256": "d57c24b11156a20035c101128ab2708618d00c0302b84756d32978072022c8dd",
+      "size": 755415,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000498.pt.gz": {
+      "sha256": "ff18ebef6d6e7c542b68bf4cd72babc6018888b289b7fdab18749c063da19c99",
+      "size": 677292,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000499.pt.gz": {
+      "sha256": "25959fea68931e40ad9b3b113dcab56d7d9ee1064be5a6b280ee2907bb8e789b",
+      "size": 893469,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000500.pt.gz": {
+      "sha256": "889327bc8554e59863ceb7d78ec39244eacb3ed2a53bf1fd2d21c423f5a9f743",
+      "size": 889287,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000501.pt.gz": {
+      "sha256": "ccacaeb18fe2f80f7227485024686d085994576fc116092e68739e44a609ebfe",
+      "size": 816403,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000502.pt.gz": {
+      "sha256": "74bada47f18ee1d3c5a5bf23b329e922c09c923cc76b55ab403a0bbfd20fd684",
+      "size": 722306,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000503.pt.gz": {
+      "sha256": "53706f622505745a2c47c9f900458cbb0f193cd97f69c3f59d29f4b8a3731c66",
+      "size": 860856,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000504.pt.gz": {
+      "sha256": "165cc3871e22b38997d3a39ab828d373638a27f43fdb2ca61906f120694c726d",
+      "size": 908965,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000505.pt.gz": {
+      "sha256": "93f0407bdb714a1bb4227f252df0fa7ab6ec0eaa2f866f50ceb5fff4175b389d",
+      "size": 837777,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000506.pt.gz": {
+      "sha256": "0549decdac0cba4a1560e0e49c4cd87d7d20e44b895e944120060b735b0b9a65",
+      "size": 884581,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000507.pt.gz": {
+      "sha256": "24649302ee40a4896bd9998bec5316cba5549ca77530e137c1df5aa49a654bb8",
+      "size": 773193,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000508.pt.gz": {
+      "sha256": "320c92adf80c4d6e81996301f41c958ed2229fdc479f7def83d9728140b9442a",
+      "size": 858945,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000509.pt.gz": {
+      "sha256": "6b09a94f2ecd0a3eed635520cd8541a5d20d687e7a3a8075872e5750f83288cc",
+      "size": 502192,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000510.pt.gz": {
+      "sha256": "0cbe16c95846a9949f414dfcb1e780e2ca25cee68aded1c3bb085b43fc572574",
+      "size": 896431,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000511.pt.gz": {
+      "sha256": "f9c1df54aa0a22ae3a8cd9ab0c3143cd753fc25978107755f6d63019cae8ebb2",
+      "size": 789163,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000512.pt.gz": {
+      "sha256": "124f90058c1aef8f125caff030e3d7792c055251be3b43fada23f84702b10ec4",
+      "size": 846683,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000513.pt.gz": {
+      "sha256": "a3ad66eb8e369b4305cdaecc92a396afec728918a9a8c7573ef1bd4fd4134715",
+      "size": 734989,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000514.pt.gz": {
+      "sha256": "ad82e5b46f9b5c2e8aa1fd326fcb7734868c11adc4c7226f94701babe2562079",
+      "size": 920234,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000515.pt.gz": {
+      "sha256": "e8901960d3038a15e6c0132f5e142bd28665d26e0610ec52179186017328de29",
+      "size": 671141,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000516.pt.gz": {
+      "sha256": "3c848d99310ebf2e9a436cfe6870993892540bc7a7f349a980d0af4a4e0b8433",
+      "size": 913110,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000517.pt.gz": {
+      "sha256": "a3b85011076ad7c285789133717fe2fac98ecfee1f0de445656057abe9eaf142",
+      "size": 873907,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000518.pt.gz": {
+      "sha256": "9263a2056ed686c376f960ba93a1754d1e9587562c4ff38d8779ce313ac30332",
+      "size": 616518,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000519.pt.gz": {
+      "sha256": "9c247ce06bf5e4ad26784b610057d637107ff07a68454052624b41fa336e3537",
+      "size": 604063,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000520.pt.gz": {
+      "sha256": "1779cc0c8d876c1e656d0f18662ac80435e6a104c77baee43b6126fa868fc74b",
+      "size": 833192,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000521.pt.gz": {
+      "sha256": "b97ec16c3edfb27fd4e044b781ff4960ea7a716cba95c5dabce3df20bc42abdd",
+      "size": 518090,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000522.pt.gz": {
+      "sha256": "72bb29edecd52635082c6e42ccdc7358dab663e6a58d0876fcfa5b4171d761d0",
+      "size": 548617,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000523.pt.gz": {
+      "sha256": "bb7c3ffbe080dab64dfa34e041f0d4a8730d08909b89535de14cb410928db776",
+      "size": 613067,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000524.pt.gz": {
+      "sha256": "01de492c59126c7a24758b595413425ec896d7bade8ff18aaa27e9dfb57f21be",
+      "size": 883300,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000525.pt.gz": {
+      "sha256": "abdbc2ecb1de6c55b214c98117e9c3a5d92df05c830d5466a5dd94a1bc3367d0",
+      "size": 884184,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000526.pt.gz": {
+      "sha256": "fde9a9581d4ee43993070a8f6918f8e58c1c905b832e90dad43c2cc5004f0f28",
+      "size": 711291,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000527.pt.gz": {
+      "sha256": "3b437b2e0a35764315bbe29d5d887c68e98288cae82b75628c96ffaada5f0597",
+      "size": 890632,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000528.pt.gz": {
+      "sha256": "53436def0c692438f1b66287b339cad90960e5e0b4f1a53e9fed324dffa17126",
+      "size": 806318,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000529.pt.gz": {
+      "sha256": "aaca00c8fc8493618e7bba227040dfc6b69c844e11b264d4f7ae16fcf8b8fc81",
+      "size": 613370,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000530.pt.gz": {
+      "sha256": "c2689d2788536a8b8bbd56aa375b6abb071b09db5680da7430d6c96fa24857b3",
+      "size": 720801,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000531.pt.gz": {
+      "sha256": "b8ae5f703c05201f0aaff013fd9676886ee7f1d58f9bc7500a4077a05d014ac3",
+      "size": 628646,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000532.pt.gz": {
+      "sha256": "7557e350914f5db8bde1a53b4ad9bbfa108a4dc718c6d0c2ca14044c4963c09b",
+      "size": 928530,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000533.pt.gz": {
+      "sha256": "f30c8511019851871ec6c56be805cc49f50e8cadd47d025a19f815d3c09318ad",
+      "size": 797571,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000534.pt.gz": {
+      "sha256": "eb19931cf4409bd1faf2669d20cdf0d4ab58036353a0085632597c23fd6568b7",
+      "size": 621689,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000535.pt.gz": {
+      "sha256": "04e5e1a620ed7d503cdc42bff93f94c34c6c276ad94d56854e01b5bfca72b3a7",
+      "size": 885817,
+      "same_physical_file": true
+    },
+    "segments/750c8429a2454572875d1d1680cefe8e/graphs/liver_6/000536.pt.gz": {
+      "sha256": "29c77f6c13ab34bc7e676ebd714b938edadb2a501afa522fe4bdaafceeb80dfb",
+      "size": 815584,
+      "same_physical_file": true
+    }
+  }
+}
