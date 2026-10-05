@@ -156,9 +156,10 @@ evidence와 동일한 강도의 독립성 확인으로 승격하지 않는다.
 
 서버 출력에서 full 모델의 prototype 환자와 현재 21case의 교집합은 17명,
 paired fold0 모델의 prototype 교집합은 0명이었다. 이 숫자는 prototype
-교집합이며 optimizer 학습 환자 수를 뜻하지 않는다. paired fold0가 우선
-대조 대상이지만 현재 21case와 실제 학습 split의 대응 및 원본 연산 경로는
-별도로 확인해야 한다. 현재 10mm 전용 GPU 평가기에 경로만 바꿔 넣지 않는다.
+교집합이며 optimizer 학습 환자 수를 뜻하지 않는다. 이 교집합만으로
+사용자가 지정한 좋은 성능의 모델을 paired fold0로 바꾸지 않는다.
+현재 21case와 실제 학습 split의 대응 및 원본 연산 경로는 별도로 확인해야
+한다. 현재 10mm 전용 GPU 평가기에 경로만 바꿔 넣지 않는다.
 
 이번 조회로 원본 30mm의 128후보 점수, MRR, Hit@1은 아직 측정되지 않았다.
 가중치 재생성, 재학습, 기존 checkpoint 수정·삭제는 수행하지 않는다.
@@ -166,6 +167,35 @@ paired fold0 모델의 prototype 교집합은 0명이었다. 이 숫자는 proto
 명시적 선택·구형 tag 부재·비어 있는 state dict·부가 JSON 부재·보조 mapping과
 held-out 판정의 분리·입력 변조 및 원본 보존을 검사했다. UNIT fixture 검사이며
 서버 checkpoint 재조회나 CUDA 모델 평가를 수행한 결과가 아니다.
+
+## 좋은 성능의 원본 모델을 평가 대상으로 확정 — 2026-10-06
+
+사용자는 단순히 존재하는 checkpoint가 아니라 **성능이 좋았던 원래 모델**을
+평가하라고 정정했다. 평가 대상은
+`/home/aicompetition06/Medical/HierCP/work/full/model.pt`로 확정한다.
+paired fold0를 우선하자는 앞선 판단은 이 요구에 맞지 않아 철회한다.
+
+보존 사용자 터미널
+`experiment_results/recovered_conversations_20260918/attachments/b611a9f81dd3cb24_붙여넣은 텍스트 (1).txt`
+55행은 위 full/model.pt를 BEST epoch30, best MRR0.9869, 40epoch 완료로 기록한다.
+84~88행의 같은 checkpoint에 대한 `causality.best.post_shortcut_fix.json`
+validation 감사는 **51샘플에서 Top1=0.9804, MRR=0.9869**를 보고한다.
+이는 원래 validation의 후보·정답 계약에 따른 과거 실제 서버 결과다.
+
+최신 사용자 제공 조회의 경로·선택 epoch30·완료 표시·native ROI30/context28도
+이 기록과 일치한다. 현재와 당시 가중치의 SHA를 직접 대조한 것은 아니므로
+byte identity를 독립 확인했다고 표현하지 않는다. 이 모델의 기존 prototype과
+원래 연산을 함께 사용해야 하며, 최근 10mm 모델이나 새로 학습한 모델로
+대체하지 않는다. 조회 도구의 `checkpoint_selected=false`는 그 도구가 모델
+실행을 하지 않았다는 뜻이며, 여기서 정한 연구 평가 대상을 부정하지 않는다.
+
+원래 좋은 성능의 재확인과 현재 전체 P+128U 과제 평가는 다른 평가 조건이다.
+현재 21case 중 prototype 교집합17명은 보고서에 유지하고, 그 점수를 독립
+held-out 성능으로 승격하지 않는다. 같은 모델을 평가하는 요청을 이 이유로
+차단하거나 다른 모델로 바꾸지는 않는다. 원래 validation 성능을 새 전체
+P+128U 성능으로 표시하지 않는다. **원본 full/model.pt의 새 전체 P+128U
+GPU 평가는 아직 구현·실행되지 않았으며, 이번 수정은 평가 대상과 기록의
+정정이다.** 기존 checkpoint·cache·split과 D 작업은 변경하지 않는다.
 
 ## 작업 완료 체크리스트
 
