@@ -149,7 +149,7 @@
 | learning | [열기](../../l0_sparse_feature/learning.py) | 게시 대상 |
 | model | [열기](../../l0_sparse_feature/model.py) | 게시 대상 |
 | physical relay | [열기](../../l0_sparse_feature/physical_relay.py) | 로컬 |
-| relational | [열기](../../l0_sparse_feature/relational.py) | 게시 대상 |
+| relational | [열기](../../l0_sparse_feature/relational.py) | 로컬 수정 |
 | relay sampling | [열기](../../l0_sparse_feature/relay_sampling.py) | 게시 대상 |
 | relayed | [열기](../../l0_sparse_feature/relayed.py) | 게시 대상 |
 | requirements-v222-server | [열기](../../requirements-v222-server.txt) | 게시 대상 |
@@ -296,7 +296,7 @@
 | relay-sparse.template | [열기](../../tools/relay-sparse.template.html) | 게시 대상 |
 | render footprint sparse debug | [열기](../../tools/render_footprint_sparse_debug.py) | 로컬 |
 | render relational sparse debug | [열기](../../tools/render_relational_sparse_debug.py) | 게시 대상 |
-| render relay sparse debug | [열기](../../tools/render_relay_sparse_debug.py) | 게시 대상 |
+| render relay sparse debug | [열기](../../tools/render_relay_sparse_debug.py) | 로컬 수정 |
 | render v222 inspector | [열기](../../tools/render_v222_inspector.py) | 로컬 |
 | render v222 ppr astar | [열기](../../tools/render_v222_ppr_astar.py) | 로컬 |
 | render v22 cnn l0 | [열기](../../tools/render_v22_cnn_l0.py) | 로컬 |
@@ -478,7 +478,7 @@
 | region support runtime | [열기](../../docs/region_support_runtime_20260930.md) | 게시 대상 |
 | region training smoke | [열기](../../docs/region_training_smoke_20260929.md) | 게시 대상 |
 | relational sparse L0 DEBUG | [열기](../../docs/relational_sparse_L0_DEBUG_20261002.md) | 게시 대상 |
-| relay sparse L0 DEBUG | [열기](../../docs/relay_sparse_L0_DEBUG_20261002.md) | 게시 대상 |
+| relay sparse L0 DEBUG | [열기](../../docs/relay_sparse_L0_DEBUG_20261002.md) | 로컬 수정 |
 | sparse cp recommender DEBUG | [열기](../../docs/sparse_cp_recommender_DEBUG_20261002.md) | 게시 대상 |
 | sparse feature budget comparison DEBUG | [열기](../../docs/sparse_feature_budget_comparison_DEBUG_20261002.md) | 게시 대상 |
 | sparse feature graph l0 DEBUG | [열기](../../docs/sparse_feature_graph_l0_DEBUG_20261002.md) | 게시 대상 |

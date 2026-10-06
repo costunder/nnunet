@@ -13,7 +13,7 @@
 | prepare | [열기](../../basic_cp_online/prepare.py) | 게시 대상 |
 | reference | [열기](../../basic_cp_online/reference.py) | 게시 대상 |
 | runtime | [열기](../../basic_cp_online/runtime.py) | 게시 대상 |
-| code | [열기](../../code.txt) | 게시 대상 |
+| code | [열기](../../code.txt) | 로컬 수정 |
 | comparison randomness | [열기](../../comparison_randomness.py) | 게시 대상 |
 |   init   | [열기](../../custom_trainers/__init__.py) | 게시 대상 |
 | install onlinecp custom trainers | [열기](../../custom_trainers/install_onlinecp_custom_trainers.py) | 게시 대상 |
@@ -184,10 +184,10 @@
 | HierCP code review | [열기](../../feedback/HierCP_code_review_20260912.md) | 게시 대상 |
 | HierCP current review design | [열기](../../feedback/HierCP_current_review_design_20260912.md) | 게시 대상 |
 | HierCP review inventory | [열기](../../feedback/HierCP_review_inventory_20260912.md) | 게시 대상 |
-| gpt handoff | [열기](../../gpt_handoff.md) | 게시 대상 |
-| PATCH NOTES | [열기](../../PATCH_NOTES.md) | 게시 대상 |
+| gpt handoff | [열기](../../gpt_handoff.md) | 로컬 수정 |
+| PATCH NOTES | [열기](../../PATCH_NOTES.md) | 로컬 수정 |
 | README | [열기](../../README.md) | 게시 대상 |
-| REFERENCES | [열기](../../REFERENCES.md) | 게시 대상 |
+| REFERENCES | [열기](../../REFERENCES.md) | 로컬 수정 |
 | START | [열기](../../START.md) | 게시 대상 |
 
 </details>

@@ -63,6 +63,8 @@ def short_title(path):
 def collect():
     tracked=set(subprocess.run(['git','-c',f'safe.directory={ROOT.as_posix()}',
                 'ls-files'],cwd=ROOT,check=True,capture_output=True,text=True).stdout.splitlines())
+    modified=set(subprocess.run(['git','-c',f'safe.directory={ROOT.as_posix()}',
+                 'diff','--name-only'],cwd=ROOT,check=True,capture_output=True,text=True).stdout.splitlines())
     paths = set()
     for folder in CATALOG_DIRS:
         paths.update(p for p in (ROOT / folder).rglob('*')
@@ -80,7 +82,7 @@ def collect():
         elif relative.startswith('tools/') or relative.startswith('run'): category = 'tools'
         rows.append(dict(path=relative, version=version_for(relative), category=category,
                          title=short_title(relative), bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest(),
-                         in_git=relative in tracked))
+                         in_git=relative in tracked,working_tree_modified=relative in modified))
     return rows
 
 
@@ -88,6 +90,7 @@ def build():
     rows = collect()
     payload = dict(format='hiercp_version_file_catalog_v1',
                    scope='Repository source/config/docs/tools/tests; data/checkpoints are separate bound artifacts',
+                   sha256_scope='Actual local file bytes. working_tree_modified marks preserved unpublished edits; in_git only means the path is tracked.',
                    files=rows)
     (ROOT / 'versions/files.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2)+'\n', encoding='utf8')
     for version in sorted({row['version'] for row in rows}):
@@ -101,7 +104,8 @@ def build():
             if not selected: continue
             content += [f'<details><summary>{label} ({len(selected)})</summary>', '', '| 내용 | 원본 | Git |', '| --- | --- | --- |']
             for row in selected:
-                content.append(f'| {row["title"]} | [열기](../../{row["path"]}) | {"게시 대상" if row["in_git"] else "로컬"} |')
+                publication='로컬 수정' if row['working_tree_modified'] else ('게시 대상' if row['in_git'] else '로컬')
+                content.append(f'| {row["title"]} | [열기](../../{row["path"]}) | {publication} |')
             content += ['', '</details>', '']
         (folder / 'files.md').write_text('\n'.join(content), encoding='utf8')
     print(json.dumps(dict(indexed=len(rows), versions=sorted({r['version'] for r in rows}), training_started=False)))
