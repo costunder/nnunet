@@ -1,0 +1,68 @@
+{
+  "source": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\probe\\evaluation_r3\\geometry\\index.json",
+  "sha256": "80e9e423722b92618ce67e377c07f22205fc52266386dfe7b8fbdfc5b40368e1",
+  "validation_records": 136,
+  "cases": 1,
+  "preparation_seconds": 0.11290970002301037,
+  "actual_CT": true,
+  "no_training_preparation": true,
+  "original_two_views": true,
+  "geometry_builds": 0,
+  "geometry_loads": 0,
+  "cache_hits": 0,
+  "raw_cases_decoded": [
+    "liver_100",
+    "liver_31"
+  ],
+  "raw_files_verified": [
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_100_0000.nii.gz",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_31_0000.nii.gz",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_100.nii.gz",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_31.nii.gz"
+  ],
+  "sampled_two_view_summary": {
+    "nodes": {
+      "min": 5054,
+      "max": 8186,
+      "mean": 6584.367647058823,
+      "sum": 895474,
+      "observations": 136,
+      "actual_local_graphs": 272
+    },
+    "edges": {
+      "min": 215268,
+      "max": 376499,
+      "mean": 269418.23529411765,
+      "sum": 36640880,
+      "observations": 136,
+      "actual_local_graphs": 272
+    }
+  },
+  "resources": {
+    "rss_bytes": 3192205312,
+    "total_resident_bytes": 2417278960,
+    "resident_limit_bytes": 17179869184,
+    "rss_limit_bytes": 34359738368
+  },
+  "preparation_reused": true,
+  "read_only": true,
+  "reuse_provenance": {
+    "cache_root": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\probe\\evaluation_r3\\geometry",
+    "cache_index_sha256": "80e9e423722b92618ce67e377c07f22205fc52266386dfe7b8fbdfc5b40368e1",
+    "cache_request_file_sha256": "c37d5f6aabc44db789aee2f4f12b07f9814f532dc3c80b60ac66f1d3e3604036",
+    "request_sha256": "d6657d2d8ecdf345718f75b98d885568defe32e91b7e5f9a173c38a112ce564c",
+    "input_inventory_sha256": "3499481b016c8330b8b641096f441c5a57d215d669594677f01af9fa8ba92a20",
+    "cohort_sha256": "5c926e477f992ae6354fb359b64699e7a3779e458d9151bbc8416ff217f8244d",
+    "assignment_sha256": "42bf63fd09587bdb18491242ac783b8d3be5b53d8a1c37491e3cedeb80d9beb1",
+    "metadata_manifest_sha256": "f585d484f676afaf672da90cad10cf34a9da8b9b1d05163d438de8f8a0aa7abd",
+    "validated_payload_files": 137,
+    "validated_observations": 136,
+    "validated_cases": 1,
+    "complete_original_publication": true,
+    "all_payload_sha256_verified": true,
+    "graph_reconstruction": false,
+    "raw_CT_redecoded_for_preparation": false,
+    "cache_tensor_deserialization_for_preparation": false,
+    "existing_files_written": false
+  }
+}

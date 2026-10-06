@@ -22,6 +22,10 @@ def parse(argv=None):
     p.add_argument('--checkpoint', type=Path)
     p.add_argument('--prototype', type=Path, required=True)
     p.add_argument('--region-cache', type=Path, help='Explicit read-only original-config region cache; missing cases fail')
+    p.add_argument('--reuse-geometry', type=Path,
+                   help='Complete verified native30 geometry directory, opened read-only; no missing-row rebuild')
+    p.add_argument('--lesion-policy', choices=('saved_guard', 'all_observed'), default='saved_guard',
+                   help='Explicit upper-input policy; all_observed keeps every actual component without changing saved config')
     p.add_argument('--workers', type=int, required=True)
     p.add_argument('--physical-batch-candidates', type=int, nargs='+', required=True)
     for name in ('cuda-gib', 'rss-gib', 'resident-gib'):
@@ -52,6 +56,47 @@ def execution_source():
     return {name: sha(ROOT / name) for name in names}
 
 
+def preflight_upper(bundle, geometry, cohort, *, output, region_cache, lesion_policy, budget):
+    """Admit and cache all whole-case CPU upper graphs before any L0 encoding.
+
+    Original region building and donor preparation share the provider's caches.
+    The provider is not thread-safe, so this traversal coordinates those shared
+    inputs; its raw-case decoding is parallel. GPU inference remains batched.
+    """
+    from tqdm import tqdm
+    from hiercp_v1x.historical_evaluation import write_new
+    from hiercp_v1x.native30_upper import build_native30_upper
+    from hiercp_v1x.native30_geometry import resident_bytes_of
+    from hiercp_v1x.transition_evaluation import QUERY_FIELDS
+    graphs, audits = {}, []
+    start = time.perf_counter()
+    for case_id, rows in tqdm(cohort['by_case'].items(), total=len(cohort['by_case']),
+                              desc='native30 complete upper admission', unit='case'):
+        query = tuple({key: list(row[key]) if key == 'center' else row[key]
+                       for key in QUERY_FIELDS} for row in rows)
+        graph, prototype, audit = build_native30_upper(bundle, geometry, query,
+            output=output / 'regions', region_cache=region_cache, lesion_policy=lesion_policy)
+        graph.validate(raise_on_error=True); prototype.validate(raise_on_error=True)
+        if graph['candidate'].raw_x.shape[0] != len(query):
+            raise ValueError('Upper admission lost whole-case candidates')
+        graphs[case_id] = (tuple(row['id'] for row in query), graph, prototype)
+        audits.append(audit)
+        budget()
+    receipt = dict(status='PASS', cases=len(graphs), lesion_policy=lesion_policy,
+        saved_max_lesions=bundle.config['graph'].get('max_lesions'),
+        components_dropped=0, query_GT_in_forward=False,
+        GPU_encoding_started=False, optimizer_updates=0,
+        CPU_upper_graph_bytes=resident_bytes_of(graphs), elapsed_seconds=time.perf_counter()-start,
+        cases_with_saved_guard_exceeded=[a['recipient_case_id'] for a in audits
+                                      if a['lesion_admission']['saved_guard_exceeded']],
+        case_audits=audits)
+    write_new(output / 'upper_admission.json', receipt)
+    print('NATIVE30 UPPER | cases=' + str(len(graphs)) + ' | policy=' + lesion_policy
+          + ' | saved guard=' + str(receipt['saved_max_lesions'])
+          + ' | all actual components retained | before L0 encoding', flush=True)
+    return graphs, receipt
+
+
 def evaluate(a):
     from tools.local_cnn_device import select
     select(a.gpu)
@@ -64,7 +109,6 @@ def evaluate(a):
     from hiercp_v1x.native30_checkpoint import (activate_native30_source, load_native30,
         load_debug_native30, verify_native30_source)
     from hiercp_v1x.native30_geometry import Native30Geometry
-    from hiercp_v1x.native30_upper import build_native30_upper
     from hiercp_v1x.transition_evaluation import (validate_cohort, run_scoring,
         PreparedL0Batch, SCORING_FORMAT)
     if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
@@ -80,6 +124,10 @@ def evaluate(a):
     preserved = [a.original_source, a.prototype, a.inventory]
     if a.checkpoint is not None:
         preserved.append(a.checkpoint)
+    if a.reuse_geometry is not None:
+        preserved.append(a.reuse_geometry)
+    if a.region_cache is not None:
+        preserved.append(a.region_cache)
     assert_new_destination(a.output, preserved)
     a.output.mkdir(parents=True, exist_ok=False)
     code = execution_source()
@@ -115,7 +163,8 @@ def evaluate(a):
     model = bundle.model.eval()
     geometry = Native30Geometry(a.inventory, bundle.config, bundle.source,
         workers=a.workers, resident_bytes=int(a.resident_gib * 2**30), rss_bytes=rss_bytes,
-        output=a.output / 'geometry', debug=debug, debug_case_ids=a.debug_case_ids)
+        output=a.reuse_geometry if a.reuse_geometry is not None else a.output / 'geometry',
+        read_only=a.reuse_geometry is not None, debug=debug, debug_case_ids=a.debug_case_ids)
     # Resource accounting is separate from the activated historical hiercp
     # namespace; the legacy checkout legitimately has no preparation_runtime.
     import importlib.util
@@ -125,7 +174,10 @@ def evaluate(a):
     allocation = accounting.snapshot()
     if a.workers > allocation['cpu_capacity'] or rss_bytes > allocation['rss_bytes'] + allocation['available_memory_bytes']:
         raise ValueError('Requested resources exceed measured affinity/cgroup allocation')
+    upper_graphs, upper_admission = preflight_upper(bundle, geometry, cohort, output=a.output,
+        region_cache=a.region_cache, lesion_policy=a.lesion_policy, budget=budget)
     preparation = geometry.prepare()
+    write_new(a.output / 'geometry_receipt.json', preparation)
     resources = dict(gpu=torch.cuda.get_device_name(), GPU_count=1, total_VRAM_bytes=total,
         free_VRAM_bytes=free, cuda_limit_bytes=cuda_bytes, rss_limit_bytes=rss_bytes,
         resident_bytes=int(a.resident_gib * 2**30), workers=a.workers, effective_allocation=allocation,
@@ -145,7 +197,7 @@ def evaluate(a):
     print('NATIVE30 ACTUAL CUDA | ' + json.dumps({key: resources[key] for key in
         ('gpu', 'parameters', 'validation_cases', 'records', 'ROI_margin_mm', 'context_outer_mm', 'debug')}), flush=True)
     use_amp = bool(bundle.config['training']['amp'])
-    timings = []; audits = []; lookup = {r['id']: i for i, r in enumerate(geometry.rows)}
+    timings = []; lookup = {r['id']: i for i, r in enumerate(geometry.rows)}
     def encode(cpu):
         budget(); torch.cuda.synchronize(); start = time.perf_counter()
         gpu = cpu.to('cuda')
@@ -160,9 +212,9 @@ def evaluate(a):
         cpu = geometry.get([lookup[r['id']] for r in rows], epoch=0)
         return PreparedL0Batch(cpu, tuple(r['id'] for r in rows), False)
     def score(features, rows):
-        graph, prototype, audit = build_native30_upper(bundle, geometry, rows,
-            output=a.output / 'regions', region_cache=a.region_cache)
-        audits.append(audit)
+        expected, graph, prototype = upper_graphs[rows[0]['case_id']]
+        if tuple(row['id'] for row in rows) != expected:
+            raise ValueError('Scoring must use the admitted entire ordered case')
         upper = SimpleNamespace(patient_batch=Batch.from_data_list([graph]).to('cuda'),
             prototype_batch=Batch.from_data_list([prototype]).to('cuda'), counts=(len(rows),),
             case_ids=(rows[0]['case_id'],))
@@ -172,10 +224,17 @@ def evaluate(a):
         torch.cuda.synchronize(); budget()
         timings.append(dict(stage='joint_whole_case_L1_L2', case_id=rows[0]['case_id'],
                             observations=len(rows), seconds=time.perf_counter()-start))
-        return dict(scores=values, contract=dict(format=SCORING_FORMAT,
+        contract = dict(format=SCORING_FORMAT,
             scored_record_ids=[r['id'] for r in rows], l0_only_chunking=True, upper_chunking=False,
             upper_execution='single_joint_case', query_GT_in_forward=False, upper_invocations=1,
-            annotation_derived_recipient_inputs=True, class_target_argument_passed=False))
+            annotation_derived_recipient_inputs=True, class_target_argument_passed=False)
+        if values.shape != (len(rows),) or not bool(torch.isfinite(values).all()):
+            raise ValueError('Whole-case native30 scoring returned invalid real scores')
+        write_new(a.output / 'case_scores' / (rows[0]['case_id'] + '.json'),
+            dict(case_id=rows[0]['case_id'], request_file_sha256=sha(a.output / 'request.json'),
+                 scores=values.detach().to('cpu', torch.float64).tolist(), contract=contract,
+                 full_evaluation_complete=False, optimizer_updates=0))
+        return dict(scores=values, contract=contract)
     torch.cuda.reset_peak_memory_stats(); start = time.perf_counter()
     report = run_scoring(inventory, provider, encode, score, l0_batch_size=batch,
         case_ids=a.debug_case_ids, debug=debug)
@@ -192,7 +251,8 @@ def evaluate(a):
         prototype_validation_overlap=overlap, independently_heldout_quality=False,
         annotation_derived_recipient_inputs=True, blind_recommendation_quality_verified=False,
         original_learned_operators_preserved=True, original_single_patient_topology_equivalent=False,
-        external_donor_input_adaptation=audits, elapsed_seconds=time.perf_counter()-start,
+        external_donor_input_adaptation=upper_admission['case_audits'],
+        upper_admission=upper_admission, elapsed_seconds=time.perf_counter()-start,
         stage_timings=timings, peak_cuda_bytes=torch.cuda.max_memory_allocated(),
         final_process_RSS_bytes=process.memory_info().rss, CP_started=False, nnunet_started=False)
     write_new(a.output / 'report.json', report)

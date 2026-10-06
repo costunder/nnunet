@@ -2,6 +2,7 @@
 import contextlib
 import io
 import unittest
+from pathlib import Path
 from tools.evaluate_native_v1_full128 import parse
 
 
@@ -38,6 +39,18 @@ class EntryTests(unittest.TestCase):
     def test_batch_candidates_no_duplicate_or_automatic_small_default(self):
         args = self.args(); index = args.index('8'); args[index:index+3] = ['32', '32']
         self.reject(args + ['--checkpoint', '/full/model.pt'])
+
+    def test_complete_read_only_reuse_and_all_observed_are_explicit(self):
+        a = parse(self.args() + ['--checkpoint', '/full/model.pt',
+            '--reuse-geometry', '/failed/geometry', '--lesion-policy', 'all_observed'])
+        self.assertEqual(a.reuse_geometry, Path('/failed/geometry'))
+        self.assertEqual(a.lesion_policy, 'all_observed')
+        original = parse(self.args() + ['--checkpoint', '/full/model.pt'])
+        self.assertIsNone(original.reuse_geometry)
+        self.assertEqual(original.lesion_policy, 'saved_guard')
+
+    def test_unknown_lesion_policy_rejected(self):
+        self.reject(self.args() + ['--checkpoint', '/full/model.pt', '--lesion-policy', 'top12'])
 
 
 if __name__ == '__main__':

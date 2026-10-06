@@ -1,0 +1,38 @@
+{
+  "scope": "untrained actual-CT CUDA DEBUG plus synthetic UNIT/contract regressions; not server BEST or full21 performance",
+  "regression_tests_passed": 89,
+  "geometry_tests_passed": 20,
+  "other_native30_regression_tests_passed": 69,
+  "original_full_model_parameters": 10050543,
+  "CUDA_UNIT": {
+    "recipient_components": 34,
+    "donor_other_components": 14,
+    "queries": 131,
+    "passed": true,
+    "synthetic": true,
+    "trained": false
+  },
+  "actual_CT_CUDA_DEBUG": {
+    "report": "report.json",
+    "records": 136,
+    "P": 8,
+    "U": 128,
+    "geometry_builds": 0,
+    "read_only_geometry_reuse": true,
+    "trained": false,
+    "full21": false,
+    "optimizer_updates": 0
+  },
+  "server_full21_evaluation_completed": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "source_sha256": {
+    "hiercp_v1x/native30_geometry.py": "320b72e36b59831ee430ebbf3e80553bc8c9ef6f483d3e41a84161d08400d4db",
+    "hiercp_v1x/native30_upper.py": "34abfcaa54309f7c1681dfc0a4f583a87912d447b810e232afdfb0a276371674",
+    "tools/evaluate_native_v1_full128.py": "836e5a5e8ffb37f43f6385c274d9538dbb2b42393f8b82a2169c1a6177d6834e",
+    "tools/server_native_v1_full128.sh": "9e5998aed9fbafbd0c64983f1e9098b25a05e86dea49d19bcda1b13a58d152e5",
+    "tests/test_native30_geometry.py": "bddbbcc81a84cea8a59dfb3d7018fb792f487ad57cc9a2e695fb390ab8728c8d",
+    "tests/test_native30_upper.py": "d186055cb5fa08784922dbad3639da8fbac63ba396188df2c92e68f153c25197",
+    "tests/test_native30_evaluation_entry.py": "eaf79bc3d2bdd985805e2d36f1d4c75687cf97daeafd0a16ca779b161245bfe0"
+  }
+}

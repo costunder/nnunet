@@ -10,6 +10,7 @@ import copy
 import hashlib
 import importlib
 from itertools import product
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -47,11 +48,16 @@ class Native30UpperUnit(unittest.TestCase):
         package.mkdir(parents=True)
         # The snapshot is a separate UNIT fixture. Production always uses the
         # caller's explicitly activated source and never this Git revision.
-        for name in ("__init__", "common", "curriculum", "hierarchy", "prototype", "region", "schema", "tensor"):
+        for name in ("__init__", "common", "curriculum", "hierarchy", "prototype", "region", "schema", "tensor",
+                     "model", "sample"):
             data = subprocess.run(["git", "-c", "safe.directory=" + ROOT.as_posix(), "show",
                                    f"{UNIT_LEGACY_REVISION}:hiercp/{name}.py"], cwd=ROOT,
                                   check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
             (package / (name + ".py")).write_bytes(data)
+        cls.full_model_configuration = json.loads(subprocess.run(
+            ["git", "-c", "safe.directory=" + ROOT.as_posix(), "show",
+             f"{UNIT_LEGACY_REVISION}:config/train.json"], cwd=ROOT, check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout)["model"]
         cls.previous = {name: value for name, value in sys.modules.items()
                         if name == "hiercp" or name.startswith("hiercp.")}
         for name in cls.previous:
@@ -136,7 +142,39 @@ class Native30UpperUnit(unittest.TestCase):
             return regions[case.paths.case_id]
         with patch.object(self.runtime["region"], "load_or_build_patient_regions", side_effect=loader):
             return build_native30_upper(inputs.bundle, inputs.geometry, kwargs.get("rows", inputs.rows),
-                output=Path(self.temporary.name) / "evaluation_output")
+                output=Path(self.temporary.name) / "evaluation_output",
+                **({"lesion_policy": kwargs["lesion_policy"]} if "lesion_policy" in kwargs else {}))
+
+    def many_lesion_inputs(self):
+        """34 recipient and 14 other donor components, each really disconnected."""
+        inputs = self.inputs(candidate_count=131)
+        inputs.recipient.label.fill(1)
+        recipient_centers = list(product((1, 4, 7, 10), (1, 4, 7, 10), (1, 4, 7, 10)))[:34]
+        for center in recipient_centers:
+            inputs.recipient.label[center] = 2
+        inputs.donor.label.fill(1)
+        inputs.donor.label[inputs.source.full_mask] = 2
+        donor_centers = list(product((1, 4, 7, 10), (1, 4, 7, 10), (16,)))[:14]
+        for center in donor_centers:
+            inputs.donor.label[center] = 2
+        # Added real components change scipy's component numbering. Resolve the
+        # unchanged largest source from the new complete annotation, rather than
+        # retaining a stale synthetic component ID in the donor query contract.
+        source, _, _ = self.runtime["common"].choose_source_tumor(inputs.donor.image, inputs.donor.label,
+            tumor_label=2, selection="largest", rng=np.random.default_rng(4), pad=1)
+        np.testing.assert_array_equal(source.full_mask, inputs.source.full_mask)
+        inputs.source = source
+        for row in inputs.rows:
+            row["donor_component"] = source.component_id
+        inputs.geometry.donor_source = lambda row: (inputs.source, inputs.target)
+        inputs.config = self.runtime["schema"].GraphBuildConfig(num_regions=2, region_k=1,
+            num_prototypes=2, prototype_k=1, max_lesions=12)
+        inputs.bundle.config["graph"] = inputs.config.to_dict()
+        connectivity = ndi.generate_binary_structure(3, 1)
+        self.assertEqual(ndi.label(inputs.recipient.label == 2, structure=connectivity)[1], 34)
+        self.assertEqual(ndi.label((inputs.donor.label == 2) & ~inputs.source.full_mask,
+                                  structure=connectivity)[1], 14)
+        return inputs
 
     def test_complete_cohort_and_loaded_legacy_relation_schema(self):
         inputs = self.inputs()
@@ -283,6 +321,105 @@ class Native30UpperUnit(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no lesions were dropped"):
             self.build(inputs)
         np.testing.assert_array_equal(inputs.recipient.label, before[0])
+
+    def test_saved_lesion_guard_remains_the_default_for_large_actual_components(self):
+        inputs = self.many_lesion_inputs()
+        before = copy.deepcopy(inputs.bundle.config)
+        for policy in (None, "saved_guard"):
+            options = {} if policy is None else {"lesion_policy": policy}
+            with self.assertRaisesRegex(RuntimeError, "detected_recipient_lesions=34"):
+                self.build(inputs, **options)
+            self.assertEqual(inputs.bundle.config, before)
+
+    def test_explicit_all_observed_keeps_34_recipient_and_14_donor_other_components(self):
+        inputs = self.many_lesion_inputs()
+        before = copy.deepcopy(inputs.bundle.config)
+        original_arrays = (inputs.recipient.label.copy(), inputs.donor.label.copy(),
+                           inputs.source.full_mask.copy())
+        graph, _, audit = self.build(inputs, lesion_policy="all_observed")
+        self.assertEqual(graph["candidate"].raw_x.shape, (131, 14))
+        self.assertEqual(graph["lesion"].raw_x.shape, (48, 14))
+        self.assertEqual(graph["lesion"].frame_index.tolist(), [0] * 34 + [1] * 14)
+        self.assertEqual(audit["recipient_lesion_count"], 34)
+        self.assertEqual(audit["donor_other_lesion_count"], 14)
+        self.assertEqual(len(audit["recipient_component_ids_in_size_order"]), 34)
+        self.assertEqual(len(set(audit["recipient_component_ids_in_size_order"])), 34)
+        self.assertEqual(audit["candidate_record_ids"], [row["id"] for row in inputs.rows])
+        self.assertEqual(graph["candidate", "near", "lesion"].edge_index.shape, (2, 131 * 34))
+        self.assertEqual(graph["lesion", "near", "candidate"].edge_index.shape, (2, 131 * 34))
+        self.assertEqual(graph["tumor", "coexists_with", "lesion"].edge_index.shape, (2, 14))
+        self.assertEqual(set(graph["tumor", "coexists_with", "lesion"].edge_index[1].tolist()),
+                         set(range(34, 48)))
+        expected_donor = self.runtime["hierarchy"]._lesions(inputs.donor, inputs.source,
+            inputs.donor_regions, tumor_label=2, max_lesions=None, ct_clip=(-200., 250.))
+        np.testing.assert_array_equal(graph["lesion"].raw_x.numpy()[34:], expected_donor[0])
+        admission = audit["lesion_admission"]
+        for key, expected in dict(policy="all_observed", saved_max_lesions=12,
+                effective_max_lesions=None, recipient_components_retained=34,
+                donor_other_components_retained=14, saved_guard_exceeded=True,
+                components_dropped=0, saved_configuration_unchanged=True).items():
+            self.assertEqual(admission[key], expected)
+        self.assertEqual(audit["graph_config"]["max_lesions"], 12)
+        self.assertEqual(inputs.bundle.config, before)
+        self.assertFalse(audit["P_U_labels_in_forward"])
+        self.assertFalse(audit["query_GT_in_forward"])
+        self.assertFalse(audit["original_single_patient_topology_equivalent"])
+        self.assertFalse(audit["quality_verified"])
+        for actual, expected in zip((inputs.recipient.label, inputs.donor.label, inputs.source.full_mask),
+                                    original_arrays):
+            np.testing.assert_array_equal(actual, expected)
+
+    def test_all_observed_matches_saved_guard_when_no_component_limit_is_exceeded(self):
+        inputs = self.inputs()
+        guarded, guarded_prototype, guarded_audit = self.build(inputs)
+        unlimited, unlimited_prototype, unlimited_audit = self.build(inputs, lesion_policy="all_observed")
+        for left, right in ((guarded, unlimited), (guarded_prototype, unlimited_prototype)):
+            for node_type in left.node_types:
+                np.testing.assert_array_equal(left[node_type].raw_x.numpy(), right[node_type].raw_x.numpy())
+            for edge_type in left.edge_types:
+                self.assertTrue(torch.equal(left[edge_type].edge_index, right[edge_type].edge_index), edge_type)
+                self.assertTrue(torch.equal(left[edge_type].edge_attr, right[edge_type].edge_attr), edge_type)
+        self.assertEqual(guarded_audit["lesion_admission"]["policy"], "saved_guard")
+        self.assertFalse(unlimited_audit["lesion_admission"]["saved_guard_exceeded"])
+
+    def test_unknown_lesion_policy_rejected_before_region_loading(self):
+        inputs = self.inputs()
+        for policy in ("all", "ALL_OBSERVED", "truncate", "", None, 12):
+            with self.subTest(policy=policy):
+                with patch.object(self.runtime["region"], "load_or_build_patient_regions") as loader:
+                    with self.assertRaisesRegex(ValueError, "lesion.policy|lesion_policy"):
+                        build_native30_upper(inputs.bundle, inputs.geometry, inputs.rows,
+                            output=Path(self.temporary.name) / "bad_policy_output", lesion_policy=policy)
+                    loader.assert_not_called()
+
+    @unittest.skipUnless(torch.cuda.is_available(), "Actual CUDA UNIT required; no CPU neural fallback")
+    def test_full_original_model_cuda_scores_all_131_queries_with_all_48_lesions(self):
+        """Untrained CUDA UNIT upper-path mechanics, never CT/quality evidence."""
+        from torch_geometric.data import Batch
+        original_model = importlib.import_module("hiercp.model")
+        self.assertEqual(Path(original_model.__file__).resolve(), self.source / "hiercp" / "model.py")
+        model = original_model.HierarchicalPyGPlacementModel(**self.full_model_configuration).cuda().eval()
+        self.assertEqual(sum(parameter.numel() for parameter in model.parameters()), 10_050_543)
+        inputs = self.many_lesion_inputs()
+        graph, prototype, audit = self.build(inputs, lesion_policy="all_observed")
+        batch = SimpleNamespace(patient_batch=Batch.from_data_list([graph]).to("cuda"),
+            prototype_batch=Batch.from_data_list([prototype]).to("cuda"), counts=(131,))
+        values = torch.arange(131 * model.hidden_dim, device="cuda", dtype=torch.float32).reshape(131, -1)
+        # Deterministic synthetic UNIT embeddings stand in for an already encoded
+        # L0. Only the complete original L1/L2/scalar-head CUDA path is exercised.
+        local = {key: torch.sin(values * .01 + index)
+                 for index, key in enumerate(original_model._LOCAL_EMBEDDING_KEYS)}
+        with torch.no_grad():
+            scores = model._score_upper(batch, local)
+        torch.cuda.synchronize()
+        self.assertEqual(len(scores), 1)
+        self.assertEqual(scores[0].shape, (131,))
+        self.assertTrue(bool(torch.isfinite(scores[0]).all()))
+        self.assertEqual(batch.patient_batch["lesion"].raw_x.shape[0], 48)
+        self.assertEqual(audit["lesion_admission"]["components_dropped"], 0)
+        print("CUDA UNIT upper path | actual GPU=" + torch.cuda.get_device_name()
+              + " | full original parameters=10050543 | queries=131 | recipient lesions=34"
+              + " | donor other lesions=14 | untrained synthetic UNIT; no quality claim", flush=True)
 
 
 if __name__ == "__main__":

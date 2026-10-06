@@ -261,14 +261,23 @@ def _candidate_specs(runtime, case, transported_source, regions, rows, bank, con
     return tuple(specs)
 
 
-def build_native30_upper(bundle, geometry, rows, *, output, region_cache=None):
+def build_native30_upper(bundle, geometry, rows, *, output, region_cache=None,
+                         lesion_policy="saved_guard"):
     """Return (patient_graph, prototype_graph, audit) for one entire case.
 
     ``bundle`` owns the actual saved full model/config/bank and explicit source.
     ``geometry.case`` and ``geometry.donor_source`` expose real native arrays and
     the complete physical-spacing donor transport. L0 may be encoded in batches;
     this upper graph is always built from the complete ordered case inventory.
+
+    ``all_observed`` explicitly retains every recipient component and every
+    donor component other than the selected source. The saved max_lesions is a
+    construction guard, not a learned tensor dimension. This external-donor
+    benchmark may use that policy without changing the saved L0 config/cache,
+    but it must disclose the admission change rather than claim exact replay.
     """
+    if lesion_policy not in ("saved_guard", "all_observed"):
+        raise ValueError("Explicit native30 lesion policy must be saved_guard or all_observed")
     runtime, source_hashes = _runtime(bundle.source)
     _verify_source_proof(bundle, source_hashes)
     if Path(geometry.source).resolve(strict=True) != Path(bundle.source).resolve(strict=True):
@@ -276,6 +285,7 @@ def build_native30_upper(bundle, geometry, rows, *, output, region_cache=None):
     rows = _whole_case(geometry, rows)
     h, schema, region_module = runtime["hierarchy"], runtime["schema"], runtime["region"]
     config = schema.graph_config_from_dict(bundle.config["graph"])
+    lesion_limit = config.max_lesions if lesion_policy == "saved_guard" else None
     clip = tuple(map(float, bundle.config["ct_clip"]))
     if len(clip) != 2 or not np.isfinite(clip).all() or clip[0] >= clip[1]:
         raise ValueError("Actual saved CT clip required")
@@ -334,9 +344,9 @@ def build_native30_upper(bundle, geometry, rows, *, output, region_cache=None):
     candidate_regions = np.asarray([spec.region_id for spec in specs], np.int64)
     recipient_lesion_raw, recipient_lesion_pos, recipient_lesion_regions, recipient_lesion_ids = _recipient_lesions(
         recipient, recipient_regions, hierarchy=h, schema=schema, tumor_label=2,
-        max_lesions=config.max_lesions, ct_clip=clip)
+        max_lesions=lesion_limit, ct_clip=clip)
     donor_lesion_raw, donor_lesion_pos, donor_lesion_regions = h._lesions(
-        donor, donor_source, donor_regions, tumor_label=2, max_lesions=config.max_lesions, ct_clip=clip)
+        donor, donor_source, donor_regions, tumor_label=2, max_lesions=lesion_limit, ct_clip=clip)
     nr, nd = recipient_regions.num_regions, donor_regions.num_regions
     lr, ld = len(recipient_lesion_ids), len(donor_lesion_raw)
     combined_regions = SimpleNamespace(num_regions=nr + nd,
@@ -419,6 +429,13 @@ def build_native30_upper(bundle, geometry, rows, *, output, region_cache=None):
         candidate_record_ids=[item["id"] for item in rows], candidate_count=n,
         recipient_region_count=nr, donor_region_count=nd, combined_region_count=nr + nd,
         recipient_lesion_count=lr, donor_other_lesion_count=ld,
+        lesion_admission=dict(policy=lesion_policy, saved_max_lesions=config.max_lesions,
+            effective_max_lesions=lesion_limit, recipient_components_retained=lr,
+            donor_other_components_retained=ld, components_dropped=0,
+            saved_guard_exceeded=config.max_lesions is not None and config.max_lesions > 0
+                and max(lr, ld) > config.max_lesions,
+            saved_configuration_unchanged=True,
+            scope="explicit external-donor upper-input policy; no L0/cache/weights/P-U change"),
         donor_native_spacing_mm=donor.spacing.tolist(), recipient_native_spacing_mm=recipient.spacing.tolist(),
         donor_anchor_ijk=list(map(int, donor_source.anchor_center)),
         donor_mask_voxels=int(donor_source.voxel_count),

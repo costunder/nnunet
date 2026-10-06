@@ -6,14 +6,15 @@ from pathlib import Path
 from types import SimpleNamespace
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import torch
 from torch_geometric.data import HeteroData
 
 from hiercp_v1x.native30_geometry import (
-    Native30Geometry, ROLES, _sha, collate_native30, physical_transport, resident_bytes_of,
+    FORMAT, Native30Geometry, ROLES, _json_sha, _sha, collate_native30,
+    physical_transport, resident_bytes_of,
 )
 from tests.test_transition_evaluation import unit_inventory
 
@@ -114,6 +115,222 @@ class NativeGeometryAdmissionUnit(unittest.TestCase):
         return Native30Geometry(self.input, self.config if config is None else config, self.source,
             workers=2, resident_bytes=1024**3, rss_bytes=8*1024**3,
             output=output or self.root / "new_geometry", debug=not production, debug_case_ids=case_ids)
+
+    def published_unit_cache(self, *, production=False):
+        """Explicit UNIT storage fixtures, never raw-CT/model/evaluation evidence."""
+        geometry = self.geometry(production=production, case_ids=None if production else ["val_0"])
+        dense = torch.zeros(1, dtype=torch.float16).expand(5, 48, 48, 48)
+        geometry._canonical = {}
+        for row in geometry.rows:
+            key = _json_sha((row["donor_case_id"], row["donor_component"]))
+            source_path = geometry.output / "shared_sources" / (key + ".pt")
+            if not source_path.exists():
+                source_path.parent.mkdir(exist_ok=True)
+                torch.save(dict(UNIT_storage_fixture=True, source_local=dict(UNIT_source=True),
+                                source_patch=dense), source_path)
+            path = geometry.output / "records" / (_json_sha(row["id"]) + ".pt")
+            path.parent.mkdir(exist_ok=True)
+            torch.save(dict(UNIT_storage_fixture=True, format=FORMAT, case_id=row["case_id"],
+                donor_case_id=row["donor_case_id"], component_id=row["donor_component"],
+                center=row["center"], graph_config=geometry.graph_config.to_dict(), seed=42,
+                input_provenance=dict(observation_id=row["id"]),
+                target_local=dict(UNIT_record_id=row["id"]), target_patch=dense), path)
+            receipt = dict(request_sha256=geometry.request_sha256, row=row, id=row["id"],
+                path=path.relative_to(geometry.output).as_posix(), sha256=_sha(path),
+                shared_source=dict(path=source_path.relative_to(geometry.output).as_posix(),
+                                   sha256=_sha(source_path)),
+                sampled_view_nodes=[12, 12], sampled_view_edges=[1, 1],
+                sampled_two_view_nodes=24, sampled_two_view_edges=2,
+                measurement_epoch=0, actual_original_views=True)
+            ledger = geometry._receipt_path(row)
+            ledger.parent.mkdir(exist_ok=True)
+            ledger.write_text(json.dumps(receipt), encoding="utf8")
+            geometry._canonical[row["id"]] = receipt
+        (geometry.output / "index.json").write_text(json.dumps(geometry._index_summary()), encoding="utf8")
+        return geometry
+
+    def reopen_unit_cache(self, geometry, *, read_only=True):
+        return Native30Geometry(self.input, geometry.config, self.source, workers=2,
+            resident_bytes=1024**3, rss_bytes=8*1024**3, output=geometry.output,
+            debug=geometry.debug, debug_case_ids=geometry.case_ids, read_only=read_only)
+
+    @staticmethod
+    def cache_snapshot(root):
+        return {path.relative_to(root).as_posix(): (_sha(path), path.stat().st_mtime_ns)
+                for path in root.rglob("*") if path.is_file()}
+
+    def test_read_only_whole21_publication_never_writes_decodes_deserializes_or_builds(self):
+        published = self.published_unit_cache(production=True)
+        before = self.cache_snapshot(published.output)
+        forbidden = AssertionError("UNIT: read-only preparation must not enter a write/build/load path")
+        with patch("pathlib.Path.mkdir", side_effect=forbidden), \
+                patch("hiercp_v1x.native30_geometry._write_new", side_effect=forbidden), \
+                patch("hiercp_v1x.native30_geometry._save_new", side_effect=forbidden), \
+                patch("torch.load", side_effect=forbidden), \
+                patch.object(Native30Geometry, "_records_for", side_effect=forbidden), \
+                patch.object(Native30Geometry, "_preload", side_effect=forbidden), \
+                patch.object(Native30Geometry, "_sample", side_effect=forbidden), \
+                patch.object(Native30Geometry, "_build", side_effect=forbidden), \
+                patch.object(Native30Geometry, "_persist", side_effect=forbidden):
+            reused = self.reopen_unit_cache(published)
+            receipt = reused.prepare()
+        self.assertEqual(len(reused.case_ids), 21)
+        self.assertEqual(receipt["validation_records"], 2728)
+        self.assertEqual(receipt["geometry_builds"], 0)
+        self.assertEqual(receipt["geometry_loads"], 0)
+        self.assertEqual(receipt["raw_cases_decoded"], [])
+        self.assertTrue(receipt["preparation_reused"])
+        self.assertTrue(receipt["read_only"])
+        proof = receipt["reuse_provenance"]
+        self.assertTrue(proof["all_payload_sha256_verified"])
+        self.assertEqual(proof["validated_observations"], 2728)
+        self.assertGreater(proof["validated_payload_files"], 2728)
+        self.assertFalse(proof["existing_files_written"])
+        self.assertEqual(receipt["sampled_two_view_summary"]["nodes"]["sum"], 2728*24)
+        self.assertEqual(self.cache_snapshot(published.output), before)
+
+    def test_read_only_missing_directory_request_index_or_receipt_is_refused_without_repair(self):
+        published = self.published_unit_cache()
+        nonexistent = self.root / "UNIT_missing_cache"
+        with self.assertRaises(ValueError):
+            Native30Geometry(self.input, published.config, self.source, workers=2,
+                resident_bytes=1024**3, rss_bytes=8*1024**3, output=nonexistent,
+                debug=True, debug_case_ids=published.case_ids, read_only=True)
+        self.assertFalse(nonexistent.exists())
+        for path in (published.output / "request.json", published.output / "index.json",
+                     published._receipt_path(published.rows[-1])):
+            data = path.read_bytes()
+            path.unlink()
+            before = self.cache_snapshot(published.output)
+            with self.subTest(missing=path.name), self.assertRaises((ValueError, OSError)):
+                self.reopen_unit_cache(published)
+            self.assertEqual(self.cache_snapshot(published.output), before)
+            path.write_bytes(data)
+
+    def test_read_only_partial_reordered_or_corrupt_index_is_refused(self):
+        published = self.published_unit_cache()
+        path = published.output / "index.json"
+        original = json.loads(path.read_text(encoding="utf8"))
+        for kind in ("partial", "reordered", "duplicate", "complete_flag", "numeric_flag", "request_hash", "bad_count"):
+            index = copy.deepcopy(original)
+            if kind == "partial":
+                index["records"].pop()
+            elif kind == "reordered":
+                index["records"].reverse()
+            elif kind == "duplicate":
+                index["records"][-1] = index["records"][0]
+            elif kind == "complete_flag":
+                index["complete"] = False
+            elif kind == "numeric_flag":
+                index["complete"] = 1
+            elif kind == "request_hash":
+                index["request_sha256"] = "0"*64
+            else:
+                index["validation_records"] -= 1
+            path.write_text(json.dumps(index), encoding="utf8")
+            before = self.cache_snapshot(published.output)
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                self.reopen_unit_cache(published)
+            self.assertEqual(self.cache_snapshot(published.output), before)
+
+    def test_read_only_every_target_and_shared_payload_sha_is_verified_on_admission(self):
+        published = self.published_unit_cache()
+        last = published._canonical[published.rows[-1]["id"]]
+        for ref in (last, last["shared_source"]):
+            path = published.output / ref["path"]
+            original = path.read_bytes()
+            path.write_bytes(original + b"UNIT_tamper")
+            before = self.cache_snapshot(published.output)
+            with self.subTest(payload=ref["path"]), self.assertRaises(ValueError):
+                self.reopen_unit_cache(published)
+            self.assertEqual(self.cache_snapshot(published.output), before)
+            path.write_bytes(original)
+
+    def test_read_only_receipt_measurements_and_extra_completion_are_refused(self):
+        published = self.published_unit_cache()
+        row = published.rows[0]
+        ledger = published._receipt_path(row)
+        original = copy.deepcopy(published._canonical[row["id"]])
+        for kind in ("sum", "boolean", "one_view", "epoch", "boolean_epoch", "payload_path", "sha"):
+            changed = copy.deepcopy(original)
+            if kind == "sum":
+                changed["sampled_two_view_nodes"] += 1
+            elif kind == "boolean":
+                changed["sampled_view_nodes"][0] = True
+            elif kind == "one_view":
+                changed["sampled_view_edges"].pop()
+            elif kind == "epoch":
+                changed["measurement_epoch"] = 1
+            elif kind == "boolean_epoch":
+                changed["measurement_epoch"] = False
+            elif kind == "payload_path":
+                changed["path"] = published._canonical[published.rows[1]["id"]]["path"]
+            else:
+                changed["sha256"] = "invalid"
+            ledger.write_text(json.dumps(changed), encoding="utf8")
+            published._canonical[row["id"]] = changed
+            (published.output / "index.json").write_text(json.dumps(published._index_summary()), encoding="utf8")
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                self.reopen_unit_cache(published)
+        ledger.write_text(json.dumps(original), encoding="utf8")
+        published._canonical[row["id"]] = original
+        (published.output / "index.json").write_text(json.dumps(published._index_summary()), encoding="utf8")
+        extra = published.output / "completed_records" / "UNIT_extra.json"
+        extra.write_text(json.dumps(original), encoding="utf8")
+        with self.assertRaises(ValueError):
+            self.reopen_unit_cache(published)
+
+    def test_read_only_get_uses_mmap_and_current_two_view_sampler_without_raw_preload_or_persistence(self):
+        published = self.published_unit_cache()
+        reused = self.reopen_unit_cache(published)
+        before = self.cache_snapshot(published.output)
+        self.modules["common"].stable_case_seed = lambda seed, case, salt: int(_json_sha([seed, case, salt])[:8], 16)
+        sampler = Mock(side_effect=lambda source, target, config, seed: unit_graph(target["UNIT_record_id"], 0))
+        self.modules["sample"].build_local_view = sampler
+        real_load = torch.load
+        forbidden = AssertionError("UNIT: cached get must not rebuild, persist or decode raw CT")
+        with patch("torch.load", wraps=real_load) as loads, \
+                patch.object(reused, "_preload", side_effect=forbidden), \
+                patch.object(reused, "_build", side_effect=forbidden), \
+                patch.object(reused, "_persist", side_effect=forbidden):
+            batch = reused.get([1, 0], epoch=3)
+        self.assertEqual(batch.indices.tolist(), [1, 0])
+        self.assertEqual(batch.graph.num_graphs, 4)
+        self.assertEqual(batch.graph.native30_epoch.tolist(), [3, 3, 3, 3])
+        self.assertEqual(sampler.call_count, 4)
+        self.assertEqual(len({call.kwargs["seed"] for call in sampler.call_args_list}), 4)
+        self.assertEqual(len(loads.call_args_list), 3)
+        self.assertTrue(all(call.kwargs == dict(map_location="cpu", weights_only=False, mmap=True)
+                            for call in loads.call_args_list))
+        self.assertEqual(reused.builds, 0)
+        self.assertEqual(reused.loads, 2)
+        self.assertEqual(self.cache_snapshot(published.output), before)
+
+    def test_read_only_runtime_coverage_loss_and_metadata_mutation_never_rebuild(self):
+        published = self.published_unit_cache()
+        reused = self.reopen_unit_cache(published)
+        reused._canonical.pop(reused.rows[0]["id"])
+        with patch.object(reused, "_build", side_effect=AssertionError("UNIT no rebuild")), \
+                self.assertRaises(ValueError):
+            reused.get([0])
+        with self.assertRaises(ValueError):
+            reused.prepare()
+        reused = self.reopen_unit_cache(published)
+        with self.assertRaises(RuntimeError):
+            reused._build(reused.rows[0])
+        with self.assertRaises(RuntimeError):
+            reused._persist(reused.rows[0], {})
+        path = published.output / "index.json"
+        path.write_bytes(path.read_bytes() + b"\n")
+        with self.assertRaises(ValueError):
+            reused.guard()
+
+    def test_writable_resume_still_loads_existing_complete_cache_and_keeps_build_capability(self):
+        published = self.published_unit_cache()
+        resumed = self.reopen_unit_cache(published, read_only=False)
+        self.assertFalse(resumed.read_only)
+        self.assertEqual(set(resumed._canonical), set(published._canonical))
+        self.assertIsNone(resumed._read_only_index)
 
     def test_production_keeps_all21_cases_every_P128U_zero_P_case(self):
         geometry = self.geometry(production=True)

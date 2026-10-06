@@ -1,0 +1,50 @@
+{
+  "arm": "native30",
+  "unit": "candidate observations",
+  "trials": [
+    {
+      "physical_batch": 2,
+      "observations_per_second": 17.331968726669746,
+      "seconds": 0.11539370001992211,
+      "peak_cuda_bytes": 644116480,
+      "accepted": true,
+      "input_shape": [
+        2,
+        5,
+        48,
+        48,
+        48
+      ],
+      "local_graphs": 4,
+      "calibration_record_ids": [
+        "liver_31:41",
+        "liver_31:42"
+      ]
+    },
+    {
+      "physical_batch": 4,
+      "observations_per_second": 30.043066747592718,
+      "seconds": 0.13314219994936138,
+      "peak_cuda_bytes": 1009537024,
+      "accepted": true,
+      "input_shape": [
+        4,
+        5,
+        48,
+        48,
+        48
+      ],
+      "local_graphs": 8,
+      "calibration_record_ids": [
+        "liver_31:41",
+        "liver_31:42",
+        "liver_31:43",
+        "liver_31:44"
+      ]
+    }
+  ],
+  "selected_batch": 4,
+  "training_batch_changed": false,
+  "L0_only_chunking": true,
+  "upper_whole_case": true
+}

@@ -198,7 +198,10 @@ def collate_native30(items):
 class Native30Geometry:
     """Whole evaluation geometry, parallel CPU work, reusable byte-bound cache."""
     def __init__(self, inventory_path, config, source, *, workers, resident_bytes,
-                 rss_bytes, output, debug=False, debug_case_ids=None):
+                 rss_bytes, output, debug=False, debug_case_ids=None, read_only=False):
+        if type(read_only) is not bool:
+            raise ValueError("Explicit boolean read_only mode required")
+        self.read_only = read_only
         if (type(workers) is not int or workers < 2 or type(resident_bytes) is not int
                 or type(rss_bytes) is not int or not 0 < resident_bytes < rss_bytes):
             raise ValueError("Explicit parallel workers>=2 and positive resident/RSS headroom required")
@@ -234,7 +237,10 @@ class Native30Geometry:
         if self.clip != (-200., 250.):
             raise ValueError("Saved original CT clipping contract required")
         self.workers, self.resident_bytes, self.rss_bytes = workers, resident_bytes, rss_bytes
-        self.output = Path(output).resolve()
+        literal_output = Path(output)
+        if self.read_only and (literal_output.is_symlink() or not literal_output.is_dir()):
+            raise ValueError("Read-only reuse requires an existing regular geometry directory")
+        self.output = literal_output.resolve(strict=self.read_only)
         for old in (self.source, self.path.parent):
             if self.output == old or self.output.is_relative_to(old) or old.is_relative_to(self.output):
                 raise ValueError("New geometry cache must be disjoint from preserved source/inventory")
@@ -251,6 +257,9 @@ class Native30Geometry:
         self.timings = []
         self.hits = self.builds = self.loads = 0
         self.last_admission = None
+        self._read_only_metadata = {}
+        self._read_only_index = None
+        self._read_only_payload_files = 0
         self.request = dict(format=FORMAT, input_inventory_sha256=self.index_sha256,
             cohort_sha256=self.population["cohort_sha256"], assignment_sha256=self.assignment_sha256,
             source_sha256=self.source_sha256, config=self.config, debug=self.debug,
@@ -261,9 +270,13 @@ class Native30Geometry:
             no_training_preparation=True, query_GT_in_forward=False,
             views_per_observation=2, dense_input_shape=[5, 48, 48, 48])
         self.request_sha256 = _json_sha(self.request)
-        self.output.mkdir(parents=True, exist_ok=True)
+        if not self.read_only:
+            self.output.mkdir(parents=True, exist_ok=True)
         request_path = self.output / "request.json"
-        if request_path.exists():
+        if self.read_only:
+            if _json_sha(self._read_cache_json("request.json")) != self.request_sha256:
+                raise ValueError("Read-only native30 geometry request differs; original output preserved")
+        elif request_path.exists():
             if request_path.is_symlink() or json.loads(request_path.read_text(encoding="utf8")) != self.request:
                 raise ValueError("Existing native30 geometry cache request differs; original output preserved")
         else:
@@ -273,14 +286,18 @@ class Native30Geometry:
             if receipt.exists():
                 if receipt.is_symlink():
                     raise ValueError("Regular native30 cache receipt required")
-                stored = json.loads(receipt.read_text(encoding="utf8"))
-                if stored.get("request_sha256") != self.request_sha256 or stored.get("row") != row:
+                stored = (self._read_cache_json(receipt.relative_to(self.output).as_posix())
+                          if self.read_only else json.loads(receipt.read_text(encoding="utf8")))
+                if (stored.get("request_sha256") != self.request_sha256 or stored.get("row") != row
+                        or self.read_only and _json_sha(stored.get("row")) != _json_sha(row)):
                     raise ValueError("Cached native30 row/request identity changed: " + row["id"])
                 self._canonical[row["id"]] = stored
                 key = _json_sha((row["donor_case_id"], row["donor_component"]))
                 if key in self._source_receipts and self._source_receipts[key] != stored["shared_source"]:
                     raise ValueError("Shared donor source reference differs across retained records")
                 self._source_receipts[key] = stored["shared_source"]
+        if self.read_only:
+            self._admit_read_only_cache()
         self.guard()
 
     def __len__(self):
@@ -308,12 +325,97 @@ class Native30Geometry:
         from .native30_data_contract import source_receipt
         if source_receipt() != self.data_contract_receipt:
             raise ValueError("Native CP assignment/transport AST source or actual dependency changed")
+        if self.read_only:
+            for relative, (signature, digest) in self._read_only_metadata.items():
+                path = self._regular_cache_path(relative)
+                if self._file_signature(path) != signature:
+                    raise ValueError("Read-only native30 cache metadata changed: " + relative)
+            for relative in ("request.json", "index.json"):
+                if _sha(self._regular_cache_path(relative)) != self._read_only_metadata[relative][1]:
+                    raise ValueError("Read-only native30 cache request/index bytes changed: " + relative)
         for path, signature in self._file_signatures.items():
             stat = Path(path).stat()
             if (stat.st_size, stat.st_mtime_ns) != signature[:2] and _sha(path) != signature[2]:
                 raise ValueError("Bound raw CT/annotation changed: " + path)
 
     _guard = guard
+
+    @staticmethod
+    def _file_signature(path):
+        stat = path.stat()
+        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+
+    def _regular_cache_path(self, relative):
+        if not isinstance(relative, str) or not relative:
+            raise ValueError("Literal relative native30 cache path required")
+        parts = Path(relative).parts
+        if Path(relative).is_absolute() or any(part in (".", "..") for part in parts):
+            raise ValueError("Native30 cache path must stay within its preserved root")
+        literal = self.output / relative
+        path = literal.resolve(strict=True)
+        if (not path.is_relative_to(self.output) or not path.is_file()
+                or any((self.output / Path(*parts[:index])).is_symlink()
+                       for index in range(1, len(parts)+1))):
+            raise ValueError("Regular native30 cache file identity/path required")
+        return path
+
+    def _read_cache_json(self, relative):
+        path = self._regular_cache_path(relative)
+        before = self._file_signature(path)
+        data = path.read_bytes()
+        if self._file_signature(path) != before:
+            raise ValueError("Native30 cache metadata changed during admission: " + relative)
+        value = json.loads(data.decode("utf8"))
+        if not isinstance(value, dict):
+            raise ValueError("Native30 cache metadata must be an object: " + relative)
+        self._read_only_metadata[relative] = (before, hashlib.sha256(data).hexdigest())
+        return value
+
+    def _index_summary(self):
+        return dict(format=FORMAT, complete=True, request_sha256=self.request_sha256,
+            actual_CT=True, no_training_preparation=True, validation_records=len(self.rows),
+            records=[self._canonical[row["id"]] for row in self.rows])
+
+    def _admit_read_only_cache(self):
+        """Validate the whole published cache without deserializing any tensor."""
+        expected = {self._receipt_path(row) for row in self.rows}
+        ledger = self.output / "completed_records"
+        if (ledger.is_symlink() or not ledger.is_dir() or set(ledger.glob("*.json")) != expected
+                or set(self._canonical) != set(self._row_lookup)):
+            raise ValueError("Read-only native30 reuse requires every exact completed observation; no rebuild")
+        index = self._read_cache_json("index.json")
+        if _json_sha(index) != _json_sha(self._index_summary()):
+            raise ValueError("Read-only native30 index must publish the complete exact ordered receipts")
+        payloads = {}
+        for row in self.rows:
+            receipt = self._canonical[row["id"]]
+            source_key = _json_sha((row["donor_case_id"], row["donor_component"]))
+            if (receipt.get("id") != row["id"]
+                    or receipt.get("path") != "records/" + _json_sha(row["id"]) + ".pt"
+                    or receipt.get("shared_source", {}).get("path") != "shared_sources/" + source_key + ".pt"
+                    or type(receipt.get("measurement_epoch")) is not int
+                    or receipt["measurement_epoch"] != 0
+                    or receipt.get("actual_original_views") is not True):
+                raise ValueError("Read-only native30 observation payload/view identity differs: " + row["id"])
+            for kind in ("nodes", "edges"):
+                values = receipt.get("sampled_view_" + kind)
+                if (not isinstance(values, list) or len(values) != 2
+                        or any(type(value) is not int or value < (1 if kind == "nodes" else 0) for value in values)
+                        or type(receipt.get("sampled_two_view_" + kind)) is not int
+                        or receipt["sampled_two_view_" + kind] != sum(values)):
+                    raise ValueError("Read-only native30 original two-view measurements differ: " + row["id"])
+            for ref in (receipt, receipt["shared_source"]):
+                relative, digest = ref.get("path"), ref.get("sha256")
+                if (not isinstance(digest, str) or len(digest) != 64
+                        or any(character not in "0123456789abcdef" for character in digest)):
+                    raise ValueError("Read-only native30 payload requires its literal SHA256")
+                if relative in payloads and payloads[relative] != digest:
+                    raise ValueError("Read-only native30 shared file has contradictory SHA256")
+                payloads[relative] = digest
+        with ThreadPoolExecutor(max_workers=self.workers) as pool:
+            list(pool.map(lambda item: self._cache_file(*item), payloads.items()))
+        self._read_only_payload_files = len(payloads)
+        self._read_only_index = index
 
     def _make_room(self, active_cases=(), active_records=()):
         active_cases = set(active_cases)
@@ -408,6 +510,12 @@ class Native30Geometry:
             origin = np.asarray([sl.start for sl in source.patch_slices])
             if not np.array_equal(source.anchor_center, origin + np.asarray(source.patch_mask.shape)//2):
                 raise ValueError("Original native CP donor anchor differs from shape//2")
+            if self.read_only:
+                # Upper inputs need the actual donor component, while its local
+                # canonical graph/dense patch already belong to the bound cache.
+                self._donors[key] = (source,)
+                self._donors.move_to_end(key)
+                return self._donors[key]
             prepared = self.runtime["local"].prepare_local_source(value["case"], source,
                 full_organ_mask=value["organ"], organ_depth=value["depth"], config=self.graph_config,
                 rng=np.random.default_rng(self.config["seed"]), ct_clip=self.clip)
@@ -421,7 +529,7 @@ class Native30Geometry:
     def donor_source(self, row):
         actual = self._native_row(row)
         self._preload({actual["case_id"], actual["donor_case_id"]})
-        source, _, _ = self._donor(actual)
+        source = self._donor(actual)[0]
         from .native30_data_contract import donor_in_target_spacing
         target = self._raw[actual["case_id"]]["case"]
         donor = self._raw[actual["donor_case_id"]]["case"]
@@ -442,6 +550,8 @@ class Native30Geometry:
             raise ValueError("Recorded P anchor/component differs from actual raw observation")
 
     def _build(self, row):
+        if self.read_only:
+            raise RuntimeError("Read-only native30 geometry cannot construct a replacement record")
         self._validate_observation(row)
         original, prepared, source_patch = self._donor(row)
         from .native30_data_contract import donor_in_target_spacing
@@ -500,9 +610,9 @@ class Native30Geometry:
         return self.output / "completed_records" / (_json_sha(row["id"]) + ".json")
 
     def _cache_file(self, relative, expected_sha):
-        literal = self.output / relative
-        path = literal.resolve(strict=True)
-        if not path.is_relative_to(self.output) or literal.is_symlink() or _sha(path) != expected_sha:
+        path = self._regular_cache_path(relative)
+        before = self._file_signature(path)
+        if _sha(path) != expected_sha or self._file_signature(path) != before:
             raise ValueError("Native30 geometry cache file identity/path changed")
         return path
 
@@ -529,6 +639,8 @@ class Native30Geometry:
         return record
 
     def _persist(self, row, record):
+        if self.read_only:
+            raise RuntimeError("Read-only native30 geometry cannot persist any record or shared source")
         source_key = _json_sha((row["donor_case_id"], row["donor_component"]))
         source_relative = "shared_sources/" + source_key + ".pt"
         source_path = self.output / source_relative
@@ -554,10 +666,13 @@ class Native30Geometry:
         return receipt
 
     def _records_for(self, rows):
+        if self.read_only and any(row["id"] not in self._canonical for row in rows):
+            raise ValueError("Read-only native30 canonical coverage changed; no replacement built")
         self._active_cases = {row[key] for row in rows for key in ("case_id", "donor_case_id")}
         self._active_shared_paths = {self._canonical[row["id"]]["shared_source"]["path"]
                                     for row in rows if row["id"] in self._canonical}
-        self._preload(self._active_cases)
+        if not self.read_only:
+            self._preload(self._active_cases)
         missing = [row for row in rows if row["id"] not in self._records]
         build_rows = [row for row in missing if row["id"] not in self._canonical]
         for row in build_rows:
@@ -610,6 +725,12 @@ class Native30Geometry:
     def prepare(self):
         """Prepare every selected P/128U record; training cases are donors only."""
         start = time.perf_counter()
+        if self.read_only:
+            self.guard()
+            if (set(self._canonical) != set(self._row_lookup)
+                    or self._read_only_index != self._index_summary()):
+                raise ValueError("Read-only native30 complete publication changed; no rebuild")
+            return self._preparation_receipt(start)
         from tqdm import tqdm
         for name, rows in tqdm(self.by_case.items(), total=len(self.by_case), desc="native30 validation geometry", unit="case"):
             for offset in range(0, len(rows), self.workers):
@@ -617,9 +738,7 @@ class Native30Geometry:
                 del records
         if set(self._canonical) != set(self._row_lookup):
             raise ValueError("Whole native30 evaluation geometry incomplete")
-        summary = dict(format=FORMAT, complete=True, request_sha256=self.request_sha256,
-            actual_CT=True, no_training_preparation=True, validation_records=len(self.rows),
-            records=[self._canonical[row["id"]] for row in self.rows])
+        summary = self._index_summary()
         path = self.output / "index.json"
         if path.exists():
             if path.is_symlink() or json.loads(path.read_text(encoding="utf8")) != summary:
@@ -627,14 +746,32 @@ class Native30Geometry:
         else:
             _write_new(path, summary)
         self.guard()
+        return self._preparation_receipt(start)
+
+    def _preparation_receipt(self, start):
+        path = self.output / "index.json"
         measured = {}
         for kind in ("nodes", "edges"):
             values = [self._canonical[row["id"]]["sampled_two_view_" + kind] for row in self.rows]
             measured[kind] = dict(min=min(values), max=max(values), mean=sum(values)/len(values),
                                  sum=sum(values), observations=len(values), actual_local_graphs=2*len(values))
-        return dict(source=str(path), sha256=_sha(path), validation_records=len(self.rows),
+        result = dict(source=str(path), sha256=_sha(path), validation_records=len(self.rows),
             cases=len(self.case_ids), preparation_seconds=time.perf_counter()-start,
             actual_CT=True, no_training_preparation=True, original_two_views=True,
             geometry_builds=self.builds, geometry_loads=self.loads, cache_hits=self.hits,
             raw_cases_decoded=sorted(self._raw), raw_files_verified=sorted(self._file_signatures),
             sampled_two_view_summary=measured, resources=self.memory_measurement())
+        if self.read_only:
+            metadata_sha256 = {relative: binding[1] for relative, binding in self._read_only_metadata.items()}
+            result.update(preparation_reused=True, read_only=True, reuse_provenance=dict(
+                cache_root=str(self.output), cache_index_sha256=metadata_sha256["index.json"],
+                cache_request_file_sha256=metadata_sha256["request.json"],
+                request_sha256=self.request_sha256, input_inventory_sha256=self.index_sha256,
+                cohort_sha256=self.population["cohort_sha256"], assignment_sha256=self.assignment_sha256,
+                metadata_manifest_sha256=_json_sha(metadata_sha256),
+                validated_payload_files=self._read_only_payload_files,
+                validated_observations=len(self.rows), validated_cases=len(self.case_ids),
+                complete_original_publication=True, all_payload_sha256_verified=True,
+                graph_reconstruction=False, raw_CT_redecoded_for_preparation=False,
+                cache_tensor_deserialization_for_preparation=False, existing_files_written=False))
+        return result

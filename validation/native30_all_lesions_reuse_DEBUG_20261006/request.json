@@ -1,0 +1,67 @@
+{
+  "settings": {
+    "gpu": 0,
+    "original_source": "work\\native30_full128_DEBUG_20261006\\source",
+    "inventory": "work\\v17_crossed_native_DEBUG_20261005\\inventory\\index.json",
+    "output": "work\\native30_full128_DEBUG_20261006\\probe\\evaluation_all_lesions_reuse_r4",
+    "checkpoint": null,
+    "prototype": "work\\native30_full128_DEBUG_20261006\\probe\\prototype_DEBUG.pt",
+    "region_cache": "work\\native30_full128_DEBUG_20261006\\probe\\evaluation_r2\\regions\\native30_regions",
+    "reuse_geometry": "work\\native30_full128_DEBUG_20261006\\probe\\evaluation_r3\\geometry",
+    "lesion_policy": "all_observed",
+    "workers": 4,
+    "physical_batch_candidates": [
+      2,
+      4
+    ],
+    "cuda_gib": 12.0,
+    "rss_gib": 32.0,
+    "resident_gib": 16.0,
+    "debug_fresh_model": true,
+    "debug_case_ids": [
+      "liver_31"
+    ]
+  },
+  "source_sha256": {
+    "tools/evaluate_native_v1_full128.py": "836e5a5e8ffb37f43f6385c274d9538dbb2b42393f8b82a2169c1a6177d6834e",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "hiercp_v1x/native30_checkpoint.py": "7f8f731199e1668130b9f0d3f97661dfaed0b3007ff604e7b536f80ddf60fc38",
+    "hiercp_v1x/native30_geometry.py": "320b72e36b59831ee430ebbf3e80553bc8c9ef6f483d3e41a84161d08400d4db",
+    "hiercp_v1x/native30_upper.py": "34abfcaa54309f7c1681dfc0a4f583a87912d447b810e232afdfb0a276371674",
+    "hiercp_v1x/native30_data_contract.py": "d6b73505b98f4909036ed4a2100359669f3adfdbad85ddc9acb8c2fddb82745d",
+    "hiercp_v1x/transition_evaluation.py": "3f1cb531ea0cd1b51d3d439c7292bba32799a5cf2d66237ce9311e525b6ff13c",
+    "hiercp_v1x/historical_evaluation.py": "5751fd6119b119d8a01f637dc5a86c8168f28b61ab5789936ecf9f38a392f1f5",
+    "tools/v22_candidate_order.py": "4454e2175792e7b9e09d3249f62cbd0478193ff9033962639cf270b8b57f552c",
+    "tools/v22_rank_objective.py": "11adc325971bafc35d470fa0719c4a8e21e456219cf583969f3674a4999c268a",
+    "l0_regions/donor_data.py": "73f683fde9997fd223bccf1f047d6bb4051840efe7104a4a09089fd03c54bbee",
+    "l0_regions/donor_learning.py": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+    "hiercp_v22/data.py": "0fa999191f452f525233f8227e1bcb3a8ef989064d3d36f1ab0c566f0976f9a9",
+    "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+    "config/server_gpu_allocations.json": "c53900d3e556d004b29db209dec88e0c59ec059b415478765d981de060b0bf5d"
+  },
+  "preserved_files": {
+    "D:\\AI project\\nnunet\\work\\v17_crossed_native_DEBUG_20261005\\inventory\\index.json": "3499481b016c8330b8b641096f441c5a57d215d669594677f01af9fa8ba92a20",
+    "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\probe\\prototype_DEBUG.pt": "f93531da8c0e9c16a9baddab8731bcdcdd5a94bd6de980143c822f966855ff5c"
+  },
+  "cohort": {
+    "case_ids": [
+      "liver_31"
+    ],
+    "debug": true,
+    "production_full_inner_val": false,
+    "inventory_metadata_sha256": "335dbbacee95e0f1080cc5d815c995262154357caa65aaf5945d9580336cc854",
+    "cohort_sha256": "5c926e477f992ae6354fb359b64699e7a3779e458d9151bbc8416ff217f8244d",
+    "native_assignment": {
+      "policy": "same_donor_live_v1",
+      "seed": 42,
+      "records": 14102,
+      "assignment_sha256": "42bf63fd09587bdb18491242ac783b8d3be5b53d8a1c37491e3cedeb80d9beb1"
+    },
+    "records": 136,
+    "observed_P": 8,
+    "unobserved_U": 128
+  },
+  "checkpoint_selection": "fresh untrained DEBUG",
+  "training_started": false,
+  "optimizer_updates": 0
+}

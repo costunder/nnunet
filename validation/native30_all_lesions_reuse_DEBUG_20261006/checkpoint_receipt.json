@@ -1,0 +1,94 @@
+{
+  "format": "native30_fresh_full_model_actual_CT_CUDA_DEBUG_v1",
+  "debug": true,
+  "weight_origin": "fresh_seed42_original_full_model_UNTRAINED",
+  "trained_weights": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "training_started": false,
+  "optimizer_instantiated": false,
+  "optimizer_imported": false,
+  "checkpoint_written": false,
+  "quality_verified": false,
+  "production_ready": false,
+  "original_native_roi30_context28": true,
+  "source_proof": {
+    "format": "legacy_native30_best_readonly_loader_v1",
+    "source": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source",
+    "source_python_sha256": {
+      "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+      "hiercp/cache.py": "9ab34dd15bb660c5e7e05c0f5741e40d9554d60d90e0f1042307995d18913cee",
+      "hiercp/common.py": "3b28abffa31bad67618c3a7c3e0dcf22ef4e81f9d09a060651d16d1d49c6c1b1",
+      "hiercp/curriculum.py": "9ca50b264afecfad3016b9f04fcbcaa1747b355699ef5db2550310d4d2ae2482",
+      "hiercp/data.py": "07097c7f5e06a26052a35c9b747aee4f159044ed5d1700b6a4524ab57c38aa58",
+      "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+      "hiercp/hierarchy.py": "fd8a5d94d8e7bef5e3c5883ecaab32305a41ed4dc702f8324aa98ec973f57aa9",
+      "hiercp/local.py": "9cade568b56f6f396412eda9a1376a45522204ff7fbf0040a575f801d53337e9",
+      "hiercp/loss.py": "65388b486a726f7e2e2963e8a4ba18134d585e4d1a1e188491ffb0551b058bdb",
+      "hiercp/model.py": "60d4eddad77ec2525d29f406becaaef3ab29c52dd9fb9cb7c78ef9a4494300aa",
+      "hiercp/pipeline.py": "1984002e9e6ea4db665554dd4807ef78583da2f7afeec9e1ce70702c6b3d6e51",
+      "hiercp/prototype.py": "5010e5e1d17d44bdd1f7cd1dbd45211ca226ba9eee53827fc5206f95fbc7cb55",
+      "hiercp/region.py": "3ef43589781b3af5c47d80fe60e9121e55895adcb0ec792154bc139fcaf7a90d",
+      "hiercp/sample.py": "c3e7cd3db0eac5b5c8257cf4e4d5d8d72284b2bd1602af5ca0d6f332fbb3511c",
+      "hiercp/schema.py": "247580035d5028e4dd8a6c10a0a8c1579ef66b4f91663f85fdaf2d7531ce13e0",
+      "hiercp/spatial.py": "1814079c9b1fdb3adb9cbb5668c170c6ef9304cdde1d32bbfd5511beb14a0939",
+      "hiercp/split.py": "3a7d58f1774ee315db302678bc091ae7a12ecc778313d542c3eb5df3663ad2fc",
+      "hiercp/tensor.py": "7af47870b82cc255c63452c8ad35628ecb9fb7c7096ae58e29cbde037a8b3056"
+    },
+    "source_config_path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\config\\train.json",
+    "source_config_sha256": "3af7cf579421ef03eca6049828694e980da4c410bb1f850bde8baf46e9b73fff",
+    "source_provenance_at_training": "UNKNOWN",
+    "archive_equivalence_asserted": false,
+    "bounded_scope_installed": false,
+    "source_files_written": false,
+    "imported_source_modules": {
+      "hiercp": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\__init__.py",
+        "sha256": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b"
+      },
+      "hiercp.common": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\common.py",
+        "sha256": "3b28abffa31bad67618c3a7c3e0dcf22ef4e81f9d09a060651d16d1d49c6c1b1"
+      },
+      "hiercp.tensor": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\tensor.py",
+        "sha256": "7af47870b82cc255c63452c8ad35628ecb9fb7c7096ae58e29cbde037a8b3056"
+      },
+      "hiercp.schema": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\schema.py",
+        "sha256": "247580035d5028e4dd8a6c10a0a8c1579ef66b4f91663f85fdaf2d7531ce13e0"
+      },
+      "hiercp.sample": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\sample.py",
+        "sha256": "c3e7cd3db0eac5b5c8257cf4e4d5d8d72284b2bd1602af5ca0d6f332fbb3511c"
+      },
+      "hiercp.model": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\model.py",
+        "sha256": "60d4eddad77ec2525d29f406becaaef3ab29c52dd9fb9cb7c78ef9a4494300aa"
+      },
+      "hiercp.region": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\region.py",
+        "sha256": "3ef43589781b3af5c47d80fe60e9121e55895adcb0ec792154bc139fcaf7a90d"
+      },
+      "hiercp.prototype": {
+        "path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\source\\hiercp\\prototype.py",
+        "sha256": "5010e5e1d17d44bdd1f7cd1dbd45211ca226ba9eee53827fc5206f95fbc7cb55"
+      }
+    },
+    "generated_runtime_modules": {},
+    "source_preserved": true
+  },
+  "seed": 42,
+  "source_provenance_at_training": "NOT_APPLICABLE_UNTRAINED_DEBUG",
+  "actual_model_class": "hiercp.model.HierarchicalPyGPlacementModel",
+  "total_parameters": 10050543,
+  "trainable_parameters": 10050543,
+  "prototype_path": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\probe\\prototype_DEBUG.pt",
+  "prototype_sha256": "f93531da8c0e9c16a9baddab8731bcdcdd5a94bd6de980143c822f966855ff5c",
+  "prototype_training_cases": [
+    "liver_100"
+  ],
+  "prototype_fingerprint": "b8e28285588ccd1f773a645817cb61f57f04917a7ecb7a6b0618f108ab83edaa",
+  "AMP_execution_setting": true,
+  "actual_CUDA": true
+}
