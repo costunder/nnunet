@@ -52,7 +52,8 @@ def ranking_context(ds,memory,batch):
 
 def forward_loss(net,query,support,plan,targets,weights,context,settings,*,indices):
     from .donor_learning import LiveContext,forward_loss as live_loss
-    fn=live_loss if isinstance(context,LiveContext) else legacy_forward_loss
+    from .candidate_curriculum import ActiveContext
+    fn=live_loss if isinstance(context,(LiveContext,ActiveContext)) else legacy_forward_loss
     return fn(net,query,support,plan,targets,weights,context,settings,indices=indices)
 
 def hash_state(value):
@@ -271,7 +272,7 @@ def evaluate(net,ds,loader,memory,batch):
     if sorted(seen)!=list(range(len(ds))):raise ValueError('Validation coverage changed')
     return ranking_metrics(scores,truth,cases,rank_config()['report_recall_at'],candidate_keys=[record_key(ds.rows[i]) for i in seen])
 
-def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False,learning_policy=None,local_cnn=False):
+def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,resume=None,debug_pause_step=None,profile_policy='strict',activation_storage='checkpointed',resume_execution_upgrade=False,resume_cuda_budget_change=False,support_patients=None,resume_support_minibatch=False,execution_pipeline='synchronous',device_cache_bytes=0,sage_workspace_bytes=64*2**20,fine_cache=None,resume_without_coarsening=False,learning_policy=None,local_cnn=False,curriculum_config=None):
     validate_policy(profile_policy)
     from .support_episodes import PatientEpisodes,contract as support_contract
     support_policy=None if support_patients is None else support_contract(support_patients)
@@ -309,6 +310,12 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
             from .donor_data import DonorDataset as FineDataset,DonorLoader as FineLoader
         ds=FineDataset(index,'inner_train',debug,profile_policy,fine_cache);val=FineDataset(index,'inner_val',debug,profile_policy,fine_cache)
     if learning_policy is not None and fine_cache is None and not local_cnn:raise ValueError('Same-donor learning requires regenerated fine cache')
+    curriculum=None
+    if curriculum_config is not None:
+        if not local_cnn or learning_policy is None:
+            raise ValueError('Candidate curriculum is an explicit new native local-CNN experiment only')
+        from .candidate_curriculum import Curriculum
+        curriculum=Curriculum(ds.rows,curriculum_config,seed=ds.meta['config']['seed'],debug=debug)
     root=Path(output).resolve();root.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(workers);net=make_model(ds,budget,debug,activation_storage)
     base=ds.meta['base'];cfg=ds.meta['config'];epochs=1 if debug else cfg['gnn_epochs']
@@ -327,6 +334,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
     if local_cnn:identity.update(local_cnn=ds.meta['local_cnn'],graph_representation=ds.meta['local_cnn']['architecture'])
     if fine_cache is not None:identity.update(graph_representation=MODE,fine_cache_sha256=sha(fine_cache))
     if learning_policy is not None:identity['learning_policy']=learning_policy
+    if curriculum is not None:identity['candidate_curriculum']=copy.deepcopy(curriculum.config)
     if support_policy is not None:identity['support_training']=support_policy
     if execution_pipeline=='overlapped':identity['execution_pipeline']=dict(mode=execution_pipeline,device_cache_bytes=device_cache_bytes,sage_workspace_bytes=sage_workspace_bytes,
         checkpoints='every update; immutable packed CPU snapshot; one ordered writer; flush on pause/phase/return',gradient_check='one finite decision per update')
@@ -352,9 +360,16 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
             batch=batch,next_batch=0,plan=None,last_group=None,best=None,selected_epoch=None)
         if learning_policy is not None:
             state.update(phase='initial_validation',initial_validation=None,validation_history=[])
+        if curriculum is not None:state['candidate_curriculum']=curriculum.state_dict()
+    if curriculum is not None:
+        if 'candidate_curriculum' not in state:raise ValueError('Only matching curriculum checkpoints can resume')
+        curriculum.load_state_dict(state['candidate_curriculum'])
     net.local.dense_batch_size=state['batch']
-    if learning_policy is not None:write_new(root/'learning_schedule.json',ranking_context(ds,state['memory'],state['batch']).audit)
-    write_new(root/'execution_contract.json',dict(**{k:v for k,v in identity.items() if k!='graph_representation'},train_samples=len(ds),val_samples=len(val),usage_ratio=1.,
+    if learning_policy is not None:
+        schedule_context=ranking_context(ds,state['memory'],state['batch']) if curriculum is None else curriculum.context(state['batch'])
+        write_new(root/'learning_schedule.json',schedule_context.audit)
+    write_new(root/'execution_contract.json',dict(**{k:v for k,v in identity.items() if k not in ('graph_representation','candidate_curriculum')},train_samples=len(ds),val_samples=len(val),usage_ratio=1. if curriculum is None else None,
+        full_inventory_usage_ratio=1.,
         physical_batch=state['batch'],effective_batch=state['batch'],accumulation=1,parameters=sum(p.numel() for p in net.parameters()),
         layers=dict(L0=8 if local_cnn else ds.meta['profile']['graph_encoder']['sage_layers'],L1=2,L2=2),hidden=128,cnn=[12,24,32],candidate_count=128,
         gpu=torch.cuda.get_device_name(),cpu_logical=psutil.cpu_count(),ram=psutil.virtual_memory()._asdict(),
@@ -363,8 +378,11 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         graph_counts=[] if local_cnn else [dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],region_nodes=e['region_nodes'],region_edges=e['region_edges']) for e in ds.entries] if fine_cache is None else
             [dict(record=e['row']['id'],fine_nodes=e['fine_nodes'],edge_upper_bound=e['row']['bounds']['edges'],scope='fixed-view node counts from original receipt; exact fine edges logged per consumed batch') for e in ds.entries],
         graph_representation=identity.get('graph_representation','fixed_regions'),
-        optimization_steps=sum(1 for _ in groups(ds,state['batch']))*epochs,
-        actual_query_batch_sizes=[len(ids) for ids in groups(ds,state['batch'])],
+        optimization_steps=sum(1 for _ in groups(ds,state['batch']))*epochs if curriculum is None else None,
+        optimization_steps_scope='fixed full schedule' if curriculum is None else 'future steps depend on TRAIN gates; no forced progression or early stop',
+        actual_query_batch_sizes=[len(ids) for ids in (groups(ds,state['batch']) if curriculum is None else curriculum.groups(state['batch'],state['epoch']))],
+        candidate_curriculum=None if curriculum is None else dict(config=curriculum.config,current=curriculum.state_dict(),
+            current_query_schedule=curriculum.context(state['batch']).audit,full_support_usage_ratio=1.,full_validation_usage_ratio=1.),
         cache_preparation_revision=ds.preparation_revision,cache_rebuilt=False,
         initial_support_policy='rebuild full support after explicit graph transition' if resume_without_coarsening else 'reuse saved memory or verified calibration support',
         scope='GNN only; final artifact connects to the existing CP recommendation adapter',
@@ -377,6 +395,8 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         activation_checkpointing=dict(CNN=net.local.cnn.checkpointing if local_cnn else net.local.core.checkpoint_dense_encoder,
             L0=False if local_cnn else net.local.core.checkpoint_local_blocks,L1_L2=net.checkpoint_support),
         physical_batch=state['batch'],resumed_step=state['step'],support_training=support_policy or 'full_support',
+        candidate_curriculum=None if curriculum is None else dict(config=curriculum.config,active_U_per_case=curriculum.active_U,
+            active_query_records=len(curriculum.active_indices()),full_training_records=len(ds),validation_U_per_case=128),
         cuda_limit_gib=budget.cuda_bytes/2**30,execution_pipeline=identity.get('execution_pipeline',dict(mode='synchronous')))),flush=True)
     device_cache=DeviceBatchCache(device_cache_bytes,budget) if execution_pipeline=='overlapped' else None
     checkpoint_io=CheckpointPipeline(root,execution_pipeline,save_checkpoint,hash_state,FORMAT)
@@ -385,6 +405,13 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
         def phase_timing(name,start,**details):
             with (root/'phase_timing.jsonl').open('a',encoding='utf8') as f:
                 f.write(json.dumps(dict(phase=name,epoch=state['epoch']+1,step=state['step'],seconds=time.perf_counter()-start,execution_pipeline=execution_pipeline,**details))+'\n')
+        def completion_receipt():
+            if state['epoch']!=epochs or state['phase']!='complete' or hash_state(net.state_dict())!=state['best']['model_sha256']:
+                raise ValueError('Completed epochs and selected model required before publishing completion')
+            write_new(root/'training_complete.json',dict(debug=debug,epochs=epochs,steps=state['step'],selected_epoch=state['selected_epoch'],checkpoint_sha256=sha(root/'checkpoint_latest.pt'),nnunet_training=False,profile_policy=profile_policy,partition_quality_validated=False,
+                candidate_curriculum=state.get('candidate_curriculum'),selected_best_curriculum=state['best'].get('candidate_curriculum'),
+                completed_128_query_epochs=[] if curriculum is None else [r['epoch'] for r in curriculum.history if r['completed_epoch_active_U']==128],
+                configured_epochs_complete=True,quality_validated=False))
         save(wait=True)
         if learning_policy is not None:
             from .ranking_history import measurement,write_history,progress_line
@@ -439,7 +466,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     if hash_state(net.state_dict())!=state['best']['model_sha256']:raise ValueError('Final memory is not bound to selected best model')
                     state['phase']='complete';save(wait=True)
                     phase_timing(phase_name,phase_start)
-                    write_new(root/'training_complete.json',dict(debug=debug,epochs=epochs,steps=state['step'],selected_epoch=state['selected_epoch'],checkpoint_sha256=sha(root/'checkpoint_latest.pt'),nnunet_training=False,profile_policy=profile_policy,partition_quality_validated=False))
+                    completion_receipt()
                     return root/'checkpoint_latest.pt'
                 state['phase']='optimization' if state['phase']=='initial_memory' else 'validation'
                 save(wait=True)
@@ -447,10 +474,10 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
             if state['phase']=='optimization':
                 if fine_cache is not None:loader.retain_batches=True
                 optimization_start=time.perf_counter();starting_batch=state['next_batch']
-                net.train();order=list(groups(ds,state['batch'],cfg['seed'],state['epoch']))
+                net.train();order=list(groups(ds,state['batch'],cfg['seed'],state['epoch']) if curriculum is None else curriculum.groups(state['batch'],state['epoch']))
                 counts=torch.bincount(state['memory']['classes'],minlength=2).float()
                 if bool((counts==0).any()):raise ValueError('Both observation classes required')
-                weights=counts.sum()/(2*counts);context=ranking_context(ds,state['memory'],state['batch'])
+                weights=counts.sum()/(2*counts);context=ranking_context(ds,state['memory'],state['batch']) if curriculum is None else curriculum.context(state['batch'])
                 episodes=None
                 if support_policy is not None:
                     # Support selection still visits each observation once; query
@@ -461,6 +488,9 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     if not audit_path.exists():write_new(audit_path,dict(episodes.audit,starting_query_batch=state['next_batch'],
                         coverage_scope='complete deterministic epoch schedule; actual consumed prefix is checkpoint next_batch'))
                 bar=tqdm(loader.batches(order[state['next_batch']:]),initial=state['next_batch'],total=len(order),desc=f"epoch {state['epoch']+1}/{epochs}")
+                if curriculum is not None:
+                    tqdm.write(f'Cumulative TRAIN queries | U={curriculum.active_U}/128 per case | P={context.counts[1]} | '
+                               f'active rows={len(curriculum.active_indices())}/{len(ds)} | pairs={context.pairs} | updates={context.steps}')
                 monitor=LearningMonitor(net)
                 tqdm.write(f'Learning display: avg20=recent mean loss; grad=before clipping; probe=modules with sampled weight changes/{len(monitor.probes)}. Validation follows each epoch; loss window resets on resume.')
                 previous_end=time.perf_counter()
@@ -502,6 +532,7 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                     save_seconds=time.perf_counter()-save_start
                     peak=torch.cuda.max_memory_allocated();budget.check()
                     row=dict(step=state['step'],epoch=state['epoch']+1,physical_batch=len(ids),
+                        candidate_curriculum=None if curriculum is None else dict(stage=curriculum.state_dict()['stage'],active_query_records=len(curriculum.active_indices())),
                         fine_graph_counts=None if fine_cache is None else dict(nodes=cpu.graph.sampled_counts.tolist(),edges=cpu.graph.relation_edge_counts.tolist()),
                         learning=health,
                         activation_storage=activation_storage,loss=loss_value,loader_wait_seconds=load_wait,
@@ -516,7 +547,9 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                         checkpoint_seconds=save_seconds,step_seconds=time.perf_counter()-step_start,
                         peak_cuda_bytes=peak,rss_bytes=psutil.Process().memory_info().rss)
                     with (root/'update_timing.jsonl').open('a',encoding='utf-8') as stream:stream.write(json.dumps(row)+'\n')
-                    bar.set_postfix(**monitor.postfix(health,state['step']),sec=round(row['step_seconds'],2),GiB=round(peak/2**30,2))
+                    postfix=monitor.postfix(health,state['step'])
+                    if curriculum is not None:postfix['U']=f'{curriculum.active_U}/128'
+                    bar.set_postfix(**postfix,sec=round(row['step_seconds'],2),GiB=round(peak/2**30,2))
                     if pause():return root/'checkpoint_latest.pt'
                     previous_end=time.perf_counter()
                 state['phase']='refresh_memory';save(wait=True)
@@ -540,7 +573,22 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 if improved:
                     weights=tree_to(net.state_dict(),'cpu');state['best']=dict(weights=weights,metric=score,epoch=state['epoch']+1,model_sha256=hash_state(weights))
                     if learning_policy is not None:state['best']['selection_key']=list(key)
+                    if curriculum is not None:state['best']['candidate_curriculum']=curriculum.state_dict()
                 tqdm.write(validation_line(state['epoch']+1,metrics,state['best']['metric'],improved)+(' | best metric=MRR, tie=R@1, rank_loss' if learning_policy is not None else ''))
+                if curriculum is not None:
+                    from .curriculum_training import evaluate_gate
+                    gate_start=time.perf_counter()
+                    gate=evaluate_gate(net,ds,state['memory'],curriculum)
+                    from .candidate_curriculum import METRIC_KEYS
+                    receipt=curriculum.observe({k:gate['metrics'][k] for k in METRIC_KEYS},state['epoch']+1)
+                    state['candidate_curriculum']=curriculum.state_dict()
+                    write_new(root/f"curriculum_epoch_{state['epoch']+1:03d}.json",dict(gate=gate,transition=receipt,
+                        model_sha256=hash_state(net.state_dict()),memory_model_scope='full support refreshed after this completed optimization epoch'))
+                    phase_timing('training_curriculum_gate',gate_start,active_query_records=gate['metrics']['active_query_records'])
+                    g=gate['metrics']
+                    tqdm.write(f"TRAIN curriculum | U={receipt['completed_epoch_active_U']}/128 | pair-win={g['pair_win_rate']:.4f} "
+                        f"Hit@1={g['hit_at_1']:.4f} margin={g['mean_margin']:.5f} | pass={receipt['gate_passed']} "
+                        f"streak={receipt['streak']}/{curriculum.config['sustained_epochs']} | next epoch U={receipt['next_epoch_active_U']}/128")
                 state.update(epoch=state['epoch']+1,next_batch=0,last_group=None,plan=None,phase='optimization')
                 if state['epoch']==epochs:
                     net.load_state_dict(state['best']['weights']);state['selected_epoch']=state['best']['epoch'];state['phase']='final_memory'
@@ -548,4 +596,9 @@ def train(index,output,*,workers,resident_bytes,candidates,budget,debug=False,re
                 if learning_policy is not None:
                     write_history(root,state['validation_history']);tqdm.write(progress_line(row))
                 if pause():return root/'checkpoint_latest.pt'
-            if state['phase']=='complete':raise ValueError('Completed runs need no resume')
+            if state['phase']=='complete':
+                if curriculum is None:raise ValueError('Completed runs need no resume')
+                # Recover a saved completion cursor if publication/export was
+                # interrupted. No optimizer step or support refresh is repeated.
+                save(wait=True);completion_receipt()
+                return root/'checkpoint_latest.pt'

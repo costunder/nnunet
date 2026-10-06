@@ -26,6 +26,18 @@ def validate(v,*,allow_debug=False):
     if v['completed_epochs']!=(1 if v['debug'] else v['config']['gnn_epochs']) or not 1<=v['selected_epoch']<=v['completed_epochs']:raise ValueError('Incomplete learning')
     validate_identities(v['identities'],v['split']);validate_pool(v['donor_pool'],v['split'])
     validate_memory(v['memory'],v['support_records'],v['identities'],v['split'],v['donor_pool'])
+    if 'candidate_curriculum' in v:
+        from l0_regions.candidate_curriculum import Curriculum
+        receipt=v['candidate_curriculum']
+        curriculum=Curriculum(v['support_records'],receipt['config'],seed=v['config']['seed'],debug=v['debug'])
+        curriculum.load_state_dict(receipt['final_state'])
+        if len(receipt['final_state']['history'])!=v['completed_epochs']:
+            raise ValueError('Curriculum history does not cover the completed epochs')
+        selected=receipt['selected_best_state']
+        selected_curriculum=Curriculum(v['support_records'],receipt['config'],seed=v['config']['seed'],debug=v['debug'])
+        selected_curriculum.load_state_dict(selected)
+        if selected['last_observed_epoch']!=v['selected_epoch']-1:
+            raise ValueError('Selected model curriculum stage differs from its epoch')
     return v
 
 def export(checkpoint,index,output):
@@ -44,6 +56,11 @@ def export(checkpoint,index,output):
         physical_batch=s['batch'],workers=saved['identity']['workers'],resource_limits=saved['identity']['resource_limits'],
         resident_budget_bytes=saved['identity']['resident_budget_bytes'],quality_validated=False,
         ranking_contract=saved['identity']['ranking'],support_training=saved['identity'].get('support_training'))
+    if 'candidate_curriculum' in saved['identity']:
+        v['candidate_curriculum']=dict(config=saved['identity']['candidate_curriculum'],
+            final_state=copy.deepcopy(s['candidate_curriculum']),selected_best_state=copy.deepcopy(s['best']['candidate_curriculum']),
+            completed_128_query_epochs=[r['epoch'] for r in s['candidate_curriculum']['history'] if r['completed_epoch_active_U']==128],
+            validation='unchanged complete held-out P+128U',GT='observed P vs unobserved U; no CP-suitability relabeling')
     v['content_sha256']=hash_state(v);validate(v,allow_debug=m['debug'])
     if Path(output).exists():raise FileExistsError('Existing result preserved')
     atomic_torch(output,v);return Path(output)

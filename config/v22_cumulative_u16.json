@@ -1,0 +1,8 @@
+{
+  "format": "native_candidate_curriculum_v1",
+  "group_size": 16,
+  "required_pair_win": 0.7,
+  "required_hit_at_1": 0.0,
+  "minimum_mean_margin": 0.0,
+  "sustained_epochs": 2
+}

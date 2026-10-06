@@ -21,9 +21,14 @@ def main():
     p.add_argument('--support-patients',type=int)
     p.add_argument('--device-cache-gib',type=float,default=0)
     p.add_argument('--resume',type=Path)
+    p.add_argument('--curriculum-config',type=Path,help='Explicit cumulative U16 TRAIN schedule; full128 validation/support remain fixed')
     p.add_argument('--debug',action='store_true')
     p.add_argument('--debug-pause-step',type=int)
     a=p.parse_args();cfg=json.loads(a.config.read_text());cfg['margin_mm']=a.margin_mm;validate_config(cfg)
+    curriculum=None
+    if a.curriculum_config is not None:
+        from l0_regions.candidate_curriculum import validate_config as validate_curriculum
+        curriculum=validate_curriculum(json.loads(a.curriculum_config.read_text(encoding='utf8')))
     if a.mode=='run':
         if a.resume:raise ValueError('Use train with the existing inventory for exact resume')
         root=a.output
@@ -48,7 +53,7 @@ def main():
             result=train(a.cache,a.output,workers=a.workers,resident_bytes=int(a.resident_gib*2**30),candidates=a.batch_candidates,
                 budget=budget,debug=a.debug,resume=a.resume,debug_pause_step=a.debug_pause_step,activation_storage='retained',
                 execution_pipeline='overlapped',device_cache_bytes=int(a.device_cache_gib*2**30),support_patients=a.support_patients,
-                learning_policy='same_donor_live_v1',local_cnn=True)
+                learning_policy='same_donor_live_v1',local_cnn=True,curriculum_config=curriculum)
             if (a.output/'training_complete.json').exists():
                 from l0_local_cnn.artifact import export
                 result=export(result,a.cache,a.output/'checkpoint.pt')

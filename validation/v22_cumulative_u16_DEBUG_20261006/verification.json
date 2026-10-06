@@ -1,0 +1,170 @@
+{
+  "scope": "DEBUG mechanics only; fresh initialization; no trained quality claim",
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "local_resources": {
+    "debug": true,
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "total_cuda_bytes": 17094344704,
+    "cpu": 16,
+    "affinity": 16,
+    "ram_available_bytes": 42922934272,
+    "train_cases": [
+      "liver_1",
+      "liver_2",
+      "liver_49",
+      "liver_66"
+    ],
+    "val_cases": [
+      "liver_31"
+    ],
+    "full_training": false,
+    "full_evaluation": false
+  },
+  "UNIT_tests": {
+    "candidate_curriculum": 16,
+    "curriculum_training": 12,
+    "existing_experiment_wrapper": 12,
+    "total": 40,
+    "passed": 40
+  },
+  "AST_files": 7,
+  "AST_passed": true,
+  "config": {
+    "format": "native_candidate_curriculum_v1",
+    "group_size": 16,
+    "required_pair_win": 0.7,
+    "required_hit_at_1": 0.0,
+    "minimum_mean_margin": 0.0,
+    "sustained_epochs": 2
+  },
+  "model_unchanged": true,
+  "margin_mm": 10,
+  "configured_physical_batch": 32,
+  "actual_partial_batch_sizes": [
+    21,
+    32,
+    20,
+    16,
+    27
+  ],
+  "gradient_accumulation": 1,
+  "data_parallel_workers": 1,
+  "train_CT_cases": 4,
+  "train_full_bank_records": 548,
+  "active_query_records": 100,
+  "active_P": 36,
+  "active_U": 64,
+  "all_core_probes_update": {
+    "modules": [
+      "CNN",
+      "readout",
+      "fusion",
+      "L1",
+      "L2"
+    ],
+    "all_updates": true,
+    "scope": "up to 32 deterministic elements of one weight tensor per module; not whole-model coverage"
+  },
+  "completed_DEBUG_epochs": 1,
+  "actual_updates": 5,
+  "peak_update_cuda_bytes": 2682907648,
+  "peak_process_rss_bytes": 7188639744,
+  "calibration": [
+    {
+      "configured_batch": 32,
+      "actual_batch": 32,
+      "accepted": true,
+      "graphs_per_second": 33.912013585394014,
+      "peak_bytes": 3141257216
+    }
+  ],
+  "separate_preserved_16_32_DEBUG_calibration": [
+    {
+      "configured_batch": 16,
+      "actual_batch": 16,
+      "accepted": true,
+      "graphs_per_second": 43.66206868956433,
+      "peak_bytes": 1682961920
+    },
+    {
+      "configured_batch": 32,
+      "actual_batch": 32,
+      "accepted": true,
+      "graphs_per_second": 53.391209404238055,
+      "peak_bytes": 3145056256
+    }
+  ],
+  "continuous_pause_resume_exact": {
+    "model": true,
+    "optimizer": true,
+    "state": true,
+    "rng": true
+  },
+  "completed_cursor_republication": {
+    "parity": {
+      "model": true,
+      "optimizer": true,
+      "state": true,
+      "rng": true
+    },
+    "extra_updates": 0,
+    "support_refresh_repeated": false,
+    "artifact_exported": true
+  },
+  "training_gate": {
+    "format": "native_candidate_curriculum_v1",
+    "epoch": 1,
+    "metrics": {
+      "hit_at_1": 0.6666666666666666,
+      "pair_win_rate": 0.5659722222222222,
+      "mean_margin": -0.0007964521646499634,
+      "rank_evaluable_cases": 3
+    },
+    "gate_passed": false,
+    "completed_stage": 0,
+    "completed_epoch_active_U": 16,
+    "previous_streak": 0,
+    "next_stage": 0,
+    "next_epoch_active_U": 16,
+    "next_epoch": 2,
+    "promoted": false,
+    "streak": 0,
+    "final_stage_gate_passed": false,
+    "all_candidates_active": false,
+    "curriculum_complete": false,
+    "debug": true,
+    "gate_scope": "all P and cumulative active U on training cases only",
+    "zero_P_ranking_gate_excluded": true,
+    "required_validation_and_BEST_scope": "full original P+128U; verified separately by caller"
+  },
+  "validation_scope": "one actual held-out CT; all P+128U; not full21 evaluation",
+  "validation_metrics": {
+    "ranking_pairwise_loss": 0.693596601486206,
+    "ranking_pairs": 1024,
+    "ranking_mrr": 0.02564102564102564,
+    "ranking_mean_observed_rank": 62.25,
+    "ranking_evaluable_cases": 1,
+    "ranking_cases_without_observed": 0,
+    "ranking_recall_at_1": 0.0,
+    "ranking_recall_at_5": 0.0,
+    "ranking_recall_at_10": 0.0
+  },
+  "selected_BEST_has_separate_curriculum_state": true,
+  "source_sha256": {
+    "l0_regions/candidate_curriculum.py": "47a9992fba389438b9a354d7dd3f890a497f65558489de324f6808d7a8f16391",
+    "l0_regions/curriculum_training.py": "a8a0c687876d9876425ae5f3fe26206764d5bbc33c8c01665d7d04257b18cf75",
+    "l0_regions/training.py": "ac1e3a05d7e6b1361a16a52a24c5119c62ba7c3b6250ae39e70b1255d816c419",
+    "l0_local_cnn/artifact.py": "5e68a939e9764a1abceeaa3a254a72e340f55be9344d0ca4feb8cff69920c2eb",
+    "tools/run_local_cnn.py": "ffa80d3513e209ddf1e650a47e095ed242e9a773bad42a9690aedf1d010d3a0b",
+    "tools/run_local_cnn_experiment.py": "fb92195c394c2d5cd21fa4afea7c7494666e81455fbe40ac9f900ac8018022df",
+    "tools/verify_candidate_curriculum_debug.py": "3fcf33b215c454adf8360a20532267aaae125426ac5e0589f42d5b62b61a3de4"
+  },
+  "report_sha256": "6b07d4836948434455631fcf28924bb299e89846368e62ff96ab68f794b046de",
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "trained_128_query_quality_verified": false,
+  "server_shell_execution_locally": false,
+  "failed_prior_resume_comparison": "Preserved; different calibrated physical batches16/32. Rejected and rerun with identical32."
+}

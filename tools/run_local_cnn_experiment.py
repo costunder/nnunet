@@ -91,6 +91,8 @@ def run_experiment(a,request,execute=foreground):
             if existing and not any((root/'training'/name).is_file() for name in ('paused.json','training_complete.json')):
                 raise ValueError('Legacy run must show PAUSED or completed before adoption; it may still be running')
             if existing:validate_inventory(inventory,request,a.debug)
+            if existing and request.get('candidate_curriculum') is not None:
+                raise ValueError('Curriculum requires a separate experiment; never adopt an old non-curriculum checkpoint')
             state=dict(format='local_cnn_experiment_v1',request=request,attempts=[])
             if existing:state['attempts'].append(dict(output='training',resume_from=None,adopted=True))
             write_json(manifest,state)
@@ -121,6 +123,8 @@ def run_experiment(a,request,execute=foreground):
             '--workers',str(a.workers),'--cuda-gib',str(a.cuda_gib),'--rss-gib',str(a.rss_gib),
             '--resident-gib',str(a.resident_gib),'--batch-candidates',*map(str,a.batch_candidates),
             '--support-patients',str(a.support_patients),'--device-cache-gib',str(a.device_cache_gib)]
+        if getattr(a,'curriculum_config',None) is not None:
+            command+=['--curriculum-config',str(a.curriculum_config.resolve())]
         if checkpoint is not None:command+=['--resume',str(checkpoint)]
         if a.debug_pause_step is not None:command+=['--debug-pause-step',str(a.debug_pause_step)]
         execute(command)
@@ -141,6 +145,7 @@ def main():
     p.add_argument('--cache',type=Path,required=True,help='Original observation inventory, unchanged on every invocation')
     p.add_argument('--margin-mm',type=float,required=True)
     p.add_argument('--config',type=Path,default=ROOT/'config/v22_local_cnn.json')
+    p.add_argument('--curriculum-config',type=Path,help='Use a distinct experiment path for a new cumulative query curriculum')
     p.add_argument('--workers',type=int,required=True)
     for name in ('cuda-gib','rss-gib','resident-gib','device-cache-gib'):p.add_argument('--'+name,type=float,required=True)
     p.add_argument('--batch-candidates',type=int,nargs='+',required=True)
@@ -158,6 +163,9 @@ def main():
         raise ValueError('Explicit valid parallel/resource/batch settings required')
     settings={k:getattr(a,k) for k in ('workers','cuda_gib','rss_gib','resident_gib','device_cache_gib','batch_candidates','support_patients','debug')}
     request=dict(local_cnn=cfg,original_inventory_sha256=sha(a.cache),source=source_identity(),settings=settings)
+    if a.curriculum_config is not None:
+        from l0_regions.candidate_curriculum import validate_config as validate_curriculum
+        request['candidate_curriculum']=validate_curriculum(json.loads(a.curriculum_config.read_text(encoding='utf8')))
     run_experiment(a,request)
 
 if __name__=='__main__':main()
