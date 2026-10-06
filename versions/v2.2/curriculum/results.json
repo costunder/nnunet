@@ -1,0 +1,49 @@
+{
+  "format": "user_supplied_server_log_snapshot_v1",
+  "experiment": "v22_cnn_m10_cumulativeU16_gate70x2_seed42",
+  "source": "user attachment e7ab3df4-9f77-479e-a65c-4c369ec65b7b",
+  "completed_epochs_visible": 23,
+  "configured_epochs": 40,
+  "last_visible_optimizer_step": 2231,
+  "active_U_per_case_all_visible_epochs": 16,
+  "training_observed_P": 527,
+  "active_query_rows": 1871,
+  "full_training_rows": 11279,
+  "active_pairs_per_epoch": 8432,
+  "updates_per_epoch": 97,
+  "gate_passes": 0,
+  "highest_visible_training_gate_pair_win": 0.6058,
+  "last_training_gate": {
+    "pair_win": 0.5502,
+    "case_hit_at_1": 0.3692,
+    "mean_best_P_minus_best_U": 0.00922,
+    "passed": false,
+    "next_active_U": 16
+  },
+  "initial_validation": {"epoch": 0, "MRR_rounded": 0.117, "R_at_1_rounded": 0.0, "pairwise_loss_rounded": 0.6932},
+  "best_visible_validation": {"epoch": 16, "MRR_saved_best_display": 0.2283, "R_at_1_rounded": 0.022, "pairwise_loss_rounded": 0.6913},
+  "last_validation": {"epoch": 23, "MRR_rounded": 0.089, "R_at_1_rounded": 0.0, "pairwise_loss_rounded": 0.6930},
+  "steady_timing": {
+    "epochs": "2 through 23; exclude first epoch",
+    "optimization_median_seconds": 167.5,
+    "full_support_refresh_median_seconds": 394.0,
+    "full_support_batches": 353
+  },
+  "displayed_update_peak_GiB": {"first_epoch_final_update": 1.23, "last_epoch_final_update": 9.16, "highest_epoch_final_update": 10.3, "scope": "values displayed at completed-epoch final update; not full-epoch peak"},
+  "tracebacks_visible": 0,
+  "server_checkpoint_independently_loaded": false,
+  "server_commit_identified_by_attachment": false,
+  "new_neural_execution": false,
+  "full_training_complete": false,
+  "curriculum_complete": false,
+  "quality_verified": false,
+  "code_audit": {
+    "objective_normalization_error_found": false,
+    "optimization_support": "all eligible observations of 16 selected patients; epoch-start detached L0 bank",
+    "gate_support": "full eligible training bank; refreshed end-of-epoch L0 bank",
+    "query_reduction_is_support_reduction": false,
+    "native_CNN_device_cache": "cache keys use LocalBatch object identity; loader constructs a new object per request; no cross-request identity reuse and no native-CNN phase clear",
+    "cache_issue_proves_ranking_failure_cause": false,
+    "actual_server_device_cache_hit_counters_read": false
+  }
+}

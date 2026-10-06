@@ -4,7 +4,7 @@
   "current_experiment": "curriculum",
   "methods": {
     "cnn": {"status": "server ranking weak; final quality unresolved", "record": "../../docs/local_cnn_learning_diagnosis_20261001.md"},
-    "curriculum": {"status": "implementation and actual CT/CUDA DEBUG verified; long training result not received", "record": "../../validation/v22_cumulative_u16_DEBUG_20261006/verification.json", "full_training_claim": false, "quality_claim": false},
+    "curriculum": {"status": "server epochs 1-23 reported; still U16; gate never passed; ranking remains weak", "record": "curriculum/results.json", "audit": "curriculum/results.md", "implementation_verification": "../../validation/v22_cumulative_u16_DEBUG_20261006/verification.json", "full_training_claim": false, "quality_claim": false},
     "regions": {"status": "partition and recommendation quality unresolved", "record": "../../docs/region_partition_inspection_20260929.md"},
     "sage": {"status": "update timing gain is not a full-epoch or ranking quality result", "record": "../../docs/l0_gat_sage_comparison_20260929.md"},
     "sparse": {"status": "DEBUG CP execution works; held-out ranking not restored", "record": "../../docs/sparse_cp_recommender_DEBUG_20261002.md"},

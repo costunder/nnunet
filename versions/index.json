@@ -248,7 +248,7 @@
       "id": "v2.2/curriculum",
       "folder": "v2.2/curriculum",
       "title": "CNN10mm 누적 U16→128",
-      "status": "implementation and CUDA smoke complete; long-training result pending",
+      "status": "server23 epochs reported; U16 gate unpassed; quality unresolved",
       "runner": "tools/run_local_cnn_experiment.py",
       "fixed_options": {
         "--curriculum-config": "config/v22_cumulative_u16.json"

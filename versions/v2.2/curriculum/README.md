@@ -1,6 +1,6 @@
 # CNN10mm + 누적 U16→128
 
-LocalCNN과 전체 P/U 정의를 유지합니다. TRAIN은 모든 P+16U로 시작하고, 누적 pair-win≥70% 및 평균 bestP−bestU>0이 2epoch 연속이면 다음16U를 추가합니다. 이전U는 유지합니다. support와21환자 validation/BEST는 처음부터 전체128U입니다. 40epoch 안에128까지 가지 못하면 미완료 노출을 기록합니다. 장기 성능 결과는 아직 받지 않았습니다.
+LocalCNN과 전체 P/U 정의를 유지합니다. TRAIN은 모든 P+16U로 시작하고, 누적 pair-win≥70% 및 평균 bestP−bestU>0이 2epoch 연속이면 다음16U를 추가합니다. 이전U는 유지합니다. support와21환자 validation/BEST는 처음부터 전체128U입니다. 40epoch 안에128까지 가지 못하면 미완료 노출을 기록합니다. 서버23epoch 부분 결과를 받았습니다. U16 gate는 한 번도 통과하지 못했고, validation MRR은 최고0.2283 뒤 최근0.089입니다. [결과와 코드 감사](results.md)
 
 | 찾을 것 | 파일 |
 | --- | --- |
