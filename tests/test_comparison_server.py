@@ -25,14 +25,22 @@ class ComparisonDeliveryTests(unittest.TestCase):
         self.assertIn("not CP-unsuitable", config["U_semantics"])
         self.assertEqual(config["validation_patients"], {"configured": 21, "materialized": 18})
 
-    def test_server_targets_new_root_and_passes_physical_batch_as_array(self):
+    def test_server_starts_one_addition_with_independent_root(self):
         script = (ROOT / "tools/server_v19_comparison.sh").read_text(encoding="utf8")
         self.assertIn('CP_GPU="${CP_GPU:-3}"', script)
-        self.assertIn('CP_ARM="${CP_ARM:-all}"', script)
-        self.assertIn('/experiments/v19_comparison_m10_seed42}', script)
+        self.assertIn('CP_ARM="${CP_ARM:-native_fixed}"', script)
+        self.assertIn('native_fixed|native_listwise) ;;', script)
+        self.assertIn('/experiments/v19_${CP_ARM}_m10_seed42}', script)
+        self.assertNotIn('CP_ARM="${CP_ARM:-all}"', script)
+        self.assertNotIn('for ', script)
+        self.assertIn('--arms "$CP_ARM"', script)
         self.assertIn('python -B -u tools/run_v19_comparison.py', script)
         self.assertNotIn('run_v18_u_bridge.py', script)
-        self.assertNotIn('/experiments/v18_u_bridge_m10_seed42', script)
+        self.assertIn('tools/v19_reference_execution.py --reference "$CP_REFERENCE"', script)
+        self.assertIn('CP_WORKERS="${CP_WORKERS:-$comparison_workers}"', script)
+        self.assertIn('CP_BATCH_CANDIDATES="${CP_BATCH_CANDIDATES:-$comparison_batch}"', script)
+        self.assertIn('"$CP_WORKERS" != "$comparison_workers"', script)
+        self.assertIn('"$CP_BATCH_CANDIDATES" != "$comparison_batch"', script)
         self.assertIn('read -r -a comparison_candidates', script)
         self.assertIn('--batch-candidates "${comparison_candidates[@]}"', script)
         for flag, value in (("gpu", "CP_GPU"), ("arm", "CP_ARM"), ("experiment", "CP_EXPERIMENT"),
@@ -43,6 +51,28 @@ class ComparisonDeliveryTests(unittest.TestCase):
             self.assertIn(f'--{flag} "${value}"', script)
         self.assertEqual(script.count('python -B -u tools/'), 1)
         self.assertNotRegex(script, r'(?m)^\s*(exit|logout|shutdown|reboot|kill|pkill|rm)\b')
+
+    def test_independent_arm_paths_and_cli_keep_all_original_sources(self):
+        from hiercp_v1x.comparison_experiment import prepared_data_path
+        from tools.run_v19_comparison import parse
+        roots = []
+        for arm in ('native_fixed', 'native_listwise'):
+            root = ROOT / 'work' / ('UNIT_v19_' + arm)
+            args = parse(['--gpu', '3', '--arm', arm, '--experiment', str(root),
+                          '--baseline', str(ROOT / 'work' / 'UNIT_preserved_baseline'),
+                          '--inventory', 'existing/index.json', '--workers', '16',
+                          '--batch-candidates', '1', '2', '4', '8', '16', '32',
+                          '--cuda-gib', '40', '--rss-gib', '192', '--resident-gib', '128',
+                          '--validation-local-chunk', '8'])
+            self.assertEqual(args.arm, arm)
+            self.assertFalse(args.debug)
+            self.assertIsNone(args.prepared_data)
+            roots.append((args.experiment.resolve(), prepared_data_path(args.experiment)))
+        self.assertNotEqual(roots[0][0], roots[1][0])
+        self.assertNotEqual(roots[0][1], roots[1][1])
+        for root, data in roots:
+            self.assertEqual(data, root / 'data')
+            self.assertFalse(root.exists())
 
     def test_docs_state_pending_scope_and_include_all13_checklist_items(self):
         result = json.loads((ROOT / "versions/v1.9/results.json").read_text(encoding="utf8"))

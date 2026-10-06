@@ -1,4 +1,4 @@
-"""Compact four-arm saved-result summary; no GPU, checkpoint, or data loading."""
+"""Compact saved-result summary for declared arms; no GPU, checkpoint, or data loading."""
 from __future__ import annotations
 
 import argparse
@@ -38,7 +38,9 @@ def metric_text(report, count):
     return ' '.join(f'{key}={metrics[key]:.6f}' for key in keys)
 
 
-def summarize(root):
+def summarize(root, arms=ARMS):
+    if not arms or len(set(arms)) != len(arms) or any(arm not in ARMS for arm in arms):
+        raise ValueError('Select unique declared comparison arms')
     experiment = read(root / 'experiment.json')
     content = {key: value for key, value in experiment.items() if key != 'sha256'}
     actual = hashlib.sha256(json.dumps(content, sort_keys=True, separators=(',', ':'),
@@ -49,7 +51,7 @@ def summarize(root):
     if not count:
         raise ValueError('No declared held-out source problems')
     print(f'v1.9 {root.name} | DEBUG={experiment["debug"]} | epochs={experiment["epochs"]} | full129 patient macro')
-    for arm in ARMS:
+    for arm in arms:
         paths = invocation_paths(root, arm)
         if not paths:
             print(f'{arm}: no completed/paused invocation; active curves remain in {arm}/curve.jsonl')
@@ -87,8 +89,9 @@ def summarize(root):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--experiment', type=Path, required=True)
+    parser.add_argument('--arms', choices=ARMS, nargs='+', default=ARMS)
     arguments = parser.parse_args()
-    summarize(arguments.experiment.resolve(strict=True))
+    summarize(arguments.experiment.resolve(strict=True), arguments.arms)
 
 
 if __name__ == '__main__':

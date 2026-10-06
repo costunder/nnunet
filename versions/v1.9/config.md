@@ -1,6 +1,6 @@
 # 고정 조건
 
-[실험 정의](../../config/v19_comparison_controls.json)는 네 군의 비교 위치와 목적함수를 명시한다. 원본 signed source/config/prototype와 raw CT·고정 U·초기 모델·실행 코드 SHA를 실행 계약에 결속한다. CLI의 자원 한도와 physical batch는 실제 네 군의 calibration으로 결정한다.
+[실험 정의](../../config/v19_comparison_controls.json)는 기존 두 군과 추가 두 군의 비교 위치와 목적함수를 명시한다. 원본 signed source/config/prototype와 raw CT·고정 U·초기 모델·실행 코드 SHA를 실행 계약에 결속한다. 서버 추가 실험은 기존 v1.8의 측정 batch·worker를 읽어 맞추고, 해당 batch의 실제 calibration을 확인한다.
 
 | 항목 | 조건 |
 | --- | --- |
@@ -18,13 +18,15 @@
 | 학습 | fresh seed 42, 동일 초기값, 각 군 40 epochs |
 | sample 순서 | 원본 RandomSampler, 전용 seed `42 + 2003`, 모든 원본 문제 매 에포크 1회 |
 | 평가·best | 고정 P 1개 + U 128개, joint upper graph, patient-macro MRR/top1/pair-loss |
-| 배치 | 완전한 source 문제 `1 / 2 / 4 / 8 / 16 / 32`개 측정, 네 군 공통 값 |
+| 배치 | 기존 v1.8 calibration의 measured physical source batch를 추가 두 군에도 사용 |
 | 축적 | gradient accumulation 1, physical/effective sample batch 별도 기록 |
-| 서버 | 물리 GPU 3 기본값, 별도 `v19_comparison_m10_seed42` 실험 루트 |
+| 서버 | 물리 GPU 번호 지정, `native_fixed`/`native_listwise` 각각 독립 실험 루트 |
 
 P의 coverage 1·source patch ring 통계·자기 source를 제외한 다른 종양 거리와, U의 label 1 coverage·모든 관측 종양 거리를 유지한다. 입력과 후보를 줄이지 않고 정확한 canonical-local·whole-case distance·upper static cache를 재사용한다. Listwise는 순위 목적함수의 변경이며 U의 GT를 만드는 정책이 아니다.
 
 실제 validation 18명과 설정 21명의 차이를 로그에 공개한다. Historical original8 MRR 1.0과 새 네 군의 full129 지표는 다른 평가 조건이다. 실제 CT/CUDA DEBUG 네 군 검사와 정확 재개는 통과했고, 서버 40 epochs와 전체 signed cohort의 자원 측정·품질은 대기 중이다.
+
+추가 군을 각각 실행해도 source 목록·40 epochs·평가 후보 129개는 유지한다. 같은 GPU나 쓰기 가능한 캐시를 두 실행에 공유하지 않는다. 기본 root가 군별로 분리되므로 기존 v1.8 두 군과 새 두 군의 상태가 섞이지 않는다.
 
 ## 작업 완료 체크리스트
 

@@ -1,6 +1,6 @@
 # v1.9 — 비교 위치와 순환·loss 대조
 
-v1.8의 selected/native 비교에 고정 U와 listwise loss 대조군을 추가한다. 원본 v1 m10 모델·P·source 목록을 유지하고, 네 군을 seed 42의 동일 초기 가중치에서 각각 새로 학습한다.
+실행 중인 v1.8 selected/native 두 실험을 기준으로, 고정 U와 listwise loss 두 실험만 추가한다. 기존 두 실험은 계속 진행한다. 새 두 실험은 원본 v1 m10 모델·P·source 목록을 유지하고 seed 42 초기 가중치에서 각각 시작한다.
 
 | 군 | 학습 비교 위치 7개 | 목적함수 |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ v1.8의 selected/native 비교에 고정 U와 listwise loss 대조군을 추가�
 
 네 군 모두 동일 원본 P 1개와 고정 U 128개를 평가한다. L0만 chunk로 encoding한 다음 후보 129개가 있는 patient/prototype graph를 함께 처리한다. Best는 전체 129개 후보의 patient-macro MRR·top1·pairwise 평가 loss 순으로 선택한다. 학습의 7개 비교 지표와 전체 129개 평가 지표를 구분한다.
 
-selected/native는 v1.9의 새 비교 실험에서 함께 실행하는 공통 기준군이다. `native_fixed`와 `native`는 고정 위치 반복 노출과 순환 노출을 비교한다. `native_listwise`와 `native`는 동일한 위치 노출에서 목적함수 차이를 비교한다. 기존 v1의 original8 MRR 1.0은 보존 참고값이며 새 selected의 성능으로 간주하지 않는다.
+selected/native는 이미 실행 중인 v1.8 기준군이다. `native_fixed`와 기존 `native`는 고정 위치 반복 노출과 순환 노출을 비교한다. `native_listwise`와 기존 `native`는 동일한 위치 노출에서 목적함수 차이를 비교한다. 두 추가 실험끼리는 위치 노출과 loss가 함께 달라지므로 한 변인의 효과를 판정하는 직접 대조가 아니다. 기존 v1의 original8 MRR 1.0은 보존 참고값이며 새 selected의 성능으로 간주하지 않는다.
 
 `selected`와 `native_fixed`는 모두 동일한 7개를 반복하므로 비교 위치의 분포를 대조한다. 기존 selected/native 비교에서는 위치 분포와 누적 노출 개수가 함께 달라졌고, 새 fixed 군이 그 둘을 나눠 확인하게 한다. 고정 U 7개는 전체 frozen 목록의 처음 7개를 그대로 사용하며 난이도로 재선별하지 않는다.
 
@@ -23,9 +23,13 @@ Listwise CE는 원래 식의 평균을 그대로 사용한다. 평균 pairwise s
 
 Signed 목록은 train 151개·validation 36개 source 문제다. 설정 validation은 21명이지만 실제 signed materialized validation은 18명이다. 누락된 3명은 실행 계약과 로그에 명시한다. 새 sample을 만들어 21명이라고 표시하지 않는다.
 
-서버에서는 `CP_GPU=3 CP_ARM=all bash tools/server_v19_comparison.sh`를 사용한다. 기본 순서는 selected → native → native_fixed → native_listwise이며, 결과는 `/home/aicompetition06/Medical/experiments/v19_comparison_m10_seed42/<arm>`에 저장한다. `CP_GPU`는 물리 GPU 번호다. 같은 v1.9 명령은 저장된 상태에서 재개하며, v1.8 실험 루트와 체크포인트를 사용하거나 덮어쓰지 않는다. 단일 군은 `CP_ARM=native_fixed`처럼 지정한다.
+서버 launcher는 호출당 추가 실험 한 개만 시작한다. `CP_ARM=native_fixed` 또는 `CP_ARM=native_listwise`를 지정한다. `all`과 기존 selected/native는 이 launcher에서 받지 않는다. 별도 GPU와 터미널에서 각각 실행할 수 있다. `CP_GPU`는 물리 GPU 번호다.
 
-실행 조건은 [config.md](config.md), 구현 연결은 [code.md](code.md), 검증 상태는 [results.json](results.json)에 기록한다. 새 검사 31개와 기존 v1.8 회귀 검사 74개가 통과했다. Bash 구문 검사는 로컬 실행기가 없어 1건 미검증이다. 실제 CT/CUDA에서 네 군 각각 두 DEBUG epoch·두 update와 전체 129개 평가를 확인했다. Listwise의 update1 중단·정확 재개와 네 군의 완료 후 0 추가 update도 통과했다. [검증 기록](../../validation/v19_comparison/README.md)은 GPU·RAM·graph 규모와 파일 SHA를 포함한다. 서버의 40 epochs 및 추천 성능은 아직 미검증이다.
+기본 저장 위치는 각각 `/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42`와 `/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42`다. 모델·optimizer·RNG·cursor·캐시·잠금·체크포인트가 서로 분리된다. 같은 명령은 해당 실험의 상태에서 재개한다. 활성 v1.8 캐시를 공유하거나 기존 체크포인트를 새 실험에 옮기지 않는다.
+
+`CP_REFERENCE` 기본값은 `/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42`다. 이곳의 experiment/calibration JSON만 읽어 이미 측정한 physical batch와 worker 수를 맞춘다. 초기 calibration의 짧은 clone probe는 유지하며, 정식 40 epoch 학습은 선택한 추가 군 하나만 수행한다. 네 군 새 장기 학습을 모두 요구했던 이전 실행 안내는 이 방식으로 수정했다. 동시 실행의 epoch 시간에는 CPU·I/O 경합이 섞이므로 단독 실행 처리량으로 해석하지 않는다.
+
+실행 조건은 [config.md](config.md), 구현 연결은 [code.md](code.md), 검증 상태는 [results.json](results.json)에 기록한다. 기존 CUDA evidence는 commit `c430a88`의 구현에 해당하며, 이번 수정은 서버 launcher·기준 실행 설정 읽기·요약 출력에 한정한다. 학습 엔진·모델·후보 규칙의 결속 파일은 유지한다. Bash 구문 검사는 로컬 실행기가 없어 미검증이다. 실제 CT/CUDA에서 네 군 각각 두 DEBUG epoch·두 update와 전체 129개 평가를 확인한 기존 결과를 보존했다. Listwise의 update1 중단·정확 재개와 네 군의 완료 후 0 추가 update도 통과했다. [검증 기록](../../validation/v19_comparison/README.md)은 당시 GPU·RAM·graph 규모와 파일 SHA를 포함한다. 서버의 40 epochs 및 추천 성능은 아직 미검증이다.
 
 ## 작업 완료 체크리스트
 

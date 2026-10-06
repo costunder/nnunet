@@ -3,14 +3,17 @@
   "status": "implemented; four-arm actual CT CUDA DEBUG passed; server quality pending",
   "implementation_complete": true,
   "static_checks": "Python AST, JSON, CLI, version entry PASS; Bash unavailable locally",
-  "unit_tests_passed": 31,
+  "unit_tests_passed": 48,
   "unit_tests_skipped": 1,
   "preserved_v18_regression_tests_passed": 74,
   "delivery_checks": {
-    "config_server_docs_contract_tests_passed": 3,
+    "config_server_docs_contract_tests_passed": 4,
     "shell_syntax": "unverified on local Windows host: Bash unavailable",
     "neural_execution": true,
-    "arm_prefix_collision_regression_passed": true
+    "arm_prefix_collision_regression_passed": true,
+    "read_only_reference_metadata_tests_passed": 15,
+    "independent_single_arm_summary_passed": true,
+    "independent_execution_patch_evidence": "validation/v19_additions/execution.json"
   },
   "actual_CT_CUDA_smoke": {
     "status": "PASS",
@@ -41,7 +44,21 @@
     "fixed_or_rotating_exposure": ["native_fixed", "native"],
     "ranking_objective": ["native", "native_listwise"]
   },
-  "server_experiment": "/home/aicompetition06/Medical/experiments/v19_comparison_m10_seed42",
+  "server_experiments": {
+    "native_fixed": "/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42",
+    "native_listwise": "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42"
+  },
+  "execution_plan": {
+    "existing_reference_arms": ["selected", "native"],
+    "existing_v18_state": "user reports both already running; no remote status claim",
+    "new_training_arms": ["native_fixed", "native_listwise"],
+    "single_additional_arm_per_server_invocation": true,
+    "independent_output_cache_checkpoint_locks": true,
+    "reference_batch_workers": "read-only existing v1.8 experiment/calibration JSON",
+    "earlier_four_arm_default_replaced": true,
+    "model_training_core_changed": false,
+    "historical_CUDA_evidence_commit": "c430a88bd6bafed8718c7175bac05dcfadf7ef2c"
+  },
   "server_training_started": false,
   "production_data": {
     "signed_train_source_samples": 151,

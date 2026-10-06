@@ -377,7 +377,7 @@
       "id": "v1.9",
       "folder": "v1.9",
       "title": "원본 v1 10 mm 후보 노출·loss 대조",
-      "status": "four matched comparison controls; full129 validation; server quality pending",
+      "status": "two independent additional arms; existing v1.8 controls kept running; full129 validation; server quality pending",
       "runner": "tools/run_v19_comparison.py",
       "modules": [
         "hiercp_v1x/comparison_experiment.py",

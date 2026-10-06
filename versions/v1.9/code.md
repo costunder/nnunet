@@ -10,12 +10,15 @@ v1.9는 네 군의 조건과 실행 관리를 별도 entry로 연결한다. 원�
 | [comparison_training.py](../../hiercp_v1x/comparison_training.py) | 네 군의 pairwise/listwise 목적함수와 보존된 학습 엔진 연결 |
 | [v19_comparison_controls.json](../../config/v19_comparison_controls.json) | 네 군의 위치 규칙·목적함수와 공통 고정 조건 |
 | [run.py](run.py) | 명시적 CLI 인자를 새 entry로 전달하는 버전 wrapper |
-| [server_v19_comparison.sh](../../tools/server_v19_comparison.sh) | GPU 번호와 새 서버 루트, `all`의 네 군 실행 |
+| [server_v19_comparison.sh](../../tools/server_v19_comparison.sh) | 호출당 추가 군 하나, 군별 독립 root·GPU·재개 |
+| [v19_reference_execution.py](../../tools/v19_reference_execution.py) | 실행 중인 v1.8 JSON을 읽어 batch·worker 맞춤; 기존 파일 수정 없음 |
 | [u_bridge_data.py](../../hiercp_v1x/u_bridge_data.py) | 보존된 original source/P/selected/frozen U 입력 기반 |
 | [u_bridge_fields.py](../../hiercp_v1x/u_bridge_fields.py) | 정확한 whole-case distance 배열 저장·읽기 전용 mmap |
 | [u_bridge_upper.py](../../hiercp_v1x/u_bridge_upper.py) | 원본 upper source/lesion 함수의 정적 출력 재사용 |
 
 새 entry가 native_fixed의 첫 7개 고정 정책과 native_listwise의 CE 목적함수를 연결한다. 원본 graph 연산, P 메타데이터, source 목록과 sample 순서는 공통이다. 재사용되는 v1.8 파일 자체의 수정과 이전 체크포인트의 재사용은 허용하지 않는다. 각 군은 새 v1.9 루트에서 자체 optimizer·scaler·RNG·cursor와 결과를 저장한다.
+
+서버에서는 기존 v1.8 두 군을 재실행하지 않는다. 새 두 군은 서로 다른 root/data와 GPU로 동시에 실행할 수 있다. launcher는 v1.8의 완료된 calibration을 읽기만 하며 active 작업의 잠금을 가져오거나 해제하지 않는다. 초기 clone calibration을 제외한 장기 학습은 명시한 군 하나다. 요약기는 `--arms`로 해당 군만 표시한다.
 
 Signed source 목록은 train 151개·validation 36개 문제이며 실제 validation은 18명이다. 설정 21명과의 차이는 실행 계약과 로그에 표시한다.
 

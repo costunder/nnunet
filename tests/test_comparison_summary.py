@@ -35,6 +35,25 @@ class SummaryTests(unittest.TestCase):
             self.assertEqual(output.getvalue().count('no completed/paused invocation'), 4)
             self.assertNotIn('mrr=', output.getvalue())
 
+    def test_single_arm_display_does_not_report_existing_controls_as_pending(self):
+        with TemporaryDirectory(prefix='UNIT_v19_single_summary_', dir=Path.cwd()) as directory:
+            root = Path(directory)
+            content = dict(format=FORMAT, debug=True, epochs=2,
+                           samples=[dict(partition='train'), dict(partition='val')])
+            (root/'experiment.json').write_text(json.dumps(dict(content, sha256=digest(content))), encoding='utf8')
+            for arm in ('native_fixed', 'native_listwise'):
+                output = StringIO()
+                with redirect_stdout(output):
+                    summarize(root, (arm,))
+                text = output.getvalue()
+                self.assertEqual(text.count('no completed/paused invocation'), 1)
+                self.assertIn(arm + ':', text)
+                self.assertNotIn('selected:', text)
+                self.assertNotIn('native:', text)
+            for invalid in ((), ('native_fixed', 'native_fixed'), ('all',)):
+                with self.assertRaisesRegex(ValueError, 'unique declared'):
+                    summarize(root, invalid)
+
     def test_changed_experiment_content_is_rejected(self):
         with TemporaryDirectory(prefix='UNIT_v19_summary_', dir=Path.cwd()) as directory:
             root = Path(directory)

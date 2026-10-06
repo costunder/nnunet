@@ -27,6 +27,7 @@ python versions/v2.2/cnn/run.py --help
 
 현재 추가 대조 실험은 [v1.9](versions/v1.9/README.md)의 **원본 v1 10 mm + 좌표 노출·loss 조건**입니다.
 네 군 모두 source 원래 위치 1개를 정답으로 유지하고 전체 129개 후보로 평가합니다. [v1.8](versions/v1.8/README.md), 기존 [국소 CNN 누적 U16→128](versions/v2.2/curriculum/README.md)과 [D](versions/v1.7/D/README.md)는 별도 실험으로 보존합니다.
+v1.8 두 군은 이미 실행 중인 기준 실험입니다. v1.9 서버 호출은 `native_fixed` 또는 `native_listwise` 한 군만 추가하며, 군별 독립 폴더에서 각각 실행합니다.
 
 8후보 curriculum의 MRR/top1과 전체 P+128U의 MRR/Hit@1은 다른 평가입니다.
 `P=실제 관측된 종양 위치`, `U=미관측 비교 위치`이며 CP 적합/부적합 정답으로 바꾸지 않습니다.
