@@ -9,6 +9,7 @@
 | [v1.5](versions/v1.5/README.md) | A: L0 교체 |
 | [v1.6](versions/v1.6/README.md) | B: L1/L2·scorer 교체 |
 | [v1.7](versions/v1.7/README.md) | C/D 교차 실험, 공통 P+128U 평가 |
+| [v1.8](versions/v1.8/README.md) | 원본 v1 10mm, 기존7개 vs 고정128U에서 순환7개 대조 |
 | [v2](versions/v2/README.md) | 폐기한 view-only 방향 |
 | [v2.1](versions/v2.1/README.md) | 환자 간 prompt 정렬 |
 | [v2.2](versions/v2.2/README.md) | 현재 방법별 구현과 실험 |
@@ -23,8 +24,8 @@ python versions/v1.7/D/run.py --help
 python versions/v2.2/cnn/run.py --help
 ```
 
-현재 새 실험은 [v2.2/curriculum](versions/v2.2/curriculum/README.md)의 **국소 CNN10mm + 누적 U16→128**입니다.
-기존 D는 [v1.7/D](versions/v1.7/D/README.md)입니다. 둘의 L0와 학습 조건은 다릅니다.
+현재 새 대조 실험은 [v1.8](versions/v1.8/README.md)의 **원본 v1 10mm + 비교 후보 조건**입니다.
+두 군 모두 동일한 새 pairwise loss로 학습하고 전체129 후보로 평가합니다. 기존 [국소 CNN 누적 U16→128](versions/v2.2/curriculum/README.md)과 [D](versions/v1.7/D/README.md)는 별도 실험으로 보존합니다.
 
 8후보 curriculum의 MRR/top1과 전체 P+128U의 MRR/Hit@1은 다른 평가입니다.
 `P=실제 관측된 종양 위치`, `U=미관측 비교 위치`이며 CP 적합/부적합 정답으로 바꾸지 않습니다.

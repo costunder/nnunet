@@ -360,6 +360,20 @@
       "local_only_sources": true
     },
     {
+      "id": "v1.8",
+      "folder": "v1.8",
+      "title": "원본 v1 10mm 비교 후보 대조",
+      "status": "matched selected7 versus rotating native7; full129 validation; server quality pending",
+      "runner": "tools/run_v18_u_bridge.py",
+      "modules": [
+        "hiercp_v1x/u_bridge_data.py",
+        "hiercp_v1x/u_bridge_training.py",
+        "hiercp_v1x/u_bridge_experiment.py"
+      ],
+      "configs": ["config/v18_u_bridge.json"],
+      "notes": ["versions/v1.8/README.md"]
+    },
+    {
       "id": "basic",
       "folder": "common",
       "title": "Basic CP 원본 경로",

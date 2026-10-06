@@ -1,0 +1,1724 @@
+{
+  "format": "v18_actual_CT_CUDA_smoke_evidence_v1",
+  "scope": "mechanical DEBUG: two actual train CT sources and one actual held-out CT source; not ranking quality",
+  "run": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG",
+  "experiment_sha256": "9c149c267529b06994acf59d8e72a8cd5c00ec18ae6c3c9ca47eb253a355b775",
+  "model_parameters": 10434532,
+  "model_reduced": false,
+  "configured_debug_epochs": 2,
+  "unit_tests": {
+    "passed": 74,
+    "log_sha256": "47bec8bfec4dc196f9fc456aaca22f50e047eeb1e8caec4bd311f84066a7c4d0"
+  },
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "server_training_started": false,
+  "CP_quality_verified": false,
+  "calibration": {
+    "physical_batch": 2,
+    "accepted": true,
+    "arm": "matched_both",
+    "explicit_candidates": [
+      2
+    ],
+    "accepted_common": [
+      2
+    ],
+    "selection": "max minimum measured samples/sec across both arms",
+    "reports": {
+      "selected": {
+        "selected_physical_batch": 2,
+        "arm": "selected",
+        "reports": [
+          {
+            "physical_batch": 2,
+            "accepted": true,
+            "actual_sample_indices": [
+              1,
+              0
+            ],
+            "candidate_graphs_per_update": 16,
+            "sampled_graph_views_per_update": 32,
+            "samples_per_second": 0.1111048318361571,
+            "peak_cuda_bytes": 2530378240,
+            "measured_updates": 3,
+            "timed_updates": 2,
+            "backward_attempts": 3,
+            "AMP_overflows": 0,
+            "scope": "representative ordered actual samples; not entire-cohort worst-case"
+          }
+        ],
+        "initial_state_sha256": "290d8483c96f90e09bf6c7902c4ecfd66e35a40a02313c39d0a3a2712c3aec5f",
+        "original_model_and_RNG_preserved": true
+      },
+      "native": {
+        "selected_physical_batch": 2,
+        "arm": "native",
+        "reports": [
+          {
+            "physical_batch": 2,
+            "accepted": true,
+            "actual_sample_indices": [
+              1,
+              0
+            ],
+            "candidate_graphs_per_update": 16,
+            "sampled_graph_views_per_update": 32,
+            "samples_per_second": 0.11787746419516296,
+            "peak_cuda_bytes": 2412862464,
+            "measured_updates": 3,
+            "timed_updates": 2,
+            "backward_attempts": 3,
+            "AMP_overflows": 0,
+            "scope": "representative ordered actual samples; not entire-cohort worst-case"
+          }
+        ],
+        "initial_state_sha256": "290d8483c96f90e09bf6c7902c4ecfd66e35a40a02313c39d0a3a2712c3aec5f",
+        "original_model_and_RNG_preserved": true
+      }
+    },
+    "contract_sha256": "9c149c267529b06994acf59d8e72a8cd5c00ec18ae6c3c9ca47eb253a355b775",
+    "GPU_name": "NVIDIA GeForce RTX 5070 Ti",
+    "total_VRAM_bytes": 17094344704,
+    "source_stress_order": [
+      {
+        "case_id": "liver_6",
+        "format": "v18_signed_source_calibration_proxy_v1",
+        "future_cohort_worst_case_verified": false,
+        "original_canonical_storage_bytes": 113502532,
+        "original_sample_path": "D:\\AI project\\nnunet\\work\\v1_scope_learning_cuda_SMOKE_20261003_10only\\input\\liver_6.pt",
+        "original_sample_sha256": "09406a42eb12292ef28062fadd817753d680e47af6e2af889beb638f909c4aef",
+        "original_source_storage_bytes": 11785332,
+        "positive_center": [
+          386,
+          293,
+          389
+        ],
+        "proxy_scope": "original source and selected canonical tables; new native-U targets unmeasured",
+        "repeated_source_storage_proxy_bytes": 188565312,
+        "sample_index": 0,
+        "samples_or_candidates_changed": false,
+        "source_component": 6,
+        "source_copies_in_two_view_eight_query_batch": 16,
+        "source_edges": 1313780,
+        "source_footprint_voxels": 8241,
+        "source_id": "liver_6:0",
+        "source_index": 1,
+        "source_node_type_counts": {
+          "source_context": 17312,
+          "source_liver_surface": 2441,
+          "tumor_interior": 281,
+          "tumor_surface": 532
+        },
+        "source_nodes": 20566,
+        "source_relation_edge_counts": {
+          "source_context|context_neighbor|source_context": 966416,
+          "source_context|interfaces_tumor|tumor_surface": 39899,
+          "source_context|near_liver_surface|source_liver_surface": 69933,
+          "source_liver_surface|anchors_context|source_context": 69933,
+          "source_liver_surface|surface_neighbor|source_liver_surface": 81700,
+          "tumor_interior|interior_neighbor|tumor_interior": 6126,
+          "tumor_interior|supports|tumor_surface": 14585,
+          "tumor_surface|interfaces_source|source_context": 39899,
+          "tumor_surface|supported_by|tumor_interior": 14585,
+          "tumor_surface|surface_neighbor|tumor_surface": 10704
+        },
+        "stress_ordering_proxy_bytes": 302067844
+      },
+      {
+        "case_id": "liver_5",
+        "format": "v18_signed_source_calibration_proxy_v1",
+        "future_cohort_worst_case_verified": false,
+        "original_canonical_storage_bytes": 61830060,
+        "original_sample_path": "D:\\AI project\\nnunet\\work\\v1_scope_learning_cuda_SMOKE_20261003_10only\\input\\liver_5.pt",
+        "original_sample_sha256": "14c5697cf67b7370d029db7ee099923ce9c857ca592d84a9de2aeadfaa39a3b3",
+        "original_source_storage_bytes": 4701450,
+        "positive_center": [
+          353,
+          244,
+          456
+        ],
+        "proxy_scope": "original source and selected canonical tables; new native-U targets unmeasured",
+        "repeated_source_storage_proxy_bytes": 75223200,
+        "sample_index": 0,
+        "samples_or_candidates_changed": false,
+        "source_component": 1,
+        "source_copies_in_two_view_eight_query_batch": 16,
+        "source_edges": 526588,
+        "source_footprint_voxels": 540,
+        "source_id": "liver_5:0",
+        "source_index": 0,
+        "source_node_type_counts": {
+          "source_context": 6816,
+          "source_liver_surface": 953,
+          "tumor_interior": 23,
+          "tumor_surface": 91
+        },
+        "source_nodes": 7883,
+        "source_relation_edge_counts": {
+          "source_context|context_neighbor|source_context": 373750,
+          "source_context|interfaces_tumor|tumor_surface": 8971,
+          "source_context|near_liver_surface|source_liver_surface": 49410,
+          "source_liver_surface|anchors_context|source_context": 49410,
+          "source_liver_surface|surface_neighbor|source_liver_surface": 30600,
+          "tumor_interior|interior_neighbor|tumor_interior": 298,
+          "tumor_interior|supports|tumor_surface": 1523,
+          "tumor_surface|interfaces_source|source_context": 8971,
+          "tumor_surface|supported_by|tumor_interior": 1523,
+          "tumor_surface|surface_neighbor|tumor_surface": 2132
+        },
+        "stress_ordering_proxy_bytes": 137053260
+      }
+    ],
+    "future_cohort_worst_case_verified": false
+  },
+  "pause": {
+    "arm": "selected",
+    "status": "PAUSED",
+    "updates": 1,
+    "completed_epochs": 0,
+    "final_phase": "training",
+    "next_source_position": 2,
+    "model_sha256": "85c6de78cfaaab6d48b0b26e74e02371b4099eccb77d81534edd7ea697aae5ee",
+    "optimizer_sha256": "cd9565aa224fa2800129e710a3072663735065d6b5dbe09bc12d433f48ea5942",
+    "resume": {
+      "checkpoint": null,
+      "initial_phase": "initial_validation",
+      "verified_optimizer_history": null,
+      "invocation_optimizer_updates": 1,
+      "invocation_backward_attempts": 1,
+      "invocation_epoch_completions": 0
+    }
+  },
+  "arms": {
+    "selected": {
+      "result": {
+        "format": "original_v1_u_bridge_training_v1",
+        "arm": "selected",
+        "status": "DEBUG_COMPLETE",
+        "debug": true,
+        "actual_CUDA": true,
+        "completed_epochs": 2,
+        "updates": 2,
+        "backward_attempts": 2,
+        "AMP_overflows": 0,
+        "initial_state_sha256": "290d8483c96f90e09bf6c7902c4ecfd66e35a40a02313c39d0a3a2712c3aec5f",
+        "identity_sha256": "098abeca54ab4f128a13c1802a8d47d2e018e5cb878029ae69856b8f844a6070",
+        "best": {
+          "epoch": 2,
+          "update": 2,
+          "selection_key": [
+            0.016129032258064516,
+            0.0,
+            -0.6922691139418199
+          ]
+        },
+        "model_sha256": "382003eb9707d6047713332d8375d2ee056484901d3ad5fa7ff87dc47b69e2b3",
+        "optimizer_sha256": "b9cecae23a42c34615cdca0805605a428f838b8ffe5ad246d6bd20a2bfbb54a6",
+        "connected_parameter_tensors": 1085,
+        "expected_parameter_tensors": 1085,
+        "full_training": false,
+        "full_evaluation": false,
+        "evaluation_scope": "complete configured held-out source problems with joint P+128U every completed epoch",
+        "final_phase": "complete",
+        "next_source_position": 0,
+        "epochs_requested": 2,
+        "quality_verified": false,
+        "CP_quality_verified": false,
+        "nnunet_training": false,
+        "invocation_seconds": 2.2776206000125967,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\selected\\checkpoint_latest.pt",
+        "resume": {
+          "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\selected\\checkpoint_latest.pt",
+          "initial_phase": "complete",
+          "verified_optimizer_history": {
+            "verified_genuine_updates": 2,
+            "verified_parameter_tensors": 1085,
+            "verified_initialized_parameter_tensors": 1085,
+            "transient_optimizer_called": true,
+            "optimizer_math_changed": false
+          },
+          "invocation_optimizer_updates": 0,
+          "invocation_backward_attempts": 0,
+          "invocation_epoch_completions": 0,
+          "completed_checkpoint_no_repeat_verified": true
+        },
+        "trained_comparisons": {
+          "keys_by_source": {
+            "0": [
+              "S:0",
+              "S:1",
+              "S:2",
+              "S:3",
+              "S:4",
+              "S:5",
+              "S:6"
+            ],
+            "1": [
+              "S:0",
+              "S:1",
+              "S:2",
+              "S:3",
+              "S:4",
+              "S:5",
+              "S:6"
+            ]
+          },
+          "counts_by_source": {
+            "0": 7,
+            "1": 7
+          },
+          "expected_unique_U_per_source": 7,
+          "complete_expected_coverage": true,
+          "scope": "unique identities participating in finite optimizer updates; AMP-overflow attempts excluded"
+        }
+      },
+      "updates": [
+        {
+          "epoch": 1,
+          "update": 1,
+          "sample_indices": [
+            1,
+            0
+          ],
+          "physical_samples": 2,
+          "candidate_rows": 16,
+          "graph_views": 32,
+          "candidate_keys": {
+            "1": [
+              "P",
+              "S:0",
+              "S:1",
+              "S:2",
+              "S:3",
+              "S:4",
+              "S:5",
+              "S:6"
+            ],
+            "0": [
+              "P",
+              "S:0",
+              "S:1",
+              "S:2",
+              "S:3",
+              "S:4",
+              "S:5",
+              "S:6"
+            ]
+          },
+          "actual_input": {
+            "source_patch_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "target_patch_shape": [
+              16,
+              5,
+              48,
+              48,
+              48
+            ],
+            "counts": [
+              8,
+              8
+            ],
+            "local_batch": {
+              "graphs": 16,
+              "nodes": {
+                "min": 2169,
+                "max": 7095,
+                "mean": 4509.75,
+                "total": 72156
+              },
+              "edges": {
+                "min": 174022,
+                "max": 591411,
+                "mean": 369860.3125,
+                "total": 5917765
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 25967,
+                "target_liver_surface": 4517
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1270060,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 132430,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 346540,
+                "('source_context', 'corresponds_to', 'target_context')": 738253,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 178241,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 178241
+              }
+            },
+            "local_batch_view2": {
+              "graphs": 16,
+              "nodes": {
+                "min": 2169,
+                "max": 7095,
+                "mean": 4509.75,
+                "total": 72156
+              },
+              "edges": {
+                "min": 174022,
+                "max": 591411,
+                "mean": 369860.3125,
+                "total": 5917765
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 25967,
+                "target_liver_surface": 4517
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1270060,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 132430,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 346540,
+                "('source_context', 'corresponds_to', 'target_context')": 738253,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 178241,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 178241
+              }
+            },
+            "patient_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 34,
+                "max": 40,
+                "mean": 37.0,
+                "total": 74
+              },
+              "edges": {
+                "min": 432,
+                "max": 549,
+                "mean": 490.5,
+                "total": 981
+              },
+              "node_types": {
+                "tumor": 2,
+                "candidate": 16,
+                "region": 48,
+                "lesion": 6,
+                "liver": 2
+              },
+              "edge_types": {
+                "('tumor', 'compatible_with', 'candidate')": 16,
+                "('candidate', 'matched_to', 'tumor')": 16,
+                "('candidate', 'spatial_neighbor', 'candidate')": 112,
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('tumor', 'conditions', 'region')": 48,
+                "('region', 'context_for', 'tumor')": 48,
+                "('candidate', 'near', 'lesion')": 48,
+                "('lesion', 'near', 'candidate')": 48,
+                "('lesion', 'hosted_by', 'region')": 6,
+                "('region', 'hosts_lesion', 'lesion')": 6,
+                "('tumor', 'coexists_with', 'lesion')": 6,
+                "('lesion', 'coexists_with', 'tumor')": 6,
+                "('region', 'adjacent_to', 'region')": 493,
+                "('region', 'inside', 'liver')": 48,
+                "('liver', 'contains', 'region')": 48
+              }
+            },
+            "prototype_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 48,
+                "max": 48,
+                "mean": 48.0,
+                "total": 96
+              },
+              "edges": {
+                "min": 176,
+                "max": 176,
+                "mean": 176.0,
+                "total": 352
+              },
+              "node_types": {
+                "candidate": 16,
+                "region": 48,
+                "prototype": 32
+              },
+              "edge_types": {
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('region', 'assigned_to', 'prototype')": 96,
+                "('prototype', 'represents', 'region')": 96,
+                "('prototype', 'similar_to', 'prototype')": 128
+              }
+            }
+          },
+          "loss": 0.6851252317428589,
+          "ranking": 0.6734007596969604,
+          "consistency": 0.117244653403759,
+          "gradient": {
+            "finite": true,
+            "missing": [],
+            "trainable_parameter_tensors": 1085,
+            "gradient_present": 1085,
+            "norms": {
+              "CNN": 1.2615046137245092,
+              "L0": 1.7444257114108352,
+              "L1": 0.7492462840703533,
+              "L2": 0.4888532322110157,
+              "scalar": 1.9618429004910036
+            }
+          },
+          "sampled_parameter_changes": {
+            "parameters": {
+              "CNN": "stem.block.0.weight",
+              "L0": "project.tumor_surface.0.weight",
+              "L1": "tumor_project.0.weight",
+              "L2": "candidate_bridge.0.weight",
+              "scalar": "0.weight"
+            },
+            "max_abs_delta": {
+              "CNN": 0.00010000169277191162,
+              "L0": 0.00010000169277191162,
+              "L1": 9.999983012676239e-05,
+              "L2": 9.999796748161316e-05,
+              "scalar": 9.999983012676239e-05
+            },
+            "scope": "32 deterministic elements of one actual parameter per module; sampled update probe"
+          },
+          "margin": -0.0788421630859375,
+          "train7_pair_win": 0.7142857142857143,
+          "loader_wait_seconds": 10.457826099998783,
+          "transfer_seconds": 0.028309919357299804,
+          "forward_seconds": 3.68169384765625,
+          "backward_seconds": 12.34440625,
+          "check_clip_optimizer_seconds": 0.43116033935546877,
+          "checkpoint_seconds": 0.8115164999617264,
+          "step_seconds": 17.35037739999825,
+          "peak_cuda_bytes": 2403044352,
+          "peak_reserved_bytes": 2537553920,
+          "rss_bytes": 13439238144,
+          "cpu_percent": 206.6,
+          "learning_rate": 0.0001
+        },
+        {
+          "epoch": 2,
+          "update": 2,
+          "sample_indices": [
+            0,
+            1
+          ],
+          "physical_samples": 2,
+          "candidate_rows": 16,
+          "graph_views": 32,
+          "candidate_keys": {
+            "0": [
+              "P",
+              "S:0",
+              "S:1",
+              "S:2",
+              "S:3",
+              "S:4",
+              "S:5",
+              "S:6"
+            ],
+            "1": [
+              "P",
+              "S:0",
+              "S:1",
+              "S:2",
+              "S:3",
+              "S:4",
+              "S:5",
+              "S:6"
+            ]
+          },
+          "actual_input": {
+            "source_patch_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "target_patch_shape": [
+              16,
+              5,
+              48,
+              48,
+              48
+            ],
+            "counts": [
+              8,
+              8
+            ],
+            "local_batch": {
+              "graphs": 16,
+              "nodes": {
+                "min": 2169,
+                "max": 7095,
+                "mean": 4509.75,
+                "total": 72156
+              },
+              "edges": {
+                "min": 174022,
+                "max": 591411,
+                "mean": 369860.3125,
+                "total": 5917765
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 25967,
+                "target_liver_surface": 4517
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1270060,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 132430,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 346540,
+                "('source_context', 'corresponds_to', 'target_context')": 738253,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 178241,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 178241
+              }
+            },
+            "local_batch_view2": {
+              "graphs": 16,
+              "nodes": {
+                "min": 2169,
+                "max": 7095,
+                "mean": 4509.75,
+                "total": 72156
+              },
+              "edges": {
+                "min": 174022,
+                "max": 591411,
+                "mean": 369860.3125,
+                "total": 5917765
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 25967,
+                "target_liver_surface": 4517
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1270060,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 132430,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 346540,
+                "('source_context', 'corresponds_to', 'target_context')": 738253,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 178241,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 178241
+              }
+            },
+            "patient_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 34,
+                "max": 40,
+                "mean": 37.0,
+                "total": 74
+              },
+              "edges": {
+                "min": 432,
+                "max": 549,
+                "mean": 490.5,
+                "total": 981
+              },
+              "node_types": {
+                "tumor": 2,
+                "candidate": 16,
+                "region": 48,
+                "lesion": 6,
+                "liver": 2
+              },
+              "edge_types": {
+                "('tumor', 'compatible_with', 'candidate')": 16,
+                "('candidate', 'matched_to', 'tumor')": 16,
+                "('candidate', 'spatial_neighbor', 'candidate')": 112,
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('tumor', 'conditions', 'region')": 48,
+                "('region', 'context_for', 'tumor')": 48,
+                "('candidate', 'near', 'lesion')": 48,
+                "('lesion', 'near', 'candidate')": 48,
+                "('lesion', 'hosted_by', 'region')": 6,
+                "('region', 'hosts_lesion', 'lesion')": 6,
+                "('tumor', 'coexists_with', 'lesion')": 6,
+                "('lesion', 'coexists_with', 'tumor')": 6,
+                "('region', 'adjacent_to', 'region')": 493,
+                "('region', 'inside', 'liver')": 48,
+                "('liver', 'contains', 'region')": 48
+              }
+            },
+            "prototype_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 48,
+                "max": 48,
+                "mean": 48.0,
+                "total": 96
+              },
+              "edges": {
+                "min": 176,
+                "max": 176,
+                "mean": 176.0,
+                "total": 352
+              },
+              "node_types": {
+                "candidate": 16,
+                "region": 48,
+                "prototype": 32
+              },
+              "edge_types": {
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('region', 'assigned_to', 'prototype')": 96,
+                "('prototype', 'represents', 'region')": 96,
+                "('prototype', 'similar_to', 'prototype')": 128
+              }
+            }
+          },
+          "loss": 0.6810601949691772,
+          "ranking": 0.668498158454895,
+          "consistency": 0.12562017142772675,
+          "gradient": {
+            "finite": true,
+            "missing": [],
+            "trainable_parameter_tensors": 1085,
+            "gradient_present": 1085,
+            "norms": {
+              "CNN": 1.294656467576693,
+              "L0": 1.6970062767953922,
+              "L1": 0.735060476062034,
+              "L2": 0.44537238746308544,
+              "scalar": 1.9940506197719041
+            }
+          },
+          "sampled_parameter_changes": {
+            "parameters": {
+              "CNN": "stem.block.0.weight",
+              "L0": "project.tumor_surface.0.weight",
+              "L1": "tumor_project.0.weight",
+              "L2": "candidate_bridge.0.weight",
+              "scalar": "0.weight"
+            },
+            "max_abs_delta": {
+              "CNN": 9.895116090774536e-05,
+              "L0": 9.920448064804077e-05,
+              "L1": 9.9940225481987e-05,
+              "L2": 9.967386722564697e-05,
+              "scalar": 9.997747838497162e-05
+            },
+            "scope": "32 deterministic elements of one actual parameter per module; sampled update probe"
+          },
+          "margin": -0.04709625244140625,
+          "train7_pair_win": 0.6428571428571428,
+          "loader_wait_seconds": 33.141803200007416,
+          "transfer_seconds": 0.03149875259399414,
+          "forward_seconds": 3.76996337890625,
+          "backward_seconds": 13.7636923828125,
+          "check_clip_optimizer_seconds": 0.306693603515625,
+          "checkpoint_seconds": 0.9674484000424854,
+          "step_seconds": 18.911239699984435,
+          "peak_cuda_bytes": 2491216896,
+          "peak_reserved_bytes": 2589982720,
+          "rss_bytes": 13369757696,
+          "cpu_percent": 187.6,
+          "learning_rate": 9.98458666866564e-05
+        }
+      ],
+      "validation129": [
+        {
+          "epoch": 0,
+          "metrics": {
+            "mrr": 0.015151515151515152,
+            "top1": 0.0,
+            "pair_loss": 0.6925634668126284,
+            "pair_win": 0.4921875,
+            "pair_tie": 0.0,
+            "margin": -0.0364990234375
+          },
+          "patients": 1,
+          "source_problems": 1,
+          "candidate_count": 129,
+          "exact_fixed_positions_verified": true,
+          "joint_upper_once": true,
+          "wall_seconds": 41.426772199978586,
+          "sha256": "495ce8ad968c6310ba5051e21c6759ae4b16eba219368594a70dc0865919def0"
+        },
+        {
+          "epoch": 1,
+          "metrics": {
+            "mrr": 0.011111111111111112,
+            "top1": 0.0,
+            "pair_loss": 0.6962586687468366,
+            "pair_win": 0.3046875,
+            "pair_tie": 0.0,
+            "margin": -0.040771484375
+          },
+          "patients": 1,
+          "source_problems": 1,
+          "candidate_count": 129,
+          "exact_fixed_positions_verified": true,
+          "joint_upper_once": true,
+          "wall_seconds": 43.203073899960145,
+          "sha256": "e9205c3500c05ff1c660c3326dd568eb225cd413f6cf7eb81862ca3b79f6ee8c"
+        },
+        {
+          "epoch": 2,
+          "metrics": {
+            "mrr": 0.016129032258064516,
+            "top1": 0.0,
+            "pair_loss": 0.6922691139418199,
+            "pair_win": 0.5234375,
+            "pair_tie": 0.0,
+            "margin": -0.0478515625
+          },
+          "patients": 1,
+          "source_problems": 1,
+          "candidate_count": 129,
+          "exact_fixed_positions_verified": true,
+          "joint_upper_once": true,
+          "wall_seconds": 37.718882800021674,
+          "sha256": "46c7dad13d73a706de59023ff35a2d798ded15a03746dfc6f6ce423b7ab108af"
+        }
+      ],
+      "invocation_resume_receipts": [
+        {
+          "checkpoint": null,
+          "initial_phase": "initial_validation",
+          "verified_optimizer_history": null,
+          "invocation_optimizer_updates": 1,
+          "invocation_backward_attempts": 1,
+          "invocation_epoch_completions": 0
+        },
+        {
+          "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\selected\\checkpoint_latest.pt",
+          "initial_phase": "training",
+          "verified_optimizer_history": {
+            "verified_genuine_updates": 1,
+            "verified_parameter_tensors": 1085,
+            "verified_initialized_parameter_tensors": 1085,
+            "transient_optimizer_called": true,
+            "optimizer_math_changed": false
+          },
+          "invocation_optimizer_updates": 1,
+          "invocation_backward_attempts": 1,
+          "invocation_epoch_completions": 2
+        },
+        {
+          "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\selected\\checkpoint_latest.pt",
+          "initial_phase": "complete",
+          "verified_optimizer_history": {
+            "verified_genuine_updates": 2,
+            "verified_parameter_tensors": 1085,
+            "verified_initialized_parameter_tensors": 1085,
+            "transient_optimizer_called": true,
+            "optimizer_math_changed": false
+          },
+          "invocation_optimizer_updates": 0,
+          "invocation_backward_attempts": 0,
+          "invocation_epoch_completions": 0,
+          "completed_checkpoint_no_repeat_verified": true
+        }
+      ],
+      "median_update_seconds": 18.130808549991343,
+      "peak_cuda_bytes": 2491216896,
+      "actual_resources": {
+        "platform": "Windows-10-10.0.26200-SP0",
+        "cpu_logical_cores": 16,
+        "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')",
+        "ram_total_bytes": 68640653312,
+        "ram_available_bytes": 41635983360,
+        "cgroup_memory_limit_bytes": "unavailable (not present)",
+        "cgroup_memory_current_bytes": "unavailable (not present)",
+        "cgroup_cpu_limit_cores": "unavailable (not present)",
+        "cgroup_cpuset": "unavailable (not present)",
+        "storage_path": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG",
+        "storage_total_bytes": 1999206608896,
+        "storage_used_bytes": 616272228352,
+        "storage_free_bytes": 1382934380544,
+        "scheduler_allocation": "unavailable",
+        "container_hint": "unavailable",
+        "cuda_visible_devices_env": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+        "nvidia_visible_devices_env": "<unset>",
+        "cuda_available": true,
+        "gpu_utilization_percent": "unavailable (not exposed by PyTorch)",
+        "cuda_visible_device_count": 1,
+        "gpu_devices": [
+          {
+            "logical_index": 0,
+            "name": "NVIDIA GeForce RTX 5070 Ti",
+            "total_vram_bytes": 17094344704,
+            "multiprocessors": 70,
+            "compute_capability": "12.0",
+            "mig_instance": false
+          }
+        ],
+        "mig_visibility": "not identifiable from PyTorch/environment",
+        "cuda_device": "cuda:0",
+        "cuda_allocated_bytes": 0,
+        "cuda_reserved_bytes": 0,
+        "cuda_peak_allocated_bytes": 0,
+        "cuda_peak_reserved_bytes": 0,
+        "cuda_free_bytes": 15740174336,
+        "cuda_total_bytes": 17094344704
+      },
+      "completed_reexecution_provider": {
+        "format": "v18_own_source_selected_native_u_bridge_v1",
+        "source_samples": 3,
+        "native_U_per_case": 128,
+        "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+        "training_query_count": 8,
+        "full_evaluation_query_count": 129,
+        "workers": 4,
+        "resident_bytes": 0,
+        "resident_limit_bytes": 21474836480,
+        "whole_case_fields": {
+          "cases": 0,
+          "array_bytes": 0,
+          "disk_bytes": 0,
+          "receipts": {}
+        },
+        "static_upper": {
+          "format": "v18_exact_original_static_upper_v1",
+          "original_helper_builds": 0,
+          "disk_reopens": 0,
+          "resident_hits": 0,
+          "original_build_seconds": 0.0,
+          "cache_read_seconds": 0.0,
+          "resident_bytes": 0,
+          "entries": 0,
+          "disk_bytes": 0,
+          "receipts": [],
+          "original_formulas_preserved": true,
+          "candidates_changed": false
+        },
+        "local_builds": 0,
+        "disk_hits": 0,
+        "resident_hits": 0,
+        "evictions": 0,
+        "field_builds": 0,
+        "field_reopens": 0,
+        "field_mapping_reuses": 0,
+        "field_build_seconds": 0.0,
+        "field_reopen_seconds": 0.0,
+        "field_reuse_seconds": 0.0,
+        "positive_metadata_builds": 0,
+        "CP_candidate_search_used": false,
+        "U_resampled": false
+      }
+    },
+    "native": {
+      "result": {
+        "format": "original_v1_u_bridge_training_v1",
+        "arm": "native",
+        "status": "DEBUG_COMPLETE",
+        "debug": true,
+        "actual_CUDA": true,
+        "completed_epochs": 2,
+        "updates": 2,
+        "backward_attempts": 2,
+        "AMP_overflows": 0,
+        "initial_state_sha256": "290d8483c96f90e09bf6c7902c4ecfd66e35a40a02313c39d0a3a2712c3aec5f",
+        "identity_sha256": "efca444881a7801f9b349ec7b66434076eb6fc3af364a15e97bf9b02daf59a32",
+        "best": {
+          "epoch": 2,
+          "update": 2,
+          "selection_key": [
+            0.023255813953488372,
+            0.0,
+            -0.6891977404597684
+          ]
+        },
+        "model_sha256": "fd9da0b8e8d59fe603384b571e31015ec6caef9394ddebdcef8e821b949d732d",
+        "optimizer_sha256": "c0d152e3ca54abf55138e78fa17fede97377c7564f9a3cabd574c83708618c53",
+        "connected_parameter_tensors": 1085,
+        "expected_parameter_tensors": 1085,
+        "full_training": false,
+        "full_evaluation": false,
+        "evaluation_scope": "complete configured held-out source problems with joint P+128U every completed epoch",
+        "final_phase": "complete",
+        "next_source_position": 0,
+        "epochs_requested": 2,
+        "quality_verified": false,
+        "CP_quality_verified": false,
+        "nnunet_training": false,
+        "invocation_seconds": 2.258200400043279,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\native\\checkpoint_latest.pt",
+        "resume": {
+          "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\native\\checkpoint_latest.pt",
+          "initial_phase": "complete",
+          "verified_optimizer_history": {
+            "verified_genuine_updates": 2,
+            "verified_parameter_tensors": 1085,
+            "verified_initialized_parameter_tensors": 1085,
+            "transient_optimizer_called": true,
+            "optimizer_math_changed": false
+          },
+          "invocation_optimizer_updates": 0,
+          "invocation_backward_attempts": 0,
+          "invocation_epoch_completions": 0,
+          "completed_checkpoint_no_repeat_verified": true
+        },
+        "trained_comparisons": {
+          "keys_by_source": {
+            "0": [
+              "U:0",
+              "U:1",
+              "U:10",
+              "U:11",
+              "U:12",
+              "U:13",
+              "U:2",
+              "U:3",
+              "U:4",
+              "U:5",
+              "U:6",
+              "U:7",
+              "U:8",
+              "U:9"
+            ],
+            "1": [
+              "U:0",
+              "U:1",
+              "U:10",
+              "U:11",
+              "U:12",
+              "U:13",
+              "U:2",
+              "U:3",
+              "U:4",
+              "U:5",
+              "U:6",
+              "U:7",
+              "U:8",
+              "U:9"
+            ]
+          },
+          "counts_by_source": {
+            "0": 14,
+            "1": 14
+          },
+          "expected_unique_U_per_source": 128,
+          "complete_expected_coverage": false,
+          "scope": "unique identities participating in finite optimizer updates; AMP-overflow attempts excluded"
+        }
+      },
+      "updates": [
+        {
+          "epoch": 1,
+          "update": 1,
+          "sample_indices": [
+            1,
+            0
+          ],
+          "physical_samples": 2,
+          "candidate_rows": 16,
+          "graph_views": 32,
+          "candidate_keys": {
+            "1": [
+              "P",
+              "U:0",
+              "U:1",
+              "U:2",
+              "U:3",
+              "U:4",
+              "U:5",
+              "U:6"
+            ],
+            "0": [
+              "P",
+              "U:0",
+              "U:1",
+              "U:2",
+              "U:3",
+              "U:4",
+              "U:5",
+              "U:6"
+            ]
+          },
+          "actual_input": {
+            "source_patch_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "target_patch_shape": [
+              16,
+              5,
+              48,
+              48,
+              48
+            ],
+            "counts": [
+              8,
+              8
+            ],
+            "local_batch": {
+              "graphs": 16,
+              "nodes": {
+                "min": 1879,
+                "max": 7102,
+                "mean": 4282.875,
+                "total": 68526
+              },
+              "edges": {
+                "min": 148713,
+                "max": 582292,
+                "mean": 348266.8125,
+                "total": 5572269
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 22086,
+                "target_liver_surface": 4768
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1075280,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 143958,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 287608,
+                "('source_context', 'corresponds_to', 'target_context')": 629391,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 181016,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 181016
+              }
+            },
+            "local_batch_view2": {
+              "graphs": 16,
+              "nodes": {
+                "min": 1879,
+                "max": 7102,
+                "mean": 4282.875,
+                "total": 68526
+              },
+              "edges": {
+                "min": 148713,
+                "max": 582292,
+                "mean": 348266.8125,
+                "total": 5572269
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 22086,
+                "target_liver_surface": 4768
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1075280,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 143958,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 287608,
+                "('source_context', 'corresponds_to', 'target_context')": 629391,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 181016,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 181016
+              }
+            },
+            "patient_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 34,
+                "max": 40,
+                "mean": 37.0,
+                "total": 74
+              },
+              "edges": {
+                "min": 432,
+                "max": 549,
+                "mean": 490.5,
+                "total": 981
+              },
+              "node_types": {
+                "tumor": 2,
+                "candidate": 16,
+                "region": 48,
+                "lesion": 6,
+                "liver": 2
+              },
+              "edge_types": {
+                "('tumor', 'compatible_with', 'candidate')": 16,
+                "('candidate', 'matched_to', 'tumor')": 16,
+                "('candidate', 'spatial_neighbor', 'candidate')": 112,
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('tumor', 'conditions', 'region')": 48,
+                "('region', 'context_for', 'tumor')": 48,
+                "('candidate', 'near', 'lesion')": 48,
+                "('lesion', 'near', 'candidate')": 48,
+                "('lesion', 'hosted_by', 'region')": 6,
+                "('region', 'hosts_lesion', 'lesion')": 6,
+                "('tumor', 'coexists_with', 'lesion')": 6,
+                "('lesion', 'coexists_with', 'tumor')": 6,
+                "('region', 'adjacent_to', 'region')": 493,
+                "('region', 'inside', 'liver')": 48,
+                "('liver', 'contains', 'region')": 48
+              }
+            },
+            "prototype_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 48,
+                "max": 48,
+                "mean": 48.0,
+                "total": 96
+              },
+              "edges": {
+                "min": 176,
+                "max": 176,
+                "mean": 176.0,
+                "total": 352
+              },
+              "node_types": {
+                "candidate": 16,
+                "region": 48,
+                "prototype": 32
+              },
+              "edge_types": {
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('region', 'assigned_to', 'prototype')": 96,
+                "('prototype', 'represents', 'region')": 96,
+                "('prototype', 'similar_to', 'prototype')": 128
+              }
+            }
+          },
+          "loss": 0.7329670190811157,
+          "ranking": 0.7201582789421082,
+          "consistency": 0.12808756530284882,
+          "gradient": {
+            "finite": true,
+            "missing": [],
+            "trainable_parameter_tensors": 1085,
+            "gradient_present": 1085,
+            "norms": {
+              "CNN": 1.7648251631160041,
+              "L0": 2.2539527745851378,
+              "L1": 0.8818682600308133,
+              "L2": 0.5429499758748871,
+              "scalar": 2.3002040222658158
+            }
+          },
+          "sampled_parameter_changes": {
+            "parameters": {
+              "CNN": "stem.block.0.weight",
+              "L0": "project.tumor_surface.0.weight",
+              "L1": "tumor_project.0.weight",
+              "L2": "candidate_bridge.0.weight",
+              "scalar": "0.weight"
+            },
+            "max_abs_delta": {
+              "CNN": 0.00010000169277191162,
+              "L0": 0.00010000169277191162,
+              "L1": 9.999866597354412e-05,
+              "L2": 0.00010000169277191162,
+              "scalar": 9.999983012676239e-05
+            },
+            "scope": "32 deterministic elements of one actual parameter per module; sampled update probe"
+          },
+          "margin": -0.116058349609375,
+          "train7_pair_win": 0.14285714285714285,
+          "loader_wait_seconds": 10.888367899984587,
+          "transfer_seconds": 0.024750848770141602,
+          "forward_seconds": 3.8464970703125,
+          "backward_seconds": 12.869892578125,
+          "check_clip_optimizer_seconds": 0.871779052734375,
+          "checkpoint_seconds": 1.057470400002785,
+          "step_seconds": 18.72267049999209,
+          "peak_cuda_bytes": 2274852352,
+          "peak_reserved_bytes": 2589982720,
+          "rss_bytes": 15074480128,
+          "cpu_percent": 211.6,
+          "learning_rate": 0.0001
+        },
+        {
+          "epoch": 2,
+          "update": 2,
+          "sample_indices": [
+            0,
+            1
+          ],
+          "physical_samples": 2,
+          "candidate_rows": 16,
+          "graph_views": 32,
+          "candidate_keys": {
+            "0": [
+              "P",
+              "U:7",
+              "U:8",
+              "U:9",
+              "U:10",
+              "U:11",
+              "U:12",
+              "U:13"
+            ],
+            "1": [
+              "P",
+              "U:7",
+              "U:8",
+              "U:9",
+              "U:10",
+              "U:11",
+              "U:12",
+              "U:13"
+            ]
+          },
+          "actual_input": {
+            "source_patch_shape": [
+              2,
+              5,
+              48,
+              48,
+              48
+            ],
+            "target_patch_shape": [
+              16,
+              5,
+              48,
+              48,
+              48
+            ],
+            "counts": [
+              8,
+              8
+            ],
+            "local_batch": {
+              "graphs": 16,
+              "nodes": {
+                "min": 1970,
+                "max": 6872,
+                "mean": 4220.375,
+                "total": 67526
+              },
+              "edges": {
+                "min": 156140,
+                "max": 577802,
+                "mean": 344230.0625,
+                "total": 5507681
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 21251,
+                "target_liver_surface": 4603
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1023188,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 139754,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 274881,
+                "('source_context', 'corresponds_to', 'target_context')": 607674,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 194092,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 194092
+              }
+            },
+            "local_batch_view2": {
+              "graphs": 16,
+              "nodes": {
+                "min": 1970,
+                "max": 6872,
+                "mean": 4220.375,
+                "total": 67526
+              },
+              "edges": {
+                "min": 156140,
+                "max": 577802,
+                "mean": 344230.0625,
+                "total": 5507681
+              },
+              "node_types": {
+                "tumor_surface": 5176,
+                "tumor_interior": 2520,
+                "source_context": 31880,
+                "source_liver_surface": 2096,
+                "target_context": 21251,
+                "target_liver_surface": 4603
+              },
+              "edge_types": {
+                "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 110544,
+                "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 54000,
+                "('source_context', 'context_neighbor', 'source_context')": 1592096,
+                "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 52304,
+                "('target_context', 'context_neighbor', 'target_context')": 1023188,
+                "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 139754,
+                "('tumor_interior', 'supports', 'tumor_surface')": 136536,
+                "('tumor_surface', 'supported_by', 'tumor_interior')": 136536,
+                "('tumor_surface', 'interfaces_source', 'source_context')": 408240,
+                "('source_context', 'interfaces_tumor', 'tumor_surface')": 408240,
+                "('tumor_surface', 'interfaces_target', 'target_context')": 274881,
+                "('source_context', 'corresponds_to', 'target_context')": 607674,
+                "('source_context', 'near_liver_surface', 'source_liver_surface')": 87752,
+                "('source_liver_surface', 'anchors_context', 'source_context')": 87752,
+                "('target_context', 'near_liver_surface', 'target_liver_surface')": 194092,
+                "('target_liver_surface', 'anchors_context', 'target_context')": 194092
+              }
+            },
+            "patient_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 34,
+                "max": 40,
+                "mean": 37.0,
+                "total": 74
+              },
+              "edges": {
+                "min": 432,
+                "max": 549,
+                "mean": 490.5,
+                "total": 981
+              },
+              "node_types": {
+                "tumor": 2,
+                "candidate": 16,
+                "region": 48,
+                "lesion": 6,
+                "liver": 2
+              },
+              "edge_types": {
+                "('tumor', 'compatible_with', 'candidate')": 16,
+                "('candidate', 'matched_to', 'tumor')": 16,
+                "('candidate', 'spatial_neighbor', 'candidate')": 112,
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('tumor', 'conditions', 'region')": 48,
+                "('region', 'context_for', 'tumor')": 48,
+                "('candidate', 'near', 'lesion')": 48,
+                "('lesion', 'near', 'candidate')": 48,
+                "('lesion', 'hosted_by', 'region')": 6,
+                "('region', 'hosts_lesion', 'lesion')": 6,
+                "('tumor', 'coexists_with', 'lesion')": 6,
+                "('lesion', 'coexists_with', 'tumor')": 6,
+                "('region', 'adjacent_to', 'region')": 493,
+                "('region', 'inside', 'liver')": 48,
+                "('liver', 'contains', 'region')": 48
+              }
+            },
+            "prototype_batch": {
+              "graphs": 2,
+              "nodes": {
+                "min": 48,
+                "max": 48,
+                "mean": 48.0,
+                "total": 96
+              },
+              "edges": {
+                "min": 176,
+                "max": 176,
+                "mean": 176.0,
+                "total": 352
+              },
+              "node_types": {
+                "candidate": 16,
+                "region": 48,
+                "prototype": 32
+              },
+              "edge_types": {
+                "('candidate', 'belongs_to', 'region')": 16,
+                "('region', 'contains_candidate', 'candidate')": 16,
+                "('region', 'assigned_to', 'prototype')": 96,
+                "('prototype', 'represents', 'region')": 96,
+                "('prototype', 'similar_to', 'prototype')": 128
+              }
+            }
+          },
+          "loss": 0.7037827372550964,
+          "ranking": 0.6916572451591492,
+          "consistency": 0.12125488370656967,
+          "gradient": {
+            "finite": true,
+            "missing": [],
+            "trainable_parameter_tensors": 1085,
+            "gradient_present": 1085,
+            "norms": {
+              "CNN": 1.4838925731059387,
+              "L0": 1.9514596242194604,
+              "L1": 0.7922175962287715,
+              "L2": 0.5144545136609128,
+              "scalar": 2.1731449840495376
+            }
+          },
+          "sampled_parameter_changes": {
+            "parameters": {
+              "CNN": "stem.block.0.weight",
+              "L0": "project.tumor_surface.0.weight",
+              "L1": "tumor_project.0.weight",
+              "L2": "candidate_bridge.0.weight",
+              "scalar": "0.weight"
+            },
+            "max_abs_delta": {
+              "CNN": 9.995698928833008e-05,
+              "L0": 9.785441216081381e-05,
+              "L1": 9.986385703086853e-05,
+              "L2": 9.991973638534546e-05,
+              "scalar": 9.984662756323814e-05
+            },
+            "scope": "32 deterministic elements of one actual parameter per module; sampled update probe"
+          },
+          "margin": -0.067108154296875,
+          "train7_pair_win": 0.5,
+          "loader_wait_seconds": 10.71719309996115,
+          "transfer_seconds": 0.026082496643066406,
+          "forward_seconds": 4.13542724609375,
+          "backward_seconds": 13.4199423828125,
+          "check_clip_optimizer_seconds": 0.939502197265625,
+          "checkpoint_seconds": 0.8498362000100315,
+          "step_seconds": 19.440759300021455,
+          "peak_cuda_bytes": 2339677696,
+          "peak_reserved_bytes": 2589982720,
+          "rss_bytes": 15162789888,
+          "cpu_percent": 207.8,
+          "learning_rate": 9.98458666866564e-05
+        }
+      ],
+      "validation129": [
+        {
+          "epoch": 0,
+          "metrics": {
+            "mrr": 0.015151515151515152,
+            "top1": 0.0,
+            "pair_loss": 0.6925511097632046,
+            "pair_win": 0.4921875,
+            "pair_tie": 0.0,
+            "margin": -0.03656005859375
+          },
+          "patients": 1,
+          "source_problems": 1,
+          "candidate_count": 129,
+          "exact_fixed_positions_verified": true,
+          "joint_upper_once": true,
+          "wall_seconds": 38.42108680005185,
+          "sha256": "81cefbe1de3ca44a16790cadcdcd7e291b89e3c90748bd683a37cee4123749e3"
+        },
+        {
+          "epoch": 1,
+          "metrics": {
+            "mrr": 0.014285714285714285,
+            "top1": 0.0,
+            "pair_loss": 0.6953506322603838,
+            "pair_win": 0.4609375,
+            "pair_tie": 0.0,
+            "margin": -0.05096435546875
+          },
+          "patients": 1,
+          "source_problems": 1,
+          "candidate_count": 129,
+          "exact_fixed_positions_verified": true,
+          "joint_upper_once": true,
+          "wall_seconds": 38.18659930001013,
+          "sha256": "8d1abcc91145bdf2e7ee03e27fa30833b0dfa7596aa4c0847b34a5c142980ce8"
+        },
+        {
+          "epoch": 2,
+          "metrics": {
+            "mrr": 0.023255813953488372,
+            "top1": 0.0,
+            "pair_loss": 0.6891977404597684,
+            "pair_win": 0.671875,
+            "pair_tie": 0.0,
+            "margin": -0.05078125
+          },
+          "patients": 1,
+          "source_problems": 1,
+          "candidate_count": 129,
+          "exact_fixed_positions_verified": true,
+          "joint_upper_once": true,
+          "wall_seconds": 37.725443099974655,
+          "sha256": "fded616a27fa5602fea4536b5837f0c65cdbdc21a56ab086fc4a2d5b97d120da"
+        }
+      ],
+      "invocation_resume_receipts": [
+        {
+          "checkpoint": null,
+          "initial_phase": "initial_validation",
+          "verified_optimizer_history": null,
+          "invocation_optimizer_updates": 2,
+          "invocation_backward_attempts": 2,
+          "invocation_epoch_completions": 2
+        },
+        {
+          "checkpoint": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG\\native\\checkpoint_latest.pt",
+          "initial_phase": "complete",
+          "verified_optimizer_history": {
+            "verified_genuine_updates": 2,
+            "verified_parameter_tensors": 1085,
+            "verified_initialized_parameter_tensors": 1085,
+            "transient_optimizer_called": true,
+            "optimizer_math_changed": false
+          },
+          "invocation_optimizer_updates": 0,
+          "invocation_backward_attempts": 0,
+          "invocation_epoch_completions": 0,
+          "completed_checkpoint_no_repeat_verified": true
+        }
+      ],
+      "median_update_seconds": 19.081714900006773,
+      "peak_cuda_bytes": 2339677696,
+      "actual_resources": {
+        "platform": "Windows-10-10.0.26200-SP0",
+        "cpu_logical_cores": 16,
+        "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')",
+        "ram_total_bytes": 68640653312,
+        "ram_available_bytes": 41635983360,
+        "cgroup_memory_limit_bytes": "unavailable (not present)",
+        "cgroup_memory_current_bytes": "unavailable (not present)",
+        "cgroup_cpu_limit_cores": "unavailable (not present)",
+        "cgroup_cpuset": "unavailable (not present)",
+        "storage_path": "D:\\AI project\\nnunet\\work\\v18_checked_DEBUG",
+        "storage_total_bytes": 1999206608896,
+        "storage_used_bytes": 616272228352,
+        "storage_free_bytes": 1382934380544,
+        "scheduler_allocation": "unavailable",
+        "container_hint": "unavailable",
+        "cuda_visible_devices_env": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+        "nvidia_visible_devices_env": "<unset>",
+        "cuda_available": true,
+        "gpu_utilization_percent": "unavailable (not exposed by PyTorch)",
+        "cuda_visible_device_count": 1,
+        "gpu_devices": [
+          {
+            "logical_index": 0,
+            "name": "NVIDIA GeForce RTX 5070 Ti",
+            "total_vram_bytes": 17094344704,
+            "multiprocessors": 70,
+            "compute_capability": "12.0",
+            "mig_instance": false
+          }
+        ],
+        "mig_visibility": "not identifiable from PyTorch/environment",
+        "cuda_device": "cuda:0",
+        "cuda_allocated_bytes": 0,
+        "cuda_reserved_bytes": 0,
+        "cuda_peak_allocated_bytes": 0,
+        "cuda_peak_reserved_bytes": 0,
+        "cuda_free_bytes": 15740174336,
+        "cuda_total_bytes": 17094344704
+      },
+      "completed_reexecution_provider": {
+        "format": "v18_own_source_selected_native_u_bridge_v1",
+        "source_samples": 3,
+        "native_U_per_case": 128,
+        "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+        "training_query_count": 8,
+        "full_evaluation_query_count": 129,
+        "workers": 4,
+        "resident_bytes": 0,
+        "resident_limit_bytes": 21474836480,
+        "whole_case_fields": {
+          "cases": 0,
+          "array_bytes": 0,
+          "disk_bytes": 0,
+          "receipts": {}
+        },
+        "static_upper": {
+          "format": "v18_exact_original_static_upper_v1",
+          "original_helper_builds": 0,
+          "disk_reopens": 0,
+          "resident_hits": 0,
+          "original_build_seconds": 0.0,
+          "cache_read_seconds": 0.0,
+          "resident_bytes": 0,
+          "entries": 0,
+          "disk_bytes": 0,
+          "receipts": [],
+          "original_formulas_preserved": true,
+          "candidates_changed": false
+        },
+        "local_builds": 0,
+        "disk_hits": 0,
+        "resident_hits": 0,
+        "evictions": 0,
+        "field_builds": 0,
+        "field_reopens": 0,
+        "field_mapping_reuses": 0,
+        "field_build_seconds": 0.0,
+        "field_reopen_seconds": 0.0,
+        "field_reuse_seconds": 0.0,
+        "positive_metadata_builds": 0,
+        "CP_candidate_search_used": false,
+        "U_resampled": false
+      }
+    }
+  }
+}

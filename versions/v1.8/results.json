@@ -1,0 +1,44 @@
+{
+  "version": "v1.8",
+  "status": "implementation and actual CT CUDA smoke complete; server 40-epoch ranking pending",
+  "implementation_complete": true,
+  "static_checks": "PASS",
+  "unit_tests_passed": 74,
+  "actual_CT_CUDA_smoke": {
+    "status": "PASS",
+    "model_parameters": 10434532,
+    "model_reduced": false,
+    "train_cases": 2,
+    "validation_cases": 1,
+    "epochs_per_arm": 2,
+    "updates_per_arm": 2,
+    "gradient_parameter_tensors": 1085,
+    "all_trainable_parameter_tensors": 1085,
+    "sampled_weight_change_groups": ["CNN", "L0", "L1", "L2", "scalar"],
+    "full129_joint_validation": "initial and each completed DEBUG epoch, exact fixed positions verified",
+    "pause_and_exact_resume": "PASS",
+    "completed_rerun_zero_extra_updates": "PASS",
+    "evidence": "../../validation/v18_u_bridge/smoke.json"
+  },
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "historical_reference": "v1.4 m10 original8 ranking",
+  "matched_arms": ["selected", "native"],
+  "server_experiment": "/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42",
+  "server_training_started": false,
+  "production_data": {
+    "signed_train_source_samples": 151,
+    "signed_validation_source_samples": 36,
+    "actual_validation_patients": 18,
+    "configured_validation_patients": 21,
+    "missing_configured_patients_reported": true
+  },
+  "limitations": [
+    "DEBUG execution and gradients do not establish ranking or CP recommendation quality",
+    "Historical original8 MRR1.0 is not the matched selected control",
+    "Native arm changes comparison distribution and per-position exposure, not only candidate count",
+    "Server full-cohort calibration, 40-epoch training and Linux mmap RSS behavior remain unverified"
+  ],
+  "production_result": null
+}

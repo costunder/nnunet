@@ -9,6 +9,7 @@
 | v1.5 | A: L0 교체 | [열기](v1.5/README.md) |
 | v1.6 | B: 상위 계층·scorer 교체 | [열기](v1.6/README.md) |
 | v1.7 | C/D 교차 실험 + 공통 전체128 평가 | [열기](v1.7/README.md) |
+| v1.8 | 원본 10 mm 모델에서 비교 후보 조건 대조 | [열기](v1.8/README.md) |
 | v2 | 폐기한 view-only 방향 | [열기](v2/README.md) |
 | v2.1 | 환자 간 prompt 정렬 | [열기](v2.1/README.md) |
 | v2.2 | 현재 방법별 구현 | [열기](v2.2/README.md) |

@@ -1,0 +1,23 @@
+{
+  "version": "v1.8",
+  "experiment": "v1_m10_comparison_positions",
+  "arms": ["selected", "native"],
+  "seed": 42,
+  "epochs": 40,
+  "margin_mm": 10,
+  "source": "preserved original v1 case/sample/component/anchor",
+  "model": "unchanged original v1 L0/L1/L2/scalar head",
+  "training_candidates": "1 original P + 7 comparison positions",
+  "selected": "original selected seven coordinates, geometry corruption removed",
+  "native": "same-case frozen128 U, seven per epoch, deterministic rotation; no extra steps",
+  "loss": "mean softplus(s_U-s_P) + 0.1 original two-view consistency",
+  "evaluation": "same original source and all128 U; one joint upper graph with129 candidates",
+  "best": "full129 MRR, then top1, then negative pairwise loss",
+  "U_semantics": "unobserved comparison positions, not CP-unsuitable ground truth",
+  "historical_v1": "preserved reference, not the new matched selected control",
+  "positive_metadata": "original source coverage1, source patch ring, own-source-excluded other-tumor distance",
+  "negative_metadata": "original liver-label1 coverage and distance to all observed tumors",
+  "static_reuse": "byte-bound canonical locals, exact case distance arrays and original upper static outputs",
+  "shuffle": "original RandomSampler with dedicated seed42+2003; unchanged full epoch coverage",
+  "quality_verified": false
+}
