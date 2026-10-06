@@ -15,7 +15,7 @@ from dataclasses import dataclass, fields, is_dataclass, replace
 import hashlib
 import importlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import threading
 import time
@@ -42,6 +42,116 @@ def _sha(path):
 def _json_sha(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
         allow_nan=False).encode()).hexdigest()
+
+
+def _request_differences(saved, current, field=""):
+    """Literal leaf differences, including missing keys and JSON type changes."""
+    if _json_sha(saved) == _json_sha(current):
+        return []
+    if isinstance(saved, dict) and isinstance(current, dict):
+        changed = []
+        for key in sorted(set(saved) | set(current)):
+            path = field + "." + key if field else key
+            if key not in saved or key not in current:
+                changed.append(dict(field=path, saved=saved.get(key), current=current.get(key),
+                                    saved_present=key in saved, current_present=key in current))
+            else:
+                changed.extend(_request_differences(saved[key], current[key], path))
+        return changed
+    if isinstance(saved, list) and isinstance(current, list) and len(saved) == len(current):
+        return [difference for index, (before, after) in enumerate(zip(saved, current))
+                for difference in _request_differences(before, after, f"{field}[{index}]")]
+    return [dict(field=field, saved=saved, current=current)]
+
+
+def _receipt_absolute_path(value, field):
+    """Validate historical location text without requiring its old checkout."""
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise ValueError("Native30 data-contract location must be absolute: " + field)
+    path = PurePosixPath(value) if value.startswith("/") else PureWindowsPath(value)
+    if (not path.is_absolute() or any(part in (".", "..") for part in value.replace("\\", "/").split("/"))
+            or isinstance(path, PurePosixPath) and "\\" in value):
+        raise ValueError("Native30 data-contract location must be literal absolute: " + field)
+    return path
+
+
+def _location_independent_request(request):
+    """Remove only reviewed source locations; retain every algorithm/data byte."""
+    from .native30_data_contract import FORMAT as DATA_FORMAT, POLICY as DATA_POLICY
+    normalized = copy.deepcopy(request)
+    receipt = normalized.get("native_data_contract_receipt")
+    required = {"format", "source_root", "source_files", "exact_AST_definition_sha256",
+                "actual_dependencies", "policy", "original_file_imports_executed",
+                "algorithm_rewritten", "current_graph_module_imported"}
+    if not isinstance(receipt, dict) or set(receipt) != required:
+        raise ValueError("Native30 data-contract relocation requires its exact receipt schema")
+    if (receipt["format"] != DATA_FORMAT or receipt["policy"] != DATA_POLICY
+            or any(receipt[name] is not False for name in ("original_file_imports_executed",
+                "algorithm_rewritten", "current_graph_module_imported"))):
+        raise ValueError("Native30 data-contract relocation requires unchanged exact AST policy")
+    root = _receipt_absolute_path(receipt["source_root"], "source_root")
+    source_names = {"l0_regions/donor_data.py", "hiercp_v22/data.py"}
+    dependency_names = {"hiercp.common", "l0_regions.donor_learning.validate_rows"}
+    for collection, names in (("source_files", source_names), ("actual_dependencies", dependency_names)):
+        if not isinstance(receipt[collection], dict) or set(receipt[collection]) != names:
+            raise ValueError("Native30 data-contract relocation requires exact entries: " + collection)
+        for name, item in receipt[collection].items():
+            if not isinstance(item, dict) or set(item) != {"path", "sha256"}:
+                raise ValueError("Native30 data-contract relocation requires exact path/SHA entry: " + name)
+            digest = item["sha256"]
+            if (not isinstance(digest, str) or len(digest) != 64
+                    or any(character not in "0123456789abcdef" for character in digest)):
+                raise ValueError("Native30 data-contract relocation requires literal SHA256: " + name)
+            path = _receipt_absolute_path(item["path"], collection + "." + name + ".path")
+            if collection == "source_files":
+                expected = root.joinpath(*name.split("/"))
+            elif name == "l0_regions.donor_learning.validate_rows":
+                expected = root / "l0_regions" / "donor_learning.py"
+            else:
+                expected = path.parent.parent / "hiercp" / "common.py"
+                if not isinstance(normalized.get("source_sha256"), dict) or digest != normalized["source_sha256"].get("common"):
+                    raise ValueError("Native30 original common dependency digest differs from runtime source")
+            if path != expected:
+                raise ValueError("Native30 data-contract source location has unexpected identity: " + name)
+            item["path"] = "<verified-source-location>"
+    expected_definitions = {"l0_regions/donor_data.py": {"assignment"},
+                            "hiercp_v22/data.py": {"SourceCollection", "sources", "donor_in_target_spacing"}}
+    definitions = receipt["exact_AST_definition_sha256"]
+    if not isinstance(definitions, dict) or set(definitions) != set(expected_definitions):
+        raise ValueError("Native30 data-contract relocation requires exact AST inventory")
+    for name, names in expected_definitions.items():
+        if not isinstance(definitions[name], dict) or set(definitions[name]) != names:
+            raise ValueError("Native30 data-contract relocation requires every exact AST definition: " + name)
+        for digest in definitions[name].values():
+            if (not isinstance(digest, str) or len(digest) != 64
+                    or any(character not in "0123456789abcdef" for character in digest)):
+                raise ValueError("Native30 data-contract relocation requires literal AST SHA256: " + name)
+    receipt["source_root"] = "<verified-source-location>"
+    return normalized
+
+
+def _geometry_request_compatibility(saved, current):
+    """Read-only relocation is permitted only for identical code/data contracts."""
+    producer_hash, consumer_hash = _json_sha(saved), _json_sha(current)
+    if producer_hash == consumer_hash:
+        return dict(mode="exact", producer_request_sha256=producer_hash,
+                    consumer_request_sha256=consumer_hash, changed_location_fields=[])
+    differences = _request_differences(saved, current)
+    try:
+        same_contract = (_json_sha(_location_independent_request(saved))
+                         == _json_sha(_location_independent_request(current)))
+    except ValueError as error:
+        raise ValueError("Read-only native30 geometry request differs; original output preserved; "
+                         + str(error) + "; changed_fields="
+                         + json.dumps(differences, sort_keys=True, allow_nan=False)) from error
+    if not same_contract:
+        raise ValueError("Read-only native30 geometry request differs; original output preserved; changed_fields="
+                         + json.dumps(differences, sort_keys=True, allow_nan=False))
+    return dict(mode="data_contract_source_relocation", producer_request_sha256=producer_hash,
+                consumer_request_sha256=consumer_hash, changed_location_fields=differences,
+                unchanged_contracts=["data_inventory", "cohort", "donor_assignment", "every_observation",
+                    "saved_config", "native_scope", "original_runtime_source_bytes", "data_contract_helper_bytes",
+                    "data_contract_source_bytes", "exact_AST_definitions", "actual_dependency_bytes"])
 
 
 def _write_new(path, value):
@@ -270,12 +380,15 @@ class Native30Geometry:
             no_training_preparation=True, query_GT_in_forward=False,
             views_per_observation=2, dense_input_shape=[5, 48, 48, 48])
         self.request_sha256 = _json_sha(self.request)
+        self.consumer_request_sha256 = self.request_sha256
+        self.request_compatibility = None
         if not self.read_only:
             self.output.mkdir(parents=True, exist_ok=True)
         request_path = self.output / "request.json"
         if self.read_only:
-            if _json_sha(self._read_cache_json("request.json")) != self.request_sha256:
-                raise ValueError("Read-only native30 geometry request differs; original output preserved")
+            self.request_compatibility = _geometry_request_compatibility(
+                self._read_cache_json("request.json"), self.request)
+            self.request_sha256 = self.request_compatibility["producer_request_sha256"]
         elif request_path.exists():
             if request_path.is_symlink() or json.loads(request_path.read_text(encoding="utf8")) != self.request:
                 raise ValueError("Existing native30 geometry cache request differs; original output preserved")
@@ -767,6 +880,8 @@ class Native30Geometry:
                 cache_root=str(self.output), cache_index_sha256=metadata_sha256["index.json"],
                 cache_request_file_sha256=metadata_sha256["request.json"],
                 request_sha256=self.request_sha256, input_inventory_sha256=self.index_sha256,
+                consumer_request_sha256=self.consumer_request_sha256,
+                request_compatibility=copy.deepcopy(self.request_compatibility),
                 cohort_sha256=self.population["cohort_sha256"], assignment_sha256=self.assignment_sha256,
                 metadata_manifest_sha256=_json_sha(metadata_sha256),
                 validated_payload_files=self._read_only_payload_files,

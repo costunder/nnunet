@@ -93,6 +93,44 @@ weights는 로컬에 없으므로 해당 weights의 strict load와 전체21 평�
 앞서 완료한 실제 CT/CUDA DEBUG 증거는 그대로 보존하며 이번 metadata 검사로 새 GPU
 실행이나 ranking 품질이 검증됐다고 표시하지 않는다.
 
+## 동일 데이터 코드의 worktree 경로 변경과 geometry 재사용
+
+2026-10-06 서버에서 완료 geometry를 읽으려다가 request 불일치로 중단됐다.
+8e3d6f2와1e5c23c의 데이터 helper·assignment·transport·validate_rows 소스는
+동일하지만, 저장 request의 source receipt에는 당시 worktree의 절대 경로가
+포함된다. 새 worktree 위치에서 같은 소스를 실행해도 이 경로들 때문에 전체
+request hash가 달라질 수 있다. 서버의 저장 request를 직접 읽지는 않았으므로
+실제 changed_fields는 수정본이 출력하는 상세 비교로 확인해야 한다.
+
+수정은 읽기 전용 재사용에 한한다. 검토한 source_root와 정확한 source/dependency
+path만 위치 정보로 분리하고, source/helper/dependency SHA256·전체 AST definition
+SHA256·입력 inventory·cohort·donor assignment·모든 row·config·원본 ROI30/context28
+규칙은 그대로 비교한다. receipt schema·절대 경로 layout·원본 common source의
+SHA 결속도 확인한다. 위치 외의 불일치는 changed_fields를 포함해 실패한다.
+
+허용된 경우에도 기존 producer request hash로 모든 row receipt와 전체 cache
+index/payload SHA를 검증한다. consumer request hash와 달라진 위치 항목은 별도
+reuse_provenance로 남긴다. 기존 cache에는 쓰지 않고 geometry를 다시 만들지
+않는다. 준비 완료 전 launcher 문구가 검증 완료를 주장하지 않도록 고쳤다.
+
+추가 검증은 별도 metadata UNIT과 실제 CT/CUDA DEBUG로 수행하며, 원본 trained
+서버 BEST의 전체21 ranking 결과를 확인한 것으로 표현하지 않는다. 실험 설정,
+checkpoint, 모델 구조, physical batch 후보와 전체 평가 대상은 변경하지 않는다.
+
+검증 결과: 신규 relocation UNIT8개와 기존 geometry/entry28개, 합계36개 PASS.
+실제 CT에서 소비되는4개 데이터 소스 파일을 같은 바이트로 다른 디렉터리에
+배치해 경로 변경을 재현했다. 원본10,050,543-parameter 모델을 CUDA에서 실행해
+한 validation case의136개 관측(P8+U128), 두 실제 view의 전체 점수를 계산했다.
+기존 geometry 재생성0, 읽기 전용 준비0.096초, runtime peak CUDA allocation
+1,009,979,392bytes였다. 기존 cache의 SHA·metadata를 재검증했고 쓰기는 없었다.
+
+첫 후검사는 provider의 전역 raw_cases_decoded가 비어 있어야 한다고 잘못 요구했다.
+upper annotation 입력에는 원본 CT/mask가 필요하므로 이 목록에는 두 case가 있다.
+완료된 GPU 평가를 반복하지 않고, geometry만 다시 읽기 전용으로 admission하여
+모든 payload SHA·producer/consumer request 결속과 준비 단계의 raw decode0을
+확인했다. upper 입력 읽기를 fine geometry 재생성으로 혼동하지 않는다.
+이 DEBUG는 fresh untrained weights이며 전체21 또는 원본 BEST 성능 증거가 아니다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

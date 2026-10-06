@@ -1,0 +1,112 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "fresh_untrained_model": true,
+  "copied_consumed_source_bytes": {
+    "hiercp_v1x/native30_data_contract.py": {
+      "sha256": "d6b73505b98f4909036ed4a2100359669f3adfdbad85ddc9acb8c2fddb82745d",
+      "consumer_path": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\hiercp_v1x\\native30_data_contract.py"
+    },
+    "l0_regions/donor_learning.py": {
+      "sha256": "b0ef9a02eae0c76c3f77de9b1ac816027989649c41a4124e9fe2dd3d33624673",
+      "consumer_path": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\l0_regions\\donor_learning.py"
+    },
+    "l0_regions/donor_data.py": {
+      "sha256": "73f683fde9997fd223bccf1f047d6bb4051840efe7104a4a09089fd03c54bbee",
+      "consumer_path": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\l0_regions\\donor_data.py"
+    },
+    "hiercp_v22/data.py": {
+      "sha256": "0fa999191f452f525233f8227e1bcb3a8ef989064d3d36f1ab0c566f0976f9a9",
+      "consumer_path": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\hiercp_v22\\data.py"
+    }
+  },
+  "source_location_changed": true,
+  "producer_cache_preserved": true,
+  "producer_cache_rewritten": false,
+  "geometry_rebuilt": false,
+  "full21_evaluation": false,
+  "training_started": false,
+  "optimizer_updates": 0,
+  "quality_verified": false,
+  "parameters": 10050543,
+  "records": 136,
+  "U": 128,
+  "reuse_provenance": {
+    "cache_root": "D:\\AI project\\nnunet\\work\\native30_full128_DEBUG_20261006\\probe\\evaluation_r3\\geometry",
+    "cache_index_sha256": "80e9e423722b92618ce67e377c07f22205fc52266386dfe7b8fbdfc5b40368e1",
+    "cache_request_file_sha256": "c37d5f6aabc44db789aee2f4f12b07f9814f532dc3c80b60ac66f1d3e3604036",
+    "request_sha256": "d6657d2d8ecdf345718f75b98d885568defe32e91b7e5f9a173c38a112ce564c",
+    "input_inventory_sha256": "3499481b016c8330b8b641096f441c5a57d215d669594677f01af9fa8ba92a20",
+    "consumer_request_sha256": "f5646f761af97902fd37ca894e1f9bbeaab79e83c5ce51d05213889267bff42c",
+    "request_compatibility": {
+      "mode": "data_contract_source_relocation",
+      "producer_request_sha256": "d6657d2d8ecdf345718f75b98d885568defe32e91b7e5f9a173c38a112ce564c",
+      "consumer_request_sha256": "f5646f761af97902fd37ca894e1f9bbeaab79e83c5ce51d05213889267bff42c",
+      "changed_location_fields": [
+        {
+          "field": "native_data_contract_receipt.actual_dependencies.l0_regions.donor_learning.validate_rows.path",
+          "saved": "D:\\AI project\\nnunet\\l0_regions\\donor_learning.py",
+          "current": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\l0_regions\\donor_learning.py"
+        },
+        {
+          "field": "native_data_contract_receipt.source_files.hiercp_v22/data.py.path",
+          "saved": "D:\\AI project\\nnunet\\hiercp_v22\\data.py",
+          "current": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\hiercp_v22\\data.py"
+        },
+        {
+          "field": "native_data_contract_receipt.source_files.l0_regions/donor_data.py.path",
+          "saved": "D:\\AI project\\nnunet\\l0_regions\\donor_data.py",
+          "current": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout\\l0_regions\\donor_data.py"
+        },
+        {
+          "field": "native_data_contract_receipt.source_root",
+          "saved": "D:\\AI project\\nnunet",
+          "current": "D:\\AI project\\nnunet\\work\\native30_worktree_relocation_actual_DEBUG_20261006\\consumer_data_checkout"
+        }
+      ],
+      "unchanged_contracts": [
+        "data_inventory",
+        "cohort",
+        "donor_assignment",
+        "every_observation",
+        "saved_config",
+        "native_scope",
+        "original_runtime_source_bytes",
+        "data_contract_helper_bytes",
+        "data_contract_source_bytes",
+        "exact_AST_definitions",
+        "actual_dependency_bytes"
+      ]
+    },
+    "cohort_sha256": "5c926e477f992ae6354fb359b64699e7a3779e458d9151bbc8416ff217f8244d",
+    "assignment_sha256": "42bf63fd09587bdb18491242ac783b8d3be5b53d8a1c37491e3cedeb80d9beb1",
+    "metadata_manifest_sha256": "f585d484f676afaf672da90cad10cf34a9da8b9b1d05163d438de8f8a0aa7abd",
+    "validated_payload_files": 137,
+    "validated_observations": 136,
+    "validated_cases": 1,
+    "complete_original_publication": true,
+    "all_payload_sha256_verified": true,
+    "graph_reconstruction": false,
+    "raw_CT_redecoded_for_preparation": false,
+    "cache_tensor_deserialization_for_preparation": false,
+    "existing_files_written": false
+  },
+  "peak_cuda_bytes": 1009979392,
+  "completed_GPU_report_verified_without_neural_rerun": true,
+  "raw_cases_decoded_for_upper_annotation_inputs": [
+    "liver_100",
+    "liver_31"
+  ],
+  "geometry_preparation_seconds": 0.09630599996307865,
+  "initial_post_checker_failure": "Expected global raw_cases_decoded to be empty, although upper annotation admission reads original CT/masks; corrected to geometry-only reuse scope.",
+  "regression_tests_passed": 36,
+  "new_relocation_UNIT_tests": 8,
+  "existing_geometry_and_entry_tests": 28,
+  "server_BEST_full21_evaluation_completed": false,
+  "source_sha256": {
+    "hiercp_v1x/native30_geometry.py": "6853a458d3fc97aa199a3878506c52cd48d8cbc88518065a13703061463211fa",
+    "tests/test_native30_geometry_relocation.py": "a90347e49163414cfb17dc29692ef8c2465217aec44066b8e06e53f487925b06",
+    "tools/server_native_v1_full128.sh": "b9e8cabcb6ef0039897b87e1026ff2f1f6a72430bcad180493bcb9b34aeddaa9"
+  }
+}

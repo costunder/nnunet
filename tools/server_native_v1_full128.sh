@@ -21,7 +21,7 @@ native30_main() {
   printf 'Physical GPU=%s | source=%s | output=%s\n' "$CP_GPU" "$cp_source" "$cp_output"
   if [ -n "${CP_REUSE_GEOMETRY:-}" ]; then
     cp_reuse_args=(--reuse-geometry "$CP_REUSE_GEOMETRY")
-    printf 'Verified complete geometry reuse (read-only): %s\n' "$CP_REUSE_GEOMETRY"
+    printf 'Requested geometry reuse (read-only; checked before scoring): %s\n' "$CP_REUSE_GEOMETRY"
   fi
   python -B -u "$cp_repo/tools/evaluate_native_v1_full128.py" \
     --gpu "$CP_GPU" \
