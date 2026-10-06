@@ -1,0 +1,62 @@
+{
+  "version": "v1.9",
+  "status": "implemented; four-arm actual CT CUDA DEBUG passed; server quality pending",
+  "implementation_complete": true,
+  "static_checks": "Python AST, JSON, CLI, version entry PASS; Bash unavailable locally",
+  "unit_tests_passed": 31,
+  "unit_tests_skipped": 1,
+  "preserved_v18_regression_tests_passed": 74,
+  "delivery_checks": {
+    "config_server_docs_contract_tests_passed": 3,
+    "shell_syntax": "unverified on local Windows host: Bash unavailable",
+    "neural_execution": true,
+    "arm_prefix_collision_regression_passed": true
+  },
+  "actual_CT_CUDA_smoke": {
+    "status": "PASS",
+    "evidence": "validation/v19_comparison/smoke.json",
+    "source_inventory": "validation/v19_comparison/evidence_sources.json",
+    "scope": "mechanical DEBUG, not final ranking quality",
+    "actual_train_CT_cases": 2,
+    "actual_validation_CT_cases": 1,
+    "debug_epochs_per_arm": 2,
+    "genuine_updates_per_arm": 2,
+    "physical_source_batch": 2,
+    "candidate_graphs_per_update": 16,
+    "genuine_graph_views_per_update": 32,
+    "gradient_parameter_tensors_per_update": 1085,
+    "listwise_pause_and_exact_optimizer_resume": true,
+    "all_completed_reexecutions_zero_updates": true,
+    "same_initial_neural_state": true,
+    "original_model_parameters": 10434532,
+    "preserved_v18_core_files_byte_identical": 12,
+    "full129_fixed_position_joint_evaluation_per_arm": "initial, epoch1, epoch2"
+  },
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "matched_arms": ["selected", "native", "native_fixed", "native_listwise"],
+  "planned_contrasts": {
+    "coordinate_distribution": ["selected", "native_fixed"],
+    "fixed_or_rotating_exposure": ["native_fixed", "native"],
+    "ranking_objective": ["native", "native_listwise"]
+  },
+  "server_experiment": "/home/aicompetition06/Medical/experiments/v19_comparison_m10_seed42",
+  "server_training_started": false,
+  "production_data": {
+    "signed_train_source_samples": 151,
+    "signed_validation_source_samples": 36,
+    "actual_validation_patients": 18,
+    "configured_validation_patients": 21,
+    "missing_configured_patients_reported": true
+  },
+  "historical_reference": "original8 v1 MRR1.0 is not a matched selected control",
+  "limitations": [
+    "Two DEBUG updates per arm do not establish 40-epoch learning or CP recommendation quality",
+    "Native fixed and rotating controls differ in per-position exposure and comparator coverage",
+    "Listwise CE changes ranking competition; it does not assign CP-unsuitable labels to U",
+    "Raw mean CE and mean pairwise softplus have different natural loss/gradient scales; this is not a scale-matched competition-only ablation",
+    "Full-cohort CUDA calibration, 40-epoch training and Linux resource behavior remain pending"
+  ],
+  "production_result": null
+}

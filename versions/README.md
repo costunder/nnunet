@@ -10,6 +10,7 @@
 | v1.6 | B: 상위 계층·scorer 교체 | [열기](v1.6/README.md) |
 | v1.7 | C/D 교차 실험 + 공통 전체128 평가 | [열기](v1.7/README.md) |
 | v1.8 | 원본 10 mm 모델에서 비교 후보 조건 대조 | [열기](v1.8/README.md) |
+| v1.9 | 고정·순환 후보 노출과 pairwise·listwise loss 대조 | [열기](v1.9/README.md) |
 | v2 | 폐기한 view-only 방향 | [열기](v2/README.md) |
 | v2.1 | 환자 간 prompt 정렬 | [열기](v2.1/README.md) |
 | v2.2 | 현재 방법별 구현 | [열기](v2.2/README.md) |
@@ -45,11 +46,11 @@ python versions/v1.7/C/run.py --help
 - [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
 - [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
 - [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
-- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 기존 실행 설정을 유지했다.
-- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 기존 자원 기록을 연결했다.
-- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 정리에서는 학습을 실행하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. v1.9 네 군 실제 DEBUG batch를 확인했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. v1.9 자원 기록을 연결했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 DEBUG에서는 OOM 없이 원본 모델을 유지했다.
 - [x] 디버그 설정과 최종 설정을 분리했다.
 - [x] dummy, placeholder, random fallback을 사용하지 않았다.
-- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 기존 구현 경로를 그대로 연결했다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 추가 v1.9 군의 실제 update도 확인했다.
 - [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
 - [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

@@ -374,6 +374,20 @@
       "notes": ["versions/v1.8/README.md"]
     },
     {
+      "id": "v1.9",
+      "folder": "v1.9",
+      "title": "원본 v1 10 mm 후보 노출·loss 대조",
+      "status": "four matched comparison controls; full129 validation; server quality pending",
+      "runner": "tools/run_v19_comparison.py",
+      "modules": [
+        "hiercp_v1x/comparison_experiment.py",
+        "hiercp_v1x/comparison_data.py",
+        "hiercp_v1x/comparison_training.py"
+      ],
+      "configs": ["config/v19_comparison_controls.json"],
+      "notes": ["versions/v1.9/README.md"]
+    },
+    {
       "id": "basic",
       "folder": "common",
       "title": "Basic CP 원본 경로",
