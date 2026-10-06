@@ -1,0 +1,106 @@
+{
+  "graphs": [
+    {
+      "case": "liver_1",
+      "evidence": "T",
+      "component": 1,
+      "diameter_mm": 14.968210888345551,
+      "center": [
+        202,
+        308,
+        69
+      ],
+      "nodes": 5600,
+      "edges": 221946,
+      "canonical_nodes": 5670,
+      "canonical_edges": 225179,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "identical_topology_and_CT": true
+    },
+    {
+      "case": "liver_1",
+      "evidence": "U",
+      "component": 1,
+      "diameter_mm": 14.968210888345551,
+      "center": [
+        385,
+        219,
+        52
+      ],
+      "nodes": 6185,
+      "edges": 228207,
+      "canonical_nodes": 7000,
+      "canonical_edges": 259071,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "identical_topology_and_CT": true
+    },
+    {
+      "case": "liver_5",
+      "evidence": "T",
+      "component": 1,
+      "diameter_mm": 9.182635467750139,
+      "center": [
+        353,
+        244,
+        456
+      ],
+      "nodes": 7188,
+      "edges": 511771,
+      "canonical_nodes": 15652,
+      "canonical_edges": 1242911,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "identical_topology_and_CT": true
+    },
+    {
+      "case": "liver_5",
+      "evidence": "U",
+      "component": 1,
+      "diameter_mm": 9.182635467750139,
+      "center": [
+        377,
+        284,
+        379
+      ],
+      "nodes": 7333,
+      "edges": 507049,
+      "canonical_nodes": 16167,
+      "canonical_edges": 1266982,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "identical_topology_and_CT": true
+    }
+  ],
+  "raw": [
+    {
+      "case": "liver_1",
+      "image_sha": "86931dc0e9559d28b626482bcbb74783f0452d08137e011644875db6e3bfab42",
+      "label_sha": "6bf80c133bddaef6a3af616f82185c3da20b2b655d382c4feaff61d2c0a5cfe7"
+    },
+    {
+      "case": "liver_5",
+      "image_sha": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+      "label_sha": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06"
+    }
+  ],
+  "full_graph_rules": true,
+  "debug_subset": true
+}

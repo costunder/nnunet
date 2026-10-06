@@ -1,0 +1,388 @@
+{
+  "scope": "DEBUG only: real L0 comparison and synthetic full objective; no clinical performance claim",
+  "release": "v2.2",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "resources_start": {
+    "rss_bytes": 548294656,
+    "available_memory_bytes": 36573159424,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 5.203125,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  },
+  "resources_end": {
+    "rss_bytes": 2521976832,
+    "available_memory_bytes": 34613223424,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 30.0625,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  },
+  "real_graphs": [
+    {
+      "path": "graphs/U_000000/0000.pt.gz",
+      "nodes": 7466,
+      "edges": 472800,
+      "source_sha256": "e288c8fc90964d168abc2703f740e4ad54004759451fc522a226405348cf2ec8",
+      "converted_sha256": "e890fea00b9f23c1e167c431d420b8a35c00d7208a8efb312dcbe4d2dcc10179"
+    },
+    {
+      "path": "graphs/U_000000/0001.pt.gz",
+      "nodes": 8495,
+      "edges": 485769,
+      "source_sha256": "24b9ca44a323b6556b93b8ae735ffc4c6c10c44bfaa3ca8e485f764c120260d2",
+      "converted_sha256": "977b4e0de5776602309b45f387325e8ca93ab4a2633429055641cfba83081fbf"
+    },
+    {
+      "path": "graphs/U_000000/0002.pt.gz",
+      "nodes": 7451,
+      "edges": 463543,
+      "source_sha256": "c7c1d51cb6c2cf3ff41e41e6d5edde6abf0ccc6c5736ff48cc7e5dab48381d12",
+      "converted_sha256": "ad4ebca1a7604dea48471e782bd19ad3efc0876f71b29b798f9dba4805e6cfc8"
+    },
+    {
+      "path": "graphs/U_000000/0003.pt.gz",
+      "nodes": 9145,
+      "edges": 566590,
+      "source_sha256": "7caeafa49b332dc944b1d2d6556f6b8b3b931625b8d3d51c69d87b79e32d2914",
+      "converted_sha256": "f40eb7791aecaeae17c9e2725b8f3144e3209e37fb6289c6908e21b4e69c4c03"
+    }
+  ],
+  "geometry_and_descriptor_equivalence": true,
+  "preparation_seconds": 1.2346975999535061,
+  "profiles": [
+    {
+      "version": "v2.1",
+      "physical_graph_batch": 2,
+      "precision": "BF16",
+      "transfer": {
+        "gpu_ms": 31.342880249023438,
+        "wall_ms": 56.47010001121089
+      },
+      "measurements": [
+        {
+          "cnn": {
+            "gpu_ms": 6.385824203491211,
+            "wall_ms": 6.456699979025871
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 197.9791717529297,
+            "wall_ms": 198.40960000874475
+          },
+          "L0_total": {
+            "gpu_ms": 201.40928649902344,
+            "wall_ms": 201.45079999929294
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 5.599775791168213,
+            "wall_ms": 5.647699988912791
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 197.31436157226562,
+            "wall_ms": 197.36439996631816
+          },
+          "L0_total": {
+            "gpu_ms": 224.04290771484375,
+            "wall_ms": 224.09189998870715
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 5.5708160400390625,
+            "wall_ms": 5.621800024528056
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 204.82135009765625,
+            "wall_ms": 204.86629998777062
+          },
+          "L0_total": {
+            "gpu_ms": 210.62074279785156,
+            "wall_ms": 210.6635000091046
+          }
+        }
+      ],
+      "peak_process_allocated_bytes": 187827712,
+      "parameters_2_debug_patients": 7084108,
+      "descriptor_values_per_graph": 20,
+      "inference_only": true
+    },
+    {
+      "version": "v2.2",
+      "physical_graph_batch": 2,
+      "precision": "BF16",
+      "transfer": {
+        "gpu_ms": 12.621536254882812,
+        "wall_ms": 12.772099988069385
+      },
+      "measurements": [
+        {
+          "cnn": {
+            "gpu_ms": 0.0,
+            "wall_ms": 0.0
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 185.6472625732422,
+            "wall_ms": 185.7004999765195
+          },
+          "L0_total": {
+            "gpu_ms": 202.68202209472656,
+            "wall_ms": 202.7240000315942
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 0.0,
+            "wall_ms": 0.0
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 179.72531127929688,
+            "wall_ms": 179.75460004527122
+          },
+          "L0_total": {
+            "gpu_ms": 182.43295288085938,
+            "wall_ms": 182.46560002444312
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 0.0,
+            "wall_ms": 0.0
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 221.0235137939453,
+            "wall_ms": 221.06130002066493
+          },
+          "L0_total": {
+            "gpu_ms": 183.0663604736328,
+            "wall_ms": 183.1143000163138
+          }
+        }
+      ],
+      "peak_process_allocated_bytes": 175837184,
+      "parameters_2_debug_patients": 6938728,
+      "descriptor_values_per_graph": 20,
+      "inference_only": true
+    },
+    {
+      "version": "v2.1",
+      "physical_graph_batch": 4,
+      "precision": "BF16",
+      "transfer": {
+        "gpu_ms": 26.851871490478516,
+        "wall_ms": 26.963400014210492
+      },
+      "measurements": [
+        {
+          "cnn": {
+            "gpu_ms": 5.129759788513184,
+            "wall_ms": 5.181499989703298
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 288.1034851074219,
+            "wall_ms": 288.1438000476919
+          },
+          "L0_total": {
+            "gpu_ms": 281.29473876953125,
+            "wall_ms": 281.33229998638853
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 4.272384166717529,
+            "wall_ms": 4.309900046791881
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 288.050048828125,
+            "wall_ms": 288.0795000237413
+          },
+          "L0_total": {
+            "gpu_ms": 355.71978759765625,
+            "wall_ms": 355.75429996242747
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 12.615839958190918,
+            "wall_ms": 12.677100021392107
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 311.3868713378906,
+            "wall_ms": 311.45560002187267
+          },
+          "L0_total": {
+            "gpu_ms": 292.5390625,
+            "wall_ms": 292.57550003239885
+          }
+        }
+      ],
+      "peak_process_allocated_bytes": 292150272,
+      "parameters_2_debug_patients": 7084108,
+      "descriptor_values_per_graph": 20,
+      "inference_only": true
+    },
+    {
+      "version": "v2.2",
+      "physical_graph_batch": 4,
+      "precision": "BF16",
+      "transfer": {
+        "gpu_ms": 24.710912704467773,
+        "wall_ms": 24.797299993224442
+      },
+      "measurements": [
+        {
+          "cnn": {
+            "gpu_ms": 0.0,
+            "wall_ms": 0.0
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 279.9344177246094,
+            "wall_ms": 279.98910000314936
+          },
+          "L0_total": {
+            "gpu_ms": 286.53826904296875,
+            "wall_ms": 286.5732000209391
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 0.0,
+            "wall_ms": 0.0
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 375.9076232910156,
+            "wall_ms": 375.94349996652454
+          },
+          "L0_total": {
+            "gpu_ms": 301.0145568847656,
+            "wall_ms": 301.04689998552203
+          }
+        },
+        {
+          "cnn": {
+            "gpu_ms": 0.0,
+            "wall_ms": 0.0
+          },
+          "node_projection_gnn_pooling": {
+            "gpu_ms": 301.9469909667969,
+            "wall_ms": 301.9872999866493
+          },
+          "L0_total": {
+            "gpu_ms": 275.0014343261719,
+            "wall_ms": 275.03079996677116
+          }
+        }
+      ],
+      "peak_process_allocated_bytes": 271058432,
+      "parameters_2_debug_patients": 6938728,
+      "descriptor_values_per_graph": 20,
+      "inference_only": true
+    }
+  ],
+  "cuda_gradient": {
+    "scope": "synthetic CUDA DEBUG",
+    "parameters_3_debug_patients": 6940776,
+    "loss": 3.773446559906006,
+    "all_parameter_gradients_finite": true,
+    "core_updates": [
+      "local.project.",
+      "local.blocks.",
+      "data_projection.",
+      "patient_labels",
+      "local_decoder.",
+      "label_decoder.",
+      "task.to_label.0.",
+      "task.to_label.1.",
+      "task.to_data.0.",
+      "task.to_data.1.",
+      "alignment.layers.0.",
+      "alignment.layers.1."
+    ],
+    "physical_graph_batch": 4,
+    "optimizer_steps": 1,
+    "peak_bytes": 183980544,
+    "seconds": 1.1477958000032231
+  },
+  "full_training": false,
+  "full_evaluation": false,
+  "source_identity": {
+    "config/prompt_graph_v22.json": "588f051cc2587e75803b7567e38f2f8eb522de67598e35e936d60a6f58a10fe9",
+    "config/train.json": "b18d9259ced857e52092e5f11e0d4b82f573cc83c0948f309ac86f9abcb3a2a6",
+    "custom_trainers/__init__.py": "ac2ed99e8a8a32e2d77e2f16933a8494b18f6e3996ec2304fa1131e14d5a5fb3",
+    "custom_trainers/install_onlinecp_custom_trainers.py": "01ef0bb404047eb36d1bea54adbea3d3bb3511493c9a2b768278caedf3a38dcc",
+    "custom_trainers/nnUNetTrainer_OnlineCPCurriculum.py": "37936501a55fd2443e414db5083c564e556d7dee96bbf9f1e7d6d38dc98b3f77",
+    "custom_trainers/nnUNetTrainer_OnlineCPFeedback.py": "2ed7f15acf0aad9f9bcbc161b31b3b69b234792bb34a471c15165e958a173c8c",
+    "custom_trainers/nnUNetTrainer_OnlinePairedCP.py": "ec4b3934a0e05a2810dbab69a8a0f60e06754d4853aea465a3ee735b56008ed1",
+    "custom_trainers/nnUNetTrainer_OnlinePairedCPArgmaxV3.py": "055c6c154820c8994bb9d59273ca8515c3db4ff6a4ed4064923fefe2b3f46320",
+    "custom_trainers/onlinecp_curriculum_contract.py": "4bcb725c896acde1d828db978d35b7d3e8219122eedb6aa9b2fc3dcf1a040493",
+    "custom_trainers/onlinecp_curriculum_policy.py": "bde202bc0060b47350724a219dfa573d946e58410d46453698bd07bb87ab6b1b",
+    "custom_trainers/onlinecp_feedback_metrics.py": "fe0d94b5d98fe376c41b8bf6eb60d8c922b9b1d6f629fe88d5fa1f1ad108982c",
+    "custom_trainers/onlinecp_feedback_policy.py": "566357115d84fcdfc46b03706bdaa86a00c9ff9d3510cd8490268e8bc219a37c",
+    "custom_trainers/onlinecp_raw_bank.py": "0cf1249958de0bebece45501fc689844fb3e8a1ec1bd47f44d62a0cc790a7a6b",
+    "custom_trainers/onlinecp_raw_resampling.py": "49d1c06eed2d5f9ec535ab587e2789f7af7ef8c9d096c0706cc63a9292c318a2",
+    "hiercp/__init__.py": "75f4bc4ffce4cc85d1c11c4ec22df70c5af1a831d7bdcc246a0838cad0c7e53b",
+    "hiercp/cache.py": "eaa359dff09c0d8763307490bf2a7e7bb2fc0916c037f1518a8632846b35e383",
+    "hiercp/cache_migration.py": "5d71aa96b892d6e1f95b5cedd1cf047fe7a3ac285d67d98605e488ebaaa162ad",
+    "hiercp/causality_overlap.py": "38cf13f1267914564ce9a1b58d66fe05ee47d2ddc5d82fd5e2a58b815d89f443",
+    "hiercp/common.py": "1e6ba96483fc8bab28de306337c838c0115d267f275ba73cd3146897977b8c47",
+    "hiercp/contracts.py": "9319d96a75f174666437cd9ea35cb3ad4fd413d3c3c7f37552cf2b18ee82e8fc",
+    "hiercp/curriculum.py": "87407daccde2a222c55610e9750ef499247394f62070f4a783e6a9cb925aa338",
+    "hiercp/data.py": "e6db08c369dcab126286c07c1a0fa33c09f4ba3617eb301638768da97188d250",
+    "hiercp/donor_preflight.py": "34dd736aa876060fe31aec753f7dd0b338af3bb45e8a369e7b214699f4910829",
+    "hiercp/feedback.py": "e7dfd21b4bd466838929e171aa0525da306763cb4308851a28e4c984e1cf4ea9",
+    "hiercp/feedback_calibration.py": "cff1f85dc9d77c392e1b9569a10629add8d3d80f3fec7faf2be05a5ad2f288a2",
+    "hiercp/feedback_patient.py": "506f14def7dd8035bf9101bdc2463794ebb3093ef53e2dd380243d7a283e0984",
+    "hiercp/feedback_resources.py": "a234dc2e42fa9318a8438e61ad6fdbe692b1fd81bcb670b7ac667165ee681c03",
+    "hiercp/feedback_storage.py": "4b9fdbed66e13428bbeb68da541121d860fe44f6c0a26bac9ea2abd6a7372ff7",
+    "hiercp/geometry.py": "37f3cbb71ddbed306bfd1bae7978f1bddb22a0f8dd881de81f05cfdc4ff3d7d0",
+    "hiercp/hierarchy.py": "2b768135233502b7812dbd3285ef61250dab6fdbf548aa7b522377dbef2a909b",
+    "hiercp/local.py": "fe5cc53969555973cb48005917a0b8c9667d3b90667a612ca3ea2d473a153382",
+    "hiercp/loss.py": "0172e5d27fec6ab8ce609011e714dbe97614304f63672c7c753c2ccc613d7b81",
+    "hiercp/model.py": "004544962db2ed2d39efcb7a2ef7ee2972ad31b5769d804b5e4c88d866c47049",
+    "hiercp/nifti_geometry.py": "537ed66921948f1f21c233f98c75fa129eabd9cf9cd3971ac031162290f17422",
+    "hiercp/pipeline.py": "260f4acbef2adf61b5a55e47ae05c0bd2733fc40535d1da45bae137ef7b4dcb5",
+    "hiercp/preparation_runtime.py": "e8d9ca272864ae487d48b1d1b49f19f0e5125ab40b75c4b7074cfc2fd6f3ba8a",
+    "hiercp/prototype.py": "93a93f6a8eb23eb7d533c20566316541c84b6e06b51a0ba6d1f561fbdc436984",
+    "hiercp/region.py": "ac5ef3696a069405ff7d7dda8c83a74c20e2055ee3ce04d277eec9abcdb0617d",
+    "hiercp/sample.py": "1c026193b33def4b6a271ed70c3012044e9d3e72cb4913a359d3893eda09e516",
+    "hiercp/schema.py": "9b5fd72ff7619da3fe5fdf16a1cf8796bcdb7e78a3fef1d32d691525fac43331",
+    "hiercp/spatial.py": "ba2117f20ae3de56b07d88bcb9f36ca44afd6d1b08d0ee88809b4d7a304c976e",
+    "hiercp/split.py": "ff1921a413eb989a1845eb87dc3c3907d0a8462c2564776e282f363a753ffde5",
+    "hiercp/tensor.py": "a2b42e66317094d3811229ff95953ba8d692db580fba3b1ace3b46f291731d63",
+    "hiercp/training_resources.py": "19a4a8090f0f8f7e9cfd55aa6d687fde7b1f863cb6f5516fff57890f074a0ea2",
+    "hiercp_v22/__init__.py": "f7137d4bcb58b7bb26ff802045e0614fffe640ef0e127b5aa652e28a5373a810",
+    "hiercp_v22/bank.py": "8a1d7160a8093e63bd5c0d8f9b9435b17021b17e61816abb639fb77e96fb9641",
+    "hiercp_v22/contracts.py": "8e3956fa5cdb450098098133b40be866575c89a8aa17f27b683f6dae9690c312",
+    "hiercp_v22/data.py": "016472a5e61ce52710645cdb9edd30cf5032ac910a92bc580d79ea78ed39b27b",
+    "hiercp_v22/donors.py": "b3ba23a31904b1617b30abe1de1311cd593b37e1ccbc637ef929300ea03f51fa",
+    "hiercp_v22/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+    "hiercp_v22/local.py": "6888039af1c68b659aa76d14981ebf3a9af62a5006411feead43b8f1d38f1814",
+    "hiercp_v22/migration.py": "e8a4b79bda6d4ecdd0256c7ae5068e6d78a2cc7d71c7b7a5c47144084f136bf1",
+    "hiercp_v22/model.py": "5d4d9b0f624f0090490880ba1c1a06c3ed1399a847b02ccf9b48289237687fa7",
+    "hiercp_v22/native_adapter.py": "913220629d5fd2bebaa66b3451aa5c24c683f486e2fd1481a617437b45905f2c",
+    "hiercp_v22/nnunet.py": "6dcd9749fa39b559241232cb19cb239dfdf4f37c67576d61e322e372c3b7cda6",
+    "hiercp_v22/nnUNetTrainer_OnlinePromptGraphV22.py": "a778b2fb8485b725400916215851dfce6ff9865026a504da78e8cb0f8b49ccd6",
+    "hiercp_v22/parallel.py": "44dba9a2cecbabb66017f9121b3608014d961a421075429438f277a88bc29fb9",
+    "hiercp_v22/scoring.py": "a57980cc173529f1aef788e4659a995f5f2316243d3ef0d349bcef4610dfdcd3",
+    "hiercp_v22/storage.py": "5889e3ba77ae4d7aeb4a787a8b7a707db511448b2979792349794fbbc45f4a96",
+    "hiercp_v22/training.py": "6d7cc9c8baa42e9756e66e649a079397cb5a0dd37761277195107647e0de09dd",
+    "hiercp_v22/volumes.py": "ac4ed51ee58ff68efbbd69f2fb86f00bd8ff9a3264fe18f95ee97b7f18bd9c89",
+    "run_v22.py": "92dc56d1efa5eff8c62955db9874de68dbb80e2ca9cca3f0ceea07e5a30160ef",
+    "tools/online_raw_bank_preparation.py": "c4c8950d0ac7849c8a712f2993d0c75b80333d7e151941f3980c39f7918db150"
+  }
+}

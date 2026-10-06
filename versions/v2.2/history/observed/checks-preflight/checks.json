@@ -1,0 +1,18 @@
+{
+  "utc": "2026-09-23T04:47:35.523553+00:00",
+  "tests": 32,
+  "passed": true,
+  "static_files": [
+    "hiercp_v222/data.py",
+    "hiercp_v222/parallel.py",
+    "tests/test_v222_parallel_debug.py",
+    "tests/test_v222_preflight_debug.py"
+  ],
+  "frozen_v1": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "basic_source_unchanged": true,
+  "comparison_definition_unchanged": true,
+  "definition_change_blocked_by_auto_review": true,
+  "full_training": false,
+  "real_CT_debug": "work/v222_20260923_parallel_debug/result.json",
+  "real_debug_model_input_training_cluster_sources_match": true
+}

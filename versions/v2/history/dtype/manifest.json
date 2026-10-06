@@ -1,0 +1,7 @@
+{
+  "reason": "Preserve v2.1 before CUDA BF16 index_add dtype correction",
+  "files": {
+    "hiercp_v2/model.py": "9b2cac7c3a07f9650defed5e6f3b75774cba32719d673cc46f1d4368c6e728be",
+    "tests/test_prompt_graph_v2_debug.py": "aede7bda6c673b4fe499d1fa3c7d3d8ede29d231c0cea73a798df5bea5e3f3c1"
+  }
+}

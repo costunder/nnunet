@@ -1,0 +1,6 @@
+{
+  "returncode": 0,
+  "stdout": "Native v2.1 trainer import OK\n",
+  "stderr": "",
+  "scope": "API import only; not native training"
+}

@@ -1,0 +1,23 @@
+{
+  "format": "hiercp_version_results_navigation_v1",
+  "version": "v1",
+  "original_30mm": {
+    "source_revision": "a818158a81fc09b9d11d2774d53fba152bb2b453",
+    "checkpoint": "/home/aicompetition06/Medical/HierCP/work/full/model.pt",
+    "prototype": "/home/aicompetition06/Medical/HierCP/work/full/prototype.pt",
+    "saved_BEST_epoch_reported": 30,
+    "ROI_margin_mm": 30,
+    "context_outer_mm": 28,
+    "full_P128U_evaluation_result": null,
+    "evaluation_status": "geometry completed on server; scoring failed at historical lesion guard; relocation fix published; final result not received"
+  },
+  "preserved_archive": {
+    "revision": "74dcc2cf03d2d40d1f582223321d96004333f661",
+    "manifest": "manifest.json",
+    "source_zip": "pipeline_v1_source.zip",
+    "same_model_as_original_30mm_checkpoint": false
+  },
+  "10mm_baseline": "../v1.4/results.json",
+  "new_training_in_this_organization": false,
+  "new_full_evaluation_in_this_organization": false
+}

@@ -1,0 +1,10 @@
+{
+  "reason": "Preserve before lossless source deduplication and lazy lesion masks",
+  "files": {
+    "hiercp_v2/data.py": "9dabb1d045b55c9c21fda1776c9fcfe30a0767e9193f4e20cc59a09388cc3073",
+    "hiercp_v2/training.py": "c29561d35a9cdb64423084830d1065d0b25579cf49130324e5a6d41c0b427f29",
+    "hiercp_v2/bank.py": "b668d9cb9b3e0f785661f01f48625fca49865cd01d5e72e9f0238545cde8467c",
+    "tests/test_patient_task_preparation_debug.py": "577049e7a65c279bf9356c13beb291b5c4a87a915b1042c1f7a0cc7e03d75b5f",
+    "tests/test_prompt_graph_v2_io_debug.py": "549f4fc862bebe855482180e2e2fd9f774a40b0815f5b3261263d9ded542c7a4"
+  }
+}

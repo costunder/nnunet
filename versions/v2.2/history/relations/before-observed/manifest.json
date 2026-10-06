@@ -1,0 +1,33 @@
+{
+  "files": {
+    "hiercp_v221/__init__.py": "dad973af73026f004fbf32aff678b83fda7749129f15e629575cd9b4693202d1",
+    "hiercp_v221/bank.py": "1c4b53155f9c55702b6b8d33de7839b10131fe51a8edffd9d013ad43f2f4945c",
+    "hiercp_v221/contracts.py": "508913695c1a26b2342cd03161f184072c563b36b5b8aa057b2cb4e2e2fd99c6",
+    "hiercp_v221/data.py": "34651a1252233d9dac87a11dd51e16c79707b6a125536b6fd322267276c84841",
+    "hiercp_v221/donors.py": "f10e21cc4332b64eebbb7749e9937b85e675ee5ab029d4d7396e3717312b56c4",
+    "hiercp_v221/evaluation.py": "aee213296616d11ddd2aa97e258d558b2a903aeb61c9d6837f873837ce9d313f",
+    "hiercp_v221/features.py": "88ed491ac16290b50c19c461876b81a122dcb4590437079e6ab7a8ca661a8061",
+    "hiercp_v221/geometry.py": "5429c827bbb5360fedb22a3aff751733abffb6ab97cada0e704ffe6e45e97b17",
+    "hiercp_v221/local.py": "d37138ee5464950a8e9544c187502165e6732857f4f5234c0e289937be2f012d",
+    "hiercp_v221/migration.py": "e72e1f38c5e2c1bbb8aefe173e6f0caec9ba5da0b538313334b6040969bf8194",
+    "hiercp_v221/model.py": "972c856028d938b3901af722e893c3857829faeb3eaa14f3fa8a67cb4d18ed69",
+    "hiercp_v221/native_adapter.py": "35e372bf570a072804756a85a9ee73aadf1cb2e937a3c55177651363bc12ae94",
+    "hiercp_v221/nnunet.py": "eb8e43573264332c1917a117ba82a2874062533ca7d926e59cc1dabd86cda4d4",
+    "hiercp_v221/nnUNetTrainer_OnlinePromptGraphV221.py": "0ef56435b23500c07aef70e6351da4d29ee33fe934a41f8421046d37c891b59c",
+    "hiercp_v221/parallel.py": "32f216eb50bcab9c696039a24e5cf1788224f48cb20ed30fa2bcf60c0f926568",
+    "hiercp_v221/relations.py": "fc948f8d943f9a4735d59eb0bb1ff7fa30f0906118cf7867fa7e9fc92e361977",
+    "hiercp_v221/resources.py": "005084a33f80a43d24031df590f3b74781979e7229b73f52b48a9b3fb0207f90",
+    "hiercp_v221/sample.py": "91c9617e55baa1ed22f369c2e94ab164f1c14b6681aae7188bc3d9b4c960e641",
+    "hiercp_v221/schema.py": "3f05b0d1ba0335c12bb4bbb1dcbe8b6f6f59be17549ee567da7e36419d20c8db",
+    "hiercp_v221/scoring.py": "11646d03ea1dc4051ff86d0b7bd9e4194486fcc6840c933d2f443b269f70a390",
+    "hiercp_v221/spatial.py": "26679d6c1cade19466d77cdd8c5ae883452c385271064b7707b916cd865510c1",
+    "hiercp_v221/storage.py": "39229a40504dafef4cd89f13784e42361f41bc64ce7d93139ea115f0e8a0454a",
+    "hiercp_v221/training.py": "617b43960d03e273f48b242a203660fbcf45d0df398d78a9ca767017cb1f3eac",
+    "hiercp_v221/volumes.py": "7b239a897a8ff24cbcd2ea56068008fb99459810bc9801e562c54b2d458e9807",
+    "run_v221.py": "e919bc21c1840686aac73926db91eeb26025191ddfa616abf233ee979574b98c",
+    "config/prompt_graph_v221.json": "d3888ba46029e86ee6dcac9424218cb4798291b67a4067ce3503df4dfab8a469",
+    "gpt_handoff.md": "c58aeb5b003485d01a5d6db24c4169c4c7c6b75a80ce68694ec3e07111f029dd",
+    "PATCH_NOTES.md": "23262f3e6740771ff7fdee849032b639133fa7c38dd248749aeeb78f1d998504"
+  },
+  "archive_sha256": "d424a48b1dbd463f00802ced63fba853a8d8569eea36358939b3122759f2beec"
+}

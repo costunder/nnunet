@@ -1,0 +1,13 @@
+{
+  "physical_batch": 2,
+  "effective_batch": 2,
+  "gradient_accumulation": 1,
+  "seconds": 1.7275936999976693,
+  "query_graphs_per_second": 1.1576796095069681,
+  "peak_vram_bytes": 605463040,
+  "forward_seconds": 0.47977589999936754,
+  "backward_seconds": 1.206111100000271,
+  "execution_chunk_nodes": 256,
+  "finite_all_parameter_gradients": true,
+  "repeated_queries_for_batch_probe": false
+}

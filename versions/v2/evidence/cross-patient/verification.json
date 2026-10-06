@@ -1,0 +1,52 @@
+{
+  "scope": "synthetic DEBUG unit/integration/smoke only",
+  "v1_revision": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "static_files": 16,
+  "static_passed": true,
+  "test_command": [
+    "C:\\Users\\user\\miniconda3\\envs\\py\\python.exe",
+    "-m",
+    "unittest",
+    "test_prompt_graph_v2_debug",
+    "test_prompt_graph_v2_io_debug",
+    "test_patient_task_preparation_debug",
+    "test_gpt_handoff_export_debug",
+    "-v"
+  ],
+  "test_returncode": 0,
+  "seconds": 11.276284400024451,
+  "resources": {
+    "rss_bytes": 23654400,
+    "available_memory_bytes": 48027705344,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 0.359375,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  },
+  "source_identity": {
+    "hiercp_v2/__init__.py": "99209334e9e6238384776ec91ac6a62fc8a45da76cbc3d2f1a22c40976645355",
+    "hiercp_v2/bank.py": "b668d9cb9b3e0f785661f01f48625fca49865cd01d5e72e9f0238545cde8467c",
+    "hiercp_v2/contracts.py": "8bc6a16a4494c4ded424a513979f63bcfd459f35cc3a0554ff2ada59eac45e46",
+    "hiercp_v2/data.py": "9dabb1d045b55c9c21fda1776c9fcfe30a0767e9193f4e20cc59a09388cc3073",
+    "hiercp_v2/evaluation.py": "aee213296616d11ddd2aa97e258d558b2a903aeb61c9d6837f873837ce9d313f",
+    "hiercp_v2/model.py": "9b2cac7c3a07f9650defed5e6f3b75774cba32719d673cc46f1d4368c6e728be",
+    "hiercp_v2/nnunet.py": "6c46d63a1e4d23b8c1cb32182a2af2455cb9955fca48ab041ec1f33de9f81223",
+    "hiercp_v2/nnUNetTrainer_OnlinePromptGraphV2.py": "9514fdf507025479dc14f77535d8be78136ba2f0137b9e6e70a130515a997965",
+    "hiercp_v2/scoring.py": "63a3615f742a33c29d31142e7e55a1df4b302c0015265a38ed15ff97e4e347fe",
+    "hiercp_v2/training.py": "f8eb2f0d6b182d63b77ba01618838131203639001d5f08efc0c288b65b99a10f"
+  },
+  "nnunet_installed": false,
+  "real_medical_data_used": false,
+  "full_gnn_training": false,
+  "full_segmentation_training": false,
+  "full_medical_evaluation": false,
+  "native_end_to_end_execution": false,
+  "target_gpu_throughput_benchmarked": false
+}

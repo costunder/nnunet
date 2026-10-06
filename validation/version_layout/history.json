@@ -1,0 +1,15 @@
+{
+  "format": "version_history_move_verification_v1",
+  "mapping": "versions/moves.json",
+  "mapping_sha256": "00f92859637179ff1fdf653692344fb30a361a6e2fe6531b6f0f66cba46bf19f",
+  "moved_directories": 34,
+  "verified_files": 156,
+  "verified_bytes": 24350529,
+  "payload_mismatches": 0,
+  "directory_inventory_mismatches": 0,
+  "destructive_delete_used": false,
+  "empty_directory_removal_only": true,
+  "preserved_source_files_identical": true,
+  "full_training_run": false,
+  "full_evaluation_run": false
+}

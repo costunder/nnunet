@@ -1,0 +1,30 @@
+{
+  "files": {
+    "hiercp_v22/bank.py": "8a1d7160a8093e63bd5c0d8f9b9435b17021b17e61816abb639fb77e96fb9641",
+    "hiercp_v22/contracts.py": "8e3956fa5cdb450098098133b40be866575c89a8aa17f27b683f6dae9690c312",
+    "hiercp_v22/data.py": "016472a5e61ce52710645cdb9edd30cf5032ac910a92bc580d79ea78ed39b27b",
+    "hiercp_v22/donors.py": "b3ba23a31904b1617b30abe1de1311cd593b37e1ccbc637ef929300ea03f51fa",
+    "hiercp_v22/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+    "hiercp_v22/local.py": "6888039af1c68b659aa76d14981ebf3a9af62a5006411feead43b8f1d38f1814",
+    "hiercp_v22/migration.py": "e8a4b79bda6d4ecdd0256c7ae5068e6d78a2cc7d71c7b7a5c47144084f136bf1",
+    "hiercp_v22/model.py": "5d4d9b0f624f0090490880ba1c1a06c3ed1399a847b02ccf9b48289237687fa7",
+    "hiercp_v22/native_adapter.py": "913220629d5fd2bebaa66b3451aa5c24c683f486e2fd1481a617437b45905f2c",
+    "hiercp_v22/nnunet.py": "6dcd9749fa39b559241232cb19cb239dfdf4f37c67576d61e322e372c3b7cda6",
+    "hiercp_v22/nnUNetTrainer_OnlinePromptGraphV22.py": "a778b2fb8485b725400916215851dfce6ff9865026a504da78e8cb0f8b49ccd6",
+    "hiercp_v22/parallel.py": "44dba9a2cecbabb66017f9121b3608014d961a421075429438f277a88bc29fb9",
+    "hiercp_v22/scoring.py": "a57980cc173529f1aef788e4659a995f5f2316243d3ef0d349bcef4610dfdcd3",
+    "hiercp_v22/storage.py": "5889e3ba77ae4d7aeb4a787a8b7a707db511448b2979792349794fbbc45f4a96",
+    "hiercp_v22/training.py": "6d7cc9c8baa42e9756e66e649a079397cb5a0dd37761277195107647e0de09dd",
+    "hiercp_v22/volumes.py": "ac4ed51ee58ff68efbbd69f2fb86f00bd8ff9a3264fe18f95ee97b7f18bd9c89",
+    "hiercp_v22/__init__.py": "f7137d4bcb58b7bb26ff802045e0614fffe640ef0e127b5aa652e28a5373a810",
+    "tests/test_prompt_graph_v22_alignment_debug.py": "3a3f3a107e0606421bb03d1570a1fd85f49340a9f11cabe34ab5298b29481cd5",
+    "tests/test_prompt_graph_v22_debug.py": "eb5b9a7e9480167aa7aa44335d202d9f8064a4a292e6a050b37512d6b126924a",
+    "tests/test_prompt_graph_v22_donors_debug.py": "6c04afcad1efd14e2a7a709750d68db71b9914263400dbe6540e11c9571128d0",
+    "config/prompt_graph_v22.json": "588f051cc2587e75803b7567e38f2f8eb522de67598e35e936d60a6f58a10fe9",
+    "run_v22.py": "92dc56d1efa5eff8c62955db9874de68dbb80e2ca9cca3f0ceea07e5a30160ef",
+    "docs/pipeline_v22.md": "fc92d70153fbeedcdfcae2a68d4151b64a1fa67895d2cfcc5fc29fd9fee10314",
+    "gpt_handoff.md": "2fb01b00e0b7cff54f2a871cec30ccb3fe2b1777a891340f3f4abee6d2e18998",
+    "code.txt": "eda9ebc8af38b8943d27ff913708d09aed486e2e78c7249e058a4dae242c940e",
+    "PATCH_NOTES.md": "3473298ac9ebe4d1b8c063d32a68e237b23361ed6414d982146efa06e7e782aa"
+  }
+}

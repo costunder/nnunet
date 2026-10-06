@@ -1,0 +1,61 @@
+{
+  "format": "hiercp_version_navigation_verification_v1",
+  "status": "PASS",
+  "entries": 20,
+  "unit_tests": 10,
+  "alias_AST_checked": 73,
+  "original_CLI_help": [
+    {
+      "entry": "v1.4/run.py",
+      "status": "PASS",
+      "stdout_sha256": "50162f33cf3a99e17b8c68732183d344c27407e164b6ca7a3809bc34f034ad42"
+    },
+    {
+      "entry": "v1.5/run.py",
+      "status": "PASS",
+      "stdout_sha256": "2b3147c3c5e4da520bfe86a47f613c061201b4ed3e3dbc1f1e920318f4a71b49"
+    },
+    {
+      "entry": "v1.6/run.py",
+      "status": "PASS",
+      "stdout_sha256": "cbacc6e8af33ce48d2a21c3203fb4b92431bc4a2e699684e5ecb2e82864bf6b7"
+    },
+    {
+      "entry": "v1.7/C/run.py",
+      "status": "PASS",
+      "stdout_sha256": "9a41fb9279877604b21a16eae897f30e49b38cfcd79cabbe686d71eaa7da16eb"
+    },
+    {
+      "entry": "v1.7/D/run.py",
+      "status": "PASS",
+      "stdout_sha256": "9a41fb9279877604b21a16eae897f30e49b38cfcd79cabbe686d71eaa7da16eb"
+    },
+    {
+      "entry": "v1/eval.py",
+      "status": "PASS",
+      "stdout_sha256": "6be6feafb68a9f575f26b4f2879143f6f20110286991394bccdf1ff2369080e8"
+    },
+    {
+      "entry": "v2.2/cnn/run.py",
+      "status": "PASS",
+      "stdout_sha256": "36da8b502638b20c48ba6e35335bce96b297f15d54340ca23428ee950f236558"
+    },
+    {
+      "entry": "v2.2/curriculum/run.py",
+      "status": "PASS",
+      "stdout_sha256": "36da8b502638b20c48ba6e35335bce96b297f15d54340ca23428ee950f236558"
+    }
+  ],
+  "original_v1_archive_members_verified": 202,
+  "protected_runtime_config_staged_changes": [],
+  "indexed_files": 1170,
+  "indexed_artifact_folders": 871,
+  "archive_verification": "archives.json",
+  "v2_archive_verification": "v2.json",
+  "original_checkpoints_or_medical_data_moved": false,
+  "dummy_deletion_performed": false,
+  "new_GPU_neural_run": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "test_output": "test_archive_move_proof (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_conflicting_arm_rejected (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_curriculum_option_is_explicit (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_delegation_uses_original_filename_and_restores_process (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_describe_does_not_import_runtime (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_fixed_arm_preserves_original_arguments (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_registry_targets (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_retired_version_does_not_start_a_fallback (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_short_aliases_reach_repo (tests.test_version_layout.VersionLayoutTests) ... ok\ntest_version_markdown_local_links (tests.test_version_layout.VersionLayoutTests) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.212s\n\nOK\n"
+}

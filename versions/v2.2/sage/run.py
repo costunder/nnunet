@@ -1,0 +1,8 @@
+"""축약 없는 SAGE: unchanged original arguments/runtime."""
+from pathlib import Path
+import runpy
+import sys
+
+ROOT = Path(__file__).resolve().parents[3]
+if __name__ == '__main__':
+    runpy.run_path(str(ROOT / 'versions/run.py'), run_name='version_entry')['launch']('v2.2/sage', sys.argv[1:])

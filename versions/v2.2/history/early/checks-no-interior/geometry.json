@@ -1,0 +1,110 @@
+{
+  "graphs": [
+    {
+      "case": "liver_1",
+      "evidence": "T",
+      "component": 1,
+      "diameter_mm": 14.968210888345551,
+      "center": [
+        202,
+        308,
+        69
+      ],
+      "nodes": 5587,
+      "edges": 220520,
+      "canonical_nodes": 5657,
+      "canonical_edges": 223753,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "retained_topology_and_CT_equal": true,
+      "no_tumor_interior_nodes": true
+    },
+    {
+      "case": "liver_1",
+      "evidence": "U",
+      "component": 1,
+      "diameter_mm": 14.968210888345551,
+      "center": [
+        385,
+        219,
+        52
+      ],
+      "nodes": 6172,
+      "edges": 226781,
+      "canonical_nodes": 6987,
+      "canonical_edges": 257645,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "retained_topology_and_CT_equal": true,
+      "no_tumor_interior_nodes": true
+    },
+    {
+      "case": "liver_5",
+      "evidence": "T",
+      "component": 1,
+      "diameter_mm": 9.182635467750139,
+      "center": [
+        353,
+        244,
+        456
+      ],
+      "nodes": 7165,
+      "edges": 508427,
+      "canonical_nodes": 15629,
+      "canonical_edges": 1239567,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "retained_topology_and_CT_equal": true,
+      "no_tumor_interior_nodes": true
+    },
+    {
+      "case": "liver_5",
+      "evidence": "U",
+      "component": 1,
+      "diameter_mm": 9.182635467750139,
+      "center": [
+        377,
+        284,
+        379
+      ],
+      "nodes": 7310,
+      "edges": 503705,
+      "canonical_nodes": 16144,
+      "canonical_edges": 1263638,
+      "ct_shape": [
+        1,
+        48,
+        48,
+        48
+      ],
+      "retained_topology_and_CT_equal": true,
+      "no_tumor_interior_nodes": true
+    }
+  ],
+  "raw": [
+    {
+      "case": "liver_1",
+      "image_sha": "86931dc0e9559d28b626482bcbb74783f0452d08137e011644875db6e3bfab42",
+      "label_sha": "6bf80c133bddaef6a3af616f82185c3da20b2b655d382c4feaff61d2c0a5cfe7"
+    },
+    {
+      "case": "liver_5",
+      "image_sha": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+      "label_sha": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06"
+    }
+  ],
+  "full_graph_rules": true,
+  "debug_subset": true
+}

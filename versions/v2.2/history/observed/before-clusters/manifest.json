@@ -1,0 +1,25 @@
+{
+  "files": {
+    "config/prompt_graph_v222.json": "61e006152fcc5a66a2695279238d605aef511b691d0d6adf5920432472274b2a",
+    "docs/pipeline_v222.md": "a6215d1302ab3c9c8103785980ed2c2e64f1663217188e20b22cf64b8bb7f004",
+    "gpt_handoff.md": "2f82477ec13f6b20122c48a662238348f1228b8804d33afea998f4ce90cd773d",
+    "hiercp_v222/__init__.py": "2dab841e1858bd90ed40072d463f0e0743b1ffe89607005acf176276c725cb3f",
+    "hiercp_v222/bank.py": "39d0bb67c75ff814a0efbd2100db76be7e02315583119b628bce5aad88b231e1",
+    "hiercp_v222/contracts.py": "b6df1bc1108b8d36009af1f81190fd207bf4936a19dc948890935d4796215c36",
+    "hiercp_v222/data.py": "20b86074e5caf20a7f65b2cd549d2bc01349642044d8312117287d48db30bacf",
+    "hiercp_v222/evaluation.py": "587a26e52b199e227237c1f9af9d9aee331043d65a628786eeadb8f1cd6e2830",
+    "hiercp_v222/inputs.py": "4079242022211165580fd0bdb91d8daf6c53d9acfc40097cc33222cfe6e25f8a",
+    "hiercp_v222/migration.py": "54c7383901e668428e587ff7048ab9763633aa9ee629f54a319a90c6f4c930ff",
+    "hiercp_v222/model.py": "d860b34da40a1b4c51af204b54098b939f7698b487582a3c138d6c737a7ee78a",
+    "hiercp_v222/native_adapter.py": "aba1f35b57f9700f01d784cc2eb6918d6daa7c8ebf928fac0ce37f38305b1596",
+    "hiercp_v222/nnunet.py": "293363fb6bc562dabdccd143fba40f05dcf8cf7af68c552ce7f17d7cbdd22ed2",
+    "hiercp_v222/nnUNetTrainer_OnlinePromptGraphV222.py": "0efcb55597b00ed24018997e905a0f60f043d8bd06a83535dabbac81304b8769",
+    "hiercp_v222/scoring.py": "0e9cd1ede808c5450ab19839c7dc2219f6a075bb2e54ff461e651940a84e9c74",
+    "hiercp_v222/training.py": "ccdc5fd8d94c2e9895e1355f18e3afaa46b3fdf3f94dd23720fdd417a2237f40",
+    "PATCH_NOTES.md": "4b08b0f2c491bd9ae05301b98e099714e7183ee9ec36257dddf2f828eb61f48a",
+    "run_v222.py": "2eb61940cf210f555acc1c9687e96e69848245bd6d5bf73c6ca58d97cd60c643",
+    "tests/test_v222_leakage_debug.py": "9bcd2d981fb61d2df9cc0f38e4a978371692b8b0b529ad9711bb57b001138aed",
+    "tools/verify_v222_real_debug.py": "51c27885620b8e2a9b84c96cd6b7ea9a29d5901010929e88fac7d09bb3c86468",
+    "versions/README.md": "3c38d39673111cbe9ce6f3b3e420e91c874b1358c010f7a06dcae07eb8fd3f7f"
+  }
+}

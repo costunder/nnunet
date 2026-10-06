@@ -1,0 +1,379 @@
+{
+  "format": "hiercp_version_navigation_v1",
+  "version_rule": "x=direction; y=meaningful improvement; z=bug patch grouped inside the same version",
+  "historical_names": {
+    "v2.21": "v2.2/history/relations",
+    "v2.22": "v2.2/history/observed"
+  },
+  "entries": [
+    {
+      "id": "v1",
+      "folder": "v1",
+      "title": "보존 v1 실행",
+      "status": "legacy runtime; original30 checkpoint is separate",
+      "runner": "run_v1.py",
+      "modules": [
+        "hiercp"
+      ],
+      "configs": [
+        "config/train.json"
+      ],
+      "notes": [
+        "docs/design.md"
+      ]
+    },
+    {
+      "id": "v1/eval",
+      "folder": "v1",
+      "title": "원본30mm BEST 전체128 평가",
+      "status": "evaluation only; server result pending",
+      "runner": "tools/evaluate_native_v1_full128.py",
+      "modules": [
+        "hiercp_v1x/native30_checkpoint.py",
+        "hiercp_v1x/native30_geometry.py",
+        "hiercp_v1x/native30_upper.py"
+      ],
+      "configs": [
+        "config/train.json"
+      ],
+      "notes": [
+        "docs/native_v1_30mm_full128_evaluation_20261006.md"
+      ]
+    },
+    {
+      "id": "v1.4",
+      "folder": "v1.4",
+      "title": "10mm 범위 축소 기준선",
+      "status": "40 epochs reported complete; own8 versus full128 separated",
+      "runner": "tools/run_v14_scope_training.py",
+      "modules": [
+        "hiercp_v1x/bounded_scope.py",
+        "hiercp_v1x/scope_training_entry.py"
+      ],
+      "configs": [
+        "config/v14_m10_component_search.json"
+      ],
+      "notes": [
+        "docs/v14_matched_learning_20261004.md"
+      ]
+    },
+    {
+      "id": "v1.5",
+      "folder": "v1.5",
+      "title": "A: L0 교체",
+      "status": "40 epochs reported complete",
+      "runner": "tools/run_v1_half_a.py",
+      "modules": [
+        "hiercp_v1x/half_a_training.py",
+        "hiercp_v1x/half_a_entry.py",
+        "hiercp_v1x/half_a_model.py"
+      ],
+      "configs": [
+        "config/v14_m10_component_search.json"
+      ],
+      "notes": [
+        "docs/v15_half_a_learning_20261004.md"
+      ]
+    },
+    {
+      "id": "v1.6",
+      "folder": "v1.6",
+      "title": "B: 상위 계층·scorer 교체",
+      "status": "40 epochs reported complete",
+      "runner": "tools/run_v1_half_b.py",
+      "modules": [
+        "hiercp_v1x/half_b_training.py",
+        "hiercp_v1x/half_b_entry.py",
+        "hiercp_v1x/half_b_model.py"
+      ],
+      "configs": [
+        "config/v14_m10_component_search.json"
+      ],
+      "notes": [
+        "docs/v16_half_b_learning_20261004.md",
+        "docs/v16_half_b_server_result_20261005.md"
+      ]
+    },
+    {
+      "id": "v1.7/C",
+      "folder": "v1.7/C",
+      "title": "C: native 입력 + v1 학습",
+      "status": "40 epochs reported complete; full128 quality remains weak",
+      "runner": "tools/run_v17_crossed_training.py",
+      "fixed_options": {
+        "--arm": "C"
+      },
+      "modules": [
+        "hiercp_v1x/transition_c_training.py",
+        "hiercp_v1x/transition_model.py"
+      ],
+      "configs": [
+        "config/v17_crossed_training.json",
+        "config/v17_complete_transition_design.json"
+      ],
+      "notes": [
+        "docs/v17_crossed_training_20261005.md",
+        "docs/v17_historical_full128_server_result_20261005.md"
+      ]
+    },
+    {
+      "id": "v1.7/D",
+      "folder": "v1.7/D",
+      "title": "D: v1 입력 + native P/U 학습",
+      "status": "last reported training in progress; final result pending",
+      "runner": "tools/run_v17_crossed_training.py",
+      "fixed_options": {
+        "--arm": "D"
+      },
+      "modules": [
+        "hiercp_v1x/transition_v1_local.py",
+        "hiercp_v1x/transition_v1_data.py",
+        "l0_regions/training.py"
+      ],
+      "configs": [
+        "config/v17_crossed_training.json",
+        "config/v17_complete_transition_design.json"
+      ],
+      "notes": [
+        "docs/v17_crossed_training_20261005.md",
+        "docs/v17_d_learning_visibility_20261006.md"
+      ]
+    },
+    {
+      "id": "v1.7/eval",
+      "folder": "v1.7",
+      "title": "V1/A/B/C 공통 전체128 평가",
+      "status": "existing own-task BEST evaluation",
+      "runner": "tools/evaluate_v17_historical_full128.py",
+      "modules": [
+        "hiercp_v1x/historical_evaluation.py",
+        "hiercp_v1x/transition_evaluation.py"
+      ],
+      "configs": [
+        "config/v17_crossed_training.json"
+      ],
+      "notes": [
+        "docs/v17_historical_full128_server_result_20261005.md"
+      ]
+    },
+    {
+      "id": "v2",
+      "folder": "v2",
+      "title": "폐기된 view-only 방향",
+      "status": "retired; archive only",
+      "runner": null,
+      "modules": [],
+      "configs": [],
+      "notes": [
+        "docs/pipeline_v2.md"
+      ]
+    },
+    {
+      "id": "v2.1",
+      "folder": "v2.1",
+      "title": "환자 간 prompt 정렬",
+      "status": "historical implementation",
+      "runner": "run_v2.py",
+      "modules": [
+        "hiercp_v2"
+      ],
+      "configs": [
+        "config/prompt_graph_v2.json"
+      ],
+      "notes": [
+        "docs/pipeline_v2.md",
+        "docs/shared_donor_leakage_v21.md"
+      ]
+    },
+    {
+      "id": "v2.2/early",
+      "folder": "v2.2/early",
+      "title": "초기 관측·관계 그래프",
+      "status": "historical implementation",
+      "runner": "run_v22.py",
+      "modules": [
+        "hiercp_v22",
+        "hiercp_v221",
+        "hiercp_v222"
+      ],
+      "configs": [
+        "config/prompt_graph_v22.json",
+        "config/prompt_graph_v221.json",
+        "config/prompt_graph_v222.json"
+      ],
+      "notes": [
+        "docs/pipeline_v22.md",
+        "docs/pipeline_v222.md"
+      ]
+    },
+    {
+      "id": "v2.2/paired",
+      "folder": "v2.2/paired",
+      "title": "v1 L0 paired 그래프",
+      "status": "historical implementation",
+      "runner": "run_v222_v1_l0.py",
+      "modules": [
+        "hiercp_v222/v1_local.py",
+        "hiercp_v222/v1_training.py"
+      ],
+      "configs": [
+        "config/prompt_graph_v222_v1_l0.json"
+      ],
+      "notes": [
+        "docs/v222_v1_l0_20260924.md",
+        "docs/v22_observed_ranking_20260927.md"
+      ]
+    },
+    {
+      "id": "v2.2/cnn",
+      "folder": "v2.2/cnn",
+      "title": "국소3D CNN L0",
+      "status": "server learning weak; quality unresolved",
+      "runner": "tools/run_local_cnn_experiment.py",
+      "modules": [
+        "l0_local_cnn",
+        "l0_regions",
+        "l0_exploration/model.py",
+        "hiercp_v222/model.py"
+      ],
+      "configs": [
+        "config/v22_local_cnn.json"
+      ],
+      "notes": [
+        "docs/v22_native_local_cnn_20261001.md",
+        "docs/local_cnn_learning_diagnosis_20261001.md"
+      ]
+    },
+    {
+      "id": "v2.2/curriculum",
+      "folder": "v2.2/curriculum",
+      "title": "CNN10mm 누적 U16→128",
+      "status": "implementation and CUDA smoke complete; long-training result pending",
+      "runner": "tools/run_local_cnn_experiment.py",
+      "fixed_options": {
+        "--curriculum-config": "config/v22_cumulative_u16.json"
+      },
+      "modules": [
+        "l0_local_cnn",
+        "l0_regions/candidate_curriculum.py",
+        "l0_regions/curriculum_training.py"
+      ],
+      "configs": [
+        "config/v22_local_cnn.json",
+        "config/v22_cumulative_u16.json"
+      ],
+      "notes": [
+        "docs/v22_m10_cumulative_u16_20261006.md"
+      ]
+    },
+    {
+      "id": "v2.2/regions",
+      "folder": "v2.2/regions",
+      "title": "고정 영역 축약 + SAGE",
+      "status": "partition quality unresolved; historical server run",
+      "runner": "tools/run_fixed_regions.py",
+      "modules": [
+        "l0_regions",
+        "l0_ezsp",
+        "l0_sage"
+      ],
+      "configs": [
+        "config/l0_ezsp_unresolved.json"
+      ],
+      "notes": [
+        "docs/l0_fixed_regions_20260929.md",
+        "docs/region_single_scale_20260929.md"
+      ]
+    },
+    {
+      "id": "v2.2/sage",
+      "folder": "v2.2/sage",
+      "title": "축약 없는 SAGE",
+      "status": "historical graph-only transition",
+      "runner": "tools/run_uncoarsened_sage.py",
+      "modules": [
+        "l0_sage",
+        "l0_regions/fine_graph.py"
+      ],
+      "configs": [
+        "config/v22_observed_ranking.json"
+      ],
+      "notes": [
+        "docs/v22_uncoarsened_sage_20260930.md"
+      ]
+    },
+    {
+      "id": "v2.2/sparse",
+      "folder": "v2.2/sparse",
+      "title": "작은 문맥 그래프",
+      "status": "DEBUG only; CP execution verified, quality unresolved",
+      "runner": "tools/compare_latest_sparse_cp_learning_debug.py",
+      "modules": [
+        "l0_sparse_feature"
+      ],
+      "configs": [
+        "config/v22_local_cnn.json"
+      ],
+      "notes": [
+        "docs/footprint_sparse_L0_DEBUG_20261002.md",
+        "docs/sparse_cp_recommender_DEBUG_20261002.md"
+      ],
+      "local_only_sources": true
+    },
+    {
+      "id": "v2.2/explore",
+      "folder": "v2.2/explore",
+      "title": "좌표 탐색 그래프",
+      "status": "DEBUG only; context quality unresolved",
+      "runner": "tools/run_exploration_smoke.py",
+      "modules": [
+        "l0_exploration"
+      ],
+      "configs": [
+        "config/l0_exploration_research.json",
+        "config/l0_exploration_spatial_debug.json"
+      ],
+      "notes": [
+        "docs/deformable_exploration_l0_20260930.md",
+        "docs/exploration_spatial_correction_20260930.md"
+      ],
+      "local_only_sources": true
+    },
+    {
+      "id": "v2.2/control",
+      "folder": "v2.2/control",
+      "title": "별도 CNN/GraphUNet/SSN 대조",
+      "status": "DEBUG/research proposals; no production equivalence",
+      "runner": null,
+      "modules": [
+        "l0_cnn_control",
+        "hiercp_v22_cnn"
+      ],
+      "configs": [
+        "config/l0_graph_unet_debug.json",
+        "config/l0_comparison_debug.json"
+      ],
+      "notes": [
+        "docs/paired_cnn_control_20260930.md",
+        "docs/ssn3d_visual_diagnostic_20260930.md"
+      ],
+      "local_only_sources": true
+    },
+    {
+      "id": "basic",
+      "folder": "common",
+      "title": "Basic CP 원본 경로",
+      "status": "separate augmentation baseline",
+      "runner": "run_basic_cp_online.py",
+      "modules": [
+        "basic_cp_online"
+      ],
+      "configs": [
+        "config/online_cp_feedback.json"
+      ],
+      "notes": [
+        "docs/original_basic_cp_online.md"
+      ]
+    }
+  ]
+}

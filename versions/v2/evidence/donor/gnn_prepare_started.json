@@ -1,0 +1,15 @@
+{
+  "command": [
+    "D:\\AI project\\nnunet\\.venv\\Scripts\\python.exe",
+    "-u",
+    "run_v2.py",
+    "prepare",
+    "--medical-root",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical",
+    "--split",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\split.json",
+    "--output",
+    "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\attempt3_shared_donor\\gnn_cache"
+  ],
+  "utc": "2026-09-19T13:21:21.266198+00:00"
+}

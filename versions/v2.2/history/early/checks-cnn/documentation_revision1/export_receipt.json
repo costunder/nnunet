@@ -1,0 +1,9 @@
+{
+  "path": "D:\\AI project\\nnunet\\code.txt",
+  "file_count": 273,
+  "bytes": 4637473,
+  "sha256": "7d1642b71904e16d52fdba52b6737cd350ebcf4f5128d7048d3c02cf02ec21bb",
+  "base_commit": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "reason": "Clarify parameter count belongs to two-patient DEBUG fixture; no model changes.",
+  "documentation_archive_sha256": "c830c71173e96216798e90f9d3b6932306bd4fbcdfac63dfc223c020669e253c"
+}

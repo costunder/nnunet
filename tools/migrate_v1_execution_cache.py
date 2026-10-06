@@ -21,7 +21,7 @@ def migrate(original,destination):
     if destination.parent!=original.parent:raise ValueError('Manifest must retain the original immutable cache root')
     meta=read_json(original);current=provenance();old=meta['source_identity']
     if not meta['complete'] or meta['debug']:raise ValueError('Complete real cohort required')
-    archive=ROOT/'versions/v2.22/v1_full_training_empty_context_20260924/source.zip'
+    archive=ROOT/'versions/v2.2/history/observed/v1-empty-context/source.zip'
     local='hiercp_v222/v1_local.py'
     with zipfile.ZipFile(archive) as z:
         data=z.read(local)

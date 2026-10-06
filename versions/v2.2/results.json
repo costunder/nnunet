@@ -1,0 +1,17 @@
+{
+  "format": "hiercp_version_results_navigation_v1",
+  "version": "v2.2",
+  "current_experiment": "curriculum",
+  "methods": {
+    "cnn": {"status": "server ranking weak; final quality unresolved", "record": "../../docs/local_cnn_learning_diagnosis_20261001.md"},
+    "curriculum": {"status": "implementation and actual CT/CUDA DEBUG verified; long training result not received", "record": "../../validation/v22_cumulative_u16_DEBUG_20261006/verification.json", "full_training_claim": false, "quality_claim": false},
+    "regions": {"status": "partition and recommendation quality unresolved", "record": "../../docs/region_partition_inspection_20260929.md"},
+    "sage": {"status": "update timing gain is not a full-epoch or ranking quality result", "record": "../../docs/l0_gat_sage_comparison_20260929.md"},
+    "sparse": {"status": "DEBUG CP execution works; held-out ranking not restored", "record": "../../docs/sparse_cp_recommender_DEBUG_20261002.md"},
+    "explore": {"status": "DEBUG coordinates/edges do not validate context exploration", "record": "../../docs/exploration_spatial_correction_20260930.md"}
+  },
+  "GT": {"P": "observed eligible tumor anchor", "U": "unobserved comparison center", "donor_specific_CP_suitability_labels": false},
+  "raw_server_checkpoints_independently_verified_in_this_organization": false,
+  "new_training_in_this_organization": false,
+  "new_full_evaluation_in_this_organization": false
+}

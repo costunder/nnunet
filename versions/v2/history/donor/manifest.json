@@ -1,0 +1,22 @@
+{
+  "files": {
+    "hiercp_v2/bank.py": "b668d9cb9b3e0f785661f01f48625fca49865cd01d5e72e9f0238545cde8467c",
+    "hiercp_v2/contracts.py": "8bc6a16a4494c4ded424a513979f63bcfd459f35cc3a0554ff2ada59eac45e46",
+    "hiercp_v2/data.py": "ad8dcc8ca1c4446340b50eeb9033d85b1e39f39398250beefe80517895ee0513",
+    "hiercp_v2/evaluation.py": "aee213296616d11ddd2aa97e258d558b2a903aeb61c9d6837f873837ce9d313f",
+    "hiercp_v2/model.py": "878face1f7d182fd98ac3d8061b88afb54d463c638cee97828b451412c4056dd",
+    "hiercp_v2/nnunet.py": "6c46d63a1e4d23b8c1cb32182a2af2455cb9955fca48ab041ec1f33de9f81223",
+    "hiercp_v2/nnUNetTrainer_OnlinePromptGraphV2.py": "7d64d8c14f948cb00b0b1d987b9536c8633eca648817f5b4234ed58c2d3fd4c7",
+    "hiercp_v2/scoring.py": "a253cd1d522933e1ccb3b367f20138e7c20318ad673a9b19ec4a9359c0409c7d",
+    "hiercp_v2/storage.py": "b4da85c76157cfe269411a6704ab4fe8de08624022b5db728d1eaa93fad5b74e",
+    "hiercp_v2/training.py": "6c16ebf0792f78c6d848c2b6cd791942ba1b4b31f9440b8aee93b297a422107d",
+    "hiercp_v2/__init__.py": "99209334e9e6238384776ec91ac6a62fc8a45da76cbc3d2f1a22c40976645355",
+    "tests/test_prompt_graph_v2_debug.py": "de3cccbf8ab52fc3190a4f255c33c490ac4c7f6d7fef227515f0ca564067733d",
+    "tests/test_prompt_graph_v2_io_debug.py": "f8ea240ac1986fe8c7623576d2ede79f03078dd03d342c507dd46d0c9d2b3bd8",
+    "tests/test_patient_task_preparation_debug.py": "1839376d2075a11cd4d57e97037ed84f53db6bcd17df991dcfd4086006564428",
+    "config/prompt_graph_v2.json": "4e5a2c4bed79c42d114688f678f7ba189226ada3d318569979911d9e9974ddf6",
+    "gpt_handoff.md": "67d9e6f980808aae80ad97f29cce0fb7bf4fecc7ae631d586afbb30c0eb42ffe",
+    "PATCH_NOTES.md": "32820a394c749e0397b8c98e4f9c8b08d6ed57ba657158a94ecb092064399716"
+  },
+  "archive_sha256": "e955cff07806b445ad88ba337caf8181079939195631649fc675f8fd5e2fe3dd"
+}

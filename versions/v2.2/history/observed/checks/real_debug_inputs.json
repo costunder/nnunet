@@ -1,0 +1,350 @@
+{
+  "debug": true,
+  "input_contract": {
+    "format": "v222_fixed_blind_v1",
+    "fit_partition": "inner_train",
+    "fit_cases": [
+      "liver_1",
+      "liver_5",
+      "liver_6"
+    ],
+    "fit_positive_count": 17,
+    "blind_radius_mm": 17.714198714589536,
+    "blind_margin_mm": 2.0,
+    "context_width_mm": 28.0,
+    "node_spacing_mm": 2.5,
+    "edge_radius_mm": 6.0,
+    "patch_size": 48,
+    "ct_clip": [
+      -200.0,
+      250.0
+    ],
+    "rationale": "Global native voxel-extent envelope fitted on every inner-train eligible lesion; no query-specific shape."
+  },
+  "actual_patients": 3,
+  "actual_graphs": 6,
+  "input_shape": [
+    6,
+    1,
+    48,
+    48,
+    48
+  ],
+  "nodes_per_graph": 24174,
+  "edges_per_graph": 1229900,
+  "parameters": 1519063,
+  "input_audit": [
+    {
+      "case": "liver_1",
+      "positive": {
+        "component": 1,
+        "center": [
+          202,
+          308,
+          69
+        ],
+        "extent_mm": 13.988586223617967,
+        "equivalent_diameter_mm": 14.968210888345551
+      },
+      "comparison_center": [
+        215,
+        363,
+        57
+      ],
+      "native_blind_intervention_exact": true
+    },
+    {
+      "case": "liver_5",
+      "positive": {
+        "component": 1,
+        "center": [
+          353,
+          244,
+          456
+        ],
+        "extent_mm": 8.55155841194569,
+        "equivalent_diameter_mm": 9.182635467750139
+      },
+      "comparison_center": [
+        259,
+        328,
+        417
+      ],
+      "native_blind_intervention_exact": true
+    },
+    {
+      "case": "liver_6",
+      "positive": {
+        "component": 1,
+        "center": [
+          252,
+          349,
+          469
+        ],
+        "extent_mm": 9.137021516826044,
+        "equivalent_diameter_mm": 12.12655749579045
+      },
+      "comparison_center": [
+        294,
+        390,
+        457
+      ],
+      "native_blind_intervention_exact": true
+    }
+  ],
+  "raw_inventory": [
+    {
+      "case_id": "liver_1",
+      "positives": [
+        {
+          "component": 1,
+          "center": [
+            202,
+            308,
+            69
+          ],
+          "extent_mm": 13.988586223617967,
+          "equivalent_diameter_mm": 14.968210888345551
+        },
+        {
+          "component": 2,
+          "center": [
+            222,
+            373,
+            66
+          ],
+          "extent_mm": 11.605335377754603,
+          "equivalent_diameter_mm": 11.86480772713649
+        },
+        {
+          "component": 3,
+          "center": [
+            272,
+            362,
+            58
+          ],
+          "extent_mm": 9.436899413553386,
+          "equivalent_diameter_mm": 9.326071945727143
+        },
+        {
+          "component": 4,
+          "center": [
+            294,
+            350,
+            72
+          ],
+          "extent_mm": 15.714198714589534,
+          "equivalent_diameter_mm": 17.608778196534605
+        },
+        {
+          "component": 5,
+          "center": [
+            304,
+            333,
+            67
+          ],
+          "extent_mm": 12.854915681380254,
+          "equivalent_diameter_mm": 13.840835483045188
+        },
+        {
+          "component": 6,
+          "center": [
+            301,
+            363,
+            58
+          ],
+          "extent_mm": 10.869797768449022,
+          "equivalent_diameter_mm": 11.25581719058781
+        },
+        {
+          "component": 7,
+          "center": [
+            322,
+            309,
+            62
+          ],
+          "extent_mm": 13.933155298205232,
+          "equivalent_diameter_mm": 14.850500557239942
+        },
+        {
+          "component": 9,
+          "center": [
+            348,
+            175,
+            60
+          ],
+          "extent_mm": 11.401417561024196,
+          "equivalent_diameter_mm": 13.946264843075634
+        },
+        {
+          "component": 10,
+          "center": [
+            373,
+            262,
+            68
+          ],
+          "extent_mm": 8.57990818152553,
+          "equivalent_diameter_mm": 7.0397587412607345
+        },
+        {
+          "component": 11,
+          "center": [
+            384,
+            262,
+            65
+          ],
+          "extent_mm": 8.911349641024012,
+          "equivalent_diameter_mm": 8.642015054916826
+        },
+        {
+          "component": 12,
+          "center": [
+            391,
+            284,
+            71
+          ],
+          "extent_mm": 9.527189157802312,
+          "equivalent_diameter_mm": 9.032819839733
+        }
+      ],
+      "excluded": [
+        {
+          "component": 8,
+          "equivalent_diameter_mm": 20.23187353462616,
+          "reason": "outside_existing_small_lesion_task"
+        }
+      ],
+      "all_tumor_components": 12,
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_1_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_1.nii.gz",
+      "image_sha256": "86931dc0e9559d28b626482bcbb74783f0452d08137e011644875db6e3bfab42",
+      "label_sha256": "6bf80c133bddaef6a3af616f82185c3da20b2b655d382c4feaff61d2c0a5cfe7",
+      "decoded_ct_sha256": "52eeeaa265fd449a4e1640d284ca08508f4ae5e5cb27899ec8ccf64616ef229f",
+      "shape": [
+        512,
+        512,
+        123
+      ],
+      "spacing": [
+        0.6757810115814209,
+        0.6757810115814209,
+        5.0
+      ]
+    },
+    {
+      "case_id": "liver_5",
+      "positives": [
+        {
+          "component": 1,
+          "center": [
+            353,
+            244,
+            456
+          ],
+          "extent_mm": 8.55155841194569,
+          "equivalent_diameter_mm": 9.182635467750139
+        }
+      ],
+      "excluded": [],
+      "all_tumor_components": 1,
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_5_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_5.nii.gz",
+      "image_sha256": "c9779e9c46e791448ddfa10431bad821356db0dad901847e4f89008a82fcbbbc",
+      "label_sha256": "d3e4e92aad52577c6b7060621d878165f22f10e84de8b00ac34b1d6bd61a2d06",
+      "decoded_ct_sha256": "40dcac109b1eb51aa1396e2d4327a6b0657e8486d232d0e1d89e924d1adc3018",
+      "shape": [
+        512,
+        512,
+        537
+      ],
+      "spacing": [
+        0.96875,
+        0.96875,
+        0.7999879717826843
+      ]
+    },
+    {
+      "case_id": "liver_6",
+      "positives": [
+        {
+          "component": 1,
+          "center": [
+            252,
+            349,
+            469
+          ],
+          "extent_mm": 9.137021516826044,
+          "equivalent_diameter_mm": 12.12655749579045
+        },
+        {
+          "component": 2,
+          "center": [
+            250,
+            375,
+            471
+          ],
+          "extent_mm": 8.370937955871792,
+          "equivalent_diameter_mm": 10.301618904684732
+        },
+        {
+          "component": 3,
+          "center": [
+            306,
+            350,
+            474
+          ],
+          "extent_mm": 8.566396897571252,
+          "equivalent_diameter_mm": 11.884163089191606
+        },
+        {
+          "component": 4,
+          "center": [
+            368,
+            230,
+            370
+          ],
+          "extent_mm": 11.012858601106718,
+          "equivalent_diameter_mm": 16.000499173022607
+        },
+        {
+          "component": 7,
+          "center": [
+            418,
+            328,
+            449
+          ],
+          "extent_mm": 5.159655809402466,
+          "equivalent_diameter_mm": 5.926580391886832
+        }
+      ],
+      "excluded": [
+        {
+          "component": 5,
+          "equivalent_diameter_mm": 29.22104702698241,
+          "reason": "outside_existing_small_lesion_task"
+        },
+        {
+          "component": 6,
+          "equivalent_diameter_mm": 22.892091443418128,
+          "reason": "outside_existing_small_lesion_task"
+        }
+      ],
+      "all_tumor_components": 7,
+      "image": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\image\\liver_6_0000.nii.gz",
+      "label": "D:\\AI project\\nnunet\\work\\local_v21_5070ti_20260919\\dataset\\medical\\Data\\labels\\liver_6.nii.gz",
+      "image_sha256": "da441b7b71fea9b654d3fbb405bdf19d562145297f896a3e906f7820cb59271e",
+      "label_sha256": "5847fb1c0641b1c6d19baefd9404e1c3f86108a902a8fccf4eb5fae177acac14",
+      "decoded_ct_sha256": "fe66a6e2e68fdb7c7eaf8a2af0c70c7cacc36abac12450e02348dc9795d17ce3",
+      "shape": [
+        512,
+        512,
+        518
+      ],
+      "spacing": [
+        0.873046875,
+        0.873046875,
+        1.0
+      ]
+    }
+  ]
+}

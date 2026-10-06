@@ -1,0 +1,153 @@
+{
+  "format": "version_results_index_v1",
+  "version": "v1.7",
+  "name": "C/D 교차 실험",
+  "target_epochs": 40,
+  "seed": 42,
+  "margin_mm": 10,
+  "production_population": {
+    "configured_train_cases": 84,
+    "validation_cases": 21,
+    "train_P": 527,
+    "train_U": 10752,
+    "validation_P": 135,
+    "validation_U": 2688,
+    "outer_26_used": false
+  },
+  "contracts": {
+    "query_GT_forward_input": false,
+    "zero_P_cases_scored": true,
+    "case_upper_calls": 1,
+    "training_support_patients": 16,
+    "common_evaluation_support": "full eligible train observations",
+    "physical_D_batch_observations": 32,
+    "physical_D_views_per_observation": 2
+  },
+  "C": {
+    "input_L0": "native raw CT1 crop, no erasure, CNN/organ mean/fused128, one view",
+    "own_task": "original source anchor and selected8 candidates; AMP/cosine",
+    "experiment": "/home/aicompetition06/Medical/experiments/v17_crossed_C_m10_seed42_20261005",
+    "own_8_candidates": {
+      "status": "40_of_40_epochs_and_3040_updates_reported",
+      "origin": "human user supplied C server terminal results directly in this conversation",
+      "provenance": "direct_user_conversation_not_independently_read_server_JSON",
+      "independent_checkpoint_or_raw_metric_verification": false,
+      "full_training_complete_reported": true,
+      "completed_epochs_reported": 40,
+      "optimizer_updates_reported": 3040,
+      "epoch_median_minutes": 2.98,
+      "checkpoint_selection": "own_8_candidate_task_BEST",
+      "initial_validation": {
+        "MRR": 0.422751,
+        "top1": 0.194444,
+        "margin": -0.009976,
+        "loss": 3.814999
+      },
+      "best_validation": {
+        "epoch": 20,
+        "MRR": 0.986111,
+        "top1": 0.972222,
+        "margin": 6.795793,
+        "loss": 0.424519
+      },
+      "last_validation": {
+        "epoch": 40,
+        "MRR": 0.918982,
+        "top1": 0.861111,
+        "margin": 6.22991,
+        "loss": 0.625842
+      }
+    },
+    "training_full128_reports": {
+      "origin": "human user supplied C server terminal results directly in this conversation",
+      "independent_checkpoint_or_raw_metric_verification": false,
+      "separate_from_standardized_common_reevaluation": true,
+      "at_own_task_BEST": {
+        "epoch": 20,
+        "MRR": 0.195344,
+        "Hit_at_1": 0.125,
+        "pair_win": 0.563079,
+        "loss": 1.135099
+      },
+      "last_epoch": {
+        "epoch": 40,
+        "MRR": 0.108725,
+        "Hit_at_1": 0.0,
+        "pair_win": 0.563079,
+        "loss": 1.325501
+      },
+      "highest_MRR_reference": {
+        "epoch": 19,
+        "MRR": 0.252844,
+        "used_for_checkpoint_selection": false
+      }
+    },
+    "common_P128U": {
+      "scope": "all_21_current_inner_val_cases_all_P_plus_128U",
+      "query_GT_forward_input": false,
+      "zero_P_cases_scored": true,
+      "metric_definition": "MRR=case-first observed P; Hit_at_1=case top P; zero-P cases excluded only from ranking denominator",
+      "provenance": "../../validation/v17_historical_full128_server_20261005/summary_from_user.json",
+      "origin": "user_supplied_server_terminal_summary",
+      "raw_server_JSON_independently_read": false,
+      "independent_checkpoint_or_raw_metric_verification": false,
+      "server_summary": "/home/aicompetition06/Medical/experiments/v17_V1_A_B_C_full128_20261005_212328/summary.json",
+      "blind_CP_suitability_quality_claim": false,
+      "report_arm": "C",
+      "checkpoint_selection": "own_8_candidate_task_BEST",
+      "support": "original anchor/curriculum support in historical server evaluation",
+      "MRR": 0.195354,
+      "Hit_at_1": 0.125,
+      "pair_win": 0.5625,
+      "loss": 1.131561
+    }
+  },
+  "D": {
+    "input_L0": "original fixed48 cube/5channels, erasure, six roles/three GAT, two genuine views",
+    "own_task": "independent donor all P+128U; FP32/constant LR; original two-view consistency0.1",
+    "experiment": "/home/aicompetition06/Medical/experiments/v17_crossed_D_m10_seed42_20261005_reusefix",
+    "experiment_status": "last_user_reported_output_not_live_status",
+    "last_user_reported_progress": {
+      "origin": "human user supplied D server terminal progress directly in this conversation",
+      "reported_epoch": 6,
+      "reported_batch": 220,
+      "epoch_batch_total": 533,
+      "step": 2885,
+      "current_live_status_verified": false,
+      "final_quality_provided": false
+    },
+    "own_8_candidates": {
+      "applicable": false
+    },
+    "own_P128U": {
+      "status": "latest_server_completion_and_metrics_not_independently_confirmed",
+      "metrics": null
+    },
+    "common_P128U": {
+      "status": "full_server_metrics_not_available_in_reviewed_local_evidence",
+      "metrics": null
+    },
+    "progress_reader": "D/status.py"
+  },
+  "debug_evidence": {
+    "status": "actual_CT_CUDA_and_resume_verified",
+    "production_quality_claim": false,
+    "successful_optimizer_updates": {
+      "C": 2,
+      "D": 2
+    },
+    "parameters": {
+      "C": 1125718,
+      "D": 6433126
+    },
+    "common_case": "liver_31",
+    "common_case_P": 8,
+    "common_case_U": 128,
+    "provenance": "../../docs/v17_crossed_training_20261005.md"
+  },
+  "organization_only": {
+    "new_training": false,
+    "new_neural_evaluation": false,
+    "original_source_checkpoint_or_cache_changed": false
+  }
+}

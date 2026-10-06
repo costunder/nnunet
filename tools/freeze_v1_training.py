@@ -10,11 +10,11 @@ paths=[ROOT/'run_v222_v1_l0.py',ROOT/'config/prompt_graph_v222_v1_l0.json',ROOT/
 for folder in ('hiercp','hiercp_v22','hiercp_v222'):
     paths.extend((ROOT/folder).glob('*.py'))
 paths.extend([ROOT/'work/v222_v1_training_smoke_20260924_r2/result.json'])
-out=ROOT/'versions/v2.22'/(sys.argv[1] if len(sys.argv)>1 else 'v1_full_training_20260924')
-if not out.resolve().is_relative_to(ROOT/'versions/v2.22'):raise ValueError('Invalid archive path')
+out=ROOT/'versions/v2.2/history/observed'/(sys.argv[1] if len(sys.argv)>1 else 'v1-train')
+if not out.resolve().is_relative_to(ROOT/'versions/v2.2/history/observed'):raise ValueError('Invalid archive path')
 if len(sys.argv)>1:
     paths.extend([ROOT/'work/v222_v1_empty_context_check_20260924/result.json',ROOT/'tools/check_v1_empty_context.py'])
-if len(sys.argv)>1 and sys.argv[1]=='v1_execution_r6_20260924':
+if len(sys.argv)>1 and sys.argv[1]=='v1-runtime':
     paths.extend(ROOT/p for p in (
         'docs/v222_v1_execution_r6_20260924.md','tests/test_v1_execution.py',
         'tools/verify_v1_resume.py','tools/smoke_v1_execution_lifecycle.py',

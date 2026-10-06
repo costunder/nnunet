@@ -1,0 +1,72 @@
+{
+  "format": "version_results_index_v1",
+  "version": "v1.4",
+  "name": "10mm 기준선",
+  "changed_factor": "physical_L0_scope_only",
+  "forked_from": "v1.0",
+  "includes_v11_v12_v13_changes": false,
+  "source_snapshot": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "target_epochs": 40,
+  "seed": 42,
+  "configured_train_cases": 84,
+  "configured_validation_cases": 21,
+  "outer_26_used": false,
+  "experiment": "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004",
+  "results_relative_path": "results/v1.0",
+  "own_8_candidates": {
+    "GT": "original source anchor versus selected/corrupted curriculum candidates",
+    "origin": "user_supplied_server_terminal_summary_preserved_in_docs",
+    "provenance": [
+      "../../docs/v15_half_a_learning_20261004.md",
+      "../../docs/v16_half_b_server_result_20261005.md"
+    ],
+    "full_training_complete_reported": true,
+    "completed_epochs_reported": 40,
+    "independent_checkpoint_or_raw_metric_verification": false,
+    "best_validation": {
+      "epoch": 11,
+      "MRR": 1,
+      "top1": 1,
+      "loss": null,
+      "margin": null
+    },
+    "last_validation": {
+      "epoch": 40,
+      "MRR": 1,
+      "top1": 1,
+      "loss": null,
+      "margin": null
+    }
+  },
+  "common_P128U": {
+    "scope": "all_21_current_inner_val_cases_all_P_plus_128U",
+    "query_GT_forward_input": false,
+    "zero_P_cases_scored": true,
+    "metric_definition": "MRR=case-first observed P; Hit_at_1=case top P; zero-P cases excluded only from ranking denominator",
+    "provenance": "../../validation/v17_historical_full128_server_20261005/summary_from_user.json",
+    "origin": "user_supplied_server_terminal_summary",
+    "raw_server_JSON_independently_read": false,
+    "independent_checkpoint_or_raw_metric_verification": false,
+    "server_summary": "/home/aicompetition06/Medical/experiments/v17_V1_A_B_C_full128_20261005_212328/summary.json",
+    "blind_CP_suitability_quality_claim": false,
+    "report_arm": "V1",
+    "checkpoint_selection": "own_8_candidate_task_BEST",
+    "annotation_aware": true,
+    "MRR": 0.233839,
+    "Hit_at_1": 0.125,
+    "pair_win": 0.596528,
+    "loss": 1.935892,
+    "original_30mm_a818158_result": false
+  },
+  "debug_evidence": {
+    "production_quality_claim": false,
+    "description": "Actual CT/CUDA matched-recipe 16 successful optimizer updates, separate fixed-batch DEBUG",
+    "report": "../../validation/v14_matched_learning_20261004/matched10mm/report.json",
+    "document": "../../docs/v14_matched_learning_20261004.md"
+  },
+  "organization_only": {
+    "new_training": false,
+    "new_neural_evaluation": false,
+    "original_source_checkpoint_or_cache_changed": false
+  }
+}

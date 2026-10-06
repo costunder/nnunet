@@ -1,0 +1,78 @@
+{
+  "release": "v2.2",
+  "implementation_id": "v22_cnn_l0_20260924",
+  "scope": "CNN L0 only",
+  "trained": false,
+  "optimizer_steps": 0,
+  "source_files": [
+    {
+      "path": "hiercp_v22_cnn/__init__.py",
+      "bytes": 69,
+      "sha256": "cec5858a3b95c58cdb89a2dae5f19fd06c2fd98acb8a2b7cbcd2f30201e31578"
+    },
+    {
+      "path": "hiercp_v22_cnn/l0.py",
+      "bytes": 2442,
+      "sha256": "9fc1900129ddfbb9b9c1edce7b9a0023c9ade6919338c11338a894685b89a062"
+    },
+    {
+      "path": "config/v22_cnn_l0.json",
+      "bytes": 1187,
+      "sha256": "cbf513e1f2634128f0a72026c0cf41dd60d6811047230db1a49b10936a5af1ad"
+    },
+    {
+      "path": "config/v22_cnn_l0_one_case_debug.json",
+      "bytes": 804,
+      "sha256": "6c65ff0069f58f3c3af219836bedb5bd51025fc71a03c3546c98cdca1589a639"
+    },
+    {
+      "path": "tools/run_v22_cnn_l0_one_case.py",
+      "bytes": 13515,
+      "sha256": "c1403c628094b25c7669d38c004af467c057a38d275f609955e8dac9045b9ed4"
+    },
+    {
+      "path": "tools/render_v22_cnn_l0.py",
+      "bytes": 2667,
+      "sha256": "19d218c703d86f18942c7a8831ffc3fced48dc3bdd0c03348e325f44b70aaf78"
+    },
+    {
+      "path": "tools/v22_cnn_l0_fragment.html",
+      "bytes": 6108,
+      "sha256": "731c8ed052a8f6df97b3a084743e254ed9ef7fc6802f4327cd26e39e19d94c2b"
+    },
+    {
+      "path": "tools/check_v22_cnn_view.cjs",
+      "bytes": 2353,
+      "sha256": "3f13d7c50c862431aacade02605877ae41609f32da51663f197c6406d5e1c055"
+    },
+    {
+      "path": "docs/v22_cnn_l0_20260924.md",
+      "bytes": 8964,
+      "sha256": "6e3c3b3007543a18568bf0bca0bb80db1c0cc993eecbca6573e268d22cfd6943"
+    },
+    {
+      "path": "gpt_handoff.md",
+      "bytes": 121001,
+      "sha256": "e723b6e6bd60312d5dd3eafddac951fd46df46a0b6d8dd3d34b5a3e971fc0552"
+    },
+    {
+      "path": "PATCH_NOTES.md",
+      "bytes": 57887,
+      "sha256": "d9028293b08116e1ac69079d643e3e59cfa5973ac6ace457b214e86f16c1d269"
+    },
+    {
+      "path": "REFERENCES.md",
+      "bytes": 25968,
+      "sha256": "562ed31dca5ae5bf781869e11a658514f7d3e64df6e0599fde83b8cd237ddb6c"
+    },
+    {
+      "path": "versions/README.md",
+      "bytes": 14033,
+      "sha256": "85214680c1bba376dea0adf268e3f07690ea9f69b77d020a1ac0a7eb43bd24e7"
+    }
+  ],
+  "source_zip_sha256": "b4358b7fa8fd5e55c4ff4f8824f2cb5e0d4eed33969482bb7af756b794fc6ff0",
+  "result_path": "D:\\AI project\\nnunet\\work\\v22_cnn_l0_one_case_20260924_release\\result.json",
+  "result_sha256": "496b64c6f055ff21a104b98bba9ffca2245d05702f9f15e7f8979a43c02d238c",
+  "historical_versions_preserved": true
+}

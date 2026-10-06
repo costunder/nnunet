@@ -1,0 +1,8 @@
+{
+  "pid": 26652,
+  "arguments": "-u tools/run_local_v21_gnn.py --download datasets/msd_liver --run-root work/local_v21_5070ti_20260919/attempt3_shared_donor --prepared-dataset work/local_v21_5070ti_20260919/dataset",
+  "started_utc": "2026-09-19T13:21:03.5974389Z",
+  "scope": "Full corrected GNN preparation then 40 epochs; native training follows separately",
+  "debug": false,
+  "subset": false
+}

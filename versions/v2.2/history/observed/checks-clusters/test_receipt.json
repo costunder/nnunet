@@ -1,0 +1,16 @@
+{
+  "command": [
+    "D:\\AI project\\nnunet\\.venv\\Scripts\\python.exe",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_v22*.py",
+    "-v"
+  ],
+  "returncode": 0,
+  "passed": 39,
+  "scope": "Synthetic DEBUG/regression; not clinical efficacy"
+}

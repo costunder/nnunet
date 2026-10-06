@@ -1,0 +1,65 @@
+{"scope": "DEBUG synthetic full-width model", "parameters_for_3_patients": 7086156, "patch": [48, 48, 48], "physical_graph_batch": 4, "all_parameter_gradients": true, "optimizer_steps": 1, "elapsed_seconds": 1.424819200008642, "real_medical_data": false, "full_training": false}
+{'stage': 'context_event_complete', 'event': 'T_A_1', 'graphs': 1, 'completed_events': 1, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'T_C_1', 'graphs': 1, 'completed_events': 2, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'T_V_1', 'graphs': 1, 'completed_events': 3, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'U_000000', 'graphs': 128, 'completed_events': 4, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'U_000001', 'graphs': 128, 'completed_events': 5, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'U_000002', 'graphs': 128, 'completed_events': 6, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'U_000003', 'graphs': 128, 'completed_events': 7, 'total_events': 8}
+{'stage': 'context_event_complete', 'event': 'U_000004', 'graphs': 128, 'completed_events': 8, 'total_events': 8}
+[RawTargetCase] {"case_id": "B", "format": "online_cp_raw_target_resampling_v2", "preprocessed_shape": [12, 12, 12], "baseline_ct_max_abs_error": 0.0, "baseline_seg_exact": true, "baseline_payload_bytes": 17280, "disk_free_before_bytes": 529099984896, "seconds": 0.0707904000300914}
+[RawTargetCaseResources] C:\Users\user\AppData\Local\Temp\selected_raw_DEBUG_vrm35yuv\preparation_resources\raw_case.B.ad331c283c514ec1bab54113cfb7fd48.json
+[RawTargetSource] {"case_id": "B", "component": 1, "format": "online_cp_raw_target_resampling_v2", "raw_source_voxels": 27, "candidates": 1, "native_support_voxels": [8], "zero_native_support_candidates": 0, "extrema_complement_scans": 0, "seconds": 0.027480199991259724, "training_patch_size": [12, 12, 12], "full_candidate_support_retained": true, "training_crop_may_intersect_partial_support": true, "source_origin_resampling_used": false, "all_selected_raw_candidates_retained": true}
+
+test_L1_patient_isolation (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_cpu_bfloat16_patient_alignment_path (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_cuda_bfloat16_patient_alignment_gradient (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_exact_correspondence_transfers_T_but_not_U_or_own_T (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_frozen_task_cache_preserves_exact_scoring (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_full_width_L0_L1_L2_backward_optimizer (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_independent_label_permutation_and_query_batch_equivalence (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_independent_trainable_patient_labels (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_no_positive_patient_receives_external_evidence (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_own_patient_observation_cannot_supply_own_score (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_query_does_not_modify_support_or_other_queries (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_unknown_has_zero_negative_supervision_gradient (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_unseen_U_task_replaces_all_own_T (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_v1_preserved_and_no_view_task_contract (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_actual_full_config_geometry_cache_and_batch (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+test_changed_v1_archive_is_rejected (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+test_foreign_real_donor_footprint_does_not_change_target_GT (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+test_full_cohort_csv_metrics_and_native_tamper_guard (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+test_handoff_refresh_keeps_runtime_guard_exact (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+test_full_128_pools_and_zero_positive_patient_not_dropped (test_patient_task_preparation_debug.PatientTaskPreparationDebugTests) ... ok
+test_authenticated_service_errors_propagate_without_fallback (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... D:\AI project\nnunet\.venv\lib\site-packages\batchgenerators\augmentations\utils.py:20: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter, gaussian_gradient_magnitude
+D:\AI project\nnunet\.venv\lib\site-packages\batchgenerators\augmentations\utils.py:20: DeprecationWarning: Please import `gaussian_gradient_magnitude` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter, gaussian_gradient_magnitude
+D:\AI project\nnunet\.venv\lib\site-packages\batchgenerators\augmentations\utils.py:21: DeprecationWarning: Please import `grey_dilation` from the `scipy.ndimage` namespace; the `scipy.ndimage.morphology` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.morphology import grey_dilation
+D:\AI project\nnunet\.venv\lib\site-packages\batchgenerators\augmentations\utils.py:23: DeprecationWarning: Please import `label` from the `scipy.ndimage` namespace; the `scipy.ndimage.measurements` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.measurements import label as lb
+ok
+test_contaminated_checkpoint_support_is_rejected (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_every_case_same_complete_donor_pool_and_selection (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_external_placement_never_becomes_observed_positive (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_native_loader_selects_external_donors_for_both_tumor_and_no_tumor_cases (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_native_validation_factory_is_never_replaced_by_cp_factory (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_no_missing_zero_tumor_recipient_or_heldout_recipient (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_reject_inner_validation_and_outer_validation_donors (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_round_covers_all_donors_and_patients_without_cartesian_product (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_same_image_with_another_id_cannot_cross_split (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_selected_paste_storage_restores_preparation_and_exact_native_labels (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_service_rejects_heldout_before_loading_any_volume (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_validation_tumors_do_not_change_donor_pool_or_training_schedule (test_shared_donor_leakage_debug.SharedDonorLeakageDebugTests) ... ok
+test_complete_selected_sources_and_current_working_tree_label (test_gpt_handoff_export_debug.HandoffExportDebug) ... ok
+test_missing_selected_source_preserves_old_export (test_gpt_handoff_export_debug.HandoffExportDebug) ... ok
+test_no_arbitrary_output_overwrite (test_gpt_handoff_export_debug.HandoffExportDebug) ... ok
+test_outside_and_binary_sources_refused (test_gpt_handoff_export_debug.HandoffExportDebug) ... ok
+test_source_only_notebook_export_and_rendered_data_rejection (test_gpt_handoff_export_debug.HandoffExportDebug) ... ok
+test_unselected_new_source_not_silently_exported (test_gpt_handoff_export_debug.HandoffExportDebug) ... ok
+
+----------------------------------------------------------------------
+Ran 39 tests in 8.416s
+
+OK

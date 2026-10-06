@@ -1,0 +1,13 @@
+{
+  "path": "D:\\AI project\\nnunet\\code.txt",
+  "file_count": 225,
+  "bytes": 4240809,
+  "sha256": "750fbf75b0b9816a22f7a7eedba97d697645a99058a11ddc224f034ecda035ba",
+  "base_commit": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "release": "v2.1",
+  "all_source_hashes_match": true,
+  "current_gpu_proof_source_matches": true,
+  "v1_preservation_verified": true,
+  "full_medical_training_complete": false,
+  "committed_or_pushed": false
+}

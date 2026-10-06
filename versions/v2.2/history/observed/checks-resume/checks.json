@@ -1,0 +1,12 @@
+{
+  "utc": "2026-09-23T04:28:28.684851+00:00",
+  "debug_tests_passed": 6,
+  "debug_tests": "tests/test_resume_basic_cp80_debug.py",
+  "static_parse_passed": true,
+  "frozen_v1": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "basic_source_identity_preserved": true,
+  "preparation_dependencies_preserved": true,
+  "verified_reused_cases": 30,
+  "total_cases": 105,
+  "model_training_started": false
+}

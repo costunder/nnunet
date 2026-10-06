@@ -1,0 +1,17 @@
+{"scope": "DEBUG synthetic full-width model, sparse fixture graphs", "parameters": 6889060, "patch": [48, 48, 48], "physical_graph_batch": 4, "all_parameter_gradients": true, "optimizer_steps": 1, "elapsed_seconds": 1.9890225999988616, "real_medical_data": false, "full_training": false}
+
+test_excluded_patient_support_is_invisible (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_full_width_L0_L1_L2_loss_backward_optimizer_debug (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_label_permutation_equivariance_through_L2 (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_loss_permutation_invariant_and_missing_support_rejected (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_query_cannot_modify_labels_or_other_queries (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_relations_and_alignment_change_candidate_scores (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_support_order_and_batch_independence (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_v1_unchanged_and_patient_split_contract (test_prompt_graph_v2_debug.PromptGraphV2DebugTests) ... ok
+test_actual_full_config_geometry_cache_and_batch (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+test_full_cohort_csv_metrics_and_native_tamper_guard (test_prompt_graph_v2_io_debug.PromptGraphV2IODebugTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 3.561s
+
+OK

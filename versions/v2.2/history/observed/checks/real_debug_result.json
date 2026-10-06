@@ -1,0 +1,69 @@
+{
+  "debug": true,
+  "actual_CT": true,
+  "actual_patients": 3,
+  "actual_graphs": 6,
+  "input_contract_scope": "DEBUG-only fitted on declared cases; not usable as production cache",
+  "benchmarks": [
+    {
+      "physical_batch": 2,
+      "effective_batch": 2,
+      "gradient_accumulation": 1,
+      "seconds": 1.7275936999976693,
+      "query_graphs_per_second": 1.1576796095069681,
+      "peak_vram_bytes": 605463040,
+      "forward_seconds": 0.47977589999936754,
+      "backward_seconds": 1.206111100000271,
+      "execution_chunk_nodes": 256,
+      "finite_all_parameter_gradients": true,
+      "repeated_queries_for_batch_probe": false
+    },
+    {
+      "physical_batch": 4,
+      "effective_batch": 4,
+      "gradient_accumulation": 1,
+      "seconds": 2.617095400000835,
+      "query_graphs_per_second": 1.5284119944571848,
+      "peak_vram_bytes": 1090839552,
+      "forward_seconds": 0.638028099998337,
+      "backward_seconds": 1.9436755999995512,
+      "execution_chunk_nodes": 128,
+      "finite_all_parameter_gradients": true,
+      "repeated_queries_for_batch_probe": true
+    }
+  ],
+  "parameter_groups_updated": {
+    "local.dense": true,
+    "local.project": true,
+    "local.pool_gate": true,
+    "label_seed": true,
+    "local.blocks.0": true,
+    "local.blocks.1": true,
+    "local.blocks.2": true,
+    "l1.0": true,
+    "l1.1": true,
+    "l2.0": true,
+    "l2.1": true
+  },
+  "query_targets_cannot_change_forward": true,
+  "queries_cannot_mutate_support": true,
+  "full_model_width_depth_and_graph_rules": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "checkpoint_written": false,
+  "resources": {
+    "rss_bytes": 2207215616,
+    "available_memory_bytes": 51468464128,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 88.4375,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  }
+}

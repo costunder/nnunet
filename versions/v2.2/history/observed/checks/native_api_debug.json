@@ -1,0 +1,8 @@
+{
+  "debug": true,
+  "trainer": "nnUNetTrainer_250epochs_OnlinePromptGraphV222",
+  "returncode": 0,
+  "stdout": "nnUNetTrainer_250epochs_OnlinePromptGraphV222\n",
+  "stderr": "",
+  "full_training": false
+}

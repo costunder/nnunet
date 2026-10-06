@@ -1,0 +1,53 @@
+{
+  "scope": "synthetic DEBUG unit/integration/smoke only",
+  "v1_revision": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "static_files": 17,
+  "static_passed": true,
+  "test_command": [
+    "D:\\AI project\\nnunet\\.venv\\Scripts\\python.exe",
+    "-m",
+    "unittest",
+    "test_prompt_graph_v2_debug",
+    "test_prompt_graph_v2_io_debug",
+    "test_patient_task_preparation_debug",
+    "test_gpt_handoff_export_debug",
+    "-v"
+  ],
+  "test_returncode": 0,
+  "seconds": 13.327518900041468,
+  "resources": {
+    "rss_bytes": 23965696,
+    "available_memory_bytes": 29405986816,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 0.296875,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  },
+  "source_identity": {
+    "hiercp_v2/__init__.py": "99209334e9e6238384776ec91ac6a62fc8a45da76cbc3d2f1a22c40976645355",
+    "hiercp_v2/bank.py": "b668d9cb9b3e0f785661f01f48625fca49865cd01d5e72e9f0238545cde8467c",
+    "hiercp_v2/contracts.py": "8bc6a16a4494c4ded424a513979f63bcfd459f35cc3a0554ff2ada59eac45e46",
+    "hiercp_v2/data.py": "ad8dcc8ca1c4446340b50eeb9033d85b1e39f39398250beefe80517895ee0513",
+    "hiercp_v2/evaluation.py": "aee213296616d11ddd2aa97e258d558b2a903aeb61c9d6837f873837ce9d313f",
+    "hiercp_v2/model.py": "878face1f7d182fd98ac3d8061b88afb54d463c638cee97828b451412c4056dd",
+    "hiercp_v2/nnunet.py": "6c46d63a1e4d23b8c1cb32182a2af2455cb9955fca48ab041ec1f33de9f81223",
+    "hiercp_v2/nnUNetTrainer_OnlinePromptGraphV2.py": "7d64d8c14f948cb00b0b1d987b9536c8633eca648817f5b4234ed58c2d3fd4c7",
+    "hiercp_v2/scoring.py": "a253cd1d522933e1ccb3b367f20138e7c20318ad673a9b19ec4a9359c0409c7d",
+    "hiercp_v2/storage.py": "b4da85c76157cfe269411a6704ab4fe8de08624022b5db728d1eaa93fad5b74e",
+    "hiercp_v2/training.py": "6c16ebf0792f78c6d848c2b6cd791942ba1b4b31f9440b8aee93b297a422107d"
+  },
+  "nnunet_installed": true,
+  "real_medical_data_used": false,
+  "full_gnn_training": false,
+  "full_segmentation_training": false,
+  "full_medical_evaluation": false,
+  "native_end_to_end_execution": false,
+  "target_gpu_throughput_benchmarked": false
+}

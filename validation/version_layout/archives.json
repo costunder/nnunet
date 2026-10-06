@@ -1,0 +1,175 @@
+{
+  "format": "version_history_archive_verification_v1",
+  "status": "PASS",
+  "moved_directories": 34,
+  "files": 156,
+  "bytes": 24350529,
+  "zip_crc_pass": 23,
+  "manifest_members_verified": 582,
+  "archives": [
+    {
+      "path": "versions/v2.2/history/early/before-cnn/source.zip",
+      "crc": "PASS",
+      "members": 33,
+      "manifest_members_verified": 33,
+      "archive_hash_fields_verified": [
+        "archive_sha256"
+      ]
+    },
+    {
+      "path": "versions/v2.2/history/early/before-l2/source.zip",
+      "crc": "PASS",
+      "members": 30,
+      "manifest_members_verified": 30,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/early/before-features/source.zip",
+      "crc": "PASS",
+      "members": 26,
+      "manifest_members_verified": 26,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/early/before-no-interior/source.zip",
+      "crc": "PASS",
+      "members": 34,
+      "manifest_members_verified": 34,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/early/before-relations/source.zip",
+      "crc": "PASS",
+      "members": 25,
+      "manifest_members_verified": 25,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/early/cnn-l0/source.zip",
+      "crc": "PASS",
+      "members": 18,
+      "external_result_binding_rechecked": false,
+      "manifest_members_verified": 13,
+      "archive_hash_fields_verified": [
+        "source_zip_sha256"
+      ]
+    },
+    {
+      "path": "versions/v2.2/history/early/checks/source.zip",
+      "crc": "PASS",
+      "members": 270
+    },
+    {
+      "path": "versions/v2.2/history/early/checks-cnn/source.zip",
+      "crc": "PASS",
+      "members": 274
+    },
+    {
+      "path": "versions/v2.2/history/early/checks-cnn/documentation_revision1/documentation.zip",
+      "crc": "PASS",
+      "members": 4
+    },
+    {
+      "path": "versions/v2.2/history/early/checks-l2/source.zip",
+      "crc": "PASS",
+      "members": 277
+    },
+    {
+      "path": "versions/v2.2/history/early/checks-no-interior/source.zip",
+      "crc": "PASS",
+      "members": 279
+    },
+    {
+      "path": "versions/v2.2/history/relations/before-observed/source.zip",
+      "crc": "PASS",
+      "members": 28,
+      "manifest_members_verified": 28,
+      "archive_hash_fields_verified": [
+        "archive_sha256"
+      ]
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-cases/source.zip",
+      "crc": "PASS",
+      "members": 6,
+      "manifest_members_verified": 6,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-clusters/source.zip",
+      "crc": "PASS",
+      "members": 21,
+      "manifest_members_verified": 21,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-seed/source.zip",
+      "crc": "PASS",
+      "members": 23,
+      "manifest_members_verified": 23,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-cp80/source.zip",
+      "crc": "PASS",
+      "members": 25,
+      "manifest_members_verified": 25,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-sampling/source.zip",
+      "crc": "PASS",
+      "members": 22,
+      "manifest_members_verified": 22,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-v1-l0/source.zip",
+      "crc": "PASS",
+      "members": 2,
+      "manifest_members_verified": 2,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/before-ezsp/adapter_and_9_tests.zip",
+      "crc": "PASS",
+      "members": 23,
+      "manifest_members_verified": 23,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/v1-runtime/source.zip",
+      "crc": "PASS",
+      "members": 95,
+      "manifest_members_verified": 95,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/v1-train/source.zip",
+      "crc": "PASS",
+      "members": 81,
+      "manifest_members_verified": 81,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/v1-empty-context/source.zip",
+      "crc": "PASS",
+      "members": 84,
+      "manifest_members_verified": 84,
+      "archive_hash_fields_verified": []
+    },
+    {
+      "path": "versions/v2.2/history/observed/v1-l0/source_and_verification.zip",
+      "crc": "PASS",
+      "members": 11,
+      "manifest_members_verified": 11,
+      "archive_hash_fields_verified": []
+    }
+  ],
+  "utilities_syntax": "PASS",
+  "utility_target_paths": "PASS",
+  "original_v1_v21_bytes": "UNCHANGED",
+  "historical_external_results_rerun": false,
+  "training_started": false,
+  "evaluation_started": false
+}

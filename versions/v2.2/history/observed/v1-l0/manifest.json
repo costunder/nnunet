@@ -1,0 +1,16 @@
+{
+  "scope": "L0 + existing L1/L2/loss/candidate-score integration; no full training/native bank migration",
+  "files": {
+    "hiercp_v222/v1_local.py": "be87b3f80f3d2e88cb9bbcc1c02585e96cc5c90b83ef5d52c7ff6d3aec773650",
+    "hiercp_v222/model.py": "906d1eeb7982ed9f01801a22fdea72de68a82a7d24b061295e14489052af6920",
+    "config/prompt_graph_v222_v1_l0.json": "4acd03a9243997772c791a895855ef6a2b41ed7336ca8d3c41f34f1153a9a2b8",
+    "run_v222_v1_l0.py": "4f8ad79743d9a0d094225c9f70e9829b0deacb72850685854ce5a2f643968523",
+    "tools/verify_v222_v1_l0.py": "42fab4365d7aa246689d16cfe020362d91285b6881b18cfb766119af03028148",
+    "tests/test_v222_v1_local.py": "6eb2c5138d5cbfa389ae832d484a4243d825e1e7cc409866b0696fc830e273ce",
+    "docs/v222_v1_l0_20260924.md": "ff1e2b4b84e972889d526fd7014e0bdb8f530323c3a33fcc77580590d2d64926",
+    "work/v222_v1_l0_20260924/debug2/result.json": "67806ab204089520ce0766bfdf45cb421a7b635a13055def9c430a30ee0b5460",
+    "work/v222_v1_l0_20260924/debug2/graphs.json": "73b688b0df10f3ccfacee2560f0715244015fa8c3c0c9057c03775b6f1833d00",
+    "work/v222_v1_l0_20260924/debug2/cp128_DEBUG.json": "c327b5a6ac197430586ecbe27dfd99828418f3c95e1496c90a0da0c1d5cb23a8",
+    "work/v222_v1_l0_20260924/final_source_verification.json": "5367c0a115783df8652a47676be3e430783ddb627946a6743ac174cacf563314"
+  }
+}

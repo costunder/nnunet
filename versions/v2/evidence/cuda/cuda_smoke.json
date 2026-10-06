@@ -1,0 +1,63 @@
+{
+  "scope": "synthetic CUDA DEBUG; not real-data throughput or final training",
+  "release": "v2.1",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "capability": [
+    12,
+    0
+  ],
+  "torch": "2.8.0+cu128",
+  "cuda_runtime": "12.8",
+  "architectures": [
+    "sm_61",
+    "sm_70",
+    "sm_75",
+    "sm_80",
+    "sm_86",
+    "sm_90",
+    "sm_100",
+    "sm_120"
+  ],
+  "physical_graph_batch": 4,
+  "parameters": 7086156,
+  "patch_size": [
+    48,
+    48,
+    48
+  ],
+  "precision": "BF16 autocast",
+  "optimizer_steps": 1,
+  "loss": 3.7509241104125977,
+  "all_gradients_finite": true,
+  "peak_vram_bytes": 313470464,
+  "seconds": 1.4186377000296488,
+  "real_medical_data_used": false,
+  "full_training_completed": false,
+  "resources": {
+    "rss_bytes": 2178142208,
+    "available_memory_bytes": 46275481600,
+    "host_total_memory_bytes": 68640653312,
+    "cpu_capacity": 16,
+    "cpu_affinity_cores": 16,
+    "cpu_allocation_cores": 16.0,
+    "process_cpu_seconds": 5.5,
+    "cgroup": {
+      "locations_resolved": false,
+      "values": {},
+      "missing_files": [],
+      "limitation": "Host availability alone is not a scheduler/allocation guarantee; unenforced or inaccessible limits may remain unknown"
+    }
+  },
+  "source_identity": {
+    "hiercp_v2/__init__.py": "99209334e9e6238384776ec91ac6a62fc8a45da76cbc3d2f1a22c40976645355",
+    "hiercp_v2/bank.py": "b668d9cb9b3e0f785661f01f48625fca49865cd01d5e72e9f0238545cde8467c",
+    "hiercp_v2/contracts.py": "8bc6a16a4494c4ded424a513979f63bcfd459f35cc3a0554ff2ada59eac45e46",
+    "hiercp_v2/data.py": "9dabb1d045b55c9c21fda1776c9fcfe30a0767e9193f4e20cc59a09388cc3073",
+    "hiercp_v2/evaluation.py": "aee213296616d11ddd2aa97e258d558b2a903aeb61c9d6837f873837ce9d313f",
+    "hiercp_v2/model.py": "878face1f7d182fd98ac3d8061b88afb54d463c638cee97828b451412c4056dd",
+    "hiercp_v2/nnunet.py": "6c46d63a1e4d23b8c1cb32182a2af2455cb9955fca48ab041ec1f33de9f81223",
+    "hiercp_v2/nnUNetTrainer_OnlinePromptGraphV2.py": "7d64d8c14f948cb00b0b1d987b9536c8633eca648817f5b4234ed58c2d3fd4c7",
+    "hiercp_v2/scoring.py": "a253cd1d522933e1ccb3b367f20138e7c20318ad673a9b19ec4a9359c0409c7d",
+    "hiercp_v2/training.py": "c29561d35a9cdb64423084830d1065d0b25579cf49130324e5a6d41c0b427f29"
+  }
+}

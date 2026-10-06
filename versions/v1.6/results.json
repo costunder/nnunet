@@ -1,0 +1,80 @@
+{
+  "format": "version_results_index_v1",
+  "version": "v1.6",
+  "name": "B: 상위 계층 교체",
+  "experiment": "/home/aicompetition06/Medical/experiments/v16_m10_halfB_seed42_20261004_r3",
+  "results_relative_path": "results/half_B",
+  "baseline_version": "v1.4",
+  "changed_factor": "legacy_native_upper_L1_L2_scorer",
+  "original_v1_L0_preserved": true,
+  "exact_native_v22_training_task_reproduction": false,
+  "target_epochs": 40,
+  "seed": 42,
+  "configured_train_cases": 84,
+  "configured_validation_cases": 21,
+  "outer_26_used": false,
+  "own_8_candidates": {
+    "GT": "original source anchor versus selected/corrupted curriculum candidates",
+    "origin": "user_supplied_terminal_summary_20261005",
+    "provenance": "../../validation/v16_half_b_server_20261005/summary.json",
+    "independent_checkpoint_or_raw_metric_verification": false,
+    "full_training_complete_reported": true,
+    "completed_epochs_reported": 40,
+    "initial_validation": {
+      "loss": 3.86478,
+      "MRR": 0.249074,
+      "top1": 0.027778,
+      "margin": -0.084152
+    },
+    "best_validation": {
+      "epoch": 20,
+      "loss": 0.130164,
+      "MRR": 1,
+      "top1": 1,
+      "margin": 10.340888
+    },
+    "last_train": {
+      "epoch": 40,
+      "loss": 0.006447,
+      "MRR": 1,
+      "top1": 1,
+      "margin": 7.86264
+    },
+    "last_validation": {
+      "epoch": 40,
+      "loss": 0.068598,
+      "MRR": 1,
+      "top1": 1,
+      "margin": 8.808204
+    },
+    "last_epoch_minutes": 15.83
+  },
+  "common_P128U": {
+    "scope": "all_21_current_inner_val_cases_all_P_plus_128U",
+    "query_GT_forward_input": false,
+    "zero_P_cases_scored": true,
+    "metric_definition": "MRR=case-first observed P; Hit_at_1=case top P; zero-P cases excluded only from ranking denominator",
+    "provenance": "../../validation/v17_historical_full128_server_20261005/summary_from_user.json",
+    "origin": "user_supplied_server_terminal_summary",
+    "raw_server_JSON_independently_read": false,
+    "independent_checkpoint_or_raw_metric_verification": false,
+    "server_summary": "/home/aicompetition06/Medical/experiments/v17_V1_A_B_C_full128_20261005_212328/summary.json",
+    "blind_CP_suitability_quality_claim": false,
+    "report_arm": "B",
+    "checkpoint_selection": "own_8_candidate_task_BEST",
+    "support": "original anchor/curriculum support",
+    "MRR": 0.226487,
+    "Hit_at_1": 0.125,
+    "pair_win": 0.561574,
+    "loss": 1.234715
+  },
+  "debug_evidence": {
+    "production_quality_claim": false,
+    "document": "../../docs/v16_half_b_learning_20261004.md"
+  },
+  "organization_only": {
+    "new_training": false,
+    "new_neural_evaluation": false,
+    "original_source_checkpoint_or_cache_changed": false
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": "in_progress",
+  "scope": "relation_contract_only",
+  "unit_tests_passed": 3,
+  "static_files": 26,
+  "full_model_integration": false,
+  "training": false,
+  "evaluation": false,
+  "v22_preserved": true
+}

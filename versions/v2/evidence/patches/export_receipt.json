@@ -1,0 +1,18 @@
+{
+  "path": "D:\\AI project\\nnunet\\code.txt",
+  "file_count": 219,
+  "bytes": 4209712,
+  "sha256": "cad0052b3da86d9366f1103868a3d4f049a6ecdf267ca0c6f1d196549a7f3eab",
+  "base_commit": "74dcc2cf03d2d40d1f582223321d96004333f661",
+  "release": "v2.1",
+  "superseded_release": "v2.0",
+  "all_source_hashes_match": true,
+  "verification_source_hashes_match": true,
+  "v1_preservation_verified": true,
+  "patch_note_links_verified": true,
+  "handoff_sha256": "ea64f8d4b78eb4117fccff38837574dd9e7a52ce2efed051d4559a5fb574b94c",
+  "patch_notes_sha256": "bd0ed75a06e0f2f5c8c70f9faf735829db21c82fe86ca8615780eed4c9a41a2b",
+  "format": "hiercp_prompt_graph_v2_cross_patient_r1",
+  "scope": "Documentation/version-history sync only; existing model debug evidence reused; no training or evaluation run",
+  "committed_or_pushed": false
+}
