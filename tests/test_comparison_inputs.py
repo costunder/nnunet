@@ -1,7 +1,8 @@
 """UNIT boundary/metadata equivalence, not a CT accuracy evaluation."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
+from contextlib import contextmanager
+from types import SimpleNamespace, ModuleType
 import json
 import unittest
 
@@ -14,6 +15,49 @@ from hiercp_v1x.comparison_data_timing import timed_provider
 
 
 class InputTests(unittest.TestCase):
+    def test_runtime_proxies_preserve_active_upper_wrappers_and_disjoint_totals(self):
+        # Metadata-only functions expose call routing without constructing CT/graphs.
+        module = ModuleType('UNIT_original_runtime')
+        exec('''
+def _source_raw(): return 'original'
+def _lesions(): return 'lesions'
+def _liver_raw(): return 'liver'
+def _principal_axis(): return 'axis'
+def build_generation_specs(): return 'specs'
+def build_patient_graph(): return (_source_raw(), _lesions(), _liver_raw(), _principal_axis())
+def build_prototype_graph(): return 'prototype'
+def build_inference_sample(): return (build_generation_specs(), build_patient_graph(), build_prototype_graph())
+def collate_samples(samples): return tuple(samples)
+''', module.__dict__)
+        class Base:
+            def __init__(self): self.runtime = SimpleNamespace(cache=module, data=module)
+            def _runtime(self): return self.runtime
+            @contextmanager
+            def _upper_context(self):
+                original = module._source_raw
+                module._source_raw = lambda: 'existing verified cache'
+                try: yield
+                finally: module._source_raw = original
+            def batch(self, *args, **kwargs):
+                runtime = self._runtime()  # Intentionally obtain it before upper wrappers are installed.
+                with self._upper_context(): values = runtime.cache.build_inference_sample()
+                return runtime.data.collate_samples([values])
+        with TemporaryDirectory(prefix='UNIT_input_details_') as folder:
+            path = Path(folder)/'input.jsonl'
+            provider = timed_provider(Base, path)()
+            expected = Base().batch()
+            self.assertEqual(provider.batch([1], 'native_fixed', 2, True), expected)
+            self.assertEqual(module._source_raw(), 'original')
+            row = json.loads(path.read_text())
+            self.assertEqual(set(row['regions']), {'upper_context_enter_seconds', 'generation_specs_seconds',
+                'patient_graph_seconds', 'prototype_graph_seconds', 'collate_seconds'})
+            self.assertEqual(row['inclusive_details']['source_raw_seconds']['calls'], 1)
+            self.assertEqual(row['inclusive_details']['liver_raw_seconds']['calls'], 1)
+            self.assertGreaterEqual(row['inclusive_details']['inference_assembly_inclusive_seconds']['seconds'],
+                                    row['regions']['patient_graph_seconds'])
+            self.assertAlmostEqual(row['input_seconds'], sum(row['regions'].values()) +
+                                   row['other_assembly_views_collate_seconds'])
+
     def test_exact_candidate_metadata_at_borders_and_odd_even_footprints(self):
         class Base:
             config = {'ct_clip': [-200, 300]}

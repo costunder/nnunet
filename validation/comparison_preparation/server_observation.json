@@ -1,0 +1,23 @@
+{
+  "provenance": "User-pasted output of report_comparison_runtime.py; no direct server access in this task",
+  "arm": "native_fixed",
+  "epoch": 2,
+  "completed_sources": 14,
+  "epoch_sources": 151,
+  "physical_source_batch": 1,
+  "workers": 16,
+  "debug": false,
+  "loader_plus_step_seconds": 1531.92,
+  "blocking_loader_seconds": 1408.66,
+  "step_seconds": 123.26,
+  "checkpoint_seconds_inside_step": 39.32,
+  "CUDA_seconds_inside_step": {"transfer": 0.31, "forward": 26.73, "backward": 53.35, "optimizer_check": 1.38},
+  "input_construction_seconds": 1497.85,
+  "input_regions_seconds": {"case_fields": 136.01, "regions": 8.49, "source": 405.49, "candidate_metadata": 4.54, "local_graphs": 7.61, "sampled_views": 26.02, "other_assembly_views_collate": 909.68},
+  "logged_peaks": {"CUDA_GiB": 11.12, "RSS_GiB": 122.41, "process_CPU_percent": 199.10},
+  "cache_pressure_events_entire_log": 0,
+  "last_complete_validation_epoch": 1,
+  "last_complete_validation": {"MRR": 0.876984, "top1": 0.805556, "pair_win": 0.995226, "pair_loss": 0.013171, "margin": 3.130683},
+  "score_scope": "Source-anchor ranking proxy; not CP or clinical accuracy",
+  "timing_scope": "Input construction may overlap GPU work; never add it to loader+step. Nested CUDA/checkpoint timings are already inside step."
+}

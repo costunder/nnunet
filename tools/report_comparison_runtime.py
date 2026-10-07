@@ -28,7 +28,8 @@ CACHE_KEYS = ("stage", "kind", "helper_kind", "status", "case_id", "wall_seconds
               "array_bytes", "disk_bytes", "rss_before_bytes", "rss_after_bytes")
 INPUT_KEYS = ("format", "observed_at", "arm", "view_epoch", "training", "full129", "source_indices",
               "status", "input_seconds", "regions", "other_assembly_views_collate_seconds",
-              "process_cpu_seconds", "process_cpu_scope", "rss_bytes", "timing_scope")
+              "process_cpu_seconds", "process_cpu_scope", "rss_bytes", "timing_scope",
+              "inclusive_details", "inclusive_details_scope", "compact_upper_cache")
 INPUT_REGIONS = ("case_fields_seconds", "regions_seconds", "source_seconds",
                  "candidate_metadata_seconds", "local_graphs_seconds")
 
@@ -231,6 +232,53 @@ def summarize_cache(rows, *, available=True):
                 "Summed helper times can overlap other work and must not be added to epoch loader timing."]}
 
 
+def _input_details(rows):
+    names = set()
+    observed = 0
+    for row in rows:
+        details = row.get('inclusive_details')
+        if details is None:
+            continue
+        if not isinstance(details, dict) or any(not isinstance(item, dict) for item in details.values()):
+            raise ValueError('Inclusive input details must map names to measurements')
+        observed += 1
+        names.update(details)
+    timings = {}
+    for name in sorted(names):
+        items = [row.get('inclusive_details', {}).get(name, {}) for row in rows]
+        counts = [item['calls'] for item in items if 'calls' in item]
+        if any(type(value) is not int or value < 0 for value in counts):
+            raise ValueError('Inclusive helper call counts must be nonnegative integers')
+        timings[name] = dict(timing=_duration(items, 'seconds'),
+                             observed_calls=sum(counts) if counts else None)
+    return dict(scope='inclusive nested wall times; overlap parent regions and each other; do not add',
+                records_with_value=observed, records_total=len(rows), timings=timings)
+
+
+def _compact_upper_summary(rows):
+    totals, observed = {}, 0
+    for row in rows:
+        cache = row.get('compact_upper_cache')
+        if cache is None:
+            continue
+        if not isinstance(cache, dict):
+            raise ValueError('Compact upper cache deltas must be a mapping')
+        observed += 1
+        for kind, metrics in cache.items():
+            if not isinstance(metrics, dict):
+                raise ValueError('Compact upper cache kind metrics must be a mapping')
+            current = totals.setdefault(kind, {})
+            for name, value in metrics.items():
+                value = _number(value)
+                if value is None or value < 0:
+                    raise ValueError('Compact upper cache deltas must be finite and nonnegative')
+                if not name.endswith('_seconds') and int(value) != value:
+                    raise ValueError('Compact upper cache counts must be integers')
+                current[name] = current.get(name, 0) + value
+    return dict(scope='sums of observed per-batch deltas; cache times overlap helper/input times',
+                records_with_value=observed, records_total=len(rows), kinds=totals)
+
+
 def _input_mode(rows, scope):
     successful = [row for row in rows if row.get("status") == "complete"]
     failed = [row for row in rows if row.get("status") == "failed"]
@@ -272,6 +320,8 @@ def _input_mode(rows, scope):
             "view_epochs": sorted({row["view_epoch"] for row in rows if type(row.get("view_epoch")) is int}),
             "source_coverage": _coverage(successful, "source_indices", "source_problems", None),
             "input_construction": totals, "timings": timings,
+            "inclusive_details": _input_details(successful),
+            "compact_upper_cache": _compact_upper_summary(successful),
             "accounted_region_plus_remainder_seconds": accounted,
             "input_accounting": accounting,
             "failed_input_construction": _duration(failed, "input_seconds"),
@@ -491,6 +541,16 @@ def render_text(report):
             mode = inputs[key]
             lines.append(f"{label}: {_fmt(mode['input_construction']['seconds'])}s in {mode['completed_batch_records']} completed batches; failed {mode['failed_batch_records']}; excludes pinning/queue wait")
             lines.append("  Disjoint construction: " + " | ".join(f"{name.removesuffix('_seconds')} {_fmt(value['seconds'])}s ({_fmt(value['percent_of_cpu_input_construction'])}%)" for name, value in mode['timings'].items()))
+            details = mode['inclusive_details']
+            if details['records_with_value']:
+                lines.append(f"  Inclusive details (overlap; do not add; {details['records_with_value']}/{details['records_total']} batches): " +
+                    ' | '.join(f"{name.removesuffix('_seconds')} {_fmt(value['timing']['seconds'])}s/{value['observed_calls']} calls"
+                               for name, value in details['timings'].items()))
+            compact = mode['compact_upper_cache']
+            if compact['records_with_value']:
+                lines.append(f"  Compact upper cache ({compact['records_with_value']}/{compact['records_total']} batch deltas): " +
+                    ' | '.join(f"{kind} builds={value.get('builds', 'unknown')} reopens={value.get('reopens', 'unknown')} RAM hits={value.get('resident_hits', 'unknown')} original={_fmt(value.get('original_seconds'))}s"
+                               for kind, value in compact['kinds'].items()))
         lines.append("Validation input view_epoch is fixed; cumulative input preparation can overlap GPU work and is not added to epoch wall time.")
     else:
         lines.append("CPU input construction breakdown: unavailable")

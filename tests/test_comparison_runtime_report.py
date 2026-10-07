@@ -4,10 +4,36 @@ import json
 import unittest
 
 from tools.report_comparison_runtime import (build_report, parse_jsonl, summarize_cache,
-    summarize_input, summarize_training)
+    render_text, summarize_input, summarize_training)
 
 
 class ComparisonRuntimeReportUnitTests(unittest.TestCase):
+    def test_inclusive_details_and_compact_cache_are_reported_without_double_counting(self):
+        row = dict(arm='native_fixed', training=True, full129=False, view_epoch=2,
+            source_indices=[3], status='complete', input_seconds=10.,
+            regions=dict(patient_graph_seconds=8.), other_assembly_views_collate_seconds=2.,
+            inclusive_details=dict(liver_raw_seconds=dict(seconds=7., calls=2),
+                                   inference_assembly_inclusive_seconds=dict(seconds=9., calls=2)),
+            compact_upper_cache=dict(liver_raw=dict(calls=2, builds=1, reopens=0, resident_hits=1,
+                                                   original_seconds=6., lookup_seconds=7.)))
+        rows, notices = parse_jsonl(io.StringIO(json.dumps(row)+'\n'), kind='input')
+        self.assertFalse(notices)
+        mode = summarize_input(rows, 'native_fixed', 2)['training_epoch']
+        self.assertEqual(mode['accounted_region_plus_remainder_seconds'], 10.)
+        self.assertEqual(mode['inclusive_details']['timings']['liver_raw_seconds']['observed_calls'], 2)
+        self.assertEqual(mode['compact_upper_cache']['kinds']['liver_raw']['builds'], 1)
+        old = {key: value for key, value in row.items() if key not in ('inclusive_details', 'compact_upper_cache')}
+        mixed = summarize_input([old, row], 'native_fixed', 2)['training_epoch']
+        self.assertEqual(mixed['inclusive_details']['records_with_value'], 1)
+        self.assertEqual(mixed['inclusive_details']['records_total'], 2)
+        self.assertFalse(mixed['inclusive_details']['timings']['liver_raw_seconds']['timing']['complete_measurement'])
+        report = build_report({'arm': 'native_fixed'}, [], [], [], [], epoch=2,
+                              input_rows=rows, input_available=True)
+        report['warnings'] = []
+        rendered = render_text(report)
+        self.assertIn('Inclusive details (overlap; do not add', rendered)
+        self.assertIn('Compact upper cache', rendered)
+
     def test_training_step_excludes_loader_and_contains_checkpoint(self):
         rows = [dict(status="OPTIMIZER_UPDATED", epoch=1, update=1, sample_indices=[1, 2], physical_samples=2,
                      loader_wait_seconds=3., step_seconds=7., checkpoint_seconds=2., forward_seconds=1.,

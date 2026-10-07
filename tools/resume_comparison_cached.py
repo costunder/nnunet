@@ -219,9 +219,7 @@ def run(a):
     from hiercp_v1x.host_memory import PressureBudget, pressure_aware_provider
     from hiercp_v1x.preparation_reuse import preparation_reuse
     from hiercp_v1x.comparison_execution import comparison_execution
-    from hiercp_v1x.comparison_inputs import local_mask_provider
-    from hiercp_v1x.comparison_views import parallel_view_provider
-    from hiercp_v1x.comparison_data_timing import timed_provider
+    from hiercp_v1x.comparison_preparation import prepared_provider
     from hiercp_v1x.u_bridge_experiment import lock, write_new, sha
     manifest, family, args, namespace = sealed_arguments(a)
     root = args.experiment
@@ -243,14 +241,16 @@ def run(a):
                 read_only_sources=[str(p.resolve()) for p in a.cache_sources],
                 original_checkpoint_protocol_and_frozen_sources_unchanged=True,
                 execution_loop_changed=True,
-                execution_policy='ordered validation prefetch, parallel exact sampled views, progress and local label-mask extraction',
+                execution_policy='ordered validation prefetch, parallel exact sampled views, progress, local label-mask extraction and compact exact source/upper preparation caches',
                 helpers={name:sha(ROOT/name) for name in ('tools/resume_comparison_cached.py',
                     'hiercp_v1x/host_memory.py','hiercp_v1x/preparation_reuse.py',
                     'hiercp_v1x/comparison_execution.py','hiercp_v1x/comparison_runtime.py',
                     'hiercp_v1x/comparison_progress.py','hiercp_v1x/comparison_inputs.py',
-                    'hiercp_v1x/comparison_views.py','hiercp_v1x/comparison_data_timing.py')}))
+                    'hiercp_v1x/comparison_views.py','hiercp_v1x/comparison_data_timing.py',
+                    'hiercp_v1x/comparison_preparation.py','hiercp_v1x/comparison_source_cache.py',
+                    'hiercp_v1x/comparison_upper_cache.py')}))
     def execution_provider(provider):
-        return timed_provider(parallel_view_provider(local_mask_provider(provider)), root/'input_timing.jsonl')
+        return prepared_provider(provider, root/'input_timing.jsonl')
     continuation_path = root/'continuation.json'
     if continuation_path.exists():
         if family != 'u_bridge':

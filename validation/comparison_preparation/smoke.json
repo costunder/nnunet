@@ -1,0 +1,45 @@
+{
+  "scope": "actual_CT_CUDA_preparation_DEBUG_only",
+  "debug": true,
+  "exact_inputs": true,
+  "parameters": 10434532,
+  "physical_batch": 2,
+  "workers": 4,
+  "train_sources": 2,
+  "validation_sources": 1,
+  "training_candidates": 8,
+  "validation_candidates": 129,
+  "train_view_epochs": [
+    1,
+    2
+  ],
+  "genuine_graph_views": 2,
+  "input_report": {
+    "path": "inputs.json",
+    "sha256": "116da78e3a8cccf0beeb2a450794116f36573984b85e4b520bf13a47eb88890a"
+  },
+  "CUDA_report": {
+    "path": "report.json",
+    "sha256": "1a8b29869eb5faa056a8b4eb336c087660e97135d4a0d4eebeb882775ff79e80"
+  },
+  "optimizer_updates": 2,
+  "completed_resume_additional_updates": 0,
+  "all_1085_parameter_gradients_finite": true,
+  "model_loss_and_schedule_changed": false,
+  "original_reference_preserved": true,
+  "original_cache_preserved": true,
+  "frozen_helpers_preserved": true,
+  "actual_wrapper_completed_resume": {
+    "returncode": 0,
+    "additional_updates": 0,
+    "copied_checkpoint_content_identical": true,
+    "copied_checkpoint_archive_bytes_identical": true,
+    "original_reference_cache_preserved": true,
+    "stdout": "wrapper_stdout.log",
+    "stderr": "wrapper_stderr.log"
+  },
+  "full_training": false,
+  "full_production_evaluation": false,
+  "quality_verified": false,
+  "limitation": "Three real CT cases verify exact input reuse and full-model CUDA mechanics. This does not measure server NFS throughput or production ranking quality."
+}

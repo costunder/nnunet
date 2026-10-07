@@ -1,5 +1,7 @@
 # v1.9 — 비교 위치와 순환·loss 대조
 
+기존 실행의 CPU 입력 대기 개선과 검증 범위는 [전처리 재사용](../../docs/comparison_preparation.md)에 기록했다. 동일 재개 launcher가 원본 source 준비·간 통계·source 방향을 정확히 재사용하며, 후보·두 view·모델·batch·저장된 학습 상태를 유지한다.
+
 실행 중인 v1.8 selected/native 두 실험을 기준으로, 고정 U와 listwise loss 두 실험만 추가한다. 기존 두 실험은 계속 진행한다. 새 두 실험은 원본 v1 m10 모델·P·source 목록을 유지하고 seed 42 초기 가중치에서 각각 시작한다.
 
 | 군 | 학습 비교 위치 7개 | 목적함수 |
