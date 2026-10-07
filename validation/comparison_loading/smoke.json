@@ -1,0 +1,70 @@
+{
+  "scope": "actual_CT_CUDA_sample_cache_DEBUG_only",
+  "debug": true,
+  "exact_inputs": true,
+  "parameters": 10434532,
+  "physical_source_batch": 2,
+  "workers": 4,
+  "train_sources": 2,
+  "validation_sources": 1,
+  "training_candidates": 8,
+  "validation_candidates": 129,
+  "arms": [
+    "selected",
+    "native",
+    "native_fixed",
+    "native_listwise"
+  ],
+  "input_report": {
+    "path": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\inputs.json",
+    "sha256": "9f7494a2585d71a2a4c6d237600ad8de5665656846a15cb8cf10acd10c9cc70b",
+    "reused_completed_evidence": true,
+    "execution_helper_sha256": {
+      "comparison_preparation.py": "b2409e17b422038979165b21e23ba0d094f9d5e48d044cfd85e5423552b5f3d0",
+      "comparison_sample_cache.py": "a5f744b27ef1b0e3b914671550028bbdd541916f2419c584337c777625465b66",
+      "comparison_source_cache.py": "e6b052cc7011faf8a7f2d80e85eff3d5692f4b5690f128e7766c704304b97ad0",
+      "comparison_upper_cache.py": "def6e2a2a799692a7ae6495eabb54a26de397ce28ff77ed0c3babc48ca9b71bc",
+      "comparison_inputs.py": "f0d04b9cd4c0d3d803609d2e192e855aa0b5af045a9bfb46808be4ab18ca8d76",
+      "comparison_views.py": "89277306b11417c39b10c0fdb02f39241e43172a071c0f5061e87c8158ad39a3",
+      "comparison_data_timing.py": "4f77eed2f45bd39cd7cfaf913f0390989d80a5ffd097930da11c08f9319dffe9",
+      "comparison_runtime.py": "5a9b48bcd78f972107e5546bdb756a5e694c6e20bd1cb0d8bcaa2e04f0f88a81"
+    }
+  },
+  "CUDA_report": {
+    "path": "report.json",
+    "sha256": "0c83e03baf007edbfcfb5ab860945ddd18d4f7a887a20eeeb723e3d1587f07a9"
+  },
+  "optimizer_updates": 2,
+  "validation129_passes": 3,
+  "completed_resume_additional_updates": 0,
+  "all_1085_parameter_gradients_finite": true,
+  "original_reference_preserved": true,
+  "original_cache_preserved": true,
+  "frozen_helpers_preserved": true,
+  "execution_helper_sha256": {
+    "comparison_preparation.py": "b2409e17b422038979165b21e23ba0d094f9d5e48d044cfd85e5423552b5f3d0",
+    "comparison_sample_cache.py": "a5f744b27ef1b0e3b914671550028bbdd541916f2419c584337c777625465b66",
+    "comparison_source_cache.py": "e6b052cc7011faf8a7f2d80e85eff3d5692f4b5690f128e7766c704304b97ad0",
+    "comparison_upper_cache.py": "def6e2a2a799692a7ae6495eabb54a26de397ce28ff77ed0c3babc48ca9b71bc",
+    "comparison_inputs.py": "f0d04b9cd4c0d3d803609d2e192e855aa0b5af045a9bfb46808be4ab18ca8d76",
+    "comparison_views.py": "884bcb5e0a0ca1acc168d5e019c14aaf204f90a7ee00324e0ddfbd7be6f44384",
+    "comparison_data_timing.py": "4f77eed2f45bd39cd7cfaf913f0390989d80a5ffd097930da11c08f9319dffe9",
+    "comparison_runtime.py": "d563a237193f5b2b4ccabf13869aa2cee07f17c93f7d7ad9f78e744a1f50d147"
+  },
+  "post_fix_staging": {
+    "path": "staging.json",
+    "sha256": "f5e41f2d82d95b8dd655e2b45c798cf01a2ed7dd9131418fa02d3ed8919618fa"
+  },
+  "controller_completed_resume": {
+    "returncode": 0,
+    "additional_updates": 0,
+    "copied_checkpoint_content_identical": true,
+    "copied_checkpoint_archive_bytes_identical": true,
+    "original_reference_cache_preserved": true,
+    "stdout": "wrapper_stdout.log",
+    "stderr": "wrapper_stderr.log"
+  },
+  "full_training": false,
+  "full_production_evaluation": false,
+  "quality_verified": false
+}

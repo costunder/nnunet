@@ -1,0 +1,23 @@
+{
+  "input_report": "D:/AI project/nnunet/work/runs/v1.9/sample-cache/debug-20261008/inputs.json",
+  "input_sha256": "9f7494a2585d71a2a4c6d237600ad8de5665656846a15cb8cf10acd10c9cc70b",
+  "execution_helper_sha256": {
+    "comparison_preparation.py": "b2409e17b422038979165b21e23ba0d094f9d5e48d044cfd85e5423552b5f3d0",
+    "comparison_sample_cache.py": "a5f744b27ef1b0e3b914671550028bbdd541916f2419c584337c777625465b66",
+    "comparison_source_cache.py": "e6b052cc7011faf8a7f2d80e85eff3d5692f4b5690f128e7766c704304b97ad0",
+    "comparison_upper_cache.py": "def6e2a2a799692a7ae6495eabb54a26de397ce28ff77ed0c3babc48ca9b71bc",
+    "comparison_inputs.py": "f0d04b9cd4c0d3d803609d2e192e855aa0b5af045a9bfb46808be4ab18ca8d76",
+    "comparison_views.py": "89277306b11417c39b10c0fdb02f39241e43172a071c0f5061e87c8158ad39a3",
+    "comparison_data_timing.py": "4f77eed2f45bd39cd7cfaf913f0390989d80a5ffd097930da11c08f9319dffe9",
+    "comparison_runtime.py": "5a9b48bcd78f972107e5546bdb756a5e694c6e20bd1cb0d8bcaa2e04f0f88a81"
+  },
+  "whole_run_status": "FAILED_BEFORE_FIRST_CUDA_FORWARD",
+  "completed_exact_input_checks": 24,
+  "completed_repeated_prefetch_checks": 3,
+  "optimizer_updates": 0,
+  "failure": "comparison_progress.PhaseProgress.update rejected new prefetch_slots metadata passed as elapsed-second timings (KeyError).",
+  "binding_recorded_after_failure_before_runtime_fix": true,
+  "quality_verified": false,
+  "nonstaging_view_AST_sha256": "9046301d6435b5a38472ed5f4021011483c4c33a32ebbb73325aeb4bcaa435dd",
+  "view_AST_scope": "comparison_views.py with only cpu_staging removed; original hash verified before worker allocation correction"
+}

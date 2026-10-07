@@ -1,0 +1,6193 @@
+{
+  "scope": "actual_CT_exact_sample_reuse_DEBUG_only",
+  "exact_inputs": true,
+  "current_control": "9c36b86 source+compact upper caches and parallel graph views",
+  "control_parallel_view_source_sha256": "3125e49aeea6c5821fb521ef710c8ee623b5455f140d9a5fb4c2facd649772e8",
+  "arm_requests": [
+    {
+      "arm": "selected",
+      "partition": "train",
+      "full": false,
+      "epoch": 1,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ],
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ]
+      ],
+      "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037",
+      "comparison_arm": "selected"
+    },
+    {
+      "arm": "selected",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ],
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ]
+      ],
+      "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c",
+      "comparison_arm": "selected"
+    },
+    {
+      "arm": "selected",
+      "partition": "val",
+      "full": true,
+      "epoch": 29,
+      "indices": [
+        2
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13",
+          "U:14",
+          "U:15",
+          "U:16",
+          "U:17",
+          "U:18",
+          "U:19",
+          "U:20",
+          "U:21",
+          "U:22",
+          "U:23",
+          "U:24",
+          "U:25",
+          "U:26",
+          "U:27",
+          "U:28",
+          "U:29",
+          "U:30",
+          "U:31",
+          "U:32",
+          "U:33",
+          "U:34",
+          "U:35",
+          "U:36",
+          "U:37",
+          "U:38",
+          "U:39",
+          "U:40",
+          "U:41",
+          "U:42",
+          "U:43",
+          "U:44",
+          "U:45",
+          "U:46",
+          "U:47",
+          "U:48",
+          "U:49",
+          "U:50",
+          "U:51",
+          "U:52",
+          "U:53",
+          "U:54",
+          "U:55",
+          "U:56",
+          "U:57",
+          "U:58",
+          "U:59",
+          "U:60",
+          "U:61",
+          "U:62",
+          "U:63",
+          "U:64",
+          "U:65",
+          "U:66",
+          "U:67",
+          "U:68",
+          "U:69",
+          "U:70",
+          "U:71",
+          "U:72",
+          "U:73",
+          "U:74",
+          "U:75",
+          "U:76",
+          "U:77",
+          "U:78",
+          "U:79",
+          "U:80",
+          "U:81",
+          "U:82",
+          "U:83",
+          "U:84",
+          "U:85",
+          "U:86",
+          "U:87",
+          "U:88",
+          "U:89",
+          "U:90",
+          "U:91",
+          "U:92",
+          "U:93",
+          "U:94",
+          "U:95",
+          "U:96",
+          "U:97",
+          "U:98",
+          "U:99",
+          "U:100",
+          "U:101",
+          "U:102",
+          "U:103",
+          "U:104",
+          "U:105",
+          "U:106",
+          "U:107",
+          "U:108",
+          "U:109",
+          "U:110",
+          "U:111",
+          "U:112",
+          "U:113",
+          "U:114",
+          "U:115",
+          "U:116",
+          "U:117",
+          "U:118",
+          "U:119",
+          "U:120",
+          "U:121",
+          "U:122",
+          "U:123",
+          "U:124",
+          "U:125",
+          "U:126",
+          "U:127"
+        ]
+      ],
+      "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5",
+      "comparison_arm": "selected"
+    },
+    {
+      "arm": "native",
+      "partition": "train",
+      "full": false,
+      "epoch": 1,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ],
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ]
+      ],
+      "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71",
+      "comparison_arm": "native"
+    },
+    {
+      "arm": "native",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13"
+        ],
+        [
+          "P",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13"
+        ]
+      ],
+      "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e",
+      "comparison_arm": "native"
+    },
+    {
+      "arm": "native",
+      "partition": "val",
+      "full": true,
+      "epoch": 29,
+      "indices": [
+        2
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13",
+          "U:14",
+          "U:15",
+          "U:16",
+          "U:17",
+          "U:18",
+          "U:19",
+          "U:20",
+          "U:21",
+          "U:22",
+          "U:23",
+          "U:24",
+          "U:25",
+          "U:26",
+          "U:27",
+          "U:28",
+          "U:29",
+          "U:30",
+          "U:31",
+          "U:32",
+          "U:33",
+          "U:34",
+          "U:35",
+          "U:36",
+          "U:37",
+          "U:38",
+          "U:39",
+          "U:40",
+          "U:41",
+          "U:42",
+          "U:43",
+          "U:44",
+          "U:45",
+          "U:46",
+          "U:47",
+          "U:48",
+          "U:49",
+          "U:50",
+          "U:51",
+          "U:52",
+          "U:53",
+          "U:54",
+          "U:55",
+          "U:56",
+          "U:57",
+          "U:58",
+          "U:59",
+          "U:60",
+          "U:61",
+          "U:62",
+          "U:63",
+          "U:64",
+          "U:65",
+          "U:66",
+          "U:67",
+          "U:68",
+          "U:69",
+          "U:70",
+          "U:71",
+          "U:72",
+          "U:73",
+          "U:74",
+          "U:75",
+          "U:76",
+          "U:77",
+          "U:78",
+          "U:79",
+          "U:80",
+          "U:81",
+          "U:82",
+          "U:83",
+          "U:84",
+          "U:85",
+          "U:86",
+          "U:87",
+          "U:88",
+          "U:89",
+          "U:90",
+          "U:91",
+          "U:92",
+          "U:93",
+          "U:94",
+          "U:95",
+          "U:96",
+          "U:97",
+          "U:98",
+          "U:99",
+          "U:100",
+          "U:101",
+          "U:102",
+          "U:103",
+          "U:104",
+          "U:105",
+          "U:106",
+          "U:107",
+          "U:108",
+          "U:109",
+          "U:110",
+          "U:111",
+          "U:112",
+          "U:113",
+          "U:114",
+          "U:115",
+          "U:116",
+          "U:117",
+          "U:118",
+          "U:119",
+          "U:120",
+          "U:121",
+          "U:122",
+          "U:123",
+          "U:124",
+          "U:125",
+          "U:126",
+          "U:127"
+        ]
+      ],
+      "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5",
+      "comparison_arm": "selected"
+    },
+    {
+      "arm": "native_fixed",
+      "partition": "train",
+      "full": false,
+      "epoch": 1,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ],
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ]
+      ],
+      "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71",
+      "comparison_arm": "native"
+    },
+    {
+      "arm": "native_fixed",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ],
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ]
+      ],
+      "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+      "comparison_arm": "native_fixed"
+    },
+    {
+      "arm": "native_fixed",
+      "partition": "val",
+      "full": true,
+      "epoch": 29,
+      "indices": [
+        2
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13",
+          "U:14",
+          "U:15",
+          "U:16",
+          "U:17",
+          "U:18",
+          "U:19",
+          "U:20",
+          "U:21",
+          "U:22",
+          "U:23",
+          "U:24",
+          "U:25",
+          "U:26",
+          "U:27",
+          "U:28",
+          "U:29",
+          "U:30",
+          "U:31",
+          "U:32",
+          "U:33",
+          "U:34",
+          "U:35",
+          "U:36",
+          "U:37",
+          "U:38",
+          "U:39",
+          "U:40",
+          "U:41",
+          "U:42",
+          "U:43",
+          "U:44",
+          "U:45",
+          "U:46",
+          "U:47",
+          "U:48",
+          "U:49",
+          "U:50",
+          "U:51",
+          "U:52",
+          "U:53",
+          "U:54",
+          "U:55",
+          "U:56",
+          "U:57",
+          "U:58",
+          "U:59",
+          "U:60",
+          "U:61",
+          "U:62",
+          "U:63",
+          "U:64",
+          "U:65",
+          "U:66",
+          "U:67",
+          "U:68",
+          "U:69",
+          "U:70",
+          "U:71",
+          "U:72",
+          "U:73",
+          "U:74",
+          "U:75",
+          "U:76",
+          "U:77",
+          "U:78",
+          "U:79",
+          "U:80",
+          "U:81",
+          "U:82",
+          "U:83",
+          "U:84",
+          "U:85",
+          "U:86",
+          "U:87",
+          "U:88",
+          "U:89",
+          "U:90",
+          "U:91",
+          "U:92",
+          "U:93",
+          "U:94",
+          "U:95",
+          "U:96",
+          "U:97",
+          "U:98",
+          "U:99",
+          "U:100",
+          "U:101",
+          "U:102",
+          "U:103",
+          "U:104",
+          "U:105",
+          "U:106",
+          "U:107",
+          "U:108",
+          "U:109",
+          "U:110",
+          "U:111",
+          "U:112",
+          "U:113",
+          "U:114",
+          "U:115",
+          "U:116",
+          "U:117",
+          "U:118",
+          "U:119",
+          "U:120",
+          "U:121",
+          "U:122",
+          "U:123",
+          "U:124",
+          "U:125",
+          "U:126",
+          "U:127"
+        ]
+      ],
+      "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5",
+      "comparison_arm": "selected"
+    },
+    {
+      "arm": "native_listwise",
+      "partition": "train",
+      "full": false,
+      "epoch": 1,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ],
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ]
+      ],
+      "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71",
+      "comparison_arm": "native"
+    },
+    {
+      "arm": "native_listwise",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13"
+        ],
+        [
+          "P",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13"
+        ]
+      ],
+      "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e",
+      "comparison_arm": "native"
+    },
+    {
+      "arm": "native_listwise",
+      "partition": "val",
+      "full": true,
+      "epoch": 29,
+      "indices": [
+        2
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13",
+          "U:14",
+          "U:15",
+          "U:16",
+          "U:17",
+          "U:18",
+          "U:19",
+          "U:20",
+          "U:21",
+          "U:22",
+          "U:23",
+          "U:24",
+          "U:25",
+          "U:26",
+          "U:27",
+          "U:28",
+          "U:29",
+          "U:30",
+          "U:31",
+          "U:32",
+          "U:33",
+          "U:34",
+          "U:35",
+          "U:36",
+          "U:37",
+          "U:38",
+          "U:39",
+          "U:40",
+          "U:41",
+          "U:42",
+          "U:43",
+          "U:44",
+          "U:45",
+          "U:46",
+          "U:47",
+          "U:48",
+          "U:49",
+          "U:50",
+          "U:51",
+          "U:52",
+          "U:53",
+          "U:54",
+          "U:55",
+          "U:56",
+          "U:57",
+          "U:58",
+          "U:59",
+          "U:60",
+          "U:61",
+          "U:62",
+          "U:63",
+          "U:64",
+          "U:65",
+          "U:66",
+          "U:67",
+          "U:68",
+          "U:69",
+          "U:70",
+          "U:71",
+          "U:72",
+          "U:73",
+          "U:74",
+          "U:75",
+          "U:76",
+          "U:77",
+          "U:78",
+          "U:79",
+          "U:80",
+          "U:81",
+          "U:82",
+          "U:83",
+          "U:84",
+          "U:85",
+          "U:86",
+          "U:87",
+          "U:88",
+          "U:89",
+          "U:90",
+          "U:91",
+          "U:92",
+          "U:93",
+          "U:94",
+          "U:95",
+          "U:96",
+          "U:97",
+          "U:98",
+          "U:99",
+          "U:100",
+          "U:101",
+          "U:102",
+          "U:103",
+          "U:104",
+          "U:105",
+          "U:106",
+          "U:107",
+          "U:108",
+          "U:109",
+          "U:110",
+          "U:111",
+          "U:112",
+          "U:113",
+          "U:114",
+          "U:115",
+          "U:116",
+          "U:117",
+          "U:118",
+          "U:119",
+          "U:120",
+          "U:121",
+          "U:122",
+          "U:123",
+          "U:124",
+          "U:125",
+          "U:126",
+          "U:127"
+        ]
+      ],
+      "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5",
+      "comparison_arm": "selected"
+    }
+  ],
+  "unique_complete_input_requests": [
+    {
+      "arm": "selected",
+      "partition": "train",
+      "full": false,
+      "epoch": 1,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ],
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ]
+      ],
+      "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+    },
+    {
+      "arm": "selected",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ],
+        [
+          "P",
+          "S:0",
+          "S:1",
+          "S:2",
+          "S:3",
+          "S:4",
+          "S:5",
+          "S:6"
+        ]
+      ],
+      "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+    },
+    {
+      "arm": "selected",
+      "partition": "val",
+      "full": true,
+      "epoch": 29,
+      "indices": [
+        2
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13",
+          "U:14",
+          "U:15",
+          "U:16",
+          "U:17",
+          "U:18",
+          "U:19",
+          "U:20",
+          "U:21",
+          "U:22",
+          "U:23",
+          "U:24",
+          "U:25",
+          "U:26",
+          "U:27",
+          "U:28",
+          "U:29",
+          "U:30",
+          "U:31",
+          "U:32",
+          "U:33",
+          "U:34",
+          "U:35",
+          "U:36",
+          "U:37",
+          "U:38",
+          "U:39",
+          "U:40",
+          "U:41",
+          "U:42",
+          "U:43",
+          "U:44",
+          "U:45",
+          "U:46",
+          "U:47",
+          "U:48",
+          "U:49",
+          "U:50",
+          "U:51",
+          "U:52",
+          "U:53",
+          "U:54",
+          "U:55",
+          "U:56",
+          "U:57",
+          "U:58",
+          "U:59",
+          "U:60",
+          "U:61",
+          "U:62",
+          "U:63",
+          "U:64",
+          "U:65",
+          "U:66",
+          "U:67",
+          "U:68",
+          "U:69",
+          "U:70",
+          "U:71",
+          "U:72",
+          "U:73",
+          "U:74",
+          "U:75",
+          "U:76",
+          "U:77",
+          "U:78",
+          "U:79",
+          "U:80",
+          "U:81",
+          "U:82",
+          "U:83",
+          "U:84",
+          "U:85",
+          "U:86",
+          "U:87",
+          "U:88",
+          "U:89",
+          "U:90",
+          "U:91",
+          "U:92",
+          "U:93",
+          "U:94",
+          "U:95",
+          "U:96",
+          "U:97",
+          "U:98",
+          "U:99",
+          "U:100",
+          "U:101",
+          "U:102",
+          "U:103",
+          "U:104",
+          "U:105",
+          "U:106",
+          "U:107",
+          "U:108",
+          "U:109",
+          "U:110",
+          "U:111",
+          "U:112",
+          "U:113",
+          "U:114",
+          "U:115",
+          "U:116",
+          "U:117",
+          "U:118",
+          "U:119",
+          "U:120",
+          "U:121",
+          "U:122",
+          "U:123",
+          "U:124",
+          "U:125",
+          "U:126",
+          "U:127"
+        ]
+      ],
+      "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+    },
+    {
+      "arm": "native",
+      "partition": "train",
+      "full": false,
+      "epoch": 1,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ],
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ]
+      ],
+      "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+    },
+    {
+      "arm": "native",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13"
+        ],
+        [
+          "P",
+          "U:7",
+          "U:8",
+          "U:9",
+          "U:10",
+          "U:11",
+          "U:12",
+          "U:13"
+        ]
+      ],
+      "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+    },
+    {
+      "arm": "native_fixed",
+      "partition": "train",
+      "full": false,
+      "epoch": 2,
+      "indices": [
+        0,
+        1
+      ],
+      "candidate_keys": [
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ],
+        [
+          "P",
+          "U:0",
+          "U:1",
+          "U:2",
+          "U:3",
+          "U:4",
+          "U:5",
+          "U:6"
+        ]
+      ],
+      "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+    }
+  ],
+  "deduplication": "Only requests with identical source indices, ordered candidate keys, actual view epoch and train/full mode share an input comparison. All four arm policies are checked; loss remains in the unchanged training engine.",
+  "comparisons": [
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "prepared_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "prepared_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "prepared_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "leaves": 1523,
+      "differences": []
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "prepared_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "prepared_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "prepared_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "prepared_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "prepared_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "prepared_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "leaves": 1523,
+      "differences": []
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "prepared_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "prepared_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "prepared_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "prepared_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "prepared_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "prepared_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "leaves": 1523,
+      "differences": []
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "prepared_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "prepared_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "prepared_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "prepared_digest": "e2a5be8d586e1db76ac75eb0146db4aea2575c0fd6bfd9b1ea88fc1e3f907914",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "prepared_digest": "474039260e99b6d173c5d4589d8c1cd2cd7c78ba093f671282dc9ca87f04a14e",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "prepared_digest": "104645d154dd04f9a900f7cc04e71a17d49531789a8962646daedf7a65141067",
+      "leaves": 1523,
+      "differences": []
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "prepared_digest": "8c9b562956ea52ef321c19910a58b993269fe09dd35d944452d045211d303a07",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "prepared_digest": "47555fc0bb25d49bd2e84d25dcf4cea25043200e56b88ab3f69ca24858ff6d83",
+      "leaves": 857,
+      "differences": []
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "raw_source_upper_and_full_builder_calls": 0,
+      "exact_values_layout_metadata_equal": true,
+      "original_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "prepared_digest": "11c1905ae09f53d856493e8526e5ded4f154d4a33c1aefcdc78891a1377d1249",
+      "leaves": 857,
+      "differences": []
+    }
+  ],
+  "timings": [
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "current_seconds": 35.53449330001604,
+      "sample_seconds": 36.886273900046945
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "current_seconds": 3.734338100068271,
+      "sample_seconds": 3.096005600062199
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "current_seconds": 18.499566999962553,
+      "sample_seconds": 20.36450819997117
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "current_seconds": 3.631402699975297,
+      "sample_seconds": 3.7609081000555307
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "current_seconds": 3.70357759995386,
+      "sample_seconds": 4.089605799992569
+    },
+    {
+      "mode": "cold",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "current_seconds": 3.2350057000294328,
+      "sample_seconds": 3.183284700033255
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "sample_seconds": 3.070365299936384
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "sample_seconds": 3.082128099980764
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "sample_seconds": 13.13390250003431
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "sample_seconds": 2.8637382000451908
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "sample_seconds": 3.1031653999816626
+    },
+    {
+      "mode": "hot",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "sample_seconds": 3.048303799936548
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "sample_seconds": 3.4780021000187844
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "sample_seconds": 3.09786510001868
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "sample_seconds": 15.943134699948132
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "sample_seconds": 3.3324124000500888
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "sample_seconds": 3.3428726999554783
+    },
+    {
+      "mode": "evicted",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "sample_seconds": 3.3396504000993446
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "95e019eef4ffefbc3834e267bfdcb3c7bfb0a34be7f34afa8d646cab791e4037"
+      },
+      "sample_seconds": 4.015989299979992
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "selected",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ],
+          [
+            "P",
+            "S:0",
+            "S:1",
+            "S:2",
+            "S:3",
+            "S:4",
+            "S:5",
+            "S:6"
+          ]
+        ],
+        "identity": "637d035fa2bac1ec22ee213b2fd6db04eecf347661ca217c45fc9ab2928a1f9c"
+      },
+      "sample_seconds": 3.7007008000509813
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "selected",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5"
+      },
+      "sample_seconds": 17.67836590006482
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 1,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "d2bd76be83c93c604460fd893b3ecd9f9a108c6a09cef30cc29bf3433f397c71"
+      },
+      "sample_seconds": 3.4826294999802485
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "native",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ],
+          [
+            "P",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13"
+          ]
+        ],
+        "identity": "402d683e37b3b71824b5e152405e495d139af328a499cb5f220e177fe04af30e"
+      },
+      "sample_seconds": 3.5475818999111652
+    },
+    {
+      "mode": "reopened",
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88"
+      },
+      "sample_seconds": 3.2008546999422833
+    }
+  ],
+  "provider_snapshots": [
+    {
+      "mode": "cold",
+      "new": {
+        "format": "v18_own_source_selected_native_u_bridge_v1",
+        "source_samples": 3,
+        "native_U_per_case": 128,
+        "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+        "training_query_count": 8,
+        "full_evaluation_query_count": 129,
+        "workers": 4,
+        "resident_bytes": 8025722856,
+        "resident_limit_bytes": 21474836480,
+        "whole_case_fields": {
+          "cases": 3,
+          "array_bytes": 2403336192,
+          "disk_bytes": 2403341087,
+          "receipts": {
+            "liver_5": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_5",
+              "status": "reopened",
+              "binding_sha256": "8575423b0d30d43e719323227a4fa5941b2f7e6be08ebf8b5775dde289c60511",
+              "metadata_sha256": "4a24d6710c5d8affccdfe7012e11c1cbb3f063407546d44667aeab154a12d0ce",
+              "fields": {
+                "depth": {
+                  "array_bytes": 563085312,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 563085440,
+                  "fortran_order": false,
+                  "sha256": "4589ab2c1567ecca47f5e2817c11baa71eefc321d41757667ec627acb6722cbb",
+                  "shape": [
+                    512,
+                    512,
+                    537
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 563085312,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 563085440,
+                  "fortran_order": false,
+                  "sha256": "2a115c62a15b91ae73da89985e9f65195754c649f67451a3b8a9815bf1601313",
+                  "shape": [
+                    512,
+                    512,
+                    537
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 1126170624,
+              "disk_bytes": 1126172268,
+              "disk_free_bytes": 1407255023616,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 1.5555784000316635
+            },
+            "liver_6": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_6",
+              "status": "reopened",
+              "binding_sha256": "a2e8ef38e9a6d4e425ad2537ed9cd9a5184c0c7de00812f95e29606f8665e839",
+              "metadata_sha256": "fab0ce6af47480d22f49d50dedfe741a96d577d745e12606a82a71cc9a89005b",
+              "fields": {
+                "depth": {
+                  "array_bytes": 543162368,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 543162496,
+                  "fortran_order": false,
+                  "sha256": "1d9cf85a23d2ff4380dc6d87b5014d6abd4b0307d2b321809e9d86e6e75e8f58",
+                  "shape": [
+                    512,
+                    512,
+                    518
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 543162368,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 543162496,
+                  "fortran_order": false,
+                  "sha256": "ebae79575ac4ed226d7c3f019486fa8071fd613b2f3d06f8c7f3c5293dd7a4f1",
+                  "shape": [
+                    512,
+                    512,
+                    518
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 1086324736,
+              "disk_bytes": 1086326373,
+              "disk_free_bytes": 1407251193856,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 1.1954630999825895
+            },
+            "liver_31": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_31",
+              "status": "reopened",
+              "binding_sha256": "9d3a3a06241cbab5553aad5e1039c5bc5092b58c9794c7c65fe2c859e0586c5b",
+              "metadata_sha256": "f7b38249e53df57623aebfd86bfe636e2d9a9a1c48e060c2e522e93216647b20",
+              "fields": {
+                "depth": {
+                  "array_bytes": 95420416,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 95420544,
+                  "fortran_order": false,
+                  "sha256": "4b713f65634311cc9bbcfa8c73ec5aaf6dadcde1e92350b1b4f33c0b0bd11c3b",
+                  "shape": [
+                    512,
+                    512,
+                    91
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 95420416,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 95420544,
+                  "fortran_order": false,
+                  "sha256": "a1d078face84e2dd93216e8ebef588c6512b2e9221c6eb24e6b52a57dc24073b",
+                  "shape": [
+                    512,
+                    512,
+                    91
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 190840832,
+              "disk_bytes": 190842446,
+              "disk_free_bytes": 1407241592832,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 0.24951670004520565
+            }
+          }
+        },
+        "static_upper": {
+          "format": "v18_exact_original_static_upper_v1",
+          "original_helper_builds": 0,
+          "disk_reopens": 6,
+          "resident_hits": 8,
+          "original_build_seconds": 0.0,
+          "cache_read_seconds": 0.013947100029326975,
+          "resident_bytes": 1156,
+          "entries": 6,
+          "disk_bytes": 12790,
+          "receipts": [
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_5\\c1_a353_244_456\\source_raw",
+              "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+              "payload_sha256": "c000378e523c75b61829400324fcfe39937353153192cebeb70151a4819750e3",
+              "array_bytes": 56,
+              "disk_bytes": 1662,
+              "original_compute_seconds": 0.691637100011576,
+              "wall_seconds": 0.0019113000016659498,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_5\\c1_a353_244_456\\lesions",
+              "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+              "payload_sha256": "ea0253f5e7e31238bd7cb95ce2d71d1cc914ce2e4aa26376365248cf4407c9ac",
+              "array_bytes": 0,
+              "disk_bytes": 2289,
+              "original_compute_seconds": 1.1538836999679916,
+              "wall_seconds": 0.003633699961937964,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_6\\c6_a386_293_389\\source_raw",
+              "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+              "payload_sha256": "898f72e1ca57712d1195db356b076d746f413a30016dca45f2d65bc16f975105",
+              "array_bytes": 56,
+              "disk_bytes": 1656,
+              "original_compute_seconds": 22.88040829997044,
+              "wall_seconds": 0.0023707000073045492,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_6\\c6_a386_293_389\\lesions",
+              "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+              "payload_sha256": "625c7a094cb100193cdba80bb47bca52646305d45fe98a05758126e523dba831",
+              "array_bytes": 456,
+              "disk_bytes": 2743,
+              "original_compute_seconds": 15.54219170002034,
+              "wall_seconds": 0.0025727000320330262,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_31\\c8_a410_177_62\\source_raw",
+              "binding_sha256": "f9c279061a3400df03437897780e3b6f014d2e53b29be16514cfa3c0417dd861",
+              "payload_sha256": "4678a28d16e9c5dbeebd5bd07a71f1af3c442643a2a918f922643f0eb66ad9db",
+              "array_bytes": 56,
+              "disk_bytes": 1638,
+              "original_compute_seconds": 2.278306699998211,
+              "wall_seconds": 0.0020161999855190516,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_31\\c8_a410_177_62\\lesions",
+              "binding_sha256": "f9c279061a3400df03437897780e3b6f014d2e53b29be16514cfa3c0417dd861",
+              "payload_sha256": "156be654fc4552c50249d563419c97f820a444221ba9be7fe22e022b778cfe2a",
+              "array_bytes": 532,
+              "disk_bytes": 2802,
+              "original_compute_seconds": 2.5447039999999106,
+              "wall_seconds": 0.0018927000928670168,
+              "exact_original_arrays": true
+            }
+          ],
+          "original_formulas_preserved": true,
+          "candidates_changed": false
+        },
+        "local_builds": 0,
+        "disk_hits": 173,
+        "resident_hits": 60,
+        "evictions": 0,
+        "field_builds": 0,
+        "field_reopens": 3,
+        "field_mapping_reuses": 0,
+        "field_build_seconds": 0.0,
+        "field_reopen_seconds": 3.0005582000594586,
+        "field_reuse_seconds": 0.0,
+        "positive_metadata_builds": 3,
+        "CP_candidate_search_used": false,
+        "U_resampled": false,
+        "comparison_controls": {
+          "arms": [
+            "selected",
+            "native",
+            "native_fixed",
+            "native_listwise"
+          ],
+          "actual_view_epoch_unchanged": true,
+          "fixed_training_keys": [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          "full_validation": "same original P + every frozen native U:0..127",
+          "original_P_definition_changed": false
+        },
+        "source_cache_stats": {
+          "original_builds": 3,
+          "disk_hits": 0,
+          "original_build_seconds": 7.90699690009933,
+          "disk_read_seconds": 0.0,
+          "full_volume_mask_stored": false,
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\source_prepared",
+          "resident_storage": "original provider LRU and budget"
+        },
+        "compact_upper": {
+          "format": "comparison_compact_original_upper_v1",
+          "kinds": {
+            "liver_raw": {
+              "calls": 7,
+              "builds": 3,
+              "reopens": 0,
+              "resident_hits": 4,
+              "original_seconds": 5.800152900046669,
+              "lookup_seconds": 5.83012679987587
+            },
+            "source_axis": {
+              "calls": 7,
+              "builds": 3,
+              "reopens": 0,
+              "resident_hits": 4,
+              "original_seconds": 0.7611739999847487,
+              "lookup_seconds": 0.7980379000073299
+            }
+          },
+          "memory_ownership": "original provider resident LRU and hard budget",
+          "original_formulas_preserved": true
+        },
+        "sample_cache": {
+          "original_builds": 7,
+          "hits": 4,
+          "disk_reads": 7,
+          "local_reference_reads": 0,
+          "raw_verifications": 6,
+          "original_seconds": 63.112032800214365,
+          "hot_seconds": 5.907538800151087,
+          "format": "comparison_referenced_sample_layout_v1",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\sample_layout",
+          "local_graphs_and_patches_stored": false,
+          "resident_storage": "original provider LRU and budget",
+          "integrity_policy": "verify publications on LRU misses; raw identity once per process",
+          "epoch_views_rebuilt": true,
+          "rotating_candidate_sets_require_first_build": true
+        }
+      }
+    },
+    {
+      "mode": "hot",
+      "new": {
+        "format": "v18_own_source_selected_native_u_bridge_v1",
+        "source_samples": 3,
+        "native_U_per_case": 128,
+        "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+        "training_query_count": 8,
+        "full_evaluation_query_count": 129,
+        "workers": 4,
+        "resident_bytes": 8025722856,
+        "resident_limit_bytes": 21474836480,
+        "whole_case_fields": {
+          "cases": 3,
+          "array_bytes": 2403336192,
+          "disk_bytes": 2403341087,
+          "receipts": {
+            "liver_5": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_5",
+              "status": "reopened",
+              "binding_sha256": "8575423b0d30d43e719323227a4fa5941b2f7e6be08ebf8b5775dde289c60511",
+              "metadata_sha256": "4a24d6710c5d8affccdfe7012e11c1cbb3f063407546d44667aeab154a12d0ce",
+              "fields": {
+                "depth": {
+                  "array_bytes": 563085312,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 563085440,
+                  "fortran_order": false,
+                  "sha256": "4589ab2c1567ecca47f5e2817c11baa71eefc321d41757667ec627acb6722cbb",
+                  "shape": [
+                    512,
+                    512,
+                    537
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 563085312,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 563085440,
+                  "fortran_order": false,
+                  "sha256": "2a115c62a15b91ae73da89985e9f65195754c649f67451a3b8a9815bf1601313",
+                  "shape": [
+                    512,
+                    512,
+                    537
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 1126170624,
+              "disk_bytes": 1126172268,
+              "disk_free_bytes": 1407255023616,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 1.5555784000316635
+            },
+            "liver_6": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_6",
+              "status": "reopened",
+              "binding_sha256": "a2e8ef38e9a6d4e425ad2537ed9cd9a5184c0c7de00812f95e29606f8665e839",
+              "metadata_sha256": "fab0ce6af47480d22f49d50dedfe741a96d577d745e12606a82a71cc9a89005b",
+              "fields": {
+                "depth": {
+                  "array_bytes": 543162368,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 543162496,
+                  "fortran_order": false,
+                  "sha256": "1d9cf85a23d2ff4380dc6d87b5014d6abd4b0307d2b321809e9d86e6e75e8f58",
+                  "shape": [
+                    512,
+                    512,
+                    518
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 543162368,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 543162496,
+                  "fortran_order": false,
+                  "sha256": "ebae79575ac4ed226d7c3f019486fa8071fd613b2f3d06f8c7f3c5293dd7a4f1",
+                  "shape": [
+                    512,
+                    512,
+                    518
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 1086324736,
+              "disk_bytes": 1086326373,
+              "disk_free_bytes": 1407251193856,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 1.1954630999825895
+            },
+            "liver_31": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_31",
+              "status": "reopened",
+              "binding_sha256": "9d3a3a06241cbab5553aad5e1039c5bc5092b58c9794c7c65fe2c859e0586c5b",
+              "metadata_sha256": "f7b38249e53df57623aebfd86bfe636e2d9a9a1c48e060c2e522e93216647b20",
+              "fields": {
+                "depth": {
+                  "array_bytes": 95420416,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 95420544,
+                  "fortran_order": false,
+                  "sha256": "4b713f65634311cc9bbcfa8c73ec5aaf6dadcde1e92350b1b4f33c0b0bd11c3b",
+                  "shape": [
+                    512,
+                    512,
+                    91
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 95420416,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 95420544,
+                  "fortran_order": false,
+                  "sha256": "a1d078face84e2dd93216e8ebef588c6512b2e9221c6eb24e6b52a57dc24073b",
+                  "shape": [
+                    512,
+                    512,
+                    91
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 190840832,
+              "disk_bytes": 190842446,
+              "disk_free_bytes": 1407241592832,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 0.24951670004520565
+            }
+          }
+        },
+        "static_upper": {
+          "format": "v18_exact_original_static_upper_v1",
+          "original_helper_builds": 0,
+          "disk_reopens": 6,
+          "resident_hits": 8,
+          "original_build_seconds": 0.0,
+          "cache_read_seconds": 0.013947100029326975,
+          "resident_bytes": 1156,
+          "entries": 6,
+          "disk_bytes": 12790,
+          "receipts": [
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_5\\c1_a353_244_456\\source_raw",
+              "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+              "payload_sha256": "c000378e523c75b61829400324fcfe39937353153192cebeb70151a4819750e3",
+              "array_bytes": 56,
+              "disk_bytes": 1662,
+              "original_compute_seconds": 0.691637100011576,
+              "wall_seconds": 0.0019113000016659498,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_5\\c1_a353_244_456\\lesions",
+              "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+              "payload_sha256": "ea0253f5e7e31238bd7cb95ce2d71d1cc914ce2e4aa26376365248cf4407c9ac",
+              "array_bytes": 0,
+              "disk_bytes": 2289,
+              "original_compute_seconds": 1.1538836999679916,
+              "wall_seconds": 0.003633699961937964,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_6\\c6_a386_293_389\\source_raw",
+              "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+              "payload_sha256": "898f72e1ca57712d1195db356b076d746f413a30016dca45f2d65bc16f975105",
+              "array_bytes": 56,
+              "disk_bytes": 1656,
+              "original_compute_seconds": 22.88040829997044,
+              "wall_seconds": 0.0023707000073045492,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_6\\c6_a386_293_389\\lesions",
+              "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+              "payload_sha256": "625c7a094cb100193cdba80bb47bca52646305d45fe98a05758126e523dba831",
+              "array_bytes": 456,
+              "disk_bytes": 2743,
+              "original_compute_seconds": 15.54219170002034,
+              "wall_seconds": 0.0025727000320330262,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_31\\c8_a410_177_62\\source_raw",
+              "binding_sha256": "f9c279061a3400df03437897780e3b6f014d2e53b29be16514cfa3c0417dd861",
+              "payload_sha256": "4678a28d16e9c5dbeebd5bd07a71f1af3c442643a2a918f922643f0eb66ad9db",
+              "array_bytes": 56,
+              "disk_bytes": 1638,
+              "original_compute_seconds": 2.278306699998211,
+              "wall_seconds": 0.0020161999855190516,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_31\\c8_a410_177_62\\lesions",
+              "binding_sha256": "f9c279061a3400df03437897780e3b6f014d2e53b29be16514cfa3c0417dd861",
+              "payload_sha256": "156be654fc4552c50249d563419c97f820a444221ba9be7fe22e022b778cfe2a",
+              "array_bytes": 532,
+              "disk_bytes": 2802,
+              "original_compute_seconds": 2.5447039999999106,
+              "wall_seconds": 0.0018927000928670168,
+              "exact_original_arrays": true
+            }
+          ],
+          "original_formulas_preserved": true,
+          "candidates_changed": false
+        },
+        "local_builds": 0,
+        "disk_hits": 173,
+        "resident_hits": 280,
+        "evictions": 0,
+        "field_builds": 0,
+        "field_reopens": 3,
+        "field_mapping_reuses": 0,
+        "field_build_seconds": 0.0,
+        "field_reopen_seconds": 3.0005582000594586,
+        "field_reuse_seconds": 0.0,
+        "positive_metadata_builds": 3,
+        "CP_candidate_search_used": false,
+        "U_resampled": false,
+        "comparison_controls": {
+          "arms": [
+            "selected",
+            "native",
+            "native_fixed",
+            "native_listwise"
+          ],
+          "actual_view_epoch_unchanged": true,
+          "fixed_training_keys": [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          "full_validation": "same original P + every frozen native U:0..127",
+          "original_P_definition_changed": false
+        },
+        "source_cache_stats": {
+          "original_builds": 3,
+          "disk_hits": 0,
+          "original_build_seconds": 7.90699690009933,
+          "disk_read_seconds": 0.0,
+          "full_volume_mask_stored": false,
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\source_prepared",
+          "resident_storage": "original provider LRU and budget"
+        },
+        "compact_upper": {
+          "format": "comparison_compact_original_upper_v1",
+          "kinds": {
+            "liver_raw": {
+              "calls": 7,
+              "builds": 3,
+              "reopens": 0,
+              "resident_hits": 4,
+              "original_seconds": 5.800152900046669,
+              "lookup_seconds": 5.83012679987587
+            },
+            "source_axis": {
+              "calls": 7,
+              "builds": 3,
+              "reopens": 0,
+              "resident_hits": 4,
+              "original_seconds": 0.7611739999847487,
+              "lookup_seconds": 0.7980379000073299
+            }
+          },
+          "memory_ownership": "original provider resident LRU and hard budget",
+          "original_formulas_preserved": true
+        },
+        "sample_cache": {
+          "original_builds": 7,
+          "hits": 15,
+          "disk_reads": 7,
+          "local_reference_reads": 0,
+          "raw_verifications": 6,
+          "original_seconds": 63.112032800214365,
+          "hot_seconds": 31.955286100157537,
+          "format": "comparison_referenced_sample_layout_v1",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\sample_layout",
+          "local_graphs_and_patches_stored": false,
+          "resident_storage": "original provider LRU and budget",
+          "integrity_policy": "verify publications on LRU misses; raw identity once per process",
+          "epoch_views_rebuilt": true,
+          "rotating_candidate_sets_require_first_build": true
+        }
+      }
+    },
+    {
+      "mode": "evicted",
+      "new": {
+        "format": "v18_own_source_selected_native_u_bridge_v1",
+        "source_samples": 3,
+        "native_U_per_case": 128,
+        "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+        "training_query_count": 8,
+        "full_evaluation_query_count": 129,
+        "workers": 4,
+        "resident_bytes": 1105042534,
+        "resident_limit_bytes": 21474836480,
+        "whole_case_fields": {
+          "cases": 3,
+          "array_bytes": 2403336192,
+          "disk_bytes": 2403341087,
+          "receipts": {
+            "liver_5": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_5",
+              "status": "reopened",
+              "binding_sha256": "8575423b0d30d43e719323227a4fa5941b2f7e6be08ebf8b5775dde289c60511",
+              "metadata_sha256": "4a24d6710c5d8affccdfe7012e11c1cbb3f063407546d44667aeab154a12d0ce",
+              "fields": {
+                "depth": {
+                  "array_bytes": 563085312,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 563085440,
+                  "fortran_order": false,
+                  "sha256": "4589ab2c1567ecca47f5e2817c11baa71eefc321d41757667ec627acb6722cbb",
+                  "shape": [
+                    512,
+                    512,
+                    537
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 563085312,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 563085440,
+                  "fortran_order": false,
+                  "sha256": "2a115c62a15b91ae73da89985e9f65195754c649f67451a3b8a9815bf1601313",
+                  "shape": [
+                    512,
+                    512,
+                    537
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 1126170624,
+              "disk_bytes": 1126172268,
+              "disk_free_bytes": 1407255023616,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 1.5555784000316635
+            },
+            "liver_6": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_6",
+              "status": "reopened",
+              "binding_sha256": "a2e8ef38e9a6d4e425ad2537ed9cd9a5184c0c7de00812f95e29606f8665e839",
+              "metadata_sha256": "fab0ce6af47480d22f49d50dedfe741a96d577d745e12606a82a71cc9a89005b",
+              "fields": {
+                "depth": {
+                  "array_bytes": 543162368,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 543162496,
+                  "fortran_order": false,
+                  "sha256": "1d9cf85a23d2ff4380dc6d87b5014d6abd4b0307d2b321809e9d86e6e75e8f58",
+                  "shape": [
+                    512,
+                    512,
+                    518
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 543162368,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 543162496,
+                  "fortran_order": false,
+                  "sha256": "ebae79575ac4ed226d7c3f019486fa8071fd613b2f3d06f8c7f3c5293dd7a4f1",
+                  "shape": [
+                    512,
+                    512,
+                    518
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 1086324736,
+              "disk_bytes": 1086326373,
+              "disk_free_bytes": 1407251193856,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 1.1954630999825895
+            },
+            "liver_31": {
+              "format": "v18_exact_whole_case_distance_fields_v1",
+              "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\whole_case_fields\\liver_31",
+              "status": "reopened",
+              "binding_sha256": "9d3a3a06241cbab5553aad5e1039c5bc5092b58c9794c7c65fe2c859e0586c5b",
+              "metadata_sha256": "f7b38249e53df57623aebfd86bfe636e2d9a9a1c48e060c2e522e93216647b20",
+              "fields": {
+                "depth": {
+                  "array_bytes": 95420416,
+                  "dtype": "<f4",
+                  "file": "depth.npy",
+                  "file_bytes": 95420544,
+                  "fortran_order": false,
+                  "sha256": "4b713f65634311cc9bbcfa8c73ec5aaf6dadcde1e92350b1b4f33c0b0bd11c3b",
+                  "shape": [
+                    512,
+                    512,
+                    91
+                  ],
+                  "units": "mm"
+                },
+                "occupied": {
+                  "array_bytes": 95420416,
+                  "dtype": "<f4",
+                  "file": "occupied.npy",
+                  "file_bytes": 95420544,
+                  "fortran_order": false,
+                  "sha256": "a1d078face84e2dd93216e8ebef588c6512b2e9221c6eb24e6b52a57dc24073b",
+                  "shape": [
+                    512,
+                    512,
+                    91
+                  ],
+                  "units": "mm"
+                }
+              },
+              "array_bytes": 190840832,
+              "disk_bytes": 190842446,
+              "disk_free_bytes": 1407241592832,
+              "disk_free_bytes_before_build": null,
+              "readonly": true,
+              "whole_case": true,
+              "recomputed": false,
+              "page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "last_cold_load_page_release_hint": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "fields": {
+                  "depth": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  },
+                  "occupied": {
+                    "supported": false,
+                    "applied": false,
+                    "advised_bytes": 0,
+                    "reason": "unsupported_platform",
+                    "method": "madvise(MADV_DONTNEED)"
+                  }
+                }
+              },
+              "wall_seconds": 0.24951670004520565
+            }
+          }
+        },
+        "static_upper": {
+          "format": "v18_exact_original_static_upper_v1",
+          "original_helper_builds": 0,
+          "disk_reopens": 6,
+          "resident_hits": 8,
+          "original_build_seconds": 0.0,
+          "cache_read_seconds": 0.013947100029326975,
+          "resident_bytes": 1156,
+          "entries": 6,
+          "disk_bytes": 12790,
+          "receipts": [
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_5\\c1_a353_244_456\\source_raw",
+              "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+              "payload_sha256": "c000378e523c75b61829400324fcfe39937353153192cebeb70151a4819750e3",
+              "array_bytes": 56,
+              "disk_bytes": 1662,
+              "original_compute_seconds": 0.691637100011576,
+              "wall_seconds": 0.0019113000016659498,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_5\\c1_a353_244_456\\lesions",
+              "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+              "payload_sha256": "ea0253f5e7e31238bd7cb95ce2d71d1cc914ce2e4aa26376365248cf4407c9ac",
+              "array_bytes": 0,
+              "disk_bytes": 2289,
+              "original_compute_seconds": 1.1538836999679916,
+              "wall_seconds": 0.003633699961937964,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_6\\c6_a386_293_389\\source_raw",
+              "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+              "payload_sha256": "898f72e1ca57712d1195db356b076d746f413a30016dca45f2d65bc16f975105",
+              "array_bytes": 56,
+              "disk_bytes": 1656,
+              "original_compute_seconds": 22.88040829997044,
+              "wall_seconds": 0.0023707000073045492,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_6\\c6_a386_293_389\\lesions",
+              "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+              "payload_sha256": "625c7a094cb100193cdba80bb47bca52646305d45fe98a05758126e523dba831",
+              "array_bytes": 456,
+              "disk_bytes": 2743,
+              "original_compute_seconds": 15.54219170002034,
+              "wall_seconds": 0.0025727000320330262,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "source_raw",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_31\\c8_a410_177_62\\source_raw",
+              "binding_sha256": "f9c279061a3400df03437897780e3b6f014d2e53b29be16514cfa3c0417dd861",
+              "payload_sha256": "4678a28d16e9c5dbeebd5bd07a71f1af3c442643a2a918f922643f0eb66ad9db",
+              "array_bytes": 56,
+              "disk_bytes": 1638,
+              "original_compute_seconds": 2.278306699998211,
+              "wall_seconds": 0.0020161999855190516,
+              "exact_original_arrays": true
+            },
+            {
+              "kind": "lesions",
+              "status": "reopened",
+              "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\upper_static\\liver_31\\c8_a410_177_62\\lesions",
+              "binding_sha256": "f9c279061a3400df03437897780e3b6f014d2e53b29be16514cfa3c0417dd861",
+              "payload_sha256": "156be654fc4552c50249d563419c97f820a444221ba9be7fe22e022b778cfe2a",
+              "array_bytes": 532,
+              "disk_bytes": 2802,
+              "original_compute_seconds": 2.5447039999999106,
+              "wall_seconds": 0.0018927000928670168,
+              "exact_original_arrays": true
+            }
+          ],
+          "original_formulas_preserved": true,
+          "candidates_changed": false
+        },
+        "local_builds": 0,
+        "disk_hits": 346,
+        "resident_hits": 320,
+        "evictions": 195,
+        "field_builds": 0,
+        "field_reopens": 3,
+        "field_mapping_reuses": 0,
+        "field_build_seconds": 0.0,
+        "field_reopen_seconds": 3.0005582000594586,
+        "field_reuse_seconds": 0.0,
+        "positive_metadata_builds": 3,
+        "CP_candidate_search_used": false,
+        "U_resampled": false,
+        "comparison_controls": {
+          "arms": [
+            "selected",
+            "native",
+            "native_fixed",
+            "native_listwise"
+          ],
+          "actual_view_epoch_unchanged": true,
+          "fixed_training_keys": [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          "full_validation": "same original P + every frozen native U:0..127",
+          "original_P_definition_changed": false
+        },
+        "source_cache_stats": {
+          "original_builds": 3,
+          "disk_hits": 0,
+          "original_build_seconds": 7.90699690009933,
+          "disk_read_seconds": 0.0,
+          "full_volume_mask_stored": false,
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\source_prepared",
+          "resident_storage": "original provider LRU and budget"
+        },
+        "compact_upper": {
+          "format": "comparison_compact_original_upper_v1",
+          "kinds": {
+            "liver_raw": {
+              "calls": 7,
+              "builds": 3,
+              "reopens": 0,
+              "resident_hits": 4,
+              "original_seconds": 5.800152900046669,
+              "lookup_seconds": 5.83012679987587
+            },
+            "source_axis": {
+              "calls": 7,
+              "builds": 3,
+              "reopens": 0,
+              "resident_hits": 4,
+              "original_seconds": 0.7611739999847487,
+              "lookup_seconds": 0.7980379000073299
+            }
+          },
+          "memory_ownership": "original provider resident LRU and hard budget",
+          "original_formulas_preserved": true
+        },
+        "sample_cache": {
+          "original_builds": 7,
+          "hits": 26,
+          "disk_reads": 14,
+          "local_reference_reads": 173,
+          "raw_verifications": 6,
+          "original_seconds": 63.112032800214365,
+          "hot_seconds": 62.27857260010205,
+          "format": "comparison_referenced_sample_layout_v1",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\sample_layout",
+          "local_graphs_and_patches_stored": false,
+          "resident_storage": "original provider LRU and budget",
+          "integrity_policy": "verify publications on LRU misses; raw identity once per process",
+          "epoch_views_rebuilt": true,
+          "rotating_candidate_sets_require_first_build": true
+        }
+      }
+    },
+    {
+      "mode": "reopened",
+      "new": {
+        "format": "v18_own_source_selected_native_u_bridge_v1",
+        "source_samples": 3,
+        "native_U_per_case": 128,
+        "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+        "training_query_count": 8,
+        "full_evaluation_query_count": 129,
+        "workers": 4,
+        "resident_bytes": 1105042534,
+        "resident_limit_bytes": 21474836480,
+        "whole_case_fields": {
+          "cases": 0,
+          "array_bytes": 0,
+          "disk_bytes": 0,
+          "receipts": {}
+        },
+        "static_upper": {
+          "format": "v18_exact_original_static_upper_v1",
+          "original_helper_builds": 0,
+          "disk_reopens": 0,
+          "resident_hits": 0,
+          "original_build_seconds": 0.0,
+          "cache_read_seconds": 0.0,
+          "resident_bytes": 0,
+          "entries": 0,
+          "disk_bytes": 0,
+          "receipts": [],
+          "original_formulas_preserved": true,
+          "candidates_changed": false
+        },
+        "local_builds": 0,
+        "disk_hits": 173,
+        "resident_hits": 40,
+        "evictions": 0,
+        "field_builds": 0,
+        "field_reopens": 0,
+        "field_mapping_reuses": 0,
+        "field_build_seconds": 0.0,
+        "field_reopen_seconds": 0.0,
+        "field_reuse_seconds": 0.0,
+        "positive_metadata_builds": 0,
+        "CP_candidate_search_used": false,
+        "U_resampled": false,
+        "comparison_controls": {
+          "arms": [
+            "selected",
+            "native",
+            "native_fixed",
+            "native_listwise"
+          ],
+          "actual_view_epoch_unchanged": true,
+          "fixed_training_keys": [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          "full_validation": "same original P + every frozen native U:0..127",
+          "original_P_definition_changed": false
+        },
+        "source_cache_stats": {
+          "original_builds": 0,
+          "disk_hits": 0,
+          "original_build_seconds": 0.0,
+          "disk_read_seconds": 0.0,
+          "full_volume_mask_stored": false,
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\source_prepared",
+          "resident_storage": "original provider LRU and budget"
+        },
+        "compact_upper": {
+          "format": "comparison_compact_original_upper_v1",
+          "kinds": {
+            "liver_raw": {
+              "calls": 0,
+              "builds": 0,
+              "reopens": 0,
+              "resident_hits": 0,
+              "original_seconds": 0.0,
+              "lookup_seconds": 0.0
+            },
+            "source_axis": {
+              "calls": 0,
+              "builds": 0,
+              "reopens": 0,
+              "resident_hits": 0,
+              "original_seconds": 0.0,
+              "lookup_seconds": 0.0
+            }
+          },
+          "memory_ownership": "original provider resident LRU and hard budget",
+          "original_formulas_preserved": true
+        },
+        "sample_cache": {
+          "original_builds": 0,
+          "hits": 11,
+          "disk_reads": 7,
+          "local_reference_reads": 173,
+          "raw_verifications": 6,
+          "original_seconds": 0.0,
+          "hot_seconds": 33.419221300049685,
+          "format": "comparison_referenced_sample_layout_v1",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\sample_layout",
+          "local_graphs_and_patches_stored": false,
+          "resident_storage": "original provider LRU and budget",
+          "integrity_policy": "verify publications on LRU misses; raw identity once per process",
+          "epoch_views_rebuilt": true,
+          "rotating_candidate_sets_require_first_build": true
+        }
+      }
+    }
+  ],
+  "matched_timing": [
+    {
+      "repeat": 0,
+      "branch": "current",
+      "full129": false,
+      "seconds": 3.4758779999101534,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+        "comparison_arm": "native_fixed"
+      }
+    },
+    {
+      "repeat": 0,
+      "branch": "sample",
+      "full129": false,
+      "seconds": 2.95351780008059,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+        "comparison_arm": "native_fixed"
+      }
+    },
+    {
+      "repeat": 1,
+      "branch": "sample",
+      "full129": false,
+      "seconds": 3.425387099967338,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+        "comparison_arm": "native_fixed"
+      }
+    },
+    {
+      "repeat": 1,
+      "branch": "current",
+      "full129": false,
+      "seconds": 3.4468921000370756,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+        "comparison_arm": "native_fixed"
+      }
+    },
+    {
+      "repeat": 2,
+      "branch": "current",
+      "full129": false,
+      "seconds": 3.488735800026916,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+        "comparison_arm": "native_fixed"
+      }
+    },
+    {
+      "repeat": 2,
+      "branch": "sample",
+      "full129": false,
+      "seconds": 3.166628299979493,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "train",
+        "full": false,
+        "epoch": 2,
+        "indices": [
+          0,
+          1
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ],
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6"
+          ]
+        ],
+        "identity": "6363bf17d463f7dbf937223e32402081e15ceffa597bb749bc6907b034d8aa88",
+        "comparison_arm": "native_fixed"
+      }
+    },
+    {
+      "repeat": 3,
+      "branch": "sample",
+      "full129": true,
+      "seconds": 12.992825500085019,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5",
+        "comparison_arm": "selected"
+      }
+    },
+    {
+      "repeat": 3,
+      "branch": "current",
+      "full129": true,
+      "seconds": 12.948330599931069,
+      "request": {
+        "arm": "native_fixed",
+        "partition": "val",
+        "full": true,
+        "epoch": 29,
+        "indices": [
+          2
+        ],
+        "candidate_keys": [
+          [
+            "P",
+            "U:0",
+            "U:1",
+            "U:2",
+            "U:3",
+            "U:4",
+            "U:5",
+            "U:6",
+            "U:7",
+            "U:8",
+            "U:9",
+            "U:10",
+            "U:11",
+            "U:12",
+            "U:13",
+            "U:14",
+            "U:15",
+            "U:16",
+            "U:17",
+            "U:18",
+            "U:19",
+            "U:20",
+            "U:21",
+            "U:22",
+            "U:23",
+            "U:24",
+            "U:25",
+            "U:26",
+            "U:27",
+            "U:28",
+            "U:29",
+            "U:30",
+            "U:31",
+            "U:32",
+            "U:33",
+            "U:34",
+            "U:35",
+            "U:36",
+            "U:37",
+            "U:38",
+            "U:39",
+            "U:40",
+            "U:41",
+            "U:42",
+            "U:43",
+            "U:44",
+            "U:45",
+            "U:46",
+            "U:47",
+            "U:48",
+            "U:49",
+            "U:50",
+            "U:51",
+            "U:52",
+            "U:53",
+            "U:54",
+            "U:55",
+            "U:56",
+            "U:57",
+            "U:58",
+            "U:59",
+            "U:60",
+            "U:61",
+            "U:62",
+            "U:63",
+            "U:64",
+            "U:65",
+            "U:66",
+            "U:67",
+            "U:68",
+            "U:69",
+            "U:70",
+            "U:71",
+            "U:72",
+            "U:73",
+            "U:74",
+            "U:75",
+            "U:76",
+            "U:77",
+            "U:78",
+            "U:79",
+            "U:80",
+            "U:81",
+            "U:82",
+            "U:83",
+            "U:84",
+            "U:85",
+            "U:86",
+            "U:87",
+            "U:88",
+            "U:89",
+            "U:90",
+            "U:91",
+            "U:92",
+            "U:93",
+            "U:94",
+            "U:95",
+            "U:96",
+            "U:97",
+            "U:98",
+            "U:99",
+            "U:100",
+            "U:101",
+            "U:102",
+            "U:103",
+            "U:104",
+            "U:105",
+            "U:106",
+            "U:107",
+            "U:108",
+            "U:109",
+            "U:110",
+            "U:111",
+            "U:112",
+            "U:113",
+            "U:114",
+            "U:115",
+            "U:116",
+            "U:117",
+            "U:118",
+            "U:119",
+            "U:120",
+            "U:121",
+            "U:122",
+            "U:123",
+            "U:124",
+            "U:125",
+            "U:126",
+            "U:127"
+          ]
+        ],
+        "identity": "0c70344e412918126eaf9ed0a635d9452e9af7474cbc591ec0d171c9cd63fec5",
+        "comparison_arm": "selected"
+      }
+    }
+  ],
+  "warm_train_medians": {
+    "current": 3.4758779999101534,
+    "sample": 3.166628299979493
+  },
+  "complete_input_prefetch": {
+    "scope": "DEBUG repeated complete physical2 real-CT batches; scheduling only",
+    "repetitions": 3,
+    "physical_source_batch": 2,
+    "training_coverage_claim": false,
+    "optimizer_updates": 0,
+    "source_order": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "exact_inputs": true,
+    "global_rng_unchanged": true,
+    "forbidden_preparation_calls": 0,
+    "peak_simultaneous_batch_construction": 2,
+    "measured_slots": 2,
+    "events": [
+      {
+        "start": 549817.1816544,
+        "stop": 549820.6705645,
+        "source_indices": [
+          0,
+          1
+        ],
+        "thread": "comparison-cpu_0",
+        "completed": true
+      },
+      {
+        "start": 549820.6780349,
+        "stop": 549825.5999533,
+        "source_indices": [
+          1,
+          0
+        ],
+        "thread": "comparison-cpu_0",
+        "completed": true
+      },
+      {
+        "start": 549820.6854947,
+        "stop": 549828.0834437,
+        "source_indices": [
+          0,
+          1
+        ],
+        "thread": "comparison-cpu_1",
+        "completed": true
+      }
+    ],
+    "outputs": [
+      {
+        "index": 0,
+        "source_indices": [
+          0,
+          1
+        ],
+        "timing": {
+          "loader_seconds": 3.489057100028731,
+          "loader_wait_seconds": 3.484612900065258,
+          "prefetch_slots": 2,
+          "queued_batches": 2,
+          "cached_preparation": false
+        },
+        "exact_inputs": true
+      },
+      {
+        "index": 1,
+        "source_indices": [
+          1,
+          0
+        ],
+        "timing": {
+          "loader_seconds": 4.9221165999770164,
+          "loader_wait_seconds": 4.113609399995767,
+          "prefetch_slots": 2,
+          "queued_batches": 1,
+          "cached_preparation": true
+        },
+        "exact_inputs": true
+      },
+      {
+        "index": 2,
+        "source_indices": [
+          0,
+          1
+        ],
+        "timing": {
+          "loader_seconds": 7.398156300070696,
+          "loader_wait_seconds": 1.7324736999580637,
+          "prefetch_slots": 2,
+          "queued_batches": 0,
+          "cached_preparation": true
+        },
+        "exact_inputs": true
+      }
+    ],
+    "admission_receipts": [
+      {
+        "format": "comparison_cpu_prefetch_v1",
+        "arm": "native_fixed",
+        "view_epoch": 2,
+        "training": true,
+        "full129": false,
+        "declared_workers": 4,
+        "certified_cached_concurrency": true,
+        "slots": 2,
+        "declared_workspace_reserve_bytes": 12884901888,
+        "admission_scope": "measured estimate; original hard budget remains authoritative",
+        "first_batch_peak_rss_bytes": 11720912896,
+        "first_batch_rss_growth_bytes": 870375424,
+        "largest_batch_storage_bytes": 337308588,
+        "slot_estimate_bytes": 1087969280,
+        "event": "first_batch_measured",
+        "observed_at": 1791391420.8702605,
+        "current_rss_bytes": 11307139072,
+        "os_available_bytes": 34030141440
+      },
+      {
+        "format": "comparison_cpu_prefetch_v1",
+        "arm": "native_fixed",
+        "view_epoch": 2,
+        "training": true,
+        "full129": false,
+        "declared_workers": 4,
+        "certified_cached_concurrency": true,
+        "slots": 2,
+        "declared_workspace_reserve_bytes": 12884901888,
+        "admission_scope": "measured estimate; original hard budget remains authoritative",
+        "first_batch_peak_rss_bytes": 11720912896,
+        "first_batch_rss_growth_bytes": 870375424,
+        "largest_batch_storage_bytes": 337308588,
+        "slot_estimate_bytes": 1087969280,
+        "event": "scheduling_mode",
+        "observed_at": 1791391420.8732603,
+        "mode": "cached_shared",
+        "planned_slots": 2,
+        "current_admission_slots": 2,
+        "candidate_workers": 2
+      },
+      {
+        "format": "comparison_cpu_prefetch_v1",
+        "arm": "native_fixed",
+        "view_epoch": 2,
+        "training": true,
+        "full129": false,
+        "declared_workers": 4,
+        "certified_cached_concurrency": true,
+        "slots": 2,
+        "declared_workspace_reserve_bytes": 12884901888,
+        "admission_scope": "measured estimate; original hard budget remains authoritative",
+        "first_batch_peak_rss_bytes": 11720912896,
+        "first_batch_rss_growth_bytes": 870375424,
+        "largest_batch_storage_bytes": 337308588,
+        "slot_estimate_bytes": 1087969280,
+        "event": "finished",
+        "observed_at": 1791391428.854657,
+        "status": "complete",
+        "submitted": 3,
+        "yielded": 3,
+        "cold_batches": 1,
+        "warm_batches": 2,
+        "peak_queued_batches": 2,
+        "loader_wait_seconds": 9.330696000019088
+      }
+    ],
+    "pin_memory": false,
+    "pinning_scope": "Exact CPU comparison; actual CUDA training smoke tests pinned transfer"
+  },
+  "current_over_sample_ratio": 1.0976589831944163,
+  "layouts": {
+    "publications": [
+      {
+        "key": "0a01cd8ac099e2c1b5dd879632cb42a3002de260a279e1651652a0b82452c7fb",
+        "bytes": 80761,
+        "payload_bytes": 67842,
+        "payload_sha256": "f9854b9ac24cb36bdcc654c8a6525060ddb8bcfeec34b6d45d4f8d1bf3f76409"
+      },
+      {
+        "key": "0e08f67131de4ffb370416485d149510cb80ee98a96c36fb3bbbfcec96145b1c",
+        "bytes": 89400,
+        "payload_bytes": 76482,
+        "payload_sha256": "8cfb2972d2e737fc6ee625ac79b64b050b6ec3957882488d55e1d0078f5306ff"
+      },
+      {
+        "key": "143759fc60df995b320a2748600242c2efc3a496eda6c3a2013fac96d1d30ef2",
+        "bytes": 80765,
+        "payload_bytes": 67842,
+        "payload_sha256": "c911ad5c860fa236d232738abf72a6db08f0ec58b59130e97cad888bb6b41004"
+      },
+      {
+        "key": "44f66bb972377dce4b81de5a22075102dcf12dfdf55f3ddc9725bdfb98e9f36b",
+        "bytes": 80761,
+        "payload_bytes": 67842,
+        "payload_sha256": "cf5e85f0ad6e48241b5aeb26fe3960eb0b33017601942d97f5b64261786d6d57"
+      },
+      {
+        "key": "7eeaf84873bd2c201cf8bed229aac4317c983e0196ac9133a81d021bfcb32234",
+        "bytes": 351621,
+        "payload_bytes": 315010,
+        "payload_sha256": "33e5b02477495bdad10a8dd9629841a93468bdbae0e6e8dc8ff48a79ff81ff96"
+      },
+      {
+        "key": "952fabc4e362bdd1437d9353f9ade91cf6e21f25f15ac12687223bb5030237c6",
+        "bytes": 89400,
+        "payload_bytes": 76482,
+        "payload_sha256": "d4628e011957b64b05540e51f3010da3e9efb275b43e94405f19535ebbb4463b"
+      },
+      {
+        "key": "a9c8f446305252596eca4cfe64fa3a0682441c562de28a9f2dd1ef48922784f4",
+        "bytes": 89398,
+        "payload_bytes": 76482,
+        "payload_sha256": "abe79997cbfba48a664c98b896dc315ad983e2ad7a6d6f38cc36a837164d4ea4"
+      }
+    ],
+    "total_bytes": 862106,
+    "duplicated_dense_patch_or_canonical_tables": false
+  },
+  "quality_verified": false,
+  "production_training_started": false,
+  "wall_seconds": 334.34870959992986,
+  "limitation": "Real three-case local SSD fixture; not server/NFS speed or ranking quality proof"
+}

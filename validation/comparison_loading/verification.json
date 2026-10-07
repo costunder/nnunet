@@ -1,0 +1,226 @@
+{
+  "format": "comparison_completed_input_verification_v1",
+  "implementation_base_commit": "9c36b860ca6f63b20e976cdcf7ad8e097f41fd69",
+  "unit_tests": {
+    "passed": 143,
+    "failed": 0,
+    "seconds": 51.187,
+    "log": "unit_tests.log"
+  },
+  "static_python310_AST": {
+    "passed": true,
+    "files": 12
+  },
+  "exact_input_audit": {
+    "cases": 3,
+    "arms": [
+      "selected",
+      "native",
+      "native_fixed",
+      "native_listwise"
+    ],
+    "distinct_requests": 6,
+    "checks": 24,
+    "exact": true,
+    "cache_hit_checks_with_forbidden_original_builders": 18,
+    "original_builder_calls": 0,
+    "layout_bytes": 862106,
+    "large_payload_duplication": false,
+    "execution_binding": "input_binding.json; historical complete input evidence retained with its own helper hashes",
+    "initial_neural_attempt": "FAILED before first CUDA forward, zero updates; timing-metadata propagation subsequently fixed"
+  },
+  "final_staging": {
+    "report": "staging.json",
+    "physical_source_batch": 2,
+    "workers": 4,
+    "exact_untimed_batches": 3,
+    "exact_timed_batches": 18,
+    "peak_simultaneous_batches": 2,
+    "candidate_executor_workers": 4,
+    "shared_candidate_executors": 1,
+    "benchmark": {
+      "detail": "staging.json: matched_staging_timing",
+      "paired_repeats": 3,
+      "median_seconds": {
+        "sequential": 9.330039600026794,
+        "queued": 8.944087999989279
+      },
+      "sequential_over_queued_ratio": 1.0431515879582107
+    },
+    "interpretation": "Local warm CPU scheduling only; does not establish server/NFS or epoch speedup"
+  },
+  "actual_CT_CUDA_DEBUG": {
+    "parameters": 10434532,
+    "physical_source_batch": 2,
+    "workers": 4,
+    "optimizer_updates": 2,
+    "finite_parameter_gradient_tensors": 1085,
+    "full129_validation_passes": 3,
+    "direct_resume_additional_updates": 0,
+    "controller_resume_additional_updates": 0,
+    "peak_logged_train_CUDA_bytes": 2360793088,
+    "peak_logged_train_RSS_bytes": 16508379136,
+    "resources": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "cpu_logical_cores": 16,
+      "cpu_affinity_cores": "unavailable (AttributeError: module 'os' has no attribute 'sched_getaffinity')",
+      "ram_total_bytes": 68640653312,
+      "ram_available_bytes": 41196818432,
+      "cgroup_memory_limit_bytes": "unavailable (not present)",
+      "cgroup_memory_current_bytes": "unavailable (not present)",
+      "cgroup_cpu_limit_cores": "unavailable (not present)",
+      "cgroup_cpuset": "unavailable (not present)",
+      "storage_path": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\final-20261008",
+      "storage_total_bytes": 1999206608896,
+      "storage_used_bytes": 592576221184,
+      "storage_free_bytes": 1406630387712,
+      "scheduler_allocation": "unavailable",
+      "container_hint": "unavailable",
+      "cuda_visible_devices_env": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+      "nvidia_visible_devices_env": "<unset>",
+      "cuda_available": true,
+      "gpu_utilization_percent": "unavailable (not exposed by PyTorch)",
+      "cuda_visible_device_count": 1,
+      "gpu_devices": [
+        {
+          "logical_index": 0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "total_vram_bytes": 17094344704,
+          "multiprocessors": 70,
+          "compute_capability": "12.0",
+          "mig_instance": false
+        }
+      ],
+      "mig_visibility": "not identifiable from PyTorch/environment",
+      "cuda_device": "cuda:0",
+      "cuda_allocated_bytes": 0,
+      "cuda_reserved_bytes": 0,
+      "cuda_peak_allocated_bytes": 0,
+      "cuda_peak_reserved_bytes": 0,
+      "cuda_free_bytes": 15740174336,
+      "cuda_total_bytes": 17094344704
+    }
+  },
+  "current_release_resident_CPU_input": {
+    "control": "9c36b86 source/upper caches and parallel views",
+    "train_medians_seconds": {
+      "current": 3.4758779999101534,
+      "sample": 3.166628299979493
+    },
+    "comparison_pairs": [
+      {
+        "repeat": 0,
+        "branch": "current",
+        "full129": false,
+        "seconds": 3.4758779999101534
+      },
+      {
+        "repeat": 0,
+        "branch": "sample",
+        "full129": false,
+        "seconds": 2.95351780008059
+      },
+      {
+        "repeat": 1,
+        "branch": "sample",
+        "full129": false,
+        "seconds": 3.425387099967338
+      },
+      {
+        "repeat": 1,
+        "branch": "current",
+        "full129": false,
+        "seconds": 3.4468921000370756
+      },
+      {
+        "repeat": 2,
+        "branch": "current",
+        "full129": false,
+        "seconds": 3.488735800026916
+      },
+      {
+        "repeat": 2,
+        "branch": "sample",
+        "full129": false,
+        "seconds": 3.166628299979493
+      },
+      {
+        "repeat": 3,
+        "branch": "sample",
+        "full129": true,
+        "seconds": 12.992825500085019
+      },
+      {
+        "repeat": 3,
+        "branch": "current",
+        "full129": true,
+        "seconds": 12.948330599931069
+      }
+    ],
+    "interpretation": "Small local resident improvement; full129 single pair unchanged"
+  },
+  "preserved": {
+    "original_reference": true,
+    "original_cache": true,
+    "frozen17_helpers": true,
+    "model_loss_candidates_batch_epochs": true
+  },
+  "source_sha256": {
+    "hiercp_v1x/comparison_sample_cache.py": "a5f744b27ef1b0e3b914671550028bbdd541916f2419c584337c777625465b66",
+    "hiercp_v1x/comparison_preparation.py": "b2409e17b422038979165b21e23ba0d094f9d5e48d044cfd85e5423552b5f3d0",
+    "hiercp_v1x/comparison_data_timing.py": "4f77eed2f45bd39cd7cfaf913f0390989d80a5ffd097930da11c08f9319dffe9",
+    "hiercp_v1x/comparison_runtime.py": "d563a237193f5b2b4ccabf13869aa2cee07f17c93f7d7ad9f78e744a1f50d147",
+    "hiercp_v1x/comparison_views.py": "884bcb5e0a0ca1acc168d5e019c14aaf204f90a7ee00324e0ddfbd7be6f44384",
+    "tools/resume_comparison_cached.py": "6020dc710e330c8f804fcecddd744d40584d2c9cbff7eb0e4949667915d9b00d",
+    "tools/report_comparison_runtime.py": "b643bb4612f304a69cd5f2f1964894dc46a560d3aeed40de1723bdb1b045ea98",
+    "tools/verify_comparison_sample_debug.py": "6c30854ed83de4abfee333314674075a6efa1fe36b0f02e23b5bda8ca62086e5",
+    "tests/test_comparison_cached_resume.py": "7a62429c317d39a6a2c85d060c60a3782645ea3517e422804d802bef939196ae",
+    "tests/test_comparison_inputs.py": "57148b8a75018e315ff52864229879e5561d49a5ae09f5dcf6f6f57de44f2207",
+    "tests/test_comparison_sample_cache.py": "d79a71814355fdf652bb151dcf14f009963ceacdead2265278485721dacabdb0",
+    "tests/test_comparison_prefetch.py": "81a8d3d235c5c0b76bb69ec4350790db27e3eca526a042d173a8d61d7a7a9ea0"
+  },
+  "evidence": {
+    "inputs.json": {
+      "sha256": "9f7494a2585d71a2a4c6d237600ad8de5665656846a15cb8cf10acd10c9cc70b",
+      "bytes": 165999,
+      "local_origin": "work/runs/v1.9/sample-cache/debug-20261008/inputs.json"
+    },
+    "input_binding.json": {
+      "sha256": "1c3307930c6595fd6fa25d3f5c9e93bbae888c9b0f95a49288193ebcd4ce8853",
+      "bytes": 1664,
+      "local_origin": "work/runs/v1.9/sample-cache/debug-20261008/staging_binding.json"
+    },
+    "staging.json": {
+      "sha256": "f5e41f2d82d95b8dd655e2b45c798cf01a2ed7dd9131418fa02d3ed8919618fa",
+      "bytes": 6437,
+      "local_origin": "work/runs/v1.9/sample-cache/final-20261008/staging.json"
+    },
+    "report.json": {
+      "sha256": "0c83e03baf007edbfcfb5ab860945ddd18d4f7a887a20eeeb723e3d1587f07a9",
+      "bytes": 49453,
+      "local_origin": "work/runs/v1.9/sample-cache/final-20261008/report.json"
+    },
+    "smoke.json": {
+      "sha256": "8175cbe4b8bec8c80f56d732d23d010bc17408db926e871bab4271a1a7649adc",
+      "bytes": 3294,
+      "local_origin": "work/runs/v1.9/sample-cache/final-20261008/verification.json"
+    },
+    "unit_tests.log": {
+      "sha256": "cac6566d14bbe284538f625f887a32c81c0ed492609ec0706940a45857988f71",
+      "bytes": 18240,
+      "local_origin": "work/runs/v1.9/sample-cache-unit-final-20261008.log"
+    }
+  },
+  "production_training_started": false,
+  "full_production_evaluation": false,
+  "quality_verified": false,
+  "A6000_server_throughput_verified": false,
+  "limitations": [
+    "First unseen candidate composition still requires original preparation and layout publication.",
+    "Rotating native/native_listwise combinations need their first layout build; original epoch views still run.",
+    "Resident local CPU timing gains were small and do not prove a server epoch under one hour.",
+    "CPU/RAM admission is measured estimation, not a worst-case memory guarantee; hard budgets remain.",
+    "Input equivalence evidence predates timing-field and worker allocation fixes; exact helper identities and unchanged nonstaging view AST are bound separately; final staging and CUDA were rerun.",
+    "Four simultaneous server arms, NFS behavior and maximum A6000 graph/batch memory were not measured locally."
+  ]
+}

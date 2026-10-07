@@ -90,9 +90,12 @@ def collate_samples(samples): return tuple(samples)
             def _candidate(self, *args): return 5
             def _positive_candidate(self, *args): return 6
             def _local_map(self, *args): return 7
+            def _layout_parts(self, *args): return 8
+            def _layout_read(self, *args): return 9
             def batch(self, ids, arm, epoch, training, full=False):
                 return (ids, self._case(), self._regions(), self._source(), self._candidate(),
-                        self._positive_candidate(), self._local_map(), full)
+                        self._positive_candidate(), self._local_map(),
+                        self._layout_parts(), self._layout_read(), full)
         with TemporaryDirectory(prefix='UNIT_input_timing_') as folder:
             path = Path(folder)/'input.jsonl'
             provider = timed_provider(Base, path)()
@@ -103,7 +106,8 @@ def collate_samples(samples): return tuple(samples)
             self.assertEqual(row['source_indices'], [7])
             self.assertTrue(row['full129'])
             self.assertEqual(set(row['regions']), {'case_fields_seconds', 'regions_seconds',
-                'source_seconds', 'candidate_metadata_seconds', 'local_graphs_seconds'})
+                'source_seconds', 'candidate_metadata_seconds', 'local_graphs_seconds',
+                'cached_local_reads_and_patches_seconds', 'cached_hierarchy_read_seconds'})
             self.assertGreaterEqual(row['other_assembly_views_collate_seconds'], 0)
             self.assertAlmostEqual(row['input_seconds'], sum(row['regions'].values())+
                                    row['other_assembly_views_collate_seconds'])

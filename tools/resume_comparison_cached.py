@@ -241,14 +241,14 @@ def run(a):
                 read_only_sources=[str(p.resolve()) for p in a.cache_sources],
                 original_checkpoint_protocol_and_frozen_sources_unchanged=True,
                 execution_loop_changed=True,
-                execution_policy='ordered validation prefetch, parallel exact sampled views, progress, local label-mask extraction and compact exact source/upper preparation caches',
+                execution_policy='ordered memory-admitted input staging, original epoch views, completed hierarchy layout and existing local graph reuse, compact source/upper caches',
                 helpers={name:sha(ROOT/name) for name in ('tools/resume_comparison_cached.py',
                     'hiercp_v1x/host_memory.py','hiercp_v1x/preparation_reuse.py',
                     'hiercp_v1x/comparison_execution.py','hiercp_v1x/comparison_runtime.py',
                     'hiercp_v1x/comparison_progress.py','hiercp_v1x/comparison_inputs.py',
                     'hiercp_v1x/comparison_views.py','hiercp_v1x/comparison_data_timing.py',
                     'hiercp_v1x/comparison_preparation.py','hiercp_v1x/comparison_source_cache.py',
-                    'hiercp_v1x/comparison_upper_cache.py')}))
+                    'hiercp_v1x/comparison_upper_cache.py','hiercp_v1x/comparison_sample_cache.py')}))
     def execution_provider(provider):
         return prepared_provider(provider, root/'input_timing.jsonl')
     continuation_path = root/'continuation.json'

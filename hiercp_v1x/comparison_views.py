@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import threading
 
 
 def materialize_parallel_views(sample_module, schema_module, sample, *,
-                               training, epoch, global_seed, workers):
+                               training, epoch, global_seed, workers, ordered_map=None):
     """Run each candidate's original two views together, preserving their order."""
     if type(workers) is not int or workers < 2:
         raise ValueError('Measured parallel graph workers >=2 required')
@@ -36,8 +37,11 @@ def materialize_parallel_views(sample_module, schema_module, sample, *,
         second = sample_module.build_local_view(source_local, target_local, config, seed=seed2)
         return first, second
 
-    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='comparison-views') as pool:
-        pairs = list(pool.map(obtain, enumerate(targets)))
+    if ordered_map is None:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='comparison-views') as pool:
+            pairs = list(pool.map(obtain, enumerate(targets)))
+    else:
+        pairs = list(ordered_map(obtain, enumerate(targets)))
     # Publish only after every supplied candidate and both views have succeeded.
     sample['local_graphs'] = [pair[0] for pair in pairs]
     sample['local_graphs_view2'] = [pair[1] for pair in pairs]
@@ -75,6 +79,8 @@ def parallel_view_provider(original):
         def __init__(self, *args, **kwargs):
             self._parallel_view_lock = threading.RLock()
             self._parallel_view_runtime = None
+            self._comparison_pool = None
+            self._comparison_staging_lock = threading.Lock()
             super().__init__(*args, **kwargs)
             if type(self.workers) is not int or self.workers < 2:
                 raise ValueError('Measured parallel graph workers >=2 required')
@@ -95,7 +101,42 @@ def parallel_view_provider(original):
             # Kept as a method so an outer timing wrapper can measure this
             # complete phase without modifying any original sample function.
             return materialize_parallel_views(sample_module, schema_module, sample,
-                training=training, epoch=epoch, global_seed=global_seed, workers=self.workers)
+                training=training, epoch=epoch, global_seed=global_seed, workers=self.workers,
+                ordered_map=self._comparison_map)
+
+        def _comparison_map(self, function, values):
+            # Only complete cached hierarchies enter a shared staging scope.
+            # Canonical cold builders retain their original, serialized path.
+            pool = self._comparison_pool
+            if pool is not None:
+                return list(pool.map(function, values))
+            with ThreadPoolExecutor(max_workers=self.workers,
+                                    thread_name_prefix='comparison-views') as own_pool:
+                return list(own_pool.map(function, values))
+
+        @contextmanager
+        def cpu_staging(self, slots):
+            """Share candidate workers across ordered, cached batch preparations.
+
+            One shared pool retains the saved candidate-worker capacity.
+            Memory-admitted batch coordinators mostly wait for this pool;
+            they are counted separately rather than removing candidate workers.
+            The caller must drain batch jobs before leaving.
+            """
+            if type(slots) is not int or not 1 <= slots <= self.workers - 2:
+                raise ValueError('Staging slots exceed the bounded coordinator ceiling')
+            if not self._comparison_staging_lock.acquire(blocking=False):
+                raise RuntimeError('A CPU staging scope is already active for this provider')
+            try:
+                with ThreadPoolExecutor(max_workers=self.workers,
+                                        thread_name_prefix='comparison-candidates') as pool:
+                    self._comparison_pool = pool
+                    try:
+                        yield
+                    finally:
+                        self._comparison_pool = None
+            finally:
+                self._comparison_staging_lock.release()
 
     ParallelViewProvider.__name__ = 'ParallelView' + original.__name__
     return ParallelViewProvider

@@ -29,7 +29,8 @@ CACHE_KEYS = ("stage", "kind", "helper_kind", "status", "case_id", "wall_seconds
 INPUT_KEYS = ("format", "observed_at", "arm", "view_epoch", "training", "full129", "source_indices",
               "status", "input_seconds", "regions", "other_assembly_views_collate_seconds",
               "process_cpu_seconds", "process_cpu_scope", "rss_bytes", "timing_scope",
-              "inclusive_details", "inclusive_details_scope", "compact_upper_cache")
+              "inclusive_details", "inclusive_details_scope", "compact_upper_cache",
+              "overlapping_input_batches_possible")
 INPUT_REGIONS = ("case_fields_seconds", "regions_seconds", "source_seconds",
                  "candidate_metadata_seconds", "local_graphs_seconds")
 
@@ -341,6 +342,7 @@ def summarize_input(rows, arm, selected_epoch, *, available=True):
             "timing_semantics": ["CPU batch construction excludes memory pinning and queue wait.",
                 "Disjoint region wall times plus assembly/view/collation remainder sum to input construction time.",
                 "Input construction may overlap GPU work with prefetch; do not add this total to loader wait or step time.",
+                "Memory-admitted cached batches can also overlap one another; summed input durations are work totals, not epoch elapsed time.",
                 "Training-mode view_epoch=1 construction can include calibration probes; records do not certify optimizer-only input time.",
                 "Full129 validation uses a fixed view_epoch across outer epochs; its input history is cumulative, not an epoch total.",
                 "Process CPU seconds describe the whole process during construction and may overlap the training thread."]}

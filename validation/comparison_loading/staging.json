@@ -1,0 +1,233 @@
+{
+  "scope": "DEBUG repeated complete physical2 real-CT batches; scheduling only",
+  "repetitions": 3,
+  "physical_source_batch": 2,
+  "training_coverage_claim": false,
+  "optimizer_updates": 0,
+  "source_order": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "exact_inputs": true,
+  "global_rng_unchanged": true,
+  "forbidden_preparation_calls": 0,
+  "peak_simultaneous_batch_construction": 2,
+  "measured_slots": 2,
+  "events": [
+    {
+      "start": 550686.7397467,
+      "stop": 550690.663085,
+      "source_indices": [
+        0,
+        1
+      ],
+      "thread": "comparison-cpu_0",
+      "completed": true
+    },
+    {
+      "start": 550690.6841135,
+      "stop": 550696.7658264,
+      "source_indices": [
+        0,
+        1
+      ],
+      "thread": "comparison-cpu_1",
+      "completed": true
+    },
+    {
+      "start": 550690.6789179,
+      "stop": 550696.9112395,
+      "source_indices": [
+        1,
+        0
+      ],
+      "thread": "comparison-cpu_0",
+      "completed": true
+    }
+  ],
+  "outputs": [
+    {
+      "index": 0,
+      "source_indices": [
+        0,
+        1
+      ],
+      "timing": {
+        "loader_seconds": 3.9235440000193194,
+        "loader_wait_seconds": 3.923088900046423
+      },
+      "exact_inputs": true
+    },
+    {
+      "index": 1,
+      "source_indices": [
+        1,
+        0
+      ],
+      "timing": {
+        "loader_seconds": 6.23246480000671,
+        "loader_wait_seconds": 5.124900799943134
+      },
+      "exact_inputs": true
+    },
+    {
+      "index": 2,
+      "source_indices": [
+        0,
+        1
+      ],
+      "timing": {
+        "loader_seconds": 6.081963100004941,
+        "loader_wait_seconds": 2.0000035874545574e-05
+      },
+      "exact_inputs": true
+    }
+  ],
+  "admission_receipts": [
+    {
+      "format": "comparison_cpu_prefetch_v1",
+      "arm": "native_fixed",
+      "view_epoch": 2,
+      "training": true,
+      "full129": false,
+      "declared_workers": 4,
+      "certified_cached_concurrency": true,
+      "slots": 2,
+      "declared_workspace_reserve_bytes": 12884901888,
+      "admission_scope": "measured estimate; original hard budget remains authoritative",
+      "first_batch_peak_rss_bytes": 4798377984,
+      "first_batch_rss_growth_bytes": 994783232,
+      "largest_batch_storage_bytes": 337308588,
+      "slot_estimate_bytes": 1243479040,
+      "event": "first_batch_measured",
+      "observed_at": 1791392290.8949661,
+      "current_rss_bytes": 4176793600,
+      "os_available_bytes": 37934452736
+    },
+    {
+      "format": "comparison_cpu_prefetch_v1",
+      "arm": "native_fixed",
+      "view_epoch": 2,
+      "training": true,
+      "full129": false,
+      "declared_workers": 4,
+      "certified_cached_concurrency": true,
+      "slots": 2,
+      "declared_workspace_reserve_bytes": 12884901888,
+      "admission_scope": "measured estimate; original hard budget remains authoritative",
+      "first_batch_peak_rss_bytes": 4798377984,
+      "first_batch_rss_growth_bytes": 994783232,
+      "largest_batch_storage_bytes": 337308588,
+      "slot_estimate_bytes": 1243479040,
+      "event": "scheduling_mode",
+      "observed_at": 1791392290.908017,
+      "mode": "cached_shared",
+      "planned_slots": 2,
+      "current_admission_slots": 2,
+      "candidate_workers": 4,
+      "coordinator_slots": 2,
+      "executor_capacity_total": 6,
+      "executor_capacity_scope": "one shared candidate pool plus batch coordinator slots; excludes main thread and native library pools"
+    },
+    {
+      "format": "comparison_cpu_prefetch_v1",
+      "arm": "native_fixed",
+      "view_epoch": 2,
+      "training": true,
+      "full129": false,
+      "declared_workers": 4,
+      "certified_cached_concurrency": true,
+      "slots": 2,
+      "declared_workspace_reserve_bytes": 12884901888,
+      "admission_scope": "measured estimate; original hard budget remains authoritative",
+      "first_batch_peak_rss_bytes": 4798377984,
+      "first_batch_rss_growth_bytes": 994783232,
+      "largest_batch_storage_bytes": 337308588,
+      "slot_estimate_bytes": 1243479040,
+      "event": "finished",
+      "observed_at": 1791392298.3871517,
+      "status": "complete",
+      "submitted": 3,
+      "yielded": 3,
+      "cold_batches": 1,
+      "warm_batches": 2,
+      "peak_queued_batches": 2,
+      "loader_wait_seconds": 9.048009700025432
+    }
+  ],
+  "pin_memory": false,
+  "pinning_scope": "Exact CPU comparison; actual CUDA training smoke tests pinned transfer",
+  "matched_staging_timing": {
+    "repeats": 3,
+    "rows": [
+      {
+        "repeat": 0,
+        "branch": "sequential",
+        "seconds": 9.213524999911897,
+        "batches": 3,
+        "sources": 6,
+        "exact_inputs": true
+      },
+      {
+        "repeat": 0,
+        "branch": "queued",
+        "seconds": 9.59656809992157,
+        "batches": 3,
+        "sources": 6,
+        "exact_inputs": true
+      },
+      {
+        "repeat": 1,
+        "branch": "queued",
+        "seconds": 8.944087999989279,
+        "batches": 3,
+        "sources": 6,
+        "exact_inputs": true
+      },
+      {
+        "repeat": 1,
+        "branch": "sequential",
+        "seconds": 9.514617700013332,
+        "batches": 3,
+        "sources": 6,
+        "exact_inputs": true
+      },
+      {
+        "repeat": 2,
+        "branch": "sequential",
+        "seconds": 9.330039600026794,
+        "batches": 3,
+        "sources": 6,
+        "exact_inputs": true
+      },
+      {
+        "repeat": 2,
+        "branch": "queued",
+        "seconds": 8.815649600001052,
+        "batches": 3,
+        "sources": 6,
+        "exact_inputs": true
+      }
+    ],
+    "median_seconds": {
+      "sequential": 9.330039600026794,
+      "queued": 8.944087999989279
+    },
+    "sequential_over_queued_ratio": 1.0431515879582107,
+    "scope": "CPU scheduling only; exact same warm physical2 inputs; no GPU consumer work",
+    "fingerprint_seconds_excluded": true,
+    "original_preparation_calls": 0,
+    "queued_outputs_retained_until_all_three_complete_for_equal_untimed_hashing": true
+  },
+  "reused_immutable_layout_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\sample-cache\\debug-20261008\\sample_data\\sample_layout"
+}

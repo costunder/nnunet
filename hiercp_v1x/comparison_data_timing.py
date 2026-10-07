@@ -142,6 +142,14 @@ def timed_provider(original, log_path):
         def _materialize_views(self, *args, **kwargs):
             return self._timed_input('sampled_views_seconds', super()._materialize_views, *args, **kwargs)
 
+        def _layout_parts(self, *args, **kwargs):
+            return self._timed_input('cached_local_reads_and_patches_seconds',
+                                    super()._layout_parts, *args, **kwargs)
+
+        def _layout_read(self, *args, **kwargs):
+            return self._timed_input('cached_hierarchy_read_seconds',
+                                    super()._layout_read, *args, **kwargs)
+
         def batch(self, indices, arm, epoch, training, full=False):
             import psutil
             if getattr(self._input_timing, 'active', None) is not None:
@@ -151,7 +159,10 @@ def timed_provider(original, log_path):
             self._input_timing.active = receipt
             details = {}
             self._input_timing.details = details
-            compact = getattr(self, '_compact_upper_cache', None)
+            concurrent = getattr(self, '_comparison_pool', None) is not None
+            # Global cache counter deltas cannot be assigned to one overlapping
+            # batch. Whole-provider reports retain the exact cumulative counts.
+            compact = None if concurrent else getattr(self, '_compact_upper_cache', None)
             compact_before = compact.report()['kinds'] if compact is not None else None
             process = psutil.Process()
             cpu_before = process.cpu_times()
@@ -173,6 +184,7 @@ def timed_provider(original, log_path):
                     input_seconds=elapsed, regions=receipt,
                     inclusive_details=details,
                     inclusive_details_scope='nested wall times; overlap parent regions and each other; do not sum',
+                    overlapping_input_batches_possible=concurrent,
                     other_assembly_views_collate_seconds=elapsed-accounted,
                     process_cpu_seconds=cpu_after.user+cpu_after.system-cpu_before.user-cpu_before.system,
                     process_cpu_scope='whole process during input; may overlap main-thread CUDA work',
