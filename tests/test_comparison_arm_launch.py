@@ -459,6 +459,47 @@ with lock(root / '.pipeline.lock'), lock(root / 'data/.data.lock'):
                     self.assertEqual(launch.run(args), expected)
             self.assertEqual(before, inventory(base))
 
+    def test_child_uses_current_environment_selector_and_records_owned_policy(self):
+        from tools import current_gpu, local_cnn_device, resume_comparison_cached
+        with self.directory() as directory:
+            base = Path(directory); self.four_roots(base)
+            args = self.args(base, "native_listwise", gpu=6)
+            request = launch.resolve_request(args)
+            frozen_before = {name:sha(REPOSITORY/name) for name in comparison_experiment.FILES}
+            before_checkpoint = sha(request["checkpoint"])
+            original_select = local_cnn_device.select
+            selected = dict(physical_index=6, backend="NVML", visible="GPU-UNIT-six", kind="GPU")
+            from contextlib import contextmanager
+            @contextmanager
+            def device_context(*, on_select):
+                def selector(index):
+                    self.assertEqual(index, 6)
+                    on_select(selected)
+                    return selected["visible"]
+                local_cnn_device.select = selector
+                try:
+                    yield
+                finally:
+                    local_cnn_device.select = original_select
+            def controller(supplied):
+                from tools.local_cnn_device import select
+                self.assertEqual(select(supplied.gpu), "GPU-UNIT-six")
+                return dict(status="UNIT_metadata_only")
+            with patch.object(current_gpu, "current_device_selection", device_context), \
+                    patch.object(resume_comparison_cached, "run", side_effect=controller):
+                self.assertEqual(launch._child(args, request)["status"], "UNIT_metadata_only")
+            receipt_path, = (request["experiment"]/"execution_overrides").glob("device_*.json")
+            receipt = json.loads(receipt_path.read_text())
+            self.assertEqual(receipt["requested_physical_GPU"], 6)
+            self.assertEqual(receipt["selections"], [selected])
+            self.assertFalse(receipt["nvidia_smi_invoked"])
+            self.assertFalse(receipt["remote_connection_invoked"])
+            self.assertEqual(receipt["helpers"], {name:sha(REPOSITORY/name) for name in
+                             ("tools/current_gpu.py", "tools/run_comparison_arm.py")})
+            self.assertEqual(frozen_before, {name:sha(REPOSITORY/name) for name in comparison_experiment.FILES})
+            self.assertEqual(before_checkpoint, sha(request["checkpoint"]))
+            self.assertIs(local_cnn_device.select, original_select)
+
 
 if __name__ == "__main__":
     unittest.main()

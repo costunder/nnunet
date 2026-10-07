@@ -9,6 +9,7 @@ from pathlib import Path
 import socket
 import signal
 import sys
+import uuid
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,8 +153,9 @@ def _active_owner(request):
 
 
 def _child(a, request):
+    from tools.current_gpu import current_device_selection
     from hiercp_v1x.owned_continuation import independent_continuation_execution
-    from hiercp_v1x.u_bridge_experiment import lock
+    from hiercp_v1x.u_bridge_experiment import lock, sha, write_new
     from tools import resume_comparison_cached
     if request['requires_clone']:
         from hiercp_v1x.u_bridge_continuation import prepare_continuation
@@ -163,7 +165,18 @@ def _child(a, request):
     supplied = SimpleNamespace(gpu=a.gpu, arm=a.arm, experiment=request['experiment'],
         inventory=request['inventory'], cache_sources=request['cache_sources'],
         **{'debug_'+name:getattr(a, 'debug_'+name) for name in ('fixture', 'config', 'source', 'bank')})
-    with independent_continuation_execution():
+    def selected_device(observed):
+        # Publish before training so a later process interruption does not
+        # depend on Python finally running to preserve the device receipt.
+        write_new(request['experiment']/'execution_overrides'/('device_'+uuid.uuid4().hex+'.json'),
+            dict(format='current_environment_physical_gpu_execution_v1', arm=a.arm,
+                 requested_physical_GPU=a.gpu, backend='NVML', selections=[observed],
+                 scope='device selection only; no training completion or quality claim',
+                 nvidia_smi_invoked=False, remote_connection_invoked=False,
+                 original_neural_input_helpers_preserved=True,
+                 helpers={name:sha(ROOT/name) for name in
+                          ('tools/current_gpu.py', 'tools/run_comparison_arm.py')}))
+    with current_device_selection(on_select=selected_device), independent_continuation_execution():
         return resume_comparison_cached.run(supplied)
 
 

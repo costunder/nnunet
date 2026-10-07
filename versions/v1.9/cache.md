@@ -65,6 +65,22 @@ CP_GPU=3 CP_ARM=native_fixed bash tools/server_comparison_cached.sh
 
 새 독립 launcher는 별도 actual-CT DEBUG checkpoint로 selected/native의 실제 GPU 복원을 네 번 확인했다. 추가 update는 0이며, 한 번은 historical source에 살아 있는 잠금을 두어도 자기 폴더에서 그대로 재개됐다. 원본 checkpoint와 frozen neural/input helper17개를 보존했다. 총 회귀 156개가 통과했다. 네 실제 CPU process가 독립 잠금 8개를 동시에 유지·해제했고, 별도 자식의 정상 종료와 요청한 중단도 확인했다. Windows CPU 검사에서 SIGINT forwarding만 mock이며 단일 자식 종료는 실제 수행했다. Linux 터미널의 실제 SIGINT forwarding 및 네 GPU 동시 서버 실행은 검증했다고 주장하지 않는다. [새 실행 검증](../../validation/arm_launch/execution.json)에 범위를 분리했다.
 
+## 현재 터미널에서 GPU 선택
+
+새 launcher는 서버에 접속하거나 서버명을 실행 설정으로 사용하지 않는다. 현재 터미널의 NVIDIA 드라이버 라이브러리(NVML)에서 사용자가 지정한 물리 `CP_GPU` 번호를 조회하고, 그때 확인한 UUID를 CUDA에 전달한다. UUID·서버명·드라이버 경로를 사용자가 서버 변경 때 다시 입력할 필요가 없다. `nvidia-smi` 실행 파일을 호출하지 않는다.
+
+```bash
+CP_GPU=6 CP_ARM=native_listwise bash tools/server_comparison_cached.sh
+```
+
+`tools/current_gpu.py`를 실행 context 안에서만 연결하며, 기존 실험 manifest에 고정된 `tools/local_cnn_device.py`와 모델·입력·학습 helper 바이트는 보존한다. 중첩된 재개 호출은 처음 확인한 동일 GPU를 유지한다. 선택 직후 각 군의 `execution_overrides/device_*.json`에 실제 물리 index·UUID·MIG·관측 host와 새 실행 helper SHA를 기록한다. host는 진단 기록이며 접속 대상이나 고정 설정이 아니다.
+
+여러 MIG가 있으면 현재 할당 또는 기존에 검증된 할당의 동일 UUID를 사용한다. 모호한 MIG를 임의로 고르지 않는다. 현재 환경에서 드라이버에 접근할 수 없거나 요청한 물리 GPU가 없으면 해당 원인을 명시한다. `nvidia-smi` 실행 파일 부재와 실제 드라이버/GPU 접근 불가는 다른 상태이며, 후자를 이번 코드만으로 해결했다고 주장하지 않는다. CPU나 다른 GPU로 전환하지 않는다.
+
+NVML의 물리 index와 CUDA ordinal을 같다고 가정하지 않는 것은 [NVIDIA Device Queries](https://docs.nvidia.com/deploy/archive/R535/nvml-api/group__nvmlDeviceQueries.html)의 계약을 따른다. 실제 서버 드라이버 접근은 서버에서 실행한 결과로 판정한다.
+
+GPU/MIG·재개·독립 실행 관련 회귀 80개를 통과했다. 실제 로컬 RTX 5070 Ti에서 `nvidia-smi` subprocess 호출을 금지하고 selected/native/selected CT checkpoint CUDA 복원을 세 번 통과했다. 추가 optimizer update는 0이고 원본 reference와 frozen helper17개는 보존됐다. MIG는 UNIT에서 검증했으며 실제 서버 MIG 실행이나 40epoch 학습을 새로 수행한 결과는 아니다. [현재 GPU 경로 검증](../../validation/current_gpu/execution.json)에 helper·raw report·장치 receipt의 SHA와 미검증 범위를 기록한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

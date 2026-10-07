@@ -66,6 +66,21 @@ def verify(a):
                    '--cache-sources', manifest['prepared_data_root']]
         for name in ('fixture','config','source','bank'):
             command.extend(('--debug-'+name,str(getattr(a,name).resolve())))
+        if getattr(a, 'forbid_device_cli', False):
+            # Deliberately forbid the executable at the child subprocess
+            # boundary. NVML and CUDA remain real, unpatched driver calls.
+            guard = '''import os, runpy, subprocess, sys
+class Checked(subprocess.Popen):
+    def __init__(self, *args, **kwargs):
+        command = args[0] if args else kwargs.get('args')
+        if isinstance(command, (list, tuple)) and command and os.path.basename(str(command[0])).lower() in ('nvidia-smi', 'nvidia-smi.exe'):
+            raise AssertionError('DEBUG nvidia-smi executable is forbidden')
+        super().__init__(*args, **kwargs)
+subprocess.Popen = Checked
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name='__main__')
+'''
+            command = [sys.executable, '-B', '-u', '-c', guard, *command[3:]]
         number = len(results)+1
         print(f'ACTUAL CT CUDA DEBUG | invocation={number} | arm={arm} | completed-checkpoint resume', flush=True)
         with (output/f'{number}_{arm}.log').open('x',encoding='utf8') as log:
@@ -95,6 +110,7 @@ def verify(a):
                   platform=sys.platform, original_reference_preserved=True,
                   reference_sha256=original_sha, invocations=results,
                   source_helpers={name:sha(ROOT/name) for name in COMPARISON_FILES},
+                  nvidia_smi_forbidden_in_child=getattr(a, 'forbid_device_cli', False),
                   supervisor_linux_signals_executed=False, four_GPU_server_run=False,
                   additional_training_updates=0, quality_verified=False, server_speedup_measured=False)
     (output/'report.json').write_text(json.dumps(report,indent=2,allow_nan=False),encoding='utf8')
@@ -105,6 +121,8 @@ def verify(a):
 if __name__ == '__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--gpu',type=int,required=True)
+    p.add_argument('--forbid-device-cli', action='store_true',
+                   help='DEBUG only: forbid nvidia-smi while using actual NVML/CUDA')
     for name in ('reference','output','inventory','fixture','config','source','bank'):
         p.add_argument('--'+name,type=Path,required=True)
     verify(p.parse_args())

@@ -1,0 +1,160 @@
+{
+  "format": "current_environment_nvml_physical_gpu_execution_v1",
+  "scope": "GPU selection and exact completed DEBUG checkpoint restoration; no new training or quality claim",
+  "backend": "NVML",
+  "current_environment_only": true,
+  "remote_connection_invoked": false,
+  "nvidia_smi_executable_required": false,
+  "regression": {
+    "passed": 80,
+    "log_sha256": "e3bff2cba87aa856ef1d385c4daf30c20d5562bf30c3f8b1720d71ca3571bee6"
+  },
+  "actual_CT_CUDA_DEBUG": {
+    "raw_report_sha256": "cfdd258d6285bedb6de37a1042e85e1425d4c1eeb27644bbae10e87299f3059f",
+    "invocations": [
+      {
+        "arm": "selected",
+        "invocation": 1,
+        "returncode": 0,
+        "actual_CUDA": true,
+        "additional_optimizer_updates": 0,
+        "exact_completed_resume": true,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\arm_device_DEBUG_20261007_r2\\selected\\selected\\checkpoint_latest.pt",
+        "data_root": "D:\\AI project\\nnunet\\work\\arm_device_DEBUG_20261007_r2\\selected\\data",
+        "historical_source_lock_active": false,
+        "full_parameters": 10434532,
+        "debug": true
+      },
+      {
+        "arm": "native",
+        "invocation": 2,
+        "returncode": 0,
+        "actual_CUDA": true,
+        "additional_optimizer_updates": 0,
+        "exact_completed_resume": true,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\arm_device_DEBUG_20261007_r2\\native\\native\\checkpoint_latest.pt",
+        "data_root": "D:\\AI project\\nnunet\\work\\arm_device_DEBUG_20261007_r2\\native\\data",
+        "historical_source_lock_active": false,
+        "full_parameters": 10434532,
+        "debug": true
+      },
+      {
+        "arm": "selected",
+        "invocation": 3,
+        "returncode": 0,
+        "actual_CUDA": true,
+        "additional_optimizer_updates": 0,
+        "exact_completed_resume": true,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\arm_device_DEBUG_20261007_r2\\selected\\selected\\checkpoint_latest.pt",
+        "data_root": "D:\\AI project\\nnunet\\work\\arm_device_DEBUG_20261007_r2\\selected\\data",
+        "historical_source_lock_active": true,
+        "full_parameters": 10434532,
+        "debug": true
+      }
+    ],
+    "nvidia_smi_forbidden_in_child": true,
+    "additional_optimizer_updates": 0,
+    "original_reference_preserved": true,
+    "physical_device_receipts": [
+      {
+        "path": "work\\arm_device_DEBUG_20261007_r2\\selected\\execution_overrides\\device_0284638eb5b645b58ed9261bc6154370.json",
+        "sha256": "0dbcdef8e1a69073a66d3d3c4aedbc1a0d653e622ed20a4b40d460be699c2d7c",
+        "arm": "selected",
+        "selections": [
+          {
+            "physical_index": 0,
+            "physical_uuid": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+            "name": "NVIDIA GeForce RTX 5070 Ti",
+            "mig": [],
+            "mig_supported": false,
+            "mig_enabled": false,
+            "mig_pending": null,
+            "listing": "GPU 0: NVIDIA GeForce RTX 5070 Ti (UUID: GPU-4bb87504-d7ff-5f8b-611c-578338dab472)",
+            "backend": "NVML",
+            "library": "nvml.dll",
+            "current_host_observed": "DESKTOP-KSGC7UP",
+            "visible": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+            "type": "GPU"
+          }
+        ]
+      },
+      {
+        "path": "work\\arm_device_DEBUG_20261007_r2\\selected\\execution_overrides\\device_b11eba95c97040c790eff10c0a3c2bb1.json",
+        "sha256": "0dbcdef8e1a69073a66d3d3c4aedbc1a0d653e622ed20a4b40d460be699c2d7c",
+        "arm": "selected",
+        "selections": [
+          {
+            "physical_index": 0,
+            "physical_uuid": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+            "name": "NVIDIA GeForce RTX 5070 Ti",
+            "mig": [],
+            "mig_supported": false,
+            "mig_enabled": false,
+            "mig_pending": null,
+            "listing": "GPU 0: NVIDIA GeForce RTX 5070 Ti (UUID: GPU-4bb87504-d7ff-5f8b-611c-578338dab472)",
+            "backend": "NVML",
+            "library": "nvml.dll",
+            "current_host_observed": "DESKTOP-KSGC7UP",
+            "visible": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+            "type": "GPU"
+          }
+        ]
+      },
+      {
+        "path": "work\\arm_device_DEBUG_20261007_r2\\native\\execution_overrides\\device_72243a1eb278438681935bd04aa940b7.json",
+        "sha256": "9a6d6625894ef44601d002d0ebbafc04ef2ddb6ec7d01171889c7a09d941d102",
+        "arm": "native",
+        "selections": [
+          {
+            "physical_index": 0,
+            "physical_uuid": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+            "name": "NVIDIA GeForce RTX 5070 Ti",
+            "mig": [],
+            "mig_supported": false,
+            "mig_enabled": false,
+            "mig_pending": null,
+            "listing": "GPU 0: NVIDIA GeForce RTX 5070 Ti (UUID: GPU-4bb87504-d7ff-5f8b-611c-578338dab472)",
+            "backend": "NVML",
+            "library": "nvml.dll",
+            "current_host_observed": "DESKTOP-KSGC7UP",
+            "visible": "GPU-4bb87504-d7ff-5f8b-611c-578338dab472",
+            "type": "GPU"
+          }
+        ]
+      }
+    ]
+  },
+  "frozen_helpers_17_preserved": true,
+  "helpers": {
+    "tools/current_gpu.py": "17b1b8f2ffda688cf4714a528f9d003b4c06b02b1259201160acdf707a342611",
+    "tools/run_comparison_arm.py": "2bec3ec94631390f2e40e4b54e6dde842a664e7a4df2d83acc556cdcea4b95b0",
+    "tools/verify_arm_launch_debug.py": "adae20702fbab0758c52f089fdeb78885cc5f5f579d5e624e33364e56ceb68dc"
+  },
+  "frozen_neural_input_helpers_17": {
+    "hiercp_v1x/u_bridge_experiment.py": "e3f149ef0fa497cef5214c39175101236e8a424e65c746ca8c5a14e84300af49",
+    "hiercp_v1x/u_bridge_data.py": "fc1ca9a2ee188baf61a12d91aebac68e69f1bb9ad415be37addb683c7435453f",
+    "hiercp_v1x/u_bridge_fields.py": "6bbfab9cb7dfd534da0476506f23dfcff2b387fd5fc38599e2a13782c6bbffd9",
+    "hiercp_v1x/u_bridge_calibration.py": "28d969c08aba8551a0ceabca5a140dbe367fbb672114b2629bdb29551181bbfa",
+    "hiercp_v1x/u_bridge_upper.py": "933a77e31d890d2871f5f5063de63523e736a63c2847cdc4d07f62866abf8c82",
+    "hiercp_v1x/u_bridge_training.py": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/scope_learning_loop.py": "aebde93532180081bb37aaa2cbe61782f1648351c6b2f77ed2cd3d2e68d0b9e6",
+    "tools/run_v18_u_bridge.py": "381ee796682222622e3a0a760cffaac036f85d8779d8dd80d4fa902454d18229",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "config/v18_u_bridge.json": "dac6b605700068be70c08ba4e10e965bad6b752d1df21fd8b80a9e11fcc1b18e",
+    "hiercp_v1x/comparison_experiment.py": "2101bb0eb32f8137b8a84c9b084c97534c67b0eb391d83f1fe07c05e09bd48cb",
+    "hiercp_v1x/comparison_data.py": "c776e3c9525c3402f6a31bae2bd085b32d130d79fdc84198da8530610ba0a886",
+    "hiercp_v1x/comparison_training.py": "cbcd883f409f66e6a84c21f44d869a84a6fe01bd9cf65869c7fa4859d24c0eac",
+    "tools/run_v19_comparison.py": "1194092cdbeba7f053f143364cd2f76679701f07229833d1edc974beb85f6893",
+    "config/v19_comparison_controls.json": "003ecf487f34221eb2dc53740f32d69bdfff8678cfeb0401f365ace87852844c"
+  },
+  "limitations": [
+    "Actual local NVML/CUDA checks used Windows RTX 5070 Ti; Linux server access has not been measured",
+    "MIG cases were UNIT ctypes fixtures, not real server MIG execution",
+    "Missing CLI and unavailable NVIDIA driver are different failures; no driver access is invented",
+    "No new production40 training, full evaluation or ranking quality assessment was performed"
+  ],
+  "quality_verified": false,
+  "server_speedup_measured": false
+}
