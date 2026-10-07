@@ -73,7 +73,7 @@
 
 </details>
 
-<details><summary>실행·분석 (37)</summary>
+<details><summary>실행·분석 (38)</summary>
 
 | 내용 | 원본 | Git |
 | --- | --- | --- |
@@ -98,6 +98,7 @@
 | probe v1 roi budget | [열기](../../tools/probe_v1_roi_budget.py) | 게시 대상 |
 | profile v1 execution | [열기](../../tools/profile_v1_execution.py) | 게시 대상 |
 | profile v1 pair preparation | [열기](../../tools/profile_v1_pair_preparation.py) | 로컬 |
+| retire old v1 graphs | [열기](../../tools/retire_old_v1_graphs.py) | 게시 대상 |
 | run v1 native nested416 server | [열기](../../tools/run_v1_native_nested416_server.sh) | 게시 대상 |
 | run v1x experiment | [열기](../../tools/run_v1x_experiment.py) | 게시 대상 |
 | server native v1 full128 | [열기](../../tools/server_native_v1_full128.sh) | 게시 대상 |
@@ -135,7 +136,7 @@
 
 </details>
 
-<details><summary>검사 (45)</summary>
+<details><summary>검사 (46)</summary>
 
 | 내용 | 원본 | Git |
 | --- | --- | --- |
@@ -146,6 +147,7 @@
 | native30 geometry relocation | [열기](../../tests/test_native30_geometry_relocation.py) | 게시 대상 |
 | native30 upper | [열기](../../tests/test_native30_upper.py) | 게시 대상 |
 | native v1 checkpoint inspection | [열기](../../tests/test_native_v1_checkpoint_inspection.py) | 게시 대상 |
+| old v1 graph cleanup | [열기](../../tests/test_old_v1_graph_cleanup.py) | 게시 대상 |
 | v1 bounded scope | [열기](../../tests/test_v1_bounded_scope.py) | 게시 대상 |
 | v1 cache budget recovery | [열기](../../tests/test_v1_cache_budget_recovery.py) | 게시 대상 |
 | v1 deterministic sampling | [열기](../../tests/test_v1_deterministic_sampling.py) | 게시 대상 |
@@ -186,3 +188,22 @@
 | v1x serialization | [열기](../../tests/test_v1x_serialization.py) | 로컬 |
 
 </details>
+
+
+## 작업 완료 체크리스트
+
+이 파일은 탐색 인덱스다. 학습·평가·자원 benchmark와 데이터 이동·삭제는 실행하지 않는다.
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. (인덱스 생성에 해당 없음)
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. (인덱스 생성에 해당 없음)
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (인덱스 생성에 해당 없음)
+- [x] 디버그 설정과 최종 설정을 분리해서 안내했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (새 실행 검사 없음)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 기존 구현·기록으로 연결한다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

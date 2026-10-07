@@ -1,6 +1,7 @@
 """CPU UNIT storage integrity regressions; no CT, neural or quality claims."""
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 from concurrent.futures import ThreadPoolExecutor
 import copy
 import gc
@@ -62,7 +63,7 @@ def assert_nested_equal(test, expected, actual):
 
 class CheckedDonorStorageUNIT(unittest.TestCase):
     def setUp(self):
-        self.root = ROOT / "work" / ("transition_storage_UNIT_" + uuid.uuid4().hex)
+        self.root = unit_artifact_root() / ("transition_storage_UNIT_" + uuid.uuid4().hex)
         self.root.mkdir()
         self.writer = optimized.GraphWriter(self.root, minimum_free_bytes=0)
         self.record = record()

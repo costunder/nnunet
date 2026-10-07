@@ -1,0 +1,45 @@
+{
+  "scope": "local_workspace_organization_only",
+  "date": "2026-10-08",
+  "moved_directories": 503,
+  "moved_files": 37440,
+  "moved_bytes": 1867057265,
+  "all_moved_sha256_and_sizes_verified": true,
+  "deleted_files": 0,
+  "reclaimed_bytes": 0,
+  "work_root_directories_before": 806,
+  "work_root_directories_after": 305,
+  "local_receipts": [
+    "work/archive/organization/tests-20261007-234732/summary.json",
+    "work/archive/organization/extra-completed/summary.json"
+  ],
+  "additional_completed_organization_scripts": "work/archive/organization/scripts/moves.json",
+  "earlier_vessel_file_organization": "work/archive/vessels/relocation.json",
+  "sealed_training_and_runtime_hashes": "Matched frozen_sources and implementation_sha256 in validation/comparison_runtime/verification.json",
+  "navigation": {
+    "source_config_document_entries": 1253,
+    "artifact_locations": 442,
+    "independent_arm_folders": [
+      "versions/v1.8/selected",
+      "versions/v1.8/native",
+      "versions/v1.9/fixed",
+      "versions/v1.9/listwise"
+    ]
+  },
+  "validation": {
+    "python_static_compile": "PASS",
+    "helper_path_checks": "PASS",
+    "slicer_cache_path_checks": "PASS; no extraction run",
+    "shell_wrapper_static_checks": "PASS",
+    "shell_execution": "NOT_RUN; Bash unavailable on local host"
+  },
+  "server_changed": false,
+  "model_or_training_settings_changed": false,
+  "training_started": false,
+  "full_evaluation_started": false,
+  "limitations": [
+    "Existing bound source, data, checkpoint and evidence paths remain at their original locations.",
+    "Local archival does not free disk space and does not reorganize the server filesystem.",
+    "Clinical payloads and large local archive receipts are not distributed in Git."
+  ]
+}

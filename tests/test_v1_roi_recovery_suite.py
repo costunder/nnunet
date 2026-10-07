@@ -1,4 +1,5 @@
 """UNIT tests for explicit resource-only fresh-suite recovery; no CT/model run."""
+from tests.artifacts import unit_artifact_root
 import copy
 import json
 from pathlib import Path
@@ -17,7 +18,7 @@ from tools.run_v1x_experiment import admission_from_probe
 class RoiRecoverySuiteUnitTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.root = ROOT/'work'/('roi_recovery_suite_UNIT_'+uuid.uuid4().hex)
+        cls.root = unit_artifact_root()/('roi_recovery_suite_UNIT_'+uuid.uuid4().hex)
         cls.medical = cls.root/'medical'
         for kind in ('image', 'labels'):
             directory = cls.medical/'Data'/kind

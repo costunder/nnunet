@@ -26,6 +26,7 @@ from hiercp_v1x.half_a_model import HalfALocalCNN,MARKER_KEY,half_a_identity
 from hiercp_v1x.half_a_training import MARKER
 from tools.verify_v1_half_a_learning import half_a_state_digest
 
+from tests.artifacts import unit_artifact_root
 root=Path.cwd()
 source=root/'work/v14_matched_learning_DEBUG_20261004_r3/source/v1.0'
 proof=activate_original(source)
@@ -41,7 +42,7 @@ expected_native=json.loads((root/'work/v14_matched_learning_DEBUG_20261004_r3/re
 assert state_digest(native_state)==expected_native
 assert sum(p.numel() for p in native.parameters())==10434532
 assert not torch.cuda.is_initialized()
-out=root/'work'/('half_a_entry_archived_CPU_UNIT_'+uuid.uuid4().hex)
+out=unit_artifact_root()/('half_a_entry_archived_CPU_UNIT_'+uuid.uuid4().hex)
 output=out/'results/half_A'
 output.mkdir(parents=True)
 receipt={'experiment':str(out),'contract_sha256':canonical_hash(dict(UNIT=True,

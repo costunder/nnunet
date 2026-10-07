@@ -41,8 +41,9 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 from hiercp_v1x import bounded_scope as adapter
+from tests.artifacts import unit_artifact_root
 root=Path.cwd()
-source=root/'work'/('v1_bounded_scope_UNIT_'+uuid.uuid4().hex)
+source=unit_artifact_root()/('v1_bounded_scope_UNIT_'+uuid.uuid4().hex)
 source.mkdir(parents=True,exist_ok=False)
 archive=root/'versions/v1/pipeline_v1_source.zip'
 archive_before=hashlib.sha256(archive.read_bytes()).hexdigest()

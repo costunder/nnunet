@@ -1,7 +1,30 @@
 {
   "format": "hiercp_artifact_locations_v1",
-  "path_policy": "Keep exact checkpoint/cache/evidence paths; list all top-level artifact folders",
+  "path_policy": "Bound experiment paths remain unchanged; grouped archives link completed original-to-current relocation receipts",
   "deletion_performed": false,
+  "relocation_receipts": [
+    {
+      "path": "work/archive/organization/extra-completed/plan.json",
+      "summary": "work/archive/organization/extra-completed/summary.json",
+      "directory_count": 8,
+      "original_current_mapping": "source -> destination",
+      "file_inventory": "work/archive/organization/extra-completed/files.json",
+      "file_bytes_verified": true
+    },
+    {
+      "path": "work/archive/organization/tests-20261007-234732/plan.json",
+      "summary": "work/archive/organization/tests-20261007-234732/summary.json",
+      "directory_count": 495,
+      "original_current_mapping": "source -> destination",
+      "file_inventory": "work/archive/organization/tests-20261007-234732/files.json",
+      "file_bytes_verified": true
+    },
+    {
+      "path": "work/archive/vessels/relocation.json",
+      "file_count": 562,
+      "original_current_mapping": "original -> current"
+    }
+  ],
   "folders": [
     {
       "path": "work/__pycache__",
@@ -9,6 +32,46 @@
       "kind": "work",
       "display": "  pycache  ",
       "scope_hint": "inspect receipt",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/arm_device_DEBUG_20261007",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "arm device DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/arm_device_DEBUG_20261007_r2",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "arm device DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/arm_launch_DEBUG_20261007",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "arm launch DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/cache_publication_DEBUG_20261007",
+      "version": "common",
+      "kind": "work",
+      "display": "cache publication DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/cache_runtime_DEBUG_20261007",
+      "version": "common",
+      "kind": "work",
+      "display": "cache runtime DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
@@ -20,26 +83,50 @@
       "deletion_authorized": false
     },
     {
+      "path": "work/comparison_cache_DEBUG_20261007",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "comparison cache DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/comparison_cache_DEBUG_20261007_r2",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "comparison cache DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/comparison_input_DEBUG_20261007",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "comparison input DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/comparison_progress_DEBUG_20261007",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "comparison progress DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
+      "path": "work/comparison_progress_DEBUG_20261007_r2",
+      "version": "v1.9",
+      "kind": "work",
+      "display": "comparison progress DEBUG",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false
+    },
+    {
       "path": "work/cp80_comparison_20260922",
       "version": "common",
       "kind": "work",
       "display": "cp80 comparison",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/ct_only_visual_20260930",
-      "version": "common",
-      "kind": "work",
-      "display": "ct only visual",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/ct_only_visual_20260930_r1",
-      "version": "common",
-      "kind": "work",
-      "display": "ct only visual",
       "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
@@ -116,398 +203,6 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/fingerprint_fixture_091g2liv",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 091g2liv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_2clwk2dp",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 2clwk2dp",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_2dgurcr_",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 2dgurcr ",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_2q2r79dv",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 2q2r79dv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_2uzv_7yv",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 2uzv 7yv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_3v1n3qkr",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 3v1n3qkr",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_3yib_dzi",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 3yib dzi",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_4v9_dliw",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 4v9 dliw",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_7a8k_tv4",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 7a8k tv4",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_8t_n0oub",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 8t n0oub",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_9yiok_o_",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture 9yiok o ",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_aeznt4z9",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture aeznt4z9",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_d0v2tz26",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture d0v2tz26",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_dqkb0m9n",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture dqkb0m9n",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_kpbhqe8v",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture kpbhqe8v",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_mfc4rkgn",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture mfc4rkgn",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_pmj98j0y",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture pmj98j0y",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_rh0ysd25",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture rh0ysd25",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_rpzej4xb",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture rpzej4xb",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_x1a8v67a",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture x1a8v67a",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_x4i4mx_u",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture x4i4mx u",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_xera5_jw",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture xera5 jw",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fingerprint_fixture_yci61smv",
-      "version": "common",
-      "kind": "work",
-      "display": "fingerprint fixture yci61smv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_1sgd9k3w",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture 1sgd9k3w",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_22pdi62a",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture 22pdi62a",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_4m_e6yop",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture 4m e6yop",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_4o0y0lro",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture 4o0y0lro",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_538_2v0x",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture 538 2v0x",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_6iywvxuu",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture 6iywvxuu",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture__ve98177",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture  ve98177",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture__ym7ufji",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture  ym7ufji",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_a2z000ty",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture a2z000ty",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_anbux2pj",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture anbux2pj",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_f9t7or0r",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture f9t7or0r",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_fabsd46k",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture fabsd46k",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_g8fsw78v",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture g8fsw78v",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_gpf8xtmv",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture gpf8xtmv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_hpzd0xaj",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture hpzd0xaj",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_hux7hpox",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture hux7hpox",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_ik5zsk9n",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture ik5zsk9n",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_j_h8dr80",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture j h8dr80",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_k01bu2mh",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture k01bu2mh",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_l39_l0vv",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture l39 l0vv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_lwplr4fc",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture lwplr4fc",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_nkk0cb2_",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture nkk0cb2 ",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_oknyl303",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture oknyl303",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_rkjrch79",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture rkjrch79",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_ybdp0h6b",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture ybdp0h6b",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/fixed_region_fixture_zix5k24f",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "fixed region fixture zix5k24f",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
       "path": "work/footprint_shape_20261002",
       "version": "common",
       "kind": "work",
@@ -540,139 +235,11 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/GPT_v22_learning_review_20261001_091510",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "GPT v22 learning review",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/GPT_v22_learning_review_20261001_095533",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "GPT v22 learning review",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/GPT_v22_learning_review_20261001_104341",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "GPT v22 learning review",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/GPT_v22_learning_review_20261001_104431",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "GPT v22 learning review",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
       "path": "work/GPT_v22_learning_review_20261001_121240",
       "version": "v2.2",
       "kind": "work",
       "display": "GPT v22 learning review",
       "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_393d60049ffd41eeb97ca8a84907f455",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT 393d60049ffd41eeb97ca8a84907f455",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_39435f8a311b46dfa2c1c0249fa5210b",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT 39435f8a311b46dfa2c1c0249fa5210b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_52175633934944bf97300b46bf99cf63",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT 52175633934944bf97300b46bf99cf63",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_605382ba64a143fda5a2037f7abd4ce1",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT 605382ba64a143fda5a2037f7abd4ce1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_994128bde46b4aed9a6c070dbc7d42bf",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT 994128bde46b4aed9a6c070dbc7d42bf",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_a369da16cb20472988e775de148bbf9f",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT a369da16cb20472988e775de148bbf9f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_c2714da7f94f49c2aa76db0e0ecb944b",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT c2714da7f94f49c2aa76db0e0ecb944b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_a_entry_archived_CPU_UNIT_cb2494053ec14c6d8812ca49f809ef5d",
-      "version": "v1.5",
-      "kind": "work",
-      "display": "half a entry archived CPU UNIT cb2494053ec14c6d8812ca49f809ef5d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_b_entry_CPU_UNIT_727040ea06004630a9aba6ac9517c970",
-      "version": "v1.6",
-      "kind": "work",
-      "display": "half b entry CPU UNIT 727040ea06004630a9aba6ac9517c970",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_b_entry_CPU_UNIT_96e75cd6064a41d3a1e841c582025b61",
-      "version": "v1.6",
-      "kind": "work",
-      "display": "half b entry CPU UNIT 96e75cd6064a41d3a1e841c582025b61",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_b_entry_CPU_UNIT_f78dda5f8e5d432a886221f2fdbc1be5",
-      "version": "v1.6",
-      "kind": "work",
-      "display": "half b entry CPU UNIT f78dda5f8e5d432a886221f2fdbc1be5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/half_b_entry_CPU_UNIT_fa132cf7089e4860b0cf476539cf7985",
-      "version": "v1.6",
-      "kind": "work",
-      "display": "half b entry CPU UNIT fa132cf7089e4860b0cf476539cf7985",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
@@ -992,158 +559,6 @@
       "version": "v2.1",
       "kind": "work",
       "display": "local v21 5070ti",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_3d7gft_z",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature 3d7gft z",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_47ioabmi",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature 47ioabmi",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_575yzge7",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature 575yzge7",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_8fpvsf81",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature 8fpvsf81",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_8zty4uxt",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature 8zty4uxt",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature__2lhevlh",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature  2lhevlh",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_a1s593yq",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature a1s593yq",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_b05k5qaa",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature b05k5qaa",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_cnjethh7",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature cnjethh7",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_cw4bkj1l",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature cw4bkj1l",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_ef2h_nc5",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature ef2h nc5",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_hr8pmjnn",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature hr8pmjnn",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_iwhoz315",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature iwhoz315",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_lojay6cc",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature lojay6cc",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_lwqb7ib8",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature lwqb7ib8",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_m0x1utln",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature m0x1utln",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_twso2pva",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature twso2pva",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_v5zubrsl",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature v5zubrsl",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/missing_signature_veg4iwi0",
-      "version": "common",
-      "kind": "work",
-      "display": "missing signature veg4iwi0",
       "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
@@ -1476,686 +891,6 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/region_resume_contract_19xmmgaq",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 19xmmgaq",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_1_pbjg93",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 1 pbjg93",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_1aq262m4",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 1aq262m4",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_1yfp0bgp",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 1yfp0bgp",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_2a3fy7cq",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 2a3fy7cq",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_3ji9d3di",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 3ji9d3di",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_4mggkhi7",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 4mggkhi7",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_4ndftt5t",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 4ndftt5t",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_4y72k6nw",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 4y72k6nw",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_53mftkh_",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 53mftkh ",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_57cxw2_f",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 57cxw2 f",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_5xqj0r2n",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 5xqj0r2n",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_7_0jmstc",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 7 0jmstc",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_7c7kheor",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 7c7kheor",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_7f5opewe",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 7f5opewe",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_831ogf02",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 831ogf02",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_9372d50a",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 9372d50a",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_9f12c1cn",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 9f12c1cn",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_9gamlqcy",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 9gamlqcy",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_9hf_9jnj",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 9hf 9jnj",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_9ns08r0r",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract 9ns08r0r",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract__k_28cp_",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract  k 28cp ",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract__xb5n3fc",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract  xb5n3fc",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_a1y_zudq",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract a1y zudq",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_a9g_roc4",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract a9g roc4",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_ao505h7g",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract ao505h7g",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_b8i86i49",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract b8i86i49",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_b8s9dniy",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract b8s9dniy",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_ba59m242",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract ba59m242",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_bwu2koiv",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract bwu2koiv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_by8_tg7b",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract by8 tg7b",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_f0x1usdk",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract f0x1usdk",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_f5urj49l",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract f5urj49l",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_f7hyr0oo",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract f7hyr0oo",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_f7ioiolv",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract f7ioiolv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_h0ajcfmk",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract h0ajcfmk",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_ht0gnn8y",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract ht0gnn8y",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_i6ayh3tl",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract i6ayh3tl",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_iyi2ufqn",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract iyi2ufqn",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_j4bwcyyf",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract j4bwcyyf",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_j4lq67fp",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract j4lq67fp",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_kcl89mty",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract kcl89mty",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_kd5x2rgj",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract kd5x2rgj",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_l9ophpj6",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract l9ophpj6",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_l_t3_qio",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract l t3 qio",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_m6hdjjo4",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract m6hdjjo4",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_mhbi_gd4",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract mhbi gd4",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_mohnq02w",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract mohnq02w",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_mw8m_375",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract mw8m 375",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_n7qju8r9",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract n7qju8r9",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_njyzpej2",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract njyzpej2",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_ode0e9px",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract ode0e9px",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_oj8lxj8w",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract oj8lxj8w",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_oz5gfgol",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract oz5gfgol",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_p261gb7p",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract p261gb7p",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_p9ama3y_",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract p9ama3y ",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_pqr2cosu",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract pqr2cosu",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_qmhox_ko",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract qmhox ko",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_qv3g05t5",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract qv3g05t5",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_qyilhthn",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract qyilhthn",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_qzxw8gt6",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract qzxw8gt6",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_ravbjui5",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract ravbjui5",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_rz4wa_47",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract rz4wa 47",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_sfp1iftl",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract sfp1iftl",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_th43_wgf",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract th43 wgf",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_tovmqf8f",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract tovmqf8f",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_tqx0td8e",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract tqx0td8e",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_ttpr3_mi",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract ttpr3 mi",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_u7nslz_a",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract u7nslz a",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_u_jb3blm",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract u jb3blm",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_vpvkszyi",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract vpvkszyi",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_vsl421av",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract vsl421av",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_w2tpgo_h",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract w2tpgo h",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_wrwmirrg",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract wrwmirrg",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_x4h4y65h",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract x4h4y65h",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_x9yfffh8",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract x9yfffh8",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_xnns3a8a",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract xnns3a8a",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_xwjltqkp",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract xwjltqkp",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_xxo752is",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract xxo752is",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_z80ytixf",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract z80ytixf",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_z8asw0ra",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract z8asw0ra",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_z963ocdw",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract z963ocdw",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_za9qjes8",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract za9qjes8",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_zc0r_57k",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract zc0r 57k",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/region_resume_contract_zs883ivc",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "region resume contract zs883ivc",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
       "path": "work/region_retained_upgrade_DEBUG_20260930",
       "version": "v2.2",
       "kind": "work",
@@ -2372,627 +1107,19 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/resident_fixture_0wd6ik8i",
+      "path": "work/runs",
       "version": "common",
       "kind": "work",
-      "display": "resident fixture 0wd6ik8i",
+      "display": "runs",
       "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
-      "path": "work/resident_fixture_1aio5jqb",
+      "path": "work/runtime",
       "version": "common",
       "kind": "work",
-      "display": "resident fixture 1aio5jqb",
+      "display": "runtime",
       "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_2ku8866u",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture 2ku8866u",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_331bmrtp",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture 331bmrtp",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_3f3abcnh",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture 3f3abcnh",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_57rxdv84",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture 57rxdv84",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_7w4b744c",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture 7w4b744c",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_alvq9jgs",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture alvq9jgs",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_c0qe1wwv",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture c0qe1wwv",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_cp1vrgev",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture cp1vrgev",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_d83xnhju",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture d83xnhju",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_ghhm_7r8",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture ghhm 7r8",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_j3fmeqos",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture j3fmeqos",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_jp0iake3",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture jp0iake3",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_jtz9hjz9",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture jtz9hjz9",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_ki0lu1f2",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture ki0lu1f2",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_ksffibwm",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture ksffibwm",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_s16r0rmg",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture s16r0rmg",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_vn03xxgs",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture vn03xxgs",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_we4nf9_z",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture we4nf9 z",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_ylhu5zgh",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture ylhu5zgh",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_zgs71k1v",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture zgs71k1v",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/resident_fixture_zxc8omnd",
-      "version": "common",
-      "kind": "work",
-      "display": "resident fixture zxc8omnd",
-      "scope_hint": "inspect receipt",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_06e3e07977cf411785d72bf9b047917d",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT 06e3e07977cf411785d72bf9b047917d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_3989c0496d2741f9a89979e9e4712190",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT 3989c0496d2741f9a89979e9e4712190",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_76740f1081ee45a3ae96d74c74956a3f",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT 76740f1081ee45a3ae96d74c74956a3f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_82a1400a4bdd445ba86218a39fb00b27",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT 82a1400a4bdd445ba86218a39fb00b27",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_9d50b45033c448728239fa569e731c84",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT 9d50b45033c448728239fa569e731c84",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_a51da7f5cd8d4a5f96531b76574c8cb9",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT a51da7f5cd8d4a5f96531b76574c8cb9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_ab452fa9c3c145eda5df12c4ab05d0ed",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT ab452fa9c3c145eda5df12c4ab05d0ed",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_b5a800e3e6b1456385413061b77109bf",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT b5a800e3e6b1456385413061b77109bf",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_d0aacea0205a461cab943953709073d7",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT d0aacea0205a461cab943953709073d7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_probe_parser_UNIT_e6aee303ef2c4b7495458e7fd9657ae5",
-      "version": "common",
-      "kind": "work",
-      "display": "roi probe parser UNIT e6aee303ef2c4b7495458e7fd9657ae5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_recovery_suite_UNIT_399d954529104379b92dff4d29c051fa",
-      "version": "common",
-      "kind": "work",
-      "display": "roi recovery suite UNIT 399d954529104379b92dff4d29c051fa",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_recovery_suite_UNIT_55bf5f7840f04f1195253433cb73ecf4",
-      "version": "common",
-      "kind": "work",
-      "display": "roi recovery suite UNIT 55bf5f7840f04f1195253433cb73ecf4",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_recovery_suite_UNIT_80446a61f19b4078ada20fec16374e7a",
-      "version": "common",
-      "kind": "work",
-      "display": "roi recovery suite UNIT 80446a61f19b4078ada20fec16374e7a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_recovery_suite_UNIT_d225ffbd1e234692b207c93fd1682f4e",
-      "version": "common",
-      "kind": "work",
-      "display": "roi recovery suite UNIT d225ffbd1e234692b207c93fd1682f4e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_recovery_suite_UNIT_dc617d02c558452eb57b1037c5cac0f5",
-      "version": "common",
-      "kind": "work",
-      "display": "roi recovery suite UNIT dc617d02c558452eb57b1037c5cac0f5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_10c0aa517da74e4fb3d4bcd9eeeaf597",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 10c0aa517da74e4fb3d4bcd9eeeaf597",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_15954cd5618f46f8bc53dc9ce5d72e35",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 15954cd5618f46f8bc53dc9ce5d72e35",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_1a209f6ae2d740cdbdfd619afb1ae3e5",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 1a209f6ae2d740cdbdfd619afb1ae3e5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_1e51a4b751784deb876e1db151d5a0c9",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 1e51a4b751784deb876e1db151d5a0c9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_345dbc9f926a42279c2d2f12f94146c8",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 345dbc9f926a42279c2d2f12f94146c8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_3d7405535b8f4c5597da6640ea23b996",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 3d7405535b8f4c5597da6640ea23b996",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_44718047fe7a4aa3ba40a3db39c79535",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 44718047fe7a4aa3ba40a3db39c79535",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_4ddc65c44006478997c8394d903a0169",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 4ddc65c44006478997c8394d903a0169",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_4e43a32da8084b15b245a6cb05f34e16",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 4e43a32da8084b15b245a6cb05f34e16",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_5651dd392ce144ddb5550f398f444bb4",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 5651dd392ce144ddb5550f398f444bb4",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_605c9d3095d743a087a2759ba4306e25",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 605c9d3095d743a087a2759ba4306e25",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_620d3d818f424285984869ea8a264c32",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 620d3d818f424285984869ea8a264c32",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_775e2650b3a54237beca7551cf3e0522",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 775e2650b3a54237beca7551cf3e0522",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_7915743ebba64ba6a8d5ccf278c7c13d",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 7915743ebba64ba6a8d5ccf278c7c13d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_7e46eada92e04d70a898bbbe0f50c2a3",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 7e46eada92e04d70a898bbbe0f50c2a3",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_8101f33f028a49a782b310194251203d",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 8101f33f028a49a782b310194251203d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_811d2491ee0642b1ac8aaab6b4e6aa39",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 811d2491ee0642b1ac8aaab6b4e6aa39",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_8373357c5ece4123bc2a0f55c3dc29ab",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 8373357c5ece4123bc2a0f55c3dc29ab",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_8a2dbfb1d9354ed4acc1271f59c4d19e",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 8a2dbfb1d9354ed4acc1271f59c4d19e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_8b8c44ab4a1347e7ba3589c51effbae6",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 8b8c44ab4a1347e7ba3589c51effbae6",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_8bc2ecc25c924baeafcaf4aacac7fed5",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 8bc2ecc25c924baeafcaf4aacac7fed5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_8fe336c995d84ab0bc0c3204c64aedae",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 8fe336c995d84ab0bc0c3204c64aedae",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_931bc98e17a749d38a198b5fd72940eb",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 931bc98e17a749d38a198b5fd72940eb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_99a91acc35934b9aa605cbf1eeac6a37",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 99a91acc35934b9aa605cbf1eeac6a37",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_99d7b3186c314d7387e03bb7f61b70a7",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 99d7b3186c314d7387e03bb7f61b70a7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_9eeb845983f14e288c281724a4d0d90a",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT 9eeb845983f14e288c281724a4d0d90a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_a19ad09e3cfa41c88e471abe53e823d4",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT a19ad09e3cfa41c88e471abe53e823d4",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_a1a242d787a74d3784b515a636fde765",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT a1a242d787a74d3784b515a636fde765",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_a9f720e8320340e6b075bda635a483fa",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT a9f720e8320340e6b075bda635a483fa",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_b06ed2cbd05f49d094758fce3e4b8378",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT b06ed2cbd05f49d094758fce3e4b8378",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_b5fd98d45e8945d9a7e2626370d18977",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT b5fd98d45e8945d9a7e2626370d18977",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_d1194608185b44f3a309dd56f7557be7",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT d1194608185b44f3a309dd56f7557be7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_d1db513e5df6446e9f7c03760044e6cb",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT d1db513e5df6446e9f7c03760044e6cb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_d23906fb81f04da38751e5fc77b4e1ec",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT d23906fb81f04da38751e5fc77b4e1ec",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_d4b8df4a6174437a8025a1fec1b32f49",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT d4b8df4a6174437a8025a1fec1b32f49",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_e4406b2c498449bfbdc7b8955147b613",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT e4406b2c498449bfbdc7b8955147b613",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_e7b7d2143c7c4ed4bf2c380990d05807",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT e7b7d2143c7c4ed4bf2c380990d05807",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_eb27f33a67244ae7b5bb14f7fb827b3c",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT eb27f33a67244ae7b5bb14f7fb827b3c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_f68a267adbda42b78f759de5c8b9a7be",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT f68a267adbda42b78f759de5c8b9a7be",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/roi_reuse_UNIT_f7b0713aeb31461fbec3fbf9b1e3aec7",
-      "version": "common",
-      "kind": "work",
-      "display": "roi reuse UNIT f7b0713aeb31461fbec3fbf9b1e3aec7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
@@ -3024,54 +1151,6 @@
       "version": "v1.4",
       "kind": "work",
       "display": "scope probe support UNIT",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/scope_training_entry_UNIT_19cc14e7345a4059b10ba52fdd17c45f",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "scope training entry UNIT 19cc14e7345a4059b10ba52fdd17c45f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/scope_training_entry_UNIT_27c1e57b99974ee2b2714a77e1cc8ef1",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "scope training entry UNIT 27c1e57b99974ee2b2714a77e1cc8ef1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/scope_training_entry_UNIT_4fdf3462761946c1904bbed04f3336e0",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "scope training entry UNIT 4fdf3462761946c1904bbed04f3336e0",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/scope_training_entry_UNIT_6e9cf589260d4360b1050b5824a3f405",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "scope training entry UNIT 6e9cf589260d4360b1050b5824a3f405",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/scope_training_entry_UNIT_efddde64461741bf8490521925ba05c5",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "scope training entry UNIT efddde64461741bf8490521925ba05c5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/scope_UNIT_4de80c4c5caa4736ba0989c0d612b877",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "scope UNIT 4de80c4c5caa4736ba0989c0d612b877",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
@@ -3128,14 +1207,6 @@
       "version": "v2.2",
       "kind": "work",
       "display": "sparse feature learning CT DEBUG",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/ssn3d_visual_DEBUG_20260930",
-      "version": "v2.2",
-      "kind": "work",
-      "display": "ssn3d visual DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
@@ -3212,750 +1283,6 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/transition_D_parallel_UNIT_complete_00cf8e1de15942e3acb95ad711cead7e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT complete 00cf8e1de15942e3acb95ad711cead7e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_complete_23af319676ed41f89e62900c5351df15",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT complete 23af319676ed41f89e62900c5351df15",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_complete_4dc4ecff22ce4cc1bb0376af8334fcd1",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT complete 4dc4ecff22ce4cc1bb0376af8334fcd1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_complete_54d2dc785c80489cb0a4a18e476d0c7d",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT complete 54d2dc785c80489cb0a4a18e476d0c7d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_failure_82e2332e519846f4bebb3d1ed63bdba5",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT failure 82e2332e519846f4bebb3d1ed63bdba5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_failure_b74c0aa83c6d428cbec653e4db65ef95",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT failure b74c0aa83c6d428cbec653e4db65ef95",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_failure_b77c20a0c761489db87e0a98e51b5191",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT failure b77c20a0c761489db87e0a98e51b5191",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_parallel_UNIT_failure_bb24c7421b3f40488152c23514f9f3ac",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D parallel UNIT failure bb24c7421b3f40488152c23514f9f3ac",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_034e74d212744c4c83fb58df0a102b2e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 034e74d212744c4c83fb58df0a102b2e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_0bb45a8373204c729d929dce02a29bbb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 0bb45a8373204c729d929dce02a29bbb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_0eedb07309dc4b15b763ab541c24dbd9",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 0eedb07309dc4b15b763ab541c24dbd9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_1933e6a54c034a559c6f88966a863232",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 1933e6a54c034a559c6f88966a863232",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_343f046f1ded4919a3a394f724e65646",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 343f046f1ded4919a3a394f724e65646",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_5ec498a497864759a54f932b3a024095",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 5ec498a497864759a54f932b3a024095",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_614282921aa3465ea7ca63e11e9ab554",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 614282921aa3465ea7ca63e11e9ab554",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_6d857989e2a24ab9950fc5255e964404",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 6d857989e2a24ab9950fc5255e964404",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_9ea40206a6f249c282246ca3d62992aa",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT 9ea40206a6f249c282246ca3d62992aa",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_D_preparation_UNIT_d04b6f293d4e4c2f88fa6258da7fe66f",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition D preparation UNIT d04b6f293d4e4c2f88fa6258da7fe66f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_004f4cfd718e4d2c860630b8580e3c61",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 004f4cfd718e4d2c860630b8580e3c61",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_012e69544bea44c094de879befd65b32",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 012e69544bea44c094de879befd65b32",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_0268b9a367d34f739c28d566ab2d1ddb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 0268b9a367d34f739c28d566ab2d1ddb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_04fb972cfa4a4724b3b0ab8b51c1e204",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 04fb972cfa4a4724b3b0ab8b51c1e204",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_0640c9282e0e4346a5c4519d28caa4a1",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 0640c9282e0e4346a5c4519d28caa4a1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_0859e3cc0a0745199ae93076eb70c0dc",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 0859e3cc0a0745199ae93076eb70c0dc",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_1260db67b7294960a96c32d53768982b",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 1260db67b7294960a96c32d53768982b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_12f276f5c2b84e3fb3246df4cd65ce70",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 12f276f5c2b84e3fb3246df4cd65ce70",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_131a08a5e7d34c2a8e4c8a14fc7a29a8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 131a08a5e7d34c2a8e4c8a14fc7a29a8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_1386dd2c33b64c4689669e7b79beb094",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 1386dd2c33b64c4689669e7b79beb094",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_17cdbf7daa7040dd9091ced410bda4a1",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 17cdbf7daa7040dd9091ced410bda4a1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_17d2f75e6dab42d0b879f2efc26c587c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 17d2f75e6dab42d0b879f2efc26c587c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_226b18d219e343249276ddc44c433c8c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 226b18d219e343249276ddc44c433c8c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_257e117c2f5a46c98614e1c85aef42e3",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 257e117c2f5a46c98614e1c85aef42e3",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_2a7b16bded8b4e78b71f66211d476428",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 2a7b16bded8b4e78b71f66211d476428",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_2efad1078b584ca58b47d97e008feecf",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 2efad1078b584ca58b47d97e008feecf",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_2f38b3a6672b4750895739a75bc31790",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 2f38b3a6672b4750895739a75bc31790",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_2f519d24c6bf4e6b98c7a86fef45f8d7",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 2f519d24c6bf4e6b98c7a86fef45f8d7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_3307d5111bf74d47a36e50e1d07fc9d8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 3307d5111bf74d47a36e50e1d07fc9d8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_345ef7b67d3e4c50be27557ee59276c5",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 345ef7b67d3e4c50be27557ee59276c5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_35bd59ac3101413c831b74ab10fefc3d",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 35bd59ac3101413c831b74ab10fefc3d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_3645743f6d8240c88f32c07f2b9186bc",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 3645743f6d8240c88f32c07f2b9186bc",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_384641fbbda64113a4a5a2cf356be667",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 384641fbbda64113a4a5a2cf356be667",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_3917085246b9458ba3b15186fe62de6b",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 3917085246b9458ba3b15186fe62de6b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_3be69490fe8b4e6f8af65e1d59fcf35a",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 3be69490fe8b4e6f8af65e1d59fcf35a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_3d3cb710aa7f426b9a2434f258bfe1f6",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 3d3cb710aa7f426b9a2434f258bfe1f6",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_4050db646c764e1e97e9c40ba08e44bb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 4050db646c764e1e97e9c40ba08e44bb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_4104d146c3b64668baf7a9ed934bffe8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 4104d146c3b64668baf7a9ed934bffe8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_4e77d2262efa465d911317cdbcfc35c2",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 4e77d2262efa465d911317cdbcfc35c2",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_52af5ddea5fd420b9d252541d8e2245b",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 52af5ddea5fd420b9d252541d8e2245b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_53ed07a873e746a7ad8adc4d850b1930",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 53ed07a873e746a7ad8adc4d850b1930",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_58b3932291904e60a459547d28457df4",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 58b3932291904e60a459547d28457df4",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_60ede96ae5c147d0998edfd23203118d",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 60ede96ae5c147d0998edfd23203118d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_66d7b0f69d534837b34e8a9213a726ea",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 66d7b0f69d534837b34e8a9213a726ea",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_6851ceefd77a48ab9245bf80641c6fd8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 6851ceefd77a48ab9245bf80641c6fd8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_6b31bc42f9ff45818bfeecb299479b44",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 6b31bc42f9ff45818bfeecb299479b44",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_7471f41aadf346b2b7cb6f63d075d8de",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 7471f41aadf346b2b7cb6f63d075d8de",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_83baf761999e48ac961fac1223efa121",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 83baf761999e48ac961fac1223efa121",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_8b6a18e6d0fd43d381a7ec3945fed0a5",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 8b6a18e6d0fd43d381a7ec3945fed0a5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_8cfa506a0a844c4794b6505fdce13617",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 8cfa506a0a844c4794b6505fdce13617",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_8df30d2349d74938aeeadd4d320e1aaf",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 8df30d2349d74938aeeadd4d320e1aaf",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_8ed82c0e32ce4539b79dae65cd9b47ff",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 8ed82c0e32ce4539b79dae65cd9b47ff",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_98a56775d11a49d48faf35035eb2a813",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 98a56775d11a49d48faf35035eb2a813",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_9d62d798d9184b93a941ec6592c895bc",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 9d62d798d9184b93a941ec6592c895bc",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_9ddc8233f78342cab659cd630ea5dc7e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT 9ddc8233f78342cab659cd630ea5dc7e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_a18081688b5d432a854ff7a87751532e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT a18081688b5d432a854ff7a87751532e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_a22b8214c0d448329775ed58060e029c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT a22b8214c0d448329775ed58060e029c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_b16ff4e5615c4b799c18ded855f76d27",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT b16ff4e5615c4b799c18ded855f76d27",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_b1f394da0dd44d6bac46474eba56c649",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT b1f394da0dd44d6bac46474eba56c649",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_ba4e08a6166f432eae66a38d57b15bf8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT ba4e08a6166f432eae66a38d57b15bf8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_bb28a4ea88fb468a9ea4c6c2750ac9f2",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT bb28a4ea88fb468a9ea4c6c2750ac9f2",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_bd71864e23164c12a57c8e9b86d6b08c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT bd71864e23164c12a57c8e9b86d6b08c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_bddba570635f4bf481dfbc9efad1751a",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT bddba570635f4bf481dfbc9efad1751a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_bebde3183d0d4de5bf1a1a2c5bb6691b",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT bebde3183d0d4de5bf1a1a2c5bb6691b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_c02c138afc28489ab877292d55ecbf26",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT c02c138afc28489ab877292d55ecbf26",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_c23b15162daf4786945ec3503c8e72dc",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT c23b15162daf4786945ec3503c8e72dc",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_c3f45d8ec96d4f0587cc66eced7c5bd8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT c3f45d8ec96d4f0587cc66eced7c5bd8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_c5d3f5b2b8ad456298ad8239bc6b7ec3",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT c5d3f5b2b8ad456298ad8239bc6b7ec3",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_c7989760c6024977976707d0fcc2499f",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT c7989760c6024977976707d0fcc2499f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_ca1c20364b714242bf7d0d2afe0e2d73",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT ca1c20364b714242bf7d0d2afe0e2d73",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_cb1e17f4444b43ae874b0274258b0155",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT cb1e17f4444b43ae874b0274258b0155",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_ce6d06ebe55e4bea89a5eb904fdeec8e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT ce6d06ebe55e4bea89a5eb904fdeec8e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_cee38606150e4ee4bb0a9b3843f0f687",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT cee38606150e4ee4bb0a9b3843f0f687",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_d528679d34d24b8682b3a2290e09121f",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT d528679d34d24b8682b3a2290e09121f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_d59a142594754b898588c26413867306",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT d59a142594754b898588c26413867306",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_d6f1aa9f93f54d419bb8cefda7e4ffcb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT d6f1aa9f93f54d419bb8cefda7e4ffcb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_db5576eca6cb43a0a14e696bebb3ab47",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT db5576eca6cb43a0a14e696bebb3ab47",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_dfa6ad1ebd5a4327a76321620ee0b5b1",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT dfa6ad1ebd5a4327a76321620ee0b5b1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_e196eff41836485691ef952b7c624bee",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT e196eff41836485691ef952b7c624bee",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_e256e064089045fda21857267ff380b0",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT e256e064089045fda21857267ff380b0",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_e2a5a4c2b182425899b0593152e95fcd",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT e2a5a4c2b182425899b0593152e95fcd",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_e357c65cf59f4405afb6c9c50cc41b97",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT e357c65cf59f4405afb6c9c50cc41b97",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_e918a2cdbee042b8989f1accecbe8a3e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT e918a2cdbee042b8989f1accecbe8a3e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_fc10b73e76f34a9782c7734bc87bea13",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT fc10b73e76f34a9782c7734bc87bea13",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/transition_storage_UNIT_fd437e9887a049bc9f367a549be98f8e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "transition storage UNIT fd437e9887a049bc9f367a549be98f8e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
       "path": "work/uncoarsened_sage_DEBUG_20260930",
       "version": "common",
       "kind": "work",
@@ -4000,174 +1327,6 @@
       "version": "v1.4",
       "kind": "work",
       "display": "v14 matched learning DEBUG",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_09a9fa2771944893a5d4385264568110",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 09a9fa2771944893a5d4385264568110",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_1714b6f260964d76bba852f435ec818e",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 1714b6f260964d76bba852f435ec818e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_2a3807dc04574d0098d0cc5897729dd2",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 2a3807dc04574d0098d0cc5897729dd2",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_54ea7bbeedf546448d1b790d054ec944",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 54ea7bbeedf546448d1b790d054ec944",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_60ea0f91342e47b5a76ccd4dbcad6776",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 60ea0f91342e47b5a76ccd4dbcad6776",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_67fa783250cb4d8883ed80e83caff2d8",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 67fa783250cb4d8883ed80e83caff2d8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_76a3c4004a4c48c2a521387ed342636a",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 76a3c4004a4c48c2a521387ed342636a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_8cdfa27b8d474937add1f7c9ce0145f8",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT 8cdfa27b8d474937add1f7c9ce0145f8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_a1e3a5fc6f2e45f58190d11a7464271a",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT a1e3a5fc6f2e45f58190d11a7464271a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_a9b0914eb1224c8db61d717a654c5bed",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT a9b0914eb1224c8db61d717a654c5bed",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_aa5edae80a354979ab641d29a1cf1d41",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT aa5edae80a354979ab641d29a1cf1d41",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_b7013afc03c94ee3ad314d0c458c127f",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT b7013afc03c94ee3ad314d0c458c127f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_cd4cf8668aaa4963aeeeeb24bf39a893",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT cd4cf8668aaa4963aeeeeb24bf39a893",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_d7e494c6ec2549b4a2026b2f32322acb",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT d7e494c6ec2549b4a2026b2f32322acb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_d9557c51e8fd495c921c49a5c5f288d7",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT d9557c51e8fd495c921c49a5c5f288d7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_dd023ee3763049e19c823f6ed59f0195",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT dd023ee3763049e19c823f6ed59f0195",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_e8c672ea61064dfdbe98671b677ff593",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT e8c672ea61064dfdbe98671b677ff593",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_e9ccb608373c4464851868c962c0bb9c",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT e9ccb608373c4464851868c962c0bb9c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_f2f60a24f2b54dccbbfd0e9b81a56e30",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT f2f60a24f2b54dccbbfd0e9b81a56e30",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_fa822a5cfd9c4a62836f345732710885",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT fa822a5cfd9c4a62836f345732710885",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v14_version_UNIT_fa8fc8614dac464d8d7a959169747e74",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v14 version UNIT fa8fc8614dac464d8d7a959169747e74",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
@@ -4248,382 +1407,6 @@
       "version": "v1.7",
       "kind": "work",
       "display": "v17 C cuda DEBUG",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_04f32e49133842be9c3f028547b1e4ff",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 04f32e49133842be9c3f028547b1e4ff",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_062dfb053b8c4e8c9e55a6b405f8419d",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 062dfb053b8c4e8c9e55a6b405f8419d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_0adac4fb76fa4ffbb32091d1913a06cb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 0adac4fb76fa4ffbb32091d1913a06cb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_0f1eb0111de044439ecb49fb687055fa",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 0f1eb0111de044439ecb49fb687055fa",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_10710bb7f2644c82b081169422b6afc4",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 10710bb7f2644c82b081169422b6afc4",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_113faa4b751343749ac467c91311e934",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 113faa4b751343749ac467c91311e934",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_1fcd584283c14447a59a88cfd6c9a12a",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 1fcd584283c14447a59a88cfd6c9a12a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_22c73e24553447dfb71a02ba83a1693c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 22c73e24553447dfb71a02ba83a1693c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_2f9ddb6be485400a8cb58f08b981e8f3",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 2f9ddb6be485400a8cb58f08b981e8f3",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_36cd2752da7b4996a40f6fc59e2b3540",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 36cd2752da7b4996a40f6fc59e2b3540",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_386d755646444f01bd352314de544455",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 386d755646444f01bd352314de544455",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_38e8a271c519450591eb487c0857f687",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 38e8a271c519450591eb487c0857f687",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_39b6ed25fd1c4937aa11726ea98f1cfa",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 39b6ed25fd1c4937aa11726ea98f1cfa",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_3dc42c2d71524d55a7d53c2a963e5f60",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 3dc42c2d71524d55a7d53c2a963e5f60",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_42a867a248244407816b41a1bbc70240",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 42a867a248244407816b41a1bbc70240",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_48a3cfedcb124464aeeba0aedb1d62bf",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 48a3cfedcb124464aeeba0aedb1d62bf",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_4ea798c5e2cb4ae798ea51ff2cfedd10",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 4ea798c5e2cb4ae798ea51ff2cfedd10",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_4f0a5da918434475ad6557e9aea14e2a",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 4f0a5da918434475ad6557e9aea14e2a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_4f7441e490f7490f83ed37e206385350",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 4f7441e490f7490f83ed37e206385350",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_52acce4a035a4f1fb1051cc581b3c9f8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 52acce4a035a4f1fb1051cc581b3c9f8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_56364a55af0a4214b14ceedd0e5133f2",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 56364a55af0a4214b14ceedd0e5133f2",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_57823ef80ca443ebbcb707b63bc4395a",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 57823ef80ca443ebbcb707b63bc4395a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_5a72f5eb417c413a9156e78841aa2cf7",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 5a72f5eb417c413a9156e78841aa2cf7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_5d7b14c9cb2a4193ae04b4b271fa4b27",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 5d7b14c9cb2a4193ae04b4b271fa4b27",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_5f3503945aed4adbb73988faa9ef8341",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 5f3503945aed4adbb73988faa9ef8341",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_6ad8bd7f4b1542a599eee2bc9a3485d9",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 6ad8bd7f4b1542a599eee2bc9a3485d9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_6c873715b981422b890720db17eeb079",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 6c873715b981422b890720db17eeb079",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_70e82115d9ea4c9e833cbeffbfc19a15",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 70e82115d9ea4c9e833cbeffbfc19a15",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_74a1a29a122a47ff87258230baa7e319",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 74a1a29a122a47ff87258230baa7e319",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_7b35d5d92a5245bcb322f19ce059f49c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 7b35d5d92a5245bcb322f19ce059f49c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_84b06397e9dd4589ae0a366dbd952705",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 84b06397e9dd4589ae0a366dbd952705",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_8d202ab5e57b4f01af420220517d1576",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 8d202ab5e57b4f01af420220517d1576",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_90c2c2feb79943c58c80938cfda2dcbb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 90c2c2feb79943c58c80938cfda2dcbb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_98c46139d8674ab8b93a2244d22c6f05",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 98c46139d8674ab8b93a2244d22c6f05",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_99dd403f53794f4183cc96bc932a7406",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 99dd403f53794f4183cc96bc932a7406",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_9d48b34238b3450199c83dce114c2b3c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 9d48b34238b3450199c83dce114c2b3c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_9e6f757573d04954a4487702956974f8",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT 9e6f757573d04954a4487702956974f8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_ac7d828093054d96b2d23afa077fd6b5",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT ac7d828093054d96b2d23afa077fd6b5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_be994e80d95b4d289359410f9decbdd4",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT be994e80d95b4d289359410f9decbdd4",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_c5c915c3604e4727bc6bc4580a8e643c",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT c5c915c3604e4727bc6bc4580a8e643c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_ce94a768e6d848948a32199c86a321b0",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT ce94a768e6d848948a32199c86a321b0",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_d8cb6cf897ed4d7c871b70ad4b74496e",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT d8cb6cf897ed4d7c871b70ad4b74496e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_dea093804fc34870a864398694679956",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT dea093804fc34870a864398694679956",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_e021fe3f24274168b2c4ea7ac94ac2bb",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT e021fe3f24274168b2c4ea7ac94ac2bb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_e97db7d5b3bf4db6972aed720b0ef40d",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT e97db7d5b3bf4db6972aed720b0ef40d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_ea38a6c6803a4018a0cd330a6a3d8360",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT ea38a6c6803a4018a0cd330a6a3d8360",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v17_collector_metadata_UNIT_ec702687c6aa48c0a8220565a7fb72b3",
-      "version": "v1.7",
-      "kind": "work",
-      "display": "v17 collector metadata UNIT ec702687c6aa48c0a8220565a7fb72b3",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
@@ -4716,274 +1499,58 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_022d8c0ddde646b596345ec144ff1176",
-      "version": "v1",
+      "path": "work/v18_checked_DEBUG",
+      "version": "v1.8",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 022d8c0ddde646b596345ec144ff1176",
+      "display": "v18 checked DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_0b6b3f52539447deaf55b1a5da9e7ee3",
-      "version": "v1",
+      "path": "work/v18_final_DEBUG",
+      "version": "v1.8",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 0b6b3f52539447deaf55b1a5da9e7ee3",
+      "display": "v18 final DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_132cdd1891144ed08ca0c18e2baae6d5",
-      "version": "v1",
+      "path": "work/v18_memory_DEBUG_20261007",
+      "version": "v1.8",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 132cdd1891144ed08ca0c18e2baae6d5",
+      "display": "v18 memory DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_1ae11b1f4cb84a649d378825d6a63798",
-      "version": "v1",
+      "path": "work/v18_memory_DEBUG_20261007_r2",
+      "version": "v1.8",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 1ae11b1f4cb84a649d378825d6a63798",
+      "display": "v18 memory DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_212aeb84d6494abcbf0c71b1fc2f40df",
-      "version": "v1",
+      "path": "work/v18_u_bridge_DEBUG",
+      "version": "v1.8",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 212aeb84d6494abcbf0c71b1fc2f40df",
+      "display": "v18 u bridge DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_3e5ccda54d3a4fb7a5d678fba642a6d0",
-      "version": "v1",
+      "path": "work/v18_u_bridge_DEBUG_smoke",
+      "version": "v1.8",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 3e5ccda54d3a4fb7a5d678fba642a6d0",
+      "display": "v18 u bridge DEBUG smoke",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_bounded_controller_UNIT_46a1d3586c1243559c9c67dfe117b387",
-      "version": "v1",
+      "path": "work/v19_checked_DEBUG",
+      "version": "v1.9",
       "kind": "work",
-      "display": "v1 bounded controller UNIT 46a1d3586c1243559c9c67dfe117b387",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_48a53b8f792c40ef9b4f5c2d5e606506",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 48a53b8f792c40ef9b4f5c2d5e606506",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_58dc6f36398a4e63bab52cd23066c390",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 58dc6f36398a4e63bab52cd23066c390",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_61cbb00953aa45fe834a8090943283cb",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 61cbb00953aa45fe834a8090943283cb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_62d191befc9a46809ce178101484ecbc",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 62d191befc9a46809ce178101484ecbc",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_7d21ff50ee964b1b9110a6e6cab73b56",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 7d21ff50ee964b1b9110a6e6cab73b56",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_9880b91fad004ba19802b0cb147a2593",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 9880b91fad004ba19802b0cb147a2593",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_9b38d84340fb473bab8e3ad24ee656df",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 9b38d84340fb473bab8e3ad24ee656df",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_9b64ccced4204bf7b8d3575114888710",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT 9b64ccced4204bf7b8d3575114888710",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_a24deeba89464e4c852d15f695861da6",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT a24deeba89464e4c852d15f695861da6",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_b15dc22d09ac49bdb6ab500d826934d0",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT b15dc22d09ac49bdb6ab500d826934d0",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_c48dbd27508c4ef4bbbbfa7f32238ad2",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT c48dbd27508c4ef4bbbbfa7f32238ad2",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_ca1d5e2d06984f34a2c82739834e5495",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT ca1d5e2d06984f34a2c82739834e5495",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_d2869f5547574796b909d8c755990fc7",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT d2869f5547574796b909d8c755990fc7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_d390c8827e0a42c190248c9fc3598860",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT d390c8827e0a42c190248c9fc3598860",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_e1a752f06f6f48eea5a7130e8e117197",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT e1a752f06f6f48eea5a7130e8e117197",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_e22bfa810c0d4093a67940c08455f930",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT e22bfa810c0d4093a67940c08455f930",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_e60d69c059754b4b991f480db091b06a",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT e60d69c059754b4b991f480db091b06a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_ee1a10ef59854da686c4d6130e35be8d",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT ee1a10ef59854da686c4d6130e35be8d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_controller_UNIT_f10680a38f2d4aff91ea3c29a63db8dd",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 bounded controller UNIT f10680a38f2d4aff91ea3c29a63db8dd",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_16940d9975bc4bb9958323d32ea1f224",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT 16940d9975bc4bb9958323d32ea1f224",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_3870fa8f4aeb4a8b927ee4abac1f599f",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT 3870fa8f4aeb4a8b927ee4abac1f599f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_47c10c2c704449c9ab4b03ce6eb43199",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT 47c10c2c704449c9ab4b03ce6eb43199",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_71d1765856ad46e89ca861bcdb636ac9",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT 71d1765856ad46e89ca861bcdb636ac9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_92c9a9bc5c6e41a7bddf6b28a209ec0e",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT 92c9a9bc5c6e41a7bddf6b28a209ec0e",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_a1f7fd0bf6e54e44ba2ce0862e2c9b33",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT a1f7fd0bf6e54e44ba2ce0862e2c9b33",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_bc1e696c26a04ffdadc5e1b6b4cef371",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT bc1e696c26a04ffdadc5e1b6b4cef371",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_bounded_scope_UNIT_c08bd01d1ef3465eab193b5358f929b7",
-      "version": "v1.4",
-      "kind": "work",
-      "display": "v1 bounded scope UNIT c08bd01d1ef3465eab193b5358f929b7",
+      "display": "v19 checked DEBUG",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
@@ -5156,182 +1723,6 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/v1_snapshot_bytecode_UNIT_17c4fbdb6efc4a31a3519cc21275a9ee",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 snapshot bytecode UNIT 17c4fbdb6efc4a31a3519cc21275a9ee",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_snapshot_bytecode_UNIT_2cf409f83cf640f4b0e5d66e8a8900e5",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 snapshot bytecode UNIT 2cf409f83cf640f4b0e5d66e8a8900e5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_snapshot_bytecode_UNIT_b6d3f39aac534c76beb290fdca52fda8",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 snapshot bytecode UNIT b6d3f39aac534c76beb290fdca52fda8",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_snapshot_bytecode_UNIT_e2fc19514b844e6ab43153aacfd248d7",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 snapshot bytecode UNIT e2fc19514b844e6ab43153aacfd248d7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_069324059fc1499693754cba9b3752a1",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 069324059fc1499693754cba9b3752a1",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_14efa3cbddb243d2b5c1fdf84c3c726f",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 14efa3cbddb243d2b5c1fdf84c3c726f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_1a11b375126546b8b279659d9fcae78b",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 1a11b375126546b8b279659d9fcae78b",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_208244bf2f7e4757aa62cfe7449be033",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 208244bf2f7e4757aa62cfe7449be033",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_37fe7560983a4bc8b1b565f10caf625f",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 37fe7560983a4bc8b1b565f10caf625f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_3a7ee769e6a74e6b9aa306fc74b06328",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 3a7ee769e6a74e6b9aa306fc74b06328",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_4c978bf6cb114ab29bd12879883e54ed",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 4c978bf6cb114ab29bd12879883e54ed",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_646f665810024f3386d28479cd5e71cb",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 646f665810024f3386d28479cd5e71cb",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_6e3cc0212d0e4d3197de84115c8d9279",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 6e3cc0212d0e4d3197de84115c8d9279",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_6ea79beae9834d4dafa202259626dcf7",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 6ea79beae9834d4dafa202259626dcf7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_7abab94101474433968d76e570bfb835",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 7abab94101474433968d76e570bfb835",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_8f01720412d34cadb6ebaa4a6b7550bd",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT 8f01720412d34cadb6ebaa4a6b7550bd",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_a090fcca663e434894cb097cea7330f9",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT a090fcca663e434894cb097cea7330f9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_ba8b8922931e41d881a0f105d8018144",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT ba8b8922931e41d881a0f105d8018144",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_ccee2efbe9c044a2a121cb6a2dfffbf7",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT ccee2efbe9c044a2a121cb6a2dfffbf7",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_cdd9121adbb247c79088f8694f183f0c",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT cdd9121adbb247c79088f8694f183f0c",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_dec54ff46c38437f903f47eb01eae7b2",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT dec54ff46c38437f903f47eb01eae7b2",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1_telemetry_entry_metadata_UNIT_e25c4478b9a1417b8fae4e330d803087",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1 telemetry entry metadata UNIT e25c4478b9a1417b8fae4e330d803087",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
       "path": "work/v1_v22_learning_audit_DEBUG_20260930",
       "version": "v2.2",
       "kind": "work",
@@ -5368,86 +1759,6 @@
       "version": "v1",
       "kind": "work",
       "display": "v1x real CUDA DEBUG",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_146f090b4988466bad33d7c1384b9496",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT 146f090b4988466bad33d7c1384b9496",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_576d2232610d4860aa936f25ca9a9599",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT 576d2232610d4860aa936f25ca9a9599",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_5f0aa827c7da49ba80fa2c52eb220139",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT 5f0aa827c7da49ba80fa2c52eb220139",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_61ba7367c6904ee69efa19b16654da64",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT 61ba7367c6904ee69efa19b16654da64",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_6fb5c81e9fc74ce8ae48d7c813b98016",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT 6fb5c81e9fc74ce8ae48d7c813b98016",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_ad43a527d64d4d3eb6f12af9d12a840d",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT ad43a527d64d4d3eb6f12af9d12a840d",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_cafc8f54c76542669b73b33fa6187b96",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT cafc8f54c76542669b73b33fa6187b96",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_d5f445f745cf45fdb1e65fea3b19738a",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT d5f445f745cf45fdb1e65fea3b19738a",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_runtime_metadata_UNIT_f3f66f91fad041ae94f477bfcb36117f",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x runtime metadata UNIT f3f66f91fad041ae94f477bfcb36117f",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/v1x_serialization_metadata_UNIT_89091cd6d12a4f76bb7196a04465d751",
-      "version": "v1",
-      "kind": "work",
-      "display": "v1x serialization metadata UNIT 89091cd6d12a4f76bb7196a04465d751",
       "scope_hint": "test/debug name; inspect receipt before deletion",
       "deletion_authorized": false
     },
@@ -6132,155 +2443,51 @@
       "deletion_authorized": false
     },
     {
-      "path": "work/valid_signature_03qi4uhj",
+      "path": "validation/arm_launch",
       "version": "common",
-      "kind": "work",
-      "display": "valid signature 03qi4uhj",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "kind": "validation",
+      "display": "arm launch",
+      "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
-      "path": "work/valid_signature_25mqpnwu",
+      "path": "validation/cache_publication",
       "version": "common",
-      "kind": "work",
-      "display": "valid signature 25mqpnwu",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "kind": "validation",
+      "display": "cache publication",
+      "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
-      "path": "work/valid_signature_287xb247",
+      "path": "validation/cache_runtime",
       "version": "common",
-      "kind": "work",
-      "display": "valid signature 287xb247",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "kind": "validation",
+      "display": "cache runtime",
+      "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
-      "path": "work/valid_signature_3iyw8xb9",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature 3iyw8xb9",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "path": "validation/comparison_cache",
+      "version": "v1.9",
+      "kind": "validation",
+      "display": "comparison cache",
+      "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
-      "path": "work/valid_signature_4rndd54r",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature 4rndd54r",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "path": "validation/comparison_runtime",
+      "version": "v1.9",
+      "kind": "validation",
+      "display": "comparison runtime",
+      "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
-      "path": "work/valid_signature_5u043oc_",
+      "path": "validation/current_gpu",
       "version": "common",
-      "kind": "work",
-      "display": "valid signature 5u043oc ",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_6_4crr0q",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature 6 4crr0q",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_chb96rcy",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature chb96rcy",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_eeqwpsx5",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature eeqwpsx5",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_exaoyznu",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature exaoyznu",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_fzkulla0",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature fzkulla0",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_jf45hu0s",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature jf45hu0s",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_jpn8syah",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature jpn8syah",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_kfeefhmj",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature kfeefhmj",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_kub9l3ow",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature kub9l3ow",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_lagiddg6",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature lagiddg6",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_v1ymo1kx",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature v1ymo1kx",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_x971425o",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature x971425o",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
-      "deletion_authorized": false
-    },
-    {
-      "path": "work/valid_signature_xie9v9hd",
-      "version": "common",
-      "kind": "work",
-      "display": "valid signature xie9v9hd",
-      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "kind": "validation",
+      "display": "current gpu",
+      "scope_hint": "inspect receipt",
       "deletion_authorized": false
     },
     {
@@ -6652,6 +2859,14 @@
       "deletion_authorized": false
     },
     {
+      "path": "validation/storage",
+      "version": "common",
+      "kind": "validation",
+      "display": "storage",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false
+    },
+    {
       "path": "validation/v14_matched_learning_20261004",
       "version": "v1.4",
       "kind": "validation",
@@ -6820,6 +3035,38 @@
       "deletion_authorized": false
     },
     {
+      "path": "validation/v18_memory",
+      "version": "v1.8",
+      "kind": "validation",
+      "display": "v18 memory",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false
+    },
+    {
+      "path": "validation/v18_u_bridge",
+      "version": "v1.8",
+      "kind": "validation",
+      "display": "v18 u bridge",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false
+    },
+    {
+      "path": "validation/v19_additions",
+      "version": "v1.9",
+      "kind": "validation",
+      "display": "v19 additions",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false
+    },
+    {
+      "path": "validation/v19_comparison",
+      "version": "v1.9",
+      "kind": "validation",
+      "display": "v19 comparison",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false
+    },
+    {
       "path": "validation/v1_scope_learning_20261004",
       "version": "v1.4",
       "kind": "validation",
@@ -6970,6 +3217,604 @@
       "display": "pdfs",
       "scope_hint": "inspect receipt",
       "deletion_authorized": false
+    },
+    {
+      "path": "work/archive/organization",
+      "version": "common",
+      "kind": "organization",
+      "display": "organization",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "relocation_receipts"
+    },
+    {
+      "path": "work/archive/reviews/learning-01",
+      "version": "v2.2",
+      "kind": "archive",
+      "display": "learning-01",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\GPT_v22_learning_review_20261001_091510",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/reviews/learning-02",
+      "version": "v2.2",
+      "kind": "archive",
+      "display": "learning-02",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\GPT_v22_learning_review_20261001_095533",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/reviews/learning-03",
+      "version": "v2.2",
+      "kind": "archive",
+      "display": "learning-03",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\GPT_v22_learning_review_20261001_104341",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/reviews/learning-04",
+      "version": "v2.2",
+      "kind": "archive",
+      "display": "learning-04",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\GPT_v22_learning_review_20261001_104431",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/visuals/ct-01",
+      "version": "common",
+      "kind": "archive",
+      "display": "ct-01",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\ct_only_visual_20260930",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/visuals/ct-02",
+      "version": "common",
+      "kind": "archive",
+      "display": "ct-02",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\ct_only_visual_20260930_r1",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/visuals/ssn-01",
+      "version": "v2.2",
+      "kind": "archive",
+      "display": "ssn-01",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\work\\ssn3d_visual_DEBUG_20260930",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tools/test-deps",
+      "version": "common",
+      "kind": "archive",
+      "display": "test-deps",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "original_path": "D:\\AI project\\nnunet\\.v2-test-deps",
+      "relocation_receipts": [
+        "work/archive/organization/extra-completed/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/regions/data",
+      "version": "v2.2",
+      "kind": "archived_tests",
+      "display": "data",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v2.2"
+      ],
+      "directory_count": 26,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/regions/fingerprint",
+      "version": "v2.2",
+      "kind": "archived_tests",
+      "display": "fingerprint",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v2.2"
+      ],
+      "directory_count": 23,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/regions/missing-signature",
+      "version": "v2.2",
+      "kind": "archived_tests",
+      "display": "missing-signature",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v2.2"
+      ],
+      "directory_count": 19,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/regions/resident",
+      "version": "v2.2",
+      "kind": "archived_tests",
+      "display": "resident",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v2.2"
+      ],
+      "directory_count": 23,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/regions/resume",
+      "version": "v2.2",
+      "kind": "archived_tests",
+      "display": "resume",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v2.2"
+      ],
+      "directory_count": 85,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/regions/signature",
+      "version": "v2.2",
+      "kind": "archived_tests",
+      "display": "signature",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v2.2"
+      ],
+      "directory_count": 19,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/transition/metadata",
+      "version": "v1.7",
+      "kind": "archived_tests",
+      "display": "metadata",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.7"
+      ],
+      "directory_count": 47,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/transition/parallel-failure",
+      "version": "v1.7",
+      "kind": "archived_tests",
+      "display": "parallel-failure",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.7"
+      ],
+      "directory_count": 4,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/transition/parallel-pass",
+      "version": "v1.7",
+      "kind": "archived_tests",
+      "display": "parallel-pass",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.7"
+      ],
+      "directory_count": 4,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/transition/prepare",
+      "version": "v1.7",
+      "kind": "archived_tests",
+      "display": "prepare",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.7"
+      ],
+      "directory_count": 10,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/transition/storage",
+      "version": "v1.7",
+      "kind": "archived_tests",
+      "display": "storage",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.7"
+      ],
+      "directory_count": 75,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/bytecode",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "bytecode",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 4,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/half-a",
+      "version": "v1.5",
+      "kind": "archived_tests",
+      "display": "half-a",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.5"
+      ],
+      "directory_count": 8,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/half-b",
+      "version": "v1.6",
+      "kind": "archived_tests",
+      "display": "half-b",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.6"
+      ],
+      "directory_count": 4,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/roi-parser",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "roi-parser",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 10,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/roi-recovery",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "roi-recovery",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 5,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/roi-reuse",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "roi-reuse",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 40,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/runtime",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "runtime",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 9,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/scope",
+      "version": "v1.4",
+      "kind": "archived_tests",
+      "display": "scope",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.4"
+      ],
+      "directory_count": 8,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/scope-controller",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "scope-controller",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 26,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/scope-copy",
+      "version": "v1.4",
+      "kind": "archived_tests",
+      "display": "scope-copy",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.4"
+      ],
+      "directory_count": 1,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/scope-entry",
+      "version": "v1.4",
+      "kind": "archived_tests",
+      "display": "scope-entry",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.4"
+      ],
+      "directory_count": 5,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/serialization",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "serialization",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 1,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/telemetry",
+      "version": "v1",
+      "kind": "archived_tests",
+      "display": "telemetry",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1"
+      ],
+      "directory_count": 18,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/archive/tests/v1/version",
+      "version": "v1.4",
+      "kind": "archived_tests",
+      "display": "version",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "generated_test_fixtures",
+      "version_families": [
+        "v1.4"
+      ],
+      "directory_count": 21,
+      "relocation_receipts": [
+        "work/archive/organization/tests-20261007-234732/plan.json"
+      ]
+    },
+    {
+      "path": "work/cache",
+      "version": "common",
+      "kind": "cache",
+      "display": "cache",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "cache_index"
+    },
+    {
+      "path": "work/cache/tests",
+      "version": "common",
+      "kind": "cache",
+      "display": "tests",
+      "scope_hint": "test/debug name; inspect receipt before deletion",
+      "deletion_authorized": false,
+      "category": "auxiliary_cache"
+    },
+    {
+      "path": "work/cache/vessel-install",
+      "version": "common",
+      "kind": "cache",
+      "display": "vessel-install",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "auxiliary_cache"
+    },
+    {
+      "path": "work/cache/vessel-temp",
+      "version": "common",
+      "kind": "cache",
+      "display": "vessel-temp",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "auxiliary_cache"
+    },
+    {
+      "path": "work/vessels",
+      "version": "common",
+      "kind": "vessels",
+      "display": "vessels",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "derived_vessel_outputs"
+    },
+    {
+      "path": "work/archive/reviews",
+      "version": "common",
+      "kind": "archive",
+      "display": "reviews",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts"
+    },
+    {
+      "path": "work/archive/tools",
+      "version": "common",
+      "kind": "archive",
+      "display": "tools",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts"
+    },
+    {
+      "path": "work/archive/vessels",
+      "version": "common",
+      "kind": "archive",
+      "display": "vessels",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts",
+      "relocation_receipts": [
+        "work/archive/vessels/relocation.json"
+      ],
+      "file_count": 562
+    },
+    {
+      "path": "work/archive/visuals",
+      "version": "common",
+      "kind": "archive",
+      "display": "visuals",
+      "scope_hint": "inspect receipt",
+      "deletion_authorized": false,
+      "category": "preserved_artifacts"
     }
   ]
 }

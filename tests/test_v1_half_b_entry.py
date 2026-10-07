@@ -14,6 +14,7 @@ from hiercp_v1x import bounded_scope
 from hiercp_v1x.half_b_entry import install_identity
 from hiercp_v1x.half_b_training import MARKER
 from hiercp_v1x.half_b_model import MARKER_KEY
+from tests.artifacts import unit_artifact_root
 root=Path.cwd()
 source=root/'work/v14_matched_learning_DEBUG_20261004_r3/source/v1.0'
 activate_original(source)
@@ -24,7 +25,7 @@ torch.manual_seed(42)
 native=model.HierarchicalPyGPlacementModel(**cfg['model'])
 before={k:v.clone() for k,v in native.state_dict().items() if k.startswith('local_encoder.')}
 native_rng=torch.get_rng_state().clone()
-folder=root/'work'/('half_b_entry_CPU_UNIT_'+uuid.uuid4().hex)
+folder=unit_artifact_root()/('half_b_entry_CPU_UNIT_'+uuid.uuid4().hex)
 output=folder/'results/half_B'
 output.mkdir(parents=True)
 receipt=dict(experiment=str(folder),contract_sha256='bc'*32)

@@ -1,8 +1,9 @@
 # v2.2 실험 파일 위치
 
-실제 저장 경로는 그대로 유지합니다. 이름만으로 학습 완료·품질·삭제 가능 여부를 판정하지 않습니다.
+봉인된 실험 경로는 유지합니다. 이동한 보존물은 원래 이름과 현재 위치를 relocation receipt로 추적합니다.
+이름만으로 학습 완료·품질·삭제 가능 여부를 판정하지 않습니다. 생성된 UNIT fixture 묶음은 실험 실행 수가 아닙니다.
 
-<details><summary>work (315)</summary>
+<details><summary>work (199)</summary>
 
 | 내용 | 위치 |
 | --- | --- |
@@ -14,39 +15,9 @@
 | exploration spatial DEBUG | [열기](../../work/exploration_spatial_DEBUG_20260930/) |
 | exploration spatial DEBUG | [열기](../../work/exploration_spatial_DEBUG_20260930_r1/) |
 | exploration spatial full DEBUG | [열기](../../work/exploration_spatial_full_DEBUG_20260930/) |
-| fixed region fixture 1sgd9k3w | [열기](../../work/fixed_region_fixture_1sgd9k3w/) |
-| fixed region fixture 22pdi62a | [열기](../../work/fixed_region_fixture_22pdi62a/) |
-| fixed region fixture 4m e6yop | [열기](../../work/fixed_region_fixture_4m_e6yop/) |
-| fixed region fixture 4o0y0lro | [열기](../../work/fixed_region_fixture_4o0y0lro/) |
-| fixed region fixture 538 2v0x | [열기](../../work/fixed_region_fixture_538_2v0x/) |
-| fixed region fixture 6iywvxuu | [열기](../../work/fixed_region_fixture_6iywvxuu/) |
-| fixed region fixture  ve98177 | [열기](../../work/fixed_region_fixture__ve98177/) |
-| fixed region fixture  ym7ufji | [열기](../../work/fixed_region_fixture__ym7ufji/) |
-| fixed region fixture a2z000ty | [열기](../../work/fixed_region_fixture_a2z000ty/) |
-| fixed region fixture anbux2pj | [열기](../../work/fixed_region_fixture_anbux2pj/) |
-| fixed region fixture f9t7or0r | [열기](../../work/fixed_region_fixture_f9t7or0r/) |
-| fixed region fixture fabsd46k | [열기](../../work/fixed_region_fixture_fabsd46k/) |
-| fixed region fixture g8fsw78v | [열기](../../work/fixed_region_fixture_g8fsw78v/) |
-| fixed region fixture gpf8xtmv | [열기](../../work/fixed_region_fixture_gpf8xtmv/) |
-| fixed region fixture hpzd0xaj | [열기](../../work/fixed_region_fixture_hpzd0xaj/) |
-| fixed region fixture hux7hpox | [열기](../../work/fixed_region_fixture_hux7hpox/) |
-| fixed region fixture ik5zsk9n | [열기](../../work/fixed_region_fixture_ik5zsk9n/) |
-| fixed region fixture j h8dr80 | [열기](../../work/fixed_region_fixture_j_h8dr80/) |
-| fixed region fixture k01bu2mh | [열기](../../work/fixed_region_fixture_k01bu2mh/) |
-| fixed region fixture l39 l0vv | [열기](../../work/fixed_region_fixture_l39_l0vv/) |
-| fixed region fixture lwplr4fc | [열기](../../work/fixed_region_fixture_lwplr4fc/) |
-| fixed region fixture nkk0cb2  | [열기](../../work/fixed_region_fixture_nkk0cb2_/) |
-| fixed region fixture oknyl303 | [열기](../../work/fixed_region_fixture_oknyl303/) |
-| fixed region fixture rkjrch79 | [열기](../../work/fixed_region_fixture_rkjrch79/) |
-| fixed region fixture ybdp0h6b | [열기](../../work/fixed_region_fixture_ybdp0h6b/) |
-| fixed region fixture zix5k24f | [열기](../../work/fixed_region_fixture_zix5k24f/) |
 | footprint sparse CT DEBUG | [열기](../../work/footprint_sparse_CT_DEBUG_20261002_r1/) |
 | footprint sparse CT DEBUG | [열기](../../work/footprint_sparse_CT_DEBUG_20261002_r2/) |
 | GPT v22 interaction review | [열기](../../work/GPT_v22_interaction_review_20261001_132513/) |
-| GPT v22 learning review | [열기](../../work/GPT_v22_learning_review_20261001_091510/) |
-| GPT v22 learning review | [열기](../../work/GPT_v22_learning_review_20261001_095533/) |
-| GPT v22 learning review | [열기](../../work/GPT_v22_learning_review_20261001_104341/) |
-| GPT v22 learning review | [열기](../../work/GPT_v22_learning_review_20261001_104431/) |
 | GPT v22 learning review | [열기](../../work/GPT_v22_learning_review_20261001_121240/) |
 | l0 all comparison visual | [열기](../../work/l0_all_comparison_visual_20260930/) |
 | l0 comparison debug | [열기](../../work/l0_comparison_debug_20260923/) |
@@ -117,91 +88,6 @@
 | region prepare profile before | [열기](../../work/region_prepare_profile_before_20260929/) |
 | region research policy CP | [열기](../../work/region_research_policy_CP_20260929/) |
 | region research policy smoke | [열기](../../work/region_research_policy_smoke_20260929/) |
-| region resume contract 19xmmgaq | [열기](../../work/region_resume_contract_19xmmgaq/) |
-| region resume contract 1 pbjg93 | [열기](../../work/region_resume_contract_1_pbjg93/) |
-| region resume contract 1aq262m4 | [열기](../../work/region_resume_contract_1aq262m4/) |
-| region resume contract 1yfp0bgp | [열기](../../work/region_resume_contract_1yfp0bgp/) |
-| region resume contract 2a3fy7cq | [열기](../../work/region_resume_contract_2a3fy7cq/) |
-| region resume contract 3ji9d3di | [열기](../../work/region_resume_contract_3ji9d3di/) |
-| region resume contract 4mggkhi7 | [열기](../../work/region_resume_contract_4mggkhi7/) |
-| region resume contract 4ndftt5t | [열기](../../work/region_resume_contract_4ndftt5t/) |
-| region resume contract 4y72k6nw | [열기](../../work/region_resume_contract_4y72k6nw/) |
-| region resume contract 53mftkh  | [열기](../../work/region_resume_contract_53mftkh_/) |
-| region resume contract 57cxw2 f | [열기](../../work/region_resume_contract_57cxw2_f/) |
-| region resume contract 5xqj0r2n | [열기](../../work/region_resume_contract_5xqj0r2n/) |
-| region resume contract 7 0jmstc | [열기](../../work/region_resume_contract_7_0jmstc/) |
-| region resume contract 7c7kheor | [열기](../../work/region_resume_contract_7c7kheor/) |
-| region resume contract 7f5opewe | [열기](../../work/region_resume_contract_7f5opewe/) |
-| region resume contract 831ogf02 | [열기](../../work/region_resume_contract_831ogf02/) |
-| region resume contract 9372d50a | [열기](../../work/region_resume_contract_9372d50a/) |
-| region resume contract 9f12c1cn | [열기](../../work/region_resume_contract_9f12c1cn/) |
-| region resume contract 9gamlqcy | [열기](../../work/region_resume_contract_9gamlqcy/) |
-| region resume contract 9hf 9jnj | [열기](../../work/region_resume_contract_9hf_9jnj/) |
-| region resume contract 9ns08r0r | [열기](../../work/region_resume_contract_9ns08r0r/) |
-| region resume contract  k 28cp  | [열기](../../work/region_resume_contract__k_28cp_/) |
-| region resume contract  xb5n3fc | [열기](../../work/region_resume_contract__xb5n3fc/) |
-| region resume contract a1y zudq | [열기](../../work/region_resume_contract_a1y_zudq/) |
-| region resume contract a9g roc4 | [열기](../../work/region_resume_contract_a9g_roc4/) |
-| region resume contract ao505h7g | [열기](../../work/region_resume_contract_ao505h7g/) |
-| region resume contract b8i86i49 | [열기](../../work/region_resume_contract_b8i86i49/) |
-| region resume contract b8s9dniy | [열기](../../work/region_resume_contract_b8s9dniy/) |
-| region resume contract ba59m242 | [열기](../../work/region_resume_contract_ba59m242/) |
-| region resume contract bwu2koiv | [열기](../../work/region_resume_contract_bwu2koiv/) |
-| region resume contract by8 tg7b | [열기](../../work/region_resume_contract_by8_tg7b/) |
-| region resume contract f0x1usdk | [열기](../../work/region_resume_contract_f0x1usdk/) |
-| region resume contract f5urj49l | [열기](../../work/region_resume_contract_f5urj49l/) |
-| region resume contract f7hyr0oo | [열기](../../work/region_resume_contract_f7hyr0oo/) |
-| region resume contract f7ioiolv | [열기](../../work/region_resume_contract_f7ioiolv/) |
-| region resume contract h0ajcfmk | [열기](../../work/region_resume_contract_h0ajcfmk/) |
-| region resume contract ht0gnn8y | [열기](../../work/region_resume_contract_ht0gnn8y/) |
-| region resume contract i6ayh3tl | [열기](../../work/region_resume_contract_i6ayh3tl/) |
-| region resume contract iyi2ufqn | [열기](../../work/region_resume_contract_iyi2ufqn/) |
-| region resume contract j4bwcyyf | [열기](../../work/region_resume_contract_j4bwcyyf/) |
-| region resume contract j4lq67fp | [열기](../../work/region_resume_contract_j4lq67fp/) |
-| region resume contract kcl89mty | [열기](../../work/region_resume_contract_kcl89mty/) |
-| region resume contract kd5x2rgj | [열기](../../work/region_resume_contract_kd5x2rgj/) |
-| region resume contract l9ophpj6 | [열기](../../work/region_resume_contract_l9ophpj6/) |
-| region resume contract l t3 qio | [열기](../../work/region_resume_contract_l_t3_qio/) |
-| region resume contract m6hdjjo4 | [열기](../../work/region_resume_contract_m6hdjjo4/) |
-| region resume contract mhbi gd4 | [열기](../../work/region_resume_contract_mhbi_gd4/) |
-| region resume contract mohnq02w | [열기](../../work/region_resume_contract_mohnq02w/) |
-| region resume contract mw8m 375 | [열기](../../work/region_resume_contract_mw8m_375/) |
-| region resume contract n7qju8r9 | [열기](../../work/region_resume_contract_n7qju8r9/) |
-| region resume contract njyzpej2 | [열기](../../work/region_resume_contract_njyzpej2/) |
-| region resume contract ode0e9px | [열기](../../work/region_resume_contract_ode0e9px/) |
-| region resume contract oj8lxj8w | [열기](../../work/region_resume_contract_oj8lxj8w/) |
-| region resume contract oz5gfgol | [열기](../../work/region_resume_contract_oz5gfgol/) |
-| region resume contract p261gb7p | [열기](../../work/region_resume_contract_p261gb7p/) |
-| region resume contract p9ama3y  | [열기](../../work/region_resume_contract_p9ama3y_/) |
-| region resume contract pqr2cosu | [열기](../../work/region_resume_contract_pqr2cosu/) |
-| region resume contract qmhox ko | [열기](../../work/region_resume_contract_qmhox_ko/) |
-| region resume contract qv3g05t5 | [열기](../../work/region_resume_contract_qv3g05t5/) |
-| region resume contract qyilhthn | [열기](../../work/region_resume_contract_qyilhthn/) |
-| region resume contract qzxw8gt6 | [열기](../../work/region_resume_contract_qzxw8gt6/) |
-| region resume contract ravbjui5 | [열기](../../work/region_resume_contract_ravbjui5/) |
-| region resume contract rz4wa 47 | [열기](../../work/region_resume_contract_rz4wa_47/) |
-| region resume contract sfp1iftl | [열기](../../work/region_resume_contract_sfp1iftl/) |
-| region resume contract th43 wgf | [열기](../../work/region_resume_contract_th43_wgf/) |
-| region resume contract tovmqf8f | [열기](../../work/region_resume_contract_tovmqf8f/) |
-| region resume contract tqx0td8e | [열기](../../work/region_resume_contract_tqx0td8e/) |
-| region resume contract ttpr3 mi | [열기](../../work/region_resume_contract_ttpr3_mi/) |
-| region resume contract u7nslz a | [열기](../../work/region_resume_contract_u7nslz_a/) |
-| region resume contract u jb3blm | [열기](../../work/region_resume_contract_u_jb3blm/) |
-| region resume contract vpvkszyi | [열기](../../work/region_resume_contract_vpvkszyi/) |
-| region resume contract vsl421av | [열기](../../work/region_resume_contract_vsl421av/) |
-| region resume contract w2tpgo h | [열기](../../work/region_resume_contract_w2tpgo_h/) |
-| region resume contract wrwmirrg | [열기](../../work/region_resume_contract_wrwmirrg/) |
-| region resume contract x4h4y65h | [열기](../../work/region_resume_contract_x4h4y65h/) |
-| region resume contract x9yfffh8 | [열기](../../work/region_resume_contract_x9yfffh8/) |
-| region resume contract xnns3a8a | [열기](../../work/region_resume_contract_xnns3a8a/) |
-| region resume contract xwjltqkp | [열기](../../work/region_resume_contract_xwjltqkp/) |
-| region resume contract xxo752is | [열기](../../work/region_resume_contract_xxo752is/) |
-| region resume contract z80ytixf | [열기](../../work/region_resume_contract_z80ytixf/) |
-| region resume contract z8asw0ra | [열기](../../work/region_resume_contract_z8asw0ra/) |
-| region resume contract z963ocdw | [열기](../../work/region_resume_contract_z963ocdw/) |
-| region resume contract za9qjes8 | [열기](../../work/region_resume_contract_za9qjes8/) |
-| region resume contract zc0r 57k | [열기](../../work/region_resume_contract_zc0r_57k/) |
-| region resume contract zs883ivc | [열기](../../work/region_resume_contract_zs883ivc/) |
 | region retained upgrade DEBUG | [열기](../../work/region_retained_upgrade_DEBUG_20260930/) |
 | region reuse CP debug | [열기](../../work/region_reuse_CP_debug_20260929/) |
 | region reuse legacy smoke | [열기](../../work/region_reuse_legacy_smoke_20260929/) |
@@ -232,7 +118,6 @@
 | sparse feature budget CT DEBUG | [열기](../../work/sparse_feature_budget_CT_DEBUG_20261002/) |
 | sparse feature CT DEBUG | [열기](../../work/sparse_feature_CT_DEBUG_20261002/) |
 | sparse feature learning CT DEBUG | [열기](../../work/sparse_feature_learning_CT_DEBUG_20261002/) |
-| ssn3d visual DEBUG | [열기](../../work/ssn3d_visual_DEBUG_20260930/) |
 | ssn3d visual DEBUG | [열기](../../work/ssn3d_visual_DEBUG_20260930_r1/) |
 | ssn liver only | [열기](../../work/ssn_liver_only_20260930/) |
 | ssn organ encoded DEBUG | [열기](../../work/ssn_organ_encoded_DEBUG_20260930/) |
@@ -380,3 +265,47 @@
 | HierCP v22 CP REVIEW | [열기](../../exports/HierCP_v22_CP_REVIEW_20261002/) |
 
 </details>
+
+<details><summary>archive (5)</summary>
+
+| 내용 | 위치 |
+| --- | --- |
+| learning-01 | [열기](../../work/archive/reviews/learning-01/) · [원래→현재](../../work/archive/organization/extra-completed/plan.json) |
+| learning-02 | [열기](../../work/archive/reviews/learning-02/) · [원래→현재](../../work/archive/organization/extra-completed/plan.json) |
+| learning-03 | [열기](../../work/archive/reviews/learning-03/) · [원래→현재](../../work/archive/organization/extra-completed/plan.json) |
+| learning-04 | [열기](../../work/archive/reviews/learning-04/) · [원래→현재](../../work/archive/organization/extra-completed/plan.json) |
+| ssn-01 | [열기](../../work/archive/visuals/ssn-01/) · [원래→현재](../../work/archive/organization/extra-completed/plan.json) |
+
+</details>
+
+<details><summary>archived_tests (6)</summary>
+
+| 내용 | 위치 |
+| --- | --- |
+| data (26개 fixture) | [열기](../../work/archive/tests/regions/data/) · [원래→현재](../../work/archive/organization/tests-20261007-234732/plan.json) |
+| fingerprint (23개 fixture) | [열기](../../work/archive/tests/regions/fingerprint/) · [원래→현재](../../work/archive/organization/tests-20261007-234732/plan.json) |
+| missing-signature (19개 fixture) | [열기](../../work/archive/tests/regions/missing-signature/) · [원래→현재](../../work/archive/organization/tests-20261007-234732/plan.json) |
+| resident (23개 fixture) | [열기](../../work/archive/tests/regions/resident/) · [원래→현재](../../work/archive/organization/tests-20261007-234732/plan.json) |
+| resume (85개 fixture) | [열기](../../work/archive/tests/regions/resume/) · [원래→현재](../../work/archive/organization/tests-20261007-234732/plan.json) |
+| signature (19개 fixture) | [열기](../../work/archive/tests/regions/signature/) · [원래→현재](../../work/archive/organization/tests-20261007-234732/plan.json) |
+
+</details>
+
+
+## 작업 완료 체크리스트
+
+이 파일은 탐색 인덱스다. 학습·평가·자원 benchmark와 데이터 이동·삭제는 실행하지 않는다.
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. (인덱스 생성에 해당 없음)
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. (인덱스 생성에 해당 없음)
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (인덱스 생성에 해당 없음)
+- [x] 디버그 설정과 최종 설정을 분리해서 안내했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (새 실행 검사 없음)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 기존 구현·기록으로 연결한다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

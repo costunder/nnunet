@@ -1,4 +1,5 @@
 """ROI diagnostic parser UNIT tests; no CT decoding, neural work or training."""
+from tests.artifacts import unit_artifact_root
 import csv
 from pathlib import Path
 import unittest
@@ -41,7 +42,7 @@ class RoiProbeParserUnits(unittest.TestCase):
                 parse_roi_failure(invalid)
 
     def test_all_four_failures_remain_separate_from_case_summary(self):
-        directory = ROOT/'work'/('roi_probe_parser_UNIT_'+uuid.uuid4().hex)
+        directory = unit_artifact_root()/('roi_probe_parser_UNIT_'+uuid.uuid4().hex)
         directory.mkdir()
         path = directory/'manifest.csv'
         rows = [dict(case_id='liver_116', sample_index='', status='sample_failure', message='case summary')]
@@ -62,7 +63,7 @@ class RoiProbeParserUnits(unittest.TestCase):
                          {10_402_281,8_402_373,11_358_225})
 
     def test_duplicate_failure_and_absent_failure_rejected(self):
-        directory = ROOT/'work'/('roi_probe_parser_UNIT_'+uuid.uuid4().hex)
+        directory = unit_artifact_root()/('roi_probe_parser_UNIT_'+uuid.uuid4().hex)
         directory.mkdir()
         for name, rows in (('none', []), ('duplicate', [dict(case_id='liver_116',sample_index=0,
                 status='resource_budget_error',message=message())]*2)):

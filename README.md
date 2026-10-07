@@ -1,335 +1,75 @@
-# HierCP
+# HierCP 연구 파이프라인
 
-HierCP 2.2.0 is a three-level PyTorch Geometric model for selecting 3D
-liver-tumor Copy-Paste placements. The active graph contract is
-`graph_schema_version=full_v22`: it preserves the full tumor footprint, builds
-adaptive spatial context, and batches variable-node heterogeneous graphs.
+간 CT의 종양 Copy-Paste 위치를 학습·평가하는 연구 저장소입니다. **버전 선택과 실행은 [버전별 안내](versions/README.md)에서 시작합니다.** 버전 폴더는 사람이 찾기 위한 입구이며, 실제 모델·설정·데이터는 아래의 기존 경로를 사용합니다.
 
-The core HierCP implementation and configuration are present in this repository. Medical
-images, graph caches, checkpoints, generated volumes, and nnU-Net results are
-not included.
+## 어떤 실험인가
 
-The active upper model is `hiercp_source_content_population_metric_v5`.
-Population banks now retain full fit evidence and final-center memberships;
-region CT descriptors use observed CT without tumor-label-conditioned filling.
-Prototype relations include standardized descriptor distance and signed excess
-over cluster mean distance, while candidate-region relations keep their 6D
-contract. Model widths/depths, configured graph sizes/connectivity budgets and
-training epochs are unchanged; the upper feature/edge contract is versioned anew.
-These distances are not calibrated confidence or observed CP benefit.
+| 구분 | 위치 | 현재 확인된 상태 |
+| --- | --- | --- |
+| 원본 V1, 30mm | [v1](versions/v1/README.md) | 예전 서버 checkpoint와 보존 소스를 구분한다. 원본30mm 전체 P+128U 최종 평가 결과는 아직 확인되지 않았다. |
+| V1.4, 10mm 기준선 | [v1.4](versions/v1.4/README.md) | 사용자 제공 서버 기록상 40epoch 완료, 자체8후보 BEST MRR/top1=1.0. 공통 P+128U MRR=0.233839이며 별도 과제다. |
+| 현재 네 군 비교 | [v1.8](versions/v1.8/README.md), [v1.9](versions/v1.9/README.md) | 원본 V1 10mm 모델로 좌표 노출·loss를 비교한다. 실제 CT/CUDA DEBUG와 재개 검증 완료; 네 군 전체40epoch 완료·최종 품질은 미확인이다. |
+| A/B/C/D 원인 분리 | [A: v1.5](versions/v1.5/README.md), [B: v1.6](versions/v1.6/README.md), [C/D: v1.7](versions/v1.7/README.md) | A/B/C 자체8후보 학습 완료는 사용자 서버 기록에 근거한다. D의 최종 완료와 평가 수치는 미확인이다. |
+| 별도 CNN·그래프 연구 | [v2.2 방법별 안내](versions/v2.2/README.md) | [CNN 누적 U16→128](versions/v2.2/curriculum/README.md)은 서버23epoch까지 보고되었으나 U16 gate를 통과하지 못했다. 다른 방법도 각 폴더의 검증 범위를 따른다. |
+| 이전 방향·공유 기능 | [v2](versions/v2/README.md), [v2.1](versions/v2.1/README.md), [common](versions/common/README.md) | 폐기한 view-only 방향, 이전 환자 간 정렬, Basic CP·nnU-Net·feedback 공유 도구를 구분한다. |
 
-Preserve previous experiments for version-labelled comparisons. Reuse unchanged
-native preprocessing independently of the revised GNN artifacts. A completed
-Basic control can be requested with `--reuse-basic-from`, but is accepted only
-after original training provenance and full ordered CP/native-input equivalence
-are verified; its checkpoint and bank identity are never rewritten. Inspect
-historical population banks with
-`python -B -m tools.audit_population_bank --prototype-bank <path>`;
-legacy structural validity is not membership proof.
-See `gpt_handoff.md` for verification status and limitations.
+원본30mm checkpoint의 소스 revision은 `a818158...`이며, 이후 비교의 기준인 [V1 보존 ZIP](versions/v1/pipeline_v1_source.zip)은 `74dcc2...` 시점이다. 현재 루트의 `hiercp/` 전체를 두 시점 모두와 동일한 원본으로 취급하지 않는다. 서버 요약으로 기록한 성능은 [버전별 results.json](versions/v1.4/results.json)의 출처와 독립 확인 여부를 함께 읽는다.
 
-OnlineCP requires the versioned trainer bundle in
-[`custom_trainers/`](custom_trainers/). It contains historical paired/argmax
-trainers and the current Full/Basic Feedback trainers, including their policy,
-contract and raw-target resampling/storage helpers. Every installed module is
-bound by the installer's SHA-256 inventory.
+**8후보에서의 성공은 실제 CP 추천 품질 검증을 뜻하지 않는다.** 자체8후보는 원래 source anchor를 찾는 과제이고, 공통 P+128U는 donor 조건과 지표 정의도 다르다. P는 관측된 종양 위치, U는 미관측 비교 위치이며 CP 적합·부적합 정답이 아니다.
 
-After cloning, activate the target nnU-Net environment and run from this
-repository root:
+## 현재 네 군 실행·재개
+
+| 군 | 학습의 비교 위치 | 목적함수 |
+| --- | --- | --- |
+| [selected](versions/v1.8/selected/README.md) | 원래 선별7개 | pairwise |
+| [native](versions/v1.8/native/README.md) | 고정128U pool에서 매epoch 순환7개 | pairwise |
+| [fixed](versions/v1.9/fixed/README.md) (`native_fixed`) | 같은 첫7개 반복 | pairwise |
+| [listwise](versions/v1.9/listwise/README.md) (`native_listwise`) | native와 같은 순환7개 | listwise |
+
+네 군 모두 학습 문제당 P+7개, 검증 문제당 전체129개와 원본 두 view를 유지한다. 각 군은 독립 checkpoint·optimizer·RNG·출력 폴더를 갖는다. [재개·캐시 안내](versions/v1.9/cache.md), [실행 비용 기록](versions/v1.9/runtime.md), [진행률·점수·병목 확인](docs/comparison_runtime.md)을 따른다. 문서에 이름이 있다는 사실만으로 현재 서버 프로세스가 실행 중이라고 판단하지 않는다.
 
 ```bash
-python custom_trainers/install_onlinecp_custom_trainers.py check
-python custom_trainers/install_onlinecp_custom_trainers.py apply
+python versions/run.py list
+python versions/v1.9/run.py --help
 ```
 
-The installer verifies the checked-in source hashes and runs policy/paste/import
-smoke checks after installation. Different existing trainers require explicit
-`--overwrite` and are backed up before replacement. Training contracts
-fingerprint the installed trainer and base-class source files; missing sources
-fail explicitly and changed sources invalidate completed-run reuse. The current
-Feedback runner installs into a new private runtime; do not apply an updated
-bundle over a running or preserved experiment's installation.
+버전별 `run.py`는 원래 실행기를 호출한다. 실제 GPU, 실험 root, resume, batch·worker 등은 해당 버전의 설명과 봉인된 실험 계약을 확인한다.
 
-The historical source-anchored single-pool bank, current raw-target bank and
-multi-pool argmax-v3 bank are different contracts. The first two share the old
-`hiercp_online_bank_v2` envelope, so the envelope or dataset number alone is not
-a compatibility check. Current raw banks additionally require
-`paste_contract=onlinecp_raw_target_paste_v1`,
-source-mapping format `online_cp_raw_target_resampling_v2` and
-`entry_storage=npz_candidate_refs_raw_target_v1`.
-Only Full/Basic Feedback trainers consume the new contract. Historical
-train/evaluate and downstream exact-argmax ablation workflows remain available
-for their original banks; they do not become raw-feedback experiments by
-changing a dataset ID. The obsolete `online_cp_benchmark all` route is rejected
-before preparation because it would join the new builder to legacy trainers.
+## 코드·데이터·기록 위치
 
-Local verification covers Python/JSON syntax and isolated regression fixtures
-for cache integrity, validation publication/rollback, causality contracts and
-scoring batch order. These checks do not establish CUDA numerical equivalence
-or completed full-data training/evaluation. Run the environment, smoke and
-regression checks below on the target server before the full experiment.
+| 경로 | 역할 |
+| --- | --- |
+| [versions/](versions/README.md) | 버전·방법별 README, 실행 wrapper, 설정·코드 링크, 결과 출처 |
+| [hiercp/](hiercp), [hiercp_v1x/](hiercp_v1x) | V1 계열 runtime과 기준선·교차·네 군 비교 실험 연결 |
+| [hiercp_v2/](hiercp_v2), [hiercp_v22/](hiercp_v22), [hiercp_v22_cnn/](hiercp_v22_cnn), [hiercp_v221/](hiercp_v221), [hiercp_v222/](hiercp_v222) | 이전·실험 계열의 실제 import package. 사람용 버전 번호와 일대일 대응하지 않는다. |
+| [l0_local_cnn/](l0_local_cnn), [l0_regions/](l0_regions), 기타 `l0_*/` | 국소 CNN·영역·SAGE·sparse·exploration 방법 구현 |
+| [config/](config), [tools/](tools), [tests/](tests) | 실제 설정, 실행·검증·서버 도구, 회귀 검사 |
+| [basic_cp_online/](basic_cp_online), [custom_trainers/](custom_trainers) | Basic CP 및 nnU-Net trainer·feedback 공유 기능 |
+| `datasets/` | 로컬 의료 원본·추출 데이터. 현재 `datasets/msd_liver/`가 존재하며 코드 배포물과 구분한다. |
+| `work/vessels/`, `work/cache/`, `work/archive/` | 혈관 처리 산출물, 보조 캐시, 보존 산출물. 모델 소스 폴더가 아니다. |
+| `work/<실험명>/`, `experiment_results/`, `output/`, `outputs/` | 실험 입력·checkpoint·캐시·생성 결과. DEBUG·UNIT·전체 실험 여부는 각 계약·보고서로 확인한다. |
+| [validation/](validation), [docs/](docs), [실험 위치 인덱스](versions/artifacts.md) | 검증 증거, 설계·진단 기록, 기존 결과·캐시 위치 |
 
-## Active repository layout
+실제 Python package, 설정 원본, `versions/v1/pipeline_v1_source.zip`과 manifest, 실험의 `source/`·`shared/`·checkpoint·cache는 기존 경로와 바이트를 보존한다. import 이름뿐 아니라 소스 SHA, 절대경로, 입력·prototype·checkpoint identity가 재개 계약에 포함되므로 문서 정리를 이유로 이동하면 재개가 깨질 수 있다. 자세한 파일·실험 위치는 각 버전의 `files.md`·`runs.md`에서 찾는다.
 
-- [`run.py`](run.py): supported top-level runner.
-- [`tools/run_feedback_experiment.py`](tools/run_feedback_experiment.py): current
-  paired online Full/Basic Feedback runner with private runtimes and verified
-  reuse/upgrade boundaries.
-- [`gpt_handoff.md`](gpt_handoff.md) and [`code.txt`](code.txt): current project
-  handoff and complete tracked-text source export; no patient images are included.
-- [`reference/medical_data_aug/`](reference/medical_data_aug/): restored original
-  Basic-CP source, source-only historical notebook and SHA provenance. Its active
-  implementation is already integrated, not a second preprocessing/CP command.
-- [`feedback/`](feedback/): historical 2026-09-12 review reports, diagnostic source
-  and evidence ZIP (five files, 267,843 bytes). These predate the current fixes;
-  they are preserved review evidence, not current execution/verification claims.
-  They are shared separately and remain excluded from the active `code.txt` export.
-- [`config/train.json`](config/train.json): graph, model, cache, training, and
-  generation contract.
-- [`config/nnunet.json`](config/nnunet.json): downstream nnU-Net contract.
-- [`hiercp/`](hiercp/): active graph, cache, batching, model, loss, training,
-  and generation implementation.
-- [`tools/validate.py`](tools/validate.py): cohort-exact, fingerprinted output
-  validation.
-- [`tools/assemble.py`](tools/assemble.py): preflighted dataset assembly.
-- [`docs/design.md`](docs/design.md): design and safety details.
-- [`docs/online_cp_feedback.md`](docs/online_cp_feedback.md): train-only
-  nnU-Net difficulty-feedback experiment and launch boundaries.
-- [`docs/feedback_recovery.md`](docs/feedback_recovery.md): verified continuation
-  of the existing Medical Data Aug experiment.
-- [`docs/online_bank_performance.md`](docs/online_bank_performance.md): current
-  online-bank preparation, scoring, progress reports and reuse limits.
+2026-10-08 정리에서 자동 생성 테스트·과거 검토본 등 **503개 폴더, 37,440개 파일을 실제 보관 위치로 이동**하고 전체 파일의 SHA256·크기를 확인했다. 삭제한 파일은 없다. `work` 직속 폴더는 806개에서 305개로 줄었으며, 기존 실행·검증이 참조하는 경로는 유지한다. [로컬 파일 안내](work/README.md)와 [저장 규칙](docs/storage.md)에서 용도와 보관 기준을 확인한다.
 
-`run.py` expects a medical root containing this external layout:
+이전 긴 루트 README는 [원문 보존본](docs/history/README_original.md)에 바이트 그대로 남겼다. 그 안의 “current/active” 표현과 상대경로는 작성 당시의 기록이다. 과거 변경은 [버전 이력](versions/history.md), 보존 소스는 [v2.2 history](versions/v2.2/history/README.md)에서 확인한다. 이번 파일 정리에서 새 학습·평가나 서버 파일 변경은 수행하지 않았다.
 
-```text
-<medical-root>/
-└── Data/
-    ├── image/<case_id>_0000.nii.gz
-    └── labels/<case_id>.nii.gz
-```
+## 작업 완료 체크리스트
 
-Pass the root with `--medical-root`, or set `MEDICAL_ROOT`. If neither is set,
-the runner checks the repository parent and the current directory. The default
-artifact directory is `<repository>/work`; use `--work` to select another safe
-location.
+아래는 이번 문서 정리의 범위다. 새 학습·평가·자원 benchmark는 실행하지 않았다.
 
-## Environment and non-final checks
-
-Run commands from the repository root. Replace the example medical root with
-the path on the target host.
-
-```bash
-python run.py env --medical-root /home/aicompetition06/Medical
-python -m tools.audit
-python -m tools.smoke --device cuda:0
-python -m tools.regress --device cuda:0
-```
-
-`env` checks the paired NIfTI layout and required imports, then reports live
-CPU affinity, RAM, storage, scheduler/cgroup limits, visible CUDA devices,
-VRAM, and detectable MIG state. `audit`, `smoke`, and `regress` are static or
-synthetic checks; passing them is not evidence that full training or evaluation
-has completed.
-
-To inspect an existing work directory or one label without running training:
-
-```bash
-python run.py status --medical-root /home/aicompetition06/Medical
-python run.py case --medical-root /home/aicompetition06/Medical \
-  --label /home/aicompetition06/Medical/Data/labels/liver_70.nii.gz \
-  --components 3
-```
-
-## Current online raw-CP Feedback workflow
-
-Raw donor CT/HU jitter and its mask are pasted at each selected raw location
-before the native CTNormalization/resampling transform. The donor's mask is not
-resampled once at its original position and translated afterward. All 128 raw
-candidates are retained even when native centers coincide or a tiny donor has
-zero new native label support. A real zero-support CP still trains segmentation;
-only its difficulty-feedback observation is unavailable. Full and Basic share
-the same original preprocessing and event/source/appearance schedule.
-
-For population-metric v5, start a NEW GNN/bank/runtime/results experiment. A verified
-historical native preprocessing result can be shared without importing its learned
-GNN, scores, or segmentation checkpoints:
-
-```bash
-conda activate /home/aicompetition06/.conda/envs/nnunet &&
-cd /home/aicompetition06/Medical/HierCP-git &&
-git pull --ff-only &&
-read -r -p "Allocated GPU: " CP_GPU &&
-env -u PYTORCH_NVML_BASED_CUDA_CHECK CUDA_VISIBLE_DEVICES="$CP_GPU" \
-/home/aicompetition06/.conda/envs/nnunet/bin/python -B tools/run_feedback_experiment.py \
-  --reuse-preprocessing-from work/feedback_medical_aug \
-  --experiment-name feedback_population_v5 \
-  --medical-root /home/aicompetition06/Medical \
-  --outer-fold 0 --dataset-id 760 --seed 42 --evaluate
-```
-
-The original completed native planning/preprocessing root is required; an upgrade
-root such as `feedback_rawcp` is not an interchangeable source. The old GNN stays
-unchanged; v5 trains a new quality model. Verified preprocessing payloads get a
-hard-linked view, while metadata and native unpacking outputs belong to the new
-root. These links are not filesystem-enforced read-only copies: manually editing
-a shared payload affects both roots. The supported workflow never overwrites or
-reprocesses those shared payloads.
-Old banks, runtimes, journals and results are not overwritten. Full and Basic
-retain all configured epochs/candidates. `--evaluate` additionally runs checkpoint-
-bound prediction and paired evaluation in a separate v5 output. Same-argument
-`--resume-experiment` is supported for newly journaled fresh runs, never as a
-missing-checkpoint fresh-start fallback. See
-[`gpt_handoff.md`](gpt_handoff.md) for scope, test evidence and safe retry limits.
-
-## Standalone/offline production workflow
-
-This separate `run.py` workflow generates offline augmented volumes; it is not
-the online Feedback runner above. `production` is its default run mode. The
-individual stages are:
-
-```bash
-python run.py prepare --run-mode production \
-  --medical-root /home/aicompetition06/Medical
-python run.py train --run-mode production \
-  --medical-root /home/aicompetition06/Medical --device cuda:0
-python run.py generate --run-mode production \
-  --medical-root /home/aicompetition06/Medical --device cuda:0
-```
-
-The supported offline generation aggregate is:
-
-```bash
-python run.py all --run-mode production \
-  --medical-root /home/aicompetition06/Medical --device cuda:0
-```
-
-`all` performs preparation, HierCP training, generation, exact validation, and
-dataset assembly. It is not a completed downstream segmentation experiment.
-`full`, `nnunet-all`, and aggregate `nnunet-train` are deliberately rejected at
-top-level preflight: globally generated CP cannot prove fold-held-out label
-exclusion. The leakage guard remains; use the fold-specific online workflow for
-supported downstream training, not expensive offline stages followed by a late failure.
-
-Production rejects `--max-cases`, `--case-id`, `--epochs`, `--batch-size`, and
-`--num-workers` command-line overrides. It also rejects skipped validation or
-assembly. These checks keep a reduced or unvalidated artifact from being
-reported as final.
-
-## Explicit non-production modes
-
-The runner also defines `debug`, `benchmark`, and `ablation`. Debug and
-benchmark may run individual prepare, train, or generate stages. Ablation is
-train-only and pairs `--run-mode ablation` with an explicit `--ablation-mode`
-of `no_local`, `no_patient`, or `no_population`. None of these modes may run
-`all`, `full`, or final nnU-Net targets. Every non-production pipeline stage
-must use an explicit `--work` directory different from the production default,
-so reduced artifacts remain isolated and labelled. Dedicated multi-mode
-ablation orchestration and reporting live in
-[`tools/ablation.py`](tools/ablation.py).
-
-Validation and assembly reached by debug or benchmark generation use their
-own explicit `--run-mode nonproduction` contract. Such generation may skip
-assembly after validation; if validation is skipped, assembly must also be
-skipped. These outputs remain non-final.
-
-## Resource preflight and measured calibration
-
-Before preparation, the runner computes the full selected case-by-sample cache
-count, measures free space on the target filesystem, and checks it against a
-conservative cache-size estimate. Existing graph-cache sizes supply the p90
-estimate when available; otherwise the estimate records its conservative
-fallback. This storage estimate is not a substitute for measuring the target
-dataset.
-
-Training records live CPU, RAM, storage, scheduler/cgroup, GPU, VRAM, and MIG
-information. In the checked-in training configuration, both physical batch
-size and DataLoader worker count are `"auto"`. Training therefore probes the
-configured batch candidates for throughput and peak VRAM, records candidates
-that cannot be safely measured, measures the configured worker candidates for
-loader throughput, selects a passing configuration, and records the trials in
-`work/model.pt.preflight.json` and the checkpoint. A saved calibration is
-reused only when its training identity and hardware/resource fingerprint
-match.
-
-The reported effective batch size is:
-
-```text
-physical batch size × gradient accumulation steps × data-parallel workers
-```
-
-The current implementation has validated one-device semantics only, so the
-data-parallel worker count is 1. For production CUDA training and generation,
-the process fails if more than one CUDA device is visible. Request one GPU from
-the scheduler and expose it as logical `cuda:0`; there is no validated DDP
-fallback that silently leaves extra assigned GPUs idle.
-
-## Online bank preparation and scoring
-
-Current raw-target preparation stores one full-grid unclipped baseline per case,
-shared content-addressed donor arrays, and candidate-specific label/CT inputs.
-Training computes the exact native output within the unchanged nnU-Net crop;
-larger lesions may be intersected by that crop without deleting their remaining
-support from the bank. Full native support and observed crop support are audited
-separately. No full-volume resampling is performed for every training event.
-Preparation measures RSS/CPU/time and checks disk reserve. The baseline costs
-approximately 10 bytes per native voxel plus operators/candidates; this is not
-a total peak-RAM estimate. Only the verified standard CT/native kernels are
-supported; an unproved crop/nonzero-mask change is reported, not hidden by
-discarding a donor or tightening the original 0.85 liver-coverage condition.
-
-The bank optimization in `ebe58ff` preserves the model, full graph topology,
-candidate pools, CP rules and training settings. The standard bank no longer
-builds complete target features/edges just to discard them during geometry
-validation. Both bank builders share the prepared source and use measured,
-ordered CPU candidate-graph preparation. Pending scoring inputs use an owned
-disk spool and physical-batch mmap loading rather than accumulating complete
-graphs from many sources in RAM. This adds storage I/O; it is not a measured
-server-wide speedup claim.
-
-Bank builds now emit phase/heartbeat logs, CPU preparation resource reports and
-scoring calibration/I/O reports. Their locations, first-calibration delay,
-remaining memory requirements and verification scope are documented in
-[`docs/online_bank_performance.md`](docs/online_bank_performance.md).
-Do not update a checkout or trainer installation used by a running experiment.
-An existing compatible bank is verified and reused; the performance-only change
-in `ebe58ff` does not require deleting it or restarting the GNN. The historical
-raw-transport change required a separate bank/runtime but could reuse a verified
-GNN only within its compatible architecture version. That does not admit old
-GNNs into v5: the current architecture requires a new quality GNN and bank.
-Verified native preprocessing and separately proven Basic-only results can be
-reused; Basic reuse is an explicit opt-in, not an old Full checkpoint conversion.
-The [recovery guide](docs/feedback_recovery.md) describes compatible-version
-historical continuations, not a v5 upgrade of old GNN weights.
-
-## Exact validation and assembly
-
-Production generation is accepted only when candidate and reference case-ID
-sets are identical and every case passes shape, affine, label-domain, finite
-intensity, and tumor-change checks. `tools.validate` fingerprints the candidate
-image and label, reference image and label, validation contract, and complete
-cohort with SHA-256. `--resume` reuses a row only when every fingerprint still
-matches. Reports are written atomically to:
-
-```text
-work/output/data/validation.csv
-work/output/data/validation_summary.json
-```
-
-Assembly requires that report, requires its accepted cohort to equal the
-validated augmentation directory, and recomputes candidate hashes before any
-write. In production, the augmentation cohort must also equal the complete
-original cohort and contain zero rejected or non-production rows. A full
-source/destination/collision preflight runs before materialization; existing
-files are reusable only when they are the same underlying source file, and
-unplanned stale outputs are rejected. The final manifest is written atomically
-to `work/dataset/manifest.csv`.
-
-## What remains to be run
-
-This source checkout does not establish a scientific result by itself. On the
-target MobaXterm/server environment, supply the real dataset and compatible
-PyTorch, PyTorch Geometric, CUDA, and nnU-Net installation; run the environment
-check; review the measured preflight; and execute the requested production
-training and evaluation. No README statement or smoke test replaces those
-actual-data runs.
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다. 이전 README 원문을 보존했다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토한 기존 실행 계약·기록을 연결했다. 새 측정은 없다.
+- [x] GPU, CPU, RAM 활용 상태를 측정한 기존 검증 기록을 연결했다. 새 측정은 없다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사한 기존 기록을 연결했다. 이번 정리에는 OOM이 없다.
+- [x] 디버그 설정과 최종 설정을 분리해서 안내했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈의 forward, loss, gradient와 optimizer 연결에 관한 기존 검증과 미검증 범위를 구분했다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 이번 변경은 문서다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

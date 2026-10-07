@@ -363,7 +363,7 @@
       "id": "v1.8",
       "folder": "v1.8",
       "title": "원본 v1 10mm 비교 후보 대조",
-      "status": "matched selected7 versus rotating native7; full129 validation; server quality pending",
+      "status": "selected7 versus rotating native7; actual CT/CUDA DEBUG and resume verified; full40 completion and quality unconfirmed; no live-server assertion",
       "runner": "tools/run_v18_u_bridge.py",
       "modules": [
         "hiercp_v1x/u_bridge_data.py",
@@ -377,7 +377,7 @@
       "id": "v1.9",
       "folder": "v1.9",
       "title": "원본 v1 10 mm 후보 노출·loss 대조",
-      "status": "two independent additional arms; existing v1.8 controls kept running; full129 validation; server quality pending",
+      "status": "fixed and listwise arms compared with preserved v1.8 controls; actual CT/CUDA DEBUG and resume verified; full40 completion and quality unconfirmed; no live-server assertion",
       "runner": "tools/run_v19_comparison.py",
       "modules": [
         "hiercp_v1x/comparison_experiment.py",
@@ -386,6 +386,54 @@
       ],
       "configs": ["config/v19_comparison_controls.json"],
       "notes": ["versions/v1.9/README.md"]
+    },
+    {
+      "id": "v1.8/selected",
+      "folder": "v1.8/selected",
+      "title": "selected: 원래 선별7개 pairwise",
+      "status": "independent preserved-arm resume; live server and full40 quality unconfirmed",
+      "runner": "versions/v1.8/selected/server.sh",
+      "kind": "shell",
+      "fixed_env": {"CP_ARM": "selected"},
+      "modules": ["hiercp_v1x/u_bridge_training.py"],
+      "configs": ["config/v18_u_bridge.json"],
+      "notes": ["versions/v1.8/selected/README.md", "docs/comparison_runtime.md"]
+    },
+    {
+      "id": "v1.8/native",
+      "folder": "v1.8/native",
+      "title": "native: 순환7개 pairwise",
+      "status": "independent preserved-arm resume; live server and full40 quality unconfirmed",
+      "runner": "versions/v1.8/native/server.sh",
+      "kind": "shell",
+      "fixed_env": {"CP_ARM": "native"},
+      "modules": ["hiercp_v1x/u_bridge_training.py"],
+      "configs": ["config/v18_u_bridge.json"],
+      "notes": ["versions/v1.8/native/README.md", "docs/comparison_runtime.md"]
+    },
+    {
+      "id": "v1.9/fixed",
+      "folder": "v1.9/fixed",
+      "title": "native_fixed: 고정7개 pairwise",
+      "status": "independent preserved-arm resume; live server and full40 quality unconfirmed",
+      "runner": "versions/v1.9/fixed/server.sh",
+      "kind": "shell",
+      "fixed_env": {"CP_ARM": "native_fixed"},
+      "modules": ["hiercp_v1x/comparison_training.py"],
+      "configs": ["config/v19_comparison_controls.json"],
+      "notes": ["versions/v1.9/fixed/README.md", "docs/comparison_runtime.md"]
+    },
+    {
+      "id": "v1.9/listwise",
+      "folder": "v1.9/listwise",
+      "title": "native_listwise: 순환7개 listwise",
+      "status": "independent preserved-arm resume; live server and full40 quality unconfirmed",
+      "runner": "versions/v1.9/listwise/server.sh",
+      "kind": "shell",
+      "fixed_env": {"CP_ARM": "native_listwise"},
+      "modules": ["hiercp_v1x/comparison_training.py"],
+      "configs": ["config/v19_comparison_controls.json"],
+      "notes": ["versions/v1.9/listwise/README.md", "docs/comparison_runtime.md"]
     },
     {
       "id": "basic",

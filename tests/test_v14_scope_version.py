@@ -1,6 +1,7 @@
 """Version-display regression only; no neural or accuracy validation claim."""
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import copy
 from contextlib import redirect_stdout
 import io
@@ -15,7 +16,7 @@ from tools import run_v14_scope_training as wrapper
 
 class VersionDisplayUnits(unittest.TestCase):
     def setUp(self):
-        self.root = wrapper.ROOT / 'work' / ('v14_version_UNIT_' + uuid.uuid4().hex)
+        self.root = unit_artifact_root() / ('v14_version_UNIT_' + uuid.uuid4().hex)
         self.root.mkdir(parents=True)
         self.manifest = dict(margin_mm=10., contract_sha256='a' * 64)
 

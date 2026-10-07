@@ -5,6 +5,7 @@ parallel, receipts stay signed/ordered, and failures remain visible.
 """
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import json
 from pathlib import Path
 import threading
@@ -77,7 +78,7 @@ class GuardedProviderUNIT(UnitProvider):
 
 
 def make_fixture(name):
-    root = ROOT / "work" / ("transition_D_parallel_UNIT_" + name + "_" + uuid.uuid4().hex)
+    root = unit_artifact_root() / ("transition_D_parallel_UNIT_" + name + "_" + uuid.uuid4().hex)
     root.mkdir()
     dataset = unit_dataset(root)
     provider = GuardedProviderUNIT(dataset, workers=2, resident_bytes=1024**3, rss_bytes=2 * 1024**3)

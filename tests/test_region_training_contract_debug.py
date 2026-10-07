@@ -1,4 +1,5 @@
 """Synthetic checkpoint rejection tests; real CUDA resume uses the CLI smoke."""
+from tests.artifacts import unit_artifact_root
 import copy
 from pathlib import Path
 import tempfile
@@ -8,7 +9,7 @@ from l0_regions.training import FORMAT,hash_state,load_checkpoint
 
 class RegionResumeContract(unittest.TestCase):
     def setUp(self):
-        self.folder=Path(tempfile.mkdtemp(prefix='region_resume_contract_',dir=Path(__file__).resolve().parents[1]/'work'))
+        self.folder=Path(tempfile.mkdtemp(prefix='region_resume_contract_',dir=unit_artifact_root()))
         self.identity=dict(debug=True,cache_sha256='fixture',epochs=1,source={'runtime':'fixture'})
         self.payload=dict(format=FORMAT,identity=self.identity,model={'weight':torch.tensor([1.])},
             optimizer={'step':torch.tensor(2)},state={'phase':'optimization','step':2},rng={'torch':torch.tensor([42],dtype=torch.uint8)})

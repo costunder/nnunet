@@ -86,8 +86,9 @@ import numpy as np
 import torch
 from hiercp_v1x import bounded_scope,scope_training_entry as entry
 from hiercp_v1x.scope_probe_support import activate_original
+from tests.artifacts import unit_artifact_root
 root=Path.cwd()
-out=root/'work'/('scope_training_entry_UNIT_'+uuid.uuid4().hex)
+out=unit_artifact_root()/('scope_training_entry_UNIT_'+uuid.uuid4().hex)
 source=out/'source'
 source.mkdir(parents=True)
 with zipfile.ZipFile(root/'versions/v1/pipeline_v1_source.zip') as bundle:

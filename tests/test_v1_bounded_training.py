@@ -5,6 +5,7 @@ contracts only. They are never loaded as a neural checkpoint or CT cache.
 """
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import copy
 from contextlib import redirect_stdout
 import io
@@ -67,7 +68,7 @@ class BoundedConfigUnits(unittest.TestCase):
 
 class ControllerFixture(unittest.TestCase):
     def setUp(self):
-        self.root = ROOT / 'work' / ('v1_bounded_controller_UNIT_' + uuid.uuid4().hex)
+        self.root = unit_artifact_root() / ('v1_bounded_controller_UNIT_' + uuid.uuid4().hex)
         self.source = self.root / 'native'
         self.destination = self.root / 'bounded10'
         self.shared = self.source / 'shared'

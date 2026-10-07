@@ -1,4 +1,5 @@
 """UNIT byte/metadata evidence reuse; fixture bytes are not clinical CT."""
+from tests.artifacts import unit_artifact_root
 import copy
 import json
 from pathlib import Path
@@ -11,7 +12,7 @@ from hiercp_v1x.roi_probe_reuse import sha, verified_source_reuse
 
 class RoiProbeReuseUnits(unittest.TestCase):
     def setUp(self):
-        self.root = ROOT/'work'/('roi_reuse_UNIT_'+uuid.uuid4().hex)
+        self.root = unit_artifact_root()/('roi_reuse_UNIT_'+uuid.uuid4().hex)
         self.root.mkdir()
         self.experiment = self.root/'experiment'
         self.snapshot = self.experiment/'source/v1.0'

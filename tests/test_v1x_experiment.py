@@ -2,8 +2,9 @@
 
 The three empty NIfTI-named files per input kind are filename-only fixtures for
 cohort accounting.  No fixture is passed to preparation, a model, or training.
-Task-owned files stay under work/v1x_runtime_metadata_UNIT_* for traceability.
+Task-owned files stay under work/cache/tests/v1x_runtime_metadata_UNIT_* for traceability.
 """
+from tests.artifacts import unit_artifact_root
 import ast
 import copy
 import json
@@ -24,7 +25,7 @@ from hiercp_v1x.experiment import (
 class RuntimeMetadataUnitTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.owned = ROOT / "work" / ("v1x_runtime_metadata_UNIT_" + uuid.uuid4().hex)
+        cls.owned = unit_artifact_root() / ("v1x_runtime_metadata_UNIT_" + uuid.uuid4().hex)
         cls.medical = cls.owned / "medical"
         cls.medical.mkdir(parents=True, exist_ok=False)
         for kind in ("image", "labels"):

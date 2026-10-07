@@ -1,4 +1,5 @@
 """Synthetic topology fixtures; actual CT costs are in the separate report."""
+from tests.artifacts import unit_artifact_root
 import copy,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -41,7 +42,7 @@ class FixedHierarchy(unittest.TestCase):
     def model(self):return RegionSAGEEncoder(self.reference,seed=42,resource_budget=self.budget,allow_unvalidated_profile=True).cuda()
 
     def test_cache_identity_and_tamper_rejected(self):
-        folder=tempfile.mkdtemp(prefix='fixed_region_fixture_',dir=Path(__file__).resolve().parents[1]/'work')
+        folder=tempfile.mkdtemp(prefix='fixed_region_fixture_',dir=unit_artifact_root())
         # Keep this small corruption fixture as evidence; never delete user paths.
         if folder:
             path=Path(folder)/'pair.pt';save_new(path,self.items[0])
@@ -134,7 +135,7 @@ class FixedHierarchy(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'profile flag'):validate_item(item)
 
     def test_resident_reuse_mutation_and_budget(self):
-        folder=Path(tempfile.mkdtemp(prefix='resident_fixture_',dir=Path(__file__).resolve().parents[1]/'work'))
+        folder=Path(tempfile.mkdtemp(prefix='resident_fixture_',dir=unit_artifact_root()))
         paths=[folder/f'{i}.pt' for i in range(2)]
         for p,item in zip(paths,self.items):save_new(p,item)
         cache=RegionResidentCache(max_tensor_bytes=32*2**20,workers=2)
@@ -149,7 +150,7 @@ class FixedHierarchy(unittest.TestCase):
 
     def test_preparation_dependencies_isolated_bytes(self):
         from l0_regions.preparation import PREPARATION_FILES,preparation_fingerprint
-        folder=Path(tempfile.mkdtemp(prefix='fingerprint_fixture_',dir=Path(__file__).resolve().parents[1]/'work'))
+        folder=Path(tempfile.mkdtemp(prefix='fingerprint_fixture_',dir=unit_artifact_root()))
         for name in PREPARATION_FILES:
             p=folder/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('fixture',encoding='utf-8')
         before=preparation_fingerprint(folder,{})
@@ -159,7 +160,7 @@ class FixedHierarchy(unittest.TestCase):
             p.write_text('fixture',encoding='utf-8')
 
     def test_missing_verification_rejected_at_all_boundaries(self):
-        folder=Path(tempfile.mkdtemp(prefix='missing_signature_',dir=Path(__file__).resolve().parents[1]/'work'))
+        folder=Path(tempfile.mkdtemp(prefix='missing_signature_',dir=unit_artifact_root()))
         paths=[folder/f'{i}.pt' for i in range(2)]
         for p,item in zip(paths,self.items):save_new(p,item)
         net=self.model().eval()
@@ -181,7 +182,7 @@ class FixedHierarchy(unittest.TestCase):
 
     def test_valid_cold_hit_transfer_and_storage_accounting(self):
         from l0_regions.resident import check_verified,storage_bytes
-        folder=Path(tempfile.mkdtemp(prefix='valid_signature_',dir=Path(__file__).resolve().parents[1]/'work'))
+        folder=Path(tempfile.mkdtemp(prefix='valid_signature_',dir=unit_artifact_root()))
         paths=[folder/f'{i}.pt' for i in range(2)]
         serialized=sum(save_new(p,item) for p,item in zip(paths,self.items))
         cache=RegionResidentCache(max_tensor_bytes=32*2**20,workers=2)

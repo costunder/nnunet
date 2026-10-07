@@ -6,6 +6,7 @@ workspaces and are only used to test integrity and publication refusal.
 """
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import copy
 import hashlib
 import json
@@ -85,7 +86,7 @@ class EvaluationRefusals(unittest.TestCase):
 
 class SourceIntegrityAndPublication(unittest.TestCase):
     def setUp(self):
-        self.base=ROOT/'work'/('v17_collector_metadata_UNIT_'+uuid.uuid4().hex)
+        self.base=unit_artifact_root()/('v17_collector_metadata_UNIT_'+uuid.uuid4().hex)
         self.workspace=self.base/'workspace';self.workspace.mkdir(parents=True)
         module=self.workspace/'hiercp_v1x/UNIT_source.py';module.parent.mkdir();module.write_text('UNIT_METADATA_ONLY=True\n',encoding='utf8')
         config=self.workspace/'config/v17_crossed_training.json';config.parent.mkdir()

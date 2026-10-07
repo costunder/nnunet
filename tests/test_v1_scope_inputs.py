@@ -1,6 +1,7 @@
 """Metadata/path UNIT fixtures only; no synthetic neural or medical claim."""
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import copy
 import csv
 import ast
@@ -19,7 +20,7 @@ from hiercp_v1x import scope_inputs
 
 
 def temporary_unit_directory():
-    root = Path(__file__).resolve().parents[1] / "work/scope_UNIT_metadata"
+    root = unit_artifact_root() / "scope_UNIT_metadata"
     root.mkdir(parents=True, exist_ok=True)
     return tempfile.TemporaryDirectory(prefix="scope_UNIT_", dir=root)
 

@@ -1,12 +1,13 @@
 """Frozen-source/bytecode METADATA UNIT regressions; no CT or model execution.
 
-Every fixture belongs to a new work/v1_snapshot_bytecode_UNIT_<UUID> root and
+Every fixture belongs to a new work/cache/tests/v1_snapshot_bytecode_UNIT_<UUID> root and
 is preserved. Cache payloads in inventory tests are metadata-only bytes. The
 subprocess regression executes only a two-line UNIT module and proves an old
 timestamp-valid cache cannot override the verified source with isolated lookup.
 """
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import hashlib
 import importlib.util
 import json
@@ -35,7 +36,7 @@ def sha(data):
 class SnapshotBytecodeMetadataUnits(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.owned = experiment.ROOT / 'work' / (
+        cls.owned = unit_artifact_root() / (
             'v1_snapshot_bytecode_UNIT_' + uuid.uuid4().hex
         )
         cls.owned.mkdir(parents=True, exist_ok=False)

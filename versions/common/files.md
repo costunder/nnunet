@@ -34,11 +34,10 @@
 
 </details>
 
-<details><summary>설정 (7)</summary>
+<details><summary>설정 (6)</summary>
 
 | 내용 | 원본 | Git |
 | --- | --- | --- |
-| comparison cp80 | [열기](../../config/comparison_cp80.json) | 게시 대상 |
 | nnunet | [열기](../../config/nnunet.json) | 게시 대상 |
 | online cp curriculum | [열기](../../config/online_cp_curriculum.json) | 게시 대상 |
 | online cp feedback | [열기](../../config/online_cp_feedback.json) | 게시 대상 |
@@ -48,7 +47,7 @@
 
 </details>
 
-<details><summary>실행·분석 (92)</summary>
+<details><summary>실행·분석 (98)</summary>
 
 | 내용 | 원본 | Git |
 | --- | --- | --- |
@@ -79,6 +78,7 @@
 | cleanup verified storage | [열기](../../tools/cleanup_verified_storage.py) | 로컬 |
 | compress lossless storage | [열기](../../tools/compress_lossless_storage.py) | 로컬 |
 | ct-only-liver.template | [열기](../../tools/ct-only-liver.template.html) | 로컬 |
+| current gpu | [열기](../../tools/current_gpu.py) | 게시 대상 |
 | download task03 liver | [열기](../../tools/download_task03_liver.py) | 로컬 |
 | downstream level ablation | [열기](../../tools/downstream_level_ablation.py) | 게시 대상 |
 | env | [열기](../../tools/env.py) | 게시 대상 |
@@ -86,6 +86,7 @@
 | export ct only visual | [열기](../../tools/export_ct_only_visual.py) | 로컬 |
 | export gpt handoff | [열기](../../tools/export_gpt_handoff.py) | 게시 대상 |
 | export paired cnn visual debug | [열기](../../tools/export_paired_cnn_visual_debug.py) | 로컬 |
+| export vessel graph | [열기](../../tools/export_vessel_graph.py) | 로컬 |
 | feedback bank upgrade | [열기](../../tools/feedback_bank_upgrade.py) | 게시 대상 |
 | feedback basic reuse | [열기](../../tools/feedback_basic_reuse.py) | 게시 대상 |
 | feedback fresh execution | [열기](../../tools/feedback_fresh_execution.py) | 게시 대상 |
@@ -100,6 +101,7 @@
 | l0-full-edge-inspector.template | [열기](../../tools/l0-full-edge-inspector.template.html) | 로컬 |
 | l0-methods-comparison.template | [열기](../../tools/l0-methods-comparison.template.html) | 로컬 |
 | l0-spatial-encoding.template | [열기](../../tools/l0-spatial-encoding.template.html) | 로컬 |
+| launch slicer vessel | [열기](../../tools/launch_slicer_vessel.py) | 로컬 |
 | local-cnn-fov.template | [열기](../../tools/local-cnn-fov.template.html) | 로컬 |
 | measure same donor learning debug | [열기](../../tools/measure_same_donor_learning_debug.py) | 게시 대상 |
 | nnunet | [열기](../../tools/nnunet.py) | 게시 대상 |
@@ -123,10 +125,13 @@
 | regress | [열기](../../tools/regress.py) | 게시 대상 |
 | relay-shape.template | [열기](../../tools/relay-shape.template.html) | 로컬 |
 | resume basic cp80 preparation | [열기](../../tools/resume_basic_cp80_preparation.py) | 로컬 |
+| review vessel mask | [열기](../../tools/review_vessel_mask.py) | 로컬 |
 | run feedback experiment | [열기](../../tools/run_feedback_experiment.py) | 게시 대상 |
 | run fixed regions | [열기](../../tools/run_fixed_regions.py) | 게시 대상 |
 | run same donor a6000 | [열기](../../tools/run_same_donor_a6000.sh) | 게시 대상 |
 | run uncoarsened sage | [열기](../../tools/run_uncoarsened_sage.py) | 게시 대상 |
+| show vessel scene slicer | [열기](../../tools/show_vessel_scene_slicer.py) | 로컬 |
+| slicer vessel worker | [열기](../../tools/slicer_vessel_worker.py) | 로컬 |
 | smoke | [열기](../../tools/smoke.py) | 게시 대상 |
 | snapshot pipeline v1 | [열기](../../tools/snapshot_pipeline_v1.py) | 로컬 |
 | train online curriculum | [열기](../../tools/train_online_curriculum.py) | 게시 대상 |
@@ -147,7 +152,7 @@
 
 </details>
 
-<details><summary>기록 (38)</summary>
+<details><summary>기록 (40)</summary>
 
 | 내용 | 원본 | Git |
 | --- | --- | --- |
@@ -167,6 +172,7 @@
 | GPT CP REVIEW | [열기](../../docs/GPT_CP_REVIEW_20261002_HISTORY.md) | 게시 대상 |
 | GPT CP REVIEW | [열기](../../docs/GPT_CP_REVIEW_20261002_QUESTIONS.md) | 게시 대상 |
 | graph pooling evidence | [열기](../../docs/graph_pooling_evidence_20260923.md) | 게시 대상 |
+| README original | [열기](../../docs/history/README_original.md) | 게시 대상 |
 | level v3 implementation | [열기](../../docs/level_v3_implementation.md) | 게시 대상 |
 | notion research index | [열기](../../docs/notion_research_index_20260929.md) | 게시 대상 |
 | notion research snapshot | [열기](../../docs/notion_research_snapshot_20260929.json) | 게시 대상 |
@@ -179,6 +185,7 @@
 | paired cnn control | [열기](../../docs/paired_cnn_control_20260930.md) | 게시 대상 |
 | prodigy current pipeline audit | [열기](../../docs/prodigy_current_pipeline_audit_20261001.md) | 게시 대상 |
 | results summary | [열기](../../docs/results_summary_20260918.md) | 게시 대상 |
+| storage | [열기](../../docs/storage.md) | 게시 대상 |
 | storage cleanup | [열기](../../docs/storage_cleanup_20260923.md) | 게시 대상 |
 | storage compression | [열기](../../docs/storage_compression_20260923.md) | 게시 대상 |
 | HierCP code review | [열기](../../feedback/HierCP_code_review_20260912.md) | 게시 대상 |
@@ -192,11 +199,13 @@
 
 </details>
 
-<details><summary>검사 (107)</summary>
+<details><summary>검사 (111)</summary>
 
 | 내용 | 원본 | Git |
 | --- | --- | --- |
+| artifacts | [열기](../../tests/artifacts.py) | 게시 대상 |
 | ablation comparability debug | [열기](../../tests/test_ablation_comparability_debug.py) | 게시 대상 |
+| artifacts | [열기](../../tests/test_artifacts.py) | 게시 대상 |
 | bank geometry preparation debug | [열기](../../tests/test_bank_geometry_preparation_debug.py) | 게시 대상 |
 | bank parallel preparation debug | [열기](../../tests/test_bank_parallel_preparation_debug.py) | 게시 대상 |
 | bank progress debug | [열기](../../tests/test_bank_progress_debug.py) | 게시 대상 |
@@ -221,6 +230,7 @@
 | competition analysis | [열기](../../tests/test_competition_analysis.py) | 게시 대상 |
 | cp80 comparison debug | [열기](../../tests/test_cp80_comparison_debug.py) | 로컬 |
 | cp exact masks debug | [열기](../../tests/test_cp_exact_masks_debug.py) | 게시 대상 |
+| current gpu | [열기](../../tests/test_current_gpu.py) | 게시 대상 |
 | curriculum bank contract | [열기](../../tests/test_curriculum_bank_contract.py) | 게시 대상 |
 | curriculum launch debug | [열기](../../tests/test_curriculum_launch_debug.py) | 게시 대상 |
 | curriculum training | [열기](../../tests/test_curriculum_training.py) | 게시 대상 |
@@ -303,5 +313,25 @@
 | training resources debug | [열기](../../tests/test_training_resources_debug.py) | 게시 대상 |
 | uncoarsened sage debug | [열기](../../tests/test_uncoarsened_sage_debug.py) | 게시 대상 |
 | version layout | [열기](../../tests/test_version_layout.py) | 게시 대상 |
+| vessel graph export | [열기](../../tests/test_vessel_graph_export.py) | 로컬 |
 
 </details>
+
+
+## 작업 완료 체크리스트
+
+이 파일은 탐색 인덱스다. 학습·평가·자원 benchmark와 데이터 이동·삭제는 실행하지 않는다.
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. (인덱스 생성에 해당 없음)
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. (인덱스 생성에 해당 없음)
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (인덱스 생성에 해당 없음)
+- [x] 디버그 설정과 최종 설정을 분리해서 안내했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (새 실행 검사 없음)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 기존 구현·기록으로 연결한다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

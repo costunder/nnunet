@@ -1,6 +1,7 @@
 """Metadata-only UNITs for preflight binding and logging, without neural work."""
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import copy
 import io
 import json
@@ -19,7 +20,7 @@ class TelemetryPublicationMetadataUnits(unittest.TestCase):
     def setUp(self):
         # Preserve exact task-owned metadata fixtures for inspection. A failed
         # mkdir is reported directly, never retried as a Windows tempfile name.
-        self.root = ROOT / "work" / ("v1_telemetry_entry_metadata_UNIT_" + uuid.uuid4().hex)
+        self.root = unit_artifact_root() / ("v1_telemetry_entry_metadata_UNIT_" + uuid.uuid4().hex)
         self.root.mkdir(parents=True, exist_ok=False)
         self.native = self.root / "native"
         source = self.native / "source/v1.0"

@@ -5,6 +5,7 @@ UNIT artifacts. These tests do not claim clinical data preparation or quality.
 """
 from __future__ import annotations
 
+from tests.artifacts import unit_artifact_root
 import copy
 import json
 from pathlib import Path
@@ -99,7 +100,7 @@ class CompletePreparationMechanicalUNIT(unittest.TestCase):
     def setUpClass(cls):
         # Keep own tiny artifacts; never recursively delete results under
         # Windows file ACLs and never replace another experiment directory.
-        cls.root=ROOT/'work'/('transition_D_preparation_UNIT_'+uuid.uuid4().hex)
+        cls.root=unit_artifact_root()/('transition_D_preparation_UNIT_'+uuid.uuid4().hex)
         cls.root.mkdir()
         cls.ds=unit_dataset(cls.root)
         cls.provider=UnitProvider(cls.ds,workers=2,resident_bytes=1024**3,rss_bytes=2*1024**3)

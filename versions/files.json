@@ -105,7 +105,7 @@
     },
     {
       "path": "config/comparison_cp80.json",
-      "version": "common",
+      "version": "v1.9",
       "category": "config",
       "title": "comparison cp80",
       "bytes": 1146,
@@ -324,6 +324,26 @@
       "working_tree_modified": false
     },
     {
+      "path": "config/v18_u_bridge.json",
+      "version": "v1.8",
+      "category": "config",
+      "title": "v18 u bridge",
+      "bytes": 1358,
+      "sha256": "dac6b605700068be70c08ba4e10e965bad6b752d1df21fd8b80a9e11fcc1b18e",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "config/v19_comparison_controls.json",
+      "version": "v1.9",
+      "category": "config",
+      "title": "v19 comparison controls",
+      "bytes": 2264,
+      "sha256": "003ecf487f34221eb2dc53740f32d69bdfff8678cfeb0401f365ace87852844c",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "config/v22_cnn_l0.json",
       "version": "v2.2",
       "category": "config",
@@ -524,6 +544,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "docs/comparison_runtime.md",
+      "version": "v1.9",
+      "category": "notes",
+      "title": "comparison runtime",
+      "bytes": 7074,
+      "sha256": "fc567c6d10e84aa3ede8061c6469919961fece1426d5450e63e776fdc03cf015",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "docs/comparison_seed_audit_20260922.md",
       "version": "common",
       "category": "notes",
@@ -710,6 +740,16 @@
       "title": "graph pooling evidence",
       "bytes": 9764,
       "sha256": "1da059fe4e4d3835b17a44a9bf1c30f54a8fa0d111c57c1251b7065bfa43e26d",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "docs/history/README_original.md",
+      "version": "common",
+      "category": "notes",
+      "title": "README original",
+      "bytes": 17993,
+      "sha256": "c420a26637794cbca4c685f005b4476847bcf784b838bfd780af0828cee0cc9a",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -1500,6 +1540,16 @@
       "title": "ssn whole context visual",
       "bytes": 3165,
       "sha256": "f95c205ed8969f830445bfb4c7773ed2c734c8a56866bb985f58f9d88a4f2f5a",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "docs/storage.md",
+      "version": "common",
+      "category": "notes",
+      "title": "storage",
+      "bytes": 5028,
+      "sha256": "ee54c074bcb3d8bfdfdd0dade380deb21116e997502973f8a5081d9b9fa966c3",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -2554,6 +2604,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "hiercp_v1x/arm_process.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "arm process",
+      "bytes": 7981,
+      "sha256": "6183fe6e6ed166d30eaf4386b697ecaaf473d91e0d4c7fd471caf3e0e1eb8d64",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "hiercp_v1x/bounded_scope.py",
       "version": "v1.4",
       "category": "code",
@@ -2580,6 +2640,96 @@
       "title": "cache budget recovery",
       "bytes": 21716,
       "sha256": "1fc0cb63da48d63d81629a20e07e23c7e2b6d6be5f5902a274ceeafdc1675bd1",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_data.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison data",
+      "bytes": 1320,
+      "sha256": "c776e3c9525c3402f6a31bae2bd085b32d130d79fdc84198da8530610ba0a886",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_data_timing.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison data timing",
+      "bytes": 4559,
+      "sha256": "b0d8dd063005bc5a082e823d0f9f09c13d3e2252773724b6a1ded7f340470c7e",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_execution.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison execution",
+      "bytes": 4080,
+      "sha256": "26d99008c4f2a2f1b448d796ce85d195f8b429d804533392780ccaed9dc94eaf",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_experiment.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison experiment",
+      "bytes": 3368,
+      "sha256": "2101bb0eb32f8137b8a84c9b084c97534c67b0eb391d83f1fe07c05e09bd48cb",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_inputs.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison inputs",
+      "bytes": 1710,
+      "sha256": "f0d04b9cd4c0d3d803609d2e192e855aa0b5af045a9bfb46808be4ab18ca8d76",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_progress.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison progress",
+      "bytes": 11556,
+      "sha256": "fe94fa43b2bc48c84715f2cc630da513451af16e8cd15eabffb3fc106009536a",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_runtime.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison runtime",
+      "bytes": 33641,
+      "sha256": "d92aa070c7505523e3b67c81828c705f8d094e72296c4dd68232d0099d306531",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_training.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison training",
+      "bytes": 10855,
+      "sha256": "cbcd883f409f66e6a84c21f44d869a84a6fe01bd9cf65869c7fa4859d24c0eac",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/comparison_views.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "comparison views",
+      "bytes": 4679,
+      "sha256": "3125e49aeea6c5821fb521ef710c8ee623b5455f140d9a5fb4c2facd649772e8",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -2784,6 +2934,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "hiercp_v1x/host_memory.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "host memory",
+      "bytes": 11858,
+      "sha256": "4f45d03d29c3143bbd49089d8d15c7f19a8fe77ea8ffb0b90d41f58f6645bb8f",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "hiercp_v1x/models.py",
       "version": "v1",
       "category": "code",
@@ -2860,6 +3020,26 @@
       "title": "nested graph size",
       "bytes": 20170,
       "sha256": "1b614e6882f783ffe38a167b36142c51ed81a8454d474a2585daa6692266851e",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/owned_continuation.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "owned continuation",
+      "bytes": 5914,
+      "sha256": "e9d87322370a14ad74da0f2193401172b104b7b1997692b674ea3f9c5ac57267",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/preparation_reuse.py",
+      "version": "v1.9",
+      "category": "code",
+      "title": "preparation reuse",
+      "bytes": 23316,
+      "sha256": "bd3cb409d3d0cccccdb77d33e77856535ab48e11554dc6303e666e753c7c0cd6",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -3140,6 +3320,76 @@
       "title": "transition v1 local",
       "bytes": 36320,
       "sha256": "0cede7d0639b845b8318fc118d0a5dddc3a2cd1888bf9e080878a4877a42b762",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_calibration.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge calibration",
+      "bytes": 9028,
+      "sha256": "28d969c08aba8551a0ceabca5a140dbe367fbb672114b2629bdb29551181bbfa",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_continuation.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge continuation",
+      "bytes": 18971,
+      "sha256": "86db2f40e56f83ecc5a7b0068cfdfd44f5461e01c6744c9d5d66b2c322293053",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_data.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge data",
+      "bytes": 36155,
+      "sha256": "fc1ca9a2ee188baf61a12d91aebac68e69f1bb9ad415be37addb683c7435453f",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_experiment.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge experiment",
+      "bytes": 10348,
+      "sha256": "e3f149ef0fa497cef5214c39175101236e8a424e65c746ca8c5a14e84300af49",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_fields.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge fields",
+      "bytes": 12027,
+      "sha256": "6bbfab9cb7dfd534da0476506f23dfcff2b387fd5fc38599e2a13782c6bbffd9",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_training.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge training",
+      "bytes": 54680,
+      "sha256": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "hiercp_v1x/u_bridge_upper.py",
+      "version": "v1.8",
+      "category": "code",
+      "title": "u bridge upper",
+      "bytes": 13728,
+      "sha256": "933a77e31d890d2871f5f5063de63523e736a63c2847cdc4d07f62866abf8c82",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -4475,7 +4725,7 @@
     },
     {
       "path": "l0_regions/preparation_reuse.py",
-      "version": "v2.2",
+      "version": "v1.9",
       "category": "code",
       "title": "preparation reuse",
       "bytes": 10847,
@@ -4748,8 +4998,8 @@
       "version": "common",
       "category": "notes",
       "title": "README",
-      "bytes": 17993,
-      "sha256": "c420a26637794cbca4c685f005b4476847bcf784b838bfd780af0828cee0cc9a",
+      "bytes": 8337,
+      "sha256": "93daffcee0898119ed251512a305912d81ab9a1c75b23c18ba8b1ddc53d10b96",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -4888,8 +5138,18 @@
       "version": "common",
       "category": "notes",
       "title": "START",
-      "bytes": 3245,
-      "sha256": "679bc38325ce016760f6160474238fee1f0bf08ed7f4a825b35f54da9c897120",
+      "bytes": 2927,
+      "sha256": "d6dcb30d844c65be822b44a0033393380931222593fd21bab9cc89f900617654",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/artifacts.py",
+      "version": "common",
+      "category": "tests",
+      "title": "artifacts",
+      "bytes": 339,
+      "sha256": "9b68c43740ef34c95fa6fa556f0984284d3028babd17ffd9dc2a3724b051453f",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -4900,6 +5160,26 @@
       "title": "ablation comparability debug",
       "bytes": 10373,
       "sha256": "dd5674519b3554aa31488a0915bd60b580f1dc734c6bc6f471ffa3e4e92424f0",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_arm_process.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "arm process",
+      "bytes": 12027,
+      "sha256": "8ecad7b7a0e066d0e3447fa3a757b1d0a0d3cedf5445c632572df818027e8fa6",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_artifacts.py",
+      "version": "common",
+      "category": "tests",
+      "title": "artifacts",
+      "bytes": 1091,
+      "sha256": "b7b930fcafbd06a1734051073c38baa3314e0a6ac644d3ab41ecad595381270f",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -5104,6 +5384,76 @@
       "working_tree_modified": false
     },
     {
+      "path": "tests/test_comparison_arm_launch.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison arm launch",
+      "bytes": 30270,
+      "sha256": "99695d91091548d41817728409f52700e087d653c3611d3cb625565c85aa069d",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_cache_logging.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison cache logging",
+      "bytes": 15198,
+      "sha256": "f12c620af43297d93a058ea74c6b22c444330c4f86cccddefda723e46c1f859b",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_cached_resume.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison cached resume",
+      "bytes": 19100,
+      "sha256": "bb2b1dc22e252a1a4699c454babbda844a0e9075a1fd8b93df283765f32c0368",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_execution.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison execution",
+      "bytes": 7123,
+      "sha256": "b11fd15e4d491f4a387465d7c513b3915df7d46ddd7b41c66142c3fd20d2057c",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_experiment.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison experiment",
+      "bytes": 6052,
+      "sha256": "4636685bf25b51808c5cb2429e45e6de34c56d3bb672c4c5a3602cd8f71cd57a",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_inputs.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison inputs",
+      "bytes": 3999,
+      "sha256": "af6e2347355cb485e88b2c491fae365c0b3f8fcb5c6132ac242b84fded6aea8d",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_progress_debug.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison progress debug",
+      "bytes": 14191,
+      "sha256": "fe62b0c7ac88e75dccd52da6f665c8baf9e30435f475fd0c314daa1d4fbbca90",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tests/test_comparison_randomness_debug.py",
       "version": "common",
       "category": "tests",
@@ -5111,6 +5461,66 @@
       "bytes": 8934,
       "sha256": "362c08a69c3a65eda37debad2bed0de1193c8ecad0bfdacce386525b56a56496",
       "in_git": false,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_reference.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison reference",
+      "bytes": 7244,
+      "sha256": "55d19c79a68e0c3e23652ab28cb9b9540c78d1a389239c8dc59679b8b527c38d",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_runtime_report.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison runtime report",
+      "bytes": 11118,
+      "sha256": "8657140ddb5ec46d71ecaa5255bef38efe2e45f789ac7d680caad04faef1b66d",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_server.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison server",
+      "bytes": 6065,
+      "sha256": "fed4e691fac376edd7ace55bbf1aba2f03ebb01a3b1ca8f4505604ef57d29e98",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_summary.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison summary",
+      "bytes": 4279,
+      "sha256": "ddc7b3c0373e1c7ffe32c06a5322129b13e8625c7b32754f938ed90c98dd605d",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_training.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison training",
+      "bytes": 15502,
+      "sha256": "8b5371ac6667496e4f77596fe2ff9f3a4858587963fe0ed8a395096d5a2f1c19",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_comparison_views.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "comparison views",
+      "bytes": 11431,
+      "sha256": "949b444b354c6ec9d13b33d71892a776504f36b2be2f6d73fa12ca77951e0a11",
+      "in_git": true,
       "working_tree_modified": false
     },
     {
@@ -5140,6 +5550,16 @@
       "title": "cp exact masks debug",
       "bytes": 6736,
       "sha256": "7a057eaf4c1394ff67d8990186352d4342beeda7f3cf326373e0b47ff9b602cf",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_current_gpu.py",
+      "version": "common",
+      "category": "tests",
+      "title": "current gpu",
+      "bytes": 16598,
+      "sha256": "71326fd8c081b45ecb52b6123983360528e4e888309217c3b417f982ad98ca1c",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -5474,6 +5894,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tests/test_host_memory.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "host memory",
+      "bytes": 11916,
+      "sha256": "da010b122cafc79429163ba8fd0c512b4a1407fb38ebc76ab6d7a02ed3962074",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tests/test_l0_comparison_debug.py",
       "version": "v2.2",
       "category": "tests",
@@ -5518,8 +5948,8 @@
       "version": "v2.2",
       "category": "tests",
       "title": "l0 regions debug",
-      "bytes": 13077,
-      "sha256": "16323a10c1f14551f17b77c0c94b9a28ce906aa5b053fcb65edadaf6441ff044",
+      "bytes": 13014,
+      "sha256": "b5d3723b4886b5b1795e355ebd8af15451e26af16efa29428a4fcec955b954ef",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -5884,6 +6314,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tests/test_old_v1_graph_cleanup.py",
+      "version": "v1",
+      "category": "tests",
+      "title": "old v1 graph cleanup",
+      "bytes": 4924,
+      "sha256": "506198def374c79d073d22485a884e02fcbcb6d9f78653c5bd88ad0db8328c01",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tests/test_online_bank_disk_retry_debug.py",
       "version": "common",
       "category": "tests",
@@ -6014,6 +6454,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tests/test_owned_continuation.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "owned continuation",
+      "bytes": 9692,
+      "sha256": "aadd9700038e52fccb52b94ddc45762baa64a4245504a2f518b9ae92e8d7b35f",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tests/test_paired_cnn_control_debug.py",
       "version": "common",
       "category": "tests",
@@ -6080,6 +6530,26 @@
       "title": "preparation recovery debug",
       "bytes": 18988,
       "sha256": "5fe90b76a60fe56b84540a2f13b9a07a7848aa768fa526b61ba876cf4b913cc9",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_preparation_reuse.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "preparation reuse",
+      "bytes": 41680,
+      "sha256": "5c3e603fe41da6644b9c0c0c64fb42cfe293903703cbd69a68d4cb18690e83e0",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_preparation_reuse_hotpath.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "preparation reuse hotpath",
+      "bytes": 14693,
+      "sha256": "b8c262c3ad1a2cd58ecd41ae6366a75f2279b6fe6602dc46e0ab968e8c6f33fb",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6468,8 +6938,8 @@
       "version": "v2.2",
       "category": "tests",
       "title": "region training contract debug",
-      "bytes": 2501,
-      "sha256": "33506e7aab6c17bcb44c707e184093e0682e7f53e988eac2430e939748837674",
+      "bytes": 2526,
+      "sha256": "61a5e2fd179b14b2cc02c0edca017decf7afac9906daf089edbc6905b405e59d",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6634,6 +7104,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tests/test_stop_comparison_arm.py",
+      "version": "v1.9",
+      "category": "tests",
+      "title": "stop comparison arm",
+      "bytes": 9961,
+      "sha256": "77e9a581f4f93c69515e59c220a4e7ca600491dc9746f0c4427003b98869df15",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tests/test_summarize_local_cnn_reference.py",
       "version": "v2.2",
       "category": "tests",
@@ -6698,8 +7178,8 @@
       "version": "v1.7",
       "category": "tests",
       "title": "transition preparation parallel",
-      "bytes": 10110,
-      "sha256": "bc89cda659ae6d1dd5e02e1540f05fa84569c7b162b8530b196a76aa5b9bfb44",
+      "bytes": 10164,
+      "sha256": "88eaaf78ec3bc6c19d82b583ab1a0ad7a509933c8c7981c412c984a49348073a",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6718,8 +7198,8 @@
       "version": "v1.7",
       "category": "tests",
       "title": "transition preparation storage",
-      "bytes": 11677,
-      "sha256": "c1cf164eed7af9f623e1b7e9b8fad86671fa35e2b031f0476410f128fb3d248a",
+      "bytes": 11731,
+      "sha256": "04e0b6875cd67ea30ef21e19029ae05c5b0b11650c64d49f43bd73b22b85dbdd",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6818,8 +7298,78 @@
       "version": "v1.7",
       "category": "tests",
       "title": "transition v1 preparation",
-      "bytes": 12406,
-      "sha256": "564f0d361a024777be7ea28b5043cb64bf218032dd2e55ceba7caa015a9f52c2",
+      "bytes": 12462,
+      "sha256": "6361eef93bc32ae7f0fba2571e429da16c9e49ba9a14d3fbd4405a1c46355594",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_calibration.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge calibration",
+      "bytes": 6586,
+      "sha256": "00ca318fb2b96db8871045050557efdc16786ee159218154a1ed1c999aa2e160",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_continuation.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge continuation",
+      "bytes": 17508,
+      "sha256": "51f306d5f29b6b9e08eb72590fd19ec3542e76fc6bdb00bf988c28d10ccba13f",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_data.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge data",
+      "bytes": 27649,
+      "sha256": "35c1c7bde44eed5f2aa37d5e439f8ebad5878bb6fcd173c31d14793daaeca0e3",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_experiment.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge experiment",
+      "bytes": 12189,
+      "sha256": "f61e3ba1fdeda482ac8985515565457da76a0d586b6b641bf28078fec9683530",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_fields.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge fields",
+      "bytes": 14739,
+      "sha256": "cd265da74203c96722d54f52ae73b053828150e2a31a62be7d88de1d521a1eda",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_training.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge training",
+      "bytes": 16870,
+      "sha256": "a39b33e4c80bdfd9ffaab1b95b0988bd01cb8382066df102ff7d5e49d66e0fd3",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_u_bridge_upper.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "u bridge upper",
+      "bytes": 8382,
+      "sha256": "d92d62941c29b8bd94a5342a307588029dc87385397e66e3aebc2847d07c0891",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6848,8 +7398,8 @@
       "version": "v1.4",
       "category": "tests",
       "title": "v14 scope version",
-      "bytes": 5700,
-      "sha256": "337d123541cdd588877c0412ac27ffea75e1a643356645b080f333704a69ee2a",
+      "bytes": 5746,
+      "sha256": "27ce7e9c64d127ec4bbf1ee5177ef9a496f010f641377593194fa56ea54a47c8",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6858,8 +7408,18 @@
       "version": "v1.7",
       "category": "tests",
       "title": "v17 crossed smoke collector",
-      "bytes": 19109,
-      "sha256": "51a091719e127b580609101ea0fb61997d087efca67ff0a90734d4fa2634f3d7",
+      "bytes": 19165,
+      "sha256": "2d1dead9117301a303cfa926bd2f8e8f4f0c24017734d5a4667d7a6be50ff331",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_v18_independent.py",
+      "version": "v1.8",
+      "category": "tests",
+      "title": "v18 independent",
+      "bytes": 3436,
+      "sha256": "2f60506f3a2382e08559528bb0b07ee1b24c9f27b32528ed1ae15f8ea91b42ce",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6868,8 +7428,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1 bounded scope",
-      "bytes": 7652,
-      "sha256": "ced62d389c5e04a6588a6e0786b8288284a98fbc5318613f9013b00750f39517",
+      "bytes": 7708,
+      "sha256": "83bc0372b7314909d307a5b762a38fa106dd7a0e61b9ca448e387519d18e1813",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6878,8 +7438,8 @@
       "version": "v1.4",
       "category": "tests",
       "title": "v1 bounded training",
-      "bytes": 15480,
-      "sha256": "d81c3bd82ac00a11618c3adc051ece96275bafdef1aa72fad79c76390bea2311",
+      "bytes": 15534,
+      "sha256": "d5f235e361ea586a6a376b2a604237b1502d16cd04158b8426a14e86daa35849",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -6958,8 +7518,8 @@
       "version": "v1.5",
       "category": "tests",
       "title": "v1 half a entry",
-      "bytes": 16240,
-      "sha256": "f0df678ff07ea7a5d18665c9cbae169484040c00fb48590b10a523da52f03c34",
+      "bytes": 16296,
+      "sha256": "b529c3d38a01f7d807b4e8f83f8ee80c1b329fe6efbb7ab1ad7faf853a89f49c",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7018,8 +7578,8 @@
       "version": "v1.6",
       "category": "tests",
       "title": "v1 half b entry",
-      "bytes": 3845,
-      "sha256": "3810e72ba310c9b52d7ad241a9064820f4c31ae1908f9bcb51d81bdc238ca292",
+      "bytes": 3901,
+      "sha256": "8158e77e6e9d920bbb1a2b447f1a0b2b0e6954b58fa137982f785b14c58fb826",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7128,8 +7688,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1 roi budget probe",
-      "bytes": 4089,
-      "sha256": "f5285f24975228848bf28dfbf5aa070928602fabb8750f7bf0dbe502032bf74d",
+      "bytes": 4154,
+      "sha256": "89954b4ca62943fe6a30bd14117fd214be4986b0e025d95f1bbe06c6ff92dbb9",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7158,8 +7718,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1 roi probe reuse",
-      "bytes": 6682,
-      "sha256": "8fa224cef280573251d9f0ef3e18870e7c05edd1aaa5b1f2d087af3196ea11d1",
+      "bytes": 6738,
+      "sha256": "e064af90920500f61e231cfdde277e97fd476685c9e77c0b2e56a11964888e19",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7168,8 +7728,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1 roi recovery suite",
-      "bytes": 7480,
-      "sha256": "9cb60a86edb47ed2d38c6acf3a3fcf6655383b80285f85f7439011b75302a3ce",
+      "bytes": 7536,
+      "sha256": "12f3e963ec3ee6a6aa1b2f0589b7a85cedf9454e810d1359ec570c506028c13b",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7218,8 +7778,8 @@
       "version": "v1.4",
       "category": "tests",
       "title": "v1 scope inputs",
-      "bytes": 18278,
-      "sha256": "6c459eb20858f547872d2065081ab2b5d3063224d198f440efc39e2d8a3c2e09",
+      "bytes": 18305,
+      "sha256": "89e9e32c9062d16a4d66067e1c120b1d7946d5ccf056567b7b8bfe3ef0940f69",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7258,8 +7818,8 @@
       "version": "v1.4",
       "category": "tests",
       "title": "v1 scope training entry",
-      "bytes": 8137,
-      "sha256": "d6fc385176f210f1d22e9896914c73a9f79ef0eb379de44d9ff552e6ee35b564",
+      "bytes": 8193,
+      "sha256": "39b7499a48daab9670e7616e7fdb12bc09b4cf1581bb4344ce403579770d0672",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7278,8 +7838,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1 snapshot bytecode",
-      "bytes": 15986,
-      "sha256": "2d42452baa9a433d274b5d928f5f9d244ec032c1dd983b73c109ad08c06d1d49",
+      "bytes": 16041,
+      "sha256": "7e8ba1b9e041bcb8db1ce5ab82616d61a1f05e1f550e9185130fa6557787841b",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7288,8 +7848,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1 telemetry entry",
-      "bytes": 11234,
-      "sha256": "b8917d2bc1611cd86ef8824b2462a26ada26ea9d82f80c18441397fb4755ba2e",
+      "bytes": 11288,
+      "sha256": "26f57cce22ed5c691f644e509e10e09bd30a424aabb141db3a5b78cc6867f63c",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7328,8 +7888,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1x experiment",
-      "bytes": 17581,
-      "sha256": "a93d52377f754baa55f74b015388f90380111fc9eb6039de8f6a71ede66784a6",
+      "bytes": 17647,
+      "sha256": "9dfbdcc7a8ca555eccc76f226716e48cc9ebda771bd42565d2c69bc40555c24a",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -7428,8 +7988,8 @@
       "version": "v1",
       "category": "tests",
       "title": "v1x serialization",
-      "bytes": 9134,
-      "sha256": "6f6d410c2da27bd49007720c038e056570276ea52296070bb8b2920e4a8e4346",
+      "bytes": 9190,
+      "sha256": "8bf38e08049ce3c092b8c7caec2f77188a1db53acdfb60a1d536862f89902fb8",
       "in_git": false,
       "working_tree_modified": false
     },
@@ -7811,6 +8371,16 @@
       "bytes": 5000,
       "sha256": "688cd24fd0c2e193ca6e2fbcf8e6cfef47f01f743e58670026d38d9eebda8769",
       "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tests/test_vessel_graph_export.py",
+      "version": "common",
+      "category": "tests",
+      "title": "vessel graph export",
+      "bytes": 12416,
+      "sha256": "6350afe84a49d92bc1bec101ec413d0add2430b5f34bec5cf550d922c53a38c2",
+      "in_git": false,
       "working_tree_modified": false
     },
     {
@@ -8734,6 +9304,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/current_gpu.py",
+      "version": "common",
+      "category": "tools",
+      "title": "current gpu",
+      "bytes": 10831,
+      "sha256": "17b1b8f2ffda688cf4714a528f9d003b4c06b02b1259201160acdf707a342611",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/diagnose_l0_ezsp_pairs.py",
       "version": "v2.2",
       "category": "tools",
@@ -9034,6 +9614,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/export_vessel_graph.py",
+      "version": "common",
+      "category": "tools",
+      "title": "export vessel graph",
+      "bytes": 26746,
+      "sha256": "366694a582c2090dd288ce62b90355531711bf6967403abe6134f2eb50285469",
+      "in_git": false,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/feedback_bank_upgrade.py",
       "version": "common",
       "category": "tools",
@@ -9148,8 +9738,8 @@
       "version": "common",
       "category": "tools",
       "title": "index versions",
-      "bytes": 9270,
-      "sha256": "f4af16524c2cde4137e74baa04a9c4ab25076d1cae096dcaf5765f2a5edc1500",
+      "bytes": 17701,
+      "sha256": "2a6d8427ed31b369f7d7214d5904ac3b13a96277552bdcba6f1c008ce7dbdea6",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -9220,6 +9810,16 @@
       "title": "l0-spatial-encoding.template",
       "bytes": 11657,
       "sha256": "e72186781ebd25846b937514daa0578e70fc4a9e3b441a4b378238bbef7534a4",
+      "in_git": false,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/launch_slicer_vessel.py",
+      "version": "common",
+      "category": "tools",
+      "title": "launch slicer vessel",
+      "bytes": 3003,
+      "sha256": "9756b2df4a1aa1be6135bc2a3575f4620afc6bf516d02b60d67336254b34f7b7",
       "in_git": false,
       "working_tree_modified": false
     },
@@ -9974,6 +10574,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/report_comparison_runtime.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "report comparison runtime",
+      "bytes": 35221,
+      "sha256": "171f70aef43519017978bab373c64279cba97920a1430342131e9f06c4589e87",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/report_sparse_cp_learning_debug.py",
       "version": "v2.2",
       "category": "tools",
@@ -9994,12 +10604,52 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/resume_comparison_cached.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "resume comparison cached",
+      "bytes": 15728,
+      "sha256": "07a93677d3399dcad71fa2e12e6deaa395dd0c9350c44c20abbcffaee947cee7",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/retire_old_v1_graphs.py",
+      "version": "v1",
+      "category": "tools",
+      "title": "retire old v1 graphs",
+      "bytes": 8319,
+      "sha256": "778702271fcbfbafcb03f8bc3ca5f3362824737f90d89fa010643031706e916f",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/reuse_v17_D_preparation.py",
       "version": "v1.7",
       "category": "tools",
       "title": "reuse v17 D preparation",
       "bytes": 30223,
       "sha256": "e07bc307b9ef691a67e527fcfc0a636565d48ece9643d239f892ebff4563dce3",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/review_vessel_mask.py",
+      "version": "common",
+      "category": "tools",
+      "title": "review vessel mask",
+      "bytes": 5080,
+      "sha256": "3b416c6898ab29e58012cd7922987083ff0f956f7614e1b6a3d23fa4f9e83db5",
+      "in_git": false,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/run_comparison_arm.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "run comparison arm",
+      "bytes": 11795,
+      "sha256": "2bec3ec94631390f2e40e4b54e6dde842a664e7a4df2d83acc556cdcea4b95b0",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -10134,6 +10784,36 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/run_v18_independent.py",
+      "version": "v1.8",
+      "category": "tools",
+      "title": "run v18 independent",
+      "bytes": 11121,
+      "sha256": "c5d89760c44d3b329c7769e1c144c438be111f2db15b9ccebc2ba3db426e27f9",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/run_v18_u_bridge.py",
+      "version": "v1.8",
+      "category": "tools",
+      "title": "run v18 u bridge",
+      "bytes": 14346,
+      "sha256": "381ee796682222622e3a0a760cffaac036f85d8779d8dd80d4fa902454d18229",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/run_v19_comparison.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "run v19 comparison",
+      "bytes": 14384,
+      "sha256": "1194092cdbeba7f053f143364cd2f76679701f07229833d1edc974beb85f6893",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/run_v1_bounded_training.py",
       "version": "v1.4",
       "category": "tools",
@@ -10254,6 +10934,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/server_comparison_cached.sh",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "server comparison cached",
+      "bytes": 897,
+      "sha256": "51ca03dc4e4374a741487614d3e7d6e1266f15dde62029b26b4759b844b87359",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/server_native_v1_full128.sh",
       "version": "v1",
       "category": "tools",
@@ -10284,6 +10974,36 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/server_v18_independent.sh",
+      "version": "v1.8",
+      "category": "tools",
+      "title": "server v18 independent",
+      "bytes": 800,
+      "sha256": "540f577857670480f5b63de0559f3cbe57013a3bffdb0266f74a2161d30c65ed",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/server_v18_u_bridge.sh",
+      "version": "v1.8",
+      "category": "tools",
+      "title": "server v18 u bridge",
+      "bytes": 1497,
+      "sha256": "bed870e3ba191c5b63b2cecf08582ef80a225475d60b9ff5ed609fc2ed8da8a3",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/server_v19_comparison.sh",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "server v19 comparison",
+      "bytes": 2491,
+      "sha256": "425f9b2b7f972223a75f3c68f8ad4030610e0f611651aa8dbac63075cb82bcef",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/server_v22_cumulative_u16.sh",
       "version": "v2.2",
       "category": "tools",
@@ -10291,6 +11011,26 @@
       "bytes": 1991,
       "sha256": "eb8b5fa0e171c7115354e8b6cd6b6df220e5657ab4c43e2b056e7c3ba5f7fc78",
       "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/show_vessel_scene_slicer.py",
+      "version": "common",
+      "category": "tools",
+      "title": "show vessel scene slicer",
+      "bytes": 24482,
+      "sha256": "a9752d5cca21e7d128b7e9b81359b5861d995f75fadce2e886e14dc40799fb5e",
+      "in_git": false,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/slicer_vessel_worker.py",
+      "version": "common",
+      "category": "tools",
+      "title": "slicer vessel worker",
+      "bytes": 9973,
+      "sha256": "2ba7ab28205142e650b857d3b770516dbbb92bdec1e40f74b68c22f9ff305fd3",
+      "in_git": false,
       "working_tree_modified": false
     },
     {
@@ -10424,6 +11164,16 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/stop_comparison_arm.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "stop comparison arm",
+      "bytes": 2781,
+      "sha256": "092f6db6aa3d2f5434dbb553af3b8ab13823832ce52ad493ac304d2d52eca545",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/stop_v222_observation_job.py",
       "version": "v2.2",
       "category": "tools",
@@ -10470,6 +11220,26 @@
       "title": "summarize relay sparse debug",
       "bytes": 4377,
       "sha256": "7a9291edd36af553140d495fb2d2fec8eb434fbb034098b6df14786ae1a20302",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/summarize_v18_u_bridge.py",
+      "version": "v1.8",
+      "category": "tools",
+      "title": "summarize v18 u bridge",
+      "bytes": 8678,
+      "sha256": "adf12b613911abee8860a290e43742960e07b9271db690a0930ce4def6fa83ef",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/summarize_v19_comparison.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "summarize v19 comparison",
+      "bytes": 4993,
+      "sha256": "d35f10f6366bd2dfb468b6e0a20f629ddf2c28c9230201fdc64213f8265bdabe",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -10551,6 +11321,16 @@
       "bytes": 14459,
       "sha256": "905d0c3ad3a39d2164cb62511afd02d41ebd24ae659387372f6b38a4880f8bde",
       "in_git": false,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/v19_reference_execution.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "v19 reference execution",
+      "bytes": 6022,
+      "sha256": "8630ccaeee319919046dcd3edd2902e6d1ebdb44509fc547bb8a27825730a025",
+      "in_git": true,
       "working_tree_modified": false
     },
     {
@@ -10974,12 +11754,52 @@
       "working_tree_modified": false
     },
     {
+      "path": "tools/verify_arm_launch_debug.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "arm launch debug",
+      "bytes": 7035,
+      "sha256": "adae20702fbab0758c52f089fdeb78885cc5f5f579d5e624e33364e56ceb68dc",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
       "path": "tools/verify_candidate_curriculum_debug.py",
       "version": "common",
       "category": "tools",
       "title": "candidate curriculum debug",
       "bytes": 4713,
       "sha256": "3fcf33b215c454adf8360a20532267aaae125426ac5e0589f42d5b62b61a3de4",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/verify_comparison_cache_debug.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "comparison cache debug",
+      "bytes": 16830,
+      "sha256": "95d974177112fc0eb54328075fa114c205536673b57d9371ec771d442915e4f4",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/verify_comparison_input_debug.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "comparison input debug",
+      "bytes": 21640,
+      "sha256": "b35cc1cb123699dfc8669be4767a0492f67033a31b93dd1b1ad68adf7db1de27",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/verify_comparison_progress_debug.py",
+      "version": "v1.9",
+      "category": "tools",
+      "title": "comparison progress debug",
+      "bytes": 4500,
+      "sha256": "a93310d0d28126670b16e4ea4e8419967ece9250438536c3af3a8f609fc66fed",
       "in_git": true,
       "working_tree_modified": false
     },
@@ -11260,6 +12080,16 @@
       "title": "v17 empty recipient cuda",
       "bytes": 8385,
       "sha256": "bccf0bf96435fd779ffb7f06ea88c6aff70909d2ae03606e41f2c72b92025fe8",
+      "in_git": true,
+      "working_tree_modified": false
+    },
+    {
+      "path": "tools/verify_v18_memory_debug.py",
+      "version": "v1.8",
+      "category": "tools",
+      "title": "v18 memory debug",
+      "bytes": 4271,
+      "sha256": "a54a8cd04652d6d9c43f1440e2250c87540513708222d56507c771e0e4adcccc",
       "in_git": true,
       "working_tree_modified": false
     },
