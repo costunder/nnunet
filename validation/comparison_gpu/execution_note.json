@@ -1,0 +1,25 @@
+{
+  "cuda_tested_runtime_sha256": "76d32c94856f6c77668c54445e9b6270b092e875140ed158cd7c55b40025f4d5",
+  "released_runtime_sha256": "f612dbde98afb821a06fb32810a731ed26b2389010966120d6c4d764d874e360",
+  "cuda_tested_progress_sha256": "fe94fa43b2bc48c84715f2cc630da513451af16e8cd15eabffb3fc106009536a",
+  "released_progress_sha256": "9030ef7056076a7f7fda47258deafa086fb32f846646612814623e4c58278cb5",
+  "post_CUDA_changes": [
+    "One progress update now passes calibration time; ETA subtracts this occasional cost before extrapolating. Actual wall-time receipts unchanged. Final 166 unit tests cover this change.",
+    "Verifier label corrected: calibrator compares per-tensor and global gradient vectors; actual optimizer diagnostics additionally compare parameter gradient norms. Raw report label remains as originally emitted."
+  ],
+  "exact_runtime_undo_matches_tested_SHA": true,
+  "transient_edit_note": "During the final probe an ETA-only disk edit was briefly made then reverted byte-for-byte. The running process had already imported runtime/progress code. End-of-probe helper hash checks passed. After probe completion the ETA edit was reapplied as recorded here.",
+  "tested_harness_sha256": "130723ca061f71cf73556c6bece4566c0edae8c097e9150665839757f5b02416",
+  "released_harness_sha256": "913822cbef3adae66353f8a5b04f22746cc93756c89d5a5d77b541e0e226e98c",
+  "numerical_scope": "No bitwise optimizer equivalence claimed. CUDA reductions differ on original repeated runs. Calibration uses observed original repeat noise plus declared AMP tolerance, checks per-tensor/global gradient vectors and exact RNG consumption. Real scaled Adam updates checked separately.",
+  "initial_debug_failures": [
+    "debug-20261008: original-policy repeat failed pointwise gradient comparison before optimizer changes.",
+    "debug-20261008-r2: original repeated gradient global relative L2 difference 0.00963537; policy changed to record repeat noise and check vectors without arbitrary noise multiplier."
+  ],
+  "unverified": [
+    "A6000 largest graph and whole epoch performance",
+    "four arms concurrently on NFS",
+    "production 40 epochs",
+    "recommendation quality"
+  ]
+}

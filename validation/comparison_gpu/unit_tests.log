@@ -1,0 +1,4 @@
+Command: .venv/Scripts/python.exe -B -m unittest tests.test_comparison_arm_launch tests.test_comparison_cached_resume tests.test_comparison_execution tests.test_comparison_inputs tests.test_comparison_runtime_report tests.test_comparison_source_cache tests.test_comparison_upper_cache tests.test_comparison_views tests.test_host_memory tests.test_comparison_sample_cache tests.test_comparison_prefetch tests.test_comparison_progress_debug tests.test_comparison_gpu_policy tests.test_comparison_gpu_runtime -q
+Ran 166 tests in 52.260s
+OK
+Exit code: 0

@@ -8,6 +8,32 @@ from tools.report_comparison_runtime import (build_report, parse_jsonl, summariz
 
 
 class ComparisonRuntimeReportUnitTests(unittest.TestCase):
+    def test_gpu_policy_measurement_is_not_reported_as_epoch_speedup(self):
+        report = build_report({}, [], [], [], [])
+        report['warnings'] = []
+        report['gpu_execution'] = dict(available=True, measured_batches=1,
+            latest_calibration=dict(calibration=dict(baseline_seconds=4., selected_seconds=2.,
+                measured_speedup=2., baseline_peak_cuda_bytes=2 * 2**30,
+                selected_peak_cuda_bytes=6 * 2**30)), original_execution_retries=1,
+            latest_update_policy=dict(settings=dict(dense_batch_size=16,
+                checkpoint_dense_encoder=False, checkpoint_local_blocks=False),
+                reason='measured_current_actual_batch'))
+        rendered = render_text(report)
+        self.assertIn('forward/backward 4.00->2.00s (2.00x)', rendered)
+        self.assertIn('not whole-epoch speedup', rendered)
+        self.assertIn('Latest actual update execution', rendered)
+        self.assertIn('Same-input original-execution OOM retries: 1', rendered)
+
+    def test_update_log_keeps_actual_gpu_policy_and_setup_timing(self):
+        row = dict(status='OPTIMIZER_UPDATED', update=3, epoch=1,
+            gpu_execution=dict(reason='measured_current_actual_batch', settings=dict(dense_batch_size=16)),
+            execution_calibration_seconds=90., other_unneeded_large_field=['UNIT'])
+        rows, warnings = parse_jsonl(io.StringIO(json.dumps(row)+'\n'), kind='update')
+        self.assertFalse(warnings)
+        self.assertEqual(rows[0]['gpu_execution'], row['gpu_execution'])
+        self.assertEqual(rows[0]['execution_calibration_seconds'], 90.)
+        self.assertNotIn('other_unneeded_large_field', rows[0])
+
     def test_inclusive_details_and_compact_cache_are_reported_without_double_counting(self):
         row = dict(arm='native_fixed', training=True, full129=False, view_epoch=2,
             source_indices=[3], status='complete', input_seconds=10.,

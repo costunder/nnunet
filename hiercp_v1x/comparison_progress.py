@@ -73,7 +73,8 @@ class PhaseProgress:
             epoch=epoch, epochs=epochs, stage='load', status='RUNNING',
             completed_sources=initial, total_sources=total, physical_batch=physical_batch,
             metrics=dict(metrics or {}), metrics_scope='partial patient macro of observed sources',
-            timings=dict(loader_seconds=0., loader_wait_seconds=0., forward_seconds=0., checkpoint_seconds=0.),
+            timings=dict(loader_seconds=0., loader_wait_seconds=0., forward_seconds=0., checkpoint_seconds=0.,
+                         execution_calibration_seconds=0.),
             timing_scope='current phase segment in this invocation; excludes prior resumed segments')
 
     @staticmethod
@@ -147,7 +148,10 @@ class PhaseProgress:
         completed = self.data['completed_sources'] - self.initial
         if completed <= 0:
             return None
-        return (now - self.started) * (self.data['total_sources'] - self.data['completed_sources']) / completed
+        # Occasional GPU policy probes stay in actual wall-time receipts; they
+        # are not a cost paid again on every remaining optimizer update.
+        elapsed = max(0., now - self.started - self.data['timings'].get('execution_calibration_seconds', 0.))
+        return elapsed * (self.data['total_sources'] - self.data['completed_sources']) / completed
 
     def _publish(self, *, force=False):
         with self.lock:

@@ -71,6 +71,26 @@ CPU 입력 생성의 1,497.85초 중 source 준비가 405.49초, 기존 미분�
 
 최종 통합 단위 검사 143개와 Python 3.10 구문 검사가 통과했다. 실제 CUDA에서 원본 10,434,532 parameter 모델로 physical source batch 2·worker 4·optimizer update 2번·full129 validation 3번을 실행했다. 1,085개 parameter tensor의 gradient가 모두 유한했고, 완료 checkpoint의 직접 재개와 실제 controller 재개에서 추가 update는 각각 0개였다. 원본 실험·cache·17개 결속 helper를 보존했다. 로컬 RTX 5070 Ti의 기록된 training peak는 CUDA 2.199 GiB, RSS 15.375 GiB였다. 이는 DEBUG 실행 검증이며 production 40 epoch 학습, 전체 cohort 평가, A6000 서버 처리량 및 추천 품질 검증은 수행하지 않았다.
 
+## GPU 실행 설정의 실제 측정
+
+CPU 입력 재사용에 더해 기존 모델의 `dense_batch_size`, `checkpoint_dense_encoder`, `checkpoint_local_blocks` 세 실행 속성을 측정한다. source physical batch와 8개 학습 후보, 129개 검증 후보, 모델 구성, loss, Adam, epoch와 cursor는 유지한다. CNN patch chunk를 늘리는 것은 optimizer batch를 늘리는 것이 아니다.
+
+같은 실제 batch에서 원래 설정과 activation 보관 조합을 비교하고, 통과한 조합의 CNN chunk를 실제 patch 개수까지 늘려 측정한다. warmup을 제외한 forward/backward 시간, peak VRAM, 점수·loss·전체 gradient 차이를 기록한다. optimizer step은 수행하지 않으며 모델·gradient·RNG·buffer·모드를 복구한 후 실제 학습을 진행한다. 측정 중에는 GPU trial 진행이 표시된다.
+
+선택 조건에는 기존 CUDA 예산, 가용 메모리, 여유 공간과 optimizer 임시 메모리가 포함된다. 작은 batch 측정을 전체 cohort의 최대 메모리 보장으로 쓰지 않는다. 측정 범위를 넘는 입력은 원래 실행 설정을 사용하고, workload가 크게 증가하면 해당 실제 batch를 다시 측정한다. 최적화 설정에서 forward/backward OOM이 발생하면 optimizer 갱신 전에 참조를 정리하고 같은 입력·RNG로 원래 설정을 재시도한다. 후보나 graph를 버리지 않는다. 원래 설정도 실패하면 오류를 보존한다.
+
+각 arm의 `gpu_execution.jsonl`에는 측정과 선택 근거가, `update_timing.jsonl`에는 실제 적용한 설정과 교정 시간이 남는다. `report_comparison_runtime.py`는 최근 설정과 forward/backward 측정값을 함께 표시한다. 교정 시간은 step 시간에 포함되며, 교정의 가속 배수는 epoch 전체 가속 배수가 아니다. validation은 기존 chunk와 실행 설정을 유지한다. 완료 checkpoint를 재개하면 GPU 교정과 추가 update를 하지 않는다.
+
+실제 로컬 CUDA 검증과 서버 A6000 측정은 구분한다. 서버의 새 epoch 시간은 사용자가 해당 Git 실행 경로로 재개한 후의 기록으로 확인한다.
+
+최종 실제 CT/CUDA DEBUG 검증은 `validation/comparison_gpu/verification.json`과 원본 `report.json`에 기록했다. 전체 모델 10,434,532 parameters, physical source batch 2, workers 4, train8/two views와 val129를 유지했다. RTX 5070 Ti에서 같은 checkpoint를 각각 복제한 실제 AMP/GradScaler/AdamW update 중앙값은 **9.549초 → 6.597초**, peak CUDA는 **2.200 → 7.079 GiB**였다. activation을 보관해 backward 재계산을 줄인 결과이며 약 1.45배는 GPU 계산 처리량이다. CPU 준비·checkpoint·epoch 전체의 가속 배수가 아니다. CNN chunk 4/8/16도 측정했으며 이 checkpoint에서는 chunk 4가 가장 빨랐다. 서버에 이 값을 고정하지 않고 서버의 실제 batch와 저장된 CUDA 예산으로 다시 측정한다.
+
+교정 자체는 139.625초였고, forward/backward 130.336초와 상태 보존·검사 등 9.289초를 구분했다. 처음 요청한 batch나 크게 증가한 workload에서 측정 시간이 들 수 있다. 이 시간은 실제 wall-time에 남기지만 매 update마다 반복되는 비용처럼 ETA에 곱하지 않는다. 점수와 loss뿐 아니라 1,085개 gradient tensor와 전체 gradient vector 및 RNG 소비를 검사한다. 원래 CUDA 실행도 반복 간 작은 수치 차이가 있어 원본 반복 오차와 명시한 AMP 허용값을 함께 기록하며 bitwise 동일 학습 궤적을 주장하지 않는다. 교정은 unscaled loss backward이며 실제 scaled AdamW update 네 번을 별도로 확인했다.
+
+실제 실행 경로에서 2회 update·3회 full129 validation, 1회 update 후 pause/resume와 완료 재개의 추가 update 0회를 확인했다. 최적화 forward에 OOM을 주입한 DEBUG 검사에서는 같은 batch·모델·RNG로 원래 실행 설정을 재시도하고 checkpoint update/attempt가 각각 1임을 확인했다. 이는 실제 하드웨어 OOM 측정이 아니라 오류 복구 검사다. 원본 설정·source·cache inventory·결속 helper를 보존했다. 최종 166개 단위 검사와 변경 Python 13개 파일의 Python 3.10 구문 검사를 통과했다. CUDA 실행 후 ETA 표시와 verifier 설명 문구만 수정한 내역은 `execution_note.json`에 검증 당시와 배포 코드 SHA를 나눠 기록했다.
+
+A6000 최대 graph, NFS에서 네 군 동시 실행, production 40 epoch 처리량과 추천 품질은 아직 측정하지 않았다. 기존 CPU 입력 재사용 수정도 함께 적용되지만, 회전 후보의 최초 조립과 view sampling까지 없어진 것은 아니다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

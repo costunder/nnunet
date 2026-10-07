@@ -248,7 +248,8 @@ def run(a):
                     'hiercp_v1x/comparison_progress.py','hiercp_v1x/comparison_inputs.py',
                     'hiercp_v1x/comparison_views.py','hiercp_v1x/comparison_data_timing.py',
                     'hiercp_v1x/comparison_preparation.py','hiercp_v1x/comparison_source_cache.py',
-                    'hiercp_v1x/comparison_upper_cache.py','hiercp_v1x/comparison_sample_cache.py')}))
+                    'hiercp_v1x/comparison_upper_cache.py','hiercp_v1x/comparison_sample_cache.py',
+                    'hiercp_v1x/comparison_gpu_policy.py','hiercp_v1x/comparison_gpu_runtime.py')}))
     def execution_provider(provider):
         return prepared_provider(provider, root/'input_timing.jsonl')
     continuation_path = root/'continuation.json'

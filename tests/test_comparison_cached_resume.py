@@ -47,7 +47,8 @@ def unit_fixture(base, *, family="u_bridge", debug=False, external_data=False):
                  "hiercp_v1x/comparison_inputs.py", "hiercp_v1x/comparison_views.py",
                  "hiercp_v1x/comparison_data_timing.py", "hiercp_v1x/comparison_preparation.py",
                  "hiercp_v1x/comparison_source_cache.py", "hiercp_v1x/comparison_upper_cache.py",
-                 "hiercp_v1x/comparison_sample_cache.py"):
+                 "hiercp_v1x/comparison_sample_cache.py", "hiercp_v1x/comparison_gpu_policy.py",
+                 "hiercp_v1x/comparison_gpu_runtime.py"):
         path = repository / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("UNIT additive execution provenance fixture: " + name, encoding="utf8")

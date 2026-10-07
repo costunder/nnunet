@@ -1,0 +1,109 @@
+{
+  "format": "comparison_gpu_execution_verification_v1",
+  "scope": "Actual CT/CUDA DEBUG, not A6000/server/full-training/quality evidence",
+  "debug": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_cohort_evaluation": false,
+  "quality_verified": false,
+  "raw_report_sha256": "2bb4d028a2125f6629b1f839787f92e808ff2bda5ea972999894c6eb261f773f",
+  "released_code_sha256": {
+    "hiercp_v1x/comparison_gpu_policy.py": "8d1522002530966c006928e66865e4820ae43ee88bb8a150610613c649dffd74",
+    "hiercp_v1x/comparison_gpu_runtime.py": "43901348d1cdfcc0a259120508be1d54b79f70a53b3b4f737d3deebda6922b34",
+    "hiercp_v1x/comparison_runtime.py": "f612dbde98afb821a06fb32810a731ed26b2389010966120d6c4d764d874e360",
+    "hiercp_v1x/comparison_execution.py": "5c5c0557818d6fd2737b6d3f02814cdf756af1cc1e21e567abd61cc9df86c754",
+    "hiercp_v1x/comparison_progress.py": "9030ef7056076a7f7fda47258deafa086fb32f846646612814623e4c58278cb5",
+    "tools/resume_comparison_cached.py": "351b6b2da86ed3204cf642c1622e6b414d43422572fcb9b1588278afb174e1dd",
+    "tools/report_comparison_runtime.py": "566a4669fb489022227fc4fd9dc7a7a87ec51de3c55b320ccce012b2fa69fed2",
+    "tools/verify_comparison_gpu_debug.py": "913822cbef3adae66353f8a5b04f22746cc93756c89d5a5d77b541e0e226e98c",
+    "tests/test_comparison_cached_resume.py": "dbc5d7ba149b1319af17e2f4173923a28504684aa04c60d6f12e7c56a8e97bf6",
+    "tests/test_comparison_runtime_report.py": "690e14bb0596219699d28147aeea4dfc26868a4528a3d505e6d8560573ee6888",
+    "tests/test_comparison_progress_debug.py": "702aeae457d2b042da4781e7cb7a613f1b498dc9666cdc7dab6eb90f725da545",
+    "tests/test_comparison_gpu_policy.py": "f5d38443d67bb1248ca4e8868c72fecd0b83b161facd4f08d25cee293b9b468a",
+    "tests/test_comparison_gpu_runtime.py": "6d97071e26e6a7cb7b5760b944f791d19d11ac5933c54371741dc654dee49277"
+  },
+  "tests": {
+    "unit_tests": 166,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 52.26,
+    "python_310_AST_files": 13
+  },
+  "gpu": [
+    {
+      "logical_index": 0,
+      "name": "NVIDIA GeForce RTX 5070 Ti",
+      "total_vram_bytes": 17094344704,
+      "multiprocessors": 70,
+      "compute_capability": "12.0",
+      "mig_instance": false
+    }
+  ],
+  "compute": {
+    "baseline_median_seconds": 9.54949345588684,
+    "selected_median_seconds": 6.596625638008118,
+    "throughput_ratio": 1.447633074835266,
+    "reduction_percent": 30.921721989959682,
+    "baseline_peak_bytes": 2362606080,
+    "selected_peak_bytes": 7601205248,
+    "scope": "forward/backward/clip/AdamW; excludes CPU input and checkpoint; not epoch speedup"
+  },
+  "selected_policy": {
+    "dense_batch_size": 4,
+    "checkpoint_dense_encoder": false,
+    "checkpoint_local_blocks": false
+  },
+  "original_policy": {
+    "dense_batch_size": 4,
+    "checkpoint_dense_encoder": true,
+    "checkpoint_local_blocks": true
+  },
+  "calibration": {
+    "exact_state_restore": true,
+    "wall_seconds": 139.6250594999874,
+    "forward_backward_seconds": 130.33557090035174,
+    "other_wall_seconds": 9.28948859963566,
+    "optimizer_updates": 0,
+    "backward_loss_scale": 1.0
+  },
+  "actual_scaled_Adam_updates": 4,
+  "actual_update_rng_equal": true,
+  "full_model_parameters": 10434532,
+  "gradient_parameter_tensors": 1085,
+  "physical_source_batch": 2,
+  "workers": 4,
+  "train_candidates": 8,
+  "validation_candidates": 129,
+  "runtime": {
+    "optimizer_updates": 2,
+    "validation129_passes": 3,
+    "pause_then_resume": true,
+    "completed_resume_additional_updates": 0,
+    "injected_optimized_oom": {
+      "injected": true,
+      "retry_verified": true,
+      "scope": "DEBUG injected CUDA OOM; not a measured hardware OOM",
+      "optimized_policy": {
+        "dense_batch_size": 8,
+        "checkpoint_dense_encoder": true,
+        "checkpoint_local_blocks": false
+      },
+      "retry_checks": {
+        "same_complete_batch": true,
+        "rng_restored": true,
+        "model_unchanged": true,
+        "gradients_cleared": true,
+        "original_execution_restored": true
+      },
+      "pause_checkpoint_updates": 1,
+      "pause_checkpoint_attempts": 1
+    }
+  },
+  "preserved": {
+    "original_bound_config_unchanged": true,
+    "source_reference_bytes_preserved": true,
+    "existing_cache_inventory_size_mtime_preserved": true,
+    "frozen_helpers_preserved": true
+  }
+}

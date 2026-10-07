@@ -21,7 +21,8 @@ UPDATE_KEYS = ("status", "epoch", "update", "attempt", "sample_indices", "physic
                "candidate_rows", "loader_wait_seconds", "loader_seconds", "batch_wall_seconds", "step_seconds", "checkpoint_seconds",
                "transfer_seconds", "forward_seconds", "backward_seconds", "check_clip_optimizer_seconds",
                "retry_seconds", "peak_cuda_bytes", "peak_reserved_bytes", "rss_bytes", "cpu_percent",
-               "loss", "ranking", "consistency", "margin", "train7_pair_win")
+               "loss", "ranking", "consistency", "margin", "train7_pair_win",
+               "gpu_execution", "execution_calibration_seconds")
 VALIDATION_KEYS = ("epoch", "source_indices", "source_problems", "candidate_rows", "loader_seconds",
                    "loader_wait_seconds", "batch_wall_seconds", "full_joint_forward_seconds", "checkpoint_seconds", "peak_cuda_bytes", "rss_bytes")
 CACHE_KEYS = ("stage", "kind", "helper_kind", "status", "case_id", "wall_seconds", "bytes",
@@ -157,7 +158,7 @@ def summarize_training(rows, total_sources):
     retries = [row for row in rows if row.get("status") == "AMP_OVERFLOW_SKIPPED_RETRY_SAME_INPUT"]
     timing = {key: _duration(successful, key) for key in
               ("loader_wait_seconds", "loader_seconds", "batch_wall_seconds", "step_seconds", "checkpoint_seconds", "transfer_seconds",
-               "forward_seconds", "backward_seconds", "check_clip_optimizer_seconds")}
+               "forward_seconds", "backward_seconds", "check_clip_optimizer_seconds", "execution_calibration_seconds")}
     observed = _sum_complete(_complete_seconds(timing["loader_wait_seconds"]), _complete_seconds(timing["step_seconds"]))
     for key, value in timing.items():
         value["percent_of_observed_loader_plus_step"] = _percent(value["seconds"], observed) if key != "loader_seconds" else None
@@ -486,6 +487,15 @@ def inspect_arm(arm_directory, *, cache_log=None, input_log=None, epoch=None):
     result = build_report(contract, updates, validations, curves, cache_rows, progress=progress,
                           final_report=final_report, epoch=epoch, latest_validation=latest_validation,
                           input_rows=input_rows, cache_available=cache_log is not None, input_available=input_log is not None)
+    gpu_log = directory / 'gpu_execution.jsonl'
+    gpu_rows = _read_jsonl(gpu_log, 'GPU execution', warnings) if gpu_log.is_file() else []
+    calibrations = [row for row in gpu_rows if row.get('event') == 'calibration_completed']
+    policies = [row for row in updates if row.get('gpu_execution')]
+    result['gpu_execution'] = dict(available=bool(gpu_rows),
+        measured_batches=len(calibrations), latest_calibration=calibrations[-1] if calibrations else None,
+        latest_update_policy=policies[-1]['gpu_execution'] if policies else None,
+        original_execution_retries=sum(row.get('event') == 'optimized_execution_OOM_original_retry' for row in gpu_rows),
+        scope='measured activation/chunk execution; original source batch and optimizer schedule preserved')
     result.update(arm_directory=str(directory), cache_log=str(cache_log) if cache_log else None,
                   input_log=str(input_log) if input_log else None, warnings=warnings,
                   read_only=True, checkpoint_loaded=False)
@@ -520,12 +530,29 @@ def render_text(report):
     tt, vt = training['timings'], validation['timings']
     lines.append(f"Training observed loader+step: {_fmt(training['observed_loader_plus_step_seconds'])}s | wait {_fmt(tt['loader_wait_seconds']['seconds'])}s ({_fmt(tt['loader_wait_seconds']['percent_of_observed_loader_plus_step'])}%) | step {_fmt(tt['step_seconds']['seconds'])}s | checkpoint inside step {_fmt(tt['checkpoint_seconds']['seconds'])}s")
     lines.append(f"Training CUDA substage times: transfer {_fmt(tt['transfer_seconds']['seconds'])}s forward {_fmt(tt['forward_seconds']['seconds'])}s backward {_fmt(tt['backward_seconds']['seconds'])}s optimizer/check {_fmt(tt['check_clip_optimizer_seconds']['seconds'])}s | observed sources/s {_fmt(training['observed_sources_per_second'], 4)}")
+    if tt['execution_calibration_seconds']['seconds'] is not None:
+        lines.append(f"GPU execution setup inside step time: {_fmt(tt['execution_calibration_seconds']['seconds'])}s (occasional no-update probes; not additional optimizer updates)")
     lines.append(f"Training latest logged loss {_fmt(training['latest_loss'], 6)} | overflow retry records {training['overflow_retry_records']} (retry time is nested in a later successful step)")
     lines.append(f"Validation blocking load+forward: {_fmt(validation['observed_blocking_load_plus_forward_seconds'])}s | blocking load {_fmt(vt['blocking_loader_seconds']['seconds'])}s ({_fmt(vt['blocking_loader_seconds']['percent_of_observed_blocking_load_plus_forward'])}%) | forward {_fmt(vt['full_joint_forward_seconds']['seconds'])}s | logged batch wall {_fmt(validation['observed_batch_wall_seconds'])}s | completed phase active total {_fmt(validation['reported_completed_validation_active_seconds'])}s")
     if validation['prefetch_batch_records']:
         lines.append(f"Validation loader construction {_fmt(vt['loader_seconds']['seconds'])}s overlaps prefetch; {validation['prefetch_batch_records']} new prefetch rows and {validation['legacy_synchronous_batch_records']} legacy synchronous rows")
     to_gib = lambda value: value / 2**30 if value is not None else None
     lines.append(f"Logged peaks: train CUDA {_fmt(to_gib(training['peak_cuda_bytes']))} GiB RSS {_fmt(to_gib(training['peak_rss_bytes']))} GiB process CPU {_fmt(training['max_process_cpu_percent'])}% | validation CUDA {_fmt(to_gib(validation['peak_cuda_bytes']))} GiB RSS {_fmt(to_gib(validation['peak_rss_bytes']))} GiB")
+    gpu = report.get('gpu_execution', {})
+    if gpu.get('available'):
+        latest = gpu.get('latest_calibration')
+        if latest:
+            measured = latest['calibration']
+            lines.append(f"GPU execution calibration ({gpu['measured_batches']} actual batches): "
+                         f"forward/backward {_fmt(measured['baseline_seconds'])}->{_fmt(measured['selected_seconds'])}s "
+                         f"({_fmt(measured['measured_speedup'])}x); "
+                         f"peak {_fmt(to_gib(measured['baseline_peak_cuda_bytes']))}->{_fmt(to_gib(measured['selected_peak_cuda_bytes']))} GiB; "
+                         f"not whole-epoch speedup")
+        if gpu.get('latest_update_policy'):
+            applied = gpu['latest_update_policy']
+            lines.append('Latest actual update execution: ' + json.dumps(applied['settings']) +
+                         ' | ' + applied['reason'])
+        lines.append(f"Same-input original-execution OOM retries: {gpu['original_execution_retries']} (no model/candidate/batch reduction)")
     scores = report['latest_completed_validation']
     if scores:
         lines.append(f"Completed full-validation scores epoch {scores.get('epoch')} ({scores.get('metric_weighting', 'weighting unknown')}): " + " ".join(f"{k}={_fmt(v, 6)}" for k, v in scores.get('metrics', {}).items()))

@@ -158,6 +158,18 @@ class MetricsUNIT(unittest.TestCase):
 
 
 class ProgressUNIT(unittest.TestCase):
+    def test_one_time_gpu_setup_is_not_multiplied_into_remaining_eta(self):
+        # No files or progress thread: exercise only the live ETA formula.
+        progress = object.__new__(PhaseProgress)
+        progress.initial = 0
+        progress.started = 100.
+        progress.data = dict(completed_sources=2, total_sources=10,
+                             timings=dict(execution_calibration_seconds=120.))
+        self.assertEqual(progress._eta(230.), 40.)
+        self.assertEqual(progress.data['timings']['execution_calibration_seconds'], 120.)
+        progress.data['completed_sources'] = 0
+        self.assertIsNone(progress._eta(230.))
+
     def test_visible_training_count_means_all_eight_candidates(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as directory:
             stream = io.StringIO()

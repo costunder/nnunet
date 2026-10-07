@@ -1,6 +1,6 @@
 """Opt-in execution overlay for the byte-sealed comparison training engine.
 
-Only input scheduling, progress and execution timing differ. The binder supplies
+Input scheduling, progress and measured activation execution differ. The binder supplies
 frozen engine helpers and the existing arm-specific objective/checkpoint policy.
 """
 from __future__ import annotations
@@ -26,6 +26,7 @@ from .u_bridge_training import (
     _probe_before, _probe_after, record_comparisons,
 )
 from .comparison_progress import PhaseProgress, RunningPatientMetrics
+from .comparison_gpu_runtime import ComparisonGpuRuntime
 
 
 class closing(_closing):
@@ -243,7 +244,8 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
 
 
 EXECUTION_HELPERS = dict(_prefetch=_prefetch, PhaseProgress=PhaseProgress,
-                         RunningPatientMetrics=RunningPatientMetrics, closing=closing)
+                         RunningPatientMetrics=RunningPatientMetrics, closing=closing,
+                         ComparisonGpuRuntime=ComparisonGpuRuntime)
 
 
 def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epochs, identity, budget, debug=False):
@@ -328,6 +330,13 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                                   scheduler=digest(scheduler.state_dict()), rng=digest(capture_rng()))
     torch.set_num_threads(workers)
     process = psutil.Process(); process.cpu_percent()
+    # Runtime attributes never enter the sealed model/optimizer identity. Probe
+    # the actual resumed weights and the facade's actual objective, not an
+    # imported pairwise loss that would override native_listwise.
+    gpu_execution = ComparisonGpuRuntime(net,
+        lambda result: pair_objective(result.scores, result.consistency)[0],
+        amp=training['amp'], cuda_limit_bytes=budget.cuda_bytes,
+        output=root, notify=PhaseProgress.write)
     receipt_path = root / 'execution_contract.json'
     if not receipt_path.exists():
         _write_new(receipt_path, dict(format=FORMAT, arm=arm, debug=debug, epochs=epochs,
@@ -361,6 +370,7 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                 or (pause_update is not None and state['updates'] >= pause_update))
     def evaluate_phase(flag):
         phase = state['phase']; label_epoch = 0 if phase == 'initial_validation' else state['epoch']
+        gpu_execution.restore_original()
         net.eval()
         remaining = [val_ids[i:i + physical_batch]
                      for i in range(state['validation_position'], len(val_ids), physical_batch)]
@@ -489,18 +499,53 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                                 raise ValueError('Actual original8/two-view training batch required')
                             if tuple(getattr(batch, 'bridge_indices', ())) != tuple(ids): raise ValueError('Batch source binding changed')
                             workload = batch_workload(batch); _check_budget(budget)
+                            optimizer.zero_grad(set_to_none=True)
+                            # This is the same complete batch used by the update.
+                            # Calibration does not step Adam, advance the cursor,
+                            # or consume the training RNG sequence.
+                            transfer_start = time.perf_counter()
+                            batch.to(device, non_blocking=True)
+                            torch.cuda.synchronize()
+                            input_transfer_seconds = time.perf_counter() - transfer_start
+                            bar.update(stage='GPU preparation/calibration')
+                            calibration_start = time.perf_counter()
+                            gpu_execution.ensure(batch, workload)
+                            execution_calibration_seconds = time.perf_counter() - calibration_start
+                            bar.update(stage='forward', timings=dict(
+                                execution_calibration_seconds=execution_calibration_seconds))
                             while True:
                                 attempt_start = time.perf_counter()
                                 optimizer.zero_grad(set_to_none=True); state['attempts'] += 1
                                 torch.cuda.reset_peak_memory_stats(); events = [torch.cuda.Event(enable_timing=True) for _ in range(5)]
-                                events[0].record(); batch.to(device, non_blocking=True); events[1].record()
-                                with torch.autocast('cuda', enabled=training['amp']):
-                                    result = net(batch)
-                                    if len(result.scores) != len(ids): raise ValueError('Training forward lost source problem mapping')
-                                    loss, terms = pair_objective(result.scores, result.consistency)
-                                events[2].record()
-                                if not bool(torch.isfinite(loss)): raise FloatingPointError('Nonfinite actual U-bridge loss')
-                                scaler.scale(loss).backward(); scaler.unscale_(optimizer)
+                                events[0].record(); events[1].record()
+                                attempt_rng = capture_rng()
+                                result = loss = terms = None
+                                try:
+                                    with torch.autocast('cuda', enabled=training['amp']):
+                                        result = net(batch)
+                                        if len(result.scores) != len(ids): raise ValueError('Training forward lost source problem mapping')
+                                        loss, terms = pair_objective(result.scores, result.consistency)
+                                    events[2].record()
+                                    if not bool(torch.isfinite(loss)): raise FloatingPointError('Nonfinite actual U-bridge loss')
+                                    scaler.scale(loss).backward()
+                                except torch.cuda.OutOfMemoryError as error:
+                                    # No optimizer/scaler step or unscale has occurred.
+                                    # Drop failed autograd references before retrying
+                                    # the exact same input/RNG with original settings.
+                                    result = loss = terms = None
+                                    optimizer.zero_grad(set_to_none=True)
+                                    restore_rng(attempt_rng)
+                                    if not gpu_execution.reject_optimized_oom(workload, error):
+                                        raise
+                                    import traceback
+                                    traceback.clear_frames(error.__traceback__)
+                                    error.__traceback__ = None
+                                    import gc
+                                    gc.collect()
+                                    torch.cuda.empty_cache()
+                                    state['attempts'] -= 1
+                                    continue
+                                scaler.unscale_(optimizer)
                                 events[3].record(); gradients = gradient_receipt(net, groups)
                                 if gradients['finite']: break
                                 scale_before, scale_after = retry_amp_overflow(scaler, optimizer)
@@ -546,7 +591,9 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                                 margin=sum(r['margin'] for r in rows) / len(rows), train7_pair_win=sum(r['pair_win'] for r in rows) / len(rows),
                                 loader_seconds=input_timing['loader_seconds'], loader_wait_seconds=loading_seconds,
                                 batch_wall_seconds=loading_seconds + elapsed,
-                                samples_per_second_including_wait=len(ids) / (loading_seconds + elapsed), transfer_seconds=events[0].elapsed_time(events[1]) / 1000,
+                                samples_per_second_including_wait=len(ids) / (loading_seconds + elapsed), transfer_seconds=input_transfer_seconds,
+                                execution_calibration_seconds=execution_calibration_seconds,
+                                gpu_execution=gpu_execution.current_receipt(),
                                 forward_seconds=events[1].elapsed_time(events[2]) / 1000,
                                 backward_seconds=events[2].elapsed_time(events[3]) / 1000,
                                 check_clip_optimizer_seconds=events[3].elapsed_time(events[4]) / 1000,
@@ -569,6 +616,8 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                 updates=state['updates'], error=f'{type(error).__name__}: {error}',
                 recovery='Latest owned successful/AMP-skip checkpoint preserved; exact resume retries unchanged cursor'))
             raise
+        finally:
+            gpu_execution.restore_original()
         if state['phase'] == 'complete': status = 'DEBUG_COMPLETE' if debug else 'COMPLETE'
         checkpoint(status)
     report = dict(format=FORMAT, arm=arm, status=status, debug=debug, actual_CUDA=True,
