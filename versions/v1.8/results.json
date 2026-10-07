@@ -40,5 +40,24 @@
     "Native arm changes comparison distribution and per-position exposure, not only candidate count",
     "Server full-cohort calibration, 40-epoch training and Linux mmap RSS behavior remain unverified"
   ],
-  "production_result": null
+  "production_result": null,
+  "server_failure_reported_20261007": {
+    "stage": "full129 initial validation",
+    "error": "Declared process RSS budget exceeded",
+    "rss_gib": 192,
+    "resident_gib": 128,
+    "independent_remote_inspection": false
+  },
+  "independent_memory_execution": {
+    "implementation_complete": true,
+    "unit_tests_passed": 40,
+    "actual_CT_CUDA_DEBUG": "2 updates,3 full129 joint evaluations,1085/1085 gradients,5 changed module groups",
+    "completed_resume_extra_updates": 0,
+    "original_results_preserved": true,
+    "neural_helpers_unchanged": 12,
+    "separate_selected_native_output_cache_locks": true,
+    "server192GiB_retry_verified": false,
+    "Linux_madvise_malloc_trim_tested": false,
+    "evidence": "../../validation/v18_memory/execution.json"
+  }
 }

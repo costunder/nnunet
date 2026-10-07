@@ -27,7 +27,15 @@ P의 source coverage = 1, source patch ring 통계, 자기 source를 제외한 �
 
 실제 구현과 파일별 역할은 [code.md](code.md), 고정 조건은 [config.md](config.md), 검증 상태는 [results.json](results.json)에 기록한다.
 
-고정된 실행 코드를 Git으로 가져온 서버 checkout에서 `CP_GPU=3 CP_ARM=both bash tools/server_v18_u_bridge.sh`를 사용한다. 먼저 selected 40 epochs, 이어서 native 40 epochs를 실행한다. 같은 명령을 재실행하면 각 군의 저장된 정확한 cursor·optimizer·scaler·RNG에서 재개한다. 결과는 `experiments/v18_u_bridge_m10_seed42/{selected,native}`로 구분된다. 단일 GPU 비교라 shared pipeline lock으로 중복 실행을 차단한다. 완료 군은 업데이트를 다시 수행하지 않는다.
+처음 구현한 `server_v18_u_bridge.sh`는 공통 root의 잠금 아래 selected 다음 native를 실행한다. 이 공통 root에서 두 프로세스를 동시에 실행하면 안 된다. 기존 결과는 그대로 보존한다.
+
+2026-10-07의 별도 실행은 `CP_GPU=3 CP_ARM=selected bash tools/server_v18_independent.sh`, 다른 터미널에서는 `CP_GPU=5 CP_ARM=native bash tools/server_v18_independent.sh`를 사용한다. 출력 root는 각각 `experiments/v18_selected_m10_seed42_memory`, `experiments/v18_native_m10_seed42_memory`다. 각 root의 `selected/` 또는 `native/`에 checkpoint를 저장하고 `data/`·pipeline/data/arm 잠금도 분리한다. GPU 번호는 실행할 서버의 물리 번호로 바꾼다. 동일 명령을 재실행하면 해당 군의 저장된 정확한 cursor·optimizer·scaler·RNG에서 재개하며, 완료 군은 update를 다시 수행하지 않는다.
+
+`run_v18_independent.py`는 실패한 기존 root의 봉인된 입력 계약·원본 helper SHA·공통 initial·calibration을 직접 검사한다. 기존 군의 checkpoint와 로그는 새 root에 독립 복사한다. 완료된 불변 cache는 SHA/size와 publication 구조를 검사한 뒤 hardlink한다. 원본 core는 cache를 실제 사용할 때 기하 binding을 다시 검사한다. 기존 절대 `prepared_data_root`는 역사 계약 안에 그대로 보존하고, 별도 `continuation.json`에 새 실행 위치를 결속한다. 새 entry는 위치가 바뀐 historical contract를 원래 controller에서 다시 생성하거나 덮어쓰지 않는다. 캐시 재계산은 피하지만 검증 I/O는 발생한다. 기존 root가 실행 중이면 복사를 거부한다.
+
+서버에서 전체 129후보 초기 평가 중 process RSS 192 GiB 한도를 넘었다는 오류가 보고됐다. resident cache 128 GiB는 cache 참조만 계산하고, 전체 후보의 CPU canonical graph·두 sampled view·collate 복사·worker scratch와 기존 readonly mmap resident page는 별도로 존재한다. GPU L0 chunk=8은 이 CPU 입력 전체를 나누지 않는다. 제공된 로그만으로 각 항목이 차지한 실제 비율이나 단일 live batch 크기를 확정하지 않는다.
+
+`host_memory.py`는 기존 RSS/cache headroom으로 회수 시점을 정한다. RSS192/cache128 설정이면 실제 RSS160 GiB 초과 시 provider LRU 참조를 해제하고, Linux readonly mmap에 `MADV_DONTNEED`를 요청하며 GC와 가능한 allocator trim을 실행한다. mapping을 닫거나 입력 값을 변경하지 않는다. 새 `_get` allocation 전과 batch 전후에도 검사한다. 실제 회수 전후 RSS·해제 cache 참조·OS hint 적용 여부를 `host_memory.jsonl`에 기록한다. RSS192·CUDA40·resident128·측정된 physical batch·worker·모델·10 mm·후보·40 epochs는 유지한다. 활성 batch와 작업공간 자체가 한도를 넘으면 실제 수치를 출력하고 계속 실패한다. 서버 오류 해결을 로컬 DEBUG만으로 보장하지 않는다.
 
 실행 전 모델·설정·전체/실제 사용 샘플·GPU/CPU/RAM/I/O/컨테이너 제한·batch를 출력한다. `update_timing.jsonl`, `validation_epoch_XXX.json`, `curve.jsonl`, `checkpoint_latest.pt`, `checkpoint_best.pt`, coverage에 실제 학습과 시간·메모리·순위를 기록한다. DEBUG는 별도 실제 CT fixture로만 실행하며 성능 검증이나 전체 학습으로 승격하지 않는다.
 
@@ -36,6 +44,8 @@ P의 source coverage = 1, source patch ring 통계, 자기 source를 제외한 �
 이 대조는 비교 좌표 분포와 개별 비교 위치의 노출 빈도를 바꾼다. selected도 과거 v1과 다른 공통 pairwise loss를 쓰므로, selected의 학습 유지부터 확인해야 한다. native가 나쁘다는 결과만으로 128이라는 수 자체를 원인으로 단정하지 않는다.
 
 로컬 회귀 검사 74개와 실제 CT/CUDA smoke가 PASS했다. train 2명·validation 1명으로 parameter 10,434,532개의 원본 모델을 두 군 각각 2 epochs 학습했다. 동일 초기값, 총 4번의 update에서 trainable tensor 1,085/1,085개의 gradient 연결과 5개 모듈 그룹의 실제 가중치 변경을 확인했다. 두 군 모두 초기·epoch 1·epoch 2의 전체 129개 후보 평가를 마쳤다. selected는 첫 update 후 중단·재개했고, 완료 후 재실행에서도 두 군 모두 추가 update 없이 model·optimizer·scheduler·RNG를 보존했다. [smoke 증거](../../validation/v18_u_bridge/smoke.json)에 범위와 검증 결과를 기록했다. 이 작은 smoke는 서버의 40 epochs 학습이나 추천 품질 검증을 뜻하지 않는다.
+
+독립 실행·RAM 회수 패치의 회귀 검사 40개가 PASS했다. 추가 실제 CT/CUDA DEBUG에서는 같은 원본 전체 모델·physical source batch2·worker4로 native 2 epochs의 실제 update2회와 초기/epoch1/epoch2의 전체129 joint 평가3회를 마쳤다. 매 update gradient1085/1085 및 CNN/L0/L1/L2/scalar의 실제 가중치 변경을 확인했다. 완료 후 같은 명령을 재실행했을 때 checkpoint 바이트가 같고 추가 update는0회였다. 기존 파일은 보존했다. 측정된 update RSS 최대13.99 GiB, CUDA allocated 최대2.18 GiB는 이 작은 DEBUG 입력의 값이다. Linux page/allocator hint와 서버192 GiB 한도에서의 전체 cohort 재개는 아직 검증하지 않았다. [추가 실행 증거](../../validation/v18_memory/execution.json)에 범위를 명시한다.
 
 ## 작업 완료 체크리스트
 

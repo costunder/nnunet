@@ -13,6 +13,10 @@
 | [u_bridge_upper.py](../../hiercp_v1x/u_bridge_upper.py) | 원본 source/lesion upper 함수의 정적 반환 배열을 저장·재사용 |
 | [server_v18_u_bridge.sh](../../tools/server_v18_u_bridge.sh) | 고정된 서버 경로와 물리 GPU 번호로 두 군을 실행하고 결과 요약 |
 | [summarize_v18_u_bridge.py](../../tools/summarize_v18_u_bridge.py) | 저장된 JSON만 읽어 초기·best·최근의 학습/전체 평가 점수를 구분해 출력 |
+| [run_v18_independent.py](../../tools/run_v18_independent.py) | 원본 계약·초기값·batch lock을 보존하고 한 군만 독립 실행/재개 |
+| [u_bridge_continuation.py](../../hiercp_v1x/u_bridge_continuation.py) | checkpoint 독립 복사, 완료된 cache 검증/hardlink, 기존 파일 보존 |
+| [host_memory.py](../../hiercp_v1x/host_memory.py) | 실제 RSS 압박에 맞춘 cache 참조/readonly page 회수, 기존 hard 한도 검사 |
+| [server_v18_independent.sh](../../tools/server_v18_independent.sh) | 숫자 GPU 선택과 서로 다른 selected/native 출력 root |
 
 실제 입력 → 원본 graph → 전체 모델 forward → 공통 loss → backward → optimizer update 연결은 CT/CUDA smoke에서 확인했다. trainable tensor 1,085/1,085개의 gradient와 5개 모듈 그룹의 가중치 변경을 확인했고, 로컬 회귀 검사 74개가 PASS했다.
 

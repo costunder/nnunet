@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-07",
+  "scope": "execution-only host-cache reclamation and independent original v1.8 arms",
+  "unit_regression": {
+    "passed": 40,
+    "log": "work/v18_memory_unit_20261007.log",
+    "log_sha256": "78849c9b7a1752744c84c441fca6bf562cab9b8b51e68c5cbee83e2d655bbd2b"
+  },
+  "actual_CT_CUDA_DEBUG": {
+    "run": "work/v18_memory_DEBUG_20261007_r2",
+    "raw_report_sha256": "34889b141c34d33d933fd5f966f9176fb8200462ea7b70474322ae38b6ff49f0",
+    "parameters": 10434532,
+    "train_cases": 2,
+    "validation_cases": 1,
+    "epochs": 2,
+    "physical_source_batch": 2,
+    "workers": 4,
+    "updates": 2,
+    "gradient_tensors": [
+      1085,
+      1085
+    ],
+    "trainable_tensors": [
+      1085,
+      1085
+    ],
+    "weight_changed_groups": [
+      [
+        "CNN",
+        "L0",
+        "L1",
+        "L2",
+        "scalar"
+      ],
+      [
+        "CNN",
+        "L0",
+        "L1",
+        "L2",
+        "scalar"
+      ]
+    ],
+    "full129_evaluations": 3,
+    "whole129_joint_graph": true,
+    "completed_resume_extra_updates": 0,
+    "completed_resume_checkpoint_bytes_unchanged": true,
+    "originals_preserved": true,
+    "max_update_RSS_GiB": 13.991100311279297,
+    "max_update_VRAM_GiB": 2.177199363708496,
+    "cache_copy_methods": {
+      "copy": 5,
+      "existing": 0,
+      "hardlink": 200
+    }
+  },
+  "server_failure_evidence": "user-reported MemoryError in full129 initial validation at declared RSS192GiB/resident128GiB; exact memory components not measured",
+  "production_settings_preserved": {
+    "RSS_GiB": 192,
+    "resident_GiB": 128,
+    "CUDA_GiB": 40,
+    "physical_batch": "saved measured original batch",
+    "workers": "saved original worker count",
+    "epochs": 40,
+    "margin_mm": 10,
+    "parameters": 10434532,
+    "train_candidates": 8,
+    "eval_candidates": 129,
+    "views": 2
+  },
+  "Linux_madvise_malloc_trim_neural_run_tested": false,
+  "server192GiB_retry_verified": false,
+  "quality_verified": false,
+  "full_server_training": false,
+  "preserved_neural_files": {
+    "hiercp_v1x/u_bridge_experiment.py": "e3f149ef0fa497cef5214c39175101236e8a424e65c746ca8c5a14e84300af49",
+    "hiercp_v1x/u_bridge_data.py": "fc1ca9a2ee188baf61a12d91aebac68e69f1bb9ad415be37addb683c7435453f",
+    "hiercp_v1x/u_bridge_fields.py": "6bbfab9cb7dfd534da0476506f23dfcff2b387fd5fc38599e2a13782c6bbffd9",
+    "hiercp_v1x/u_bridge_calibration.py": "28d969c08aba8551a0ceabca5a140dbe367fbb672114b2629bdb29551181bbfa",
+    "hiercp_v1x/u_bridge_upper.py": "933a77e31d890d2871f5f5063de63523e736a63c2847cdc4d07f62866abf8c82",
+    "hiercp_v1x/u_bridge_training.py": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/scope_learning_loop.py": "aebde93532180081bb37aaa2cbe61782f1648351c6b2f77ed2cd3d2e68d0b9e6",
+    "tools/run_v18_u_bridge.py": "381ee796682222622e3a0a760cffaac036f85d8779d8dd80d4fa902454d18229",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "config/v18_u_bridge.json": "dac6b605700068be70c08ba4e10e965bad6b752d1df21fd8b80a9e11fcc1b18e"
+  },
+  "unchanged_since_server_a4f2b27": true
+}
