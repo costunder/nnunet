@@ -1,34 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CP_GPU="${CP_GPU:-3}"
+CP_GPU="${CP_GPU:?Set the physical GPU number for this arm}"
 CP_ARM="${CP_ARM:?Set one existing arm: selected, native, native_fixed, native_listwise}"
-cache_base="/home/aicompetition06/Medical/experiments"
-case "$CP_ARM" in
-  selected|native)
-    cache_default="$cache_base/v18_${CP_ARM}_m10_seed42_memory"
-    if [[ ! -f "$cache_default/continuation.json" ]]; then
-      cache_default="$cache_base/v18_u_bridge_m10_seed42"
-    fi
-    ;;
-  native_fixed|native_listwise)
-    cache_default="$cache_base/v19_${CP_ARM}_m10_seed42"
-    ;;
-  *) printf 'Unknown arm: %s\n' "$CP_ARM" >&2; false ;;
-esac
-CP_EXPERIMENT="${CP_EXPERIMENT:-$cache_default}"
-CP_INVENTORY="${CP_INVENTORY:-$cache_base/v22_cnn_m10_seed42/inventory/index.json}"
+cache_base="${CP_EXPERIMENTS_DIR:-/home/aicompetition06/Medical/experiments}"
 cache_code="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd -- "$cache_code"
-printf 'Resume existing arm=%s | physical GPU=%s | experiment=%s\n' "$CP_ARM" "$CP_GPU" "$CP_EXPERIMENT"
-printf 'Keep saved model/Adam/cursor, measured batch/workers, 10mm and candidate/loss policy.\n'
-printf 'Reuse completed exact preprocessing; checkpoints and logs remain arm-owned.\n'
-python -B -u tools/resume_comparison_cached.py \
-  --gpu "$CP_GPU" --arm "$CP_ARM" --experiment "$CP_EXPERIMENT" \
-  --inventory "$CP_INVENTORY" \
-  --cache-sources \
-    "$cache_base/v18_u_bridge_m10_seed42/data" \
-    "$cache_base/v18_selected_m10_seed42_memory/data" \
-    "$cache_base/v18_native_m10_seed42_memory/data" \
-    "$cache_base/v19_native_fixed_m10_seed42/data" \
-    "$cache_base/v19_native_listwise_m10_seed42/data"
+printf 'Independent arm=%s | physical GPU=%s | preserve saved progress\n' "$CP_ARM" "$CP_GPU"
+printf 'Each arm owns its data, lock and checkpoints. Ctrl+C allows 10s for cooperative stop.\n'
+# Route from arm, not an inherited CP_EXPERIMENT left by another terminal run.
+# Custom roots are explicit --experiment options to run_comparison_arm.py.
+python -B -u tools/run_comparison_arm.py \
+  --gpu "$CP_GPU" --arm "$CP_ARM" --experiments-dir "$cache_base" \
+  --inventory "${CP_INVENTORY:-$cache_base/v22_cnn_m10_seed42/inventory/index.json}"

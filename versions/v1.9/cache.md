@@ -24,15 +24,36 @@ v1.9에도 기존 `PressureBudget` 실행 정책을 연결한다. RSS192GiB/resi
 
 ## 서버 사용
 
-기존 작업을 사용자가 Ctrl+C로 안전하게 중단하고, 엔진의 저장 완료와 prompt 복귀를 확인한 뒤 새 코드 worktree에서 실행한다. 자동으로 서버 process를 종료하지 않는다.
+네 군은 서로 다른 GPU·터미널에서 각자 재개한다. 새 launcher는 지정된 군 하나만 실행하고, 기존 모델·Adam·RNG·cursor·측정 batch·worker·40epoch를 복원한다. 진행된 실험을 새 초기 가중치로 다시 시작하지 않는다.
 
 ```bash
 CP_GPU=3 CP_ARM=native_fixed bash tools/server_comparison_cached.sh
 ```
 
-`CP_ARM`만 selected/native/native_fixed/native_listwise 중 현재 재개할 군으로 지정한다. `CP_GPU`는 해당 서버의 물리 GPU 번호다. selected/native는 이미 만들어진 `_memory` continuation이 있으면 이를 선택하고, 없으면 기존 v18 root를 선택한다. 추가 두 군은 원래 v19 root를 선택한다. 다른 경로에서 실행했던 경우 `CP_EXPERIMENT`에 그 기존 root를 명시한다. 실험이나 checkpoint를 새 이름으로 자동 선택하지 않는다.
+`CP_ARM`은 selected/native/native_fixed/native_listwise 중 하나다. `CP_GPU`는 사용자가 할당한 물리 GPU 번호이며 반드시 지정한다. 네 터미널에서 GPU를 각각 지정한다. 현재 터미널에 남은 `CP_EXPERIMENT`가 다른 군을 같은 폴더로 보내지 않도록 새 Bash launcher는 이 변수를 읽지 않는다. 사용자 지정 root는 `tools/run_comparison_arm.py --experiment ...`로 명시한다.
 
-각 호출은 지정된 군 하나만 재개한다. 기존 v18 공통 root로 돌아가는 selected/native는 공통 잠금을 사용하므로 동시에 실행할 수 없다. 이미 분리한 `_memory` root는 각자의 잠금을 사용한다. `preparation_reuse.jsonl`은 reused/cache_miss/binding_miss·읽은 source·destination·bytes·시간을, `execution_overrides/`는 요청한 실행 helper SHA와 기존 neural contract SHA를 기록한다. 요청 영수증은 학습 완료 증거가 아니다. 독립 continuation의 memory 정책과 원래 manifest를 다시 쓰지 않는다.
+| 군 | 독립 실험 폴더 | checkpoint 위치 |
+| --- | --- | --- |
+| selected | `v18_selected_m10_seed42_memory` | `selected/checkpoint_latest.pt` |
+| native | `v18_native_m10_seed42_memory` | `native/checkpoint_latest.pt` |
+| native_fixed | `v19_native_fixed_m10_seed42` | `native_fixed/checkpoint_latest.pt` |
+| native_listwise | `v19_native_listwise_m10_seed42` | `native_listwise/checkpoint_latest.pt` |
+
+각 root의 `data/`, `.pipeline.lock`, checkpoint가 독립이다. selected/native 독립 폴더가 없으면 비활성 원본에서 해당 군의 저장 상태를 정확히 복사한다. 원본 공유 root로 되돌아가는 fallback은 제거했다. 최초 복사에는 원본의 활성 writer가 없어야 한다. 이미 복사가 끝난 군은 자기 receipt와 immutable 바이트를 검증하므로, 다른 군이 과거 source의 잠금을 사용해도 재개를 막지 않는다. v19의 기존 root가 없으면 임의로 새로운 학습을 시작하지 않는다.
+
+동일 군·동일 root에 검증된 작업이 이미 있으면 PID·명령·checkpoint를 출력하고 `ALREADY_RUNNING`으로 돌아온다. 두 번째 writer는 시작하지 않는다. 다른 군은 자기 root에서 계속 실행할 수 있다. 출처나 소유자가 다른 잠금은 지우지 않는다.
+
+`preparation_reuse.jsonl`은 reused/cache_miss/binding_miss·읽은 source·destination·bytes·시간을, `execution_overrides/`는 요청한 실행 helper SHA와 기존 neural contract SHA를 기록한다. 요청 영수증은 학습 완료 증거가 아니다. 독립 continuation의 기존 memory 정책과 원래 manifest를 다시 쓰지 않는다.
+
+## 중단 처리
+
+기존 Ctrl+C handler는 pause flag만 바꾸고 `future.result()`와 전처리 thread 종료를 기다렸다. 그래서 GPU update가 4.75초여도 긴 CPU/I/O 작업에 걸리면 pause 메시지만 반복될 수 있었다. 이 상태를 checkpoint 저장 완료라고 표현하지 않는다.
+
+새 launcher가 생성한 단일 Python 자식을 감독한다. Ctrl+C 한 번이면 해당 PID에 SIGINT를 보내 기존 저장 처리를 10초 기다린다. 응답하지 않으면 PID·부모 PID·생성 시각·정확한 argv·UID를 다시 대조하고 그 자식 하나에 SIGTERM을 보낸다. 반복 Ctrl+C는 대기 시간을 초기화하거나 신호를 반복하지 않는다. SSH·부모 셸·프로세스 그룹·다른 군은 신호 대상이 아니다.
+
+각 update의 checkpoint는 atomic publication이다. 강제 중단 시 보존되는 것은 마지막 성공한 checkpoint이며, 저장하지 않은 현재 작업은 재개 때 다시 수행한다. 현재 batch를 반드시 새로 저장했다고 주장하지 않는다. SIGKILL은 사용하지 않는다. 커널의 중단 불가능한 I/O 상태에서는 SIGTERM도 지연될 수 있으므로, 10초는 종료 완료 보장 시간이 아닌 cooperative grace 시간이다.
+
+이미 구형 launcher로 실행되어 Ctrl+C에 묶인 작업은 같은 서버의 별도 터미널에서 `tools/stop_comparison_arm.py --arm native_fixed --experiment /home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42`로 중단할 수 있다. 잠금·host·UID·명령·arm·root·생성 시각을 확인해 정확한 Python 하나만 종료한다. 잠금·checkpoint·cache는 지우지 않으며, 종료가 확인되지 않으면 추가 신호와 재개를 거부한다.
 
 ## 검증 결과
 
@@ -41,6 +62,8 @@ CP_GPU=3 CP_ARM=native_fixed bash tools/server_comparison_cached.sh
 완료 후 원본 엔진으로 재개했을 때 추가 update0회이며 model·optimizer·scaler·scheduler·RNG·cursor를 포함한 checkpoint content digest가 동일했다. torch 재직렬화의 archive byte SHA는 이 검사에서 달라졌다. 이를 가중치 변경으로 오인하거나 파일 바이트가 같았다고 기록하지 않는다. 새 wrapper를 실제 GPU에서 별도로 실행한 완료 재개도 통과했다. 기존 reference·cache와 원본 helper17개는 바이트가 보존됐다.
 
 이는 실행 연결과 불변 캐시 재사용을 확인한 DEBUG다. 서버40epoch 학습, 추천 품질 개선 또는 서버 epoch 시간 개선을 증명하지 않는다. Linux `renameat2`·page residency·allocator hint는 Windows 호스트에서 실제 실행하지 않았다. [검증 기록](../../validation/comparison_cache/execution.json)에 현재 helper SHA와 범위를 보존한다.
+
+새 독립 launcher는 별도 actual-CT DEBUG checkpoint로 selected/native의 실제 GPU 복원을 네 번 확인했다. 추가 update는 0이며, 한 번은 historical source에 살아 있는 잠금을 두어도 자기 폴더에서 그대로 재개됐다. 원본 checkpoint와 frozen neural/input helper17개를 보존했다. 총 회귀 156개가 통과했다. 네 실제 CPU process가 독립 잠금 8개를 동시에 유지·해제했고, 별도 자식의 정상 종료와 요청한 중단도 확인했다. Windows CPU 검사에서 SIGINT forwarding만 mock이며 단일 자식 종료는 실제 수행했다. Linux 터미널의 실제 SIGINT forwarding 및 네 GPU 동시 서버 실행은 검증했다고 주장하지 않는다. [새 실행 검증](../../validation/arm_launch/execution.json)에 범위를 분리했다.
 
 ## 작업 완료 체크리스트
 

@@ -1,0 +1,124 @@
+{
+  "format": "independent_four_arm_resume_stop_execution_v1",
+  "scope": "Execution ownership, completed checkpoint resume and requested single-process stopping; not ranking quality or server speed",
+  "implementation": {
+    "arms": [
+      "selected",
+      "native",
+      "native_fixed",
+      "native_listwise"
+    ],
+    "separate_output_data_lock_checkpoint": true,
+    "no_shared_v18_fallback": true,
+    "old_environment_root_ignored": true,
+    "same_arm_duplicate_not_started": true,
+    "original_model_parameters": 10434532,
+    "production_epochs": 40,
+    "margin_mm": 10,
+    "original_measured_batch_workers_preserved": true,
+    "uncommitted_work_replayed_from_last_atomic_checkpoint": true
+  },
+  "regression": {
+    "passed": 156,
+    "log_sha256": "2f404de35d52b5f01831392a5f65b3c2e96b21c5b6b4b0580440418b0b4e51a8",
+    "four_real_CPU_processes_held_eight_independent_locks": true,
+    "two_real_owned_CPU_children_normal_and_requested_termination": true,
+    "windows_SIGINT_forwarding_in_CPU_test_mocked": true,
+    "no_server_process_signaled": true
+  },
+  "actual_CT_CUDA_DEBUG": {
+    "report_sha256": "c17f8f882a7503c190938d4729dd25aaf342154868ed25f01347c30979bda6ca",
+    "reference_originals_preserved": true,
+    "invocations": [
+      {
+        "arm": "selected",
+        "invocation": 1,
+        "returncode": 0,
+        "actual_CUDA": true,
+        "additional_optimizer_updates": 0,
+        "exact_completed_resume": true,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\arm_launch_DEBUG_20261007\\selected\\selected\\checkpoint_latest.pt",
+        "data_root": "D:\\AI project\\nnunet\\work\\arm_launch_DEBUG_20261007\\selected\\data",
+        "historical_source_lock_active": false,
+        "full_parameters": 10434532,
+        "debug": true
+      },
+      {
+        "arm": "native",
+        "invocation": 2,
+        "returncode": 0,
+        "actual_CUDA": true,
+        "additional_optimizer_updates": 0,
+        "exact_completed_resume": true,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\arm_launch_DEBUG_20261007\\native\\native\\checkpoint_latest.pt",
+        "data_root": "D:\\AI project\\nnunet\\work\\arm_launch_DEBUG_20261007\\native\\data",
+        "historical_source_lock_active": false,
+        "full_parameters": 10434532,
+        "debug": true
+      },
+      {
+        "arm": "selected",
+        "invocation": 3,
+        "returncode": 0,
+        "actual_CUDA": true,
+        "additional_optimizer_updates": 0,
+        "exact_completed_resume": true,
+        "checkpoint": "D:\\AI project\\nnunet\\work\\arm_launch_DEBUG_20261007\\selected\\selected\\checkpoint_latest.pt",
+        "data_root": "D:\\AI project\\nnunet\\work\\arm_launch_DEBUG_20261007\\selected\\data",
+        "historical_source_lock_active": true,
+        "full_parameters": 10434532,
+        "debug": true
+      }
+    ],
+    "final_owned_GPU_resume": {
+      "log_sha256": "03a062aa24675aaec940e0a0fc49745730d3b6904ed74d82daf2646aa0662da0",
+      "receipt_sha256": "3f9362818ffd3cb59b7bc5678d0a90c77805445431bef1579482e9ff40ed2c08",
+      "actual_CUDA": true,
+      "additional_optimizer_updates": 0,
+      "completed_checkpoint_no_repeat_verified": true,
+      "model_sha256": "382003eb9707d6047713332d8375d2ee056484901d3ad5fa7ff87dc47b69e2b3",
+      "optimizer_sha256": "b9cecae23a42c34615cdca0805605a428f838b8ffe5ad246d6bd20a2bfbb54a6"
+    },
+    "new_optimization_updates": 0,
+    "full_model_parameters": 10434532,
+    "four_GPU_server_training_executed": false,
+    "neural_training_or_quality_improvement_claimed": false
+  },
+  "limitations": [
+    "Linux terminal SIGINT forwarding and SIGTERM have not been executed on the remote server by this Windows host",
+    "Kernel-uninterruptible IO can defer SIGTERM; 10 seconds is the cooperative grace period, not an unconditional termination guarantee",
+    "Cold unpublished preprocessing and IO contention are not eliminated",
+    "First migration of a shared v18 arm requires inactive original writers",
+    "Server40 epoch timing and ranking quality were not re-evaluated"
+  ],
+  "quality_verified": false,
+  "server_speedup_measured": false,
+  "full_training_executed_this_change": false,
+  "execution_helpers": {
+    "tools/run_comparison_arm.py": "fa7cb692846c6e4a10cc5b01a5bbd8d94d76a0ead0065368b5e8bff060a5999d",
+    "tools/stop_comparison_arm.py": "092f6db6aa3d2f5434dbb553af3b8ab13823832ce52ad493ac304d2d52eca545",
+    "tools/server_comparison_cached.sh": "51ca03dc4e4374a741487614d3e7d6e1266f15dde62029b26b4759b844b87359",
+    "tools/verify_arm_launch_debug.py": "2d8b08204914dfdde4ce994b75b4cf94e12e594d621d8ad39adc117c7bbb8eaa",
+    "hiercp_v1x/owned_continuation.py": "e9d87322370a14ad74da0f2193401172b104b7b1997692b674ea3f9c5ac57267",
+    "hiercp_v1x/arm_process.py": "6183fe6e6ed166d30eaf4386b697ecaaf473d91e0d4c7fd471caf3e0e1eb8d64"
+  },
+  "frozen_neural_and_input_helpers_17": {
+    "hiercp_v1x/u_bridge_experiment.py": "e3f149ef0fa497cef5214c39175101236e8a424e65c746ca8c5a14e84300af49",
+    "hiercp_v1x/u_bridge_data.py": "fc1ca9a2ee188baf61a12d91aebac68e69f1bb9ad415be37addb683c7435453f",
+    "hiercp_v1x/u_bridge_fields.py": "6bbfab9cb7dfd534da0476506f23dfcff2b387fd5fc38599e2a13782c6bbffd9",
+    "hiercp_v1x/u_bridge_calibration.py": "28d969c08aba8551a0ceabca5a140dbe367fbb672114b2629bdb29551181bbfa",
+    "hiercp_v1x/u_bridge_upper.py": "933a77e31d890d2871f5f5063de63523e736a63c2847cdc4d07f62866abf8c82",
+    "hiercp_v1x/u_bridge_training.py": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/scope_learning_loop.py": "aebde93532180081bb37aaa2cbe61782f1648351c6b2f77ed2cd3d2e68d0b9e6",
+    "tools/run_v18_u_bridge.py": "381ee796682222622e3a0a760cffaac036f85d8779d8dd80d4fa902454d18229",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "config/v18_u_bridge.json": "dac6b605700068be70c08ba4e10e965bad6b752d1df21fd8b80a9e11fcc1b18e",
+    "hiercp_v1x/comparison_experiment.py": "2101bb0eb32f8137b8a84c9b084c97534c67b0eb391d83f1fe07c05e09bd48cb",
+    "hiercp_v1x/comparison_data.py": "c776e3c9525c3402f6a31bae2bd085b32d130d79fdc84198da8530610ba0a886",
+    "hiercp_v1x/comparison_training.py": "cbcd883f409f66e6a84c21f44d869a84a6fe01bd9cf65869c7fa4859d24c0eac",
+    "tools/run_v19_comparison.py": "1194092cdbeba7f053f143364cd2f76679701f07229833d1edc974beb85f6893",
+    "config/v19_comparison_controls.json": "003ecf487f34221eb2dc53740f32d69bdfff8678cfeb0401f365ace87852844c"
+  }
+}
