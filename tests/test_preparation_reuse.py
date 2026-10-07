@@ -6,6 +6,9 @@ import gc
 import json
 import os
 from pathlib import Path
+import socket
+import sys
+import threading
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -54,6 +57,25 @@ def whole(source, signed=None):
 def inventory(root):
     return {p.relative_to(root).as_posix(): reuse.publication._sha(p)
             for p in root.rglob("*") if p.is_file()}
+
+
+def own_namespace(root, **overrides):
+    root.mkdir(parents=True, exist_ok=True)
+    owner = dict(host=socket.gethostname(), pid=os.getpid(), token="UNIT_owned_namespace")
+    owner.update(overrides)
+    path = root / ".data.lock"
+    path.write_text(json.dumps(owner), encoding="utf8")
+    return path
+
+
+@contextmanager
+def unsupported_linux_rename(error=errno.EINVAL):
+    """UNIT Linux API injection on Windows; not real Linux/NFS evidence."""
+    fcntl = SimpleNamespace(LOCK_EX=2, LOCK_UN=8, lockf=Mock())
+    with patch.object(reuse.sys, "platform", "linux"), \
+            patch.dict(sys.modules, {"fcntl": fcntl}), \
+            patch.object(reuse, "_linux_noreplace", side_effect=OSError(error, "UNIT unsupported no-replace")):
+        yield fcntl
 
 
 def upper_binding():
@@ -405,7 +427,7 @@ class PreparationReuseTests(unittest.TestCase):
                 patch.object(reuse.ctypes, "CDLL", return_value=library), \
                 patch.object(reuse.platform, "machine", return_value="UNIT_unknown"):
             with self.assertRaisesRegex(OSError, "ABI unavailable"):
-                reuse._rename_new(Path("UNIT_source"), Path("UNIT_target"))
+                reuse._linux_noreplace(Path("UNIT_source"), Path("UNIT_target"))
             syscall.assert_not_called()
         with patch.object(reuse.sys, "platform", "linux"), \
                 patch.object(reuse.ctypes, "CDLL", return_value=library), \
@@ -413,6 +435,244 @@ class PreparationReuseTests(unittest.TestCase):
                 patch.object(reuse.ctypes, "get_errno", return_value=errno.EEXIST):
             with self.assertRaises(FileExistsError):
                 reuse._rename_new(Path("UNIT_source"), Path("UNIT_target"))
+
+    def test_unsupported_directory_rename_publishes_only_complete_owned_stage_for_each_errno(self):
+        for error in (errno.EINVAL, errno.ENOSYS, errno.EOPNOTSUPP):
+            with self.subTest(errno=error), directory() as root:
+                own_namespace(root)
+                stage, target = root / ".UNIT_stage", root / "UNIT_complete"
+                stage.mkdir(); (stage / "metadata.json").write_bytes(b"UNIT completed metadata")
+                (stage / "payload.bin").write_bytes(b"UNIT completed payload")
+                original = inventory(stage); rename = os.rename
+                def checked(source, destination):
+                    self.assertFalse(target.exists())
+                    self.assertEqual(inventory(stage), original, "Complete staging must precede publication")
+                    return rename(source, destination)
+                with unsupported_linux_rename(error) as guard, patch.object(reuse.os, "rename", side_effect=checked):
+                    method = reuse._rename_new(stage, target)
+                self.assertEqual(method, "owned_namespace_posix_rename")
+                self.assertEqual(inventory(target), original)
+                self.assertFalse(stage.exists())
+                self.assertEqual([call.args[1] for call in guard.lockf.call_args_list], [guard.LOCK_EX, guard.LOCK_UN])
+                self.assertTrue((root / ".UNIT_complete.reuse.lock").is_file(), "Persistent lock inode must not be unlinked")
+
+    def test_unsupported_directory_without_owned_namespace_or_wrong_owner_is_refused(self):
+        for difference in ("missing", "host", "pid", "token"):
+            with self.subTest(difference=difference), directory() as root:
+                stage, target = root / ".UNIT_stage", root / "UNIT_complete"
+                stage.mkdir(); (stage / "payload").write_bytes(b"UNIT preserve stage")
+                if difference != "missing":
+                    changes = {"host": "UNIT_other_host"} if difference == "host" else (
+                        {"pid": os.getpid() + 1} if difference == "pid" else {"token": ""})
+                    own_namespace(root, **changes)
+                with unsupported_linux_rename(), patch.object(reuse.os, "rename") as rename:
+                    with self.assertRaisesRegex(RuntimeError, "namespace lock"):
+                        reuse._rename_new(stage, target)
+                rename.assert_not_called()
+                self.assertEqual((stage / "payload").read_bytes(), b"UNIT preserve stage")
+                self.assertFalse(target.exists())
+
+    def test_fallback_preserves_empty_directory_file_and_lexical_dangling_targets(self):
+        for existing in ("empty_directory", "file", "symlink"):
+            with self.subTest(existing=existing), directory() as root:
+                own_namespace(root)
+                stage, target = root / ".UNIT_stage", root / "UNIT_complete"
+                stage.mkdir(); (stage / "payload").write_bytes(b"UNIT preserve stage")
+                if existing == "empty_directory": target.mkdir()
+                elif existing == "file": target.write_bytes(b"UNIT existing target")
+                original_lexists = os.path.lexists
+                def lexical_exists(path):
+                    # UNIT injection for a dangling symlink endpoint. Windows
+                    # link creation needs privileges that this test never asks for.
+                    return (existing == "symlink" and Path(path) == target) or original_lexists(path)
+                with unsupported_linux_rename(), patch.object(reuse.os.path, "lexists", side_effect=lexical_exists), \
+                        patch.object(reuse.os, "rename") as rename:
+                    with self.assertRaises(FileExistsError):
+                        reuse._rename_new(stage, target)
+                rename.assert_not_called()
+                self.assertEqual((stage / "payload").read_bytes(), b"UNIT preserve stage")
+                if existing == "empty_directory": self.assertEqual(list(target.iterdir()), [])
+                elif existing == "file": self.assertEqual(target.read_bytes(), b"UNIT existing target")
+                else: self.assertFalse(target.exists(), "Injected lexical endpoint must remain unpublished")
+
+    def test_destination_created_after_native_rejection_is_preserved_before_fallback_rename(self):
+        with directory() as root:
+            own_namespace(root)
+            stage, target = root / ".UNIT_stage", root / "UNIT_complete"
+            stage.mkdir(); (stage / "payload").write_bytes(b"UNIT preserve stage")
+            def collision(*unused):
+                target.mkdir()
+                raise OSError(errno.EINVAL, "UNIT unsupported filesystem with prior racing destination")
+            with unsupported_linux_rename(), patch.object(reuse, "_linux_noreplace", side_effect=collision), \
+                    patch.object(reuse.os, "rename") as rename:
+                with self.assertRaises(FileExistsError): reuse._rename_new(stage, target)
+            rename.assert_not_called(); self.assertEqual(list(target.iterdir()), [])
+            self.assertEqual((stage / "payload").read_bytes(), b"UNIT preserve stage")
+
+    def test_changed_namespace_owner_before_fallback_is_rejected(self):
+        with directory() as root:
+            owner = own_namespace(root)
+            stage, target = root / ".UNIT_stage", root / "UNIT_complete"
+            stage.mkdir(); (stage / "payload").write_bytes(b"UNIT preserve stage")
+            with unsupported_linux_rename(), reuse._publication_guard(target), patch.object(reuse.os, "rename") as rename:
+                own_namespace(root, token="UNIT_replaced_owner")
+                with self.assertRaisesRegex(RuntimeError, "ownership changed"):
+                    reuse._rename_new(stage, target)
+            rename.assert_not_called(); self.assertFalse(target.exists())
+            self.assertIn("UNIT_replaced_owner", owner.read_text())
+
+    def test_nested_guard_uses_one_descriptor_and_releases_only_outer_record_lock(self):
+        with directory() as root:
+            own_namespace(root); target = root / "UNIT_complete"
+            with unsupported_linux_rename() as guard:
+                with reuse._publication_guard(target) as outer:
+                    with reuse._publication_guard(target) as inner:
+                        self.assertIs(inner, outer)
+                        self.assertEqual(guard.lockf.call_count, 1)
+                    self.assertEqual(guard.lockf.call_count, 1)
+                self.assertEqual(guard.lockf.call_count, 2)
+            self.assertEqual(guard.lockf.call_args_list[0].args[0], guard.lockf.call_args_list[1].args[0])
+
+    def test_fcntl_failure_is_not_downgraded_to_unlocked_rename(self):
+        with directory() as root:
+            own_namespace(root)
+            stage, target = root / ".UNIT_stage", root / "UNIT_complete"
+            stage.mkdir(); (stage / "payload").write_bytes(b"UNIT preserve stage")
+            with unsupported_linux_rename() as guard, patch.object(reuse.os, "rename") as rename:
+                guard.lockf.side_effect = OSError(errno.ENOLCK, "UNIT NFS record locking unavailable")
+                with self.assertRaisesRegex(OSError, "locking unavailable"):
+                    reuse._rename_new(stage, target)
+            rename.assert_not_called(); self.assertFalse(target.exists())
+
+    def test_coordinated_directory_race_keeps_winner_and_loser_complete_stage(self):
+        with directory() as root:
+            own_namespace(root); target = root / "UNIT_complete"
+            stages = [root / (".UNIT_stage_" + str(i)) for i in range(2)]
+            for index, stage in enumerate(stages):
+                stage.mkdir(); (stage / "payload").write_text("UNIT winner " + str(index))
+            ready = threading.Barrier(2)
+            def unsupported(*unused):
+                ready.wait(timeout=10)
+                raise OSError(errno.EINVAL, "UNIT unsupported filesystem")
+            def publish(stage):
+                try: return reuse._rename_new(stage, target)
+                except FileExistsError: return "collision_preserved"
+            with unsupported_linux_rename(), patch.object(reuse, "_linux_noreplace", side_effect=unsupported):
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    results = list(pool.map(publish, stages))
+            self.assertEqual(sorted(results), ["collision_preserved", "owned_namespace_posix_rename"])
+            loser = next(stage for stage in stages if stage.exists())
+            self.assertNotEqual((target / "payload").read_bytes(), (loser / "payload").read_bytes())
+            self.assertEqual(len(list(target.iterdir())), 1)
+
+    def test_copied_file_unsupported_rename_uses_exclusive_link_and_preserves_collision(self):
+        for error in (errno.EINVAL, errno.ENOSYS, errno.EOPNOTSUPP):
+            with self.subTest(errno=error), directory() as root:
+                stage, target = root / ".UNIT_file_stage", root / "UNIT_file_complete"
+                stage.write_bytes(b"UNIT copied bytes")
+                with unsupported_linux_rename(error), patch.object(reuse.os, "rename") as rename:
+                    self.assertEqual(reuse._rename_new(stage, target), "exclusive_link")
+                rename.assert_not_called(); self.assertFalse(stage.exists())
+                self.assertEqual(target.read_bytes(), b"UNIT copied bytes")
+                stage.write_bytes(b"UNIT different later stage")
+                with unsupported_linux_rename(error), patch.object(reuse.os, "rename") as rename:
+                    with self.assertRaises(FileExistsError): reuse._rename_new(stage, target)
+                rename.assert_not_called(); self.assertEqual(target.read_bytes(), b"UNIT copied bytes")
+                self.assertEqual(stage.read_bytes(), b"UNIT different later stage")
+
+    def test_unrelated_native_errors_never_trigger_guarded_fallback(self):
+        for error in (errno.EACCES, errno.EXDEV, errno.ENOSPC):
+            with self.subTest(errno=error), unsupported_linux_rename(error), \
+                    patch.object(reuse, "_guarded_posix_publication") as fallback:
+                with self.assertRaises(OSError) as caught:
+                    reuse._rename_new(Path("UNIT_stage"), Path("UNIT_complete"))
+                self.assertEqual(caught.exception.errno, error); fallback.assert_not_called()
+
+    def test_fields_and_both_upper_publications_copy_and_validate_under_forced_EINVAL(self):
+        with directory() as root:
+            source, target = root / "source", root / "own"
+            expected = whole(source)
+            for kind in ("source_raw", "lesions"): static_upper(source, kind)
+            before = inventory(source); own_namespace(target); events = []
+            original_link = os.link
+            def source_cross_filesystem(old, new):
+                if Path(old).is_relative_to(source):
+                    raise OSError(errno.EXDEV, "UNIT source is a different filesystem")
+                return original_link(old, new)
+            with unsupported_linux_rename() as guard, reuse.preparation_reuse(Provider, [source], events.append), \
+                    patch.object(reuse.os, "link", side_effect=source_cross_filesystem):
+                actual = fields.cached_fields(target / "whole_case_fields", "UNIT_case", binding(),
+                    lambda: self.fail("No field recomputation"), lambda: self.fail("No field recomputation"), lambda: None)
+                cache = upper.UpperCache(target / "upper_static", lambda: None)
+                for kind in ("source_raw", "lesions"):
+                    cache._obtain(kind, upper_binding(), lambda: self.fail("No helper recomputation"))
+            np.testing.assert_array_equal(actual[0], expected[0])
+            self.assertEqual(before, inventory(source))
+            self.assertEqual([event["kind"] for event in events], ["whole_case_fields", "upper_static", "upper_static"])
+            self.assertTrue(all(event["publication_method"] == "owned_namespace_posix_rename" for event in events))
+            self.assertTrue(all(method == "copy" for event in events for method in event["methods"]))
+            for folder in (target / "whole_case_fields/UNIT_case",
+                    target / "upper_static/UNIT_case/c1_a1_2_3/source_raw",
+                    target / "upper_static/UNIT_case/c1_a1_2_3/lesions"):
+                self.assertFalse(any(path.name.startswith(".") for path in folder.iterdir()), "Private file stages must not enter signed publication inventory")
+            self.assertEqual(guard.lockf.call_count, 6, "One acquired/released record guard per whole publication; nested rename reuses descriptors")
+
+    def test_guards_cover_original_field_upper_and_local_factories_on_cache_miss(self):
+        with directory() as root:
+            source, target = root / "source", root / "own"
+            source.mkdir(); own_namespace(target)
+            def protected(factory, path):
+                def run():
+                    self.assertIn(reuse._path_identity(path), reuse._GUARDS.active)
+                    return factory()
+                return run
+            with unsupported_linux_rename(), reuse.preparation_reuse(Provider, [source]) as Reusing:
+                field_path = target / "whole_case_fields/UNIT_case"
+                array = lambda: np.ones((3, 4, 5), dtype=np.float32)
+                fields.cached_fields(field_path.parent, field_path.name, binding(),
+                    protected(array, field_path), protected(array, field_path), lambda: None)
+                cache = upper.UpperCache(target / "upper_static", lambda: None)
+                upper_path = target / "upper_static/UNIT_case/c1_a1_2_3/source_raw"
+                cache._obtain("source_raw", upper_binding(), protected(lambda: upper_arrays("source_raw"), upper_path))
+                provider = Reusing(target)
+                key = "f" * 64
+                result = provider._get(("local", key), protected(lambda: "UNIT original load", provider.graph_dir / (key + ".pt")))
+                self.assertEqual(result, "UNIT original load")
+
+    def test_immutable_hot_fields_upper_and_local_skip_record_lock_and_namespace_IO(self):
+        with directory() as root:
+            source, target = root / "source", root / "own"
+            source.mkdir(); whole(target); static_upper(target)
+            close_mappings(); own_namespace(target)
+            with unsupported_linux_rename() as guard, reuse.preparation_reuse(Provider, [source]) as Reusing, \
+                    patch.object(reuse, "_namespace_owner", side_effect=AssertionError("No hot-cache namespace IO")):
+                guard.lockf.side_effect = AssertionError("No hot-cache record locking")
+                provider = Reusing(target); key = "c" * 64
+                path = provider.graph_dir / (key + ".pt")
+                torch.save(dict(fixture="UNIT already published"), path)
+                before = inventory(target)
+                fields.cached_fields(target / "whole_case_fields", "UNIT_case", binding(),
+                    lambda: self.fail("No hot field recompute"), lambda: self.fail("No hot field recompute"), lambda: None)
+                cache = upper.UpperCache(target / "upper_static", lambda: None)
+                cache._obtain("source_raw", upper_binding(), lambda: self.fail("No hot helper recompute"))
+                result = provider._get(("local", key), lambda: torch.load(path, weights_only=False))
+                self.assertEqual(result["fixture"], "UNIT already published")
+                self.assertEqual(before, inventory(target))
+            guard.lockf.assert_not_called()
+
+    def test_preexisting_incomplete_directory_fast_path_keeps_original_rejection(self):
+        with directory() as root:
+            source, target = root / "source", root / "own"
+            source.mkdir(); own_namespace(target)
+            published = target / "whole_case_fields/UNIT_case"; published.mkdir(parents=True)
+            before = inventory(target)
+            with unsupported_linux_rename() as guard, reuse.preparation_reuse(Provider, [source]):
+                guard.lockf.side_effect = AssertionError("No existing immutable-entry lock IO")
+                with self.assertRaisesRegex(ValueError, "Incomplete whole-case field publication"):
+                    fields.cached_fields(published.parent, published.name, binding(),
+                        lambda: self.fail("Incomplete target must not be overwritten"), lambda: None, lambda: None)
+            guard.lockf.assert_not_called(); self.assertEqual(before, inventory(target))
+            self.assertEqual(list(published.iterdir()), [])
 
 
 if __name__ == "__main__":

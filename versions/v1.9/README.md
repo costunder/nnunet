@@ -31,6 +31,8 @@ Signed 목록은 train 151개·validation 36개 source 문제다. 설정 validat
 
 동시 재개 launcher의 GPU 선택은 현재 터미널의 NVML에서 `CP_GPU` 물리 번호를 읽는다. 서버 접속이나 `nvidia-smi` 실행 파일은 필요하지 않다. 현재 드라이버 접근 실패와 모호한 MIG 할당은 명시적인 오류로 유지한다. 원본 helper와 기존 checkpoint 계약은 보존하며, 선택한 장치와 실행 adapter SHA를 별도로 기록한다.
 
+제공된 서버 로그에서 물리 GPU 6과 CUDA는 정상 선택됐지만, 검증된 캐시 폴더를 게시하는 `renameat2` 옵션이 `EINVAL`로 거부됐다. [캐시 재개 경로](cache.md)의 새 게시 helper는 이 옵션을 지원하지 않는 저장 경로도 실험 소유권과 대상별 잠금 아래에서 처리한다. 기존 캐시나 checkpoint를 교체하지 않고 같은 군의 최신 저장 상태를 재개하며, 모델·후보·학습 설정은 유지한다.
+
 `CP_REFERENCE` 기본값은 `/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42`다. 이곳의 experiment/calibration JSON만 읽어 이미 측정한 physical batch와 worker 수를 맞춘다. 초기 calibration의 짧은 clone probe는 유지하며, 정식 40 epoch 학습은 선택한 추가 군 하나만 수행한다. 네 군 새 장기 학습을 모두 요구했던 이전 실행 안내는 이 방식으로 수정했다. 동시 실행의 epoch 시간에는 CPU·I/O 경합이 섞이므로 단독 실행 처리량으로 해석하지 않는다.
 
 실행 조건은 [config.md](config.md), 구현 연결은 [code.md](code.md), 검증 상태는 [results.json](results.json)에 기록한다. 기존 CUDA evidence는 commit `c430a88`의 구현에 해당하며, 이번 수정은 서버 launcher·기준 실행 설정 읽기·요약 출력에 한정한다. 학습 엔진·모델·후보 규칙의 결속 파일은 유지한다. Bash 구문 검사는 로컬 실행기가 없어 미검증이다. 실제 CT/CUDA에서 네 군 각각 두 DEBUG epoch·두 update와 전체 129개 평가를 확인한 기존 결과를 보존했다. Listwise의 update1 중단·정확 재개와 네 군의 완료 후 0 추가 update도 통과했다. [검증 기록](../../validation/v19_comparison/README.md)은 당시 GPU·RAM·graph 규모와 파일 SHA를 포함한다. 서버의 40 epochs 및 추천 성능은 아직 미검증이다.

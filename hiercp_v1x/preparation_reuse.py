@@ -16,6 +16,8 @@ import platform
 from pathlib import Path
 import re
 import shutil
+import socket
+import stat
 import sys
 import threading
 import time
@@ -32,6 +34,8 @@ _HEX = re.compile(r"[0-9a-f]{64}")
 _REGISTRY = threading.RLock()
 _LOCKS = {}
 _CONTEXT = threading.RLock()
+_GUARDS = threading.local()
+_UNSUPPORTED_RENAME = {errno.EINVAL, errno.ENOSYS, errno.EOPNOTSUPP}
 
 
 def _safe(path, *, directory=False):
@@ -69,33 +73,147 @@ def _emit(callback, **record):
         callback(dict(format=FORMAT, **record))
 
 
+def _namespace_owner(target):
+    """Capture the existing task's exclusive data-namespace ownership receipt."""
+    for parent in Path(target).parents:
+        path = parent / ".data.lock"
+        if not os.path.lexists(path):
+            continue
+        _safe(path)
+        raw = path.read_bytes()
+        owner = json.loads(raw)
+        if (owner.get("host") != socket.gethostname() or owner.get("pid") != os.getpid()
+                or type(owner.get("pid")) is not int
+                or not isinstance(owner.get("token"), str) or not owner["token"]):
+            raise RuntimeError(f"Directory publication requires this process's own data namespace lock: {path}")
+        return path, raw
+    return None
+
+
+def _verify_namespace_owner(receipt, target):
+    if receipt is None:
+        raise RuntimeError(f"Unsupported no-replace directory rename requires an owned data namespace lock: {target}")
+    path, raw = receipt
+    _safe(path)
+    if not path.is_file() or path.read_bytes() != raw:
+        raise RuntimeError(f"Data namespace ownership changed before directory publication: {path}")
+    # Recheck identity as well as bytes: forked processes cannot inherit proof.
+    if _namespace_owner(target) != receipt:
+        raise RuntimeError(f"Data namespace ownership differs before directory publication: {path}")
+
+
+@contextmanager
+def _publication_guard(target):
+    """Serialize cooperating publishers; lock files persist to avoid inode ABA.
+
+    Linux POSIX record locks coordinate distinct processes and NFS lock managers.
+    The thread RLock is also required because record locks belong to a process.
+    Nested calls reuse the same descriptor; closing another descriptor for the
+    same inode would otherwise release an outer process's record lock.
+    """
+    target = Path(target)
+    with _lock(target):
+        # Published immutable entries need only their original loader checks.
+        # Avoid a network lock/stat/owner roundtrip on every hot-cache query.
+        if os.path.lexists(target):
+            yield None
+            return
+        if not sys.platform.startswith("linux"):
+            yield None
+            return
+        active = getattr(_GUARDS, "active", None)
+        if active is None:
+            active = _GUARDS.active = {}
+        identity = _path_identity(target)
+        if identity in active:
+            yield active[identity]
+            return
+        import fcntl
+        target.parent.mkdir(parents=True, exist_ok=True)
+        path = target.with_name("." + target.name + ".reuse.lock")
+        _safe(path)
+        descriptor = os.open(path, os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        locked = False
+        try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode):
+                raise ValueError(f"Publication guard must be a regular lock file: {path}")
+            fcntl.lockf(descriptor, fcntl.LOCK_EX)
+            locked = True
+            _safe(path)
+            current = path.stat()
+            if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+                raise RuntimeError(f"Publication guard inode changed: {path}")
+            state = dict(descriptor=descriptor, owner=_namespace_owner(target))
+            active[identity] = state
+            try:
+                yield state
+            finally:
+                del active[identity]
+        finally:
+            try:
+                if locked:
+                    fcntl.lockf(descriptor, fcntl.LOCK_UN)
+            finally:
+                os.close(descriptor)
+
+
+def _guarded_posix_publication(source, target):
+    """Preserve atomic visibility on filesystems lacking RENAME_NOREPLACE.
+
+    Directory rename is safe within a task-exclusive namespace and among writers
+    using this guard. POSIX has no no-replace directory primitive against an
+    unrelated writer ignoring ownership/locks; no such guarantee is claimed.
+    """
+    source, target = Path(source), Path(target)
+    _safe(source, directory=source.is_dir())
+    if not source.is_dir():
+        os.link(source, target)  # Atomic exclusive link, including empty-target races.
+        source.unlink()  # Only the successful publisher's private staging name.
+        return "exclusive_link"
+    with _publication_guard(target) as state:
+        if os.path.lexists(target):
+            raise FileExistsError(errno.EEXIST, "Existing publication preserved", str(target))
+        _verify_namespace_owner(state["owner"], target)
+        os.rename(source, target)  # Complete staging remains hidden until this rename.
+        return "owned_namespace_posix_rename"
+
+
+def _linux_noreplace(source, target):
+    """Use the real no-replace syscall, preserving errno for filesystem fallback."""
+    library = ctypes.CDLL(None, use_errno=True)
+    rename = getattr(library, "renameat2", None)
+    if rename is None:
+        architecture = platform.machine().lower()
+        number = {"x86_64": 316, "amd64": 316, "aarch64": 276, "arm64": 276}.get(architecture)
+        syscall = getattr(library, "syscall", None)
+        if number is None or syscall is None:
+            raise OSError(errno.ENOSYS, f"Atomic no-replace renameat2 ABI unavailable: {architecture}")
+        syscall.restype = ctypes.c_long
+        result = syscall(ctypes.c_long(number), ctypes.c_int(-100), ctypes.c_char_p(os.fsencode(source)),
+                         ctypes.c_int(-100), ctypes.c_char_p(os.fsencode(target)), ctypes.c_uint(1))
+    else:
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        rename.restype = ctypes.c_int
+        result = rename(-100, os.fsencode(source), -100, os.fsencode(target), 1)
+    if result:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), str(target))
+
+
 def _rename_new(source, target):
-    """Atomically publish without replacing an artifact created by another writer."""
+    """Publish complete bytes; native no-replace first, guarded POSIX if unsupported."""
     if sys.platform == "win32":
         os.rename(source, target)  # Windows rename refuses an existing destination.
-        return
+        return "native_windows_noreplace"
     if sys.platform.startswith("linux"):
-        library = ctypes.CDLL(None, use_errno=True)
-        rename = getattr(library, "renameat2", None)
-        if rename is None:
-            # Older Singularity glibc may lack the symbol while the host kernel
-            # supports the identical renameat2 syscall. Use only known ABI IDs.
-            architecture = platform.machine().lower()
-            number = {"x86_64": 316, "amd64": 316, "aarch64": 276, "arm64": 276}.get(architecture)
-            syscall = getattr(library, "syscall", None)
-            if number is None or syscall is None:
-                raise OSError(errno.ENOSYS, f"Atomic no-replace renameat2 ABI unavailable: {architecture}")
-            syscall.restype = ctypes.c_long
-            result = syscall(ctypes.c_long(number), ctypes.c_int(-100), ctypes.c_char_p(os.fsencode(source)),
-                             ctypes.c_int(-100), ctypes.c_char_p(os.fsencode(target)), ctypes.c_uint(1))
-        else:
-            rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
-            rename.restype = ctypes.c_int
-            result = rename(-100, os.fsencode(source), -100, os.fsencode(target), 1)
-        if result:
-            error = ctypes.get_errno()
-            raise OSError(error, os.strerror(error), str(target))
-        return
+        try:
+            _linux_noreplace(source, target)
+        except OSError as error:
+            if error.errno not in _UNSUPPORTED_RENAME:
+                raise
+            return _guarded_posix_publication(source, target)
+        return "renameat2_noreplace"
     raise OSError(errno.ENOSYS, "Atomic no-replace cache publication is unavailable on this platform")
 
 
@@ -174,9 +292,10 @@ def _ensure_fields(target_root, case_id, binding, source_roots, callback):
         for payload, saved_sha in files:
             methods.append(_file(payload, attempt / payload.name,
                                  checksum=saved_sha or publication._sha(payload)))
-        _rename_new(attempt, destination)
+        publish_method = _rename_new(attempt, destination)
         _emit(callback, kind="whole_case_fields", status="reused", case_id=case_id,
               source=str(source), destination=str(destination), methods=methods,
+              publication_method=publish_method,
               bytes=sum(payload.stat().st_size for payload, _ in files),
               binding_sha256=metadata["binding_sha256"],
               wall_seconds=time.perf_counter() - started)
@@ -254,9 +373,10 @@ def _ensure_upper(target_root, kind, binding, source_roots, callback):
         methods = [_file(payload, attempt / payload.name,
                          checksum=saved_sha or publication._sha(payload))
                    for payload, saved_sha in files]
-        _rename_new(attempt, destination)
+        publish_method = _rename_new(attempt, destination)
         _emit(callback, kind="upper_static", helper_kind=kind, status="reused",
               source=str(source), destination=str(destination), methods=methods,
+              publication_method=publish_method,
               bytes=sum(payload.stat().st_size for payload, _ in files),
               binding_sha256=metadata["binding_sha256"], payload_sha256=metadata["payload_sha256"],
               wall_seconds=time.perf_counter() - started)
@@ -292,14 +412,14 @@ def preparation_reuse(provider_class, source_data_roots, event_callback=None):
             lock_identity = _path_identity(Path(root) / case_id)
             with fields._REGISTRY_LOCK:
                 lock = fields._LOCKS.setdefault(lock_identity, threading.RLock())
-            with lock:
+            with lock, _publication_guard(directory):
                 _ensure_fields(root, case_id, canonical, roots, event_callback)
                 return original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
 
         class ReusingPreparation(provider_class):
             def _get(self, key, factory):
                 if isinstance(key, tuple) and len(key) == 2 and key[0] == "local":
-                    with _lock(Path(self.graph_dir) / (str(key[1]) + ".pt")):
+                    with _publication_guard(Path(self.graph_dir) / (str(key[1]) + ".pt")):
                         _ensure_local(self.graph_dir, key[1], roots, event_callback)
                         return super()._get(key, factory)
                 return super()._get(key, factory)
@@ -308,7 +428,7 @@ def preparation_reuse(provider_class, source_data_roots, event_callback=None):
             canonical = upper._binding(binding)
             anchor = "_".join(map(str, canonical["anchor"]))
             directory = Path(cache.root) / canonical["case_id"] / f"c{canonical['source_component']}_a{anchor}" / kind
-            with _lock(directory):
+            with _publication_guard(directory):
                 _ensure_upper(cache.root, kind, binding, roots, event_callback)
                 return original_upper(cache, kind, binding, factory)
 

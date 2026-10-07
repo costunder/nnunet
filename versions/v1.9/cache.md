@@ -81,6 +81,20 @@ NVML의 물리 index와 CUDA ordinal을 같다고 가정하지 않는 것은 [NV
 
 GPU/MIG·재개·독립 실행 관련 회귀 80개를 통과했다. 실제 로컬 RTX 5070 Ti에서 `nvidia-smi` subprocess 호출을 금지하고 selected/native/selected CT checkpoint CUDA 복원을 세 번 통과했다. 추가 optimizer update는 0이고 원본 reference와 frozen helper17개는 보존됐다. MIG는 UNIT에서 검증했으며 실제 서버 MIG 실행이나 40epoch 학습을 새로 수행한 결과는 아니다. [현재 GPU 경로 검증](../../validation/current_gpu/execution.json)에 helper·raw report·장치 receipt의 SHA와 미검증 범위를 기록한다.
 
+## 공유 저장 경로의 캐시 게시 오류
+
+2026-10-07 제공된 서버 로그에서 NVML로 물리 GPU 6 선택과 CUDA 진입이 성공했다. `native_listwise`는 epoch1의 11/151에서 재개해 12번째 update를 수행한 뒤, 다른 군에서 검증된 `liver_126` whole-case fields를 자기 data에 게시하는 `_rename_new`에서 `EINVAL`로 중단됐다. 모델 forward/backward 오류나 GPU OOM이 아니다. 마지막 원자적으로 저장된 checkpoint는 존재한다. 12번째 작업이 새 checkpoint에 포함됐는지는 저장 파일을 읽기 전에는 단정하지 않는다.
+
+문제의 코드는 Linux `renameat2(RENAME_NOREPLACE)`를 필수로 요구했다. 이 옵션을 저장 경로가 지원하지 않는 경우까지 학습 실패로 처리한 실행 호환성 문제다. 실제 서버의 filesystem 종류나 mount 설정은 확인하지 않았으므로 NFS/Lustre라고 특정하지 않는다.
+
+새 실행 helper는 가능한 경우 기존 no-replace syscall을 사용한다. 옵션 미지원 오류 `EINVAL`, `ENOSYS`, `EOPNOTSUPP`에만 별도 게시 경로를 사용하고 권한·I/O·공간 부족 등의 오류는 그대로 전달한다. 파일은 완성된 staging을 exclusive hardlink로 게시한다. 디렉터리는 현재 process가 소유한 `.data.lock`과 대상별 persistent POSIX record lock을 확인하고, 기존 대상이 없을 때 완성된 숨김 attempt를 일반 rename으로 게시한다. 재사용과 원래 생성/읽기 경로 전체가 같은 guard를 사용한다. guard sidecar는 서명된 payload 바깥에 두고 삭제하지 않는다.
+
+기존 빈 디렉터리·파일·symlink도 교체하지 않는다. 실패한 attempt와 기존 결과는 보존한다. 디렉터리 fallback의 보호 범위는 실험 namespace의 소유권과 잠금에 참여하는 프로젝트 writer이며, 잠금을 무시하는 외부 writer에 대해 일반 rename이 kernel no-replace와 동일한 보장을 제공한다고 주장하지 않는다. 모델·후보·loss·optimizer·batch·workers·10mm·40epoch 계약과 원본 helper17개는 변경하지 않는다. 기존 실험의 최신 저장 상태에서 재개한다.
+
+회귀 111개가 통과했으며 그중 게시 helper 검사는 38개다. Linux API와 `EINVAL`을 주입해 fields·두 upper publication·filesystem 간 복사·기존 대상 충돌·소유권 변경·잠금 실패를 검사했다. Windows의 실제 CT/CUDA DEBUG에서는 전체 10,434,532 parameter 모델·physical source batch2·worker4로 update2회와 전체129 평가3회를 완료했다. 3개 fields·6개 upper·145개 canonical publication을 재사용했고 factory 재계산은 0회였다. 완료 checkpoint 재개와 실제 wrapper 재개는 추가 update0회이며 기존 reference·cache·frozen helper17개를 보존했다.
+
+새 검사의 범위와 raw evidence SHA는 [캐시 게시 검증](../../validation/cache_publication/execution.json)에 기록한다. Linux lock/옵션 미지원 검사는 Windows에서 API를 주입한 UNIT이며 실제 Linux 공유 저장소에서 실행한 검사가 아니다. 서버 storage에서 수정 후 장기 실행한 결과와 로컬 DEBUG 검사를 구분한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
