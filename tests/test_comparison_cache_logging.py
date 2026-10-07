@@ -1,7 +1,7 @@
 """UNIT console verbosity and exact JSONL retention; no cache/model changes."""
 import builtins
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 import json
 from pathlib import Path
@@ -50,7 +50,7 @@ class CacheLoggingTests(unittest.TestCase):
             self.assertNotIn("a" * 64, console[0])
             self.assertEqual(self.records(path), rows)
 
-    def test_aggregate_cadence_is_once_per_minute_and_end_is_idempotent(self):
+    def test_cache_events_never_interrupt_live_progress_and_end_is_idempotent(self):
         with self.directory() as directory:
             path = Path(directory) / "events.jsonl"
             console, clock = [], Clock()
@@ -62,14 +62,13 @@ class CacheLoggingTests(unittest.TestCase):
             self.assertFalse(console)
             clock.seconds = 60.
             logger(row)
-            self.assertEqual(len(console), 1)
-            self.assertIn("preparation", console[0])
+            self.assertFalse(console)
             clock.seconds = 119.9
             logger(row)
+            self.assertFalse(console)
+            logger.finish()
+            logger.finish()
             self.assertEqual(len(console), 1)
-            logger.finish()
-            logger.finish()
-            self.assertEqual(len(console), 2)
             self.assertIn("end", console[-1])
             self.assertEqual(len(self.records(path)), 4)
 
@@ -274,7 +273,7 @@ class FieldReadConsoleTests(unittest.TestCase):
                 before = (root / 'experiment.json').read_bytes()
                 console = StringIO()
                 with patch.object(runner, 'ROOT', repository), patch('tools.local_cnn_device.select'), \
-                        patch.object(controller, 'run', side_effect=no_model_controller), redirect_stdout(console):
+                        patch.object(controller, 'run', side_effect=no_model_controller), redirect_stdout(console), redirect_stderr(console):
                     result = runner.run(supplied)
                 self.assertEqual(result, dict(status='UNIT_no_model_execution'))
                 rows = CacheLoggingTests.records(root / 'preparation_reuse.jsonl')

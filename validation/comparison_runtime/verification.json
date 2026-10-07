@@ -1,0 +1,154 @@
+{
+  "scope": "execution_only_progress_prefetch_and_exact_parallel_inputs",
+  "date": "2026-10-07",
+  "production_training_started": false,
+  "full_production_evaluation": false,
+  "quality_verified": false,
+  "tests": {
+    "unit_passed": 92,
+    "modules": [
+      "cache_logging",
+      "cached_resume",
+      "execution_binding",
+      "comparison_training",
+      "inputs",
+      "views",
+      "progress",
+      "runtime_report"
+    ],
+    "static_compile_passed": true
+  },
+  "frozen_sources": {
+    "hiercp_v1x/u_bridge_training.py": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+    "hiercp_v1x/comparison_training.py": "cbcd883f409f66e6a84c21f44d869a84a6fe01bd9cf65869c7fa4859d24c0eac"
+  },
+  "implementation_sha256": {
+    "hiercp_v1x/comparison_execution.py": "26d99008c4f2a2f1b448d796ce85d195f8b429d804533392780ccaed9dc94eaf",
+    "hiercp_v1x/comparison_runtime.py": "d92aa070c7505523e3b67c81828c705f8d094e72296c4dd68232d0099d306531",
+    "hiercp_v1x/comparison_progress.py": "fe94fa43b2bc48c84715f2cc630da513451af16e8cd15eabffb3fc106009536a",
+    "hiercp_v1x/comparison_inputs.py": "f0d04b9cd4c0d3d803609d2e192e855aa0b5af045a9bfb46808be4ab18ca8d76",
+    "hiercp_v1x/comparison_views.py": "3125e49aeea6c5821fb521ef710c8ee623b5455f140d9a5fb4c2facd649772e8",
+    "hiercp_v1x/comparison_data_timing.py": "b0d8dd063005bc5a082e823d0f9f09c13d3e2252773724b6a1ded7f340470c7e",
+    "tools/resume_comparison_cached.py": "07a93677d3399dcad71fa2e12e6deaa395dd0c9350c44c20abbcffaee947cee7",
+    "tools/report_comparison_runtime.py": "171f70aef43519017978bab373c64279cba97920a1430342131e9f06c4589e87",
+    "tools/verify_comparison_input_debug.py": "b35cc1cb123699dfc8669be4767a0492f67033a31b93dd1b1ad68adf7db1de27",
+    "tools/verify_comparison_progress_debug.py": "a93310d0d28126670b16e4ea4e8419967ece9250438536c3af3a8f609fc66fed"
+  },
+  "local_raw_evidence": [
+    {
+      "path": "work/comparison_progress_DEBUG_20261007_r2/report.json",
+      "sha256": "cab06dc12fe063f96088608007884fc05070a05fd8ebae2c5b6b21b4cfbda7a3"
+    },
+    {
+      "path": "work/comparison_input_DEBUG_20261007/report.json",
+      "sha256": "2a16c396e2278c6c4d474d3eb91a0c157cb47d1dbb341cae6803e6184bd20212"
+    },
+    {
+      "path": "work/comparison_progress_DEBUG_20261007_r2/equivalence.json",
+      "sha256": "2e82db23d5fedce56f90e26e36f832abe6e360e6161e4e69efb2e4acb57a4de3"
+    },
+    {
+      "path": "work/comparison_runtime_units_release.log",
+      "sha256": "20bbbb5c683e32d5e40e9c23ddda79cb64b65fc58bbf2f99846c046e9608f1ff"
+    }
+  ],
+  "actual_CT_input_checks": [
+    {
+      "leaf_count": 837,
+      "tensor_count": 707,
+      "baseline_digest": "b9b9ed642074a319c187f260554eed203d70216b91a30b419821045baf174518",
+      "new_digest": "b9b9ed642074a319c187f260554eed203d70216b91a30b419821045baf174518",
+      "exact_values_and_layout_equal": true,
+      "differences": [],
+      "partition": "train",
+      "sample_indices": [
+        0,
+        1
+      ],
+      "candidate_count": 8,
+      "baseline_seconds": 40.4047243000241,
+      "baseline_rng_preserved": true,
+      "new_rng_preserved": true
+    },
+    {
+      "leaf_count": 1505,
+      "tensor_count": 707,
+      "baseline_digest": "4a9dc7b65f0e278795339a1a622f69b058d2abec5b57ded396931f2e5b56c10f",
+      "new_digest": "4a9dc7b65f0e278795339a1a622f69b058d2abec5b57ded396931f2e5b56c10f",
+      "exact_values_and_layout_equal": true,
+      "differences": [],
+      "partition": "val",
+      "sample_indices": [
+        2
+      ],
+      "candidate_count": 129,
+      "baseline_seconds": 26.877976899966598,
+      "baseline_rng_preserved": true,
+      "new_rng_preserved": true
+    }
+  ],
+  "input_reference_preservation": {
+    "model_unchanged": true,
+    "references_unchanged": true,
+    "source_cache_unchanged": true,
+    "frozen_helpers_unchanged": true
+  },
+  "actual_CUDA_smoke": {
+    "scope": "actual_CT_CUDA_DEBUG_only",
+    "debug": true,
+    "actual_CUDA": true,
+    "parameters": 10434532,
+    "trainable_parameter_tensors": 1085,
+    "physical_batch": 2,
+    "workers": 4,
+    "epochs": 2,
+    "original129_joint_upper_evaluation": true,
+    "genuine_graph_views": 2,
+    "optimizer_updates": 2,
+    "completed_resume_additional_updates": 0,
+    "completed_checkpoint_content_identical": true,
+    "original_reference_preserved": true,
+    "original_cache_preserved": true,
+    "frozen17_helpers_preserved": true,
+    "actual_wrapper_completed_resume": {
+      "returncode": 0,
+      "additional_updates": 0,
+      "copied_checkpoint_content_identical": true,
+      "copied_checkpoint_archive_bytes_identical": true,
+      "original_reference_cache_preserved": true,
+      "stdout": "wrapper_stdout.log",
+      "stderr": "wrapper_stderr.log"
+    },
+    "wall_seconds": 212.9255153000122
+  },
+  "resources": {
+    "GPU": "NVIDIA GeForce RTX 5070 Ti",
+    "VRAM_GiB": 15.92034912109375,
+    "CPU_logical_cores": 16,
+    "RAM_bytes": 68640653312,
+    "DEBUG_cuda_budget_GiB": 12,
+    "DEBUG_RSS_budget_GiB": 32,
+    "peak_training_VRAM_GiB": 2.198659896850586,
+    "peak_training_RSS_GiB": 10.70223617553711
+  },
+  "numerical_scope": {
+    "historical_final_weights_bitwise_equal": false,
+    "initial_strict_historical_check_failed_and_retained": "work/comparison_progress_DEBUG_20261007/equivalence.json",
+    "followup": "Fixed weights, exact input/layout, restored RNG, no updates: baseline and new each repeated 3 times",
+    "baseline_repeat_max_score_abs_difference": 0.000244140625,
+    "new_repeat_max_score_abs_difference": 0.000274658203125,
+    "cross_path_max_score_abs_difference": 0.0003662109375,
+    "first_observed_divergence": "local_encoder.blocks.0 in baseline-repeat AND baseline-new traced comparisons",
+    "dense_encoder_exact_calls": 34,
+    "one_case_rank_same_in_all_six_unhooked_runs": 66,
+    "limitation": "No bitwise final-weight equivalence, statistical equivalence or cohort quality claim"
+  },
+  "limitations": [
+    "Actual DEBUG has two training sources and one held-out source; complete production cohort not run locally.",
+    "Single validation batch cannot benchmark next-batch overlap; ordered concurrency covered by UNIT tests.",
+    "Server NFS contention and four simultaneous arms were not measured locally.",
+    "Additional prefetched host batch is subject to unchanged RSS budget; cohort-wide peak not measured.",
+    "Graph view construction remains substantial; no claim that every bottleneck is eliminated.",
+    "Displayed train7 label in retained CUDA log means historical machine key for P+7U; final display is train8, verified by UNIT."
+  ]
+}

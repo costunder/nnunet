@@ -1,0 +1,165 @@
+"""UNIT telemetry fixtures; no training, checkpoint loading or file mutations."""
+import io
+import json
+import unittest
+
+from tools.report_comparison_runtime import (build_report, parse_jsonl, summarize_cache,
+    summarize_input, summarize_training)
+
+
+class ComparisonRuntimeReportUnitTests(unittest.TestCase):
+    def test_training_step_excludes_loader_and_contains_checkpoint(self):
+        rows = [dict(status="OPTIMIZER_UPDATED", epoch=1, update=1, sample_indices=[1, 2], physical_samples=2,
+                     loader_wait_seconds=3., step_seconds=7., checkpoint_seconds=2., forward_seconds=1.,
+                     backward_seconds=4.)]
+        summary = summarize_training(rows, 2)
+        self.assertEqual(summary["observed_loader_plus_step_seconds"], 10.)
+        self.assertEqual(summary["timings"]["checkpoint_seconds"]["percent_of_observed_loader_plus_step"], 20.)
+        self.assertEqual(summary["timings"]["loader_wait_seconds"]["percent_of_observed_loader_plus_step"], 30.)
+        self.assertEqual(summary["observed_sources_per_second"], .2)
+
+    def test_legacy_phase_missing_is_unknown_even_with_training_100_percent(self):
+        update = dict(status="OPTIMIZER_UPDATED", epoch=1, update=1, sample_indices=[1, 2], physical_samples=2,
+                      loader_wait_seconds=3., step_seconds=7.)
+        result = build_report(dict(training_samples=2, validation_samples=1, total_planned_updates=40), [update], [], [], [])
+        self.assertEqual(result["phase"], "unknown")
+        self.assertEqual(result["training_epoch"]["coverage"]["percent"], 100.)
+        self.assertIn("validation/transition expected", result["expected_next_phase_from_legacy_records"])
+        self.assertEqual(result["optimizer_history"]["percent"], 2.5)
+
+    def test_partial_live_scores_are_separate_from_completed_full_validation(self):
+        progress = dict(phase="validation129", epoch=1, stage="forward", completed_sources=1, total_sources=4,
+                        metrics_scope="partial patient macro of observed sources", metrics=dict(mrr=.5, top1=0.))
+        complete = dict(epoch=0, metrics=dict(mrr=.1, top1=.05), source_problems=4)
+        result = build_report({}, [], [], [], [], progress=progress, latest_validation=complete)
+        self.assertEqual(result["phase"], "validation129")
+        self.assertEqual(result["live_progress"]["percent"], 25.)
+        self.assertEqual(result["live_progress"]["metrics"]["mrr"], .5)
+        self.assertEqual(result["latest_completed_validation"]["metrics"]["mrr"], .1)
+        self.assertEqual(result["latest_completed_validation"]["epoch"], 0)
+
+    def test_duplicate_validation_rows_do_not_inflate_coverage(self):
+        row = dict(epoch=1, source_indices=[3], source_problems=1, loader_seconds=3., full_joint_forward_seconds=7.)
+        result = build_report(dict(validation_samples=2), [], [row, row], [], [])
+        summary = result["validation_epoch"]
+        self.assertEqual(summary["coverage"]["unique_logged_sources"], 1)
+        self.assertEqual(summary["coverage"]["percent"], 50.)
+        self.assertEqual(summary["coverage"]["repeated_source_observations"], 1)
+        self.assertEqual(summary["observed_blocking_load_plus_forward_seconds"], 20.)
+
+    def test_cache_whole_history_distinguishes_build_reopen_mapping(self):
+        rows = [dict(stage="whole_case_fields_read", case_id="UNIT_A", status="built", wall_seconds=10.),
+                dict(stage="whole_case_fields_read", case_id="UNIT_A", status="resident_mapping", wall_seconds=.1),
+                dict(stage="whole_case_fields_read", case_id="UNIT_B", status="reopened", wall_seconds=20.),
+                dict(stage="host_cache_pressure", status="released", wall_seconds=4.)]
+        result = summarize_cache(rows)
+        self.assertEqual(result["field_calls"], 3)
+        self.assertEqual(result["unique_field_case_ids"], 2)
+        self.assertEqual(result["summed_field_helper_seconds"]["seconds"], 30.1)
+        self.assertEqual(result["pressure_events"], 1)
+        self.assertEqual(result["field_statuses"]["built"]["calls"], 1)
+
+    def test_only_unfinished_final_jsonl_append_is_ignored(self):
+        rows, warnings = parse_jsonl(io.StringIO('{"epoch":1}\n{"epoch":'), kind="update")
+        self.assertEqual(rows, [dict(epoch=1)])
+        self.assertEqual(len(warnings), 1)
+        with self.assertRaisesRegex(ValueError, "invalid complete JSONL"):
+            parse_jsonl(io.StringIO('{"epoch":broken}\n{"epoch":2}\n'))
+
+    def test_missing_measurements_remain_unknown_and_nonfinite_is_rejected(self):
+        result = build_report({}, [], [], [], [])
+        self.assertIsNone(result["training_epoch"]["observed_loader_plus_step_seconds"])
+        self.assertIsNone(result["validation_epoch"]["observed_blocking_load_plus_forward_seconds"])
+        self.assertIsNone(result["optimizer_history"]["percent"])
+        with self.assertRaisesRegex(ValueError, "Nonfinite JSON"):
+            parse_jsonl(io.StringIO('{"wall_seconds":NaN}\n'))
+
+    def test_incomplete_legacy_timing_cannot_claim_observed_throughput(self):
+        rows = [dict(status="OPTIMIZER_UPDATED", sample_indices=[1], physical_samples=1,
+                     loader_wait_seconds=3., step_seconds=7.),
+                dict(status="OPTIMIZER_UPDATED", sample_indices=[2], physical_samples=1,
+                     step_seconds=7.)]
+        summary = summarize_training(rows, 2)
+        self.assertIsNone(summary["observed_loader_plus_step_seconds"])
+        self.assertIsNone(summary["observed_sources_per_second"])
+        self.assertEqual(summary["timings"]["loader_wait_seconds"]["records_with_value"], 1)
+
+    def test_valid_terminal_phase_overrides_older_live_observation(self):
+        result = build_report({}, [], [], [], [], progress=dict(phase="validation129", epoch=2),
+                              final_report=dict(final_phase="complete"))
+        self.assertEqual(result["phase"], "complete")
+        self.assertEqual(result["phase_source"], "final report")
+        self.assertEqual(result["live_progress"]["phase"], "validation129")
+
+    def test_prefetch_validation_construction_not_added_to_blocking_wall(self):
+        row = dict(epoch=1, source_indices=[3], source_problems=1, loader_seconds=20.,
+                   loader_wait_seconds=2., full_joint_forward_seconds=8., checkpoint_seconds=1.,
+                   batch_wall_seconds=12.)
+        result = build_report(dict(validation_samples=1), [], [row], [], [])
+        summary = result["validation_epoch"]
+        self.assertEqual(summary["observed_blocking_load_plus_forward_seconds"], 10.)
+        self.assertEqual(summary["observed_batch_wall_seconds"], 12.)
+        self.assertEqual(summary["timings"]["blocking_loader_seconds"]["percent_of_observed_blocking_load_plus_forward"], 20.)
+        self.assertIsNone(summary["timings"]["loader_seconds"]["percent_of_observed_blocking_load_plus_forward"])
+        self.assertEqual(summary["prefetch_batch_records"], 1)
+
+    def test_unavailable_optional_logs_are_not_zero_work(self):
+        result = build_report({}, [], [], [], [], cache_available=False, input_available=False)
+        self.assertFalse(result["cache_history"]["available"])
+        self.assertNotIn("field_calls", result["cache_history"])
+        self.assertFalse(result["input_preparation"]["available"])
+
+    def test_input_regions_disjoint_and_validation_view_epoch_is_history(self):
+        def row(training, epoch, arm="native_listwise"):
+            return dict(arm=arm, training=training, full129=not training, view_epoch=epoch,
+                        source_indices=[3], status="complete", input_seconds=10.,
+                        regions=dict(case_fields_seconds=1., regions_seconds=1., source_seconds=1.,
+                                     candidate_metadata_seconds=1., local_graphs_seconds=4.),
+                        other_assembly_views_collate_seconds=2.)
+        result = summarize_input([row(True, 2), row(True, 1), row(False, 1), row(False, 1),
+                                  row(False, 1, "selected")], "native_listwise", 2)
+        train, validation = result["training_epoch"], result["validation_history"]
+        self.assertEqual(train["input_construction"]["seconds"], 10.)
+        self.assertEqual(train["accounted_region_plus_remainder_seconds"], 10.)
+        self.assertEqual(train["timings"]["local_graphs_seconds"]["percent_of_cpu_input_construction"], 40.)
+        self.assertEqual(validation["input_construction"]["seconds"], 20.)
+        self.assertEqual(validation["view_epochs"], [1])
+        self.assertEqual(validation["source_coverage"]["repeated_source_observations"], 1)
+        self.assertIn("not the outer training epoch", validation["scope"])
+        bad = row(True, 2)
+        bad["other_assembly_views_collate_seconds"] = 3.
+        with self.assertRaisesRegex(ValueError, "do not sum"):
+            summarize_input([bad], "native_listwise", 2)
+
+    def test_large_graph_payload_not_retained_by_timing_reader(self):
+        rows, warnings = parse_jsonl(io.StringIO('{"epoch":1,"update":1,"actual_input":{"huge":"UNIT"}}\n'), kind="update")
+        self.assertNotIn("actual_input", rows[0])
+        self.assertFalse(warnings)
+
+    def test_sampled_views_region_survives_reader_and_exact_disjoint_audit(self):
+        # UNIT timings exercise the actual sampled_views_seconds log key. The
+        # earlier format placed this cost inside the assembly remainder.
+        row = dict(arm="native_fixed", training=False, full129=True, view_epoch=29,
+                   source_indices=[2], status="complete", input_seconds=10.,
+                   regions=dict(case_fields_seconds=1., regions_seconds=1., source_seconds=1.,
+                                candidate_metadata_seconds=1., local_graphs_seconds=1.,
+                                sampled_views_seconds=3.), other_assembly_views_collate_seconds=2.)
+        rows, notices = parse_jsonl(io.StringIO(json.dumps(row) + '\n'), kind="input")
+        self.assertFalse(notices)
+        mode = summarize_input(rows, "native_fixed", 2)["validation_history"]
+        self.assertEqual(mode["accounted_region_plus_remainder_seconds"], 10.)
+        self.assertEqual(mode["timings"]["sampled_views_seconds"]["seconds"], 3.)
+        self.assertEqual(mode["timings"]["sampled_views_seconds"]["percent_of_cpu_input_construction"], 30.)
+        older = dict(row, regions={key: value for key, value in row["regions"].items()
+                                  if key != "sampled_views_seconds"}, input_seconds=7.)
+        mixed = summarize_input([older, row], "native_fixed", 2)["validation_history"]
+        self.assertEqual(mixed["accounted_region_plus_remainder_seconds"], 17.)
+        self.assertEqual(mixed["timings"]["sampled_views_seconds"]["records_with_value"], 1)
+        self.assertIsNone(mixed["timings"]["sampled_views_seconds"]["percent_of_cpu_input_construction"])
+        mismatched = dict(row, other_assembly_views_collate_seconds=3.)
+        with self.assertRaisesRegex(ValueError, "do not sum"):
+            summarize_input([mismatched], "native_fixed", 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

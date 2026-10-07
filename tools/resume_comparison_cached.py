@@ -20,11 +20,11 @@ sys.dont_write_bytecode = True
 
 
 class _CacheEventLogger:
-    """Keep complete JSONL evidence; display compact preparation summaries."""
+    """Keep complete JSONL evidence without interrupting live phase progress."""
     def __init__(self, path, *, clock=time.monotonic, console=None):
         self.path = Path(path)
         self._clock = clock
-        self._console = console or (lambda line: print(line, flush=True))
+        self._console = console or self._progress_safe_write
         self._lock = threading.Lock()
         self._last_summary = clock()
         self._reported_events = 0
@@ -33,6 +33,11 @@ class _CacheEventLogger:
         self._reused_bytes = self._pressure_events = 0
         self._field_reads = 0
         self._field_seconds = 0.
+
+    @staticmethod
+    def _progress_safe_write(line):
+        from tqdm import tqdm
+        tqdm.write(line, file=sys.stderr)
 
     @staticmethod
     def _gib(value):
@@ -80,8 +85,9 @@ class _CacheEventLogger:
             elif status in ('failed', 'error', 'rejected') or row.get('error'):
                 self._console(f"Cache execution error | kind={row.get('kind')} status={status} "
                     f"stage={stage} | full error: {self.path}")
-            if self._clock() - self._last_summary >= 60.:
-                self._summary('preparation')
+            # The phase display owns live progress. A cache event is not a
+            # phase transition; printing periodic 'preparation' lines here
+            # obscured validation and split terminal progress bars.
 
     def finish(self):
         with self._lock:
@@ -212,6 +218,10 @@ def run(a):
     from hiercp_v1x import host_memory
     from hiercp_v1x.host_memory import PressureBudget, pressure_aware_provider
     from hiercp_v1x.preparation_reuse import preparation_reuse
+    from hiercp_v1x.comparison_execution import comparison_execution
+    from hiercp_v1x.comparison_inputs import local_mask_provider
+    from hiercp_v1x.comparison_views import parallel_view_provider
+    from hiercp_v1x.comparison_data_timing import timed_provider
     from hiercp_v1x.u_bridge_experiment import lock, write_new, sha
     manifest, family, args, namespace = sealed_arguments(a)
     root = args.experiment
@@ -231,9 +241,16 @@ def run(a):
             dict(format='comparison_completed_cache_reuse_execution_v1',
                 contract_sha256=manifest['sha256'], arm=a.arm, own_data_namespace=str(data_root),
                 read_only_sources=[str(p.resolve()) for p in a.cache_sources],
-                original_checkpoint_and_engine_unchanged=True,
+                original_checkpoint_protocol_and_frozen_sources_unchanged=True,
+                execution_loop_changed=True,
+                execution_policy='ordered validation prefetch, parallel exact sampled views, progress and local label-mask extraction',
                 helpers={name:sha(ROOT/name) for name in ('tools/resume_comparison_cached.py',
-                    'hiercp_v1x/host_memory.py','hiercp_v1x/preparation_reuse.py')}))
+                    'hiercp_v1x/host_memory.py','hiercp_v1x/preparation_reuse.py',
+                    'hiercp_v1x/comparison_execution.py','hiercp_v1x/comparison_runtime.py',
+                    'hiercp_v1x/comparison_progress.py','hiercp_v1x/comparison_inputs.py',
+                    'hiercp_v1x/comparison_views.py','hiercp_v1x/comparison_data_timing.py')}))
+    def execution_provider(provider):
+        return timed_provider(parallel_view_provider(local_mask_provider(provider)), root/'input_timing.jsonl')
     continuation_path = root/'continuation.json'
     if continuation_path.exists():
         if family != 'u_bridge':
@@ -248,6 +265,7 @@ def run(a):
             source_experiment=Path(request['source_root']), experiment=root,
             inventory=a.inventory, debug_bank=a.debug_bank)
         with preparation_reuse(pressure_aware_provider(original_provider), a.cache_sources, event) as provider:
+            provider = execution_provider(provider)
             def registered(requested):
                 if requested is not original_provider:
                     raise ValueError('Independent provider class differs')
@@ -259,7 +277,7 @@ def run(a):
                 receipt(Path(request['data_root']))
                 # The preserved independent runner owns its locks, restores its
                 # exact checkpoint cursor, and verifies the continuation receipt.
-                with _field_read_console(event):
+                with _field_read_console(event), comparison_execution():
                     result = run_v18_independent.run(independent)
                 return result
             finally:
@@ -270,11 +288,12 @@ def run(a):
         locks.enter_context(lock(root/'.pipeline.lock'))
         locks.enter_context(lock(namespace/'.data.lock'))
         with preparation_reuse(pressure_aware_provider(original_provider), a.cache_sources, event) as provider:
+            provider = execution_provider(provider)
             experiment_module.Budget = budget
             setattr(data_module, class_name, provider)
             try:
                 receipt(namespace)
-                with _field_read_console(event):
+                with _field_read_console(event), comparison_execution():
                     return controller.run(args)
             finally:
                 experiment_module.Budget = original_budget

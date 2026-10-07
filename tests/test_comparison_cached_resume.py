@@ -42,7 +42,10 @@ def unit_fixture(base, *, family="u_bridge", debug=False, external_data=False):
         path.write_text("UNIT metadata-only source-binding fixture: " + name, encoding="utf8")
         helpers[name] = u_bridge_experiment.sha(path)
     for name in ("tools/resume_comparison_cached.py", "hiercp_v1x/host_memory.py",
-                 "hiercp_v1x/preparation_reuse.py"):
+                 "hiercp_v1x/preparation_reuse.py", "hiercp_v1x/comparison_execution.py",
+                 "hiercp_v1x/comparison_runtime.py", "hiercp_v1x/comparison_progress.py",
+                 "hiercp_v1x/comparison_inputs.py", "hiercp_v1x/comparison_views.py",
+                 "hiercp_v1x/comparison_data_timing.py"):
         path = repository / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("UNIT additive execution provenance fixture: " + name, encoding="utf8")
