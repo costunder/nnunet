@@ -15,8 +15,11 @@ v1.9는 네 군의 조건과 실행 관리를 별도 entry로 연결한다. 원�
 | [u_bridge_data.py](../../hiercp_v1x/u_bridge_data.py) | 보존된 original source/P/selected/frozen U 입력 기반 |
 | [u_bridge_fields.py](../../hiercp_v1x/u_bridge_fields.py) | 정확한 whole-case distance 배열 저장·읽기 전용 mmap |
 | [u_bridge_upper.py](../../hiercp_v1x/u_bridge_upper.py) | 원본 upper source/lesion 함수의 정적 출력 재사용 |
+| [resume_comparison_cached.py](../../tools/resume_comparison_cached.py) | 이미 봉인된 네 군의 설정·최신 checkpoint를 유지한 재개 |
+| [preparation_reuse.py](../../hiercp_v1x/preparation_reuse.py) | 다른 군의 완료된 동일 fields/upper/canonical 전처리 바이트 재사용 |
+| [server_comparison_cached.sh](../../tools/server_comparison_cached.sh) | 호출당 기존 군 하나 재개, 기존 root 자동 확인 |
 
-새 entry가 native_fixed의 첫 7개 고정 정책과 native_listwise의 CE 목적함수를 연결한다. 원본 graph 연산, P 메타데이터, source 목록과 sample 순서는 공통이다. 재사용되는 v1.8 파일 자체의 수정과 이전 체크포인트의 재사용은 허용하지 않는다. 각 군은 새 v1.9 루트에서 자체 optimizer·scaler·RNG·cursor와 결과를 저장한다.
+새 entry가 native_fixed의 첫 7개 고정 정책과 native_listwise의 CE 목적함수를 연결한다. 원본 graph 연산, P 메타데이터, source 목록과 sample 순서는 공통이다. 재사용되는 v1.8 파일 자체를 수정하거나 다른 군의 checkpoint를 초기값으로 바꾸지 않는다. 각 군은 자체 optimizer·scaler·RNG·cursor와 결과를 저장하고, 재실행 시 자기 최신 checkpoint에서 이어간다. [추가 캐시 경로](cache.md)는 네 군을 다시 시작하지 않고 이미 완성된 동일 전처리만 가져온다.
 
 서버에서는 기존 v1.8 두 군을 재실행하지 않는다. 새 두 군은 서로 다른 root/data와 GPU로 동시에 실행할 수 있다. launcher는 v1.8의 완료된 calibration을 읽기만 하며 active 작업의 잠금을 가져오거나 해제하지 않는다. 초기 clone calibration을 제외한 장기 학습은 명시한 군 하나다. 요약기는 `--arms`로 해당 군만 표시한다.
 

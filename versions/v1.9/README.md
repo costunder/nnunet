@@ -25,7 +25,7 @@ Signed 목록은 train 151개·validation 36개 source 문제다. 설정 validat
 
 서버 launcher는 호출당 추가 실험 한 개만 시작한다. `CP_ARM=native_fixed` 또는 `CP_ARM=native_listwise`를 지정한다. `all`과 기존 selected/native는 이 launcher에서 받지 않는다. 별도 GPU와 터미널에서 각각 실행할 수 있다. `CP_GPU`는 물리 GPU 번호다.
 
-기본 저장 위치는 각각 `/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42`와 `/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42`다. 모델·optimizer·RNG·cursor·캐시·잠금·체크포인트가 서로 분리된다. 같은 명령은 해당 실험의 상태에서 재개한다. 활성 v1.8 캐시를 공유하거나 기존 체크포인트를 새 실험에 옮기지 않는다.
+기본 저장 위치는 각각 `/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42`와 `/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42`다. 모델·optimizer·RNG·cursor·잠금·체크포인트는 서로 분리된다. 같은 명령은 해당 실험의 상태에서 재개한다. 기존 체크포인트를 새 실험으로 옮기지 않는다. [캐시 재개 경로](cache.md)는 활성 다른 군에서도 이미 완성된 동일 불변 전처리만 각 군의 data로 가져와 중복 계산을 줄인다. 미완료 작업과 mutable 학습 상태는 공유하지 않는다.
 
 `CP_REFERENCE` 기본값은 `/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42`다. 이곳의 experiment/calibration JSON만 읽어 이미 측정한 physical batch와 worker 수를 맞춘다. 초기 calibration의 짧은 clone probe는 유지하며, 정식 40 epoch 학습은 선택한 추가 군 하나만 수행한다. 네 군 새 장기 학습을 모두 요구했던 이전 실행 안내는 이 방식으로 수정했다. 동시 실행의 epoch 시간에는 CPU·I/O 경합이 섞이므로 단독 실행 처리량으로 해석하지 않는다.
 

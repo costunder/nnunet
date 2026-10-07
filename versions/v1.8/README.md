@@ -47,6 +47,8 @@ P의 source coverage = 1, source patch ring 통계, 자기 source를 제외한 �
 
 독립 실행·RAM 회수 패치의 회귀 검사 40개가 PASS했다. 추가 실제 CT/CUDA DEBUG에서는 같은 원본 전체 모델·physical source batch2·worker4로 native 2 epochs의 실제 update2회와 초기/epoch1/epoch2의 전체129 joint 평가3회를 마쳤다. 매 update gradient1085/1085 및 CNN/L0/L1/L2/scalar의 실제 가중치 변경을 확인했다. 완료 후 같은 명령을 재실행했을 때 checkpoint 바이트가 같고 추가 update는0회였다. 기존 파일은 보존했다. 측정된 update RSS 최대13.99 GiB, CUDA allocated 최대2.18 GiB는 이 작은 DEBUG 입력의 값이다. Linux page/allocator hint와 서버192 GiB 한도에서의 전체 cohort 재개는 아직 검증하지 않았다. [추가 실행 증거](../../validation/v18_memory/execution.json)에 범위를 명시한다.
 
+기존 네 군의 중복 준비를 줄이는 추가 실행 경로는 [v1.9 캐시 재개](../v1.9/cache.md)에 정리했다. 이미 만들어진 selected/native 독립 continuation도 원래 checkpoint와 memory 정책을 보존하며 같은 캐시 재사용 경로로 재개할 수 있다. 원본 모델·후보·loss와 실험 버전은 바꾸지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

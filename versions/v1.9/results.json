@@ -59,7 +59,8 @@
     "model_training_core_changed": false,
     "historical_CUDA_evidence_commit": "c430a88bd6bafed8718c7175bac05dcfadf7ef2c"
   },
-  "server_training_started": false,
+  "server_training_started": true,
+  "server_training_status_source": "User-provided native_fixed epoch1 first6-update log; no remote status query",
   "production_data": {
     "signed_train_source_samples": 151,
     "signed_validation_source_samples": 36,
@@ -75,5 +76,15 @@
     "Raw mean CE and mean pairwise softplus have different natural loss/gradient scales; this is not a scale-matched competition-only ablation",
     "Full-cohort CUDA calibration, 40-epoch training and Linux resource behavior remain pending"
   ],
-  "production_result": null
+  "production_result": null,
+  "cache_execution": {
+    "evidence": "validation/comparison_cache/execution.json",
+    "unit_tests_passed": 97,
+    "actual_CT_CUDA_DEBUG": "PASS",
+    "neural_core_changed": false,
+    "completed_cache_rebuilds": 0,
+    "exact_neural_progress_preserved": true,
+    "server_speedup_measured": false,
+    "quality_verified": false
+  }
 }

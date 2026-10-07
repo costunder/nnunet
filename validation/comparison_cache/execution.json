@@ -1,0 +1,117 @@
+{
+  "scope": "completed exact cache reuse and saved neural progress; actual CT/CUDA DEBUG only",
+  "implementation_complete": true,
+  "static_python_check": "PASS",
+  "shell_syntax": "unverified: no local Bash",
+  "unit_tests_passed": 97,
+  "unit_log": {
+    "path": "work\\comparison_cache_unit_20261007_final.log",
+    "sha256": "4799f4499a6138a0fc1ebcaa56f46a0574537bd71456f121b785b2fecbb9e146"
+  },
+  "actual_report": {
+    "path": "work\\comparison_cache_DEBUG_20261007_r2\\report.json",
+    "sha256": "53795d4fb3dcdaf4075b9c1f84cc71af524e78d20cef883660748cec4110d2c8"
+  },
+  "actual_model_parameters": 10434532,
+  "physical_source_batch": 2,
+  "workers": 4,
+  "train_cases": 2,
+  "validation_cases": 1,
+  "debug_epochs": 2,
+  "actual_optimizer_updates": 2,
+  "finite_gradient_tensors_per_update": 1085,
+  "full129_joint_evaluations": 3,
+  "completed_cache_imports": {
+    "whole_case_fields": 3,
+    "canonical_local": 145,
+    "upper_static": 6
+  },
+  "canonical_rebuilds": 0,
+  "whole_case_field_rebuilds": 0,
+  "static_upper_rebuilds": 0,
+  "completed_resume_additional_updates": 0,
+  "completed_neural_checkpoint_content_unchanged": true,
+  "engine_archive_bytes_identical": false,
+  "archive_scope": "Frozen engine reserializes completed checkpoints; semantic digest verifies neural/state content",
+  "final_actual_wrapper_resume": {
+    "checkpoint": "D:\\AI project\\nnunet\\work\\comparison_cache_DEBUG_20261007_r2\\wrapper_complete\\native_fixed\\checkpoint_latest.pt",
+    "initial_phase": "complete",
+    "verified_optimizer_history": {
+      "verified_genuine_updates": 2,
+      "verified_parameter_tensors": 1085,
+      "verified_initialized_parameter_tensors": 1085,
+      "transient_optimizer_called": true,
+      "optimizer_math_changed": false
+    },
+    "invocation_optimizer_updates": 0,
+    "invocation_backward_attempts": 0,
+    "invocation_epoch_completions": 0,
+    "completed_checkpoint_no_repeat_verified": true
+  },
+  "final_wrapper_log": {
+    "path": "work\\comparison_cache_DEBUG_20261007_r2\\final_wrapper.log",
+    "sha256": "638c1453cf1f0d7fdf64d80466c8e9ce54238375e63e0f6360aecf15b9bebd3a"
+  },
+  "original_reference_and_cache_preserved": true,
+  "frozen_helpers": {
+    "hiercp_v1x/u_bridge_experiment.py": "e3f149ef0fa497cef5214c39175101236e8a424e65c746ca8c5a14e84300af49",
+    "hiercp_v1x/u_bridge_data.py": "fc1ca9a2ee188baf61a12d91aebac68e69f1bb9ad415be37addb683c7435453f",
+    "hiercp_v1x/u_bridge_fields.py": "6bbfab9cb7dfd534da0476506f23dfcff2b387fd5fc38599e2a13782c6bbffd9",
+    "hiercp_v1x/u_bridge_calibration.py": "28d969c08aba8551a0ceabca5a140dbe367fbb672114b2629bdb29551181bbfa",
+    "hiercp_v1x/u_bridge_upper.py": "933a77e31d890d2871f5f5063de63523e736a63c2847cdc4d07f62866abf8c82",
+    "hiercp_v1x/u_bridge_training.py": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+    "hiercp_v1x/bounded_scope.py": "4e52f4751e9d3e885f088bdf5639cbda649099c4db52de069902772a2223853b",
+    "hiercp_v1x/scope_probe_support.py": "6fef8b556c420703929ce5862e595cc94dadc2f2941c9c07b08e75e6553fe988",
+    "hiercp_v1x/scope_learning_loop.py": "aebde93532180081bb37aaa2cbe61782f1648351c6b2f77ed2cd3d2e68d0b9e6",
+    "tools/run_v18_u_bridge.py": "381ee796682222622e3a0a760cffaac036f85d8779d8dd80d4fa902454d18229",
+    "tools/local_cnn_device.py": "1db5e86260975c2b5a19d0f4e42c01a4b721d0a7640d27ee5c3d59a297399de8",
+    "config/v18_u_bridge.json": "dac6b605700068be70c08ba4e10e965bad6b752d1df21fd8b80a9e11fcc1b18e",
+    "hiercp_v1x/comparison_experiment.py": "2101bb0eb32f8137b8a84c9b084c97534c67b0eb391d83f1fe07c05e09bd48cb",
+    "hiercp_v1x/comparison_data.py": "c776e3c9525c3402f6a31bae2bd085b32d130d79fdc84198da8530610ba0a886",
+    "hiercp_v1x/comparison_training.py": "cbcd883f409f66e6a84c21f44d869a84a6fe01bd9cf65869c7fa4859d24c0eac",
+    "tools/run_v19_comparison.py": "1194092cdbeba7f053f143364cd2f76679701f07229833d1edc974beb85f6893",
+    "config/v19_comparison_controls.json": "003ecf487f34221eb2dc53740f32d69bdfff8678cfeb0401f365ace87852844c"
+  },
+  "execution_helpers": {
+    "tools/resume_comparison_cached.py": "5a252dd118fbc6eccc5824ac6890fe4afadfb0d1d47c7dcb63bcaec619b09926",
+    "tools/server_comparison_cached.sh": "aa6376b9dd8ee31d3b2999d76cda10d45d768d96275a83ad6d8b25babb7852ab",
+    "tools/verify_comparison_cache_debug.py": "95d974177112fc0eb54328075fa114c205536673b57d9371ec771d442915e4f4",
+    "hiercp_v1x/preparation_reuse.py": "38b3c2c44c5057dcaac508e5835d8af223496b4b47c2ae3d2f19b60108d7be08",
+    "hiercp_v1x/host_memory.py": "4f45d03d29c3143bbd49089d8d15c7f19a8fe77ea8ffb0b90d41f58f6645bb8f"
+  },
+  "local_resource": {
+    "gpu": [
+      {
+        "logical_index": 0,
+        "name": "NVIDIA GeForce RTX 5070 Ti",
+        "total_vram_bytes": 17094344704,
+        "multiprocessors": 70,
+        "compute_capability": "12.0",
+        "mig_instance": false
+      }
+    ],
+    "cpu_cores": 16,
+    "ram_total_bytes": 68640653312,
+    "update_peak_cuda_bytes": 2360793088,
+    "update_peak_rss_bytes": 14936924160
+  },
+  "provided_server_log": {
+    "arm": "native_fixed",
+    "epoch": 1,
+    "updates_shown": 6,
+    "elapsed_seconds": 383,
+    "inside_update_seconds_sum": 63.59,
+    "interpretation": "remaining elapsed time includes preparation/loading/views/wait; prefetch prevents treating all logs as disjoint wall components"
+  },
+  "server_processes_contacted": false,
+  "full_server_training_executed": false,
+  "server_speedup_measured": false,
+  "quality_verified": false,
+  "limitations": [
+    "Unseen first-time preparation still uses the original factory",
+    "Simultaneous never-published cache misses are not centrally deduplicated",
+    "Graph view materialization, loading/hash verification, GPU updates and full129 evaluation remain",
+    "Linux renameat2/madvise/allocator behavior not executed on this Windows host",
+    "Existing shared v18 root retains common locks; independent continuations are required for concurrent selected/native"
+  ]
+}
