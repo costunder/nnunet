@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 import uuid
+import weakref
 
 import numpy as np
 
@@ -402,30 +403,68 @@ def preparation_reuse(provider_class, source_data_roots, event_callback=None):
     with _CONTEXT:
         original_fields = fields.cached_fields
         original_upper = upper.UpperCache._obtain
+        # Keep only identities returned by the original verified mapping loader.
+        # A remembered identity is useful while its exact registry entry lives;
+        # eviction/removal must take the full publication/loader path again.
+        verified_fields = {}
 
         def cached_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check):
             if (not isinstance(case_id, str) or not case_id
                     or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", case_id) is None):
                 raise ValueError("Preparation reuse requires a single-directory case identity")
             canonical = fields._canonical_binding(binding)
-            directory = _safe(Path(root) / case_id, directory=True)
             lock_identity = _path_identity(Path(root) / case_id)
             with fields._REGISTRY_LOCK:
                 lock = fields._LOCKS.setdefault(lock_identity, threading.RLock())
-            with lock, _publication_guard(directory):
-                _ensure_fields(root, case_id, canonical, roots, event_callback)
-                return original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
+            with lock:
+                remembered = verified_fields.get((lock_identity, fields._digest(canonical)))
+                if remembered is not None:
+                    identity, mappings = remembered
+                    with fields._REGISTRY_LOCK:
+                        entry = fields._OPENED.get(identity)
+                        still_open = (entry is not None and len(entry[0]) == len(mappings)
+                                      and all(array is reference() for array, reference in zip(entry[0], mappings)))
+                    if still_open:
+                        # Preserve the original budget, readonly mapping and
+                        # receipt behavior; omit only our added disk probes.
+                        return original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
+                directory = _safe(Path(root) / case_id, directory=True)
+                with _publication_guard(directory):
+                    _ensure_fields(root, case_id, canonical, roots, event_callback)
+                    result = original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
+                identity = (str(directory), fields._digest(canonical))
+                with fields._REGISTRY_LOCK:
+                    entry = fields._OPENED.get(identity)
+                if entry is not None:
+                    # Do not extend mapping lifetime if the original registry
+                    # is released by a future pressure policy or caller.
+                    verified_fields[(lock_identity, identity[1])] = (identity, tuple(weakref.ref(a) for a in entry[0]))
+                return result
 
         class ReusingPreparation(provider_class):
             def _get(self, key, factory):
                 if isinstance(key, tuple) and len(key) == 2 and key[0] == "local":
-                    with _publication_guard(Path(self.graph_dir) / (str(key[1]) + ".pt")):
-                        _ensure_local(self.graph_dir, key[1], roots, event_callback)
-                        return super()._get(key, factory)
+                    if not isinstance(key[1], str) or _HEX.fullmatch(key[1]) is None:
+                        raise ValueError("Canonical reuse requires the original SHA256 binding key")
+                    def verified_factory():
+                        # The original _get calls its factory only on a RAM
+                        # miss. Import still precedes its disk load/build, and
+                        # the guard spans both exact reuse and that loader.
+                        with _publication_guard(Path(self.graph_dir) / (key[1] + ".pt")):
+                            _ensure_local(self.graph_dir, key[1], roots, event_callback)
+                            return factory()
+                    return super()._get(key, verified_factory)
                 return super()._get(key, factory)
 
         def obtain_static(cache, kind, binding, factory):
+            if kind not in ("source_raw", "lesions"):
+                raise ValueError("Preparation reuse requires the original static upper helper kind")
             canonical = upper._binding(binding)
+            with cache._lock:
+                if (kind, upper._digest(canonical)) in cache._resident:
+                    # The original method retains its check(), hit accounting
+                    # and defensive array copies under the same reentrant lock.
+                    return original_upper(cache, kind, binding, factory)
             anchor = "_".join(map(str, canonical["anchor"]))
             directory = Path(cache.root) / canonical["case_id"] / f"c{canonical['source_component']}_a{anchor}" / kind
             with _publication_guard(directory):

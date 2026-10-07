@@ -37,6 +37,8 @@ Signed 목록은 train 151개·validation 36개 source 문제다. 설정 validat
 
 실행 조건은 [config.md](config.md), 구현 연결은 [code.md](code.md), 검증 상태는 [results.json](results.json)에 기록한다. 기존 CUDA evidence는 commit `c430a88`의 구현에 해당하며, 이번 수정은 서버 launcher·기준 실행 설정 읽기·요약 출력에 한정한다. 학습 엔진·모델·후보 규칙의 결속 파일은 유지한다. Bash 구문 검사는 로컬 실행기가 없어 미검증이다. 실제 CT/CUDA에서 네 군 각각 두 DEBUG epoch·두 update와 전체 129개 평가를 확인한 기존 결과를 보존했다. Listwise의 update1 중단·정확 재개와 네 군의 완료 후 0 추가 update도 통과했다. [검증 기록](../../validation/v19_comparison/README.md)은 당시 GPU·RAM·graph 규모와 파일 SHA를 포함한다. 서버의 40 epochs 및 추천 성능은 아직 미검증이다.
 
+최근 서버의 첫 epoch 지연, 반복 캐시 로그, 원래 30분 실행과 달라진 작업량 및 승인된 과거 캐시 정리는 [실행 비용과 캐시 정리](runtime.md)에 모았다. 모델·후보·10mm·저장 상태는 유지하며 검증된 RAM hit의 추가 파일 조회와 콘솔 출력만 줄인다. 서버 시간 개선은 재개 후 측정해야 한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

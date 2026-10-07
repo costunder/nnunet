@@ -1,18 +1,156 @@
 """Resume a sealed v1.8/v1.9 arm; reuse completed exact caches from other arms."""
 from __future__ import annotations
 import argparse
-from contextlib import ExitStack
+import builtins
+from contextlib import ExitStack, contextmanager
 import importlib
 import json
+import math
 from pathlib import Path
+import re
 import sys
 import threading
+import time
 from types import SimpleNamespace
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
+
+
+class _CacheEventLogger:
+    """Keep complete JSONL evidence; display compact preparation summaries."""
+    def __init__(self, path, *, clock=time.monotonic, console=None):
+        self.path = Path(path)
+        self._clock = clock
+        self._console = console or (lambda line: print(line, flush=True))
+        self._lock = threading.Lock()
+        self._last_summary = clock()
+        self._reported_events = 0
+        self._finished = False
+        self._events = self._reused = self._misses = self._binding_misses = 0
+        self._reused_bytes = self._pressure_events = 0
+        self._field_reads = 0
+        self._field_seconds = 0.
+
+    @staticmethod
+    def _gib(value):
+        return f"{value / 2**30:.2f}" if type(value) in (int, float) else "unknown"
+
+    def _summary(self, label):
+        self._console(f"Cache log summary | {label} | events={self._events} "
+            f"reused={self._reused} miss={self._misses} binding_miss={self._binding_misses} "
+            f"reused_GiB={self._gib(self._reused_bytes)} pressure={self._pressure_events} "
+            f"field_reads={self._field_reads} field_seconds={self._field_seconds:.2f} "
+            f"| full details: {self.path}")
+        self._reported_events = self._events
+        self._last_summary = self._clock()
+
+    def __call__(self, row):
+        with self._lock:
+            # Preserve the previous complete append/write/close durability and
+            # exact record contents; console verbosity changes storage neither.
+            with self.path.open('a', encoding='utf8') as stream:
+                stream.write(json.dumps(row, allow_nan=False) + '\n')
+            self._events += 1
+            status, stage = row.get('status'), row.get('stage')
+            if stage == 'whole_case_fields_read':
+                self._field_reads += 1
+                if type(row.get('wall_seconds')) in (int, float):
+                    self._field_seconds += row['wall_seconds']
+            if status == 'reused':
+                self._reused += 1
+                if type(row.get('bytes')) is int:
+                    self._reused_bytes += row['bytes']
+            elif status == 'cache_miss':
+                self._misses += 1
+            elif status == 'binding_miss':
+                self._binding_misses += 1
+            if stage == 'host_cache_pressure':
+                self._pressure_events += 1
+                self._console(f"Host cache pressure | RSS_GiB="
+                    f"{self._gib(row.get('rss_before_bytes'))}->{self._gib(row.get('rss_after_bytes'))} "
+                    f"limit={self._gib(row.get('rss_limit_bytes'))} "
+                    f"within_limit={row.get('measured_rss_within_hard_budget')} | details: {self.path}")
+            elif stage == 'hard_budget_failed':
+                self._console(f"Resource budget failed | resource={row.get('resource')} "
+                    f"actual_GiB={self._gib(row.get('actual_bytes'))} "
+                    f"limit_GiB={self._gib(row.get('limit_bytes'))} | details: {self.path}")
+            elif status in ('failed', 'error', 'rejected') or row.get('error'):
+                self._console(f"Cache execution error | kind={row.get('kind')} status={status} "
+                    f"stage={stage} | full error: {self.path}")
+            if self._clock() - self._last_summary >= 60.:
+                self._summary('preparation')
+
+    def finish(self):
+        with self._lock:
+            if self._finished:
+                return
+            self._finished = True
+            if self._events == self._reported_events:
+                return
+            active = sys.exc_info()[1]
+            try:
+                self._summary('end')
+            except OSError as error:
+                if active is None:
+                    raise
+                # A nonessential final console line must not replace the
+                # original training/cache failure. Keep the output failure
+                # attached to that exception on Python3.10 as well as3.11+.
+                detail = f"Final cache-summary console output failed: {error}"
+                if hasattr(active, 'add_note'):
+                    active.add_note(detail)
+                else:
+                    active.args = (*active.args, detail)
+
+
+@contextmanager
+def _field_read_console(event):
+    """Capture the preserved provider's exact field-read report in JSONL.
+
+    Only this module's print name is overridden. Other modules, builtins.print,
+    arbitrary messages and custom print destinations/formatting are untouched.
+    """
+    from hiercp_v1x import u_bridge_data
+    namespace = vars(u_bridge_data)
+    had_print = 'print' in namespace
+    original = namespace.get('print', builtins.print)
+    prefix = 'v1.8 whole-case fields case='
+    pattern = re.compile(r'^v1\.8 whole-case fields case=([A-Za-z0-9][A-Za-z0-9_.-]*) '
+        r'status=(built|reopened|resident_mapping) array_bytes=(\d+) disk_bytes=(\d+) '
+        r'wall_seconds=(\d+\.\d{3})$')
+    def report(*args, **kwargs):
+        if (len(args) == 1 and isinstance(args[0], str) and args[0].startswith(prefix)
+                and '\n' not in args[0] and '\r' not in args[0]
+                and kwargs == {'flush': True}):
+            row = dict(format='preserved_v18_field_read_console_v1', stage='whole_case_fields_read',
+                       source_line=args[0])
+            match = pattern.fullmatch(args[0])
+            if match is not None:
+                try:
+                    array_bytes, disk_bytes = int(match[3]), int(match[4])
+                    seconds = float(match[5])
+                except (ValueError, OverflowError):
+                    # Preserve every original character even when a printed
+                    # numeric token is too large to trust as parsed telemetry.
+                    match = None
+                else:
+                    if math.isfinite(seconds):
+                        row.update(case_id=match[1], status=match[2], array_bytes=array_bytes,
+                                   disk_bytes=disk_bytes, wall_seconds=seconds)
+            event(row)
+            return None
+        return original(*args, **kwargs)
+    namespace['print'] = report
+    try:
+        yield
+    finally:
+        if had_print:
+            namespace['print'] = original
+        else:
+            del namespace['print']
 
 
 def parse(argv=None):
@@ -83,13 +221,8 @@ def run(a):
     controller = importlib.import_module('tools.run_v18_u_bridge' if family == 'u_bridge' else 'tools.run_v19_comparison')
     original_budget = experiment_module.Budget
     original_provider = getattr(data_module, class_name)
-    writer_lock = threading.Lock()
     events_path = root/'preparation_reuse.jsonl'
-    def event(row):
-        with writer_lock:
-            with events_path.open('a', encoding='utf8') as stream:
-                stream.write(json.dumps(row, allow_nan=False)+'\n')
-            print('Cache execution | '+json.dumps(row, allow_nan=False), flush=True)
+    event = _CacheEventLogger(events_path)
     def budget(cuda_bytes, rss_bytes):
         return PressureBudget(cuda_bytes, rss_bytes, resident_bytes=int(manifest['resident_gib']*2**30),
                               event_callback=event)
@@ -126,11 +259,14 @@ def run(a):
                 receipt(Path(request['data_root']))
                 # The preserved independent runner owns its locks, restores its
                 # exact checkpoint cursor, and verifies the continuation receipt.
-                result = run_v18_independent.run(independent)
+                with _field_read_console(event):
+                    result = run_v18_independent.run(independent)
                 return result
             finally:
                 host_memory.pressure_aware_provider = pressure_aware_provider
+                event.finish()
     with ExitStack() as locks:
+        locks.callback(event.finish)
         locks.enter_context(lock(root/'.pipeline.lock'))
         locks.enter_context(lock(namespace/'.data.lock'))
         with preparation_reuse(pressure_aware_provider(original_provider), a.cache_sources, event) as provider:
@@ -138,7 +274,8 @@ def run(a):
             setattr(data_module, class_name, provider)
             try:
                 receipt(namespace)
-                return controller.run(args)
+                with _field_read_console(event):
+                    return controller.run(args)
             finally:
                 experiment_module.Budget = original_budget
                 setattr(data_module, class_name, original_provider)

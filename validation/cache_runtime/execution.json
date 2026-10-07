@@ -1,0 +1,71 @@
+{
+  "format": "cache_runtime_verification_v1",
+  "date": "2026-10-07",
+  "implementation_complete": true,
+  "static_checks": "PASS",
+  "unit_tests": {
+    "total": 122,
+    "status": "PASS",
+    "sources": "focused tool executions by root and delegated agents",
+    "cache_hotpath_and_preserved_helpers": 85,
+    "logging_and_resume": 30,
+    "deletion_safety": 7
+  },
+  "actual_CT_CUDA_DEBUG": {
+    "status": "PASS",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "parameters": 10434532,
+    "physical_batch": 2,
+    "workers": 4,
+    "optimizer_updates": 2,
+    "full129_evaluations": 3,
+    "completed_resume_additional_updates": 0,
+    "original_reference_preserved": true,
+    "original_cache_preserved": true,
+    "frozen17_helpers_preserved": true,
+    "captured_field_reports": 3,
+    "neural_scope": "DEBUG mechanics only; no server epoch throughput or recommendation quality claim"
+  },
+  "approved_cleanup": {
+    "files": 609,
+    "allocated_estimate_GiB": 48.08,
+    "server_deletion_performed": false,
+    "deletion_scope": "three historical indexed V1 graph directories only",
+    "protected": "indexes/models/prototypes/results/raw/current four arms and original v18 source"
+  },
+  "server_runtime": {
+    "measured": false,
+    "restored_30_minute_epoch": "UNVERIFIED",
+    "remaining_costs": [
+      "first raw/fields integrity and decoding",
+      "new canonical candidates",
+      "original two sampled views/collate",
+      "full129 evaluation",
+      "checkpoint writes"
+    ]
+  },
+  "production_training_started": false,
+  "quality_verified": false,
+  "helper_sha256": {
+    "hiercp_v1x/preparation_reuse.py": "bd3cb409d3d0cccccdb77d33e77856535ab48e11554dc6303e666e753c7c0cd6",
+    "tools/resume_comparison_cached.py": "e17334127b51ad79ca363919890284c5ed700ce961a27f284022873c8bf66950",
+    "tools/retire_old_v1_graphs.py": "778702271fcbfbafcb03f8bc3ca5f3362824737f90d89fa010643031706e916f",
+    "tests/test_preparation_reuse_hotpath.py": "b8c262c3ad1a2cd58ecd41ae6366a75f2279b6fe6602dc46e0ab968e8c6f33fb",
+    "tests/test_comparison_cache_logging.py": "41ffac319d89d1cf389022de3462425bc56ace13905d074a09ca45ae7fd0d2be",
+    "tests/test_old_v1_graph_cleanup.py": "506198def374c79d073d22485a884e02fcbcb6d9f78653c5bd88ad0db8328c01"
+  },
+  "evidence": {
+    "actual_CT_CUDA_DEBUG": {
+      "path": "actual_ct_cuda_debug.json",
+      "sha256": "074a7b89086ad00eaf71f16d88a9939e8c31bf3b0313dbf7025a1ed0df1536a0"
+    },
+    "work_stdout": {
+      "path": "work/cache_runtime_cuda_20261007.log",
+      "sha256": "fcfbee3913e8a1131b6f3e008f20b1bed1662b76319cebd41354c14b1b6230a7"
+    },
+    "work_field_events": {
+      "path": "work/cache_runtime_field_events_20261007.jsonl",
+      "sha256": "ad384b89c4e170551e680bf564d0f826cfcfab97540e06c40c5901f2010771e5"
+    }
+  }
+}
