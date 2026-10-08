@@ -1,0 +1,26 @@
+{
+  "date_kst": "2026-10-08",
+  "evidence_source": "user-provided server stdout; plan and journal contents not copied or independently reread",
+  "code_commit": "2441c63316bb0194f88d0a84e09fbe50c4f0224d",
+  "plan": "/tmp/hiercp-fields-77gwxvul.json",
+  "journal": "/tmp/hiercp-fields-77gwxvul.json.journal",
+  "status": "DONE",
+  "duplicate_paths_shared": 174,
+  "estimated_released_allocation_gib": 85.93,
+  "actual_quota_remaining_bytes": null,
+  "destinations": [
+    {"experiment": "v19_native_fixed_m10_seed42", "files": 40, "estimated_gib": 20.20},
+    {"experiment": "v19_native_listwise_m10_seed42", "files": 134, "estimated_gib": 65.73}
+  ],
+  "write_checks": [
+    {"location": "Git objects", "path": "/home/aicompetition06/Medical/HierCP-regions-8580e59/.git/objects", "status": "PASS"},
+    {"location": "selected", "path": "/home/aicompetition06/Medical/experiments/v18_selected_m10_seed42_memory/selected", "status": "PASS"},
+    {"location": "native", "path": "/home/aicompetition06/Medical/experiments/v18_native_m10_seed42_memory/native", "status": "PASS"},
+    {"location": "native_fixed", "path": "/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42/native_fixed", "status": "PASS"},
+    {"location": "native_listwise", "path": "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42/native_listwise", "status": "PASS"}
+  ],
+  "write_scope": "Current 4-KiB writes only; no future capacity reservation",
+  "server_training_resumed": false,
+  "actual_training_checkpoint_write_verified": false,
+  "actual_nfs_concurrent_shared_generation_verified": false
+}

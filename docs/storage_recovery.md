@@ -34,6 +34,16 @@
 
 `st_blocks × 512`는 회수 추정치다. 열려 있는 mmap/파일, NFS 처리 및 별도 quota 때문에 실제 사용 가능량과 다를 수 있다. 4KiB 쓰기 성공 역시 미래 checkpoint나 추가 캐시 공간을 예약하지 않는다. 임시 hardlink 생성 자체가 EDQUOT로 거부되면 기존 파일을 보존하고 실패를 보고한다. 이 경우 다른 파일을 임의로 삭제하지 않는다.
 
+## 서버 적용 결과 — 2026-10-08
+
+사용자가 서버 실행 결과를 제공했다. `/tmp/hiercp-fields-77gwxvul.json` 계획에 따라 174개 중복 경로를 공유했고, 대상 inode의 할당 블록 기준 회수 추정량은 85.93GiB였다. 기록은 `/tmp/hiercp-fields-77gwxvul.json.journal`이다. 전체 계획과 journal 원문은 로컬로 가져오지 않았으며, 콘솔 결과를 근거로 기록한다.
+
+- `v19_native_fixed_m10_seed42`: 40개, 20.20GiB 추정.
+- `v19_native_listwise_m10_seed42`: 134개, 65.73GiB 추정.
+- Git objects, selected, native, native_fixed, native_listwise의 실제 저장 위치에서 4KiB 쓰기 모두 PASS.
+
+이전의 즉시 파일 생성 실패는 이 검사에서 해소됐다. 85.93GiB는 실제 quota 잔여량 측정값이 아니다. 서버 학습 재개, 다음 실제 checkpoint 저장, NFS 공유 생성의 동시 실행은 이 결과에 포함되지 않는다. 정리 도구 실행 revision은 `2441c63316bb0194f88d0a84e09fbe50c4f0224d`다. 같은 revision의 중복 생성 방지 변경은 학습을 이 코드로 재개해야 적용된다. 위 UNIT 검증 당시 상태를 보존한 `validation/storage_recovery.json`과 서버 콘솔 기록 `validation/storage_recovery_server.json`을 구분한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
