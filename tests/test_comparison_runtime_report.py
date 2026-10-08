@@ -1,13 +1,99 @@
 """UNIT telemetry fixtures; no training, checkpoint loading or file mutations."""
 import io
 import json
+import os
+from pathlib import Path
+import tempfile
 import unittest
 
 from tools.report_comparison_runtime import (build_report, parse_jsonl, summarize_cache,
-    render_text, summarize_input, summarize_training)
+    render_text, summarize_input, summarize_training, inspect_arm, _read_gpu_execution_logs)
 
 
 class ComparisonRuntimeReportUnitTests(unittest.TestCase):
+    @staticmethod
+    def _gpu_line(event, time, **extra):
+        return json.dumps(dict(event=event, time=time, **extra)) + '\n'
+
+    def test_gpu_legacy_and_invocation_logs_merge_by_event_time_in_archived_arm(self):
+        with tempfile.TemporaryDirectory(prefix='UNIT_runtime_archive_') as name:
+            arm = Path(name) / 'archived_run' / 'selected'
+            events = arm / 'gpu_execution_events'
+            events.mkdir(parents=True)
+            calibration = dict(baseline_seconds=4., selected_seconds=2., measured_speedup=2.,
+                               baseline_peak_cuda_bytes=1024, selected_peak_cuda_bytes=1024)
+            (arm / 'gpu_execution.jsonl').write_text(
+                self._gpu_line('calibration_completed', 10, calibration=calibration), encoding='utf8')
+            (events / 'a_latest.jsonl').write_text(
+                self._gpu_line('calibration_completed', 40, calibration=calibration) +
+                self._gpu_line('context_bound_policy_cache_loaded', 41, measured_workloads=2), encoding='utf8')
+            (events / 'z_earlier.jsonl').write_text(
+                self._gpu_line('optimized_execution_OOM_original_retry', 20) +
+                self._gpu_line('original_policy_cache_admission_skipped', 21), encoding='utf8')
+            (events / 'not_an_event.jsonl.tmp').write_text('unfinished ignored staging file', encoding='utf8')
+            before = {str(path): (path.stat().st_mtime_ns, path.read_bytes()) for path in arm.rglob('*') if path.is_file()}
+            report = inspect_arm(arm)
+            after = {str(path): (path.stat().st_mtime_ns, path.read_bytes()) for path in arm.rglob('*') if path.is_file()}
+            self.assertEqual(before, after)
+            gpu = report['gpu_execution']
+            self.assertEqual(gpu['measured_batches'], 2)
+            self.assertEqual(gpu['latest_calibration']['time'], 40)
+            self.assertEqual(gpu['latest_event']['time'], 41)
+            self.assertEqual(gpu['original_execution_retries'], 1)
+            self.assertEqual(gpu['policy_cache_load_events'], 1)
+            self.assertEqual(gpu['policy_cache_admission_skips'], 1)
+            self.assertEqual(len(gpu['log_sources']), 3)
+            self.assertTrue(gpu['complete_read'])
+            self.assertIn('reused prior measurements', render_text(report))
+            self.assertTrue(report['read_only'])
+            self.assertFalse(report['checkpoint_loaded'])
+
+    def test_new_gpu_event_directory_works_without_legacy_log_and_each_file_read_once(self):
+        with tempfile.TemporaryDirectory(prefix='UNIT_gpu_event_alias_') as name:
+            arm = Path(name)
+            events = arm / 'gpu_execution_events'
+            events.mkdir()
+            source = events / 'original.jsonl'
+            source.write_text(self._gpu_line('context_bound_policy_cache_loaded', 7), encoding='utf8')
+            os.link(source, events / 'same_file_alias.jsonl')
+            warnings = []
+            rows, details = _read_gpu_execution_logs(arm, warnings)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(len(details['log_sources']), 1)
+            self.assertEqual(warnings, [])
+
+    def test_gpu_damage_notices_survive_merge_and_other_valid_events_remain_visible(self):
+        with tempfile.TemporaryDirectory(prefix='UNIT_gpu_partial_') as name:
+            arm = Path(name)
+            events = arm / 'gpu_execution_events'
+            events.mkdir()
+            (arm / 'gpu_execution.jsonl').write_text(
+                self._gpu_line('calibration_started', 1) + '{"event":broken}\n' +
+                self._gpu_line('optimized_execution_OOM_original_retry', 2), encoding='utf8')
+            (events / 'new.jsonl').write_text(
+                self._gpu_line('context_bound_policy_cache_loaded', 3) + '{"event":', encoding='utf8')
+            report = inspect_arm(arm)
+            gpu = report['gpu_execution']
+            self.assertFalse(gpu['complete_read'])
+            self.assertEqual(gpu['excluded_invalid_lines'], 2)
+            self.assertEqual(gpu['original_execution_retries'], 1)
+            self.assertEqual(gpu['policy_cache_load_events'], 1)
+            self.assertTrue(any('gpu_execution.jsonl:2: invalid GPU JSONL line excluded' in row for row in report['warnings']))
+            self.assertTrue(any('new.jsonl:2: unfinished final append ignored' in row for row in report['warnings']))
+            self.assertIn('GPU audit coverage is partial', render_text(report))
+
+    def test_gpu_missing_time_warns_and_does_not_replace_latest_dated_measurement(self):
+        with tempfile.TemporaryDirectory(prefix='UNIT_gpu_undated_') as name:
+            arm = Path(name)
+            (arm / 'gpu_execution.jsonl').write_text(
+                self._gpu_line('calibration_started', 4) +
+                json.dumps(dict(event='calibration_started', marker='undated')) + '\n', encoding='utf8')
+            warnings = []
+            rows, details = _read_gpu_execution_logs(arm, warnings)
+            self.assertEqual(rows[-1]['time'], 4)
+            self.assertEqual(details['records_without_timestamp'], 1)
+            self.assertTrue(any('chronological position unknown' in row for row in warnings))
+
     def test_cold_staging_capacity_is_not_reported_as_measured_utilization(self):
         report = build_report({}, [], [], [], [])
         report['warnings'] = []

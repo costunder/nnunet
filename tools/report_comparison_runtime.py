@@ -97,6 +97,61 @@ def _read_jsonl(path, kind, warnings):
     return rows
 
 
+def _read_gpu_execution_logs(directory, warnings):
+    """Merge legacy and per-invocation audits without modifying damaged logs.
+
+    GPU audits can contain a historical quota-truncated interior line. Report
+    every excluded line explicitly while retaining other observations. The
+    general training/validation JSONL parser remains strict.
+    """
+    paths = [directory / "gpu_execution.jsonl"]
+    paths.extend(sorted((directory / "gpu_execution_events").glob("*.jsonl")))
+    rows, sources, seen, invalid, undated = [], [], set(), 0, 0
+    for path in paths:
+        if not path.is_file():
+            continue
+        info = path.stat()
+        identity = (info.st_dev, info.st_ino) if info.st_ino else str(path.resolve())
+        if identity in seen:
+            continue
+        seen.add(identity)
+        sources.append(str(path))
+        with path.open("r", encoding="utf-8") as stream:
+            lines = stream.readlines()
+        for number, line in enumerate(lines, 1):
+            if not line.strip():
+                continue
+            try:
+                row = _json(line)
+            except (json.JSONDecodeError, ValueError) as error:
+                invalid += 1
+                if isinstance(error, json.JSONDecodeError) and number == len(lines) and not line.endswith("\n"):
+                    warnings.append(f"{path}:{number}: unfinished final append ignored")
+                else:
+                    warnings.append(f"{path}:{number}: invalid GPU JSONL line excluded: {error}")
+                continue
+            if not isinstance(row, dict):
+                invalid += 1
+                warnings.append(f"{path}:{number}: expected a JSON object; GPU line excluded")
+                continue
+            if not isinstance(row.get("event"), str):
+                invalid += 1
+                warnings.append(f"{path}:{number}: expected a string GPU event name; GPU line excluded")
+                continue
+            if _number(row.get("time")) is None:
+                undated += 1
+                warnings.append(f"{path}:{number}: missing numeric GPU event time; chronological position unknown")
+            rows.append(row)
+    # Filenames are invocation UUIDs, and archived file mtimes are not event
+    # timestamps. Stable sorting retains file/line order for equal/absent times.
+    rows.sort(key=lambda row: (_number(row.get("time")) is not None,
+                              _number(row.get("time")) or 0))
+    return rows, dict(log_sources=sources, excluded_invalid_lines=invalid,
+                      records_without_timestamp=undated,
+                      event_order="numeric event time ascending; undated records first in file/line order",
+                      complete_read=(invalid == 0))
+
+
 def _read_json(path):
     if not path.exists():
         return None
@@ -487,15 +542,20 @@ def inspect_arm(arm_directory, *, cache_log=None, input_log=None, epoch=None):
     result = build_report(contract, updates, validations, curves, cache_rows, progress=progress,
                           final_report=final_report, epoch=epoch, latest_validation=latest_validation,
                           input_rows=input_rows, cache_available=cache_log is not None, input_available=input_log is not None)
-    gpu_log = directory / 'gpu_execution.jsonl'
-    gpu_rows = _read_jsonl(gpu_log, 'GPU execution', warnings) if gpu_log.is_file() else []
+    gpu_rows, gpu_read = _read_gpu_execution_logs(directory, warnings)
     calibrations = [row for row in gpu_rows if row.get('event') == 'calibration_completed']
+    cache_loads = [row for row in gpu_rows if row.get('event') == 'context_bound_policy_cache_loaded']
     policies = [row for row in updates if row.get('gpu_execution')]
     result['gpu_execution'] = dict(available=bool(gpu_rows),
         measured_batches=len(calibrations), latest_calibration=calibrations[-1] if calibrations else None,
+        policy_cache_load_events=len(cache_loads), latest_policy_cache_load=cache_loads[-1] if cache_loads else None,
+        policy_cache_admission_skips=sum(row.get('event') == 'original_policy_cache_admission_skipped' for row in gpu_rows),
+        event_counts=dict(Counter(row.get('event', 'unknown') for row in gpu_rows)),
+        latest_event=gpu_rows[-1] if gpu_rows else None,
         latest_update_policy=policies[-1]['gpu_execution'] if policies else None,
         original_execution_retries=sum(row.get('event') == 'optimized_execution_OOM_original_retry' for row in gpu_rows),
-        scope='measured activation/chunk execution; original source batch and optimizer schedule preserved')
+        scope='measured activation/chunk execution; original source batch and optimizer schedule preserved',
+        **gpu_read)
     staging_log = directory / 'prefetch.jsonl'
     staging_rows = _read_jsonl(staging_log, 'prefetch', warnings) if staging_log.is_file() else []
     staged_training = [row for row in staging_rows if row.get('arm') == result.get('arm')
@@ -576,6 +636,11 @@ def render_text(report):
             lines.append('Latest actual update execution: ' + json.dumps(applied['settings']) +
                          ' | ' + applied['reason'])
         lines.append(f"Same-input original-execution OOM retries: {gpu['original_execution_retries']} (no model/candidate/batch reduction)")
+        if gpu.get('policy_cache_load_events'):
+            lines.append(f"Context-bound GPU policy cache loads: {gpu['policy_cache_load_events']} "
+                         "(reused prior measurements, not additional measured batches)")
+        if gpu.get('excluded_invalid_lines'):
+            lines.append(f"GPU audit coverage is partial: {gpu['excluded_invalid_lines']} invalid/incomplete lines excluded; see notices")
     scores = report['latest_completed_validation']
     if scores:
         lines.append(f"Completed full-validation scores epoch {scores.get('epoch')} ({scores.get('metric_weighting', 'weighting unknown')}): " + " ".join(f"{k}={_fmt(v, 6)}" for k, v in scores.get('metrics', {}).items()))

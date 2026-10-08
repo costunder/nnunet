@@ -27,6 +27,8 @@ from .u_bridge_training import (
 )
 from .comparison_progress import PhaseProgress, RunningPatientMetrics
 from .comparison_gpu_runtime import ComparisonGpuRuntime
+from .comparison_context import gpu_cache_context
+from .comparison_checkpoint import ComparisonCheckpointWriter
 
 
 class closing(_closing):
@@ -268,7 +270,9 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
 
 EXECUTION_HELPERS = dict(_prefetch=_prefetch, PhaseProgress=PhaseProgress,
                          RunningPatientMetrics=RunningPatientMetrics, closing=closing,
-                         ComparisonGpuRuntime=ComparisonGpuRuntime)
+                         ComparisonGpuRuntime=ComparisonGpuRuntime,
+                         gpu_cache_context=gpu_cache_context,
+                         ComparisonCheckpointWriter=ComparisonCheckpointWriter)
 
 
 def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epochs, identity, budget, debug=False):
@@ -359,7 +363,9 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
     gpu_execution = ComparisonGpuRuntime(net,
         lambda result: pair_objective(result.scores, result.consistency)[0],
         amp=training['amp'], cuda_limit_bytes=budget.cuda_bytes,
-        output=root, notify=PhaseProgress.write)
+        output=root, notify=PhaseProgress.write,
+        cache_context=gpu_cache_context(net, binding_hash=binding_hash, arm=arm,
+            training=training, comparison_policy=config.get('comparison_policy')))
     receipt_path = root / 'execution_contract.json'
     if not receipt_path.exists():
         _write_new(receipt_path, dict(format=FORMAT, arm=arm, debug=debug, epochs=epochs,
@@ -378,15 +384,24 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
             gpu=torch.cuda.get_device_name(), gpu_count=torch.cuda.device_count(),
             cpu_logical=psutil.cpu_count(), RAM=psutil.virtual_memory()._asdict(),
             calibration=calibration, full_training=False, quality_verified=False, CP_quality_verified=False))
+    checkpoint_writer = ComparisonCheckpointWriter()
+    checkpoint_stats = {}
     def checkpoint(status='RUNNING', best=False):
         began = time.perf_counter(); state['invocation_status'] = status
-        payload = dict(format=FORMAT, identity_sha256=binding_hash, model=cpu_copy(net.state_dict()),
-            optimizer=cpu_copy(optimizer.state_dict()), scheduler=cpu_copy(scheduler.state_dict()),
-            scaler=cpu_copy(scaler.state_dict()), state=cpu_copy(state), rng=cpu_copy(capture_rng()),
-            shuffle_generator=generator.get_state().clone())
-        payload['content_sha256'] = digest(payload)
-        atomic_save(root / 'checkpoint_latest.pt', payload)
-        if best: atomic_save(root / 'checkpoint_best.pt', payload)
+        payload = dict(format=FORMAT, identity_sha256=binding_hash, model=net.state_dict(),
+            optimizer=optimizer.state_dict(), scheduler=scheduler.state_dict(),
+            scaler=scaler.state_dict(), state=state, rng=capture_rng(),
+            shuffle_generator=generator.get_state())
+        # The v1.9 facade normally injects this before its atomic_save call.
+        # Include its exact bound policy once, before computing the same digest.
+        if 'comparison_policy' in config:
+            payload['comparison_policy'] = config['comparison_policy']
+        paths = [root / 'checkpoint_latest.pt']
+        if best: paths.append(root / 'checkpoint_best.pt')
+        generation = ((state['phase'], state['epoch'], state['updates'])
+                      if state['phase'] in ('initial_validation', 'validation') else None)
+        checkpoint_stats.clear()
+        checkpoint_stats.update(checkpoint_writer.save(paths, payload, static_generation=generation))
         return time.perf_counter() - began
     def pause_requested(flag):
         return (flag['requested'] or Path(runtime.get('pause_file', root / 'STOP_AFTER_BATCH')).exists()
@@ -620,7 +635,7 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                                 forward_seconds=events[1].elapsed_time(events[2]) / 1000,
                                 backward_seconds=events[2].elapsed_time(events[3]) / 1000,
                                 check_clip_optimizer_seconds=events[3].elapsed_time(events[4]) / 1000,
-                                checkpoint_seconds=checkpoint_seconds, step_seconds=elapsed,
+                                checkpoint_seconds=checkpoint_seconds, checkpoint_io=dict(checkpoint_stats), step_seconds=elapsed,
                                 samples_per_second=len(ids) / elapsed, candidate_graphs_per_second=8 * len(ids) / elapsed,
                                 peak_cuda_bytes=torch.cuda.max_memory_allocated(), peak_reserved_bytes=torch.cuda.max_memory_reserved(),
                                 rss_bytes=process.memory_info().rss, cpu_percent=process.cpu_percent(), learning_rate=optimizer.param_groups[0]['lr'])

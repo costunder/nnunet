@@ -17,7 +17,8 @@ from types import FunctionType
 
 FORMAT = "comparison_progress_prefetch_execution_v1"
 ENGINE_SHA256 = "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc"
-HELPERS = ("_prefetch", "PhaseProgress", "RunningPatientMetrics", "closing", "ComparisonGpuRuntime")
+HELPERS = ("_prefetch", "PhaseProgress", "RunningPatientMetrics", "closing", "ComparisonGpuRuntime",
+           "gpu_cache_context", "ComparisonCheckpointWriter")
 _CONTEXT = threading.RLock()
 _MISSING = object()
 

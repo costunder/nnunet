@@ -1,0 +1,71 @@
+Comparison training runtime release — 2026-10-08
+
+This release carries the reviewed execution changes into the canonical local
+repository and the GitHub branch codex/v222-server-r6. Deploy the exact Git
+commit into a new server worktree. Record git rev-parse HEAD on both ends;
+copying edits manually into an older active worktree is not the deployment path.
+
+The regular tools/server_comparison_cached.sh entry now calls
+tools/run_allocated_comparison_arm.py with the existing arguments. It verifies
+the current PBS job, account, host, GPU UUID and preserved CPU/RAM contract
+before starting the original supervisor. Run it from a sufficiently allocated
+PBS environment. An ordinary SSH shell without that allocation is rejected.
+Direct invocation of the older Python entry bypasses this new admission check.
+The guard covers one arm; combined demand of several arms needs its own
+adequate allocation. This release does not reserve GPUs or change saved budgets.
+
+Execution changes:
+- Persist fully validated GPU policy measurements with experiment, device,
+  model, precision, objective and implementation identities. A new compatible
+  context still needs its first full measurement. Candidate coverage is unchanged.
+- Preserve a damaged historical GPU audit and write new invocation-specific
+  audit files. Read both layouts in the runtime report with corruption notices.
+- Preserve full synchronous per-batch checkpoints and their original payload,
+  digest and restore protocol, while removing duplicate copies and reusing
+  witnessed static evaluation snapshots. v18 and all v19 objective policies,
+  optimizer, scheduler, scaler, cursor and RNG restoration remain compatible.
+
+Validation evidence is in validation/comparison_runtime_sync_20261008.json.
+The exact 15-file runtime patch passed 167 CPU UNIT tests in the real server
+environment (Python 3.10.18, PyTorch 2.6.0+cu118, PyG 2.7.0) with CUDA hidden.
+The shell entry change is checked with bash -n before release. CPU UNIT includes
+the actual checkpoint closure, old/new payload equality and the next AdamW
+update after restoring state. Synthetic UNIT data are not research results.
+Frozen engine and objective facade files are unchanged.
+
+This release does not repair NFS EDQUOT by itself. Checkpoint byte size and
+write frequency remain unchanged. The optional local /data storage still needs
+authorized directory creation and a separately verified identity-preserving
+migration. Do not replace active outputs with symlinks or overwrite results.
+
+Deployment and activation are separate states. A new server worktree containing
+the same commit is synchronized source; processes already running from
+HierCP-run-2441c63 continue using that older runtime until an authorized normal
+pause and checkpoint resume. Deployment must not stop them or their SSH shells.
+After activation, measure actual step time, data wait, checkpoint time, GPU use,
+peak VRAM and RAM. CPU unit speed measurements are not CUDA/NFS speed claims.
+
+Implementation and static inspection: complete.
+CPU UNIT: 167 passed for the runtime patch; committed-source confirmation is
+recorded in the deployment receipt.
+New-runtime CUDA smoke, full training and full evaluation: not performed.
+Actual research data: existing jobs were inspected read-only; the unit suite
+does not establish model quality or full training completion.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+      기존 실험의 gradient/update 증거 및 CPU checkpoint 복원 UNIT를 확인했다.
+      새 코드의 전체 CUDA 학습 검증은 수행하지 않았다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

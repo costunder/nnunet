@@ -13,8 +13,10 @@ import math
 import os
 from pathlib import Path
 import time
+import uuid
 
 from . import comparison_gpu_policy as policy
+from .comparison_gpu_cache import ExecutionPolicyCache, PolicyCacheError, bind_context, measured_entry
 from .comparison_storage import report_secondary_failure, storage_error
 
 
@@ -77,7 +79,7 @@ class ComparisonGpuRuntime:
     """
 
     def __init__(self, net, loss_fn, *, amp, cuda_limit_bytes, output, notify=None,
-                 reserve_bytes=None):
+                 reserve_bytes=None, cache_context=None):
         if not callable(loss_fn):
             raise TypeError("The current arm's original bound loss function is required")
         if type(amp) is not bool or type(cuda_limit_bytes) is not int or cuda_limit_bytes <= 0:
@@ -89,21 +91,45 @@ class ComparisonGpuRuntime:
         self.original = copy.deepcopy(policy.execution_settings(net))
         self._measured = []
         self._baseline_only = set()
+        self._uncached_original_only = set()
         self._unknown_reported = set()
         self._unknown_notified = False
         self._current = dict(reason="original_before_measurement", settings=copy.deepcopy(self.original))
+        self._cache = None
+        self._rejected = []
+        self._loaded_cache_pending = False
+        self._event_started = False
+        self._audit_failed = False
+        if cache_context is not None:
+            binding = bind_context(cache_context, amp=amp, cuda_limit_bytes=cuda_limit_bytes,
+                                   reserve_bytes=reserve_bytes, original=self.original)
+            self._cache = ExecutionPolicyCache(output, binding)
+            self._measured, self._rejected = self._cache.load()
+            self._baseline_only = {row['workload_sha256'] for row in self._rejected}
+            self._loaded_cache_pending = bool(self._measured or self._rejected)
+            # Each invocation has a new audit destination. Never append to or
+            # infer policies from possibly quota-truncated historical JSONL.
+            self.path = Path(output) / 'gpu_execution_events' / (uuid.uuid4().hex + '.jsonl')
 
     def _record(self, event, **values):
+        if self._audit_failed:
+            raise RuntimeError(f'GPU audit previously failed; refusing to append to a possibly partial event: {self.path}')
         row = dict(format=FORMAT, event=event, time=time.time(),
                    workload_admission="componentwise inventory heuristic; not worst-case memory proof",
                    model_graphs_source_batch_objective_and_training_state_unchanged=True, **values)
+        if self._cache is not None:
+            row['cache_context_sha256'] = self._cache.context_sha256
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("a", encoding="utf8") as stream:
+            mode = 'x' if self._cache is not None and not self._event_started else 'a'
+            with self.path.open(mode, encoding="utf8") as stream:
+                self._event_started = True
                 stream.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
                 stream.flush()
                 os.fsync(stream.fileno())
         except OSError as error:
+            if self._cache is not None:
+                self._audit_failed = True
             raise storage_error(error, operation=f'GPU execution audit ({event})', path=self.path) from error
         return row
 
@@ -133,7 +159,10 @@ class ComparisonGpuRuntime:
         return copy.deepcopy(policy.execution_settings(self.net))
 
     def current_receipt(self):
-        return dict(copy.deepcopy(self._current), settings=self.current_settings())
+        result = dict(copy.deepcopy(self._current), settings=self.current_settings())
+        if self._cache is not None:
+            result.update(cache_context_sha256=self._cache.context_sha256, audit_path=str(self.path))
+        return result
 
     def restore_original(self):
         policy.apply_execution_settings(self.net, self.original)
@@ -150,6 +179,13 @@ class ComparisonGpuRuntime:
     def ensure(self, batch, workload):
         inventory = workload_inventory(workload)
         signature = _signature(inventory)
+        if self._loaded_cache_pending:
+            self._record('context_bound_policy_cache_loaded', measured_workloads=len(self._measured),
+                         rejected_workloads=len(self._rejected), sidecar=str(self._cache.path))
+            self._loaded_cache_pending = False
+        if signature in self._uncached_original_only:
+            self._apply(self.original, 'original_without_durable_measurement', signature)
+            return None
         if signature in self._baseline_only:
             self._apply(self.original, "original_after_optimized_OOM", signature)
             return None
@@ -204,7 +240,26 @@ class ComparisonGpuRuntime:
             raise
         row = self._record("calibration_completed", workload_sha256=signature,
                            inventory=inventory, selected=selected, calibration=receipt)
-        self._measured.append(dict(inventory=inventory, selected=copy.deepcopy(selected)))
+        measured = dict(inventory=inventory, selected=copy.deepcopy(selected))
+        if self._cache is not None:
+            try:
+                measured = measured_entry(inventory, selected, receipt, self._cache.binding)
+            except PolicyCacheError as error:
+                # Retaining original execution requires no new optimization
+                # admission. A partial no-headroom proof is never persisted,
+                # but must not turn an otherwise valid baseline into a failure.
+                if (receipt.get('calibration_status') != 'original_retained_no_headroom'
+                        or selected != self.original):
+                    raise
+                self._record('original_policy_cache_admission_skipped', workload_sha256=signature,
+                             reason=str(error), selected=self.original,
+                             scope='original execution retained; incomplete evidence not persisted')
+                self._uncached_original_only.add(signature)
+                self._apply(self.original, 'original_without_durable_measurement', signature)
+                self._notice('calibration_completed', workload_sha256=signature, settings=self.original)
+                return row
+            self._cache.publish([*self._measured, measured], self._rejected)
+        self._measured.append(measured)
         self._apply(selected, "measured_current_actual_batch", signature)
         self._notice("calibration_completed", workload_sha256=signature, settings=selected)
         return row
@@ -218,9 +273,14 @@ class ComparisonGpuRuntime:
         current = self.current_settings()
         if current == self.original:
             return False
-        signature = _signature(workload_inventory(workload))
+        inventory = workload_inventory(workload)
+        signature = _signature(inventory)
         self._baseline_only.add(signature)
         self._apply(self.original, "original_after_optimized_OOM", signature)
+        if self._cache is not None:
+            rejected = dict(workload_sha256=signature, inventory=inventory)
+            self._cache.publish(self._measured, [*self._rejected, rejected])
+            self._rejected.append(rejected)
         self._record("optimized_execution_OOM_original_retry", workload_sha256=signature,
                      rejected=current, restored=self.original, error=f"{type(error).__name__}: {error}",
                      retry_scope="same complete batch before optimizer update; caller restores RNG and clears gradients")

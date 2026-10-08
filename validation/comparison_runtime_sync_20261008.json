@@ -1,0 +1,33 @@
+{
+  "scope": "CPU UNIT only; CUDA hidden; no training started",
+  "successful": true,
+  "tests": 167,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "elapsed_seconds": 29.331572075141594,
+  "frozen_engine_sha256": "9bcb9d67fc2b69861028b5241110270a144ee0ea849c573ab757da7ba391a8cc",
+  "changed_files_sha256": {
+    "hiercp_v1x/comparison_allocation.py": "fe5d65ed0967387402334e95e43048b8e3eb32153c0f949331fd3ff6a58f40e7",
+    "hiercp_v1x/comparison_checkpoint.py": "e8508827bbe58b572938c6821d2132343af7bbc8449c98ac40d687a7aa82f3bd",
+    "hiercp_v1x/comparison_context.py": "6279bf6de24c09e58495f278ca850e95ce651dafaf3f45a39f81b56ff9880835",
+    "hiercp_v1x/comparison_execution.py": "9f4966804fef5f969623597bede2c60dafb0214eb5656d4eb98b5ece3bf982f9",
+    "hiercp_v1x/comparison_gpu_cache.py": "1184a7bc18afb3c83dcf1fc9e9b1469676f6c9f7f93bca06568d9b308d952a66",
+    "hiercp_v1x/comparison_gpu_runtime.py": "73ddd30aeea63a2f853de742d1c7c1141686a9d0e01511e3392ab398143c81c7",
+    "hiercp_v1x/comparison_runtime.py": "d2ca3ec4caa1de71ac9fa3e335770d9dd1aafed07e080ee68ed8e7911a2a15b0",
+    "tools/report_comparison_runtime.py": "1ca1e15cede79e982f34fa6ae49e0234a831ef123434041a91dfd186b9c0eb19",
+    "tools/run_allocated_comparison_arm.py": "cd6c14b49ed7b929982f1356c02398b342adac2f8d5d90e291c59940607d6644",
+    "tests/test_comparison_allocation.py": "4b35e87764d10da6fc55fbee461f182656dd89d85ec18c346bb17b5018d281ae",
+    "tests/test_comparison_checkpoint.py": "68d59b57424160341d2bea3ab2d823b385e2f43b16b9b16e5f155bc91e0c5ff4",
+    "tests/test_comparison_checkpoint_integration.py": "991f5d225abee637177526d69a3dcd4a3995186bcf9e7e3daa1fe3c9103154eb",
+    "tests/test_comparison_context.py": "bd85948f5539aa327ea2ad6707b54690cc1a30df4deed2267bc3bfd856cf9df2",
+    "tests/test_comparison_gpu_cache.py": "9e2458a78fccd1964231daccf5b68696ae76ae73f015f6184b2f28e6e5399222",
+    "tests/test_comparison_runtime_report.py": "b3c9e966a39f4c0883307bb4eead10e30fbf0f65a5e438bb997eb0d26bd07025"
+  },
+  "environment": {
+    "python": "3.10.18",
+    "torch": "2.6.0+cu118",
+    "torch_geometric": "2.7.0"
+  },
+  "validation_note": "Runtime patch CPU UNIT only; final committed worktree is verified separately during deployment. No CUDA training or active process changes."
+}
