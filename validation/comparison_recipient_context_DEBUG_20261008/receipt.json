@@ -1,0 +1,815 @@
+{
+  "debug": true,
+  "status": "DEBUG_PASS",
+  "actual_CT": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "source_checkpoint_sha256": "2f7c81eb3aeaff635950eab0dd61d8f6e642f3c3997aac641d107ff4f792b261",
+  "source_checkpoint_state": {
+    "epoch": 8,
+    "phase": "training",
+    "position": 32,
+    "updates": 1089,
+    "attempts": 1099,
+    "overflows": 10
+  },
+  "source_inventory_count": 187,
+  "actual_debug_source_count": 2,
+  "actual_debug_source_fraction": 0.0106951871657754,
+  "source_indices": [
+    76,
+    77
+  ],
+  "source_ids": [
+    "liver_46:0",
+    "liver_46:1"
+  ],
+  "candidate_keys": [
+    "P",
+    "U:49",
+    "U:50",
+    "U:51",
+    "U:52",
+    "U:53",
+    "U:54",
+    "U:55"
+  ],
+  "view_epoch": 8,
+  "selected_device": {
+    "physical_index": 6,
+    "physical_uuid": "GPU-e2ad7465-3573-504b-3913-4277bd99b2ed",
+    "name": "NVIDIA RTX A6000",
+    "mig": [],
+    "mig_supported": false,
+    "mig_enabled": false,
+    "mig_pending": null,
+    "listing": "GPU 6: NVIDIA RTX A6000 (UUID: GPU-e2ad7465-3573-504b-3913-4277bd99b2ed)",
+    "backend": "NVML",
+    "library": "libnvidia-ml.so.1",
+    "current_host_observed": "ece-a6gpu6",
+    "visible": "GPU-e2ad7465-3573-504b-3913-4277bd99b2ed",
+    "type": "GPU"
+  },
+  "resources": {
+    "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35",
+    "cpu_logical_cores": 96,
+    "cpu_affinity_cores": 96,
+    "ram_total_bytes": 1081815748608,
+    "ram_available_bytes": 832284643328,
+    "cgroup_memory_limit_bytes": "unavailable (not present)",
+    "cgroup_memory_current_bytes": "unavailable (not present)",
+    "cgroup_cpu_limit_cores": "unavailable (not present)",
+    "cgroup_cpuset": "unavailable (not present)",
+    "storage_path": "/tmp/aicompetition06_empty_context_DEBUG_9s4qwv91/actual_DEBUG",
+    "storage_total_bytes": 469249474560,
+    "storage_used_bytes": 292442607616,
+    "storage_free_bytes": 152895090688,
+    "scheduler_allocation": "unavailable",
+    "container_hint": "unavailable",
+    "cuda_visible_devices_env": "GPU-e2ad7465-3573-504b-3913-4277bd99b2ed",
+    "nvidia_visible_devices_env": "<unset>",
+    "cuda_available": true,
+    "gpu_utilization_percent": "unavailable (not exposed by PyTorch)",
+    "cuda_visible_device_count": 1,
+    "gpu_devices": [
+      {
+        "logical_index": 0,
+        "name": "NVIDIA RTX A6000",
+        "total_vram_bytes": 47839313920,
+        "multiprocessors": 84,
+        "compute_capability": "8.6",
+        "mig_instance": false
+      }
+    ],
+    "mig_visibility": "not identifiable from PyTorch/environment",
+    "cuda_device": "cuda:0",
+    "cuda_allocated_bytes": 0,
+    "cuda_reserved_bytes": 0,
+    "cuda_peak_allocated_bytes": 0,
+    "cuda_peak_reserved_bytes": 0,
+    "cuda_free_bytes": 47558819840,
+    "cuda_total_bytes": 47839313920
+  },
+  "workload": {
+    "source_patch_shape": [
+      2,
+      5,
+      48,
+      48,
+      48
+    ],
+    "target_patch_shape": [
+      16,
+      5,
+      48,
+      48,
+      48
+    ],
+    "counts": [
+      8,
+      8
+    ],
+    "local_batch": {
+      "graphs": 16,
+      "nodes": {
+        "min": 760,
+        "max": 5950,
+        "mean": 3063.0625,
+        "total": 49009
+      },
+      "edges": {
+        "min": 46024,
+        "max": 505120,
+        "mean": 242242.5,
+        "total": 3875880
+      },
+      "node_types": {
+        "tumor_surface": 4408,
+        "tumor_interior": 1536,
+        "source_context": 15896,
+        "source_liver_surface": 4296,
+        "target_context": 16771,
+        "target_liver_surface": 6102
+      },
+      "edge_types": {
+        "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 99728,
+        "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 23008,
+        "('source_context', 'context_neighbor', 'source_context')": 739152,
+        "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 120928,
+        "('target_context', 'context_neighbor', 'target_context')": 780228,
+        "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 187294,
+        "('tumor_interior', 'supports', 'tumor_surface')": 100544,
+        "('tumor_surface', 'supported_by', 'tumor_interior')": 100544,
+        "('tumor_surface', 'interfaces_source', 'source_context')": 152328,
+        "('source_context', 'interfaces_tumor', 'tumor_surface')": 152328,
+        "('tumor_surface', 'interfaces_target', 'target_context')": 237976,
+        "('source_context', 'corresponds_to', 'target_context')": 253422,
+        "('source_context', 'near_liver_surface', 'source_liver_surface')": 177624,
+        "('source_liver_surface', 'anchors_context', 'source_context')": 177624,
+        "('target_context', 'near_liver_surface', 'target_liver_surface')": 286576,
+        "('target_liver_surface', 'anchors_context', 'target_context')": 286576
+      }
+    },
+    "local_batch_view2": {
+      "graphs": 16,
+      "nodes": {
+        "min": 760,
+        "max": 5950,
+        "mean": 3063.0625,
+        "total": 49009
+      },
+      "edges": {
+        "min": 46024,
+        "max": 505120,
+        "mean": 242242.5,
+        "total": 3875880
+      },
+      "node_types": {
+        "tumor_surface": 4408,
+        "tumor_interior": 1536,
+        "source_context": 15896,
+        "source_liver_surface": 4296,
+        "target_context": 16771,
+        "target_liver_surface": 6102
+      },
+      "edge_types": {
+        "('tumor_surface', 'surface_neighbor', 'tumor_surface')": 99728,
+        "('tumor_interior', 'interior_neighbor', 'tumor_interior')": 23008,
+        "('source_context', 'context_neighbor', 'source_context')": 739152,
+        "('source_liver_surface', 'surface_neighbor', 'source_liver_surface')": 120928,
+        "('target_context', 'context_neighbor', 'target_context')": 780228,
+        "('target_liver_surface', 'surface_neighbor', 'target_liver_surface')": 187294,
+        "('tumor_interior', 'supports', 'tumor_surface')": 100544,
+        "('tumor_surface', 'supported_by', 'tumor_interior')": 100544,
+        "('tumor_surface', 'interfaces_source', 'source_context')": 152328,
+        "('source_context', 'interfaces_tumor', 'tumor_surface')": 152328,
+        "('tumor_surface', 'interfaces_target', 'target_context')": 237976,
+        "('source_context', 'corresponds_to', 'target_context')": 253422,
+        "('source_context', 'near_liver_surface', 'source_liver_surface')": 177624,
+        "('source_liver_surface', 'anchors_context', 'source_context')": 177624,
+        "('target_context', 'near_liver_surface', 'target_liver_surface')": 286576,
+        "('target_liver_surface', 'anchors_context', 'target_context')": 286576
+      }
+    },
+    "patient_batch": {
+      "graphs": 2,
+      "nodes": {
+        "min": 83,
+        "max": 83,
+        "mean": 83.0,
+        "total": 166
+      },
+      "edges": {
+        "min": 1408,
+        "max": 1408,
+        "mean": 1408.0,
+        "total": 2816
+      },
+      "node_types": {
+        "tumor": 2,
+        "candidate": 16,
+        "region": 48,
+        "lesion": 98,
+        "liver": 2
+      },
+      "edge_types": {
+        "('tumor', 'compatible_with', 'candidate')": 16,
+        "('candidate', 'matched_to', 'tumor')": 16,
+        "('candidate', 'spatial_neighbor', 'candidate')": 112,
+        "('candidate', 'belongs_to', 'region')": 16,
+        "('region', 'contains_candidate', 'candidate')": 16,
+        "('tumor', 'conditions', 'region')": 48,
+        "('region', 'context_for', 'tumor')": 48,
+        "('candidate', 'near', 'lesion')": 784,
+        "('lesion', 'near', 'candidate')": 784,
+        "('lesion', 'hosted_by', 'region')": 98,
+        "('region', 'hosts_lesion', 'lesion')": 98,
+        "('tumor', 'coexists_with', 'lesion')": 98,
+        "('lesion', 'coexists_with', 'tumor')": 98,
+        "('region', 'adjacent_to', 'region')": 488,
+        "('region', 'inside', 'liver')": 48,
+        "('liver', 'contains', 'region')": 48
+      }
+    },
+    "prototype_batch": {
+      "graphs": 2,
+      "nodes": {
+        "min": 48,
+        "max": 48,
+        "mean": 48.0,
+        "total": 96
+      },
+      "edges": {
+        "min": 176,
+        "max": 176,
+        "mean": 176.0,
+        "total": 352
+      },
+      "node_types": {
+        "candidate": 16,
+        "region": 48,
+        "prototype": 32
+      },
+      "edge_types": {
+        "('candidate', 'belongs_to', 'region')": 16,
+        "('region', 'contains_candidate', 'candidate')": 16,
+        "('region', 'assigned_to', 'prototype')": 96,
+        "('prototype', 'represents', 'region')": 96,
+        "('prototype', 'similar_to', 'prototype')": 128
+      }
+    }
+  },
+  "empty_context": {
+    "local_batch": {
+      "target_context_nodes": [
+        1447,
+        1954,
+        894,
+        2307,
+        0,
+        2463,
+        1734,
+        2500,
+        540,
+        542,
+        288,
+        551,
+        0,
+        616,
+        322,
+        613
+      ],
+      "canonical_absence_evidence": [
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          1,
+          0,
+          3720,
+          170
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          1,
+          0,
+          889,
+          64
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ]
+      ],
+      "policy": [
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7"
+      ],
+      "empty_candidate_rows": [
+        4,
+        12
+      ],
+      "nonempty_candidate_rows": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        13,
+        14,
+        15
+      ]
+    },
+    "local_batch_view2": {
+      "target_context_nodes": [
+        1447,
+        1954,
+        894,
+        2307,
+        0,
+        2463,
+        1734,
+        2500,
+        540,
+        542,
+        288,
+        551,
+        0,
+        616,
+        322,
+        613
+      ],
+      "canonical_absence_evidence": [
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          1,
+          0,
+          3720,
+          170
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          1,
+          0,
+          889,
+          64
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1,
+          -1,
+          -1
+        ]
+      ],
+      "policy": [
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7",
+        "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7"
+      ],
+      "empty_candidate_rows": [
+        4,
+        12
+      ],
+      "nonempty_candidate_rows": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        13,
+        14,
+        15
+      ]
+    }
+  },
+  "cache_reopen": {
+    "exact_values_layout_metadata_equal": true,
+    "original_digest": "32c54a5a4ad190b1ef05f7b5421a0db8c84d570f9ddc00fafc6a6789027e2075",
+    "prepared_digest": "32c54a5a4ad190b1ef05f7b5421a0db8c84d570f9ddc00fafc6a6789027e2075",
+    "leaves": 901,
+    "differences": []
+  },
+  "updates": [
+    {
+      "objective_arm": "native",
+      "source_checkpoint_arm": "native_listwise",
+      "diagnostic_loss_crosscheck": true,
+      "actual_CUDA": true,
+      "parameters": 10434532,
+      "trainable_parameters": 10434532,
+      "physical_source_batch": 2,
+      "candidate_rows": 16,
+      "two_views": true,
+      "accumulation_steps": 1,
+      "data_parallel_workers": 1,
+      "effective_source_batch": 2,
+      "genuine_optimizer_updates": 1,
+      "source_updates": 1089,
+      "debug_updates": 1090,
+      "source_state_restored": {
+        "model": "bfb39d21cd95c3192c28564d473793b670fe2b824ade4383020c6ff7f4ab2a2a",
+        "optimizer": "5cf5c7ba70777b656de4f9b5982781ae165cff458bb53f6e254fb655bdaf73e8",
+        "scheduler": "75a1c6146312c1ed08ee109ddea0084d7a4220d986cc464326546b4bfd1cdb55",
+        "scaler": "4d2a5b43c85f772f343b810515168ba165b95f061a3b93009187c7b0c09d5ce8",
+        "rng": "ec1838bb3f4a5cdb079f98440585f5d43700b56637101ae52d04b259c1f13792"
+      },
+      "resume_policy": {
+        "policy": {
+          "format": "comparison_original_v1_recipient_context_absence_v1",
+          "policy": "target-only full semantic mask absent; real target liver surface; original learned empty-shell tokens; source context mandatory",
+          "module_sha256": "fa1afc0c3b542b51393e9ea7cca3b0dc219841814f465cec54017ba8366de48c",
+          "geometry_validator_sha256": "a12763fbeec8ba03545c8a3579cfa2de5bab767efdb39c17053a8fae3826104d",
+          "policy_sha256": "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7"
+        },
+        "transition": "adopt_from_strict_nonempty_checkpoint",
+        "model_optimizer_scheduler_rng_and_cursor_preserved": true,
+        "candidate_order_scope_and_existing_nonempty_geometry_preserved": true
+      },
+      "loss": 0.14004787802696228,
+      "loss_terms": {
+        "ranking": 0.13695472478866577,
+        "consistency": 0.030931562185287476
+      },
+      "gradient": {
+        "finite": true,
+        "missing": [],
+        "trainable_parameter_tensors": 1085,
+        "gradient_present": 1085,
+        "norms": {
+          "CNN": 17.847931823199318,
+          "L0": 18.260495179355782,
+          "L1": 3.5998540621425303,
+          "L2": 1.0879831481410769,
+          "scalar": 1.2952630454853415
+        }
+      },
+      "target_empty_token_gradient_norms": {
+        "local_encoder.empty_context_shell.target_context_c0": 0.02803190052509308,
+        "local_encoder.empty_context_shell.target_context_c1": 0.03822973743081093,
+        "local_encoder.empty_context_shell.target_context_c2": 0.03449251502752304
+      },
+      "clipped_gradient_norm": 18.690370559692383,
+      "optimizer_history_before": {
+        "verified_genuine_updates": 1089,
+        "verified_parameter_tensors": 1085,
+        "verified_initialized_parameter_tensors": 1085,
+        "transient_optimizer_called": true,
+        "optimizer_math_changed": false
+      },
+      "optimizer_history_after": {
+        "verified_genuine_updates": 1090,
+        "verified_parameter_tensors": 1085,
+        "verified_initialized_parameter_tensors": 1085,
+        "transient_optimizer_called": true,
+        "optimizer_math_changed": false
+      },
+      "checkpoint_roundtrip_exact": true,
+      "checkpoint": "/tmp/aicompetition06_empty_context_DEBUG_9s4qwv91/actual_DEBUG/native_checkpoint_DEBUG.pt",
+      "model_state_sha256": "09cf140fde77a2072449118f958310fc3b0bd8453edf505e5d3e0733110eb516",
+      "scheduler_not_advanced": true,
+      "production_cursor_not_modified": true,
+      "forward_seconds": 2.275342529296875,
+      "backward_seconds": 2.875061279296875,
+      "optimizer_seconds": 0.11221443176269531,
+      "peak_cuda_bytes": 1730514432,
+      "peak_reserved_bytes": 1902116864,
+      "process_rss_bytes": 4696686592,
+      "wall_seconds": 9.386363537982106
+    },
+    {
+      "objective_arm": "native_listwise",
+      "source_checkpoint_arm": "native_listwise",
+      "diagnostic_loss_crosscheck": false,
+      "actual_CUDA": true,
+      "parameters": 10434532,
+      "trainable_parameters": 10434532,
+      "physical_source_batch": 2,
+      "candidate_rows": 16,
+      "two_views": true,
+      "accumulation_steps": 1,
+      "data_parallel_workers": 1,
+      "effective_source_batch": 2,
+      "genuine_optimizer_updates": 1,
+      "source_updates": 1089,
+      "debug_updates": 1090,
+      "source_state_restored": {
+        "model": "bfb39d21cd95c3192c28564d473793b670fe2b824ade4383020c6ff7f4ab2a2a",
+        "optimizer": "5cf5c7ba70777b656de4f9b5982781ae165cff458bb53f6e254fb655bdaf73e8",
+        "scheduler": "75a1c6146312c1ed08ee109ddea0084d7a4220d986cc464326546b4bfd1cdb55",
+        "scaler": "4d2a5b43c85f772f343b810515168ba165b95f061a3b93009187c7b0c09d5ce8",
+        "rng": "ec1838bb3f4a5cdb079f98440585f5d43700b56637101ae52d04b259c1f13792"
+      },
+      "resume_policy": {
+        "policy": {
+          "format": "comparison_original_v1_recipient_context_absence_v1",
+          "policy": "target-only full semantic mask absent; real target liver surface; original learned empty-shell tokens; source context mandatory",
+          "module_sha256": "fa1afc0c3b542b51393e9ea7cca3b0dc219841814f465cec54017ba8366de48c",
+          "geometry_validator_sha256": "a12763fbeec8ba03545c8a3579cfa2de5bab767efdb39c17053a8fae3826104d",
+          "policy_sha256": "47c7a9f2506d7817e61a930c99ee6ef468ccaaaf1fa4b59832f2e5ff95c81ee7"
+        },
+        "transition": "adopt_from_strict_nonempty_checkpoint",
+        "model_optimizer_scheduler_rng_and_cursor_preserved": true,
+        "candidate_order_scope_and_existing_nonempty_geometry_preserved": true
+      },
+      "loss": 0.9327857494354248,
+      "loss_terms": {
+        "ranking": 0.9296925067901611,
+        "consistency": 0.03093244694173336
+      },
+      "gradient": {
+        "finite": true,
+        "missing": [],
+        "trainable_parameter_tensors": 1085,
+        "gradient_present": 1085,
+        "norms": {
+          "CNN": 121.3881346392565,
+          "L0": 124.18408116294722,
+          "L1": 24.8011122946731,
+          "L2": 7.550532607624896,
+          "scalar": 8.797037395888667
+        }
+      },
+      "target_empty_token_gradient_norms": {
+        "local_encoder.empty_context_shell.target_context_c0": 0.19440680742263794,
+        "local_encoder.empty_context_shell.target_context_c1": 0.2643771171569824,
+        "local_encoder.empty_context_shell.target_context_c2": 0.23790514469146729
+      },
+      "clipped_gradient_norm": 127.17784881591797,
+      "optimizer_history_before": {
+        "verified_genuine_updates": 1089,
+        "verified_parameter_tensors": 1085,
+        "verified_initialized_parameter_tensors": 1085,
+        "transient_optimizer_called": true,
+        "optimizer_math_changed": false
+      },
+      "optimizer_history_after": {
+        "verified_genuine_updates": 1090,
+        "verified_parameter_tensors": 1085,
+        "verified_initialized_parameter_tensors": 1085,
+        "transient_optimizer_called": true,
+        "optimizer_math_changed": false
+      },
+      "checkpoint_roundtrip_exact": true,
+      "checkpoint": "/tmp/aicompetition06_empty_context_DEBUG_9s4qwv91/actual_DEBUG/native_listwise_checkpoint_DEBUG.pt",
+      "model_state_sha256": "a2d7444ceab42d1af49b83c8f94866c79ebf8818659fd3d70b6f06eb53757e1c",
+      "scheduler_not_advanced": true,
+      "production_cursor_not_modified": true,
+      "forward_seconds": 1.6040938720703124,
+      "backward_seconds": 2.8527861328125,
+      "optimizer_seconds": 0.0883983383178711,
+      "peak_cuda_bytes": 1732022784,
+      "peak_reserved_bytes": 1902116864,
+      "process_rss_bytes": 4709629952,
+      "wall_seconds": 8.687785753048956
+    }
+  ],
+  "source_checkpoint_unchanged": true,
+  "prior_nonempty_view_equality": {
+    "verified": false,
+    "reason": "No unpatched view execution claimed; cold/reopened exact current inputs checked"
+  },
+  "code_hashes": {
+    "hiercp_v1x/comparison_empty_context.py": "fa1afc0c3b542b51393e9ea7cca3b0dc219841814f465cec54017ba8366de48c",
+    "hiercp_v1x/comparison_geometry_execution.py": "abf35dceb5f737b826c5fb0442083768d3c469688814dc171a42b4ce5b4f689d",
+    "hiercp_v1x/comparison_runtime.py": "b11fcfaa82e3abd16263139619f81aeaa5eecf5a0f081ed1d795edbd6bbc7671",
+    "hiercp_v1x/comparison_context.py": "99a48d74a898a16eb9ecaf139f292cc9cb7395075f389fca8de75f2e5db18a89",
+    "tools/resume_comparison_cached.py": "ea6abf9f938dd9db90d26bf66cb61f20926a0aa3fa71fe3ca0b0ee67bf2a6cfe",
+    "tests/test_comparison_empty_context.py": "87a016bd4fff883a2f135b6b0edfa015cc67dd612ab57d5ddc97806906b6adeb",
+    "tests/test_comparison_geometry_execution.py": "bc88b51e01308c5a982d99454a6d3a19efc92a22a238e213141f494e3cefcf2c",
+    "tests/test_comparison_failure_traceback.py": "3b4a6d4c03a6a710358bfef3d6ac77fe50aa3dc23ddd9c82c9ad425d0ea4a976",
+    "tests/test_comparison_cached_resume.py": "f10988101b4333a2bb250cfca4b985e18c294e244f44c3e315f7f3e3c1932b94",
+    "tests/test_comparison_cache_logging.py": "288af18ddf5ac78f4562e64b965d2de52ce978596e9385735dc70b3591a91757",
+    "tests/test_comparison_checkpoint_integration.py": "838e3769223376921fd51571cdc8eb33cefeb8de19f6f6744d3c751ea428f4dd",
+    "tools/verify_comparison_empty_context_debug.py": "df41bdc7682a5d03dc772ded1fb56c6df581a8f43d96e75145eea5efc680e9cb"
+  },
+  "unit_tests": {
+    "local": {
+      "tests": 151,
+      "passed": true
+    },
+    "server": {
+      "tests": 38,
+      "passed": true
+    }
+  },
+  "canonical_cache": {
+    "cold_builds": 16,
+    "reopened_disk_hits": 16,
+    "reopened_cold_builds": 0
+  },
+  "geometry_sweep": {
+    "checked_targets": 256,
+    "workers": 16,
+    "wall_seconds": 6.653758684173226,
+    "full_geometry": true,
+    "graph_edges_built": false,
+    "graph_rules_changed": false,
+    "scope": "These two original sources only; full cohort and full129 GPU evaluation not tested",
+    "empty_targets": [
+      {
+        "source_id": "liver_46:0",
+        "candidates": [
+          "U:52"
+        ]
+      },
+      {
+        "source_id": "liver_46:1",
+        "candidates": [
+          "U:52"
+        ]
+      }
+    ]
+  }
+}

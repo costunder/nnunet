@@ -21,6 +21,7 @@ def gpu_cache_context(net, *, binding_hash, arm, training, comparison_policy=Non
     already reuses an admitted execution policy across optimizer updates.
     Neither a workload inventory nor this context proves worst-case memory.
     """
+    from .comparison_geometry_execution import current_policy
     device = torch.cuda.current_device()
     properties = torch.cuda.get_device_properties(device)
     device_uuid = getattr(properties, 'uuid', None)
@@ -38,11 +39,13 @@ def gpu_cache_context(net, *, binding_hash, arm, training, comparison_policy=Non
     directory = Path(__file__).resolve().parent
     files = ('comparison_context.py', 'comparison_gpu_runtime.py', 'comparison_gpu_policy.py',
              'comparison_gpu_cache.py', 'comparison_runtime.py', 'comparison_execution.py',
-             'comparison_checkpoint.py')
+             'comparison_checkpoint.py', 'comparison_empty_context.py',
+             'comparison_geometry_execution.py', 'transition_v1_empty_context.py')
     implementation = {name: hashlib.sha256((directory / name).read_bytes()).hexdigest()
                       for name in files}
     return dict(
         identity_sha256=binding_hash,
+        recipient_context_policy=current_policy(),
         cuda_environment=dict(device_uuid=str(device_uuid), device_name=properties.name,
             total_memory_bytes=properties.total_memory,
             compute_capability=[properties.major, properties.minor],

@@ -15,6 +15,10 @@ from unittest.mock import patch
 from hiercp_v1x import comparison_experiment, u_bridge_experiment
 from tools import resume_comparison_cached as runner
 
+GEOMETRY_HELPERS = ("hiercp_v1x/comparison_empty_context.py",
+                    "hiercp_v1x/comparison_geometry_execution.py",
+                    "hiercp_v1x/transition_v1_empty_context.py")
+
 
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,7 +52,7 @@ def unit_fixture(base, *, family="u_bridge", debug=False, external_data=False):
                  "hiercp_v1x/comparison_data_timing.py", "hiercp_v1x/comparison_preparation.py",
                  "hiercp_v1x/comparison_source_cache.py", "hiercp_v1x/comparison_upper_cache.py",
                  "hiercp_v1x/comparison_sample_cache.py", "hiercp_v1x/comparison_gpu_policy.py",
-                 "hiercp_v1x/comparison_gpu_runtime.py"):
+                 "hiercp_v1x/comparison_gpu_runtime.py", *GEOMETRY_HELPERS):
         path = repository / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("UNIT additive execution provenance fixture: " + name, encoding="utf8")

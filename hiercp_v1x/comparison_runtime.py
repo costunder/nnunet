@@ -14,6 +14,7 @@ import math
 from pathlib import Path
 import time
 import sys
+import traceback as traceback_module
 
 import torch
 
@@ -31,6 +32,78 @@ from .comparison_context import gpu_cache_context
 from .comparison_checkpoint import ComparisonCheckpointWriter
 
 
+def _retain_staging_failure(primary, secondary):
+    """Keep a worker-drain failure without losing a pre-existing cause."""
+    cause = primary.__cause__
+    if cause is not None and cause is not secondary:
+        retained = getattr(primary, 'comparison_retained_causes', [])
+        if all(value is not cause for value in retained):
+            retained.append(cause)
+        primary.comparison_retained_causes = retained
+    failures = getattr(primary, 'comparison_secondary_errors', [])
+    if all(value is not secondary for _, value in failures):
+        failures.append(('CPU staging drain', secondary))
+    primary.comparison_secondary_errors = failures
+
+
+def _failure_details(error):
+    """Serialize exception evidence without locals, tensors, or recursion cycles."""
+    nodes, seen = [], {}
+
+    def visit(current):
+        token = id(current)
+        if token in seen:
+            return seen[token]
+        index = len(nodes)
+        seen[token] = index
+        node = dict(id=index, type=type(current).__module__ + '.' + type(current).__qualname__,
+                    message=str(current), suppress_context=bool(current.__suppress_context__),
+                    traceback=''.join(traceback_module.format_exception(
+                        type(current), current, current.__traceback__, chain=False)))
+        nodes.append(node)
+        node['cause'] = None if current.__cause__ is None else visit(current.__cause__)
+        node['context'] = None if current.__context__ is None else visit(current.__context__)
+        node['retained_causes'] = [visit(value) for value in
+                                   getattr(current, 'comparison_retained_causes', ())]
+        node['staging_failures'] = [visit(value) for value in getattr(current, 'failures', ())]
+        node['group_exceptions'] = [visit(value) for value in getattr(current, 'exceptions', ())]
+        node['secondary_errors'] = [dict(operation=operation, exception=visit(value))
+                                   for operation, value in
+                                   getattr(current, 'comparison_secondary_errors', ())]
+        return index
+
+    visit(error)
+    rendered = ''.join(traceback_module.format_exception(type(error), error, error.__traceback__))
+    # Python renders one cause/context branch. Worker-drain aggregates and
+    # explicitly suppressed contexts remain relevant diagnostic evidence too.
+    displayed, current = set(), error
+    while current is not None and id(current) not in displayed:
+        displayed.add(id(current))
+        current = (current.__cause__ if current.__cause__ is not None else
+                   None if current.__suppress_context__ else current.__context__)
+    extra = [node for token, index in seen.items() if token not in displayed
+             for node in (nodes[index],)]
+    if extra:
+        rendered += '\nAdditional retained exceptions (see exception_graph relationships):\n'
+        rendered += '\n'.join(f"Exception [{node['id']}]:\n{node['traceback']}" for node in extra)
+    return dict(traceback=rendered, exception_graph=nodes)
+
+
+def _record_training_failure(root, state, error, append):
+    """Preserve the training error even if its diagnostic append also fails."""
+    from .comparison_storage import report_secondary_failure
+    try:
+        row = dict(epoch=state['epoch'], phase=state['phase'], position=state['position'],
+            updates=state['updates'], error=f'{type(error).__name__}: {error}',
+            observed_at=time.time(), **_failure_details(error),
+            recovery='Latest owned successful/AMP-skip checkpoint preserved; exact resume retries unchanged cursor')
+        if 'validation_position' in state:
+            row['validation_position'] = state['validation_position']
+        append(Path(root) / 'failures.jsonl', row)
+    except Exception as audit_error:
+        report_secondary_failure(error, audit_error, operation='training failure audit')
+
+
 class closing(_closing):
     """Drain staged work while retaining a consumer error as the primary error."""
     def __exit__(self, kind, value, traceback):
@@ -38,6 +111,7 @@ class closing(_closing):
             self.thing.close()
         except Exception as staged_error:
             if value is not None:
+                _retain_staging_failure(value, staged_error)
                 raise value.with_traceback(traceback) from staged_error
             raise
 
@@ -264,6 +338,7 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
             if errors:
                 drain_error = errors[0] if len(errors) == 1 else _StagingCleanupError(errors)
                 if primary is not None and not isinstance(primary, GeneratorExit):
+                    _retain_staging_failure(primary, drain_error)
                     raise primary.with_traceback(primary.__traceback__) from drain_error
                 raise drain_error
 
@@ -277,6 +352,8 @@ EXECUTION_HELPERS = dict(_prefetch=_prefetch, PhaseProgress=PhaseProgress,
 
 def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epochs, identity, budget, debug=False):
     """Run/resume one independent arm; caller supplies a freshly initialized net."""
+    from .comparison_geometry_execution import current_policy, validate_resume_policy
+    geometry_policy = current_policy()
     if arm not in ARMS or type(debug) is not bool or type(epochs) is not int or epochs < 1:
         raise ValueError('Explicit arm/DEBUG/epoch contract required')
     if not debug and epochs != 40: raise ValueError('Production U bridge preserves forty epochs')
@@ -343,11 +420,17 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
             raise ValueError('Resume requires exact arm/model/source/data/execution identity')
         checksum = saved.pop('content_sha256', None)
         if checksum != digest(saved): raise ValueError('Checkpoint content identity changed')
+        geometry_resume = validate_resume_policy(saved.get('recipient_context_policy'), geometry_policy)
         net.load_state_dict(saved['model'], strict=True); optimizer.load_state_dict(saved['optimizer'])
         scheduler.load_state_dict(saved['scheduler']); scaler.load_state_dict(saved['scaler'])
         state = saved['state']; generator.set_state(saved['shuffle_generator']); restore_rng(saved['rng'])
         validate_resume_progress(state, train_ids, val_ids, physical_batch, epochs, scheduler)
         resume_receipt = restore_optimizer_history(optimizer, state['updates'])
+        if geometry_resume is not None:
+            _append(root / 'geometry_policy_events.jsonl', dict(geometry_resume,
+                checkpoint=str(runtime['resume_checkpoint']), checkpoint_content_sha256=checksum,
+                arm=arm, epoch=state['epoch'], phase=state['phase'], position=state['position'],
+                updates=state['updates'], observed_at=time.time()))
         del saved
     invocation_start = dict(phase=state['phase'], updates=state['updates'], attempts=state['attempts'],
                             completed_epochs=len(state['history']))
@@ -396,6 +479,8 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
         # Include its exact bound policy once, before computing the same digest.
         if 'comparison_policy' in config:
             payload['comparison_policy'] = config['comparison_policy']
+        if geometry_policy is not None:
+            payload['recipient_context_policy'] = geometry_policy
         paths = [root / 'checkpoint_latest.pt']
         if best: paths.append(root / 'checkpoint_best.pt')
         generation = ((state['phase'], state['epoch'], state['updates'])
@@ -650,9 +735,10 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                 if {row['sample_index'] for row in state['train_rows']} != set(train_ids): raise ValueError('Training coverage changed')
                 state['phase'] = 'validation'; checkpoint()
         except Exception as error:
-            _append(root / 'failures.jsonl', dict(epoch=state['epoch'], phase=state['phase'], position=state['position'],
-                updates=state['updates'], error=f'{type(error).__name__}: {error}',
-                recovery='Latest owned successful/AMP-skip checkpoint preserved; exact resume retries unchanged cursor'))
+            # run_arm is rebound into frozen/v1.9 namespaces. Import this
+            # diagnostic helper locally and keep the facade's original append.
+            from .comparison_runtime import _record_training_failure
+            _record_training_failure(root, state, error, _append)
             raise
         finally:
             gpu_execution.restore_original()

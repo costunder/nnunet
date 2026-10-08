@@ -219,6 +219,8 @@ def run(a):
     from hiercp_v1x.host_memory import PressureBudget, pressure_aware_provider
     from hiercp_v1x.preparation_reuse import preparation_reuse
     from hiercp_v1x.comparison_execution import comparison_execution
+    from hiercp_v1x.comparison_geometry_execution import comparison_geometry_execution
+    from hiercp_v1x.comparison_empty_context import identity as geometry_identity
     from hiercp_v1x.comparison_preparation import prepared_provider
     from hiercp_v1x.u_bridge_experiment import lock, write_new, sha
     manifest, family, args, namespace = sealed_arguments(a)
@@ -241,6 +243,7 @@ def run(a):
                 read_only_sources=[str(p.resolve()) for p in a.cache_sources],
                 original_checkpoint_protocol_and_frozen_sources_unchanged=True,
                 execution_loop_changed=True,
+                recipient_context_policy=geometry_identity(),
                 execution_policy='ordered memory-admitted input staging, original epoch views, completed hierarchy layout and existing local graph reuse, compact source/upper caches',
                 helpers={name:sha(ROOT/name) for name in ('tools/resume_comparison_cached.py',
                     'hiercp_v1x/host_memory.py','hiercp_v1x/preparation_reuse.py',
@@ -249,7 +252,9 @@ def run(a):
                     'hiercp_v1x/comparison_views.py','hiercp_v1x/comparison_data_timing.py',
                     'hiercp_v1x/comparison_preparation.py','hiercp_v1x/comparison_source_cache.py',
                     'hiercp_v1x/comparison_upper_cache.py','hiercp_v1x/comparison_sample_cache.py',
-                    'hiercp_v1x/comparison_gpu_policy.py','hiercp_v1x/comparison_gpu_runtime.py')}))
+                    'hiercp_v1x/comparison_gpu_policy.py','hiercp_v1x/comparison_gpu_runtime.py',
+                    'hiercp_v1x/comparison_empty_context.py','hiercp_v1x/comparison_geometry_execution.py',
+                    'hiercp_v1x/transition_v1_empty_context.py')}))
     def execution_provider(provider):
         return prepared_provider(provider, root/'input_timing.jsonl')
     continuation_path = root/'continuation.json'
@@ -278,7 +283,7 @@ def run(a):
                 receipt(Path(request['data_root']))
                 # The preserved independent runner owns its locks, restores its
                 # exact checkpoint cursor, and verifies the continuation receipt.
-                with _field_read_console(event), comparison_execution():
+                with _field_read_console(event), comparison_execution(), comparison_geometry_execution():
                     result = run_v18_independent.run(independent)
                 return result
             finally:
@@ -294,7 +299,7 @@ def run(a):
             setattr(data_module, class_name, provider)
             try:
                 receipt(namespace)
-                with _field_read_console(event), comparison_execution():
+                with _field_read_console(event), comparison_execution(), comparison_geometry_execution():
                     return controller.run(args)
             finally:
                 experiment_module.Budget = original_budget

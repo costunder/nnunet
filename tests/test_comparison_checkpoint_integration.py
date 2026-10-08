@@ -5,6 +5,7 @@ It is not a replacement model, CUDA test, or full research training result.
 """
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 import random
 from tempfile import TemporaryDirectory
@@ -59,7 +60,7 @@ class ActualCheckpointIntegrationUnit(unittest.TestCase):
         self.execution.__enter__()
         self.addCleanup(self.execution.__exit__, None, None, None)
 
-    def build(self, arm=None, suffix='actual'):
+    def build(self, arm=None, suffix='actual', geometry_policy=None):
         if arm is None:
             run = engine.run_arm
             config = {}
@@ -85,7 +86,7 @@ class ActualCheckpointIntegrationUnit(unittest.TestCase):
                       checkpoint_writer=ComparisonCheckpointWriter(), config=config,
                       generator=torch.Generator().manual_seed(2045), net=net,
                       optimizer=optimizer, root=root, scaler=scaler,
-                      scheduler=scheduler, state=state)
+                      scheduler=scheduler, state=state, geometry_policy=geometry_policy)
         return run, values, _actual_checkpoint(run, values)
 
     def load(self, root, name='checkpoint_latest.pt'):
@@ -192,6 +193,53 @@ class ActualCheckpointIntegrationUnit(unittest.TestCase):
                 values['scheduler'].step()
                 scheduler.step()
                 self.assertEqual(scheduler.state_dict(), values['scheduler'].state_dict())
+
+    def test_active_geometry_policy_is_hashed_saved_and_resumes_without_state_changes(self):
+        from hiercp_v1x.comparison_empty_context import identity
+        from hiercp_v1x.comparison_geometry_execution import validate_resume_policy
+        policy = identity()
+        for arm in (None, *comparison.ARMS):
+            with self.subTest(arm=arm):
+                _, values, checkpoint = self.build(arm, suffix='geometry', geometry_policy=policy)
+                before = {name: engine.digest(values[name].state_dict())
+                          for name in ('net', 'optimizer', 'scheduler', 'scaler')}
+                cursor = engine.digest(values['state'])
+                before_rng = engine.digest(engine.capture_rng())
+                checkpoint(best=True)
+                saved = self.load(values['root'])  # Also checks the complete content hash.
+                self.assertEqual(saved['recipient_context_policy'], policy)
+                self.assertEqual(engine.digest(saved), engine.digest(self.load(values['root'], 'checkpoint_best.pt')))
+                for name, field in (('net', 'model'), ('optimizer', 'optimizer'),
+                                    ('scheduler', 'scheduler'), ('scaler', 'scaler')):
+                    self.assertEqual(engine.digest(saved[field]), before[name])
+                self.assertEqual(engine.digest(saved['state']), cursor)
+                self.assertEqual(engine.digest(saved['rng']), before_rng)
+                self.assertTrue(torch.equal(saved['shuffle_generator'], values['generator'].get_state()))
+                if arm is not None:
+                    self.assertEqual(saved['comparison_policy'], comparison.arm_policy(arm))
+                restored = validate_resume_policy(saved['recipient_context_policy'], policy)
+                self.assertEqual(restored['transition'], 'same_policy_resume')
+                self.assertTrue(restored['model_optimizer_scheduler_rng_and_cursor_preserved'])
+                adopted = validate_resume_policy(None, policy)
+                self.assertEqual(adopted['transition'], 'adopt_from_strict_nonempty_checkpoint')
+                changed = copy.deepcopy(saved)
+                changed['recipient_context_policy']['policy_sha256'] = '0' * 64
+                self.assertNotEqual(engine.digest(changed), engine.digest(saved))
+                with self.assertRaisesRegex(ValueError, 'policy differs'):
+                    validate_resume_policy(changed['recipient_context_policy'], policy)
+                with self.assertRaisesRegex(ValueError, 'policy differs'):
+                    validate_resume_policy(saved['recipient_context_policy'], None)
+                # Reuse the evaluation snapshot while advancing only its cursor.
+                values['state']['validation_position'] = 1
+                values['state']['validation_rows'] = [{'sample_index': 10, 'UNIT_metric': .75}]
+                checkpoint()
+                self.assertTrue(values['checkpoint_stats']['static_snapshot_reused'])
+                after = self.load(values['root'])
+                self.assertEqual(after['recipient_context_policy'], policy)
+                self.assertEqual(after['state']['validation_position'], 1)
+                self.assertEqual(saved['state']['validation_position'], 0)
+                self.assertEqual(engine.digest(after['model']), engine.digest(saved['model']))
+                self.assertEqual(engine.digest(after['optimizer']), engine.digest(saved['optimizer']))
 
 
 if __name__ == '__main__':

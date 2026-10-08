@@ -1,0 +1,82 @@
+비교 실험 recipient context 오류 수정 — 2026-10-08
+
+원인과 수정
+native/native_listwise가 epoch 8, position 32, update 1089에서 같은
+liver_46:0 / U:52 후보 때문에 중단됐다. 원본 전체 CT로 재현한 원인은
+EmptyCanonicalNodeError: V22 context coordinates are invalid: (0, 3) 이다.
+해당 위치는 간 label 안이지만 기존 2–10 mm 및 간 깊이 >4 mm 조건을
+동시에 만족하는 recipient context voxel이 없다. 원본 전체 EDT 재계산도
+캐시와 정확히 일치했다. 후보 생성은 중심 위치의 label을 기준으로 하므로
+모든 후보에 nonempty context를 강제하는 기존 가정과 충돌했다.
+
+새 comparison adapter는 전체 의미 마스크의 실제 부재와 남아 있는 실제
+간 표면을 확인한 target에만 기존 모델의 learned empty-shell token을
+사용한다. source context는 계속 필수다. 후보를 삭제·대체하거나 가짜
+노드를 생성하지 않는다. 동일 정책 hash의 부재 proof를 canonical cache,
+두 view의 graph metadata, checkpoint와 execution receipt에 기록한다.
+비어 있지 않은 입력에는 기존 구현을 호출한다. 기존 정책에서 처음
+재개하는 경우를 별도 기록하고, 이후 다른 정책으로의 조용한 재개를 거부한다.
+모델, Adam, scheduler, scaler, RNG, shuffle 순서와 cursor를 보존한다.
+worker drain의 부가 오류 때문에 실제 최초 원인이 사라지지 않도록
+failure log에 전체 traceback과 exception 관계를 남긴다.
+
+원래 실행 계약
+full model 10,434,532 trainable parameters; hidden 128, heads 4,
+local/patient/prototype layers 3/2/2, dense base channels 12/features 32,
+dropout 0.1. 입력 patch 5x48x48x48, dense internal batch 4.
+전체 signed source 187개, train 151 / validation 36. native U 128개,
+train P+U 7개, full evaluation P+U 128개. 10 mm scope 및 모든 원래
+sampling/edge 규칙 유지. 40 epochs, physical source batch 1,
+accumulation 1, effective batch 1/arm, workers 16. AMP 및 기존 activation
+checkpointing 유지. arm마다 독립 GPU, CUDA budget 40 GiB,
+RSS budget 192 GiB/resident 128 GiB를 유지한다.
+
+검증 결과
+- local CPU UNIT 151개 및 서버 환경의 핵심 UNIT 38개 통과.
+- 실제 liver_46 source index 76/77의 epoch8 P+U49..55를 cold 생성.
+  physical source batch 2, 16 candidate graphs x 2 views를 병렬 처리했다.
+  view당 node 49,009개/edge 3,875,880개; 두 U:52에서 실제 context 부재.
+- canonical 16개 cold build 후 새 provider로 재열기: cold build 0,
+  disk hit 16. raw/source/upper 재계산 경로를 막아도 동일 입력으로 재열렸다.
+- 두 source의 native U 전체 256개 canonical geometry 통과(workers16).
+  이는 해당 두 source의 geometry 검사이며 전체 cohort GPU 평가가 아니다.
+- A6000 physical GPU6, 46,068 MiB, MIG 없음. 40 GiB 예산 아래 수행.
+  native loss 0.140047878, native_listwise loss 0.932785749; 모든
+  1,085 parameter tensor의 gradient가 존재하고 finite였다. 세 target
+  empty-shell token 모두 실제 nonzero gradient와 optimizer 연결 확인.
+- 각 objective 1회의 실제 update 및 DEBUG checkpoint save/reload 일치.
+  두 diagnostic 모두 보존한 native_listwise checkpoint를 독립적으로
+  복원했다. native 자체 운영 checkpoint 재개를 이 DEBUG로 대신하지 않는다.
+- peak allocated VRAM 약 1.62 GiB, reserved 약 1.78 GiB,
+  process RSS 약 4.39 GiB. 두 source가 작으므로 전체 cohort의 worst-case
+  batch admission 근거로 쓰지 않았다. 운영 physical batch는 바꾸지 않았다.
+- native forward/backward 약 2.28/2.88초, listwise 약 1.60/2.85초.
+  원본 checkpoint SHA는 검증 실행 전후 동일하다.
+
+상세 증거: validation/comparison_recipient_context_DEBUG_20261008/receipt.json
+재현 도구: tools/verify_comparison_empty_context_debug.py
+검증 출력은 새 /tmp/*DEBUG*에만 저장하고 운영 입력 쓰기를 차단한다.
+
+완료 범위와 제한
+구현, 정적 AST 검사, UNIT, 실제 CT/CUDA DEBUG 완료.
+40-epoch 전체 학습과 전체 평가 완료를 주장하지 않는다.
+정상 입력의 원래 출력 동일성 UNIT은 synthetic graph 검사이며 실제 CT
+변경 전후 동일성 검증을 대신하지 않는다. 실제 CT 검증은 수정된 코드의
+cold/cache 재열기 동일성과 오류 후보의 정상 계산을 확인했다.
+해당 오류에서의 복구를 검증했으며 아직 보지 못한 모든 입력에 오류가
+없다고 보장하지 않는다. 모델이나 데이터 축소는 하지 않았다.
+
+## 작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (이번 원인은 geometry 오류)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

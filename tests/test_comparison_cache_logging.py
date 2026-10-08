@@ -254,7 +254,9 @@ class FieldReadConsoleTests(unittest.TestCase):
 
     def test_provider_report_capture_is_connected_to_both_runner_routes(self):
         from hiercp_v1x import u_bridge_data
-        from tests.test_comparison_cached_resume import unit_fixture, write_json
+        from tests.test_comparison_cached_resume import GEOMETRY_HELPERS, unit_fixture, write_json
+        from hiercp_v1x.comparison_empty_context import identity as geometry_identity
+        from hiercp_v1x.u_bridge_experiment import sha
         from tools import run_v18_u_bridge, run_v18_independent
         for independent in (False, True):
             with self.subTest(independent=independent), self.directory() as directory:
@@ -283,6 +285,12 @@ class FieldReadConsoleTests(unittest.TestCase):
                 self.assertNotIn(self.LINE, console.getvalue())
                 self.assertEqual('print' in vars(u_bridge_data), had_global)
                 self.assertEqual((root / 'experiment.json').read_bytes(), before)
+                receipts = list((root / 'execution_overrides').glob('*.json'))
+                self.assertEqual(len(receipts), 1)
+                receipt = json.loads(receipts[0].read_text(encoding='utf8'))
+                self.assertEqual(receipt['recipient_context_policy'], geometry_identity())
+                for name in GEOMETRY_HELPERS:
+                    self.assertEqual(receipt['helpers'][name], sha(repository / name))
 
 
 if __name__ == "__main__":
