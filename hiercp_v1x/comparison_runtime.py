@@ -350,9 +350,37 @@ EXECUTION_HELPERS = dict(_prefetch=_prefetch, PhaseProgress=PhaseProgress,
                          ComparisonCheckpointWriter=ComparisonCheckpointWriter)
 
 
+def _validate_curriculum_resume_policy(saved, active_policy):
+    """Reject stripped, aliased or incompatible policy state before restoration.
+
+    The caller verifies the complete checkpoint content hash first. This check
+    also makes a curriculum checkpoint unusable by an unopted legacy runtime.
+    """
+    previous = saved.get('curriculum_policy')
+    state = saved['state']
+    if previous is None:
+        if 'comparison_curriculum' in state or 'stage_validation' in state:
+            raise ValueError('Saved curriculum state lacks its explicit policy')
+        return
+    if previous != active_policy:
+        raise ValueError('Saved curriculum policy differs; explicit matching opt-in required')
+    current = state.get('comparison_curriculum')
+    if not isinstance(current, dict) or current.get('policy') != previous:
+        raise ValueError('Saved curriculum policy lacks its matching checkpointed candidate plan')
+    stage = state.get('stage_validation')
+    if stage is not None and stage.get('policy_sha256') != previous.get('policy_sha256'):
+        raise ValueError('Saved stage evaluation policy differs from its curriculum')
+
+
 def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epochs, identity, budget, debug=False):
     """Run/resume one independent arm; caller supplies a freshly initialized net."""
     from .comparison_geometry_execution import current_policy, validate_resume_policy
+    from . import comparison_curriculum as curriculum
+    from .comparison_curriculum_data import candidate_plan
+    from .comparison_stage_validation import evaluate_stage_validation, validate_stage_cursor
+    from .comparison_runtime import _validate_curriculum_resume_policy
+    from .u_bridge_training import _write_new as write_policy
+    from contextlib import nullcontext
     geometry_policy = current_policy()
     if arm not in ARMS or type(debug) is not bool or type(epochs) is not int or epochs < 1:
         raise ValueError('Explicit arm/DEBUG/epoch contract required')
@@ -362,6 +390,12 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
     if not torch.cuda.is_available(): raise RuntimeError('Actual CUDA required; no CPU training fallback')
     import psutil
     runtime = copy.deepcopy(config['u_bridge_runtime']); training = config['training']
+    curriculum_name = runtime.get('curriculum_policy')
+    if curriculum_name not in (None, curriculum.POLICY_NAME):
+        raise ValueError('Unknown explicit comparison curriculum policy')
+    curriculum_policy = curriculum.policy(arm) if curriculum_name is not None else None
+    if curriculum_policy is not None and not runtime.get('resume_checkpoint'):
+        raise ValueError('Mid-run curriculum adoption requires an explicit verified resume checkpoint')
     pause_update = runtime.get('debug_pause_after_updates')
     if pause_update is not None and (not debug or type(pause_update) is not int or pause_update < 1):
         raise ValueError('Explicit pause-after-update diagnostic is allowed only in DEBUG')
@@ -394,7 +428,7 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
     scaler = torch.amp.GradScaler('cuda', enabled=training['amp'])
     generator = torch.Generator().manual_seed(42 + 2003)
     bound_config = copy.deepcopy(config)
-    for field in ('resume_checkpoint', 'pause_file', 'debug_pause_after_updates'):
+    for field in ('resume_checkpoint', 'pause_file', 'debug_pause_after_updates', 'curriculum_policy'):
         bound_config['u_bridge_runtime'].pop(field, None)
     binding = dict(format=FORMAT, identity=identity, config=bound_config, arm=arm, debug=debug,
                    epochs=epochs, physical_batch=physical_batch, workers=workers,
@@ -414,12 +448,14 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                  connected=[], invocation_status='RUNNING', validation_active_seconds=0., epoch_active_seconds=0.,
                  seen_comparisons={str(index): [] for index in train_ids})
     resume_receipt = None
+    checksum = None
     if runtime.get('resume_checkpoint'):
         saved = torch.load(runtime['resume_checkpoint'], map_location='cpu', weights_only=False)
         if saved.get('format') != FORMAT or saved.get('identity_sha256') != binding_hash:
             raise ValueError('Resume requires exact arm/model/source/data/execution identity')
         checksum = saved.pop('content_sha256', None)
         if checksum != digest(saved): raise ValueError('Checkpoint content identity changed')
+        _validate_curriculum_resume_policy(saved, curriculum_policy)
         geometry_resume = validate_resume_policy(saved.get('recipient_context_policy'), geometry_policy)
         net.load_state_dict(saved['model'], strict=True); optimizer.load_state_dict(saved['optimizer'])
         scheduler.load_state_dict(saved['scheduler']); scaler.load_state_dict(saved['scaler'])
@@ -432,6 +468,19 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                 arm=arm, epoch=state['epoch'], phase=state['phase'], position=state['position'],
                 updates=state['updates'], observed_at=time.time()))
         del saved
+    if curriculum_policy is not None:
+        curriculum_receipt = curriculum.adopt_or_validate(state, arm, train_ids, checksum)
+        validate_stage_cursor(state, val_ids, physical_batch, curriculum.stage_keys(state, arm),
+            policy=curriculum_policy, view_epoch=training['fixed_validation_epoch'])
+        policy_path = root / 'curriculum_policy.json'
+        if not policy_path.exists():
+            write_policy(policy_path, curriculum_policy)
+        elif json.loads(policy_path.read_text(encoding='utf8')) != curriculum_policy:
+            raise ValueError('Existing curriculum policy receipt differs')
+        _append(root / 'curriculum_policy_events.jsonl', dict(curriculum_receipt,
+            checkpoint=runtime.get('resume_checkpoint'), observed_at=time.time()))
+        PhaseProgress.write(f'{arm} curriculum={curriculum_name}; '
+            f'stage validation + fixed full129; expansion={arm in ("native", "native_listwise")}')
     invocation_start = dict(phase=state['phase'], updates=state['updates'], attempts=state['attempts'],
                             completed_epochs=len(state['history']))
     completed_baseline = None
@@ -448,7 +497,8 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
         amp=training['amp'], cuda_limit_bytes=budget.cuda_bytes,
         output=root, notify=PhaseProgress.write,
         cache_context=gpu_cache_context(net, binding_hash=binding_hash, arm=arm,
-            training=training, comparison_policy=config.get('comparison_policy')))
+            training=training, comparison_policy=config.get('comparison_policy'),
+            curriculum_policy=curriculum_policy))
     receipt_path = root / 'execution_contract.json'
     if not receipt_path.exists():
         _write_new(receipt_path, dict(format=FORMAT, arm=arm, debug=debug, epochs=epochs,
@@ -481,6 +531,8 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
             payload['comparison_policy'] = config['comparison_policy']
         if geometry_policy is not None:
             payload['recipient_context_policy'] = geometry_policy
+        if curriculum_policy is not None:
+            payload['curriculum_policy'] = curriculum_policy
         paths = [root / 'checkpoint_latest.pt']
         if best: paths.append(root / 'checkpoint_best.pt')
         generation = ((state['phase'], state['epoch'], state['updates'])
@@ -560,8 +612,20 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
             else:
                 stored = json.loads(path.read_text(encoding='utf8'))
                 if digest(stored['rows']) != digest(report['rows']): raise ValueError('Existing validation rows disagree with resumed result')
+            stage_report = None
+            if curriculum_policy is not None:
+                progress.finish()
+                stage_report = evaluate_stage_validation(net=net, provider=provider, state=state,
+                    arm=arm, keys=curriculum.stage_keys(state, arm), policy=curriculum_policy,
+                    root=root, val_ids=val_ids, lookup=lookup, physical_batch=physical_batch,
+                    epochs=epochs, view_epoch=training['fixed_validation_epoch'], chunk=chunk,
+                    amp=training['amp'], budget=budget, checkpoint=checkpoint,
+                    pause_requested=lambda: pause_requested(flag), debug=debug)
+                if stage_report is None:
+                    return False
             state['validation_rows'] = []; state['validation_position'] = 0; state['validation_active_seconds'] = 0.
             if phase == 'initial_validation':
+                state.pop('stage_validation', None)
                 state['initial_validation'] = report; state['phase'] = 'training'; checkpoint()
             else:
                 train_report = aggregate_rows(state['train_rows'])
@@ -570,6 +634,13 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                            validation_seconds=report['wall_seconds'],
                            epoch_wall_seconds=state['epoch_active_seconds'] + report['wall_seconds'],
                            wall_scope='active optimization, loading, checkpointing, and full129 validation; excludes pauses')
+                if stage_report is not None:
+                    row['validation_stage'] = stage_report
+                    row['curriculum_decision'] = curriculum.finish_epoch(
+                        state, arm, stage_report, train_ids, validation_ids=val_ids)
+                    row['epoch_wall_seconds'] += stage_report['wall_seconds']
+                    row['wall_scope'] = 'active optimization, loading, checkpointing, full129 and stage validation; excludes pauses'
+                    state.pop('stage_validation', None)
                 improved = state['best'] is None or selection_key(report) > tuple(state['best']['selection_key'])
                 if improved: state['best'] = dict(epoch=state['epoch'], update=state['updates'], selection_key=list(selection_key(report)))
                 state['history'].append(row); _append(root / 'curve.jsonl', row)
@@ -577,8 +648,9 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                     order=None, train_rows=[], epoch_active_seconds=0.)
                 if state['epoch'] > epochs: state['phase'] = 'complete'
                 checkpoint(best=improved)
-            progress.update(metrics=report['metrics'])
-            progress.finish()
+            if not progress.closed:
+                progress.update(metrics=report['metrics'])
+                progress.finish()
             metrics = report['metrics']
             PhaseProgress.write(f'{arm} validation129 epoch {label_epoch} COMPLETE '
                                 f'{len(rows)}/{len(val_ids)} sources | patient macro')
@@ -609,10 +681,14 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                 remaining = [order[i:i + physical_batch] for i in range(state['position'], len(order), physical_batch)]
                 running = RunningPatientMetrics(state['train_rows'])
                 previous = time.perf_counter()
+                plan = (candidate_plan(provider, arm, curriculum_policy['policy_sha256'],
+                            curriculum.training_keys(state, arm, state['epoch']),
+                            mode='training', epoch=state['epoch'])
+                        if curriculum_policy is not None else nullcontext(provider))
                 with PhaseProgress(root=root, arm=arm, phase='train7', epoch=state['epoch'],
                                    epochs=epochs, total=len(order), initial=state['position'],
                                    physical_batch=physical_batch, metrics=running.metrics()) as bar:
-                    with closing(_prefetch(provider, remaining, arm, state['epoch'], with_timing=True,
+                    with plan as train_provider, closing(_prefetch(train_provider, remaining, arm, state['epoch'], with_timing=True,
                                            receipt_path=root / 'prefetch.jsonl')) as staged:
                         for batch, input_timing in staged:
                             loading_seconds = time.perf_counter() - previous; step_start = time.perf_counter()
@@ -692,7 +768,7 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
                             probes = _probe_before(groups); scaler.step(optimizer); scaler.update()
                             events[4].record(); events[4].synchronize()
                             changed = _probe_after(probes)
-                            rows = [score_row(score, lookup[index], provider.candidate_keys(index, arm, state['epoch'], full=False),
+                            rows = [score_row(score, lookup[index], train_provider.candidate_keys(index, arm, state['epoch'], full=False),
                                               expected_candidates=8) for index, score in zip(ids, result.scores)]
                             if len(rows) != len(ids): raise ValueError('Training forward lost source problem mapping')
                             state['train_rows'].extend(rows); state['position'] += len(ids); state['updates'] += 1
@@ -773,6 +849,10 @@ def run_arm(net, provider, config, *, arm, output, physical_batch, workers, epoc
         expected_unique_U_per_source=expected_coverage,
         complete_expected_coverage=all(len(values) == expected_coverage for values in state['seen_comparisons'].values()),
         scope='unique identities participating in finite optimizer updates; AMP-overflow attempts excluded')
+    if curriculum_policy is not None:
+        report['curriculum_policy'] = curriculum_policy
+        report['curriculum_state'] = cpu_copy(state['comparison_curriculum'])
+        report['adaptive_full_bank_coverage_is_not_guaranteed_by_epoch_budget'] = arm in ('native', 'native_listwise')
     path = root / ('paused.json' if status == 'PAUSED' else 'training_complete.json')
     if not path.exists(): _write_new(path, report)
     return report

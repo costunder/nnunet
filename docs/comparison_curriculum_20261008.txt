@@ -1,0 +1,122 @@
+Four-arm mid-run dual validation and cumulative candidate continuation
+2026-10-08
+
+The user selected stage validation for all four arms, with cumulative candidate
+expansion only for native and native_listwise. selected keeps S:0..6 and
+native_fixed keeps U:0..6. This is an explicitly versioned continuation of the
+existing runs, not a claim that their earlier epochs used this policy.
+
+The user challenged the initially proposed .95 MRR/.90 top1 gate as too strict.
+The implemented policy uses stage patient-macro MRR >= .90 and top1 >= .85,
+both satisfied in two consecutive completed stage validations, with at least
+two completed training epochs in the same pool. Every active key must have
+participated in a successful optimizer update for every training source.
+These are declared operating thresholds, not empirically proven optimal values.
+
+At adoption the current epoch finishes its original exact seven-key plan.
+Its actual stage validation is diagnostic and does not count toward the gate.
+The next epoch starts with the union of all historically successful candidate
+exposures. Per-source exposure history remains intact. An eligible transition
+adds the next seven unseen U keys (or the final remainder), retaining all old
+keys. New keys receive the next epoch's first plan; subsequent plans continue a
+checkpointed cyclic pool cursor. Every training forward still contains P+7.
+No candidate or source is silently removed, and no forced expansion is used if
+the threshold is not met. Reaching all128 within forty epochs is not guaranteed;
+actual exposure and active-bank completeness are reported separately.
+
+Evaluation and best selection
+- Every completed epoch evaluates all36 held-out source problems/18 patients
+  using the same full P+128 U graph and fixed validation view epoch29.
+- Stage validation evaluates those same held-out sources with their own stage
+  keys and coordinates. selected uses its own S7; fixed-native uses U0..6;
+  adaptive arms use their entire cumulative active pool, not only that epoch's7.
+- The stage graph is actually constructed and scored. Full129 scores are never
+  sliced to approximate a subset graph, because upper messages depend on the
+  candidate set. The two original views remain present.
+- Global best continues to use full129 patient-macro MRR, then top1, then
+  negative shared pairwise loss. Stage metrics do not replace or reset best.
+- These remain observed/source-anchor proxy metrics, not clinical CP quality.
+
+Continuation integrity
+- Preserve model, AdamW moments, scaler, cosine schedule, RNG, shuffle order,
+  exact update/source cursor, full validation rows and original identity.
+- Store a separate hashed curriculum policy, current pool, exact epoch plan,
+  successful exposure, stage cursor and transition decisions in checkpoints.
+- A partial stage evaluation resumes only after verifying complete full129
+  rows, the same model update, source order, candidate keys, view and policy.
+- Resuming a curriculum checkpoint without the matching opt-in is rejected.
+- Original byte-sealed experiment/model/data/training files are unchanged.
+- Canonical geometry and prepared-provider caches retain their exact identities;
+  actual ordered stage keys select a different complete hierarchy layout.
+- MobaXterm progress distinguishes stage8/stage64/etc. from full val129.
+
+Research and resource contract retained
+Original 10,434,532-parameter model: L0/L1/L2 layers3/2/2, hidden128, heads4,
+original CNN base12/features32, 5x48x48x48 input patches, m10 geometry.
+All187 materialized source indices remain signed: train151 and validation36.
+Production: physical source batch1, accumulation1, effective batch1; P+7 and
+two views give16 local graphs per forward. Each arm retains its measured batch
+calibration,16 workers, original prefetch/cache policy,40 epochs, AdamW1e-4 and
+cosine Tmax40. No model, graph, data, physical batch or epoch reduction.
+The independent DEBUG used physical train batch2/effective2 and val batch1,
+not a replacement production configuration. GPU0 was an idle A6000 with46068MiB;
+CPU96 cores and available RAM were checked. The actual resource receipt records
+CUDA/RAM/throughput; the two-source peaks are not cohort worst-case estimates.
+
+Concurrent immutable-cache metadata fix
+native stopped at epoch9/source position63/update1271 while a canonical file
+was hashed. native/native_listwise paths shared inode124554877071 with2 links,
+8336347 bytes and identical SHA256
+814f6d70c2eaeb25873a98444ef9e350143124d1ac47c04473f372293ed36531.
+A hardlink publication changes ctime without changing content. The cache keeps
+ctime in its memoization key. If only ctime changes during hashing, it requires
+a second complete identical SHA256 and a stable second stat before accepting.
+Content/mtime/size/inode changes remain errors; nothing is skipped or deleted.
+
+Validation
+- Static source/CLI checks passed.
+- 309 CPU UNIT tests passed locally and309 on server Linux, including actual
+  hardlink metadata races, content tampering, checkpoint restoration, policy
+  gates, fixed arms, resume cursors, unchanged frozen sources and launch guards.
+- Actual CT/A6000 DEBUG passed: all187 indices preserved; two held-out sources
+  undergo actual full129 and actual stage64 forward; stage pauses after one
+  source, checkpoint reload resumes the second, and completed resume adds zero
+  forwards. Original full129 rows and model/Adam/scheduler/scaler/RNG survive.
+- Actual stage and train layouts reopen with identical graph data/metadata.
+- Two actual training sources use an explicitly different seven-key plan at
+  view epoch9. Pairwise and listwise objectives each run one real full-model
+  backward/update; all1085 trainable tensors receive finite gradients, and each
+  diagnostic checkpoint roundtrips exactly. The immutable input is unchanged.
+- This is DEBUG and unit validation, not forty-epoch training completion or a
+  new full-cohort performance result. See validation/comparison_curriculum_DEBUG_20261008/receipt.json.
+
+Safe opt-in migration commands (run from the new checkout with nnunet Python)
+python -B -u tools/migrate_comparison_curriculum.py --arm native --gpu 4
+python -B -u tools/migrate_comparison_curriculum.py --arm native --gpu 4 --action backup
+
+Default inspect is read-only. Backup requires an already quiescent exact arm,
+copies initial/latest/best and the original metadata into a unique directory,
+and verifies both original and copied bytes. It prints the complete resume_shell
+with --curriculum-policy dual_validation_cumulative_v1 and the verified backup.
+selected/native/native_fixed/native_listwise use their existing GPUs3/4/5/6.
+The tool never stops jobs, removes pause flags/locks, requests PBS resources,
+or alters SSH. Backup preserves existing results; explicit resume then continues
+normal checkpoint/log publication after the independent copies are verified.
+Resume rejects active writers or a STOP
+flag. Production deployment and per-arm adoption receipts are tracked separately
+from this source/test document.
+
+## 작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

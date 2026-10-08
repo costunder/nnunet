@@ -108,7 +108,9 @@ class PhaseProgress:
         data = self.data
         # Eight total candidates = one P plus seven U. Keep the historical
         # machine phase key separate from the unambiguous visible count.
-        phase = 'val129' if data['phase'] == 'validation129' else 'train8'
+        phase = ('val129' if data['phase'] == 'validation129' else
+                 data['phase'].replace('validation_stage', 'stage')
+                 if data['phase'].startswith('validation_stage') else 'train8')
         stage = f"{data['stage']} {now - self.stage_started:.0f}s"
         fraction = data['completed_sources'] / data['total_sources']
         eta = self._eta(now)

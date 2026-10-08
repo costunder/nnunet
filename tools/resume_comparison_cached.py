@@ -2,7 +2,9 @@
 from __future__ import annotations
 import argparse
 import builtins
+import copy
 from contextlib import ExitStack, contextmanager
+import functools
 import importlib
 import json
 import math
@@ -17,6 +19,67 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
+CURRICULUM_POLICY = 'dual_validation_cumulative_v1'
+_CURRICULUM_CONTEXT = threading.RLock()
+
+
+def requested_curriculum_policy(arguments):
+    """Explicit opt-in only; inherited shell variables do not select a policy."""
+    selected = getattr(arguments, 'curriculum_policy', None)
+    if selected not in (None, CURRICULUM_POLICY):
+        raise ValueError('Unknown comparison curriculum policy')
+    return selected
+
+
+@contextmanager
+def _curriculum_execution(family, policy_name):
+    """Pass the opt-in to the actual run without editing sealed configuration.
+
+    The v1.9 facade must keep its closure-free private engine binding, so wrap
+    its public call rather than the engine it copies. The runtime owns policy
+    admission, checkpoint binding and rejection of an omitted resumed policy.
+    """
+    if policy_name is None:
+        yield
+        return
+    requested_curriculum_policy(SimpleNamespace(curriculum_policy=policy_name))
+    if family not in ('u_bridge', 'comparison'):
+        raise ValueError('Unknown preserved comparison family')
+    module = importlib.import_module('hiercp_v1x.' + family + '_training')
+    with _CURRICULUM_CONTEXT:
+        original = module.run_arm
+        normalize = getattr(module, '_normalize_report', None) if family == 'comparison' else None
+
+        @functools.wraps(original)
+        def configured(net, provider, config, **kwargs):
+            copied = copy.deepcopy(config)
+            runtime = copied['u_bridge_runtime']
+            existing = runtime.get('curriculum_policy')
+            if existing not in (None, policy_name):
+                raise ValueError('Conflicting requested comparison curriculum policy')
+            runtime['curriculum_policy'] = policy_name
+            return original(net, provider, copied, **kwargs)
+
+        module.run_arm = configured
+        if normalize is not None:
+            @functools.wraps(normalize)
+            def normalized(value, policy):
+                result = normalize(value, policy)
+                active = value.get('curriculum_policy')
+                if active:
+                    result['baseline_comparison_policy'] = copy.deepcopy(policy)
+                    result['comparison_policy_role'] = (
+                        'original experiment identity; effective continuation schedule in curriculum_policy')
+                    if 'trained_comparisons' in result and active['adaptive']:
+                        result['trained_comparisons']['candidate_schedule'] = active['sampling']
+                return result
+            module._normalize_report = normalized
+        try:
+            yield
+        finally:
+            module.run_arm = original
+            if normalize is not None:
+                module._normalize_report = normalize
 
 
 class _CacheEventLogger:
@@ -167,6 +230,8 @@ def parse(argv=None):
     p.add_argument('--cache-sources', type=Path, nargs='+', required=True,
                    help='Other arm data directories; read completed immutable publications only')
     p.add_argument('--inventory', type=Path, required=True)
+    p.add_argument('--curriculum-policy', choices=(CURRICULUM_POLICY,),
+                   help='Explicit dual validation for all arms; cumulative U expansion for native/native_listwise')
     for name in ('fixture', 'config', 'source', 'bank'):
         p.add_argument('--debug-' + name, type=Path)
     return p.parse_args(argv)
@@ -213,6 +278,7 @@ def sealed_arguments(a):
 
 
 def run(a):
+    curriculum_policy = requested_curriculum_policy(a)
     from tools.local_cnn_device import select
     select(a.gpu)
     from hiercp_v1x import host_memory
@@ -237,6 +303,9 @@ def run(a):
         return PressureBudget(cuda_bytes, rss_bytes, resident_bytes=int(manifest['resident_gib']*2**30),
                               event_callback=event)
     def receipt(data_root):
+        curriculum_helpers = (('hiercp_v1x/comparison_curriculum.py',
+            'hiercp_v1x/comparison_curriculum_data.py',
+            'hiercp_v1x/comparison_stage_validation.py') if curriculum_policy is not None else ())
         write_new(root/'execution_overrides'/('cache_'+uuid.uuid4().hex+'.json'),
             dict(format='comparison_completed_cache_reuse_execution_v1',
                 contract_sha256=manifest['sha256'], arm=a.arm, own_data_namespace=str(data_root),
@@ -244,6 +313,10 @@ def run(a):
                 original_checkpoint_protocol_and_frozen_sources_unchanged=True,
                 execution_loop_changed=True,
                 recipient_context_policy=geometry_identity(),
+                curriculum_policy=curriculum_policy,
+                evaluation_policy_changed=curriculum_policy is not None,
+                training_candidate_schedule_changed=(curriculum_policy is not None
+                    and a.arm in ('native', 'native_listwise')),
                 execution_policy='ordered memory-admitted input staging, original epoch views, completed hierarchy layout and existing local graph reuse, compact source/upper caches',
                 helpers={name:sha(ROOT/name) for name in ('tools/resume_comparison_cached.py',
                     'hiercp_v1x/host_memory.py','hiercp_v1x/preparation_reuse.py',
@@ -254,7 +327,7 @@ def run(a):
                     'hiercp_v1x/comparison_upper_cache.py','hiercp_v1x/comparison_sample_cache.py',
                     'hiercp_v1x/comparison_gpu_policy.py','hiercp_v1x/comparison_gpu_runtime.py',
                     'hiercp_v1x/comparison_empty_context.py','hiercp_v1x/comparison_geometry_execution.py',
-                    'hiercp_v1x/transition_v1_empty_context.py')}))
+                    'hiercp_v1x/transition_v1_empty_context.py', *curriculum_helpers)}))
     def execution_provider(provider):
         return prepared_provider(provider, root/'input_timing.jsonl')
     continuation_path = root/'continuation.json'
@@ -283,7 +356,8 @@ def run(a):
                 receipt(Path(request['data_root']))
                 # The preserved independent runner owns its locks, restores its
                 # exact checkpoint cursor, and verifies the continuation receipt.
-                with _field_read_console(event), comparison_execution(), comparison_geometry_execution():
+                with _field_read_console(event), comparison_execution(), comparison_geometry_execution(), \
+                        _curriculum_execution(family, curriculum_policy):
                     result = run_v18_independent.run(independent)
                 return result
             finally:
@@ -299,7 +373,8 @@ def run(a):
             setattr(data_module, class_name, provider)
             try:
                 receipt(namespace)
-                with _field_read_console(event), comparison_execution(), comparison_geometry_execution():
+                with _field_read_console(event), comparison_execution(), comparison_geometry_execution(), \
+                        _curriculum_execution(family, curriculum_policy):
                     return controller.run(args)
             finally:
                 experiment_module.Budget = original_budget

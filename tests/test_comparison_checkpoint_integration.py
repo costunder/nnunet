@@ -6,6 +6,7 @@ It is not a replacement model, CUDA test, or full research training result.
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 import random
 from tempfile import TemporaryDirectory
@@ -19,6 +20,8 @@ import torch
 from hiercp_v1x import comparison_execution as adapter
 from hiercp_v1x import comparison_runtime as runtime
 from hiercp_v1x import comparison_training as comparison
+from hiercp_v1x import comparison_curriculum as curriculum
+from hiercp_v1x.comparison_stage_validation import validate_stage_cursor
 from hiercp_v1x import u_bridge_training as engine
 from hiercp_v1x.comparison_checkpoint import ComparisonCheckpointWriter
 
@@ -60,7 +63,7 @@ class ActualCheckpointIntegrationUnit(unittest.TestCase):
         self.execution.__enter__()
         self.addCleanup(self.execution.__exit__, None, None, None)
 
-    def build(self, arm=None, suffix='actual', geometry_policy=None):
+    def build(self, arm=None, suffix='actual', geometry_policy=None, curriculum_policy=None):
         if arm is None:
             run = engine.run_arm
             config = {}
@@ -86,7 +89,8 @@ class ActualCheckpointIntegrationUnit(unittest.TestCase):
                       checkpoint_writer=ComparisonCheckpointWriter(), config=config,
                       generator=torch.Generator().manual_seed(2045), net=net,
                       optimizer=optimizer, root=root, scaler=scaler,
-                      scheduler=scheduler, state=state, geometry_policy=geometry_policy)
+                      scheduler=scheduler, state=state, geometry_policy=geometry_policy,
+                      curriculum_policy=curriculum_policy)
         return run, values, _actual_checkpoint(run, values)
 
     def load(self, root, name='checkpoint_latest.pt'):
@@ -240,6 +244,110 @@ class ActualCheckpointIntegrationUnit(unittest.TestCase):
                 self.assertEqual(saved['state']['validation_position'], 0)
                 self.assertEqual(engine.digest(after['model']), engine.digest(saved['model']))
                 self.assertEqual(engine.digest(after['optimizer']), engine.digest(saved['optimizer']))
+
+    def active_curriculum(self, arm):
+        active = curriculum.policy(arm)
+        _, values, checkpoint = self.build(arm, suffix='curriculum', curriculum_policy=active)
+        state = values['state']
+        prefix = 'S' if arm == 'selected' else 'U'
+        state['seen_comparisons']['8'] = [f'{prefix}:{i}' for i in range(7)]
+        curriculum.adopt_or_validate(state, arm, [8], 'a' * 64)
+        keys = curriculum.stage_keys(state, arm)
+        lookup = lambda index: dict(index=index, case_id=f'UNIT_case_{index}', id=f'UNIT_source_{index}',
+            source_component=index, positive_center=[0, 0, 0],
+            selected_centers=[[i, 1, 1] for i in range(7)], native_centers=[[i, 2, 2] for i in range(128)])
+        score = lambda index, candidates: engine.score_row(
+            torch.arange(len(candidates), 0, -1, dtype=torch.float32), lookup(index), candidates,
+            expected_candidates=len(candidates))
+        state['train_rows'] = [score(8, keys)]
+        full_keys = ['P', *[f'U:{i}' for i in range(128)]]
+        state['validation_rows'] = [score(i, full_keys) for i in [10, 11]]
+        state['validation_position'] = 2
+        state['stage_validation'] = dict(epoch=1, update=1, keys=keys,
+            policy_sha256=active['policy_sha256'], view_epoch=0,
+            position=0, rows=[], active_seconds=0.)
+        return active, values, checkpoint, score
+
+    def test_actual_curriculum_checkpoint_preserves_full_rows_and_partial_stage_resume(self):
+        for arm in comparison.ARMS:
+            with self.subTest(arm=arm):
+                active, values, checkpoint, score = self.active_curriculum(arm)
+                state = values['state']
+                full_rows = copy.deepcopy(state['validation_rows'])
+                full_report = engine.aggregate_rows(full_rows)
+                full_report['rows'] = copy.deepcopy(full_rows)
+                checkpoint()
+                first = self.load(values['root'])
+                self.assertEqual(first['curriculum_policy'], active)
+                self.assertEqual(first['state']['stage_validation']['position'], 0)
+                keys = curriculum.stage_keys(state, arm)
+                state['stage_validation'].update(position=1, rows=[score(10, keys)], active_seconds=2.)
+                checkpoint(status='PAUSED')
+                self.assertTrue(values['checkpoint_stats']['static_snapshot_reused'])
+                saved = self.load(values['root'])
+                before = engine.digest(saved)
+                runtime._validate_curriculum_resume_policy(saved, active)
+                engine.validate_resume_progress(saved['state'], [8], [10, 11], 1, 40, values['scheduler'])
+                receipt = curriculum.adopt_or_validate(saved['state'], arm, [8], 'b' * 64)
+                self.assertEqual(receipt['transition'], 'same_policy_resume')
+                validate_stage_cursor(saved['state'], [10, 11], 1, keys, policy=active, view_epoch=0)
+                self.assertEqual(before, engine.digest(saved))
+                self.assertEqual(saved['state']['validation_rows'], full_rows)
+                self.assertEqual(saved['state']['validation_position'], 2)
+                self.assertEqual(saved['state']['stage_validation']['position'], 1)
+                self.assertEqual(curriculum.training_keys(saved['state'], arm, 1), ['P', *state['comparison_curriculum']['epoch_plan']['keys']])
+                self.assertEqual(first['state']['stage_validation']['position'], 0)
+                for field in ('model', 'optimizer', 'scheduler', 'scaler'):
+                    self.assertEqual(engine.digest(saved[field]), engine.digest(first[field]))
+                # Mutable checkpoint progress is copied, never an alias of either
+                # the completed full report or a previous saved snapshot.
+                saved['state']['stage_validation']['rows'][0]['mrr'] = .01
+                self.assertEqual(full_report['rows'], full_rows)
+                self.assertEqual(first['state']['validation_rows'], full_rows)
+                policy_path = values['root'] / 'curriculum_policy.json'
+                engine._write_new(policy_path, active)
+                self.assertEqual(json.loads(policy_path.read_text(encoding='utf8')), active)
+
+    def test_curriculum_checkpoint_rejects_legacy_opt_out_stripping_and_policy_aliases(self):
+        active, values, checkpoint, _ = self.active_curriculum('native_listwise')
+        checkpoint()
+        saved = self.load(values['root'])
+        with self.assertRaisesRegex(ValueError, 'matching opt-in'):
+            runtime._validate_curriculum_resume_policy(saved, None)
+        changes = (
+            lambda item: item.pop('curriculum_policy'),
+            lambda item: item['curriculum_policy'].update(arm='native'),
+            lambda item: item['state']['comparison_curriculum']['policy'].update(stage_mrr_threshold=.5),
+            lambda item: item['state']['stage_validation'].update(policy_sha256='0' * 64),
+            lambda item: item['state'].pop('comparison_curriculum'),
+        )
+        for change in changes:
+            changed = copy.deepcopy(saved)
+            change(changed)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                runtime._validate_curriculum_resume_policy(changed, active)
+            self.assertNotEqual(engine.digest(changed), engine.digest(saved))
+        legacy = copy.deepcopy(saved)
+        legacy.pop('curriculum_policy')
+        legacy['state'].pop('comparison_curriculum')
+        legacy['state'].pop('stage_validation')
+        before = engine.digest(legacy)
+        runtime._validate_curriculum_resume_policy(legacy, None)
+        runtime._validate_curriculum_resume_policy(legacy, active)
+        self.assertEqual(before, engine.digest(legacy))
+
+    def test_partial_stage_cannot_resume_before_full_validation_or_with_new_view(self):
+        active, values, _, score = self.active_curriculum('native')
+        state = values['state']
+        keys = curriculum.stage_keys(state, 'native')
+        state['stage_validation'].update(position=1, rows=[score(10, keys)])
+        for field, value in [('validation_position', 1), ('validation_rows', [{'sample_index': 11}, {'sample_index': 10}])]:
+            changed = copy.deepcopy(state)
+            changed[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'completed full129'):
+                validate_stage_cursor(changed, [10, 11], 1, keys, policy=active, view_epoch=0)
+        with self.assertRaisesRegex(ValueError, 'policy/view'):
+            validate_stage_cursor(state, [10, 11], 1, keys, policy=active, view_epoch=1)
 
 
 if __name__ == '__main__':

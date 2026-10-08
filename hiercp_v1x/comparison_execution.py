@@ -72,9 +72,11 @@ def comparison_execution():
             execution_runtime_sha256=_sha(runtime.__file__),
             execution_adapter_sha256=_sha(__file__), execution_helpers=list(HELPERS),
             training_loop_implementation_changed=True,
-            model_objective_optimizer_schedule_and_checkpoint_protocol_preserved=True,
+            model_objective_optimizer_and_epoch_budget_preserved=True,
+            candidate_schedule='legacy unless explicit versioned curriculum policy is checkpointed',
+            checkpoint_protocol='original complete payload plus explicit optional curriculum policy and resumable stage state',
             sealed_source_files_and_identity_unchanged=True,
-            physical_batch_workers_and_candidate_coverage_unchanged=True)
+            physical_batch_workers_and_candidates_per_training_forward_unchanged=True)
         namespace.update(helpers)
         namespace["run_arm"] = bound
         try:

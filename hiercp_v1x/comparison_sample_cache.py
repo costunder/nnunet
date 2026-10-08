@@ -133,12 +133,25 @@ def sample_cache_provider(original):
                 token = _stat(path)
                 with self._layout_verify_lock:
                     previous = self._layout_verified_files.get(str(path))
+                if previous is not None and token[:2] != previous[0][:2]:
+                    raise ValueError(f'Sample cache input inode changed: {path}')
                 if previous is not None and token == previous[0]:
                     actual = previous[1]
                 else:
                     actual = _sha(path)
-                    if _stat(path) != token:
-                        raise ValueError(f'Sample cache input changed while hashing: {path}')
+                    after = _stat(path)
+                    if after != token:
+                        # Sharing an immutable publication through os.link can
+                        # change ctime while every content attribute is stable.
+                        # Do not drop ctime from memoization: prove the complete
+                        # bytes again and require the second read to be stable.
+                        if after[:4] != token[:4]:
+                            raise ValueError(f'Sample cache input changed while hashing: {path}')
+                        confirmed = _sha(path)
+                        stable = _stat(path)
+                        if stable != after or confirmed != actual:
+                            raise ValueError(f'Sample cache input changed while hashing: {path}')
+                        token = stable
                     required = expected if expected is not None else (previous[1] if previous else None)
                     if required is not None and actual != required:
                         raise ValueError(f'Sample cache input SHA256 differs: {path}')
