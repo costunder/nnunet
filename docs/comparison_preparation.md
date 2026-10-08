@@ -91,6 +91,18 @@ CPU 입력 재사용에 더해 기존 모델의 `dense_batch_size`, `checkpoint_
 
 A6000 최대 graph, NFS에서 네 군 동시 실행, production 40 epoch 처리량과 추천 품질은 아직 측정하지 않았다. 기존 CPU 입력 재사용 수정도 함께 적용되지만, 회전 후보의 최초 조립과 view sampling까지 없어진 것은 아니다.
 
+## source 캐시 재열기 오류 수정
+
+서버 `native_listwise`의 `9c36b86` 실행은 epoch 2 validation MRR 0.927910을 기록한 뒤, epoch 3에서 `liver_5:0`의 새 후보 graph를 만들다가 중단됐다. 보고된 epoch 2 시간은 총 33,682.6초, train/load/save 28,021.0초, validation 5,661.6초다. 이는 이후 GPU 실행 측정 패치의 서버 성능 결과가 아니다. 이 로그만으로 9시간의 세부 병목 비중을 새로 확정하지 않는다.
+
+직접 원인은 `PreparedLocalSource`의 동적 속성 `v1x_bounded_scope_contract`가 compact source의 dataclass 필드 목록에 없다는 점이다. 최초 prepare는 이 속성을 붙이지만, disk 복원은 다섯 개 선언 필드만 복원했다. RAM에서 제거되거나 프로세스를 다시 시작한 뒤 source를 재열고 **아직 없는 후보 graph를 생성할 때** bounded-scope 검사가 거부했다. 이미 만들어진 후보 graph만 읽는 검사는 이 결함을 드러내지 못했고, 이전 dataclass 비교 검사 역시 선언 필드만 대조했다. `3b119fc`에도 이 오류가 남아 있었다.
+
+복원 시 metadata 서명·현재 scope/source binding·payload SHA 검증을 통과한 scope identity를 동적 속성으로 되살린다. 새 source를 저장할 때에도 실제 prepare 결과의 identity가 binding과 같은지 검사한다. 기존 payload 형식과 캐시 주소는 그대로이므로 기존 완료 graph/source 파일을 지우거나 다시 만드는 절차가 필요 없다. 10mm 범위 검사 자체를 제거하거나 native/다른 범위를 허용하지 않는다. 체크포인트와 epoch cursor도 변경하지 않는다.
+
+수정 검증은 `validation/source_scope/`에 보존했다. 서버와 같은 실제 CT `liver_5:0`, epoch 3의 `U:14`, 좌표 `(328,178,416)`에서 이전 helper의 disk 복원 오류를 재현했다. 수정 후 기존 v1 source 캐시 두 개를 재생성 없이 읽고, 캐시에 없던 후보 16개의 canonical graph와 전체 train8/two-view batch를 생성했다. 독립적으로 source부터 새로 계산한 대조군과 tensor 값·배치 구조·dtype·stride·metadata가 같았다. source 비교에는 문제의 동적 속성도 포함했다.
+
+RTX 5070 Ti에서 전체 10,434,532 parameter 모델·physical source batch 2·worker 4·epoch 3 후보 구성으로 실제 native_listwise forward/backward/AdamW update 한 번을 수행했다. 1,085개 parameter tensor의 gradient가 유한했고 원본 실험·캐시 inventory·17개 고정 helper는 보존됐다. 171개 단위 검사도 통과했다. 이는 재열기 후 새로운 후보 생성과 학습 연결을 확인한 DEBUG 검사이며, 서버의 실제 checkpoint 재개·전체 학습·full129 평가·epoch 속도 검증은 아니다. 이전 GPU 처리량 측정을 이 오류 수정의 서버 가속 수치로 사용하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

@@ -1,0 +1,101 @@
+
+  epoch total=33682.6s train/load/save=28021.0s BEST=updated epoch 2 MRR=0.927910
+native_listwise | * partial patient macro; M=MRR, T1=top1, PW=pair-win
+train8 e03 1/151 1% fail 0s ETA=59.5m M*=1.000 T1=1.000 PW=1.000 L=0.0052
+Cache log summary | end | events=898 reused=0 miss=798 binding_miss=0 reused_GiB=0.00 pressure=1 field_reads=99 field_seconds=921.89 | full details: /home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42/preparation_reuse.jsonl
+Traceback (most recent call last):
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 559, in load_or_build
+    built = build_one(spec)
+  File "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004/source/v1.0/hiercp/cache.py", line 2622, in build_one
+    return build_local_graph(
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/bounded_scope.py", line 290, in build
+    raise ValueError("Native or other-scope prepared source cannot enter bounded construction")
+ValueError: Native or other-scope prepared source cannot enter bounded construction
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", line 217, in <module>
+    run(parse())
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", line 186, in run
+    return _child(a, request)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", line 180, in _child
+    return resume_comparison_cached.run(supplied)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/resume_comparison_cached.py", line 297, in run
+    return controller.run(args)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_v19_comparison.py", line 208, in run
+    result = run_arm(net, provider, arm_config, arm=arm, output=output,
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_training.py", line 196, in run_arm
+    result = _engine_functions(policy)['run_arm'](net, _PolicyProvider(provider, arm), bound_config,
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_runtime.py", line 324, in run_arm
+    for batch, input_timing in staged:
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_runtime.py", line 66, in _prefetch
+    batch, loader_seconds = active.result()
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/_base.py", line 458, in result
+    return self.__get_result()
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_runtime.py", line 52, in obtain
+    batch = provider.batch(indices, arm, epoch, training, full=full)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_training.py", line 108, in batch
+    result = self._provider.batch(ids, arm, epoch, training, full=full)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_data_timing.py", line 161, in batch
+    result = super().batch(ids, arm, epoch, training, full=full)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/host_memory.py", line 233, in batch
+    batch = super().batch(*args, **kwargs)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 625, in batch
+    samples = [self.sample(i, k, epoch, training) for i, k in zip(ids, keys)]
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 625, in <listcomp>
+    samples = [self.sample(i, k, epoch, training) for i, k in zip(ids, keys)]
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 596, in sample
+    canonical, specs = runtime.cache.build_inference_sample(case, source, candidates,
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_data_timing.py", line 57, in inference
+    return provider._timed_detail('inference_assembly_inclusive_seconds',
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_data_timing.py", line 108, in _timed_detail
+    return function(*args, **kwargs)
+  File "/home/aicompetition06/Medical/experiments/v1_m10_seed42_20261004/source/v1.0/hiercp/cache.py", line 2637, in build_inference_sample
+    else list(local_graph_map(
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 601, in <lambda>
+    self._local_map(example, build, values, **identity))
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_data_timing.py", line 140, in _local_map
+    return self._timed_input('local_graphs_seconds', super()._local_map, *args, **kwargs)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_data_timing.py", line 98, in _timed_input
+    return function(*args, **kwargs)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 578, in _local_map
+    return list(pool.map(obtain, specs))
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/_base.py", line 621, in result_iterator
+    yield _result_or_cancel(fs.pop())
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/_base.py", line 319, in _result_or_cancel
+    return fut.result(timeout)
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/_base.py", line 458, in result
+    return self.__get_result()
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/home/aicompetition06/.conda/envs/nnunet/lib/python3.10/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 576, in obtain
+    return self._get(("local", key), load_or_build)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/comparison_source_cache.py", line 223, in _get
+    return super()._get(key, factory)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/preparation_reuse.py", line 456, in _get
+    return super()._get(key, verified_factory)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/host_memory.py", line 229, in _get
+    return super()._get(*args, **kwargs)
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 358, in _get
+    item = factory()
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/preparation_reuse.py", line 455, in verified_factory
+    return factory()
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/hiercp_v1x/u_bridge_data.py", line 561, in load_or_build
+    raise RuntimeError(f"Bridge canonical geometry failed: case={example['case_id']} "
+RuntimeError: Bridge canonical geometry failed: case=liver_5 sample=0 component=1 center=(328, 178, 416); no candidate skipped or replaced
+Owned arm | {"format": "single_owned_arm_supervision_v1", "status": "CHILD_RETURNED", "child_returncode": 1, "child_pid": 2182837, "command": ["/home/aicompetition06/.conda/envs/nnunet/bin/python", "-B", "-u", "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", "--owned-child", "--gpu", "6", "--arm", "native_listwise", "--experiment", "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42", "--source-experiment", "/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42", "--experiments-dir", "/home/aicompetition06/Medical/experiments", "--inventory", "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/inventory/index.json", "--cache-sources", "/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42/data", "/home/aicompetition06/Medical/experiments/v18_selected_m10_seed42_memory/data", "/home/aicompetition06/Medical/experiments/v18_native_m10_seed42_memory/data", "/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42/data", "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42/data"], "paused": false, "forwarded_sigint": false, "forced_stop": false, "checkpoint": "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42/native_listwise/checkpoint_latest.pt", "checkpoint_exists": true, "checkpoint_scope": "last atomic publication; no claim that the interrupted batch was newly saved", "full_training_claimed": false, "parent_shell_or_SSH_signaled": false}
+ARM PROCESS RESULT: {"format": "single_owned_arm_supervision_v1", "status": "CHILD_RETURNED", "child_returncode": 1, "child_pid": 2182837, "command": ["/home/aicompetition06/.conda/envs/nnunet/bin/python", "-B", "-u", "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", "--owned-child", "--gpu", "6", "--arm", "native_listwise", "--experiment", "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42", "--source-experiment", "/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42", "--experiments-dir", "/home/aicompetition06/Medical/experiments", "--inventory", "/home/aicompetition06/Medical/experiments/v22_cnn_m10_seed42/inventory/index.json", "--cache-sources", "/home/aicompetition06/Medical/experiments/v18_u_bridge_m10_seed42/data", "/home/aicompetition06/Medical/experiments/v18_selected_m10_seed42_memory/data", "/home/aicompetition06/Medical/experiments/v18_native_m10_seed42_memory/data", "/home/aicompetition06/Medical/experiments/v19_native_fixed_m10_seed42/data", "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42/data"], "paused": false, "forwarded_sigint": false, "forced_stop": false, "checkpoint": "/home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42/native_listwise/checkpoint_latest.pt", "checkpoint_exists": true, "checkpoint_scope": "last atomic publication; no claim that the interrupted batch was newly saved", "full_training_claimed": false, "parent_shell_or_SSH_signaled": false}
+Traceback (most recent call last):
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", line 217, in <module>
+    run(parse())
+  File "/home/aicompetition06/Medical/HierCP-run-9c36b86/tools/run_comparison_arm.py", line 212, in run
+    raise RuntimeError(f"{a.arm} child failed ({result['child_returncode']}); outputs preserved: {request['experiment']}")
+RuntimeError: native_listwise child failed (1); outputs preserved: /home/aicompetition06/Medical/experiments/v19_native_listwise_m10_seed42
+(nnunet) aicompetition06@ece-a6gpu6:~/Medical/HierCP-run-9c36b86$

@@ -78,6 +78,13 @@ def _layout(array):
     return dict(shape=list(array.shape), dtype=array.dtype.str, strides=list(array.strides))
 
 
+def _scope_identity(binding):
+    identity = binding.get('scope_contract_sha256')
+    if not isinstance(identity, str) or _HEX.fullmatch(identity) is None:
+        raise ValueError('Verified bounded source scope SHA256 required')
+    return identity
+
+
 def _validate_compact(payload, binding):
     if (not isinstance(payload, dict) or set(payload) != {'source', 'prepared', 'numpy_layouts'}
             or set(payload['source']) != _SOURCE_FIELDS
@@ -147,6 +154,8 @@ def compact_source(result, runtime, binding):
             or {f.name for f in fields(source)} != _SOURCE_FIELDS | {'full_mask'}
             or {f.name for f in fields(prepared)} != _PREPARED_FIELDS):
         raise ValueError('Original source/prepared dataclass schema differs')
+    if getattr(prepared, 'v1x_bounded_scope_contract', None) != _scope_identity(binding):
+        raise ValueError('Original prepared source bounded scope differs from cache binding')
     payload = dict(source={name: getattr(source, name) for name in _SOURCE_FIELDS},
                    prepared={name: getattr(prepared, name) for name in _PREPARED_FIELDS})
     arrays = dict(patch_mask=source.patch_mask, patch_image=source.patch_image,
@@ -165,11 +174,18 @@ def compact_source(result, runtime, binding):
 
 def restore_source(payload, runtime, binding, check):
     source, prepared = _validate_compact(payload, binding)
+    identity = _scope_identity(binding)
     check()
     full_mask = np.zeros(tuple(binding['shape']), dtype=bool)
     full_mask[source['patch_slices']] = source['patch_mask']
     result = (runtime.common.SourceTumor(full_mask=full_mask, **source),
               runtime.local.PreparedLocalSource(**prepared))
+    # This is a runtime attribute installed by bounded_scope.prepare, not a
+    # dataclass field. _load has already verified the metadata SHA, the exact
+    # active source/scope binding and payload bytes before reaching this point.
+    # Recover it from that binding, including for existing v1 publications.
+    # Never alter the bounded graph admission check or silently widen the ROI.
+    result[1].v1x_bounded_scope_contract = identity
     check()
     return result
 

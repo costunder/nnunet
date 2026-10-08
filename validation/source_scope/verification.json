@@ -1,0 +1,57 @@
+{
+  "format": "comparison_source_scope_restore_verification_v1",
+  "debug": true,
+  "actual_CT": true,
+  "actual_CUDA": true,
+  "full_training": false,
+  "full_evaluation": false,
+  "quality_verified": false,
+  "source_sha256": {
+    "hiercp_v1x/comparison_source_cache.py": "34909eb8322cc77ecccb0a4522bf6ba1b1409634384fcd9a8015f4369d3feb2a",
+    "tests/test_comparison_source_cache.py": "047cd1e27efd1ae7a728053f20a8df7579930eda748278cbc995dba79bcc35ac",
+    "tools/verify_source_scope_debug.py": "54bbf88673c526c00d4519d33dda4f8487dcf3cd8171593dfc697d887e876cf7"
+  },
+  "evidence_sha256": {
+    "canonical_comparison.json": "31120cfe79199569f1e23424c63e6920f195f51dccb7d38e27033167c0f3f04f",
+    "input_comparison.json": "f54da3d6ce732af4a6fbe5a72cb932ec826f9ae5df123fcc1287bb263aabd19e",
+    "legacy_failure.json": "8ebae3f7a710b017a94382d9d91c98d0abc797791a0d955aefaef0bd2dbc0ead",
+    "report.json": "a5c7d8bd2b2d8c02c01e106a5525944d5d909cbee774d891dc0ee7443e62ac77",
+    "request.json": "55e9dc8d517a2b7552953141d2586b35be7234b85b5d00091452ad2d1340c5f0",
+    "server_failure.txt": "02b2d819353bc4e46c85c9d4647b528c1f626eb115c88f9b524e1ff467e37720",
+    "source_comparison.json": "80f9567ff416cad63be3506b15f606b880362a82530bd754181e5f4b36fb263c",
+    "source_publications.json": "65beab6586976c3b9654cce2a82a2b458cd8dbd7666d8940df98d63c79dff5e4",
+    "unit_tests.txt": "33873955096681ae1acf030dad65195d4a67760625f6ec7e82e80b13c7cca6e7"
+  },
+  "unit_tests": {
+    "total": 171,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 46.88
+  },
+  "python310_AST_files": [
+    "hiercp_v1x/comparison_source_cache.py",
+    "tests/test_comparison_source_cache.py",
+    "tools/verify_source_scope_debug.py"
+  ],
+  "old_source_cache_schema_reused": true,
+  "source_or_candidate_relabeling": false,
+  "cache_deletion": false,
+  "original_checkpoint_modified": false,
+  "frozen_helpers_unchanged": 17,
+  "exact_server_trigger": {
+    "case": "liver_5:0",
+    "epoch": 3,
+    "candidate": "U:14",
+    "center": [
+      328,
+      178,
+      416
+    ]
+  },
+  "new_canonical_targets": 16,
+  "canonical_cache_hits": 0,
+  "full_model_parameters": 10434532,
+  "physical_source_batch": 2,
+  "genuine_optimizer_updates": 1,
+  "scope": "Reproduce legacy missing dynamic scope marker then actual CT new-target construction and CUDA update. No server restart, full training, full129 evaluation, epoch throughput or quality claim."
+}

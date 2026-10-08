@@ -1,8 +1,10 @@
 """CPU UNIT exact compact-cache tests; analytic data, no medical/GPU claim."""
+import ast
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import fields, is_dataclass
 import copy
+import inspect
 import json
 import os
 from pathlib import Path
@@ -18,6 +20,7 @@ import numpy as np
 import torch
 
 from hiercp import common, local
+from hiercp_v1x import bounded_scope
 from hiercp_v1x.u_bridge_data import UBridgeData, _resident_size
 from hiercp_v1x.comparison_source_cache import (source_cache_provider, source_binding,
     compact_source, restore_source, _digest, _sha)
@@ -50,8 +53,9 @@ def assert_exact(test, left, right):
         test.assertEqual(left.stride(), right.stride())
         test.assertTrue(torch.equal(left, right))
     elif is_dataclass(left):
-        for field in fields(left):
-            assert_exact(test, getattr(left, field.name), getattr(right, field.name))
+        # Scope ownership is attached by the bounded adapter after construction;
+        # dataclass fields alone omit the runtime contract that the builder uses.
+        assert_exact(test, vars(left), vars(right))
     elif isinstance(left, dict):
         test.assertEqual(set(left), set(right))
         for key in left:
@@ -106,12 +110,14 @@ class OriginalProvider:
         self.original_calls += 1
         base = torch.arange(48, dtype=torch.float32).reshape(8, 6)
         node = dict(x=base[:, ::2], grid=base[:, 1::2], pos=base[:, ::2]/7)
-        return local.PreparedLocalSource(source_footprint=source.patch_mask.copy(),
+        prepared = local.PreparedLocalSource(source_footprint=source.patch_mask.copy(),
             source_patch=(np.arange(5*4*5*6, dtype=np.float32).reshape(5, 4, 5, 6)/17),
             canonical_nodes={'source_context': node},
             canonical_edges={('source_context', 'within', 'source_context'):
                 torch.tensor([[0, 1, 6], [2, 3, 7]], dtype=torch.int32)},
             canonical_counts={'source_context': 8})
+        prepared.v1x_bounded_scope_contract = self._scope['contract_sha256']
+        return prepared
 
     def example(self, case, index=0):
         source, _, _ = common.choose_source_tumor(case.image, case.label, tumor_label=2,
@@ -154,6 +160,130 @@ class SourceCacheTests(unittest.TestCase):
                     self.assertEqual(reopened.original_calls, 0)
                     self.assertEqual(reopened.source_cache_stats['disk_hits'], 2)
                     self.assertGreater(reopened.runtime_checks, 0)
+
+    def test_rehydrated_scope_passes_the_actual_bounded_guard_for_a_new_candidate(self):
+        # Exercise the exact production guard with an analytic construction body.
+        # Real archived geometry and full training are separate integration work.
+        install = ast.parse(inspect.getsource(bounded_scope.install)).body[0]
+        build = copy.deepcopy(next(node for node in install.body
+                                   if isinstance(node, ast.FunctionDef) and node.name == 'build'))
+        build.decorator_list = []
+        tree = ast.fix_missing_locations(ast.Module(body=[build], type_ignores=[]))
+        with self.directory() as folder:
+            provider = source_cache_provider(OriginalProvider)(folder, resident=1)
+            case = case_fixture(); example = provider.example(case)
+            first = self.obtain(provider, case, example)
+            with patch.object(common, 'choose_source_tumor', side_effect=AssertionError('must read disk')):
+                restored = self.obtain(provider, case, example)
+            calls = []
+
+            def original_build(*args, **kwargs):
+                calls.append(kwargs['candidate_center'])
+                return SimpleNamespace(source_local={}, target_local={})
+
+            contract = provider._scope['contract_sha256']
+            namespace = dict(identity=contract, margin=10., original_build=original_build,
+                             _scope_config=lambda config, margin: None)
+            exec(compile(tree, bounded_scope.__file__, 'exec'), namespace)
+            assert_exact(self, first, restored)
+            built = namespace['build'](config=provider.config['graph'], prepared_source=restored[1],
+                                       candidate_center=(9, 10, 11))
+            self.assertEqual(calls, [(9, 10, 11)])
+            self.assertEqual(built.source_local['v1x_bounded_scope_contract'], contract)
+            self.assertEqual(built.target_local['v1x_bounded_scope_contract'], contract)
+            for marker in (None, '7'*64):
+                foreign = copy.deepcopy(restored[1])
+                if marker is None:
+                    del foreign.v1x_bounded_scope_contract
+                else:
+                    foreign.v1x_bounded_scope_contract = marker
+                with self.assertRaisesRegex(ValueError, 'other-scope prepared source'):
+                    namespace['build'](config=provider.config['graph'], prepared_source=foreign,
+                                       candidate_center=(11, 12, 13))
+            self.assertEqual(calls, [(9, 10, 11)])
+            self.assertEqual(provider.source_cache_stats['disk_hits'], 1)
+
+    def test_missing_or_other_scope_cold_source_is_rejected_before_publication(self):
+        for marker in (None, '7'*64):
+            with self.subTest(marker=marker), self.directory() as folder:
+                provider = source_cache_provider(OriginalProvider)(folder)
+                case = case_fixture(); example = provider.example(case)
+                original_prepare = provider.prepare
+
+                def wrong_scope(*args, **kwargs):
+                    prepared = original_prepare(*args, **kwargs)
+                    if marker is None:
+                        del prepared.v1x_bounded_scope_contract
+                    else:
+                        prepared.v1x_bounded_scope_contract = marker
+                    return prepared
+
+                with patch.object(provider.runtime.local, 'prepare_local_source', side_effect=wrong_scope):
+                    with self.assertRaisesRegex(ValueError, '[Ss]cope'):
+                        self.obtain(provider, case, example)
+                self.assertFalse(list((Path(folder)/'source_prepared').glob('*/metadata.json')))
+                self.assertFalse(provider._cache)
+                self.assertEqual(provider.source_cache_stats['original_builds'], 0)
+                self.assertEqual(self.obtain(provider, case, example)[1].v1x_bounded_scope_contract,
+                                 provider._scope['contract_sha256'])
+
+    def test_existing_v1_payload_without_dynamic_marker_reopens_without_rewrite(self):
+        with self.directory() as folder:
+            provider = source_cache_provider(OriginalProvider)(folder)
+            case = case_fixture(); example = provider.example(case)
+            first = self.obtain(provider, case, example)
+            directory = next((Path(folder)/'source_prepared').glob('*/metadata.json')).parent
+            payload_path, metadata_path = directory/'payload.pt', directory/'metadata.json'
+            payload = torch.load(payload_path, weights_only=False)
+            self.assertEqual(set(payload), {'source', 'prepared', 'numpy_layouts'})
+            self.assertEqual(set(payload['prepared']), {field.name for field in fields(first[1])})
+            self.assertNotIn('v1x_bounded_scope_contract', payload['prepared'])
+            self.assertEqual(json.loads(metadata_path.read_text())['format'], 'comparison_exact_compact_source_v1')
+            before = (payload_path.read_bytes(), metadata_path.read_bytes())
+            reopened = source_cache_provider(OriginalProvider)(folder)
+            with patch.object(common, 'choose_source_tumor', side_effect=AssertionError('must reuse v1 publication')):
+                restored = self.obtain(reopened, case, example)
+            assert_exact(self, first, restored)
+            self.assertEqual(restored[1].v1x_bounded_scope_contract, provider._scope['contract_sha256'])
+            self.assertEqual(reopened.original_calls, 0)
+            self.assertEqual(before, (payload_path.read_bytes(), metadata_path.read_bytes()))
+
+    def test_foreign_scope_metadata_cannot_rebind_a_cached_source(self):
+        for resigned in (False, True):
+            with self.subTest(resigned=resigned), self.directory() as folder:
+                provider = source_cache_provider(OriginalProvider)(folder)
+                case = case_fixture(); example = provider.example(case)
+                self.obtain(provider, case, example)
+                path = next((Path(folder)/'source_prepared').glob('*/metadata.json'))
+                metadata = json.loads(path.read_text())
+                metadata['binding']['scope_contract_sha256'] = '7'*64
+                if resigned:
+                    metadata['binding_sha256'] = _digest(metadata['binding'])
+                    metadata.pop('metadata_sha256')
+                    metadata['metadata_sha256'] = _digest(metadata)
+                path.write_text(json.dumps(metadata))
+                provider._cache.clear(); provider._resident_bytes = 0
+                with patch.object(common, 'choose_source_tumor', side_effect=AssertionError('must reject, not rebuild')):
+                    with self.assertRaisesRegex(ValueError, 'binding/content'):
+                        self.obtain(provider, case, example)
+                self.assertFalse(provider._cache)
+                self.assertEqual(provider.source_cache_stats['disk_hits'], 0)
+
+    def test_restore_rejects_missing_or_malformed_scope_binding(self):
+        with self.directory() as folder:
+            provider = OriginalProvider(folder); case = case_fixture()
+            example = provider.example(case)
+            binding = source_binding(provider, example, case)
+            payload = compact_source(self.obtain(provider, case, example), provider.runtime, binding)
+            for marker in (None, '', 'not-a-sha256', 'G'*64):
+                with self.subTest(marker=marker):
+                    invalid = copy.deepcopy(binding)
+                    if marker is None:
+                        invalid.pop('scope_contract_sha256')
+                    else:
+                        invalid['scope_contract_sha256'] = marker
+                    with self.assertRaisesRegex(ValueError, '[Ss]cope'):
+                        restore_source(payload, provider.runtime, invalid, provider._check_budget)
 
     def test_publication_omits_full_volume_mask_and_preserves_exact_centroid(self):
         with self.directory() as folder:

@@ -1,0 +1,18 @@
+{
+  "type": "ValueError",
+  "message": "Native or other-scope prepared source cannot enter bounded construction",
+  "traceback": "Traceback (most recent call last):\n  File \"D:\\AI project\\nnunet\\tools\\verify_source_scope_debug.py\", line 289, in verify\n    runtime.local.build_local_graph(case, source, specs[0], full_organ_mask=organ,\n  File \"D:\\AI project\\nnunet\\hiercp_v1x\\bounded_scope.py\", line 290, in build\n    raise ValueError(\"Native or other-scope prepared source cannot enter bounded construction\")\nValueError: Native or other-scope prepared source cannot enter bounded construction\n",
+  "actual_CT": true,
+  "debug": true,
+  "candidate_key": "U:14",
+  "center": [
+    328,
+    178,
+    416
+  ],
+  "legacy_helper_sha256": "e6b052cc7011faf8a7f2d80e85eff3d5692f4b5690f128e7766c704304b97ad0",
+  "source_disk_hits": 1,
+  "source_rebuilds": 0,
+  "marker_missing": true,
+  "canonical_targets_before": 0
+}

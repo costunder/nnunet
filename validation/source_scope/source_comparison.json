@@ -1,0 +1,18 @@
+{
+  "liver_5:0": {
+    "exact_values_layout_metadata_equal": true,
+    "original_digest": "487a5952956545bb845a636c4add517179c4282324cc0eca39c30cad88f22b4b",
+    "prepared_digest": "487a5952956545bb845a636c4add517179c4282324cc0eca39c30cad88f22b4b",
+    "leaves": 59,
+    "differences": [],
+    "marker": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  },
+  "liver_6:0": {
+    "exact_values_layout_metadata_equal": true,
+    "original_digest": "62d5c98b673dbad6394df54384010647fc2991c0bb73cd5bb0d83774237b88c5",
+    "prepared_digest": "62d5c98b673dbad6394df54384010647fc2991c0bb73cd5bb0d83774237b88c5",
+    "leaves": 59,
+    "differences": [],
+    "marker": "021e17950ec8d93a325cac4eda62cb80bd34aa4930d00b81daaa799467f11131"
+  }
+}
