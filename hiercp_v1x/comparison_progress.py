@@ -11,6 +11,9 @@ import shutil
 import sys
 import threading
 import time
+import uuid
+
+from .comparison_storage import report_secondary_failure, storage_error
 
 
 class RunningPatientMetrics:
@@ -90,9 +93,15 @@ class PhaseProgress:
             self.write(f"{self.data['arm']} | * partial patient macro; M=MRR, T1=top1, PW=pair-win", stream=self.stream)
             self.bar = tqdm(total=self.data['total_sources'], initial=self.data['completed_sources'],
                             file=self.stream, bar_format='{desc}', ascii=True, leave=True)
-        self._publish(force=True)
-        self.thread = threading.Thread(target=self._heartbeat, name='comparison-progress', daemon=True)
-        self.thread.start()
+        try:
+            self._publish(force=True)
+            self.thread = threading.Thread(target=self._heartbeat, name='comparison-progress', daemon=True)
+            self.thread.start()
+        except BaseException as error:
+            self.stop.set()
+            self.closed = True
+            self._close_bar(error)
+            raise
         return self
 
     def _line(self, now):
@@ -172,11 +181,23 @@ class PhaseProgress:
                                eta_seconds=self._eta(now),
                                updated_at=datetime.now(timezone.utc).isoformat())
                 path = self.root / 'progress.json'
-                temporary = path.with_name(f'.{path.name}.{os.getpid()}.tmp')
-                with temporary.open('w', encoding='utf8') as output:
-                    json.dump(payload, output, allow_nan=False)
-                    output.write('\n')
-                os.replace(temporary, path)
+                temporary = path.with_name(f'.{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp')
+                created = False
+                try:
+                    with temporary.open('x', encoding='utf8') as output:
+                        created = True
+                        json.dump(payload, output, allow_nan=False)
+                        output.write('\n')
+                    os.replace(temporary, path)
+                except OSError as error:
+                    primary = storage_error(error, operation='publish comparison progress', path=temporary)
+                    if created:
+                        try:
+                            temporary.unlink()
+                        except OSError as cleanup_error:
+                            report_secondary_failure(primary, cleanup_error,
+                                                     operation='own progress temporary cleanup', stream=self.stream)
+                    raise primary from error
                 self.last_receipt = now
 
     def _heartbeat(self):
@@ -227,19 +248,32 @@ class PhaseProgress:
         if self.thread is not None:
             self.thread.join()
         try:
+            if self.failure is not None:
+                raise RuntimeError('Comparison progress writer failed') from self.failure
             self._publish(force=True)
+        except BaseException as error:
+            self._close_bar(error)
+            raise
+        else:
+            self._close_bar()
         finally:
-            if self.bar is not None:
-                self.bar.close()
             self.closed = True
-        if self.failure is not None:
-            raise RuntimeError('Comparison progress writer failed') from self.failure
+
+    def _close_bar(self, primary=None):
+        if self.bar is not None:
+            try:
+                self.bar.close()
+            except Exception as error:
+                if primary is None:
+                    raise
+                report_secondary_failure(primary, error, operation='progress bar close', stream=self.stream)
 
     def __exit__(self, kind, value, traceback):
         if not self.closed:
             try:
                 self.finish('FAILED' if kind is not None else 'PAUSED')
             except Exception as progress_error:
-                if value is not None:
-                    raise value.with_traceback(traceback) from progress_error
-                raise
+                if value is None:
+                    raise
+                report_secondary_failure(value, progress_error, operation='progress close', stream=self.stream)
+        return False

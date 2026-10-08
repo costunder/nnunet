@@ -10,10 +10,12 @@ import copy
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import time
 
 from . import comparison_gpu_policy as policy
+from .comparison_storage import report_secondary_failure, storage_error
 
 
 FORMAT = "comparison_gpu_runtime_v1"
@@ -95,9 +97,14 @@ class ComparisonGpuRuntime:
         row = dict(format=FORMAT, event=event, time=time.time(),
                    workload_admission="componentwise inventory heuristic; not worst-case memory proof",
                    model_graphs_source_batch_objective_and_training_state_unchanged=True, **values)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf8") as stream:
-            stream.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("a", encoding="utf8") as stream:
+                stream.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+        except OSError as error:
+            raise storage_error(error, operation=f'GPU execution audit ({event})', path=self.path) from error
         return row
 
     def _notice(self, event, **values):
@@ -174,6 +181,10 @@ class ComparisonGpuRuntime:
             return None
 
         self.restore_original()
+        # Check this actual audit destination before expensive GPU measurement.
+        # A successful small append cannot guarantee space for later receipts.
+        self._record("calibration_started", workload_sha256=signature, inventory=inventory,
+                     complete_original_batch=True, new_high_water=bool(self._measured))
         self._notice("calibration_started", workload_sha256=signature,
                      source_problems=inventory["source_problems"],
                      complete_original_batch=True, new_high_water=bool(self._measured))
@@ -184,9 +195,12 @@ class ComparisonGpuRuntime:
                 notify=self.notify)
         except Exception as error:
             self.restore_original()
-            self._record("calibration_failed", workload_sha256=signature, inventory=inventory,
-                         error=f"{type(error).__name__}: {error}",
-                         candidate_reports=getattr(error, "reports", None))
+            try:
+                self._record("calibration_failed", workload_sha256=signature, inventory=inventory,
+                             error=f"{type(error).__name__}: {error}",
+                             candidate_reports=getattr(error, "reports", None))
+            except Exception as audit_error:
+                report_secondary_failure(error, audit_error, operation='calibration failure audit')
             raise
         row = self._record("calibration_completed", workload_sha256=signature,
                            inventory=inventory, selected=selected, calibration=receipt)

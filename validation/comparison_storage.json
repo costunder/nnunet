@@ -1,0 +1,64 @@
+{
+  "format": "comparison_storage_failure_verification_v1",
+  "date": "2026-10-08",
+  "base_commit": "b6d852367c0050768a02ef9fa655e43db0f60fcd",
+  "server_evidence": {
+    "source": "User attached server traceback",
+    "arm": "selected",
+    "physical_GPU": 3,
+    "errno": 122,
+    "primary": "gpu_execution.jsonl calibration_completed append",
+    "secondary": "progress.json temporary creation",
+    "checkpoint_exists_reported": true,
+    "checkpoint_contents_revalidated": false,
+    "actual_quota_type_and_limit": "unknown"
+  },
+  "tests": [
+    {
+      "command": ".venv/Scripts/python.exe -B -m unittest tests.test_comparison_storage tests.test_comparison_gpu_runtime tests.test_comparison_progress_debug tests.test_comparison_arm_launch -v",
+      "passed": 62,
+      "failed": 0,
+      "seconds": 4.833,
+      "scope": "UNIT fault injection and temporary filesystem/launcher regression; not actual server quota"
+    },
+    {
+      "command": ".venv/Scripts/python.exe -B -m unittest tests.test_old_v1_graph_cleanup -v",
+      "passed": 7,
+      "failed": 0,
+      "seconds": 2.363,
+      "scope": "UNIT newly-created disposable files only"
+    }
+  ],
+  "python_3_10_syntax": {
+    "passed": true,
+    "files": 9
+  },
+  "code_sha256": {
+    "hiercp_v1x/comparison_storage.py": "7bba9b0fc1f19c3d9a9d198b460da39870b72971b3ac691f6866e156d0ec024f",
+    "hiercp_v1x/comparison_gpu_runtime.py": "26e9a4b5ffbc759828986bf9e67f94382b0c35b202ce4f934044e8054df6407b",
+    "hiercp_v1x/comparison_progress.py": "0b07aef5f6024da74f5a084d49d212723103060f12a52d5a48a54314a4f6650d",
+    "tools/run_comparison_arm.py": "0d7f5d41bd5c048ad09b9862832518c40494359ba9b29d3d7ea8fa18e6ac662e",
+    "tests/test_comparison_storage.py": "d3299f5f307a63f81f7982de94ed5fa9de8d33f2da2c0180e1d9017e3f1c36b1",
+    "tests/test_comparison_gpu_runtime.py": "eecd8fe4b5ac8bbc3069648a8405fa562c3bd3d87e830ed1f13b55941ce11005",
+    "tests/test_comparison_progress_debug.py": "fcc99ea7982d70630382b02155e3943b0fc1d639c0069ebecfe09600eabbaba6",
+    "tools/retire_old_v1_graphs.py": "778702271fcbfbafcb03f8bc3ca5f3362824737f90d89fa010643031706e916f",
+    "tests/test_old_v1_graph_cleanup.py": "506198def374c79d073d22485a884e02fcbcb6d9f78653c5bd88ad0db8328c01"
+  },
+  "recovery": {
+    "user_authorized_old_graph_samples": 609,
+    "old_graph_jobs_inactive_user_confirmed": true,
+    "estimated_previous_reclaim_gib": 48.08,
+    "server_cleanup_executed_by_agent": false,
+    "actual_space_recovered": null,
+    "quota_lifted": false
+  },
+  "limits": {
+    "actual_CT_used": false,
+    "actual_CUDA_used": false,
+    "full_training": false,
+    "full_evaluation": false,
+    "server_resume_verified": false,
+    "model_graph_GT_epochs_physical_batch_changed": false,
+    "probe_guarantees_future_capacity": false
+  }
+}

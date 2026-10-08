@@ -152,7 +152,19 @@ def _active_owner(request):
                 checkpoint=str(request['checkpoint']), duplicate_started=False)
 
 
+def _probe_storage(request):
+    from hiercp_v1x.comparison_storage import probe_output_storage
+    paths = [request['experiment']]
+    # A first clone requires an empty destination. Its new arm directory is
+    # checked after cloning; existing arm outputs may be separate mounts.
+    if not request['requires_clone'] or request['checkpoint'].parent.exists():
+        paths.append(request['checkpoint'].parent)
+    for path in paths:
+        print(json.dumps(probe_output_storage(path), allow_nan=False), flush=True)
+
+
 def _child(a, request):
+    _probe_storage(request)
     from tools.current_gpu import current_device_selection
     from hiercp_v1x.owned_continuation import independent_continuation_execution
     from hiercp_v1x.u_bridge_experiment import lock, sha, write_new
@@ -162,6 +174,8 @@ def _child(a, request):
         with lock(request['experiment']/'.pipeline.lock'):
             print(f"Preserve {a.arm} progress in its own namespace: {request['experiment']}", flush=True)
             prepare_continuation(request['source_experiment'], request['experiment'], a.arm)
+        from hiercp_v1x.comparison_storage import probe_output_storage
+        print(json.dumps(probe_output_storage(request['checkpoint'].parent), allow_nan=False), flush=True)
     supplied = SimpleNamespace(gpu=a.gpu, arm=a.arm, experiment=request['experiment'],
         inventory=request['inventory'], cache_sources=request['cache_sources'],
         **{'debug_'+name:getattr(a, 'debug_'+name) for name in ('fixture', 'config', 'source', 'bank')})
@@ -189,6 +203,7 @@ def run(a):
         print(json.dumps(active, allow_nan=False), flush=True)
         print('This arm already runs in its own folder. Start other arms with their own --arm and --gpu.', flush=True)
         return active
+    _probe_storage(request)
     command = [sys.executable, '-B', '-u', str(ROOT/'tools/run_comparison_arm.py'),
                '--owned-child', '--gpu', str(a.gpu), '--arm', a.arm,
                '--experiment', str(request['experiment']), '--source-experiment', str(request['source_experiment']),

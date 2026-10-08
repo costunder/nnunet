@@ -261,8 +261,10 @@ class ProgressUNIT(unittest.TestCase):
                 with self.progress(directory, io.StringIO()) as progress:
                     progress.failure = OSError('progress write failed')
                     raise ValueError('model forward failed')
-            self.assertIsInstance(caught.exception.__cause__, RuntimeError)
-            self.assertIsInstance(caught.exception.__cause__.__cause__, OSError)
+            self.assertIsNone(caught.exception.__cause__)
+            secondary = caught.exception.comparison_secondary_errors[0][1]
+            self.assertIsInstance(secondary, RuntimeError)
+            self.assertIsInstance(secondary.__cause__, OSError)
 
     def test_very_narrow_display_retains_counts_and_score_values(self):
         import os

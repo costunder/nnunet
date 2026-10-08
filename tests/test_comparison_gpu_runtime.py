@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import copy
+from contextlib import redirect_stderr
+import errno
+import io
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -133,6 +136,51 @@ class GpuRuntimeAdmissionTests(unittest.TestCase):
         self.assertIs(caught.exception, failure)
         self.assertEqual(self.controller.current_settings(), ORIGINAL)
         self.assertEqual(self.receipts()[-1]["candidate_reports"], failure.reports)
+
+    def test_started_audit_quota_failure_prevents_expensive_calibration(self):
+        checkpoint = Path(self.directory.name)/'checkpoint_latest.pt'
+        checkpoint.write_bytes(b'UNIT original opaque checkpoint')
+        quota = OSError(getattr(errno, 'EDQUOT', 122), 'UNIT quota')
+        with patch.object(runtime.os, 'fsync', side_effect=quota):
+            with self.assertRaises(OSError) as caught:
+                self.controller.ensure(self.batch, unit_workload())
+        self.probe.assert_not_called()
+        self.assertIs(caught.exception.__cause__, quota)
+        self.assertIn('calibration_started', str(caught.exception))
+        self.assertIn('EDQUOT', str(caught.exception))
+        self.assertEqual(caught.exception.filename, str(self.controller.path))
+        self.assertEqual(self.controller.current_settings(), ORIGINAL)
+        self.assertEqual(self.controller._measured, [])
+        self.assertEqual(checkpoint.read_bytes(), b'UNIT original opaque checkpoint')
+
+    def test_failed_calibration_audit_quota_keeps_primary_exception_and_cause(self):
+        cause = ValueError('UNIT original calibration cause')
+        primary = RuntimeError('UNIT original calibration failure')
+        def fail(*args, **kwargs):
+            raise primary from cause
+        self.probe.side_effect = fail
+        quota = OSError(getattr(errno, 'EDQUOT', 122), 'UNIT audit quota')
+        stream = io.StringIO()
+        with patch.object(runtime.os, 'fsync', side_effect=[None, quota]), redirect_stderr(stream):
+            with self.assertRaises(RuntimeError) as caught:
+                self.controller.ensure(self.batch, unit_workload())
+        self.assertIs(caught.exception, primary)
+        self.assertIs(primary.__cause__, cause)
+        self.assertIn('EDQUOT', stream.getvalue())
+        self.assertIn('calibration_failed', stream.getvalue())
+        self.assertEqual(self.controller.current_settings(), ORIGINAL)
+        self.assertEqual(self.controller._measured, [])
+
+    def test_completed_audit_quota_is_fatal_and_does_not_admit_policy(self):
+        quota = OSError(getattr(errno, 'EDQUOT', 122), 'UNIT quota after measurement')
+        with patch.object(runtime.os, 'fsync', side_effect=[None, quota]):
+            with self.assertRaises(OSError) as caught:
+                self.controller.ensure(self.batch, unit_workload())
+        self.probe.assert_called_once()
+        self.assertIn('calibration_completed', str(caught.exception))
+        self.assertEqual(self.controller._measured, [])
+        self.assertEqual(self.controller.current_settings(), ORIGINAL)
+        self.assertFalse(any('GPU execution selected' in value for value in self.notices))
 
     def test_invalid_or_missing_full_graph_inventory_cannot_be_benchmarked(self):
         cases = []
