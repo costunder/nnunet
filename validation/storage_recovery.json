@@ -1,0 +1,41 @@
+{
+  "date_kst": "2026-10-08",
+  "scope": "storage maintenance UNIT, no neural/CT/server run",
+  "tests": {
+    "command": ".venv/Scripts/python.exe -B -m unittest tests.test_reclaim_fields tests.test_shared_field_publication tests.test_preparation_reuse -q",
+    "run": 71,
+    "passed": 69,
+    "skipped": 2,
+    "seconds": 4.629,
+    "skipped_reasons": [
+      "Actual Linux process locking unavailable on Windows",
+      "Real symlink fixture needs Windows privilege; rejection branch separately checked"
+    ]
+  },
+  "python_3_10_syntax_files": 4,
+  "verified": [
+    "real hardlink and atomic replacement on UNIT files",
+    "original production field loader accepts both consolidated paths",
+    "bytes metadata paths and protected checkpoint retained",
+    "SHA corruption stale files foreign owner refused",
+    "EDQUOT link and rename preserve original",
+    "mocked NFS ambiguous completion checked by actual inode",
+    "partial completion rescan",
+    "hash cancellation",
+    "small post-maintenance output writes",
+    "simultaneous cold arm caches build one exact array pair",
+    "distinct case build parallelism"
+  ],
+  "server_cleanup_executed": false,
+  "server_reclaimed_bytes": null,
+  "actual_NFS_multi_process_verified": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "model_or_data_contract_changed": false,
+  "files": {
+    "tools/reclaim_fields.py": "e2732906c3f15f2a93f0d1334dee15f9d28a12fdae41004299b478e966a3dd71",
+    "hiercp_v1x/preparation_reuse.py": "3cec35b6fb89aa977c888fb1fb905495943cd97f021621fece5bc56cc929bb3e",
+    "tests/test_reclaim_fields.py": "31882166ecf60e0c40776ed0281552ac5b8c71ac28454fc6a57375115352206a",
+    "tests/test_shared_field_publication.py": "81eeae087a363461e052dc67c75f29eb3d5c5628e5595984b8a68c355310405d"
+  }
+}

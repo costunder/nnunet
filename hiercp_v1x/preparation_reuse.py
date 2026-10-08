@@ -305,6 +305,41 @@ def _ensure_fields(target_root, case_id, binding, source_roots, callback):
           destination=str(destination), wall_seconds=time.perf_counter() - started)
 
 
+@contextmanager
+def _shared_fields_guard(target_root, case_id, binding, source_roots):
+    """One cold field build per case/binding across the configured arm roots.
+
+    Arm-owned paths and signed bytes remain unchanged. The small coordination
+    locks live beside, not inside, experiment data roots. Every participating
+    destination must be in the same source-root set so a waiter can discover the
+    first completed publication. Ordinary one-way imports retain their existing
+    behavior. Different cases/bindings never share a lock.
+    """
+    data_root = _safe(Path(target_root).parent, directory=True)
+    roots = tuple(dict.fromkeys(source_roots))
+    destination = Path(target_root) / case_id
+    if destination.exists() or data_root not in roots or len(roots) < 2:
+        yield
+        return
+    try:
+        shared_parent = Path(os.path.commonpath([str(path) for path in roots]))
+    except ValueError:
+        # Cross-volume imports cannot hardlink and do not form a shared store.
+        yield
+        return
+    if shared_parent == Path(shared_parent.anchor) or shared_parent in roots:
+        # Do not create coordination files in a filesystem root or inside a
+        # source's signed data inventory. These are ordinary one-way imports.
+        yield
+        return
+    key = publication._digest(dict(case_id=case_id, binding=binding))
+    target = _safe(shared_parent / ".field_publication" / key)
+    # This target itself is never created, only its persistent lock file. Thus
+    # _publication_guard cannot take its existing-publication fast path here.
+    with _publication_guard(target):
+        yield
+
+
 def _ensure_local(graph_dir, key, source_roots, callback):
     if not isinstance(key, str) or _HEX.fullmatch(key) is None:
         raise ValueError("Canonical reuse requires the original SHA256 binding key")
@@ -392,7 +427,9 @@ def preparation_reuse(provider_class, source_data_roots, event_callback=None):
 
     Callers retain their own experiment/data namespace locks. Source data roots
     can belong to active arms: completed publications are immutable and atomic.
-    This wrapper never reads source checkpoints or mutates source namespaces.
+    This wrapper never reads source checkpoints or mutates source payloads.
+    Cold fields across participating arms share a per-case coordination lock
+    beside their data namespaces; existing complete fields stay untouched.
     The original graph load verifies binding after file reuse, and the original
     field load verifies all array values. No data factory is replaced by dummy
     values; a genuine cache miss follows the original construction path.
@@ -430,8 +467,12 @@ def preparation_reuse(provider_class, source_data_roots, event_callback=None):
                         return original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
                 directory = _safe(Path(root) / case_id, directory=True)
                 with _publication_guard(directory):
-                    _ensure_fields(root, case_id, canonical, roots, event_callback)
-                    result = original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
+                    with _shared_fields_guard(root, case_id, canonical, roots):
+                        # Recheck after the shared cold-build lock: a different
+                        # arm may now have published the exact fields. Import
+                        # its bytes before considering the genuine factories.
+                        _ensure_fields(root, case_id, canonical, roots, event_callback)
+                        result = original_fields(root, case_id, binding, depth_factory, occupied_factory, budget_check)
                 identity = (str(directory), fields._digest(canonical))
                 with fields._REGISTRY_LOCK:
                     entry = fields._OPENED.get(identity)
