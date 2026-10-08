@@ -138,6 +138,91 @@ class OrderedPrefetchTests(unittest.TestCase):
                 for event in provider.release.values():
                     event.set()
 
+    def test_certified_cold_batches_overlap_without_reordering_or_extra_workers(self):
+        provider = Provider(cold={1, 2, 3, 4})
+        provider.independent_cold_inputs = True
+        provider.cold_staging_bytes = lambda indices: 4_000
+        provider.blocked = {1, 2, 3, 4}
+        receipts = []
+        with self.resources(provider), patch('hiercp_v1x.comparison_runtime._append',
+                side_effect=lambda path, row: receipts.append(row)):
+            with closing(_prefetch(provider, [[i] for i in range(5)], 'native_listwise', 8,
+                    pin_memory=False, receipt_path='UNIT-unused.jsonl')) as staged:
+                self.assertEqual(next(staged).indices, (0,))
+                try:
+                    self.assertTrue(all(provider.started[i].wait(3) for i in range(1, 5)))
+                    self.assertEqual(provider.peak, 4)
+                    self.assertIsNotNone(provider._comparison_pool)
+                finally:
+                    for event in provider.release.values(): event.set()
+                self.assertEqual([batch.indices for batch in staged], [(1,), (2,), (3,), (4,)])
+        self.assertTrue(receipts[0]['certified_cold_concurrency'])
+        self.assertIn('cold_shared', [row.get('mode') for row in receipts])
+        self.assertEqual(receipts[-1]['cold_batches'], 5)
+
+    def test_cold_dense_workspace_limits_inflight_jobs(self):
+        provider = Provider(cold={1, 2, 3})
+        provider.independent_cold_inputs = True
+        provider.cold_staging_bytes = lambda indices: 40_000
+        provider.blocked = {1, 2}
+        with self.resources(provider), closing(_prefetch(provider, [[0], [1], [2], [3]],
+                'native', 7, pin_memory=False)) as staged:
+            self.assertEqual(next(staged).indices, (0,))
+            try:
+                self.assertTrue(provider.started[1].wait(3))
+                self.assertFalse(provider.started[2].is_set())
+                provider.release[1].set()
+                self.assertEqual(next(staged).indices, (1,))
+                self.assertTrue(provider.started[2].wait(3))
+            finally:
+                for event in provider.release.values(): event.set()
+            self.assertEqual([batch.indices for batch in staged], [(2,), (3,)])
+
+    def test_old_inventory_without_shapes_keeps_original_serial_complete_batches(self):
+        provider = Provider(cold={1, 2})
+        provider.independent_cold_inputs = True
+        provider.cold_staging_bytes = lambda indices: None
+        provider.blocked = {1}
+        receipts = []
+        with self.resources(provider), patch('hiercp_v1x.comparison_runtime._append',
+                side_effect=lambda path, row: receipts.append(row)):
+            with closing(_prefetch(provider, [[0, 8], [1, 7], [2, 6]], 'native', 7,
+                    pin_memory=False, receipt_path='UNIT-unused.jsonl')) as staged:
+                self.assertEqual(next(staged).indices, (0, 8))
+                try:
+                    self.assertTrue(provider.started[1].wait(3))
+                    self.assertFalse(provider.started[2].is_set())
+                    self.assertIsNone(provider._comparison_pool)
+                finally:
+                    provider.release[1].set()
+                self.assertEqual([batch.indices for batch in staged], [(1, 7), (2, 6)])
+        modes = [row for row in receipts if row['event'] == 'scheduling_mode']
+        self.assertTrue(all(row['mode'] == 'cold_serial' for row in modes))
+        self.assertTrue(all(row['cold_workspace_measured_or_inventory_known'] is False for row in modes))
+
+    def test_full_resident_cache_does_not_double_reserve_cold_workspace(self):
+        provider = Provider(cold={1, 2})
+        provider.rss = 80_000
+        provider.independent_cold_inputs = True
+        provider.cold_staging_bytes = lambda indices: 1_000
+        provider.blocked = {1, 2}
+        receipts = []
+        # Keep observed RSS at the resident target even when Base.batch updates
+        # its UNIT counter. RSS budget100k, resident80k -> pressure trigger90k.
+        with patch('hiercp_v1x.comparison_runtime._prefetch_resources', return_value=(80_000, 100_000)), \
+                patch('hiercp_v1x.comparison_runtime._append', side_effect=lambda path, row: receipts.append(row)):
+            with closing(_prefetch(provider, [[0], [1], [2]], 'native', 7,
+                    pin_memory=False, receipt_path='UNIT-unused.jsonl')) as staged:
+                next(staged)
+                try:
+                    self.assertTrue(provider.started[1].wait(3))
+                    self.assertTrue(provider.started[2].wait(3))
+                finally:
+                    for event in provider.release.values(): event.set()
+                self.assertEqual(len(list(staged)), 2)
+        self.assertEqual(receipts[0]['declared_workspace_reserve_bytes'], 20_000)
+        self.assertEqual(receipts[0]['retained_unestimated_headroom_bytes'], 10_000)
+
     def test_os_memory_and_declared_workspace_each_limit_admission(self):
         for low_os in (False, True):
             provider = Provider()

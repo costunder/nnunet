@@ -76,6 +76,74 @@ def assert_same(test, first, second):
 
 
 class ParallelViewTests(unittest.TestCase):
+    def test_original_canonical_mapping_uses_one_shared_worker_pool(self):
+        class Base:
+            def __init__(self):
+                self.workers = 4
+            def _local_map(self, function, values):
+                with ThreadPoolExecutor(max_workers=self.workers) as pool:
+                    return list(pool.map(function, values))
+        class Provider(parallel_view_provider(Base)):
+            independent_cold_inputs = True
+        provider = Provider()
+        seen = set()
+        lock = threading.Lock()
+        barrier = threading.Barrier(4, timeout=5)
+        def obtain(value):
+            with lock: seen.add(threading.current_thread().name)
+            barrier.wait()
+            return value * value
+        with provider.cpu_staging(2), ThreadPoolExecutor(max_workers=2) as coordinators:
+            first = coordinators.submit(provider._local_map, obtain, range(8))
+            second = coordinators.submit(provider._local_map, obtain, range(8, 16))
+            self.assertEqual(first.result(), [n*n for n in range(8)])
+            self.assertEqual(second.result(), [n*n for n in range(8, 16)])
+        self.assertEqual(len(seen), 4)
+        self.assertTrue(all(name.startswith('comparison-candidates') for name in seen))
+
+    def test_same_resident_key_factory_runs_once_and_failure_releases_lock(self):
+        class Base:
+            def __init__(self):
+                self.workers = 4
+                self.cache = {}
+            def _get(self, key, factory):
+                if key not in self.cache: self.cache[key] = factory()
+                return self.cache[key]
+        provider = parallel_view_provider(Base)()
+        calls = []
+        began, release = threading.Event(), threading.Event()
+        def factory():
+            calls.append(1); began.set()
+            if not release.wait(3): raise TimeoutError('UNIT release missing')
+            return object()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(provider._get, ('case', 1), factory)
+            self.assertTrue(began.wait(3))
+            second = pool.submit(provider._get, ('case', 1), factory)
+            release.set()
+            self.assertIs(first.result(), second.result())
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(provider._comparison_keys, {})
+        def fail(): raise ValueError('original cache failure')
+        with self.assertRaisesRegex(ValueError, 'original cache failure'):
+            provider._get(('case', 2), fail)
+        self.assertEqual(provider._comparison_keys, {})
+        self.assertEqual(provider._get(('case', 2), lambda: 23), 23)
+
+    def test_cold_workspace_requires_real_shapes_and_counts_complete_batch(self):
+        class Base:
+            def __init__(self):
+                self.workers = 4
+                self.raw = {'one': {'shape': [12, 13, 14]}, 'two': {'shape': [15, 16, 17]}}
+            def _example(self, index): return {'case_id': ('one', 'two')[index]}
+        provider = parallel_view_provider(Base)()
+        self.assertEqual(provider.cold_staging_bytes([0, 1]), (12*13*14 + 15*16*17)*48)
+        provider.raw['two']['shape'] = None
+        self.assertIsNone(provider.cold_staging_bytes([0, 1]))
+        provider.raw['two']['shape'] = [0, 2, 3]
+        with self.assertRaisesRegex(ValueError, 'verified full CT shape'):
+            provider.cold_staging_bytes([0, 1])
+
     def test_all_graph_tensors_metadata_and_order_match_original_for_training_and_validation(self):
         for training, epoch in ((True, 3), (True, 29), (False, 11)):
             with self.subTest(training=training, epoch=epoch):

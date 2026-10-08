@@ -1,0 +1,73 @@
+ACTUAL CT CPU INPUT DEBUG, EXTENDED -- 2026-10-08
+
+Complete physical2 x eight candidates, worker4, torch_threads4; native_listwise.
+No model/GPU training/optimizer/full evaluation. All graphs/candidates preserved.
+All values below include cProfile overhead on this local Windows machine.
+
+phase                                     wall s   process CPU s
+first-process epoch4 P+U21..27             27.640       53.250
+identical epoch4 with hot provider          3.044       24.000
+epoch5 new P+U28..34, warm case/upper        5.723       30.188
+fresh provider, existing epoch4 disk data   3.626       25.203
+
+First-process cost must not be treated as the cost of every rotating epoch.
+Warm rotation performs no raw CT read or whole-case/helper rebuild: case_fields
+0.000125s; source0.000612s; upper graph0.191563s; local canonical construction
+1.978828s; sampled views2.826291s; collate0.171989s. New local graph count14
+(two positive graphs are RAM hits); compact liver_raw/axis two resident hits
+each, zero rebuild. raw_verifications remains4, no new raw hash verification.
+
+Hot repeat sampled views2.723083s (~89.5%), cached locals0.061771s, collate0.184655s.
+Fresh-provider disk reopen sampled views2.628540s, cached locals0.429712s,
+collate0.167874s, hierarchy read0.023743s. Reopen reads16 canonical graphs,
+2 layouts, verifies4 raw files, builds0 locals, calls0 raw-case/source/upper
+construction. It is cold provider LRU, not cold OS page cache or fresh process.
+No forced eviction or deletion was needed. Original data cache namespaces unchanged.
+
+Worker hotspots remain sampled view radius neighborhoods and edge attributes.
+Hot-repeat cProfile tottime (aggregate overlapping worker-task durations):
+_radius_neighbor_ids2.836s; _edge_attributes_block2.523s; radius listcomp1.196s;
+ufunc.reduce0.843s; ndarray.sort0.776s; ndarray.flatten0.705s.
+Warm-rotation main lock.acquire4.801s waits for local/view worker jobs and
+must not be added to their durations. Four candidate workers use native
+libraries; CPU process seconds can exceed four times wall.
+
+Raw hashing attribution from the preserved initial diagnostic:
+common._file_content_signature16 calls,1.044s cumulative:8 pre/post raw NIfTI
+load signatures0.534s,8 verify_loaded_case_source_signatures0.509s.
+Provider raw SHA from _case:4 calls0.263s cumulative. _layout_file hashing
+24 calls0.493s cumulative covers mixed raw and publication data, not all raw.
+Field/reuse validation hash helpers total separate cumulative1.640s+1.665s.
+All cumulative hash times include file reads and hash.update descendants;
+do NOT add hash.update3.064s or read self-time to those parent durations.
+Warm epoch5 has zero common._file_content_signature calls, publication _sha
+20 calls0.220s cumulative and hash.update0.063s self. These are nested.
+Thus observed repeated hash overhead is not the dominant hot-rotation cost.
+
+Both epoch4 repeat and fresh-provider reopen equal original all857 input leaves,
+SHA dceb6b3f46a9324f80d8c2eda8c6d26131b8b05b3fd976b541a0abb138f1a6f5.
+Reference hashes/cache inventory-size-mtime/frozen helpers preserved=true.
+Source caches reused2 without rebuild; whole-case fields reopened2; static
+upper reopened4. First-process compact liver_raw/axis caches built2 each in
+new owned namespace. Final RSS snapshots:6.38/6.58/6.79/7.02GiB, not peak RSS.
+
+Artifacts: report.json, input_timing.jsonl, each phase main/worker .prof and
+sorted .txt. Original two-phase run remains ../diagnostic-20261008 unchanged.
+New helper tools/profile_comparison_input_debug.py only; no production edits.
+AST check + full-batch actual CT CPU DEBUG passed. No new unit tests, GPU,
+full training, full evaluation, throughput optimization or quality claim.
+
+작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다. (모델 실행 없음)
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다. (명시적 DEBUG 배치 전체)
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. (원래 2/worker4 유지)
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (OOM 없음)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (이번 CPU 입력 진단에서는 미검증)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

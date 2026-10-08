@@ -103,6 +103,43 @@ A6000 최대 graph, NFS에서 네 군 동시 실행, production 40 epoch 처리�
 
 RTX 5070 Ti에서 전체 10,434,532 parameter 모델·physical source batch 2·worker 4·epoch 3 후보 구성으로 실제 native_listwise forward/backward/AdamW update 한 번을 수행했다. 1,085개 parameter tensor의 gradient가 유한했고 원본 실험·캐시 inventory·17개 고정 helper는 보존됐다. 171개 단위 검사도 통과했다. 이는 재열기 후 새로운 후보 생성과 학습 연결을 확인한 DEBUG 검사이며, 서버의 실제 checkpoint 재개·전체 학습·full129 평가·epoch 속도 검증은 아니다. 이전 GPU 처리량 측정을 이 오류 수정의 서버 가속 수치로 사용하지 않는다.
 
+## 입력 공급 병목의 실제 분해와 cold 병렬 준비
+
+2026-10-08에는 오류 수정과 처리량 개선을 분리해 CPU 입력 경로를 다시 측정했다. 서버에서 사용자가 제공한 `native_fixed` epoch 2의 14 update 기록은 총 loader+step 1,531.92초 중 입력 대기가 1,408.66초(91.95%)였다. GPU step 전체는 123.26초였다. 이 비율에서 GPU 계산만 1.45배 빨라져도 전체 개선은 약 2.5%다. 별도 `native_listwise` epoch 2의 33,682.6초와는 다른 실행이므로 이 비율을 그 9시간 전체의 세부 분해로 대입하지 않는다.
+
+직전 layout 패치에는 중요한 적용 범위 제한이 있었다. `native`/`native_listwise`의 7개 U 시작점은 `(epoch-1)*7 % 128`이고, 순서까지 같은 조합이 반복되는 주기는 128epoch다. 따라서 40epoch 동안 조합 전체를 키로 삼은 `sample_layout`은 정상적인 회전 학습에서 대부분 처음 만들어진다. `selected`, `native_fixed`, 고정 val129와 이미 준비한 지점의 재개에는 유효하지만 회전 학습의 최초 입력을 병렬화하지 못했다. 기존 `workers=16`은 후보 graph/view worker 수이며 16개 환자 입력 동시 준비를 의미하지 않았다.
+
+실제 CT 두 source, physical batch 2, source당 P+7U와 두 view, workers 4를 유지한 로컬 CPU cProfile 측정은 다음과 같다. 프로파일러 오버헤드가 포함되며 서버 NFS나 전체 epoch 측정이 아니다.
+
+| 상태 | 입력 wall time | process CPU time |
+| --- | ---: | ---: |
+| epoch 4 조합 첫 준비 | 27.640초 | 53.250초 |
+| 같은 조합 RAM 재사용 | 3.044초 | 24.000초 |
+| CT/상위 문맥이 RAM에 있는 다음 epoch 5 새 조합 | 5.723초 | 30.188초 |
+| 새 provider에서 기존 epoch 4 disk layout 재열기 | 3.626초 | 25.203초 |
+
+첫 준비에서 CT 읽기·압축 해제·field 검사와 환자 graph 조립이 컸다. 반면 RAM이 유지된 새 조합에서는 case/source 재읽기가 없고 local graph 생성 1.979초, 두 sampled view 2.826초, patient graph 0.192초, collate 0.172초였다. 같은 조합의 RAM 재사용에서도 view 생성은 남는다. 따라서 매 epoch마다 CT를 반드시 다시 읽는다고 설명하지 않는다. 일반 LRU eviction이나 프로세스 재시작 후 처음 보는 조합에서는 이 비용이 돌아올 수 있다. `pressure=0`도 일반 LRU eviction이 없었다는 뜻은 아니다.
+
+코드에서는 `_case` miss의 raw SHA 검사와 원본 `load_case` 전후 검사, region/source identity 검사가 여러 차례 파일을 읽는 것을 확인했다. 그러나 이 로컬 warm-rotation 측정에서 raw signature 호출은 0회였고 publication SHA의 누적 시간은 0.220초였다. 해시가 모든 지연의 주범이라고 단정하지 않는다. worker profile의 radius-neighbor 계산과 edge attribute 생성이 hot view 비용의 핵심이다. main thread의 lock 대기는 이 worker 작업과 겹치므로 별도 시간으로 더하지 않는다.
+
+이번 실행 변경은 다음 세 가지다.
+
+- 상위 graph의 캐시 helper를 전역 모듈에 임시 대입하던 경로를 provider별·thread별 함수 결속으로 바꿨다. 원본 함수 code object와 수식은 그대로이며, 환자별 입력 준비가 하나의 전역 helper lock을 기다리지 않는다. 기존 source/lesion 캐시 내부의 좁은 lock은 남아 있다.
+- 처음 보는 조합도 별도의 batch 조정 thread에서 준비할 수 있다. local graph와 view 작업은 저장된 수의 candidate worker pool 하나를 공유한다. 같은 cache key를 동시에 요청하면 같은 최초 읽기/생성 결과를 기다려 중복 작업을 막는다. 일반 eviction 이후 재읽기까지 영구적으로 없어진다는 뜻은 아니다.
+- 동시 준비는 실제 최초 batch의 RSS 증가·tensor storage·현재 가용 RAM·기존 RSS/resident 여유와 CT shape 기반 배열 추정으로 허용한다. raw/label·mask·distance field·region·연결 성분/거리 계산 배열의 추정은 voxel당 48bytes이며 실제 최대 메모리 보장은 아니다. 기존 hard guard는 유지한다. 과거 inventory에 선택 항목인 shape가 없으면 원래 완전한 직렬 준비를 유지하고 `cold_serial` 및 unknown workspace를 기록한다. 데이터나 physical batch를 줄이지 않는다.
+
+`prefetch.jsonl`에는 `cold_shared`, `cached_shared`, `cold_serial`, 계산된 동시 준비 수와 메모리 추정이 남는다. `report_comparison_runtime.py`는 선택 epoch의 최근 준비 방식·허용 slot·공유 worker 수를 출력한다. 계획된 slot 수와 실제 사용률을 구분한다. 메모리 상황에 따라 `cold_shared`에서도 하나만 준비할 수 있으며, 중단 시 완료되지 않은 입력 작업은 drain하고 학습 checkpoint/cursor 계약을 유지한다.
+
+준비할 입력의 배열 메모리를 별도로 예약하면서 기존 workspace 전체를 다시 빼면 resident cache가 찬 시점에 병렬도가 1로 제한되는 문제가 있었다. 독립 입력 경로는 기존 `PressureBudget`의 pressure trigger와 같은 기준, 즉 `RSS limit - (RSS limit - resident limit)/2`까지를 사용한다. 나머지 절반은 추정하지 못한 scratch 공간으로 남긴다. RSS/resident 설정값 자체는 바꾸지 않으며, 대기 중인 작업의 예약량과 현재 RSS가 겹쳐 계산되는 부분은 보수적으로 남긴다. slot 수도 최초의 낮은 값에 고정하지 않고 현재 자원과 관측된 최대 batch storage로 다시 계산한다.
+
+실제 검증은 Git HEAD `30a3fe0`의 전역 helper 구현을 읽기 전용 대조군으로 사용했다. 동일한 두 source의 `[0,1]`, `[1,0]` 두 batch를 직렬/병렬로 각각 준비했다. physical batch 2, 원본 epoch 6 후보·seed·두 view를 유지한 **동시성 DEBUG fixture**이며 원래 학습 epoch 순서나 전체 데이터 처리량 실험은 아니다. 두 배치 각각 857개 입력 항목의 값·dtype·shape·stride·metadata와 전역 RNG가 같았다. CT 준비 8.910초, 상위 helper 4.104초가 서로 다른 환자 사이에서 실제 겹쳤다. 이 작업은 직렬 30.162초, 병렬 19.982초였으며 서버 epoch 가속률로 사용하지 않는다.
+
+이 입력으로 전체 10,434,532 parameter 모델의 실제 CUDA forward/backward/AdamW update 한 번을 수행했다. 1,085개 parameter tensor의 gradient가 모두 유한했고 optimizer가 모델을 갱신했다. 원본 실험·기존 cache inventory·17개 고정 helper는 보존했다. 로컬 peak CUDA allocated는 2,302,735,872bytes였다. 실제 `_prefetch`의 준비된 입력 경로도 순서와 값이 같았고, cold admission·메모리 예약·동시 오류/중단 정리는 별도 단위 검사로 확인한다. 실제 CT 대조 후 선택 shape가 없는 과거 inventory의 직렬 호환 분기와 보고서 표시만 추가했으며, 검증 당시와 최종 코드 SHA는 증거에서 구분한다.
+
+이후 RAM 이중 예약 방지와 slot 재계산까지 포함한 **최종 코드에서도 실제 CT/CUDA 대조를 다시 통과**했다. 최종 두 batch 시간은 직렬 30.408초, 병렬 18.787초였고, 두 batch의 각 857개 입력 항목·RNG 일치와 1,085개 유한 gradient 및 실제 optimizer update를 재확인했다. 최종 182개 회귀 검사와 변경 Python 11개 파일의 Python 3.10 구문 검사도 통과했다. `validation/comparison_cpu_input/final/`은 이 최종 실행의 원자료이며 이전 측정은 그대로 보존한다. 최종 기록의 실행 helper SHA는 배포 코드와 일치한다.
+
+상세 증거는 `validation/comparison_cpu_input/`에 둔다. 전체 서버 cohort의 최대 입력, 네 군 동시 NFS I/O, A6000의 최종 epoch 시간은 아직 측정하지 않았다. 이 변경으로 9시간이 30분으로 줄었다거나 모든 병목을 없앴다고 보고하지 않는다. 모델·10mm 범위·train8/val129·loss·40epoch·저장된 physical batch와 optimizer 상태는 변경하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

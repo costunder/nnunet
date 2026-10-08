@@ -1,0 +1,70 @@
+REAL CT COLD INPUT CONCURRENCY DEBUG -- 2026-10-08
+
+PASS: exact full CPU inputs versus prior Git HEAD global upper-helper path,
+actual distinct-source overlap, unchanged RNG, full CUDA backward/update.
+
+Fixture: original liver_5:0/liver_6:0; physical2 x8, worker4, epoch6 P+U35..41.
+Two explicit DEBUG scheduling batches [0,1] and [1,0]. Repeated samples across
+batches are intentional for this correctness probe. This is NOT a production
+epoch order, full-cohort speed benchmark, full training or full evaluation.
+
+Serial comparator: Git HEAD comparison_upper_cache.py copied byte-exact into
+legacy_comparison_upper_cache.py; commit and source SHA recorded in request.json.
+Concurrent comparator: current isolated helper contexts plus cpu_staging(2),
+four shared candidate workers, two separate batch coordinator threads.
+Both activate byte-verified original V1/m10 operators, keep every candidate
+and graph element, and reuse identical immutable fields/static upper/P caches.
+
+Two-batch wall: serial30.162s, concurrent19.982s.
+Process CPU: serial76.188s, concurrent81.750s.
+End-of-input process RSS snapshots:7,714,074,624 /10,458,935,296 bytes; not peak.
+The local scheduling probe reduced elapsed time33.75% (1.51x), while consuming
+more simultaneous RAM/CPU. Do not extrapolate this to the server/full cohort.
+
+Observed concurrent overlap intervals:
+- distinct liver_5/liver_6 raw/case-fields:8.909934s
+- distinct source upper-helper construction:4.103782s
+- two complete batch construction calls:19.777380s
+Serial had zero corresponding overlap. Global RNG hash is unchanged in each
+path and identical between paths.
+
+Both ordered batches match all857 tensor/array/layout/metadata leaves exactly.
+Batch0 hash90a6103e3830ca88e5f83c01116093d0dbeb6a9241ac1b175295f731a709f58f
+Batch1 hash6ea61a3950d6304f9b0777328f4bc5d5e4717147aeacf29ecbee0f3477010182
+Actual ordered _prefetch after caches warmed also matched both exactly.
+Its receipt: certified_cached_concurrency=true, certified_cold_concurrency=true,
+slots2, four candidate workers+two coordinator capacity; mode cached_shared.
+This actual _prefetch check covers warm integration, not cold-admission policy;
+separate unit tests cover that policy. Direct cpu_staging validates cold overlap.
+
+One genuine complete CUDA update on the first concurrent physical2 batch:
+- original10434532 total/trainable parameters; no model reduction
+-1085/1085 parameter tensors have finite gradients, no missing gradients
+- CNN/L0/L1/L2/scalar gradient norms all nonzero
+- listwise loss2.069052696; two-view consistency0.127884060
+- optimizer update changed complete model SHA; no checkpoint written
+- peak CUDA allocated2,302,735,872 bytes; reserved2,436,890,624 bytes
+- transfer0.165748s, forward2.993685s, backward6.793979s, optimizer0.387818s
+- whole update wall10.840171s; no final quality/performance claim
+
+Original reference hashes, original cache inventory/size/mtime, frozen helpers,
+and current execution helper hashes stayed unchanged during this run.
+AST syntax check and actual CPU/CUDA DEBUG passed. No new unit tests run by
+this harness. Parent task owns production edits and broader regression tests.
+Artifacts: report.json, request.json, serial/concurrent reports and complete
+fingerprint JSONs, named input_timing.jsonl, concurrent/prefetch.jsonl.
+
+작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다. (명시적 DEBUG 배치 전체)
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (OOM 없음)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

@@ -56,10 +56,11 @@ class _StagingCleanupError(RuntimeError):
 
 def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
               pin_memory=True, with_timing=False, receipt_path=None):
-    """Ordered CPU staging with measured admission for complete cache hits.
+    """Ordered CPU staging with measured admission for independent inputs.
 
-    The first batch and every cold hierarchy use the original serial batch
-    path. Only certified cached batches share a bounded candidate worker pool.
+    The first batch measures actual memory. Cold batches may share a bounded
+    worker pool only when their provider certifies isolated upper helpers and
+    supplies a complete CT workspace estimate. Legacy providers stay serial.
     Memory estimates include observed RSS growth and tensor storage, retaining
     the declared uncached workspace reserve. They are admission estimates,
     not worst-case guarantees; the original hard resource guard still applies.
@@ -74,11 +75,21 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
                and callable(staging) and budget is not None
                and 0 < getattr(provider, 'resident_limit', 0) < getattr(budget, 'rss_bytes', 0))
     ceiling = workers - 2 if capable else 1
-    reserve = int(budget.rss_bytes - provider.resident_limit) if capable else 0
+    declared_workspace = int(budget.rss_bytes - provider.resident_limit) if capable else 0
+    cold_estimate = getattr(provider, 'cold_staging_bytes', None)
+    cold_capable = (capable and getattr(provider, 'independent_cold_inputs', False) is True
+                    and callable(cold_estimate))
+    # Cold inputs now reserve their dense arrays explicitly. Keep the same
+    # unestimated headroom as PressureBudget's pressure trigger, instead of
+    # reserving that entire workspace twice and forcing a full LRU to serial.
+    reserve = declared_workspace // 2 if cold_capable else declared_workspace
     plan = dict(format='comparison_cpu_prefetch_v1', arm=arm, view_epoch=epoch,
                 training=training, full129=full, declared_workers=workers,
                 certified_cached_concurrency=capable, slots=1,
-                declared_workspace_reserve_bytes=reserve,
+                certified_cold_concurrency=cold_capable,
+                cold_workspace_policy='full CT dense-array inventory plus measured batch storage',
+                declared_workspace_reserve_bytes=declared_workspace,
+                retained_unestimated_headroom_bytes=reserve,
                 admission_scope='measured estimate; original hard budget remains authoritative',
                 first_batch_peak_rss_bytes=None, first_batch_rss_growth_bytes=None,
                 largest_batch_storage_bytes=0, slot_estimate_bytes=0)
@@ -111,7 +122,7 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
     with ThreadPoolExecutor(max_workers=ceiling, thread_name_prefix='comparison-cpu') as pool:
         if capable:
             rss_before, _ = _prefetch_resources()
-        pending.append((pool.submit(obtain, following), False))
+        pending.append((pool.submit(obtain, following), False, 0))
         counts['submitted'] += 1
         counts['cold_batches'] += 1
         counts['peak_queued_batches'] = 1
@@ -120,7 +131,7 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
             first = True
             while pending:
                 waiting = time.perf_counter()
-                active, active_warm = pending.popleft()
+                active, active_warm, _ = pending.popleft()
                 if first and capable:
                     peak = rss_before
                     while True:
@@ -153,7 +164,9 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
                     rss, available = _prefetch_resources()
                     usable = min(max(0, budget.rss_bytes - rss), available) - reserve
                     measured_slots = max(1, min(ceiling, usable // plan['slot_estimate_bytes']))
-                    plan['slots'] = measured_slots if first else min(plan['slots'], measured_slots)
+                    # Re-evaluate after cache release or larger inputs. A low
+                    # first reading must not lock the whole epoch to one slot.
+                    plan['slots'] = measured_slots
                     if first:
                         receipt('first_batch_measured', current_rss_bytes=rss,
                                 os_available_bytes=available)
@@ -161,12 +174,14 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
                     receipt('single_batch_compatibility')
                 first = False
 
-                # A cold hierarchy never overlaps another CPU batch. It may
-                # retain the original one-batch overlap with GPU consumption.
+                # Original providers still serialize cold hierarchies. The
+                # isolated provider can overlap different cases and sources.
                 while following is not None:
                     warm = bool(capable and ready(following, arm, epoch,
                                                   training=training, full=full))
-                    if not warm and pending:
+                    cold_workspace = cold_estimate(following) if cold_capable and not warm else None
+                    independent = warm or (cold_capable and cold_workspace is not None)
+                    if not independent and pending:
                         break
                     if pending and scope is None:
                         break
@@ -177,30 +192,38 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
                         admission = max(1, min(plan['slots'], usable // plan['slot_estimate_bytes']))
                     else:
                         admission = 1
-                    if len(pending) >= (admission if warm else 1):
+                    estimate = plan['slot_estimate_bytes']
+                    if cold_workspace is not None:
+                        estimate += cold_workspace
+                    if len(pending) >= (admission if independent else 1):
+                        break
+                    if pending and sum(job[2] for job in pending) + estimate > usable:
                         break
                     if not pending and scope is not None:
                         scope.__exit__(None, None, None)
                         scope = None
-                    if warm and scope is None:
+                    if independent and scope is None:
                         new_scope = staging(plan['slots'])
                         new_scope.__enter__()
                         scope = new_scope
-                    mode = ('cached_shared', plan['slots']) if warm else ('cold_serial', 1)
+                    mode = (('cached_shared' if warm else 'cold_shared', plan['slots'])
+                            if independent else ('cold_serial', 1))
                     if mode != last_mode:
                         receipt('scheduling_mode', mode=mode[0], planned_slots=mode[1],
-                                current_admission_slots=admission if warm else 1,
+                                current_admission_slots=admission if independent else 1,
+                                next_batch_estimated_bytes=estimate,
+                                cold_workspace_measured_or_inventory_known=cold_workspace is not None,
                                 candidate_workers=workers, coordinator_slots=mode[1],
                                 executor_capacity_total=workers+mode[1],
                                 executor_capacity_scope='one shared candidate pool plus batch coordinator slots; '
                                                         'excludes main thread and native library pools')
                         last_mode = mode
-                    pending.append((pool.submit(obtain, following), warm))
+                    pending.append((pool.submit(obtain, following), warm, estimate))
                     counts['submitted'] += 1
                     counts['warm_batches' if warm else 'cold_batches'] += 1
                     counts['peak_queued_batches'] = max(counts['peak_queued_batches'], len(pending))
                     following = next(iterator, None)
-                    if not warm:
+                    if not independent:
                         break
                 counts['yielded'] += 1
                 if with_timing:
@@ -217,7 +240,7 @@ def _prefetch(provider, batches, arm, epoch, *, training=True, full=False,
             primary = sys.exc_info()[1]
             errors = []
             while pending:
-                future, _ = pending.popleft()
+                future, _, _ = pending.popleft()
                 try:
                     # Already-running jobs are drained, including their errors.
                     # Jobs that have not started need no materialization on pause.

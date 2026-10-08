@@ -8,6 +8,19 @@ from tools.report_comparison_runtime import (build_report, parse_jsonl, summariz
 
 
 class ComparisonRuntimeReportUnitTests(unittest.TestCase):
+    def test_cold_staging_capacity_is_not_reported_as_measured_utilization(self):
+        report = build_report({}, [], [], [], [])
+        report['warnings'] = []
+        report['cpu_staging'] = dict(latest_mode=dict(mode='cold_shared',
+            planned_slots=6, current_admission_slots=2, candidate_workers=16,
+            certified_cold_concurrency=True), latest_finished_segment=dict(
+                cold_batches=80, warm_batches=2, peak_queued_batches=4))
+        text = render_text(report)
+        self.assertIn('cold_shared', text)
+        self.assertIn('planned slots=6 current admission=2', text)
+        self.assertIn('not measured active workers', text)
+        self.assertIn('not completed-epoch totals', text)
+
     def test_gpu_policy_measurement_is_not_reported_as_epoch_speedup(self):
         report = build_report({}, [], [], [], [])
         report['warnings'] = []

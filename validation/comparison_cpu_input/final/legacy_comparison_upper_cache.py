@@ -8,13 +8,12 @@ import json
 from pathlib import Path
 import threading
 import time
-from types import FunctionType
 import uuid
 
 import numpy as np
 
 from .preparation_reuse import _publication_guard, _rename_new
-from .u_bridge_upper import _binding
+from .u_bridge_upper import _HELPER_LOCK, _binding
 
 
 FORMAT = 'comparison_compact_original_upper_v1'
@@ -162,159 +161,47 @@ class CompactUpperCache:
                         original_formulas_preserved=True)
 
 
-def _with_globals(function, replacements):
-    """Keep the verified function's code; bind only its execution helpers."""
-    if not isinstance(function, FunctionType):
-        raise TypeError('Verified original Python upper function required')
-    namespace = dict(function.__globals__)
-    namespace.update(replacements)
-    value = FunctionType(function.__code__, namespace, function.__name__,
-                         function.__defaults__, function.__closure__)
-    value.__kwdefaults__ = function.__kwdefaults__
-    value.__annotations__ = function.__annotations__
-    value.__dict__.update(function.__dict__)
-    value.__qualname__ = function.__qualname__
-    value.__module__ = function.__module__
-    return value
-
-
-class _HierarchyProxy:
-    def __init__(self, original, provider):
-        self._original, self._provider = original, provider
-
-    def __getattr__(self, name):
-        context = getattr(self._provider._upper_local, 'active', None)
-        if context is not None and name in context['helpers']:
-            return context['helpers'][name]
-        if context is not None and name == 'build_patient_graph':
-            return context['patient']
-        return getattr(self._original, name)
-
-
-class _CacheProxy:
-    def __init__(self, original_runtime, provider):
-        self._original_runtime, self._provider = original_runtime, provider
-
-    def __getattr__(self, name):
-        function = getattr(self._original_runtime.cache, name)
-        context = getattr(self._provider._upper_local, 'active', None)
-        if name != 'build_inference_sample' or context is None:
-            return function
-        if context.get('inference') is None:
-            context['inference'] = _with_globals(function,
-                {'build_patient_graph': context['patient']})
-        # Return an actual function, not a call wrapper. The outer timing
-        # adapter reads its globals at call time and retains these bindings.
-        return context['inference']
-
-
-class _UpperRuntime:
-    def __init__(self, original, provider):
-        self._original = original
-        self.hierarchy = _HierarchyProxy(original.hierarchy, provider)
-        self.cache = _CacheProxy(original, provider)
-
-    def __getattr__(self, name):
-        return getattr(self._original, name)
-
-
 def compact_upper_provider(original):
-    """Bind exact cached helpers per input thread, without module mutation."""
+    """Memoize original liver/axis outputs inside the existing serialized context."""
     class CompactUpperProvider(original):
-        independent_cold_inputs = True
-
         def __init__(self, *args, **kwargs):
-            self._upper_local = threading.local()
-            self._upper_runtime_lock = threading.RLock()
-            self._upper_runtime = None
             super().__init__(*args, **kwargs)
             self._compact_upper_cache = CompactUpperCache(
                 self.root / 'compact_upper_v1', self._get, self._check_budget)
 
-        def _runtime(self):
-            with self._upper_runtime_lock:
-                current = super()._runtime()
-                if self._upper_runtime is None or self._upper_runtime._original is not current:
-                    self._upper_runtime = _UpperRuntime(current, self)
-                return self._upper_runtime
-
         @contextmanager
         def _upper_context(self, example, case, source, regions):
-            if getattr(self._upper_local, 'active', None) is not None:
-                raise RuntimeError('Nested static upper wrapper is not allowed')
-            # UBridgeData computes and verifies this source binding before it
-            # returns the context manager. Never enter that manager: its module
-            # patches and process-wide helper lock are not needed here.
-            unused_context = super()._upper_context(example, case, source, regions)
-            del unused_context
-            binding = _binding(self._upper_bindings[example['id']])
-            hierarchy = self._runtime().hierarchy
-            if (getattr(getattr(case, 'paths', None), 'case_id', None) != binding['case_id']
-                    or tuple(case.shape) != tuple(binding['shape'])
-                    or list(map(float, case.spacing)) != binding['spacing']
-                    or int(source.component_id) != binding['source_component']
-                    or tuple(source.anchor_center) != tuple(binding['anchor'])
-                    or int(source.voxel_count) != binding['source_voxels']
-                    or int(hierarchy.UPPER_RAW_DIM) != binding['upper_raw_dim']):
-                raise ValueError('Actual source/CT identity differs from static upper binding')
-            source_original, lesions_original = hierarchy._source_raw, hierarchy._lesions
-            liver_original, axis_original = hierarchy._liver_raw, hierarchy._principal_axis
-            if getattr(source_original, '_u_bridge_upper_wrapper', False):
-                raise RuntimeError('Nested static upper wrapper is not allowed')
+            # Enter the original context before binding anything: it supplies
+            # verified identities and its existing source/lesion helper wrappers.
+            with _HELPER_LOCK, super()._upper_context(example, case, source, regions):
+                binding = _binding(self._upper_bindings[example['id']])
+                hierarchy = self._runtime().hierarchy
+                liver_original, axis_original = hierarchy._liver_raw, hierarchy._principal_axis
 
-            def validate(actual_case, actual_source, actual_regions, ct_clip):
-                if (actual_case is not case or actual_source is not source or actual_regions is not regions
-                        or list(map(float, ct_clip)) != binding['ct_clip']):
-                    raise ValueError('Original upper helper requested another verified CT/source/region')
+                def liver(actual_case, actual_regions, *, tumor_label, ct_clip):
+                    if (actual_case is not case or actual_regions is not regions
+                            or tumor_label != binding['tumor_label']
+                            or list(map(float, ct_clip)) != binding['ct_clip']):
+                        raise ValueError('Compact liver helper requested another verified case/region/config')
+                    return self._compact_upper_cache.obtain('liver_raw', binding,
+                        lambda: liver_original(actual_case, actual_regions,
+                                               tumor_label=tumor_label, ct_clip=ct_clip))
 
-            def liver(actual_case, actual_regions, *, tumor_label, ct_clip):
-                if (actual_case is not case or actual_regions is not regions
-                        or tumor_label != binding['tumor_label']
-                        or list(map(float, ct_clip)) != binding['ct_clip']):
-                    raise ValueError('Compact liver helper requested another verified case/region/config')
-                return self._compact_upper_cache.obtain('liver_raw', binding,
-                    lambda: liver_original(actual_case, actual_regions,
-                                           tumor_label=tumor_label, ct_clip=ct_clip))
+                def axis(mask, spacing):
+                    if mask is not source.full_mask:
+                        return axis_original(mask, spacing)
+                    if (not isinstance(mask, np.ndarray) or mask.dtype != np.dtype(bool)
+                            or mask.shape != tuple(binding['shape'])
+                            or list(map(float, spacing)) != binding['spacing']):
+                        raise ValueError('Compact source axis mask/spacing binding differs')
+                    return self._compact_upper_cache.obtain('source_axis', binding,
+                        lambda: axis_original(mask, spacing))
 
-            def axis(mask, spacing):
-                if mask is not source.full_mask:
-                    return axis_original(mask, spacing)
-                if (not isinstance(mask, np.ndarray) or mask.dtype != np.dtype(bool)
-                        or mask.shape != tuple(binding['shape'])
-                        or list(map(float, spacing)) != binding['spacing']):
-                    raise ValueError('Compact source axis mask/spacing binding differs')
-                return self._compact_upper_cache.obtain('source_axis', binding,
-                    lambda: axis_original(mask, spacing))
-
-            # The previous module context also affected the nested principal
-            # axis call in _source_raw. Preserve that exact cold/hot call path.
-            bound_source = _with_globals(source_original, {'_principal_axis': axis})
-
-            def source_raw(actual_case, actual_source, actual_regions, occupied_without_source, *, ct_clip):
-                validate(actual_case, actual_source, actual_regions, ct_clip)
-                if (not isinstance(occupied_without_source, np.ndarray)
-                        or occupied_without_source.shape != tuple(binding['shape'])
-                        or occupied_without_source.dtype != np.dtype(bool)):
-                    raise ValueError('Original source-excluded occupied-mask contract differs')
-                return self._upper_cache._obtain('source_raw', binding, lambda: bound_source(
-                    actual_case, actual_source, actual_regions, occupied_without_source, ct_clip=ct_clip))
-
-            def lesions(actual_case, actual_source, actual_regions, *, tumor_label, max_lesions, ct_clip):
-                validate(actual_case, actual_source, actual_regions, ct_clip)
-                if tumor_label != binding['tumor_label'] or max_lesions != binding['max_lesions']:
-                    raise ValueError('Original lesion annotation/limit contract differs')
-                return self._upper_cache._obtain('lesions', binding, lambda: lesions_original(
-                    actual_case, actual_source, actual_regions, tumor_label=tumor_label,
-                    max_lesions=max_lesions, ct_clip=ct_clip))
-
-            helpers = dict(_source_raw=source_raw, _lesions=lesions,
-                           _liver_raw=liver, _principal_axis=axis)
-            patient = _with_globals(hierarchy.build_patient_graph, helpers)
-            self._upper_local.active = dict(helpers=helpers, patient=patient)
-            try:
-                yield
-            finally:
-                self._upper_local.active = None
+                hierarchy._liver_raw, hierarchy._principal_axis = liver, axis
+                try:
+                    yield
+                finally:
+                    hierarchy._liver_raw, hierarchy._principal_axis = liver_original, axis_original
 
         def report(self):
             value = super().report()

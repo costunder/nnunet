@@ -83,15 +83,17 @@ class CompactUpperTests(unittest.TestCase):
                     if attempt == 2:
                         provider._cache.clear(); provider._resident_bytes = 0
                     with provider._upper_context({'id': 'UNIT_source'}, case, source, regions):
-                        self.assert_exact(hierarchy._liver_raw(case, regions, tumor_label=2,
+                        bound = provider._runtime().hierarchy
+                        self.assert_exact(bound._liver_raw(case, regions, tumor_label=2,
                             ct_clip=(-200., 250.)), liver)
-                        self.assert_exact(hierarchy._principal_axis(source.full_mask, case.spacing), axis)
+                        self.assert_exact(bound._principal_axis(source.full_mask, case.spacing), axis)
                 self.assertEqual((liver_call.call_count, axis_call.call_count), (1, 1))
                 fresh = compact_upper_provider(BaseProvider)(directory, hierarchy, binding)
                 with fresh._upper_context({'id': 'UNIT_source'}, case, source, regions):
-                    self.assert_exact(hierarchy._liver_raw(case, regions, tumor_label=2,
+                    bound = fresh._runtime().hierarchy
+                    self.assert_exact(bound._liver_raw(case, regions, tumor_label=2,
                         ct_clip=(-200., 250.)), liver)
-                    self.assert_exact(hierarchy._principal_axis(source.full_mask, case.spacing), axis)
+                    self.assert_exact(bound._principal_axis(source.full_mask, case.spacing), axis)
                 self.assertEqual((liver_call.call_count, axis_call.call_count), (1, 1))
             for kind, row in provider.report()['compact_upper']['kinds'].items():
                 self.assertEqual((row['calls'], row['builds'], row['reopens'], row['resident_hits']), (3, 1, 1, 1))
@@ -105,13 +107,14 @@ class CompactUpperTests(unittest.TestCase):
             original = hierarchy._principal_axis
             with patch.object(hierarchy, '_principal_axis', wraps=original) as called:
                 with provider._upper_context({'id': 'UNIT_source'}, case, source, regions):
-                    first = hierarchy._principal_axis(source.full_mask, case.spacing)
+                    bound = provider._runtime().hierarchy
+                    first = bound._principal_axis(source.full_mask, case.spacing)
                     expected = first[0].copy(); first[0][:] = 900
-                    self.assert_exact(hierarchy._principal_axis(source.full_mask, case.spacing)[0], expected)
+                    self.assert_exact(bound._principal_axis(source.full_mask, case.spacing)[0], expected)
                     alternate = source.full_mask.copy()
-                    self.assert_exact(hierarchy._principal_axis(alternate, case.spacing), original(alternate, case.spacing))
+                    self.assert_exact(bound._principal_axis(alternate, case.spacing), original(alternate, case.spacing))
                     with self.assertRaisesRegex(ValueError, 'spacing binding'):
-                        hierarchy._principal_axis(source.full_mask, case.spacing + 1)
+                        bound._principal_axis(source.full_mask, case.spacing + 1)
                 self.assertEqual(called.call_count, 2)
 
     def test_binding_changes_create_distinct_entries_and_liver_shares_across_sources(self):
@@ -170,7 +173,7 @@ class CompactUpperTests(unittest.TestCase):
             with patch.object(hierarchy, '_liver_raw', side_effect=ValueError('UNIT original failure')) as fail:
                 with self.assertRaisesRegex(ValueError, 'UNIT original failure'):
                     with provider._upper_context({'id': 'UNIT_source'}, case, source, regions):
-                        hierarchy._liver_raw(case, regions, tumor_label=2, ct_clip=(-200., 250.))
+                        provider._runtime().hierarchy._liver_raw(case, regions, tumor_label=2, ct_clip=(-200., 250.))
                 self.assertIs(hierarchy._liver_raw, fail)
             self.assertFalse(list((Path(directory)/'compact_upper_v1').glob('liver_raw/*/metadata.json')))
 

@@ -1,0 +1,397 @@
+{
+  "wall_seconds": 30.407816800056025,
+  "process_cpu_seconds": 75.53125,
+  "rng_before": "cb6a01d3b54fe581084a4ee510c4c38029f8732e00b256f043319b2c6e9a8bf2",
+  "rng_after": "cb6a01d3b54fe581084a4ee510c4c38029f8732e00b256f043319b2c6e9a8bf2",
+  "events": [
+    {
+      "stage": "case_fields",
+      "identity": "liver_5",
+      "thread": "MainThread",
+      "began": 590229.1287884,
+      "ended": 590236.9081196
+    },
+    {
+      "stage": "upper_context",
+      "identity": "liver_5:0",
+      "thread": "MainThread",
+      "began": 590237.6539529,
+      "ended": 590241.0063943
+    },
+    {
+      "stage": "case_fields",
+      "identity": "liver_6",
+      "thread": "MainThread",
+      "began": 590242.1353403,
+      "ended": 590249.7802971
+    },
+    {
+      "stage": "upper_context",
+      "identity": "liver_6:0",
+      "thread": "MainThread",
+      "began": 590250.556623,
+      "ended": 590254.2725373
+    },
+    {
+      "stage": "full_batch",
+      "identity": [
+        0,
+        1
+      ],
+      "thread": "MainThread",
+      "began": 590228.9552526,
+      "ended": 590256.5246532
+    },
+    {
+      "stage": "full_batch",
+      "identity": [
+        1,
+        0
+      ],
+      "thread": "MainThread",
+      "began": 590256.5246681,
+      "ended": 590259.3630136
+    }
+  ],
+  "case_overlap": [],
+  "upper_overlap": [],
+  "batch_overlap": [],
+  "provider": {
+    "format": "v18_own_source_selected_native_u_bridge_v1",
+    "source_samples": 3,
+    "native_U_per_case": 128,
+    "candidate_metadata_contract": "original_v1_source_positive_metadata_v1",
+    "training_query_count": 8,
+    "full_evaluation_query_count": 129,
+    "workers": 4,
+    "resident_bytes": 6489281952,
+    "resident_limit_bytes": 21474836480,
+    "whole_case_fields": {
+      "cases": 2,
+      "array_bytes": 2212495360,
+      "disk_bytes": 2212498641,
+      "receipts": {
+        "liver_5": {
+          "format": "v18_exact_whole_case_distance_fields_v1",
+          "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\whole_case_fields\\liver_5",
+          "status": "reopened",
+          "binding_sha256": "8575423b0d30d43e719323227a4fa5941b2f7e6be08ebf8b5775dde289c60511",
+          "metadata_sha256": "4a24d6710c5d8affccdfe7012e11c1cbb3f063407546d44667aeab154a12d0ce",
+          "fields": {
+            "depth": {
+              "array_bytes": 563085312,
+              "dtype": "<f4",
+              "file": "depth.npy",
+              "file_bytes": 563085440,
+              "fortran_order": false,
+              "sha256": "4589ab2c1567ecca47f5e2817c11baa71eefc321d41757667ec627acb6722cbb",
+              "shape": [
+                512,
+                512,
+                537
+              ],
+              "units": "mm"
+            },
+            "occupied": {
+              "array_bytes": 563085312,
+              "dtype": "<f4",
+              "file": "occupied.npy",
+              "file_bytes": 563085440,
+              "fortran_order": false,
+              "sha256": "2a115c62a15b91ae73da89985e9f65195754c649f67451a3b8a9815bf1601313",
+              "shape": [
+                512,
+                512,
+                537
+              ],
+              "units": "mm"
+            }
+          },
+          "array_bytes": 1126170624,
+          "disk_bytes": 1126172268,
+          "disk_free_bytes": 1404843061248,
+          "disk_free_bytes_before_build": null,
+          "readonly": true,
+          "whole_case": true,
+          "recomputed": false,
+          "page_release_hint": {
+            "supported": false,
+            "applied": false,
+            "advised_bytes": 0,
+            "fields": {
+              "depth": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              },
+              "occupied": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              }
+            }
+          },
+          "last_cold_load_page_release_hint": {
+            "supported": false,
+            "applied": false,
+            "advised_bytes": 0,
+            "fields": {
+              "depth": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              },
+              "occupied": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              }
+            }
+          },
+          "wall_seconds": 1.2689495000522584
+        },
+        "liver_6": {
+          "format": "v18_exact_whole_case_distance_fields_v1",
+          "case_directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\whole_case_fields\\liver_6",
+          "status": "reopened",
+          "binding_sha256": "a2e8ef38e9a6d4e425ad2537ed9cd9a5184c0c7de00812f95e29606f8665e839",
+          "metadata_sha256": "fab0ce6af47480d22f49d50dedfe741a96d577d745e12606a82a71cc9a89005b",
+          "fields": {
+            "depth": {
+              "array_bytes": 543162368,
+              "dtype": "<f4",
+              "file": "depth.npy",
+              "file_bytes": 543162496,
+              "fortran_order": false,
+              "sha256": "1d9cf85a23d2ff4380dc6d87b5014d6abd4b0307d2b321809e9d86e6e75e8f58",
+              "shape": [
+                512,
+                512,
+                518
+              ],
+              "units": "mm"
+            },
+            "occupied": {
+              "array_bytes": 543162368,
+              "dtype": "<f4",
+              "file": "occupied.npy",
+              "file_bytes": 543162496,
+              "fortran_order": false,
+              "sha256": "ebae79575ac4ed226d7c3f019486fa8071fd613b2f3d06f8c7f3c5293dd7a4f1",
+              "shape": [
+                512,
+                512,
+                518
+              ],
+              "units": "mm"
+            }
+          },
+          "array_bytes": 1086324736,
+          "disk_bytes": 1086326373,
+          "disk_free_bytes": 1404792856576,
+          "disk_free_bytes_before_build": null,
+          "readonly": true,
+          "whole_case": true,
+          "recomputed": false,
+          "page_release_hint": {
+            "supported": false,
+            "applied": false,
+            "advised_bytes": 0,
+            "fields": {
+              "depth": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              },
+              "occupied": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              }
+            }
+          },
+          "last_cold_load_page_release_hint": {
+            "supported": false,
+            "applied": false,
+            "advised_bytes": 0,
+            "fields": {
+              "depth": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              },
+              "occupied": {
+                "supported": false,
+                "applied": false,
+                "advised_bytes": 0,
+                "reason": "unsupported_platform",
+                "method": "madvise(MADV_DONTNEED)"
+              }
+            }
+          },
+          "wall_seconds": 1.1944150000344962
+        }
+      }
+    },
+    "static_upper": {
+      "format": "v18_exact_original_static_upper_v1",
+      "original_helper_builds": 0,
+      "disk_reopens": 4,
+      "resident_hits": 0,
+      "original_build_seconds": 0.0,
+      "cache_read_seconds": 0.008121600025333464,
+      "resident_bytes": 568,
+      "entries": 4,
+      "disk_bytes": 8350,
+      "receipts": [
+        {
+          "kind": "source_raw",
+          "status": "reopened",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\upper_static\\liver_5\\c1_a353_244_456\\source_raw",
+          "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+          "payload_sha256": "c000378e523c75b61829400324fcfe39937353153192cebeb70151a4819750e3",
+          "array_bytes": 56,
+          "disk_bytes": 1662,
+          "original_compute_seconds": 0.691637100011576,
+          "wall_seconds": 0.0019658999517560005,
+          "exact_original_arrays": true
+        },
+        {
+          "kind": "lesions",
+          "status": "reopened",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\upper_static\\liver_5\\c1_a353_244_456\\lesions",
+          "binding_sha256": "7cc015ddd646431839e96f6094fed07f3f27b503a6aa87068799289ccbf8ae46",
+          "payload_sha256": "ea0253f5e7e31238bd7cb95ce2d71d1cc914ce2e4aa26376365248cf4407c9ac",
+          "array_bytes": 0,
+          "disk_bytes": 2289,
+          "original_compute_seconds": 1.1538836999679916,
+          "wall_seconds": 0.002050100010819733,
+          "exact_original_arrays": true
+        },
+        {
+          "kind": "source_raw",
+          "status": "reopened",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\upper_static\\liver_6\\c6_a386_293_389\\source_raw",
+          "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+          "payload_sha256": "898f72e1ca57712d1195db356b076d746f413a30016dca45f2d65bc16f975105",
+          "array_bytes": 56,
+          "disk_bytes": 1656,
+          "original_compute_seconds": 22.88040829997044,
+          "wall_seconds": 0.0017641999293118715,
+          "exact_original_arrays": true
+        },
+        {
+          "kind": "lesions",
+          "status": "reopened",
+          "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\upper_static\\liver_6\\c6_a386_293_389\\lesions",
+          "binding_sha256": "57627477f2ce7fd54e17a6a26babf8491f0fc6e3c60e50c6813ec7bec3c7e14e",
+          "payload_sha256": "625c7a094cb100193cdba80bb47bca52646305d45fe98a05758126e523dba831",
+          "array_bytes": 456,
+          "disk_bytes": 2743,
+          "original_compute_seconds": 15.54219170002034,
+          "wall_seconds": 0.00258540001232177,
+          "exact_original_arrays": true
+        }
+      ],
+      "original_formulas_preserved": true,
+      "candidates_changed": false
+    },
+    "local_builds": 14,
+    "disk_hits": 2,
+    "resident_hits": 18,
+    "evictions": 0,
+    "field_builds": 0,
+    "field_reopens": 2,
+    "field_mapping_reuses": 0,
+    "field_build_seconds": 0.0,
+    "field_reopen_seconds": 2.4633645000867546,
+    "field_reuse_seconds": 0.0,
+    "positive_metadata_builds": 2,
+    "CP_candidate_search_used": false,
+    "U_resampled": false,
+    "comparison_controls": {
+      "arms": [
+        "selected",
+        "native",
+        "native_fixed",
+        "native_listwise"
+      ],
+      "actual_view_epoch_unchanged": true,
+      "fixed_training_keys": [
+        "P",
+        "U:0",
+        "U:1",
+        "U:2",
+        "U:3",
+        "U:4",
+        "U:5",
+        "U:6"
+      ],
+      "full_validation": "same original P + every frozen native U:0..127",
+      "original_P_definition_changed": false
+    },
+    "source_cache_stats": {
+      "original_builds": 0,
+      "disk_hits": 2,
+      "original_build_seconds": 0.0,
+      "disk_read_seconds": 0.07846860005520284,
+      "full_volume_mask_stored": false,
+      "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\source_prepared",
+      "resident_storage": "original provider LRU and budget"
+    },
+    "compact_upper": {
+      "format": "comparison_compact_original_upper_v1",
+      "kinds": {
+        "liver_raw": {
+          "calls": 2,
+          "builds": 2,
+          "reopens": 0,
+          "resident_hits": 0,
+          "original_seconds": 4.369638099917211,
+          "lookup_seconds": 4.38915599999018
+        },
+        "source_axis": {
+          "calls": 2,
+          "builds": 2,
+          "reopens": 0,
+          "resident_hits": 0,
+          "original_seconds": 0.5457139000063762,
+          "lookup_seconds": 0.5647790000075474
+        }
+      },
+      "memory_ownership": "original provider resident LRU and hard budget",
+      "original_formulas_preserved": true
+    },
+    "sample_cache": {
+      "original_builds": 2,
+      "hits": 2,
+      "disk_reads": 2,
+      "local_reference_reads": 0,
+      "raw_verifications": 4,
+      "original_seconds": 27.323407199932262,
+      "hot_seconds": 2.6247098001185805,
+      "format": "comparison_referenced_sample_layout_v1",
+      "directory": "D:\\AI project\\nnunet\\work\\runs\\v1.9\\cold-concurrency\\final-20261008\\serial\\data\\sample_layout",
+      "local_graphs_and_patches_stored": false,
+      "resident_storage": "original provider LRU and budget",
+      "integrity_policy": "verify publications on LRU misses; raw identity once per process",
+      "epoch_views_rebuilt": true,
+      "rotating_candidate_sets_require_first_build": true
+    }
+  },
+  "rss_bytes": 7715459072
+}

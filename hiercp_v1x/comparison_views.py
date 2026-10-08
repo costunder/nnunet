@@ -9,6 +9,8 @@ from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import threading
+from types import FunctionType
+import math
 
 
 def materialize_parallel_views(sample_module, schema_module, sample, *,
@@ -81,6 +83,8 @@ def parallel_view_provider(original):
             self._parallel_view_runtime = None
             self._comparison_pool = None
             self._comparison_staging_lock = threading.Lock()
+            self._comparison_keys_lock = threading.Lock()
+            self._comparison_keys = {}
             super().__init__(*args, **kwargs)
             if type(self.workers) is not int or self.workers < 2:
                 raise ValueError('Measured parallel graph workers >=2 required')
@@ -105,8 +109,8 @@ def parallel_view_provider(original):
                 ordered_map=self._comparison_map)
 
         def _comparison_map(self, function, values):
-            # Only complete cached hierarchies enter a shared staging scope.
-            # Canonical cold builders retain their original, serialized path.
+            # A certified provider can share this pool for cold canonical
+            # construction too; batch coordinators never execute in this pool.
             pool = self._comparison_pool
             if pool is not None:
                 return list(pool.map(function, values))
@@ -114,9 +118,75 @@ def parallel_view_provider(original):
                                     thread_name_prefix='comparison-views') as own_pool:
                 return list(own_pool.map(function, values))
 
+        def _get(self, key, factory):
+            # Concurrent source preparations may need the same case/region.
+            # Keep the original LRU semantics but build/load each key once.
+            with self._comparison_keys_lock:
+                entry = self._comparison_keys.setdefault(key, [threading.RLock(), 0])
+                entry[1] += 1
+            try:
+                with entry[0]:
+                    return super()._get(key, factory)
+            finally:
+                with self._comparison_keys_lock:
+                    entry[1] -= 1
+                    if entry[1] == 0:
+                        del self._comparison_keys[key]
+
+        def _local_map(self, *args, **kwargs):
+            original = super()._local_map
+            pool = self._comparison_pool
+            if pool is None:
+                return original(*args, **kwargs)
+            if getattr(self, 'independent_cold_inputs', False) is not True:
+                raise RuntimeError('Cold local construction requires independent upper helpers')
+
+            @contextmanager
+            def shared_executor(*, max_workers):
+                if max_workers != self.workers:
+                    raise ValueError('Original canonical worker capacity changed')
+                yield pool
+
+            # Run the original implementation, including binding, publication,
+            # shape/type checks and ordering. Only executor ownership changes.
+            function = original.__func__
+            namespace = dict(function.__globals__, ThreadPoolExecutor=shared_executor)
+            bound = FunctionType(function.__code__, namespace, function.__name__,
+                                 function.__defaults__, function.__closure__)
+            bound.__kwdefaults__ = function.__kwdefaults__
+            return bound(self, *args, **kwargs)
+
+        def cold_staging_bytes(self, indices):
+            """Conservative dense-array inventory, additional to batch storage.
+
+            Per voxel: image/label 4+2, organ 1, two fields 8, region
+            labels/depth/organ 7, source and excluded masks 1+1, connected
+            labels 4, distance-transform indices 12 and distances 8 bytes.
+            This admission estimate is not a hard bound; the original RSS
+            guard and declared workspace reserve remain in force.
+            """
+            sizes = []
+            for index in indices:
+                row = self.raw[self._example(index)['case_id']]
+                shape = row.get('shape')
+                if shape is None:
+                    # Older valid inventories omitted optional shape metadata.
+                    # They still use the complete original serial preparation;
+                    # do not invent an estimate or break checkpoint resume.
+                    return None
+                if (not isinstance(shape, (tuple, list)) or len(shape) != 3
+                        or any(type(n) is not int or n <= 0 for n in shape)):
+                    raise ValueError('Cold CPU staging requires verified full CT shape')
+                sizes.append(math.prod(shape) * 48)
+            if not sizes:
+                raise ValueError('Cold CPU staging requires the complete nonempty source batch')
+            # Count repeated patients per source too: independently active
+            # source workspaces must not borrow each other's allocation.
+            return sum(sizes)
+
         @contextmanager
         def cpu_staging(self, slots):
-            """Share candidate workers across ordered, cached batch preparations.
+            """Share candidate workers across ordered independent preparations.
 
             One shared pool retains the saved candidate-worker capacity.
             Memory-admitted batch coordinators mostly wait for this pool;

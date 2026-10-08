@@ -496,6 +496,16 @@ def inspect_arm(arm_directory, *, cache_log=None, input_log=None, epoch=None):
         latest_update_policy=policies[-1]['gpu_execution'] if policies else None,
         original_execution_retries=sum(row.get('event') == 'optimized_execution_OOM_original_retry' for row in gpu_rows),
         scope='measured activation/chunk execution; original source batch and optimizer schedule preserved')
+    staging_log = directory / 'prefetch.jsonl'
+    staging_rows = _read_jsonl(staging_log, 'prefetch', warnings) if staging_log.is_file() else []
+    staged_training = [row for row in staging_rows if row.get('arm') == result.get('arm')
+        and row.get('training') is True and row.get('view_epoch') == result['selected_epoch']]
+    scheduling = [row for row in staged_training if row.get('event') == 'scheduling_mode']
+    finishes = [row for row in staged_training if row.get('event') == 'finished']
+    result['cpu_staging'] = dict(available=bool(staged_training),
+        latest_mode=scheduling[-1] if scheduling else None,
+        latest_finished_segment=finishes[-1] if finishes else None,
+        scope='selected training epoch; planned slots are not measured active workers')
     result.update(arm_directory=str(directory), cache_log=str(cache_log) if cache_log else None,
                   input_log=str(input_log) if input_log else None, warnings=warnings,
                   read_only=True, checkpoint_loaded=False)
@@ -538,6 +548,19 @@ def render_text(report):
         lines.append(f"Validation loader construction {_fmt(vt['loader_seconds']['seconds'])}s overlaps prefetch; {validation['prefetch_batch_records']} new prefetch rows and {validation['legacy_synchronous_batch_records']} legacy synchronous rows")
     to_gib = lambda value: value / 2**30 if value is not None else None
     lines.append(f"Logged peaks: train CUDA {_fmt(to_gib(training['peak_cuda_bytes']))} GiB RSS {_fmt(to_gib(training['peak_rss_bytes']))} GiB process CPU {_fmt(training['max_process_cpu_percent'])}% | validation CUDA {_fmt(to_gib(validation['peak_cuda_bytes']))} GiB RSS {_fmt(to_gib(validation['peak_rss_bytes']))} GiB")
+    staging = report.get('cpu_staging', {})
+    if staging.get('latest_mode'):
+        mode = staging['latest_mode']
+        lines.append(f"CPU input staging: {mode.get('mode')} | planned slots={mode.get('planned_slots')} "
+                     f"current admission={mode.get('current_admission_slots')} "
+                     f"shared candidate workers={mode.get('candidate_workers')} "
+                     f"cold concurrency certified={mode.get('certified_cold_concurrency', False)} "
+                     f"(planned capacity, not measured active workers)")
+    if staging.get('latest_finished_segment'):
+        segment = staging['latest_finished_segment']
+        lines.append(f"Last finished input segment: cold={segment.get('cold_batches')} "
+                     f"warm={segment.get('warm_batches')} peak queued={segment.get('peak_queued_batches')}; "
+                     f"not completed-epoch totals")
     gpu = report.get('gpu_execution', {})
     if gpu.get('available'):
         latest = gpu.get('latest_calibration')

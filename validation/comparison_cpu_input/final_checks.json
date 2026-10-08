@@ -1,0 +1,40 @@
+{
+  "scope": "final snapshot CPU contract regression and syntax only; actual CT/CUDA scope in verification.json",
+  "unit_tests": 182,
+  "unit_status": "PASS",
+  "unit_seconds": 39.668,
+  "syntax_python": "3.10",
+  "syntax_files": [
+    "hiercp_v1x/comparison_runtime.py",
+    "hiercp_v1x/comparison_upper_cache.py",
+    "hiercp_v1x/comparison_views.py",
+    "tools/report_comparison_runtime.py",
+    "tools/profile_comparison_input_debug.py",
+    "tools/verify_comparison_cold_debug.py",
+    "tests/test_comparison_prefetch.py",
+    "tests/test_comparison_runtime_report.py",
+    "tests/test_comparison_views.py",
+    "tests/test_comparison_upper_cache.py",
+    "tests/test_comparison_upper_parallel.py"
+  ],
+  "files_sha256": {
+    "hiercp_v1x/comparison_runtime.py": "32d1fa0b889d66d85d30455992c664de0a69ad197d5a3c7c5f1a6b80cd69976f",
+    "hiercp_v1x/comparison_upper_cache.py": "3f30406ee5f1648c23650ea96a22aee54bbdec35f3608a50a46f58836d5c5e9d",
+    "hiercp_v1x/comparison_views.py": "ed80bb3edc8ec74edb120d1e37cc8fb8e281854829e73221eb75af517f8cda2f",
+    "tools/report_comparison_runtime.py": "41432d1f456992cd9d095af5f777771278e10cb3aa7a4ea47bdb01e7095bcf3f",
+    "tools/profile_comparison_input_debug.py": "06c3950a237eeda6f01b63d1adf2b45efbdc478d2ea39dd3c00ca011754ea555",
+    "tools/verify_comparison_cold_debug.py": "2934721ed70ac781747b3f977a648ff3bae3b054c6ef74c7799144a38eca0967",
+    "tests/test_comparison_prefetch.py": "01e574f3b27a238a8e7c98cd2134ce254534209376b587c18e91e75d32ac95e5",
+    "tests/test_comparison_runtime_report.py": "f5cf1352fae430077961ff5b44d822b141b4940c8f9970e2a256c80679a80611",
+    "tests/test_comparison_views.py": "2cf7bc66597ad703cb951491108ad72d77602fea0a06e8817fe6cb6443b95f3a",
+    "tests/test_comparison_upper_cache.py": "fc48dd952fa8ae1484b738727ed04a157daea0f2a808c98c897c8984a21088ad",
+    "tests/test_comparison_upper_parallel.py": "040c3805c7efe8545c01380c54c9ac0b6ccaa8bc27cc40e9540fc24a66215918"
+  },
+  "production_training_run": false,
+  "production_evaluation_run": false,
+  "server_epoch_time_measured": false,
+  "previous_unit_pass": {
+    "tests": 181,
+    "seconds": 42.77
+  }
+}
