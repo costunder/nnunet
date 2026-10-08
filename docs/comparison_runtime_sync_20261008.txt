@@ -5,14 +5,13 @@ repository and the GitHub branch codex/v222-server-r6. Deploy the exact Git
 commit into a new server worktree. Record git rev-parse HEAD on both ends;
 copying edits manually into an older active worktree is not the deployment path.
 
-The regular tools/server_comparison_cached.sh entry now calls
-tools/run_allocated_comparison_arm.py with the existing arguments. It verifies
-the current PBS job, account, host, GPU UUID and preserved CPU/RAM contract
-before starting the original supervisor. Run it from a sufficiently allocated
-PBS environment. An ordinary SSH shell without that allocation is rejected.
-Direct invocation of the older Python entry bypasses this new admission check.
-The guard covers one arm; combined demand of several arms needs its own
-adequate allocation. This release does not reserve GPUs or change saved budgets.
+The regular tools/server_comparison_cached.sh entry preserves the existing
+SSH/direct execution workflow through tools/run_comparison_arm.py. No new PBS
+job or scheduling workflow is required by this entry. Existing device checks,
+memory budgets, ownership checks and resume contracts remain in place.
+tools/run_allocated_comparison_arm.py is an optional, explicit PBS-specific
+entry only. It must not replace the established default launch workflow.
+Neither entry reserves GPUs or changes the saved experiment budgets.
 
 Execution changes:
 - Persist fully validated GPU policy measurements with experiment, device,
