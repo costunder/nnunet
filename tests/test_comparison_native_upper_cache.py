@@ -251,6 +251,47 @@ class NativeUpperCacheCPUUnit(unittest.TestCase):
                 self.obtain(instance)[2], self.value.signature, self.value.index['region_bindings'], {})
         self.assertEqual(sha(self.value.root / first['path']), first['payload_sha256'])
 
+    def test_native_assignment_admission_runs_after_original_source_activation(self):
+        """Regression for real validate_cohort -> AST binding's hiercp import."""
+        from hiercp_v1x.u_bridge_experiment import digest
+        value = self.value
+        baseline = Path(self.directory.name)
+        source = baseline / 'source/v1.0'; source.mkdir(parents=True)
+        inventory = copy.deepcopy(value.metadata)
+        inventory['split']['inner_val'] = value.cohort['case_ids']
+        value.inventory_path.write_text(json.dumps(inventory), encoding='utf8')
+        native = dict(config=copy.deepcopy(value.bundle.config),
+                      split=dict(train=['UNITdonor'], val=value.cohort['case_ids']))
+        proof = {'UNIT': 'completed baseline admission is explicitly mocked'}
+        config = copy.deepcopy(native['config'])
+        config['graph'].update(adaptive_roi_margin_mm=10., context_outer_radius_mm=10.)
+        manifest = dict(config=config, baseline=dict(baseline=str(baseline),
+            inventory_sha256=sha(value.inventory_path), baseline_proof_sha256=digest(proof)),
+            original=dict(source=str(source)), scope={'UNIT': 'scope'})
+        calls = []
+
+        class AssignmentAdmissionReached(Exception):
+            pass
+
+        def activate(actual_source, activated_scope):
+            self.assertEqual(actual_source, source)
+            self.assertIsNone(activated_scope)
+            calls.append('original activated')
+            return manifest['original'], manifest['scope']
+
+        def admit(actual_inventory, *, debug):
+            self.assertEqual(calls, ['original activated'])
+            self.assertEqual(actual_inventory, inventory)
+            self.assertFalse(debug)
+            raise AssignmentAdmissionReached
+
+        with patch('hiercp_v1x.comparison_native_checkpoint._manifest', return_value=(manifest, 'u_bridge')), \
+                patch('hiercp_v1x.half_a_training.baseline_proof', return_value=(native, proof)), \
+                patch('hiercp_v1x.historical_checkpoint._activate', side_effect=activate), \
+                patch.object(cache, 'validate_cohort', side_effect=admit):
+            with self.assertRaises(AssignmentAdmissionReached):
+                cache._load_geometry_inputs(baseline, 'selected', value.inventory_path)
+
 
 if __name__ == '__main__':
     unittest.main()

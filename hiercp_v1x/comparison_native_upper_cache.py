@@ -204,7 +204,6 @@ def _load_geometry_inputs(experiment, arm, inventory_path):
     if sha(inventory_path) != manifest['baseline']['inventory_sha256']:
         raise ValueError('Native upper cache inventory differs from the sealed comparison')
     inventory = _read(inventory_path)
-    cohort = validate_cohort(inventory, debug=False)
     baseline = _directory(manifest['baseline']['baseline'])
     native, proof = baseline_proof(baseline)
     config = copy.deepcopy(native['config'])
@@ -213,11 +212,15 @@ def _load_geometry_inputs(experiment, arm, inventory_path):
     if (config != manifest['config'] or comparison_digest(proof) != manifest['baseline']['baseline_proof_sha256']
             or source != Path(manifest['original']['source']).resolve(strict=True)
             or set(native['split']['train']) != set(inventory['split']['inner_train'])
-            or set(native['split']['val']) != set(cohort['case_ids'])):
+            or set(native['split']['val']) != set(inventory['split']['inner_val'])):
         raise ValueError('Actual native upper geometry baseline/configuration/population differs')
     source_proof, scope = _activate(source, None)
     if source_proof != manifest['original'] or scope != manifest['scope']:
         raise ValueError('Activated original source/scope differs from the sealed comparison')
+    # Native assignment admission binds AST helpers to hiercp.common. Its
+    # documented prerequisite is the already activated original namespace;
+    # calling it earlier would import the current package and block activation.
+    cohort = validate_cohort(inventory, debug=False)
     from hiercp.prototype import PrototypeBank
     bank_path = _regular(baseline / 'shared/prototype_bank.pt')
     if sha(bank_path) != manifest['baseline']['bank_sha256']:
