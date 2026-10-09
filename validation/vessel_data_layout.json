@@ -1,0 +1,87 @@
+{
+  "date_kst": "2026-10-10",
+  "scope": "User-requested local vessel training-input organization",
+  "source": "D:\\AI project\\nnunet\\work\\vessels\\liver_1",
+  "destination": "D:\\AI project\\nnunet\\datasets\\msd_liver\\vessels\\liver_1",
+  "file_count": 5,
+  "moved_bytes": 554672,
+  "copy_created": false,
+  "sha256_and_size_verified": true,
+  "ct_label_source_sha_verified": true,
+  "native_ct_grid_verified": true,
+  "npz_schema_verified": true,
+  "graph_counts": {
+    "skeleton_points": 1236,
+    "skeleton_edges": 1207,
+    "branch_nodes": 100,
+    "branch_edges": 90
+  },
+  "moved_files": [
+    {
+      "original": "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\centerline_graph.npz",
+      "current": "D:\\AI project\\nnunet\\datasets\\msd_liver\\vessels\\liver_1\\centerline_graph.npz",
+      "bytes": 20148,
+      "sha256": "f087b7a5a7e8233fc5fee1376ee03b5016c305a4b516e140e09cd4ef3e0564e5"
+    },
+    {
+      "original": "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\graph.json",
+      "current": "D:\\AI project\\nnunet\\datasets\\msd_liver\\vessels\\liver_1\\graph.json",
+      "bytes": 173000,
+      "sha256": "5ca80b113fb0dd8a45ce1a1d79cffe8ccd7edb9d7da0334faa02c5c8dbe291a2"
+    },
+    {
+      "original": "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\vessels.nii.gz",
+      "current": "D:\\AI project\\nnunet\\datasets\\msd_liver\\vessels\\liver_1\\vessels.nii.gz",
+      "bytes": 67377,
+      "sha256": "317b18b2b582d6dd5a79557c04dffde517f36c7520c91d8f4cec4e58273f6866"
+    },
+    {
+      "original": "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\vessels_liver.nii.gz",
+      "current": "D:\\AI project\\nnunet\\datasets\\msd_liver\\vessels\\liver_1\\vessels_liver.nii.gz",
+      "bytes": 149528,
+      "sha256": "791c8818674124fab2f1005c39959e63fd2189db9905a74e16b7d8344097b54b"
+    },
+    {
+      "original": "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\skeleton.nii.gz",
+      "current": "D:\\AI project\\nnunet\\datasets\\msd_liver\\vessels\\liver_1\\skeleton.nii.gz",
+      "bytes": 144619,
+      "sha256": "c16ba230a61c60de619664edcedefa58a6a2ea8f0d0141fb52374080b6ad006e"
+    }
+  ],
+  "visualization_files_preserved": {
+    "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\scene.mrb": "899495ca8080f1f45934dcf8abd8075424bdb37b6000fd10b6ab76756722509c",
+    "D:\\AI project\\nnunet\\work\\vessels\\liver_1\\preview.png": "110b3f6604e7ae573320b32c87684a810d9e3e683826e97e44d326ef6c553226"
+  },
+  "source_graph_receipt_preserved": true,
+  "training_pipeline_integrated": false,
+  "full_training": false,
+  "full_evaluation": false,
+  "server_files_changed": false,
+  "navigation_links_verified": 28,
+  "model_structure_changed": false,
+  "training_settings_changed": false,
+  "graph_arrays_preserved": {
+    "skeleton_points": 1236,
+    "skeleton_edges": 1207,
+    "branch_nodes": 100,
+    "branch_edges": 90
+  },
+  "version_navigation_regression": {
+    "run": 10,
+    "passed": 8,
+    "failed": 2,
+    "failures": [
+      "short_aliases_reach_repo: existing v1.8 entry delegates directly to run_v18_u_bridge.py",
+      "version_markdown_local_links: existing v1 runs link to missing exports/HierCP_v1x_REVIEW_20261003"
+    ],
+    "preexisting_failures_verified": true,
+    "comparison_head": "d2086ef217940538af26ef23b9b20a1a373ff863",
+    "unchanged_baseline_files": [
+      "versions/v1.8/run.py",
+      "versions/v1/runs.md",
+      "versions/run.py",
+      "versions/index.json",
+      "tests/test_version_layout.py"
+    ]
+  }
+}

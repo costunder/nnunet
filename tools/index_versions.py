@@ -227,7 +227,13 @@ def artifact_locations():
         for child in sorted(cache.iterdir()):
             if child.is_dir(): add(child,kind='cache',category='auxiliary_cache')
     vessels=ROOT/'work/vessels'
-    if vessels.is_dir(): add(vessels,kind='vessels',category='derived_vessel_outputs')
+    if vessels.is_dir():
+        add(vessels,kind='vessels',category='derived_vessel_visualizations')
+        rows[-1]['display']='혈관 시각화'
+    vessel_inputs=ROOT/'datasets/msd_liver/vessels'
+    if vessel_inputs.is_dir():
+        add(vessel_inputs,kind='vessels',version='common',category='derived_vessel_training_inputs')
+        rows[-1]['display']='혈관 학습 입력'
     archive=ROOT/'work/archive'
     if archive.is_dir():
         for child in sorted(archive.iterdir()):

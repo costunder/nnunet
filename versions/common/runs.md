@@ -105,11 +105,12 @@
 
 </details>
 
-<details><summary>vessels (1)</summary>
+<details><summary>vessels (2)</summary>
 
 | 내용 | 위치 |
 | --- | --- |
-| vessels | [열기](../../work/vessels/) |
+| 혈관 학습 입력 | [열기](../../datasets/msd_liver/vessels/) |
+| 혈관 시각화 | [열기](../../work/vessels/) |
 
 </details>
 

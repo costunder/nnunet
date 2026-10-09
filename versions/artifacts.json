@@ -3768,13 +3768,22 @@
       "category": "auxiliary_cache"
     },
     {
+      "path": "datasets/msd_liver/vessels",
+      "version": "common",
+      "kind": "vessels",
+      "display": "혈관 학습 입력",
+      "scope_hint": "one actual case; preprocessing only; no training integration",
+      "deletion_authorized": false,
+      "category": "derived_vessel_training_inputs"
+    },
+    {
       "path": "work/vessels",
       "version": "common",
       "kind": "vessels",
-      "display": "vessels",
+      "display": "혈관 시각화",
       "scope_hint": "inspect receipt",
       "deletion_authorized": false,
-      "category": "derived_vessel_outputs"
+      "category": "derived_vessel_visualizations"
     },
     {
       "path": "work/archive/reviews",

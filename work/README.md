@@ -4,14 +4,15 @@
 
 | 폴더 | 무엇이 들어 있나 |
 | --- | --- |
-| [vessels](vessels/README.md) | 지금 확인할 혈관 결과. 현재 liver_1 한 사례 |
+| [vessels](vessels/README.md) | 혈관 Slicer 장면·미리보기 |
+| [혈관 학습 입력](../datasets/msd_liver/vessels/README.md) | 환자별 혈관 마스크·중심선·그래프. 현재 liver_1 한 사례 |
 | [runs](runs/README.md) | 앞으로 만드는 실험의 짧은 버전/방법별 저장 위치 |
 | [cache](cache/README.md) | 설치·추론·단위 테스트의 보조 파일 |
 | runtime/totalseg | TotalSegmentator 실행 설정 |
 | [archive](archive/README.md) | 예전 결과·검토 자료·테스트 출력. 삭제하지 않고 보존 |
 | 그 밖의 기존 실험 폴더 | source·checkpoint·검증 기록이 기존 경로를 참조하는 자료. [버전별 목록](../versions/artifacts.md)에서 용도 확인 |
 
-**혈관 그래프를 보려면 [vessels/liver_1](vessels/liver_1/README.md)만 열면 됩니다.** scene.mrb는 Slicer 장면, centerline_graph.npz는 그래프 데이터입니다.
+**혈관 그래프를 보려면 [vessels/liver_1](vessels/liver_1/README.md)만 열면 됩니다.** scene.mrb는 Slicer 장면이며, 그래프 데이터는 datasets/msd_liver/vessels에 있습니다.
 
 자동 생성 UNIT 폴더는 archive/tests 아래 종류/번호로 옮깁니다. 이동이 끝난 기록은 archive/organization 안의 summary.json과 plan.json으로 확인합니다. 오래된 로그와 보고서에 적힌 경로는 원문을 고치지 않고 이 이동 기록으로 연결합니다.
 

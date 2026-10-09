@@ -4,7 +4,7 @@
 
 | 버전 | 위치·분류 항목 수 | 위치 |
 | --- | ---: | --- |
-| common | 62 | [runs.md](common/runs.md) |
+| common | 63 | [runs.md](common/runs.md) |
 | v1 | 36 | [runs.md](v1/runs.md) |
 | v1.4 | 16 | [runs.md](v1.4/runs.md) |
 | v1.5 | 5 | [runs.md](v1.5/runs.md) |

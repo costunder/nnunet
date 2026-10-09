@@ -10,7 +10,8 @@
 | 현재 후보·loss 비교 | [selected](../versions/v1.8/selected/README.md), [native](../versions/v1.8/native/README.md), [fixed](../versions/v1.9/fixed/README.md), [listwise](../versions/v1.9/listwise/README.md) | 각 실험 설명, 독립 실행 입구, 체크포인트 위치 |
 | 다른 모델 방법 | [v2.2](../versions/v2.2/README.md) | CNN, SAGE, 영역 축약, 희소 그래프 등 방법별 상태 |
 | 실제 CT 원본 | `datasets/` | 학습 입력. 테스트 부산물과 구분 |
-| 혈관 결과 | `work/vessels/liver_1/` | 마스크·그래프·Slicer 장면·미리보기 |
+| 혈관 학습 입력 | `datasets/msd_liver/vessels/liver_1/` | 환자별 혈관 마스크·중심선·그래프. `vessels/index.json`에서 원본 CT·주석과 연결 |
+| 혈관 시각화 | `work/vessels/liver_1/` | Slicer 장면·미리보기 |
 | 보조 캐시 | `work/cache/` | 설치 파일, Slicer 임시 자료, 테스트 작업 공간 |
 | 보관 자료 | `work/archive/` | 과거 혈관 결과, 테스트 출력, 이전 검토 자료 |
 | 검증 증거 | `validation/`, `docs/` | 실행 결과와 진단 기록. 파일 이동 시 원문을 고치지 않음 |
