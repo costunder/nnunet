@@ -267,6 +267,90 @@ class ScorePublication(unittest.TestCase):
         changed=without.replace('physical_candidate_batch=32','physical_candidate_batch=8',1)
         self.assertNotEqual(cp._scoring_core_ast(text),cp._scoring_core_ast(changed))
 
+    def test_lossless_publisher_wiring_preserves_original_numerical_code_objects(self):
+        from hiercp_v1x import v24_lossless_raw_storage as lossless
+        original=cp._root_raw_preparation()
+        adapted=cp.lossless_raw_case_preparer()
+        self.assertIs(adapted.__code__,original.prepare_raw_case.__code__)
+        inner=adapted.__globals__['_prepare_raw_case']
+        self.assertIs(inner.__code__,original._prepare_raw_case.__code__)
+        self.assertIs(inner.__globals__['save_case'],lossless.save_case)
+        self.assertIsNot(original._prepare_raw_case.__globals__['save_case'],lossless.save_case)
+        self.assertEqual(adapted.__kwdefaults__,original.prepare_raw_case.__kwdefaults__)
+        self.assertEqual(inner.__kwdefaults__,original._prepare_raw_case.__kwdefaults__)
+
+    def test_fresh_raw_helper_resolution_ignores_archived_custom_package_shadow(self):
+        script='''import sys,types,json
+from pathlib import Path
+from hiercp_v1x import v24_nnunet_cp as cp
+shadow=types.ModuleType('custom_trainers');shadow.__path__=['/DEBUG_archived_source/custom_trainers']
+sys.modules['custom_trainers']=shadow
+for name in ('onlinecp_raw_bank','onlinecp_raw_resampling'):
+ module=types.ModuleType('custom_trainers.'+name)
+ module.__file__='/DEBUG_archived_source/custom_trainers/'+name+'.py'
+ sys.modules[module.__name__]=module
+helper=cp._root_raw_preparation();adapted=cp.lossless_raw_case_preparer()
+from hiercp_v1x import v24_lossless_raw_storage as storage
+assert Path(storage.original.__file__).resolve()==(cp.ROOT/'custom_trainers/onlinecp_raw_bank.py').resolve()
+assert Path(helper.prepare_case.__code__.co_filename).resolve()==(cp.ROOT/'custom_trainers/onlinecp_raw_resampling.py').resolve()
+assert Path(helper.run_case_jobs.__code__.co_filename).resolve()==(cp.ROOT/'hiercp/preparation_runtime.py').resolve()
+assert sys.modules['custom_trainers'] is shadow
+assert adapted.__globals__['_prepare_raw_case'].__globals__['save_case'] is storage.save_case
+print(json.dumps(dict(ROOT_math_and_publication_pinned=True,archived_namespace_untouched=True)))
+'''
+        result=subprocess.run([sys.executable,'-B','-c',script],cwd=cp.ROOT,capture_output=True,text=True,check=True)
+        self.assertTrue(json.loads(result.stdout)['archived_namespace_untouched'])
+
+    def test_new_storage_binding_does_not_require_new_file_in_old_scoring_release(self):
+        self.assertEqual(len(cp.LEGACY_FILES),3);self.assertEqual(len(cp.LOSSLESS_SOURCE_FILES),4)
+        self.assertEqual(cp.FILES[:3],cp.LEGACY_FILES)
+        self.assertEqual(cp.FILES[3],'hiercp_v1x/v24_lossless_raw_storage.py')
+        self.assertTrue(set(cp.RAW_HELPER_FILES)<=set(cp.FILES))
+
+    def test_raw_scheduler_admits_all_cases_with_conservative_measured_memory(self):
+        # Mechanical DEBUG resource observations, not measured patient memory.
+        tree=ast.parse((cp.ROOT/cp.FILES[0]).read_text(encoding='utf8'))
+        function=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='_materialize_bank')
+        invocation=next(node for node in ast.walk(function) if isinstance(node,ast.Call)
+            and isinstance(node.func,ast.Name) and node.func.id=='bounded_run')
+        mode=next(item.value for item in invocation.keywords if item.arg=='workers')
+        self.assertEqual(ast.literal_eval(mode),'auto')
+        runtime=cp._pinned_root_module('hiercp/preparation_runtime.py')
+        class DebugMeasurement:
+            def __enter__(self):
+                self.before={'rss_bytes':0};self.peak_rss=32*2**30
+                self.report={'elapsed_seconds':1.,'status':'complete'}
+                return self
+            def __exit__(self,*exception):return False
+        completed=[]
+        with tempfile.TemporaryDirectory(prefix='v24_scheduler_DEBUG_',dir=Path.cwd()) as temp:
+            with patch.dict(runtime.run_case_jobs.__globals__,
+                    snapshot=lambda:dict(cpu_capacity=4,available_memory_bytes=48*2**30),
+                    Measurement=DebugMeasurement),contextlib.redirect_stdout(io.StringIO()):
+                report=runtime.run_case_jobs(tasks=range(5),function=lambda case:case,
+                    commit=completed.append,workers=ast.literal_eval(mode),report_path=Path(temp)/'resources.json')
+        self.assertEqual(sorted(completed),list(range(5)))
+        self.assertEqual(report['status'],'complete')
+        self.assertEqual(report['applied_worker_counts'],[1]*5)
+        self.assertEqual(report['configured_tasks'],report['completed_tasks'])
+
+    def test_lossless_case_admission_requires_exact_original_dtypes_and_full_voxel_proof(self):
+        volumes={name:dict(dtype=dtype,shape=[1,2,3,4],verified_voxels=24,
+            uncompressed_bytes=24*size,stored_bytes=80,
+            source_tile_bytes_sha256='a'*64,decoded_tile_bytes_sha256='a'*64)
+            for name,dtype,size in [('baseline_unclipped','<f8',8),('baseline_seg','<i2',2)]}
+        proof=dict(format=cp.RAW_STORAGE,volume_count=2,volumes=volumes,
+            full_precision_volume_roundtrip_verified=True,whole_volume_runtime_decode=False,candidate_storage_unchanged=True,
+            compression=dict(lossy_filters=False,original_dtype_preserved=True),verified_voxels=48,
+            original_volume_bytes=240,compressed_volume_file_bytes=160)
+        self.assertEqual(cp.validate_lossless_case_receipt({'lossless_storage':proof})['verified_voxels'],48)
+        for mutation in [lambda value:value['volumes']['baseline_unclipped'].update(dtype='<f4'),
+                lambda value:value['volumes']['baseline_seg'].update(dtype='|u1'),
+                lambda value:value['volumes']['baseline_unclipped'].update(decoded_tile_bytes_sha256='b'*64),
+                lambda value:value.update(verified_voxels=24),lambda value:value.update(whole_volume_runtime_decode=True)]:
+            altered=copy.deepcopy(proof);mutation(altered)
+            with self.assertRaises(ValueError):cp.validate_lossless_case_receipt({'lossless_storage':altered})
+
 
 class CLITests(unittest.TestCase):
     def test_fresh_prepare_activates_original_before_population_or_outputs(self):

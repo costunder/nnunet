@@ -24,6 +24,14 @@ class FrozenV23Bank(OnlineCPBank):
                 or set(self.v24_score_manifest['score_files'])!=set(self.metadata['split']['outer_train'])):
             raise ValueError('Bank lacks the complete actual105 frozen scores')
 
+    def _get_raw_store(self):
+        # This arm owns its lossless decoder. Original/common bank defaults
+        # remain unchanged, and large case arrays decode only requested crops.
+        if self._raw_store is None:
+            from hiercp_v1x.v24_lossless_raw_storage import LosslessRawBankStore
+            self._raw_store=LosslessRawBankStore(self.root)
+        return self._raw_store
+
     def _load(self, name):
         if name not in self.metadata['entry_sha256'] or sha(self.root/name)!=self.metadata['entry_sha256'][name]:
             raise ValueError('Actual frozen CP entry changed or is outside the training bank')
@@ -78,13 +86,57 @@ class FrozenV23Bank(OnlineCPBank):
             raise ValueError('Native CT/mask paste recipient/source/grid differs')
         return case,candidate
 
+    def prepare_raw_verification(self):
+        """Verify referenced bytes once without loading any patient arrays.
+
+        Only this trusted in-memory SHA/stat map is inherited by epoch workers.
+        Their normal payload loader still checks every stat and every tensor's
+        shape, dtype, recipient, component and selected center.
+        """
+        index_digest=sha(self.index_path)
+        if read(self.index_path)!=self.metadata:
+            raise ValueError('Frozen bank index changed before raw verification')
+        store=self._get_raw_store()
+        if store._cases or store._sources:
+            raise ValueError('Raw verification must precede runtime array loading')
+        for case_id,names in sorted(self.entries_by_case.items()):
+            for name in names:
+                entry=self._load(name)
+                if str(entry['case_id'][0])!=case_id:
+                    raise ValueError('Raw witness recipient differs from bank mapping')
+                for reference,digest,kind in (
+                        ('raw_case_reference','raw_case_reference_sha256','case'),
+                        ('selected_payload','selected_payload_sha256','candidate')):
+                    path=store._check(str(entry[reference][0]),str(entry[digest][0]))
+                    manifest=read(path)
+                    if (manifest.get('format')!='onlinecp_raw_target_payload_v1'
+                            or manifest.get('kind')!=kind
+                            or not isinstance(manifest.get('arrays'),dict)
+                            or not isinstance(manifest.get('tree'),dict)):
+                        raise ValueError('Incompatible raw witness manifest')
+                    if kind=='candidate':
+                        archive=manifest['archive']
+                        store._check(archive['path'],archive['sha256'])
+                    for spec in manifest['arrays'].values():
+                        if kind=='case' or 'path' in spec:
+                            store._check(spec['path'],spec['sha256'])
+        # Detect files altered during a long full-population streamed audit.
+        for relative,digest in tuple(store._witnesses):
+            store._check(relative,digest)
+        if sha(self.index_path)!=index_digest:
+            raise ValueError('Frozen bank index changed during raw verification')
+        return dict(root=str(self.root.resolve()),index_sha256=index_digest,
+                    witnesses=dict(store._witnesses))
+
 
 class FrozenV23Loader(nnUNetDataLoaderOnlineCP):
-    def __init__(self,*args,bank_path,**kwargs):
+    def __init__(self,*args,bank_path,raw_verification=None,**kwargs):
         super().__init__(*args,bank_path=bank_path,**kwargs)
         self.online_bank=FrozenV23Bank(bank_path)
         if set(self.indices)!=set(self.online_bank.metadata['split']['outer_train']):
             raise ValueError('Native CP loader must retain all105 and exclude outer26')
+        if raw_verification is not None:
+            self.online_bank.adopt_raw_verification(raw_verification)
 
     def _make_paste_plan(self,entry,candidate_index,scale,shift_hu,case_id):
         # The parent's five RNG draws, source draw and jitter stay unchanged.
@@ -118,8 +170,20 @@ class nnUNetTrainer_250epochs_FrozenV23CP(_nnUNetTrainer_250epochs_OnlineCP):
         return train,val
 
     def get_dataloaders(self):
+        receipt=getattr(self,'_v24_raw_verification_receipt',None)
+        if receipt is None:
+            bank=FrozenV23Bank(self.online_bank_path)
+            started=time.perf_counter()
+            receipt=bank.prepare_raw_verification()
+            self._v24_raw_verification_receipt=receipt
+            self.print_to_log_file('[FrozenV23CP] startup raw SHA/stat verification '
+                f'files={len(receipt["witnesses"])} seconds={time.perf_counter()-started:.3f} '
+                'patient_arrays_loaded=False; epoch workers inherit metadata witnesses',
+                also_print_to_console=True)
+        def verified_loader(*args,bank_path,**kwargs):
+            return FrozenV23Loader(*args,bank_path=bank_path,raw_verification=receipt,**kwargs)
         original=_nnUNetTrainer_250epochs_OnlineCP.get_dataloaders
-        namespace=dict(original.__globals__,OnlineCPBank=FrozenV23Bank,nnUNetDataLoaderOnlineCP=FrozenV23Loader)
+        namespace=dict(original.__globals__,OnlineCPBank=FrozenV23Bank,nnUNetDataLoaderOnlineCP=verified_loader)
         # The original validation nnUNetDataLoader factory is untouched. No
         # scorer, donor annotation, CP service or CP transform enters val.
         method=types.FunctionType(original.__code__,namespace,original.__name__,original.__defaults__,original.__closure__)

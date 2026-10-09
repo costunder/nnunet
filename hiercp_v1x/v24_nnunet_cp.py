@@ -31,8 +31,14 @@ PROJECT_RSS_BYTES = 48 * 2**30
 INPUT_RESIDENT_BYTES = 16 * 2**30
 GEOMETRY_RESIDENT_BYTES = 8 * 2**30
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ('hiercp_v1x/v24_nnunet_cp.py', 'tools/run_v24_nnunet_cp.py',
-         'custom_trainers/nnUNetTrainer_FrozenV23CP.py')
+LEGACY_FILES = ('hiercp_v1x/v24_nnunet_cp.py', 'tools/run_v24_nnunet_cp.py',
+                'custom_trainers/nnUNetTrainer_FrozenV23CP.py')
+LOSSLESS_SOURCE_FILES = (*LEGACY_FILES,'hiercp_v1x/v24_lossless_raw_storage.py')
+RAW_HELPER_FILES = ('custom_trainers/onlinecp_raw_bank.py','custom_trainers/onlinecp_raw_resampling.py',
+                    'tools/online_raw_bank_preparation.py','hiercp/preparation_runtime.py')
+FILES = (*LOSSLESS_SOURCE_FILES,*RAW_HELPER_FILES)
+RAW_STORAGE = 'v24_blosc2_lossless_v1'
+_ROOT_RAW_MODULES = {}
 
 
 def resource_contract():
@@ -359,7 +365,9 @@ def materialize_bank(*, pin_path, inventory_path, baseline_preprocessed, scores,
     else:
         if score_source_code is None:raise ValueError('Legacy unsealed score recovery requires explicit audited --score-source-code')
         old_code=Path(score_source_code).resolve(strict=True)
-        if any(sha(old_code/name)!=old_request['source_files_sha256'].get(name) for name in FILES):
+        original_sources=old_request['source_files_sha256']
+        if (set(original_sources) not in (set(LEGACY_FILES),set(LOSSLESS_SOURCE_FILES),set(FILES))
+                or any(sha(old_code/name)!=checksum for name,checksum in original_sources.items())):
             raise ValueError('Legacy actual scoring code differs from the original request SHA proof')
         if _scoring_core_ast((old_code/FILES[0]).read_text(encoding='utf8'))!=_scoring_core_ast((ROOT/FILES[0]).read_text(encoding='utf8')):
             raise ValueError('Original scoring equations/input enumeration changed; scores cannot be silently reused')
@@ -389,6 +397,96 @@ def materialize_bank(*, pin_path, inventory_path, baseline_preprocessed, scores,
             raise ValueError('Lossless complete score recovery SHA mismatch')
     seal_scores(root,rows,population,pin,scoring_provenance=provenance)
     return _materialize_bank(root,meta,rows,baseline,pin)
+
+
+def _pinned_root_module(relative):
+    """Private exact-path import; archived package precedence is irrelevant."""
+    import importlib.util
+    path=(ROOT/relative).resolve(strict=True);checksum=sha(path)
+    if relative in _ROOT_RAW_MODULES:
+        module,admitted=_ROOT_RAW_MODULES[relative]
+        if admitted!=checksum or Path(module.__file__).resolve()!=path:
+            raise ValueError('Pinned ROOT raw helper changed: '+relative)
+        return module
+    name='_v24_ROOT_'+relative.replace('/','_').replace('.','_')
+    spec=importlib.util.spec_from_file_location(name,path)
+    module=importlib.util.module_from_spec(spec);sys.modules[name]=module;spec.loader.exec_module(module)
+    if sha(path)!=checksum or Path(module.__file__).resolve()!=path:
+        raise ValueError('ROOT helper changed during private import')
+    _ROOT_RAW_MODULES[relative]=(module,checksum)
+    return module
+
+
+def _root_raw_preparation():
+    """Exact ROOT helper with only its three source imports explicitly bound."""
+    import types
+    from .v24_lossless_raw_storage import original as raw_bank,ORIGINAL_SOURCE_SHA256
+    if Path(raw_bank.__file__).resolve()!=(ROOT/RAW_HELPER_FILES[0]).resolve():
+        raise ValueError('Lossless backend must use the explicitly pinned ROOT raw bank')
+    if sha(ROOT/RAW_HELPER_FILES[0])!=ORIGINAL_SOURCE_SHA256:
+        raise ValueError('Bound original raw-bank source changed')
+    dependencies={'custom_trainers.onlinecp_raw_bank':raw_bank,
+        'custom_trainers.onlinecp_raw_resampling':_pinned_root_module(RAW_HELPER_FILES[1]),
+        'hiercp.preparation_runtime':_pinned_root_module(RAW_HELPER_FILES[3])}
+    relative='tools/online_raw_bank_preparation.py';path=ROOT/relative;checksum=sha(path)
+    if relative in _ROOT_RAW_MODULES:
+        module,admitted=_ROOT_RAW_MODULES[relative]
+        if admitted!=checksum:raise ValueError('Pinned ROOT preparation source changed')
+        return module
+    tree=ast.parse(path.read_text(encoding='utf8'));body=[];imports=[]
+    module=types.ModuleType('_v24_ROOT_online_raw_bank_preparation');module.__file__=str(path)
+    for node in tree.body:
+        if isinstance(node,ast.ImportFrom) and node.module in dependencies:
+            imports.append(node.module)
+            for alias in node.names:module.__dict__[alias.asname or alias.name]=getattr(dependencies[node.module],alias.name)
+        else:body.append(node)
+    if len(imports)!=3 or set(imports)!=set(dependencies):
+        raise ValueError('Exactly three original raw helper source imports must be pinned')
+    exec(compile(ast.Module(body=body,type_ignores=tree.type_ignores),str(path),'exec'),module.__dict__)
+    if sha(path)!=checksum:raise ValueError('ROOT preparation source changed during admission')
+    _ROOT_RAW_MODULES[relative]=(module,checksum)
+    return module
+
+
+def lossless_raw_case_preparer():
+    """Change only private publication; retain original resampling/checks."""
+    import types
+    original=_root_raw_preparation()
+    from .v24_lossless_raw_storage import save_case
+    def clone(function,namespace):
+        adapted=types.FunctionType(function.__code__,namespace,function.__name__,function.__defaults__,function.__closure__)
+        adapted.__kwdefaults__=copy.deepcopy(function.__kwdefaults__)
+        return adapted
+    inner=clone(original._prepare_raw_case,dict(original._prepare_raw_case.__globals__,save_case=save_case))
+    return clone(original.prepare_raw_case,dict(original.prepare_raw_case.__globals__,_prepare_raw_case=inner))
+
+
+def validate_lossless_case_receipt(document):
+    import numpy as np
+    proof=document.get('lossless_storage')
+    if not isinstance(proof,dict):raise ValueError('Actual lossless case receipt missing')
+    if (proof.get('format')!=RAW_STORAGE or proof.get('volume_count')!=2
+            or proof.get('full_precision_volume_roundtrip_verified') is not True
+            or proof.get('whole_volume_runtime_decode') is not False
+            or proof.get('candidate_storage_unchanged') is not True
+            or set(proof.get('volumes',{}))!={'baseline_unclipped','baseline_seg'}
+            or proof.get('compression',{}).get('lossy_filters') is not False
+            or proof.get('compression',{}).get('original_dtype_preserved') is not True):
+        raise ValueError('Actual full-precision lossless case publication proof required')
+    for name,kind,size in [('baseline_unclipped','f',8),('baseline_seg','i',2)]:
+        volume=proof['volumes'][name];dtype=np.dtype(volume['dtype'])
+        if (dtype.kind!=kind or dtype.itemsize!=size
+                or volume['verified_voxels']!=int(np.prod(volume['shape']))
+                or volume['uncompressed_bytes']!=volume['verified_voxels']*size
+                or volume['stored_bytes']<=0
+                or volume['source_tile_bytes_sha256']!=volume['decoded_tile_bytes_sha256']
+                or len(volume['source_tile_bytes_sha256'])!=64):
+            raise ValueError('Original64-bit CT/16-bit labels lack exact whole-volume proof: '+name)
+    if (proof.get('verified_voxels')!=sum(row['verified_voxels'] for row in proof['volumes'].values())
+            or proof.get('original_volume_bytes')!=sum(row['uncompressed_bytes'] for row in proof['volumes'].values())
+            or proof.get('compressed_volume_file_bytes')!=sum(row['stored_bytes'] for row in proof['volumes'].values())):
+        raise ValueError('Lossless whole-volume verification/storage totals differ')
+    return proof
 
 
 def make_geometry(bundle, population, output, runtime, full_validation_cache):
@@ -567,9 +665,16 @@ def _materialize_bank(root, meta, rows, baseline, pin):
     from hiercp.common import CasePaths, load_case
     from hiercp_v22.data import sources, donor_in_target_spacing
     from hiercp_v22.bank import map_center
-    from tools.online_raw_bank_preparation import prepare_raw_case, prepare_source_candidates
     from nnunetv2.training.dataloading.nnunet_dataset import infer_dataset_class
+    prepare_raw_case=lossless_raw_case_preparer()
+    prepare_source_candidates=_root_raw_preparation().prepare_source_candidates
     score_manifest=read(root/'scoring_manifest.json')
+    request=read(root/'request.json');source_binding=request['source_files_sha256']
+    if set(source_binding)!=set(FILES):raise ValueError('Complete current storage/preparation source binding required')
+    def source_guard():
+        for name,checksum in source_binding.items():
+            if sha(ROOT/name)!=checksum:raise ValueError('Admitted CP preparation/publication source changed: '+name)
+    source_guard()
     if score_manifest.get('complete') is not True or score_manifest.get('pin')!=pin:
         raise ValueError('Completed frozen105 scores must be sealed before raw materialization')
     raw = {row['case_id']: row for row in meta['raw_records']}
@@ -582,6 +687,7 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         return load_case(CasePaths(case_id, Path(info['image']), Path(info['label'])))
     entries, digests, audits = {}, {}, {}
     def one(row):
+        source_guard()
         case_id, donor_id = row['case_id'], row['donor_case_id']
         score_file=root/score_manifest['score_files'][case_id]['path']
         if sha(score_file)!=score_manifest['score_files'][case_id]['sha256'] or read(score_file)!=row:
@@ -601,6 +707,7 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         native, reference, reference_sha = prepare_raw_case(root, case_id, target.image, target.label,
             props, plans, pre, seg, configuration_name='3d_fullres', raw_spacing=target.spacing,
             raw_spatial_unit=nib.load(raw[case_id]['image']).header.get_xyzt_units()[0], minimum_free_bytes=8*2**30)
+        storage=validate_lossless_case_receipt(read(root/reference))
         selected = eligible_argmax(row['scores'],eligibility['eligible_mask'])
         anchor = np.asarray(source.anchor_center) - np.asarray([s.start for s in source.patch_slices])
         refs, hashes, transport = prepare_source_candidates(root, case_id, row['donor_component'], native,
@@ -618,10 +725,12 @@ def _materialize_bank(root, meta, rows, baseline, pin):
                 raw_case_reference=np.asarray([reference]), raw_case_reference_sha256=np.asarray([reference_sha]),
                 candidate_centers=mapped, candidate_raw_centers=centers, scores=np.asarray(row['scores'], dtype=np.float32))
         return case_id, relative, sha(file), dict(eligibility=eligibility, transport=transport, selected_candidate=selected,
+            lossless_storage=storage,
             selection_policy=CP_SELECTION,unconstrained_argmax=int(np.argmax(row['scores'])),
             selected_score=float(row['scores'][selected]),scores_file_sha256=score_manifest['score_files'][case_id]['sha256'],
             all_P_in_joint_context=True, scored128=True, donor_case_id=donor_id, donor_component=row['donor_component'])
-    from hiercp.preparation_runtime import run_case_jobs, snapshot
+    root_runtime=_pinned_root_module('hiercp/preparation_runtime.py')
+    run_case_jobs,snapshot=root_runtime.run_case_jobs,root_runtime.snapshot
     import types
     def bounded_snapshot():
         state=snapshot();rss=process_tree_rss()
@@ -638,8 +747,9 @@ def _materialize_bank(root, meta, rows, baseline, pin):
     require_project_budget()
     from threadpoolctl import threadpool_limits
     with threadpool_limits(limits=1):
-        bounded_run(tasks=rows,function=one,commit=commit,workers=PROJECT_CPU_CORES,report_path=root/'raw_CP_parallel_resources.json')
+        bounded_run(tasks=rows,function=one,commit=commit,workers='auto',report_path=root/'raw_CP_parallel_resources.json')
     require_project_budget()
+    source_guard()
     normalization = plans['foreground_intensity_properties_per_channel']['0']
     bank = dict(format='hiercp_online_bank_v2', pipeline_version=FORMAT, complete=True, debug=False,
         paste_contract='onlinecp_raw_target_paste_v1', entry_storage='v23_scores128_eligible_selected_raw_target_v1',
@@ -652,6 +762,8 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         donor_policy_matches_historical_Basic=False, source_identity={name:sha(ROOT/name) for name in FILES},
         baseline=baseline, inference_GT=False, outer_validation_CP=False,
         original_GNN_parameters=PARAMETERS, all105_recipients=True, all_joint_P_retained=True,
+        raw_storage_policy=RAW_STORAGE,raw_CT_dtype='float64',raw_segmentation_dtype='int16',
+        case_arrays_losslessly_compressed=True,training_crop_only_decompression=True,
         selection_policy=CP_SELECTION,scoring_manifest='scoring_manifest.json',scoring_manifest_file_sha256=sha(root/'scoring_manifest.json'),
         resource_contract=resource_contract())
     validate_bank(bank)
@@ -667,13 +779,18 @@ def validate_bank(bank):
             or bank.get('all_joint_P_retained') is not True or bank.get('outer_validation_CP') is not False
             or bank.get('inference_GT') is not False or bank.get('scoring_manifest')!='scoring_manifest.json'
             or not isinstance(bank.get('scoring_manifest_file_sha256'),str)
-            or len(bank['scoring_manifest_file_sha256'])!=64):
+            or len(bank['scoring_manifest_file_sha256'])!=64
+            or bank.get('raw_storage_policy')!=RAW_STORAGE or bank.get('raw_CT_dtype')!='float64'
+            or bank.get('raw_segmentation_dtype')!='int16'
+            or bank.get('case_arrays_losslessly_compressed') is not True
+            or bank.get('training_crop_only_decompression') is not True):
         raise ValueError('Complete frozen original-GNN CP training contract required')
     expected = set(split['outer_train'])
     if set(bank['entries_by_case']) != expected or set(bank['CP_audits']) != expected:
         raise ValueError('Full105 training-only recipient bank required')
     for case in expected:
         audit = bank['CP_audits'][case]
+        validate_lossless_case_receipt({'lossless_storage':audit.get('lossless_storage')})
         eligibility=audit['eligibility'];mask=eligibility.get('eligible_mask',[])
         if (len(bank['entries_by_case'][case]) != 1
                 or audit['donor_case_id'] not in split['inner_train'] or audit['donor_case_id'] == case

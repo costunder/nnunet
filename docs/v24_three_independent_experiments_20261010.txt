@@ -76,12 +76,16 @@ outer26 validation에는 CP를 적용하지 않고 prediction 입력은 CT뿐이
 사용자의 공유 자원 지시에 따라 세 실험 합계 CPU affinity12개 논리코어와 RAM176GiB 관리 기준을 적용한다.
 GPU1: CPU4/RAM48GiB, GPU5: CPU4/RAM64GiB, GPU6: CPU4/RAM64GiB.
 CPU 준비 작업은 해당 실험의 같은4코어 안에서 수행하고 작업별 CPU affinity 및 낮은 nice 우선순위를 적용한다.
+GPU1 전체 CP 준비는 최대4코어에서 원형 자동 worker 측정기를 사용한다. 최대 환자 DEBUG 실측 RAM23.17GiB를 포함하여48GiB 내 메모리 여유에 따라 동시성을 조절한다.
 RAM은 프로그램의 RSS 검사와 캐시 회계로 관리한다. 이 수치를 실제 확보된 전용 RAM이나 커널 강제 할당량으로 해석하지 않는다.
 모델/데이터를 줄이지 않고 raw/canonical/geometry cache residency를 조정한다. 초과 시 조용히 자원을 더 쓰지 않는다.
 GPU5/6 입력 cache는 /var/tmp의 독립 실험 namespace를 사용한다.
-GPU1 전체105 raw CP bank 실측 최소126.94GiB, native preprocessing 복사17.54GiB와8GiB 여유를 합하면152.49GiB이다.
-/var/tmp의 여유104.50GiB로는 부족하여 GPU1의 새 출력만 /home/aicompetition06/Medical/experiments/v24_frozen_v23_CP_20261010 아래에 만든다.
-해당 사용자 소유 경로의 여유3436.63GiB를 확인했다. 이는 전용 할당량이나 예약된 용량이 아니다. 기존 점수/결과/원본은 보존한다.
+GPU1 전체105 raw CP bank의 비압축 float64 CT/int16 label 최소126.94GiB, native preprocessing 복사17.54GiB와8GiB 여유를 합하면152.49GiB이다.
+/home의 파일시스템 여유와 별개로 실제 계정 quota 오류(Errno122)가 확인되어 그 경로의 실패 출력을 보존한다.
+새 GPU1 bank는 /var/tmp 독립 실험 경로에 Blosc2 ZSTD/BITSHUFFLE 무손실 압축으로 저장하며 float64/int16 dtype과 전체 voxel 값을 유지한다.
+가장 큰 실제 liver_22 [1,808,651,651]의 원형 baseline3.189GiB를0.79027GiB로 압축하고 모든342,431,208 voxel을 배열별 byte-exact 검증했다.
+같은 압축률을105명에 적용한 baseline31.456GiB는 추정치이며 전체 bank의 실제 저장 크기는 제작 후 기록한다.
+학습 시 필요한 crop만 해제하며 원형 cubic resampling/정규화/float64 delta 연산을 바꾸지 않는다. 원본과 기존 결과를 덮어쓰지 않는다.
 실제 사용량은 각 실행 receipt와 자원 로그로 확인한다.
 GPU5/6 physical patient4/8 및 candidate chunk32/64/128을 실제 full128 backward로 비교한다.
 effective batch=physical patient batch x accumulation1 x independent worker1.
@@ -95,7 +99,9 @@ CUDA calibration에서는 현재 allocation뿐 아니라 전체 update 중 peak 
 GPU1 native calibration은 같은 실제 CT/target/CP batch에서 finite forward loss와 모든 active/core gradient를 요구한다.
 원형 nnU-Net의 loss weight0인 auxiliary head만 실제 reversed decoder 출력/parameter identity로 증명하여 별도 기록한다.
 가중치가 바뀌지 않고 GradScaler scale이 양수 범위에서 엄격히 감소한 overflow skip만 같은 batch/RNG/CP 집계로 다시 시도한다.
-production 모델/원형 loss/precision/optimizer를 바꾸지 않는다. 38개 CPU UNIT 검사는 실제 CUDA native calibration 완료를 뜻하지 않는다.
+production 모델/원형 loss/precision/optimizer를 바꾸지 않는다. CP/AMP/witness/무손실 저장의57개 CPU UNIT 검사는 실제 CUDA native calibration 완료를 뜻하지 않는다.
+CP 원본 파일의 SHA/stat은 worker 생성 전에 한 번 검증하여 부모 로더에 보존한다. epoch별 worker는 이를 상속하며 매 접근의 파일 변경 검사는 유지한다.
+이 방식은 epoch마다 전체 큰 배열을 반복해서 SHA 읽기하는 병목을 줄이며 RNG/CP 정책/epoch별 worker seed는 바꾸지 않는다.
 최종 실행 상태/commit/PID/로그/peak VRAM은 outputs/v24_20261010의 실행 증거에 별도로 기록한다.
 
 작업 완료 체크리스트
