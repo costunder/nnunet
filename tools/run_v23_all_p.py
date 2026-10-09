@@ -186,9 +186,12 @@ def gpu_setup(args, request):
         cudnn_benchmark=bundle.config['runtime']['cudnn_benchmark'])
     from hiercp.model import HierarchicalPyGPlacementModel
     from hiercp_v1x.u_bridge_training import digest
+    from hiercp_v1x.scope_probe_support import state_digest
     saved = torch.load(args.native_experiment / 'initial.pt', map_location='cpu', weights_only=False, mmap=True)
     if saved['contract_sha256'] != read(args.native_experiment / 'experiment.json')['sha256']:
         raise ValueError('Original shared random initialization ownership differs')
+    if saved['model_sha256'] != state_digest(saved['model']):
+        raise ValueError('Original recorded initialization tensor checksum differs')
     model = HierarchicalPyGPlacementModel(**bundle.config['model'])
     model.load_state_dict(saved['model'], strict=True)
     if sum(value.numel() for value in model.parameters()) != request['config']['model_parameters']:
