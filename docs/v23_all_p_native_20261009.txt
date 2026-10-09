@@ -52,6 +52,14 @@ CosineAnnealingLR T_max40, accumulation1, seed42.
 기존 실험의 공통 random initial.pt를 정확히 읽으며 학습된 best/latest를 초기값으로 쓰지 않음.
 Candidate L0 chunk 전체를 activation checkpoint하여 모두 역전파.
 Chunking은 완전한 graph/환자/candidate 삭제가 아니며 upper는 각 환자 전체를 보존.
+바깥 chunk checkpoint에 기존 실제 CUDA parameter를 device 소유 인수로 넘겨
+CUDA dropout RNG를 저장한다. 이 parameter의 device로 실제 CPU 입력을 전송한다.
+Tensor 인수가 없는 checkpoint는 preserve_rng_state=True여도 CUDA device를
+발견하지 못하므로, 최초 calibration 구현의 해당 호출을 본학습 전에 수정했다.
+새 parameter나 가짜 tensor를 만들지 않으며 원래 dropout·model·입력을 유지한다.
+CUDA UNIT은 checkpoint/direct 경로의 forward, 전체 gradient, 다음 CUDA 난수와
+RNG state가 동일한지 확인한다. 이 작은 analytic fixture는 실제 CT/model의
+full128 calibration 또는 전체 학습의 검증을 대신하지 않는다.
 
 실제 자원과 실행
 현재 확인된 ece-a6gpu6의 A6000 GPU1/5/6 각46068MiB, MIG없음.

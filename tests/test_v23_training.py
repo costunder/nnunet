@@ -5,8 +5,10 @@ not a smoke test of real CT, the full original model, or completed training.
 """
 from types import SimpleNamespace
 
+import copy
 import inspect
 import unittest
+from unittest.mock import patch
 import torch
 from torch.nn import functional as F
 
@@ -185,7 +187,7 @@ class _UnitLocal(torch.nn.Module):
 
     def forward_graph(self, graph, source, target):
         base = (source.flatten(1).mean(1) + target.flatten(1).mean(1))[:, None]
-        pattern = torch.arange(1, 129).float()[None]
+        pattern = torch.arange(1, 129, device=base.device).float()[None]
         return {key: base * self.semantic[key] + pattern * .001 for key in FIELDS}
 
 
@@ -204,7 +206,11 @@ class _UnitLocalBatch:
         self.graph_observation_index = torch.tensor([0, 0, 1, 1])
 
     def __len__(self): return 2
-    def to(self, device): return self
+    def to(self, device):
+        result = copy.copy(self)
+        for key in ('source_patches', 'target_patches', 'source_index', 'graph_observation_index'):
+            setattr(result, key, getattr(self, key).to(device))
+        return result
 
 
 def _unit_scorer(net, checkpoint_chunks):
@@ -237,6 +243,63 @@ def test_consistency_matches_original_six_key_cosine_mean():
         fields[key].reshape(2,2,128)[:,1], dim=-1) for key in CONSISTENCY_FIELDS]).mean(0)
     torch.testing.assert_close(consistency, reference)
     assert packed.shape[-1] == 1536
+
+
+def test_checkpoint_receives_existing_real_parameter_for_device_and_rng_capture():
+    net = _UnitNet(); scorer = _unit_scorer(net, True)
+    parameter = next(net.parameters())
+    from torch.utils.checkpoint import checkpoint
+    with patch('hiercp_v1x.v23_training.activation_checkpoint', wraps=checkpoint) as recorded:
+        fields, consistency = scorer._encode(_UnitLocalBatch(), training=True)
+        (fields.square().mean() + consistency.mean()).backward()
+    args, kwargs = recorded.call_args
+    assert len(args) == 2
+    assert args[1] is parameter
+    assert kwargs['use_reentrant'] is False
+    assert kwargs['preserve_rng_state'] is True
+    assert len(list(net.parameters())) == 13  # Existing dense + twelve semantics; no new parameter.
+
+
+class _CudaUnitLocal(_UnitLocal):
+    """CUDA UNIT dropout fixture; no clinical data or model quality evidence."""
+    def __init__(self):
+        super().__init__()
+        self.dropout = torch.nn.Dropout(.4)
+
+    def forward_graph(self, graph, source, target):
+        return {key: self.dropout(value) for key, value in super().forward_graph(graph, source, target).items()}
+
+
+def test_cuda_unit_checkpoint_preserves_dropout_forward_every_gradient_and_next_rng():
+    if not torch.cuda.is_available():
+        raise unittest.SkipTest('CUDA UNIT requires an actual CUDA device; CPU tests do not claim CUDA verification')
+    # This small analytic fixture tests device RNG semantics only. It is not an
+    # original-model/CT smoke test, calibration, or final training result.
+    net = _UnitNet(); net.local_encoder = _CudaUnitLocal()
+    net = net.to('cuda').train()
+    direct, checked = copy.deepcopy(net), copy.deepcopy(net)
+    cpu_rng = torch.random.get_rng_state().clone()
+    cuda_rng = torch.cuda.get_rng_state().clone()
+    results = []
+    try:
+        for model, checkpoint_chunks in ((direct, False), (checked, True)):
+            torch.random.set_rng_state(cpu_rng); torch.cuda.set_rng_state(cuda_rng)
+            scorer = _unit_scorer(model, checkpoint_chunks)
+            fields, consistency = scorer._encode(_UnitLocalBatch(), training=True)
+            (fields.square().mean() + .1*consistency.mean()).backward()
+            gradients = {name: parameter.grad.detach().clone() for name, parameter in model.named_parameters()}
+            results.append((fields.detach().clone(), consistency.detach().clone(), gradients,
+                            torch.rand(32, device='cuda'), torch.cuda.get_rng_state().clone()))
+        first, second = results
+        torch.testing.assert_close(first[0], second[0], rtol=0, atol=0)
+        torch.testing.assert_close(first[1], second[1], rtol=0, atol=0)
+        assert set(first[2]) == set(second[2])
+        for name in first[2]:
+            torch.testing.assert_close(first[2][name], second[2][name], rtol=0, atol=0)
+        torch.testing.assert_close(first[3], second[3], rtol=0, atol=0)
+        assert torch.equal(first[4], second[4])
+    finally:
+        torch.random.set_rng_state(cpu_rng); torch.cuda.set_rng_state(cuda_rng)
 
 
 def test_resume_cursor_must_align_with_rebalanced_distributed_batches():

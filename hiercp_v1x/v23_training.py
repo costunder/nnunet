@@ -140,8 +140,9 @@ class V23Scorer(torch.nn.Module):
 
     def _encode(self, cpu, *, training):
         net = self.net
-        device = next(net.parameters()).device
-        def encode():
+        device_owner = next(net.parameters())
+        def encode(owner):
+            device = owner.device
             gpu = cpu.to(device)
             if gpu.graph.num_graphs != 2 * len(gpu):
                 raise ValueError('Both actual original sampled local views required')
@@ -152,7 +153,7 @@ class V23Scorer(torch.nn.Module):
                 fields = net.local_encoder.forward_graph(gpu.graph,
                     source.index_select(0, owners), target.index_select(0, owners))
                 if tuple(fields) != FIELDS:
-                    raise ValueError('Original six semantic L0 fields changed')
+                    raise ValueError('Original twelve semantic L0 fields changed')
                 views = [value.reshape(len(gpu), 2, 128) for value in fields.values()]
                 packed = torch.cat([value.mean(1) for value in views], dim=1)
                 selected = dict(zip(FIELDS, views))
@@ -163,9 +164,12 @@ class V23Scorer(torch.nn.Module):
             return packed, consistency
         if training and self.checkpoint_local_chunks:
             # Nonreentrant checkpoint supports parameter-only differentiation;
-            # preserve_rng_state keeps dropout identical during recomputation.
-            return activation_checkpoint(encode, use_reentrant=False, preserve_rng_state=True)
-        return encode()
+            # the existing real parameter identifies CUDA for RNG capture.
+            # Without a Tensor input checkpoint sees no CUDA device and cannot
+            # restore dropout draws even when preserve_rng_state is requested.
+            return activation_checkpoint(encode, device_owner,
+                use_reentrant=False, preserve_rng_state=True)
+        return encode(device_owner)
 
     def forward(self, plans, *, epoch, training):
         from torch_geometric.data import Batch
@@ -446,6 +450,8 @@ def calibrate_training_batches(net, scorer, population, config, *, patient_batch
         for physical in patient_batches:
             plans = _plans(population, ordered[:physical], 128)
             for chunk in candidate_batches:
+                print(f'v2.3 calibration START | patients{physical} candidate_chunk{chunk} '
+                      f'fullP+128U records{sum(len(plan.record_ids) for plan in plans)} repeats{repeats}', flush=True)
                 clone = copy.deepcopy(net)
                 clone.train(); scorer.net = clone; scorer.physical_candidate_batch = chunk
                 optimizer = torch.optim.AdamW(clone.parameters(), lr=training['lr'],
@@ -457,6 +463,8 @@ def calibrate_training_batches(net, scorer, population, config, *, patient_batch
                     measurements, overflows = [], []
                     for repeat in range(repeats):
                         torch.cuda.synchronize(); started = time.perf_counter()
+                        print(f'v2.3 calibration repeat START | patients{physical} '
+                              f'candidate_chunk{chunk} repeat{repeat+1}/{repeats}', flush=True)
                         while True:
                             optimizer.zero_grad(set_to_none=True)
                             output = scorer(plans, epoch=1, training=True)
@@ -468,6 +476,8 @@ def calibrate_training_batches(net, scorer, population, config, *, patient_batch
                             if receipt['finite']: break
                             before, after = retry_amp_overflow(scaler, optimizer)
                             overflows.append(dict(repeat=repeat, scale_before=before, scale_after=after))
+                            print(f'v2.3 calibration AMP overflow | patients{physical} candidate_chunk{chunk} '
+                                  f'repeat{repeat+1} no update scale{before:g}->{after:g}; same input retry', flush=True)
                             output = loss = None
                         torch.nn.utils.clip_grad_norm_(clone.parameters(), training['grad_clip'], error_if_nonfinite=True)
                         probes = _probe_before(_groups(clone))
@@ -475,6 +485,9 @@ def calibrate_training_batches(net, scorer, population, config, *, patient_batch
                         changed = _probe_after(probes)
                         measurements.append(dict(repeat=repeat, seconds=time.perf_counter()-started,
                             gradient=receipt, sampled_parameter_changes=changed))
+                        print(f'v2.3 calibration repeat COMPLETE | patients{physical} candidate_chunk{chunk} '
+                              f'repeat{repeat+1}/{repeats} seconds{measurements[-1]["seconds"]:.2f} '
+                              f'peakVRAM{torch.cuda.max_memory_allocated()/2**30:.2f}GiB', flush=True)
                     seconds = math.fsum(row['seconds'] for row in measurements) / repeats
                     trials.append(dict(physical_patient_batch=physical, physical_candidate_batch=chunk,
                         accepted=True, seconds=seconds, patients_per_second=physical / seconds,
@@ -483,6 +496,7 @@ def calibrate_training_batches(net, scorer, population, config, *, patient_batch
                         case_ids=list(output.case_ids), workload=output.workload, all_P_and_U128=True,
                         measurements=measurements, AMP_overflows=overflows, optimizer_updates_on_clone=repeats))
                 except torch.cuda.OutOfMemoryError as error:
+                    print(f'v2.3 calibration rejected CUDA_OOM | patients{physical} candidate_chunk{chunk}', flush=True)
                     trials.append(dict(physical_patient_batch=physical, physical_candidate_batch=chunk,
                         accepted=False, error=str(error), failure='CUDA_OOM', graph_model_population_unchanged=True))
                 finally:
@@ -490,6 +504,8 @@ def calibrate_training_batches(net, scorer, population, config, *, patient_batch
                     scorer.net = previous_net
                     del clone, optimizer, scaler
                     torch.cuda.empty_cache()
+                print(f'v2.3 calibration trial COMPLETE | patients{physical} candidate_chunk{chunk} '
+                      f'accepted={trials[-1]["accepted"]}', flush=True)
         accepted = [trial for trial in trials if trial['accepted']]
         if not accepted:
             raise MemoryError('No explicitly measured original-model native128 training batch fits; no fallback')
