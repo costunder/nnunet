@@ -8,6 +8,8 @@ import unittest
 from unittest.mock import patch
 import contextlib
 import io
+import subprocess
+import sys
 import numpy as np
 from hiercp_v1x import v24_nnunet_cp as cp
 
@@ -128,6 +130,29 @@ class ActualPastePredicates(unittest.TestCase):
 
 
 class CLITests(unittest.TestCase):
+    def test_fresh_prepare_activates_original_before_population_or_outputs(self):
+        # Run actual prepare_bank imports in a fresh interpreter: earlier
+        # geometry tests intentionally import current hiercp.common.
+        script='''import json,sys
+from unittest.mock import patch
+from hiercp_v1x import v24_nnunet_cp as cp
+from hiercp_v1x import comparison_native_upper_cache as upper
+from tools import local_cnn_device
+class OriginalAdmissionReached(RuntimeError):pass
+def loader(experiment,arm,inventory):
+ shadow=[name for name in sys.modules if name=='hiercp' or name.startswith('hiercp.')]
+ assert not shadow,shadow
+ assert (experiment,arm,inventory)==('UNIT_native','native','UNIT_inventory')
+ raise OriginalAdmissionReached('UNIT archive boundary reached before population/output')
+with patch.object(local_cnn_device,'select',return_value=None),patch.object(upper,'_load_geometry_inputs',side_effect=loader),patch.object(cp,'admit_pin',return_value=({},dict(native_experiment='UNIT_native'))):
+ try:cp.prepare_bank(pin_path='UNIT_pin',inventory_path='UNIT_inventory',baseline_preprocessed='UNIT_pre',output='UNIT_never_created',gpu=1)
+ except OriginalAdmissionReached:print(json.dumps(dict(admission_before_population=True,preactivation_hiercp_modules=[])))
+ else:raise AssertionError('Original source admission boundary bypassed')
+'''
+        result=subprocess.run([sys.executable,'-B','-c',script],cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,text=True,check=True)
+        self.assertTrue(json.loads(result.stdout)['admission_before_population'])
+
     def test_action_specific_required_inputs_and_single_gpu(self):
         from tools.run_v24_nnunet_cp import parse
         self.assertEqual(parse(['train','--native','UNIT.json']).gpu,1)

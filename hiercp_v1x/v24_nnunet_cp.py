@@ -284,6 +284,10 @@ def prepare_bank(*, pin_path, inventory_path, baseline_preprocessed, output, gpu
     from .u_bridge_training import digest
     from .historical_evaluation import ResourceBudget
     pin, request = admit_pin(pin_path, inventory_path)
+    # Population admission invokes the native donor-assignment AST, which
+    # imports hiercp.common. Activate the pinned source BEFORE constructing it.
+    # This also precedes publishing any new output directory/request.
+    bundle, _, _, _, preserved = _load_geometry_inputs(request['native_experiment'], 'native', inventory_path)
     output = Path(output).resolve()
     if output.exists():
         raise FileExistsError('New CP bank output required; existing results are preserved')
@@ -315,7 +319,6 @@ def prepare_bank(*, pin_path, inventory_path, baseline_preprocessed, output, gpu
         historical_training_annotation_contract=True, inference_GT=False, GPU=1,resource_contract=resource_contract(),
         donor_policy='unchanged_v23_independent_inner_train_fixed_per_recipient',
         donor_policy_matches_historical_Basic=False, cp_probability=.5, epochs=250, debug=False))
-    bundle, _, _, _, preserved = _load_geometry_inputs(request['native_experiment'], 'native', inventory_path)
     geometry = make_geometry(bundle, population, output / 'upper_geometry', runtime, request['full_validation_upper_cache'])
     geometry.prepare(128)
     providers = {}
