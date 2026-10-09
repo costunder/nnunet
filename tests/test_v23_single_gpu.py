@@ -73,6 +73,7 @@ class SingleGPUAdmissionUnit(unittest.TestCase):
             request = dict(request_sha256="UNIT_REQUEST", gpus=[5], source={},
                 config=copy.deepcopy(config))
             scorer = Mock()
+            scorer.providers = {'inner_train': Mock(), 'inner_val': Mock()}
             scorer.geometry.finish.return_value = {"UNIT": "complete"}
             with patch.object(runner, "gpu_setup", return_value=(Mock(), scorer, Mock(), config, Mock())), \
                     patch("hiercp_v1x.v23_training.run_training", return_value={"UNIT": "complete"}) as train, \
@@ -83,6 +84,7 @@ class SingleGPUAdmissionUnit(unittest.TestCase):
             self.assertEqual(train.call_args.kwargs["physical_patient_batch"], 4)
             self.assertEqual(train.call_args.kwargs["output"], output / "training")
             self.assertEqual(scorer.physical_candidate_batch, 32)
+            for provider in scorer.providers.values(): provider.close.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,91 @@
+v2.3 independent GPU input-runtime optimization — 2026-10-09
+
+Problem and measured baseline
+The three independent GPU1/5/6 workers used only21.7/20.0/16.4 percent GPU on
+the simultaneous28.51-second full128 validation interval at20:47:29–20:47:58 KST.
+Their VRAM was6.58/6.96/6.39GiB, CPU2.45/2.42/2.45 cores, RAM available930GiB.
+A second28.32-second interval at20:55:04–20:55:32 showed20.0/27.2/33.3 percent.
+These are short phase-specific observations, not whole-epoch utilization.
+Physical disk-read deltas were zero; the CPU input/graph pipeline remained a
+candidate bottleneck. Internal timing and actual paired CT trials are required
+before claiming a throughput improvement. The historical54 real full128
+backward calibration trials selected physical4 patients/candidatechunk32;
+the same selected shape is revalidated after this runtime-only change.
+
+Input runtime changes
+One producer prepares and pins one complete next candidate chunk while the
+current chunk executes. Twelve persistent CPU workers materialize the exact
+original two sampled views. Canonical inputs retain the original admission and
+checksum rules. Fixed validation sampled CPU views can be reused at the exact
+original epoch29. Train views retain their actual changing epoch; neural
+embeddings, scores and losses are always recomputed with the current model.
+Private collated batches retain CPU owners until checkpointed backward ends.
+Upper CPU graph/prototype admission checks content once, then guards file
+identity and source versions; mutations fail explicitly. Private tensor copies
+protect memoized immutable owners. Geometry admission and historical validation
+references reuse admitted CPU payloads instead of repeatedly deserializing them.
+LRU eviction changes residency only, never observations, graph nodes or edges.
+RSS ceiling192GiB remains enforced with actual process measurements; cache
+limits128GiB are ceilings, not allocations or extra resource requests.
+
+Unchanged experiment contract
+GPU1 native_prefix, GPU5 hard_score_top, GPU6 score_stratified_mix are separate
+single-GPU models. L0/L1/L2=3/2/2, hidden128, heads4, original10,434,532 parameters,
+CNN/base12/features32/microbatch4 and5x48x48x48 inputs remain unchanged.
+All527 eligible train P,65 P-bearing training patients, fixed independent
+donors, no P-as-negative, patient-balanced loss and original consistency stay.
+All21 validation patients including zero-P cases are scored; ranking metrics
+use the defined16-patient denominator. Stage gate MRR.80/top1.70, minimum2
+complete epochs and2 consecutive passes, cumulative replay and whole128U BEST
+selection remain. Physicalpatient4/chunk32, accumulation1/effective4,12 CPU
+workers, AMP,40 total epochs and complete graph/data contracts remain.
+The GPU limit is the existing A6000~46GiB; runtime allocator budget40GiB.
+There is no DDP/federated sharing, hidden subset, graph cap or model fallback.
+
+Exact continuation
+The source142bedf68ec58bd56be4e8ec147477dca435df9c workers stopped through
+their existing STOP_AFTER_BATCH mechanism after a complete current batch.
+No signal, SSH shutdown, tmux shutdown or existing result overwrite is used.
+Source GPU1: epoch11/full_validation/20of21/update110.
+Source GPU5: epoch12/training/4of65/update111.
+Source GPU6: epoch11/full_validation/21of21/update110, aggregation pending.
+The new namespace preserves model, optimizer, scheduler, scaler, shuffle and
+rank RNG tensors exactly; history, pending cursor, candidate membership,
+curriculum, patient order and the separately saved actual BEST are preserved.
+Source tensors remain on the server; local receipts contain hashes/metadata.
+Remaining epochs are counted toward the existing total40, not40 more epochs.
+
+Verification and measurement interpretation
+UNIT checks cover exact forward/gradient/next RNG equivalence, input ownership,
+mutation detection, CPU queue ordering/errors, cache eviction, worker cleanup,
+all three partial cursor continuations, actual BEST and no-overwrite guards.
+These tests are not completed full training or whole-dataset evaluation.
+The paired actual-CT benchmark uses identical declared four-patient batches,
+all P plus128U and two views, physical4/chunk32 on each ofGPU1/5/6. Three real
+backward trials per path use distinct actual training epochs with matching
+baseline/optimized RNG, keeping train sampled views fresh. Three fixed29
+validation trials per path measure realistic repeated-validation CPU reuse.
+Benchmark-only four-case probes are separate from production's complete data.
+Cold application cache timing, warm canonical cache timing, exposed CPU waits,
+H2D/CUDA profiler timing, peak VRAM, RSS and end-to-end time are distinguished.
+OS disk caches are not dropped. Host enqueue wall time is not GPU kernel time.
+The original calibration evidence is historical; the new paired trained-clone
+measurements do not modify source weights/optimizer or production updates.
+Measured results and exact deployed commit are recorded in a separate run
+receipt under outputs/v23_20261009 after server verification.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

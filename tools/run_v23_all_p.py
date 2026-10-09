@@ -24,7 +24,8 @@ sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
 FILES = ('config/v23_all_p_native.json', 'hiercp_v1x/v23_data.py',
          'hiercp_v1x/v23_geometry.py', 'hiercp_v1x/v23_training.py',
-         'hiercp_v1x/v23_targets.py', 'tools/run_v23_all_p.py')
+         'hiercp_v1x/v23_targets.py', 'hiercp_v1x/v23_inputs.py',
+         'hiercp_v1x/v23_runtime_upgrade.py', 'tools/run_v23_all_p.py')
 
 
 def sha(path):
@@ -134,6 +135,9 @@ def inputs(args, *, gpu=False):
     runtime = read(args.config)['v23_runtime']
     geometry = V23UpperGeometryCache(bundle, population, args.output / 'upper_geometry',
         workers=runtime['workers'], rss_bytes=int(runtime['rss_gib_per_rank'] * 2**30),
+        resident_bytes=int(runtime['geometry_resident_gib_per_rank'] * 2**30),
+        memoize_cpu_geometry=runtime['memoize_cpu_geometry'],
+        cache_stage_admission=runtime['cache_stage_admission'],
         full_validation_cache=args.full_validation_upper_cache)
     if any(sha(path) != checksum for path, checksum in preserved.items()):
         raise ValueError('Preserved native model, bank or source changed during admission')
@@ -211,13 +215,19 @@ def gpu_setup(args, request):
         raise ValueError('v2.3 did not restore the byte-exact shared random initialization')
     del saved
     model.to('cuda')
-    from hiercp_v1x.transition_v1_data import NativeObservationDataset, OriginalInputProvider
-    providers = {partition: OriginalInputProvider(
+    geometry.admit(runtime['initial_u']); geometry.admit(runtime['total_u'])
+    from hiercp_v1x.transition_v1_data import NativeObservationDataset
+    from hiercp_v1x.v23_inputs import V23InputProvider, V23InputMemoryCoordinator
+    coordinator = V23InputMemoryCoordinator(budget.rss_bytes)
+    providers = {partition: V23InputProvider(
         NativeObservationDataset(args.inventory, partition, False),
         workers=runtime['workers'], resident_bytes=int(runtime['resident_gib_per_rank'] * 2**30),
-        rss_bytes=budget.rss_bytes, cache_index=args.prepared_cache)
+        rss_bytes=budget.rss_bytes, cache_index=args.prepared_cache,
+        persistent_cpu_workers=runtime['persistent_cpu_workers'],
+        cache_sampled_views=runtime['memoize_fixed_views'],
+        fixed_validation_epoch=bundle.config['training']['fixed_validation_epoch'],
+        memory_coordinator=coordinator)
         for partition in ('inner_train', 'inner_val')}
-    geometry.admit(runtime['initial_u']); geometry.admit(runtime['total_u'])
     config = copy.deepcopy(bundle.config)
     config['v23_runtime'] = copy.deepcopy(runtime)
     resources = dict(rank=rank, physical_GPU=args.gpus[rank], GPU=properties.name,
@@ -236,12 +246,21 @@ def gpu_setup(args, request):
     from hiercp_v1x.v23_training import V23Scorer
     scorer = V23Scorer(model, providers, geometry,
         physical_candidate_batch=min(runtime['physical_candidate_batch_candidates']),
-        checkpoint_local_chunks=runtime['checkpoint_local_chunks'], amp=config['training']['amp'], budget=budget)
+        checkpoint_local_chunks=runtime['checkpoint_local_chunks'], amp=config['training']['amp'], budget=budget,
+        prefetch_cpu_chunks=runtime['prefetch_cpu_chunks'], pin_cpu_batches=runtime['pin_cpu_batches'])
     return model, scorer, population, config, budget
 
 
 def worker(args, request):
     model, scorer, population, config, budget = gpu_setup(args, request)
+    try:
+        _run_worker(args, request, model, scorer, population, config, budget)
+    finally:
+        for provider in scorer.providers.values():
+            provider.close()
+
+
+def _run_worker(args, request, model, scorer, population, config, budget):
     from hiercp_v1x.v23_training import calibrate_training_batches, run_training
     runtime = request['config']['v23_runtime']
     if args.mode == 'calibrate':

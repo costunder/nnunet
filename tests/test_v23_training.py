@@ -10,6 +10,7 @@ import inspect
 import json
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 import torch
@@ -20,6 +21,7 @@ from hiercp_v1x.v23_training import (
     advance_target_state, apply_patient_order, bank_u_scores, execution_identity,
     handoff_single_gpu_checkpoint, new_target_state, publish_epoch_curve, remaining_training_updates,
     training_binding, validate_target_state,
+    prepared_native_chunks,
     aggregate_patients, best_selection_key, finish_curriculum_epoch,
     new_curriculum, parallel_patient_batches, patient_balanced_objective,
     rank_cases, score_patient,
@@ -214,10 +216,10 @@ class _UnitLocalBatch:
         self.graph_observation_index = torch.tensor([0, 0, 1, 1])
 
     def __len__(self): return 2
-    def to(self, device):
+    def to(self, device, non_blocking=True):
         result = copy.copy(self)
         for key in ('source_patches', 'target_patches', 'source_index', 'graph_observation_index'):
-            setattr(result, key, getattr(self, key).to(device))
+            setattr(result, key, getattr(self, key).to(device, non_blocking=non_blocking))
         return result
 
 
@@ -268,6 +270,87 @@ def test_checkpoint_receives_existing_real_parameter_for_device_and_rng_capture(
     assert len(list(net.parameters())) == 13  # Existing dense + twelve semantics; no new parameter.
 
 
+class _PrepareUnitBatch:
+    def __init__(self, ids):
+        self.ids, self.pinned = tuple(ids), False
+
+    def pin_memory(self):
+        result = copy.copy(self)
+        result.pinned = True
+        return result
+
+
+def test_native_prefetch_is_one_chunk_ahead_ordered_pinned_and_single_producer():
+    main = threading.get_ident()
+    second_started, second_release = threading.Event(), threading.Event()
+    calls, thread_ids, original_batches = [], [], []
+
+    def get(ids, *, epoch):
+        assert epoch == 8
+        thread_ids.append(threading.get_ident()); calls.append(tuple(ids))
+        if ids == [2, 3]:
+            second_started.set()
+            assert second_release.wait(5), 'UNIT producer release timed out'
+        batch = _PrepareUnitBatch(ids); original_batches.append(batch)
+        return batch
+
+    provider = SimpleNamespace(get=get)
+    with prepared_native_chunks(provider, [[0, 1], [2, 3], [4]], epoch=8,
+                                prefetch=True, pin_memory=True) as chunks:
+        first, timing = next(chunks)
+        assert first.ids == (0, 1) and first.pinned
+        assert second_started.wait(5)
+        assert calls == [(0, 1), (2, 3)]  # No third queued chunk while first is active.
+        assert all(value >= 0 for value in timing.values())
+        second_release.set()
+        following = list(chunks)
+    assert [batch.ids for batch, _ in following] == [(2, 3), (4,)]
+    assert all(batch.pinned for batch, _ in following)
+    assert not any(batch.pinned for batch in original_batches)  # Canonical owners are not mutated.
+    assert len(set(thread_ids)) == 1 and thread_ids[0] != main
+
+
+def test_native_direct_reference_uses_all_chunks_and_same_epoch_without_prefetch():
+    calls = []
+    def get(ids, *, epoch):
+        calls.append((tuple(ids), epoch, threading.get_ident()))
+        return _PrepareUnitBatch(ids)
+    with prepared_native_chunks(SimpleNamespace(get=get), [[0, 1], [2]], epoch=40,
+                                prefetch=False, pin_memory=False) as chunks:
+        actual = list(chunks)
+    assert [batch.ids for batch, _ in actual] == [(0, 1), (2,)]
+    assert not any(batch.pinned for batch, _ in actual)
+    assert all(epoch == 40 and worker == threading.get_ident() for _, epoch, worker in calls)
+
+
+def test_native_prefetch_failure_propagates_and_forward_error_drains_owned_worker():
+    def failed_get(ids, *, epoch):
+        if ids == [1]: raise ValueError('UNIT exact native load failure')
+        return _PrepareUnitBatch(ids)
+    with _raises(ValueError, 'exact native load'):
+        with prepared_native_chunks(SimpleNamespace(get=failed_get), [[0], [1]], epoch=1,
+                                    prefetch=True, pin_memory=True) as chunks:
+            list(chunks)
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    def blocked_get(ids, *, epoch):
+        if ids == [1]:
+            started.set(); assert release.wait(5); finished.set()
+        return _PrepareUnitBatch(ids)
+    release_timer = None
+    try:
+        with _raises(RuntimeError, 'UNIT original forward failure'):
+            with prepared_native_chunks(SimpleNamespace(get=blocked_get), [[0], [1]], epoch=1,
+                                        prefetch=True, pin_memory=True) as chunks:
+                next(chunks); assert started.wait(5)
+                release_timer = threading.Timer(.02, release.set); release_timer.start()
+                raise RuntimeError('UNIT original forward failure')
+        assert finished.is_set()
+        assert not any(thread.name.startswith('v23_native_input') for thread in threading.enumerate())
+    finally:
+        release.set()
+        if release_timer is not None: release_timer.join()
+
+
 class _CudaUnitLocal(_UnitLocal):
     """CUDA UNIT dropout fixture; no clinical data or model quality evidence."""
     def __init__(self):
@@ -306,6 +389,57 @@ def test_cuda_unit_checkpoint_preserves_dropout_forward_every_gradient_and_next_
             torch.testing.assert_close(first[2][name], second[2][name], rtol=0, atol=0)
         torch.testing.assert_close(first[3], second[3], rtol=0, atol=0)
         assert torch.equal(first[4], second[4])
+    finally:
+        torch.random.set_rng_state(cpu_rng); torch.cuda.set_rng_state(cuda_rng)
+    _cuda_unit_pinned_prefetch_keeps_native_batch_values_checkpoint_gradients_and_rng()
+
+
+def _cuda_unit_pinned_prefetch_keeps_native_batch_values_checkpoint_gradients_and_rng():
+    """Actual native batch transport with analytic 13-parameter UNIT encoder."""
+    from torch_geometric.data import Batch, HeteroData
+    from hiercp_v1x.transition_v1_local import TransitionLocalBatch
+    net = _UnitNet(); net.local_encoder = _CudaUnitLocal(); net = net.to('cuda').train()
+    cpu_rng, cuda_rng = torch.random.get_rng_state().clone(), torch.cuda.get_rng_state().clone()
+    results = []
+    try:
+        for prefetch, pin_memory in ((False, False), (True, True)):
+            model = copy.deepcopy(net)
+            torch.random.set_rng_state(cpu_rng); torch.cuda.set_rng_state(cuda_rng)
+            scorer = _unit_scorer(model, True)
+            batches, packed, consistency = [], [], []
+            def get(ids, *, epoch):
+                assert epoch == 8 and len(ids) == 2
+                graph = HeteroData(); graph['UNIT'].x = torch.ones(2, 3)
+                graph['UNIT', 'links', 'UNIT'].edge_index = torch.tensor([[0], [1]])
+                batch = TransitionLocalBatch(Batch.from_data_list([graph.clone() for _ in range(4)]),
+                    torch.ones(2, 5, 1, 1, 1) * (ids[0]+1), torch.ones(2, 5, 1, 1, 1) * (ids[0]+2),
+                    torch.arange(2), torch.tensor([0, 0, 1, 1]), torch.tensor(ids))
+                batches.append(batch)
+                return batch
+            with prepared_native_chunks(SimpleNamespace(get=get), [[0, 1], [2, 3]], epoch=8,
+                                        prefetch=prefetch, pin_memory=pin_memory) as chunks:
+                for batch, _ in chunks:
+                    if pin_memory:
+                        tensors = [value for store in batch.graph.stores for value in store.values() if torch.is_tensor(value)]
+                        tensors += [getattr(batch, key) for key in ('source_patches', 'target_patches',
+                            'source_index', 'graph_observation_index', 'indices')]
+                        assert all(value.device.type == 'cpu' and value.is_pinned() for value in tensors)
+                    values, view = scorer._encode(batch, training=True)
+                    packed.append(values); consistency.append(view)
+            # Producer/collation lifetime is over. Checkpoint backward must still
+            # use each distinct retained pinned CPU batch, including both views.
+            fields, views = torch.cat(packed), torch.cat(consistency)
+            (fields.square().mean() + .1*views.mean()).backward()
+            gradients = {name: parameter.grad.detach().clone() for name, parameter in model.named_parameters()}
+            assert not any(batch.target_patches.is_pinned() for batch in batches)
+            results.append((fields.detach().clone(), views.detach().clone(), gradients,
+                            torch.rand(32, device='cuda'), torch.cuda.get_rng_state().clone(),
+                            torch.random.get_rng_state().clone()))
+        first, second = results
+        for index in (0, 1, 3, 4, 5):
+            torch.testing.assert_close(first[index], second[index], rtol=0, atol=0)
+        assert first[2].keys() == second[2].keys()
+        for name in first[2]: torch.testing.assert_close(first[2][name], second[2][name], rtol=0, atol=0)
     finally:
         torch.random.set_rng_state(cpu_rng); torch.cuda.set_rng_state(cuda_rng)
 

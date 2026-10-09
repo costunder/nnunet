@@ -7,12 +7,14 @@ patient graph. P labels enter the loss and metrics, never the neural inputs.
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 import copy
 import hashlib
 import json
 import math
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 import time
 
@@ -113,6 +115,79 @@ class V23BatchOutput:
     workload: dict
 
 
+@contextmanager
+def prepared_native_chunks(provider, schedule, *, epoch, prefetch, pin_memory):
+    """Prepare one complete next chunk, without concurrent provider mutation.
+
+    This is the provider.batches single-producer ordering with pinning included
+    in the producer task. Only that producer reads/mutates the provider cache.
+    A yielded batch is never reused in place: checkpoint closures may retain
+    its pinned CPU tensors until the real backward recomputation completes.
+    """
+    if type(prefetch) is not bool or type(pin_memory) is not bool:
+        raise ValueError('Explicit CPU prefetch and native pin-memory policy required')
+
+    def prepare(ids):
+        began = time.perf_counter()
+        cpu = provider.get(ids, epoch=epoch)
+        loaded = time.perf_counter()
+        if pin_memory:
+            cpu = cpu.pin_memory()
+        finished = time.perf_counter()
+        return cpu, dict(cpu_input_get_seconds=loaded-began,
+            cpu_input_pin_seconds=finished-loaded,
+            cpu_input_prepare_seconds=finished-began)
+
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='v23_native_input') if prefetch else None
+    pending = None
+
+    def batches():
+        nonlocal pending
+        if pool is None:
+            for ids in schedule:
+                began = time.perf_counter()
+                cpu, timing = prepare(ids)
+                timing['cpu_input_exposed_wait_seconds'] = time.perf_counter()-began
+                yield cpu, timing
+            return
+        iterator = iter(schedule)
+        first = next(iterator, None)
+        if first is None:
+            return
+        pending = pool.submit(prepare, first)
+        for ids in iterator:
+            began = time.perf_counter()
+            cpu, timing = pending.result()
+            timing['cpu_input_exposed_wait_seconds'] = time.perf_counter()-began
+            # Submit exactly one next chunk before the current GPU work. This
+            # bounds queued host batches and preserves native record order.
+            pending = pool.submit(prepare, ids)
+            yield cpu, timing
+        began = time.perf_counter()
+        cpu, timing = pending.result()
+        pending = None
+        timing['cpu_input_exposed_wait_seconds'] = time.perf_counter()-began
+        yield cpu, timing
+
+    iterator = batches()
+    try:
+        yield iterator
+    finally:
+        active_error = sys.exc_info()[0] is not None
+        iterator.close()
+        if pending is not None:
+            pending.cancel()
+        if pool is not None:
+            pool.shutdown(wait=True, cancel_futures=True)
+        # Preserve an originating forward exception; otherwise surface a
+        # producer failure even when its prepared chunk was not consumed.
+        if pending is not None and not pending.cancelled() and not active_error:
+            error = pending.exception()
+            if error is not None:
+                raise error
+        pending = None
+
+
 class V23Scorer(torch.nn.Module):
     """Original L0/CNN plus a single batched L1/L2/head invocation.
 
@@ -121,17 +196,21 @@ class V23Scorer(torch.nn.Module):
     observations and must certify RNG-free per-observation loading.
     """
     def __init__(self, net, providers, geometry, *, physical_candidate_batch,
-                 checkpoint_local_chunks, amp, budget):
+                 checkpoint_local_chunks, amp, budget,
+                 prefetch_cpu_chunks=True, pin_cpu_batches=True):
         super().__init__()
         if type(physical_candidate_batch) is not int or physical_candidate_batch < 1:
             raise ValueError('An explicitly measured physical candidate batch is required')
         if type(checkpoint_local_chunks) is not bool or type(amp) is not bool:
             raise ValueError('Explicit activation-storage and precision contract required')
+        if type(prefetch_cpu_chunks) is not bool or type(pin_cpu_batches) is not bool:
+            raise ValueError('Explicit CPU prefetch and pin-memory contract required')
         if set(providers) != {'inner_train', 'inner_val'} or not callable(geometry):
             raise ValueError('Separate complete train/validation providers and upper geometry required')
         self.net, self.providers, self.geometry = net, providers, geometry
         self.physical_candidate_batch = physical_candidate_batch
         self.checkpoint_local_chunks, self.amp, self.budget = checkpoint_local_chunks, amp, budget
+        self.prefetch_cpu_chunks, self.pin_cpu_batches = prefetch_cpu_chunks, pin_cpu_batches
         self._lookups = {}
         for partition, provider in providers.items():
             rows = provider.ds.rows
@@ -145,7 +224,7 @@ class V23Scorer(torch.nn.Module):
         device_owner = next(net.parameters())
         def encode(owner):
             device = owner.device
-            gpu = cpu.to(device)
+            gpu = cpu.to(device, non_blocking=True)
             if gpu.graph.num_graphs != 2 * len(gpu):
                 raise ValueError('Both actual original sampled local views required')
             with torch.autocast(device.type, enabled=self.amp):
@@ -201,22 +280,39 @@ class V23Scorer(torch.nn.Module):
                 raise ValueError('Joint upper geometry lost complete patient candidates')
             if audit.get('P_U_labels_in_forward') is not False:
                 raise ValueError('GT targets cannot enter upper neural geometry')
-            graphs.append(graph.clone()); prototypes.append(prototype.clone()); audits.append(copy.deepcopy(audit))
+            # Geometry returns private CPU graphs; cache-owned originals remain
+            # inaccessible to this batch and its differentiable GPU hierarchy.
+            graphs.append(graph); prototypes.append(prototype); audits.append(copy.deepcopy(audit))
         parts, consistency = [], []
         local_nodes = local_edges = 0
-        for start in range(0, len(ids), self.physical_candidate_batch):
-            cpu = provider.get(ids[start:start + self.physical_candidate_batch], epoch=epoch)
-            local_nodes += sum(store.num_nodes for store in cpu.graph.node_stores)
-            local_edges += sum(store.num_edges for store in cpu.graph.edge_stores)
-            packed, view = self._encode(cpu, training=training)
-            parts.append(packed); consistency.append(view)
-            _check_budget(self.budget)
+        input_timing = dict(cpu_input_get_seconds=0., cpu_input_pin_seconds=0.,
+            cpu_input_prepare_seconds=0., cpu_input_exposed_wait_seconds=0.,
+            local_forward_enqueue_wall_seconds=0.)
+        schedule = [ids[start:start+self.physical_candidate_batch]
+                    for start in range(0, len(ids), self.physical_candidate_batch)]
+        with prepared_native_chunks(provider, schedule, epoch=epoch,
+                prefetch=self.prefetch_cpu_chunks, pin_memory=self.pin_cpu_batches) as chunks:
+            for cpu, timing in chunks:
+                for key, value in timing.items(): input_timing[key] += value
+                _check_budget(self.budget)
+                local_nodes += sum(store.num_nodes for store in cpu.graph.node_stores)
+                local_edges += sum(store.num_edges for store in cpu.graph.edge_stores)
+                began = time.perf_counter()
+                packed, view = self._encode(cpu, training=training)
+                input_timing['local_forward_enqueue_wall_seconds'] += time.perf_counter()-began
+                parts.append(packed); consistency.append(view)
+                _check_budget(self.budget)
         fields = dict(zip(FIELDS, torch.cat(parts).split(128, dim=1)))
-        upper = SimpleNamespace(patient_batch=Batch.from_data_list(graphs).to(device),
-            prototype_batch=Batch.from_data_list(prototypes).to(device), counts=counts,
+        patient_cpu, prototype_cpu = Batch.from_data_list(graphs), Batch.from_data_list(prototypes)
+        if self.pin_cpu_batches:
+            patient_cpu, prototype_cpu = patient_cpu.pin_memory(), prototype_cpu.pin_memory()
+        upper = SimpleNamespace(patient_batch=patient_cpu.to(device, non_blocking=self.pin_cpu_batches),
+            prototype_batch=prototype_cpu.to(device, non_blocking=self.pin_cpu_batches), counts=counts,
             case_ids=case_ids)
+        began = time.perf_counter()
         with torch.autocast(device.type, enabled=self.amp):
             scores = tuple(self.net._score_upper(upper, fields))
+        input_timing['upper_forward_enqueue_wall_seconds'] = time.perf_counter()-began
         if len(scores) != len(plans) or any(score.shape != (count,) for score, count in zip(scores, counts)):
             raise ValueError('Batched complete upper forward lost patient/candidate mapping')
         _check_budget(self.budget)
@@ -227,6 +323,10 @@ class V23Scorer(torch.nn.Module):
             physical_candidate_batch=self.physical_candidate_batch,
             upper_invocations=1, upper_execution='disjoint_union_complete_patient_graphs',
             query_GT_in_forward=False, input_shape=[len(ids), 5, 48, 48, 48],
+            CPU_input_prefetch_chunks_ahead=int(self.prefetch_cpu_chunks),
+            native_local_and_upper_batches_pinned=self.pin_cpu_batches,
+            CPU_timing=input_timing,
+            timing_kind='CPU wall; producer preparation overlaps GPU work; enqueue wall is not CUDA kernel time',
             candidate_chunking_is_model_or_graph_truncation=False)
         return V23BatchOutput(scores, torch.cat(consistency), counts, case_ids, record_ids,
                               tuple(audits), workload)
@@ -1004,6 +1104,14 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             gpu=torch.cuda.get_device_name(), gpu_count=torch.cuda.device_count(),
             cpu_affinity_cores=len(psutil.Process().cpu_affinity()), RAM=psutil.virtual_memory()._asdict(),
             precision_AMP=training['amp'], checkpoint_local_chunks=scorer.checkpoint_local_chunks,
+            CPU_input_prefetch_chunks_ahead=int(scorer.prefetch_cpu_chunks),
+            native_local_and_upper_batches_pinned=scorer.pin_cpu_batches,
+            CPU_input_timing='per-batch workload.CPU_timing records wall durations; CUDA enqueue wall is not kernel duration',
+            CPU_provider_policies={partition: dict(
+                persistent_workers=bool(getattr(provider, 'persistent_cpu_workers', False)),
+                fixed_validation_sampled_view_cache=(partition == 'inner_val'
+                    and bool(getattr(provider, 'cache_sampled_views', False))))
+                for partition, provider in scorer.providers.items()},
             worker_count=workers, model_training_completed=False, debug=debug))
     distributed.root_action(publish_contract)
     def publish_validation(path, report):
