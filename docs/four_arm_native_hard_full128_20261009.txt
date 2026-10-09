@@ -1,0 +1,99 @@
+현재 4arm의 공통 native hard 전체후보 평가 — 2026-10-09
+
+현재 사전 선택 BEST와 saved latest 총8checkpoint의 실제 CT/CUDA 전체 평가가 완료됐고,
+completion/checkpoint/report seal 및 전체 점수 재집계가 통과했다. 새 학습은 실행하지 않았다.
+원래40epoch 학습은 보존checkpoint 모두 미완료다. NFS EDQUOT 저장 실패/quota 제약으로
+학습을 중단한 상태이며 계정·group·project의 정확한 quota 한도는 확인되지 않았다.
+
+| Arm | 선택 | first-P MRR | Hit@1 | P/U PairWin | 선택 epoch 또는 저장 cursor |
+|---|---|---:|---:|---:|---|
+| selected | best | 0.189838 | 0.062500 | 0.635995 | BEST e9; 완료9/40 |
+| selected | latest | 0.152286 | 0.062500 | 0.622106 | cursor e20/training pos75; 완료19/40 |
+| native | best | 0.270976 | 0.125000 | 0.750463 | BEST e7; 완료7/40 |
+| native | latest | 0.294736 | 0.187500 | 0.701505 | cursor e15/validation pos151; 완료14/40 |
+| native_fixed | best | 0.223062 | 0.062500 | 0.779572 | BEST e21; 완료21/40 |
+| native_fixed | latest | 0.224975 | 0.062500 | 0.781597 | cursor e23/validation pos151; 완료22/40 |
+| native_listwise | best | 0.249469 | 0.125000 | 0.728009 | BEST e2; 완료2/40 |
+| native_listwise | latest | 0.229745 | 0.125000 | 0.716551 | cursor e16/training pos74; 완료15/40 |
+
+BEST는 기존 source-anchor 1P+128U patient-macro 검증에서 미리 선택했다. 이번 hard 점수로
+checkpoint를 재선택하지 않았다. latest의 cursor epoch는 부분 epoch일 수 있고 완료epoch와 다르다.
+native라는 arm 이름은 native-U 학습 정책이며 v2.2 LocalCNN 모델을 뜻하지 않는다.
+
+평가 계약: 기존 v2.2 관측 P/U inventory의 동일21환자, 전체 P135+U2688(환자당128U),
+seed42 독립 train-only donor 고정. 이전 V1/A/B/C hard reference와 cohort·donor·후보·GT가 같다.
+5개의 zero-P case도 전부 score했다. first-P MRR/Hit@1 분모는16case, micro recall 분모는P135,
+P×U 분모는17,280이다. 관측 P는 외부 donor 적합성 정답이 아니며 U도 CP 부적합 정답이 아니다.
+4arm 모두 원본10,434,532 parameters, hidden128/4heads/GAT3+2+2층, 48³·5channel·실제2view를
+보존했다. L0만 측정 batch로 chunk하고 upper는 환자 전체 후보를 한 번에 처리했다. 규모 축소 없음.
+
+검증 구분: Linux CPU UNIT 21개 PASS는 checkpoint/cache admission 검사다. 실제 CT 전체8개
+CUDA inference 완료와 분리한다. 로컬 재집계/비교/이 보고서 생성은 neural forward를 실행하지 않았다.
+로컬float64 재집계 metric의 서버값과 비exact 항목은1개, 최대abs차=1.11022302e-16다. rel/abs1e-12 검사와 양쪽값을 JSON에 기록하고 서버값을 유지했다.
+원본 upper geometry cache만 재사용했고 model feature/가중치 cache는 없다. 각 모델21회 cache hit,
+원본 입력/region/source/prototype/cache SHA의 최종 재확인과 private mmap 결속이 통과했다.
+Direct3↔cached3는 각 case_scores의 record_id/geometry/GT/실제 score를 전수 대조했다:
+selected_best        exact=False  점수차이개수=204  max_abs_diff=0.00390625  rank_exact=False  metrics_exact=False  batch=32→32
+native_best          exact=False  점수차이개수=161  max_abs_diff=0.00390625  rank_exact=False  metrics_exact=False  batch=32→32
+native_fixed_best    exact=False  점수차이개수=129  max_abs_diff=0.00390625  rank_exact=False  metrics_exact=False  batch=32→32
+selected_best: MRR 0.190068→0.189838 (Δ -0.000230); Hit1 0.062500→0.062500 (Δ +0.000000); PairWin 0.636400→0.635995 (Δ -0.000405)
+native_best: MRR 0.281622→0.270976 (Δ -0.010646); Hit1 0.125000→0.125000 (Δ +0.000000); PairWin 0.751273→0.750463 (Δ -0.000810)
+native_fixed_best: MRR 0.223434→0.223062 (Δ -0.000372); Hit1 0.062500→0.062500 (Δ +0.000000); PairWin 0.778819→0.779572 (Δ +0.000752)
+원본 runtime 설정을 유지했다: deterministic_algorithms=[False].
+위8개 표는 현재 cached 경로의 단회 실제 추론값이다. exact=false인 항목의 차이를 숨기거나
+수치동등성으로 선언하지 않는다. 이 비교만으로 cache가 차이의 원인이라고 확정하지 않는다.
+대표 liver_31(136후보)의 원본 upper 재생성 CPU 감사에서는
+patient/prototype graph·audit와 query/input identity가 cache와 정확히 같았다.
+GPU6 동일case DEBUG 3반복(22.176초): 같은L0/upper graph의 첫 반복 대비 변경score수는2/6개(분모136), max_abs_diff=0.00390625.
+같은CPU입력의 L0 변경값은97791/98060개(분모208896), max_abs_diff=0.001953125; 후속score는6/9개(분모136) 변했다.
+원본 runtime·모델·입력·cache를 유지한 GPU L0와 upper의 반복 연산 비결정성이 실제 측정됐다.
+첫P rank는 세 반복 모두3으로 유지했고 일부P 순위가 변했다. direct2→cached3 crossover 자체는
+재현하지 않았다. 개별CUDA kernel 원인이나 전체 direct/cache 차이의100% 귀속은 확정하지 않았다.
+이 진단은 실제1case DEBUG이며 전체benchmark 반복평가·새 학습 완료와 구분한다.
+
+annotation-aware observed-location ranking 결과다. 원본 recipient lesion annotation을 유지하므로
+annotation 없는 CP 추천, donor suitability 또는 nnU-Net segmentation 성능을 입증하지 않는다.
+순위평가16case의 소표본이며 단일seed·현재 중간checkpoint 비교다. 가장 높은 점수만으로
+최종 승자·유의한 우월성·완료40epoch 성능을 선언하지 않는다. 기존0.9대 source-anchor 점수와 과제가 다르다.
+
+자원: GPU1/5/6 (NVIDIA RTX A6000), workers=[16], precision=CUDA AMP.
+CPU affinity cores=[96]; RSS 예산GiB=[192.0]; resident cache 예산GiB=[128.0].
+batch후보별 실제 observations/s와 선택batch를 아래에 기록했다. 실제 CPU/RAM/CUDA 자원과
+실제 예산 및 resident cache, 전체 stage timing은 동봉 JSON에 모델별 원시 receipt로 보존한다.
+| Job | GPU | L0 batch | peak CUDA GiB | eval seconds | 후보batch:observations/s |
+|---|---:|---:|---:|---:|---|
+| selected_best | 1 | 32 | 2.422 | 357.9 | 8:13.67,16:13.73,32:14.35 |
+| selected_latest | 5 | 32 | 2.422 | 352.6 | 8:13.64,16:13.92,32:14.34 |
+| native_best | 5 | 32 | 2.422 | 360.9 | 8:13.86,16:14.07,32:14.44 |
+| native_latest | 6 | 16 | 2.422 | 336.6 | 8:13.35,16:13.60,32:13.24 |
+| native_fixed_best | 6 | 32 | 2.422 | 341.1 | 8:13.80,16:14.04,32:14.44 |
+| native_fixed_latest | 1 | 32 | 2.422 | 382.9 | 8:13.38,16:13.90,32:14.46 |
+| native_listwise_best | 1 | 32 | 2.422 | 351.5 | 8:13.47,16:14.02,32:14.45 |
+| native_listwise_latest | 5 | 32 | 2.422 | 395.8 | 8:13.82,16:14.11,32:14.31 |
+
+실행 source commit: c6c473f5892ffc0017dddf1bdbc6fd91ad72ea9b
+서버 summary: /tmp/aicompetition06_hard_eval_c6c473f5892f/evaluation/summary.json
+서버 code: /tmp/aicompetition06_hard_eval_c6c473f5892f/code
+request SHA256: a2e754e68e9149c7d9f0519307bb2aae47f600e875b47b8333a8851d733dd9f4
+cohort SHA256: a0416089f1629d777e72bde411cb82b9e94502c92a6024cfc658cc72aa8a346d
+upper cache index SHA256: 4a55114313112eb886fb851566b861ec03d9d0e94473ff21492115203279ef3f
+로컬 원시8report/검증/직접비교 및 source closure SHA는 동봉 JSON evidence에서 확인할 수 있다.
+
+gradient/backward/optimizer 연결 검사는 이번 no_grad inference 범위 밖이다. 실제 forward/점수/
+metric 경로는 검증했지만 학습 gradient 검증을 새로 수행했다고 표시하지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

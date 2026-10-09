@@ -102,7 +102,9 @@ def fixture(directory):
 
 class NativeUpperCacheCPUUnit(unittest.TestCase):
     def setUp(self):
-        self.directory = TemporaryDirectory(dir=cache.ROOT / 'tmp', prefix='native-upper-UNIT-')
+        temporary_root = cache.ROOT / 'tmp'
+        temporary_root.mkdir(parents=True, exist_ok=True)
+        self.directory = TemporaryDirectory(dir=temporary_root, prefix='native-upper-UNIT-')
         self.value = fixture(self.directory.name)
         self.patches = [patch.object(cache, 'validate_cohort', return_value=self.value.cohort),
                         patch.object(cache, '_signature', return_value=self.value.signature),
