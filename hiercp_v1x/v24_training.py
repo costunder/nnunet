@@ -29,7 +29,9 @@ KNOWN_BUDGET_ERRORS=frozenset((
     'Full active GT-free input exceeds shared RSS; no graph or data reduction',
     'Complete active v24 canonical/view chunk exceeds resident budget',
     'Actual complete v24 workspace exceeds process RSS; no subset or fallback',
-    'v2.4 geometry RSS budget exceeded; no graph/data reduction'))
+    'v2.4 geometry RSS budget exceeded; no graph/data reduction',
+    'Historical evaluation CUDA budget exceeded; no input/model reduction',
+    'Historical evaluation RSS budget exceeded; no cases skipped'))
 
 
 def patient_batches(case_ids, physical):
@@ -146,12 +148,18 @@ def calibrate_training_batches(net, scorer, population, config, *, budget, model
                         measurements.append(dict(seconds=time.perf_counter()-started, gradient=gradient))
                         print(f'v24 CALIBRATION repeat{repeat+1} {measurements[-1]["seconds"]:.3f}s', flush=True)
                     seconds = sum(row['seconds'] for row in measurements)/len(measurements)
+                    peak_cuda_bytes = torch.cuda.max_memory_allocated()
+                    if peak_cuda_bytes > budget.cuda_bytes:
+                        trials.append(dict(physical_patient_batch=physical, physical_candidate_batch=chunk,
+                            accepted=False, failure='CUDA_BUDGET', peak_cuda_bytes=peak_cuda_bytes,
+                            CUDA_budget_bytes=budget.cuda_bytes, graph_model_population_unchanged=True))
+                        continue
                     trials.append(dict(physical_patient_batch=physical, physical_candidate_batch=chunk,
                         accepted=True, seconds=seconds, patients_per_second=physical/seconds,
                         measurements=measurements, gradient=gradient, all_P_and_U128=True,
                         case_ids=list(result.case_ids), workload=result.workload,
                         optimizer_updates_on_clone=len(measurements), AMP_overflows=overflow,
-                        peak_cuda_bytes=torch.cuda.max_memory_allocated()))
+                        peak_cuda_bytes=peak_cuda_bytes))
                 except torch.cuda.OutOfMemoryError as error:
                     trials.append(dict(physical_patient_batch=physical, physical_candidate_batch=chunk,
                         accepted=False, failure='CUDA_OOM', error=str(error), graph_model_population_unchanged=True))

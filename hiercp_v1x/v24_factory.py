@@ -21,6 +21,8 @@ from .v24_inputs import (recipient_context, prepare_donor, build_local_record,
     materialize_pair, query_inputs, array_digest, immutable_array)
 from .v24_provider import FORMAT as CANONICAL_FORMAT, V24InputCoordinator, V24InputProvider
 
+INPUT_BINDINGS_FORMAT = 'v24_immutable_CT_organ_fixed_donor_bindings_v1'
+
 
 def _stat(path):
     value=Path(path).stat()
@@ -71,9 +73,95 @@ class V24NativeInputs:
         self.config_sha256=canonical_hash(dict(graph=self.config['graph'],ct_clip=self.config['ct_clip'],
             source_pad=self.config['cache']['source_pad']))
         self.bank_sha256=self.signature['bank_sha256']
+        # Small immutable proofs outlive evictable full CT/EDT/donor workspaces.
+        # Cache admission must not reconstruct those arrays on an upper hit.
+        self._bindings_path=self.root/'input_bindings.json'
+        self._input_bindings={}; self._binding_receipt=None; self._binding_file_proof=None
+        if self._bindings_path.exists(): self._admit_input_bindings()
+        elif (self.root/'local/index.json').exists():
+            raise ValueError('Complete canonical cache lacks immutable input binding proof; use a fresh namespace')
         self.geometry=V24UpperGeometryCache(self.population,self.root/'upper',self._upper,
             input_binding=self.input_binding,guard_inputs=self.guard_inputs,
             workers=runtime['workers'],resident_bytes=runtime['geometry_resident_gib']*2**30,rss_bytes=self.rss_bytes)
+
+    def _binding_header(self):
+        cases=self.population.partition_cases('inner_train')+self.population.partition_cases('inner_val')
+        required=set(cases)|{row['donor_case_id'] for row in self.inventory['records']}
+        raw_files={str(Path(self.raw[case][kind]).resolve()):self.raw[case][kind+'_sha256']
+            for case in sorted(required) for kind in ('image','label')}
+        return dict(format=INPUT_BINDINGS_FORMAT,source_sha256=self.source_sha256,
+            config_sha256=self.config_sha256,prototype_bank_sha256=self.bank_sha256,
+            query_rows_sha256=canonical_hash([query_inputs([row])[0] for row in self.inventory['records']]),
+            case_ids=list(cases),raw_files=raw_files)
+
+    def _validate_binding(self,case,binding):
+        plan=self.population.case(case,128); row=plan.query_rows[0]
+        if not isinstance(binding,dict) or set(binding)!={'recipient','donor','prototype_bank_sha256','config_sha256','source_sha256'}:
+            raise ValueError('Closed immutable recipient/donor binding required')
+        recipient=binding['recipient']; donor=binding['donor']
+        if (not isinstance(recipient,dict) or set(recipient)!={'format','case_id','CT_sha256','organ_sha256','spacing','image_affine','recipient_tumor_GT_used'}
+                or recipient['format']!='v24_recipient_CT_organ_no_tumor_annotation_v1'
+                or recipient['case_id']!=case or recipient['recipient_tumor_GT_used'] is not False
+                or not isinstance(donor,dict) or set(donor)!={'case_id','component_id','CT_sha256','label_sha256','mask_sha256'}
+                or donor['case_id']!=row['donor_case_id'] or donor['component_id']!=row['donor_component']
+                or donor['CT_sha256']!=self.raw[row['donor_case_id']]['image_sha256']
+                or donor['label_sha256']!=self.raw[row['donor_case_id']]['label_sha256']
+                or binding['source_sha256']!=self.source_sha256 or binding['config_sha256']!=self.config_sha256
+                or binding['prototype_bank_sha256']!=self.bank_sha256):
+            raise ValueError('Immutable CT/organ/fixed donor/source binding differs')
+        for checksum in (recipient['CT_sha256'],recipient['organ_sha256'],donor['mask_sha256']):
+            if not isinstance(checksum,str) or len(checksum)!=64 or any(c not in '0123456789abcdef' for c in checksum):
+                raise ValueError('Actual immutable array SHA256 required')
+        spacing=np.asarray(recipient['spacing']); affine=np.asarray(recipient['image_affine'])
+        if spacing.shape!=(3,) or not np.isfinite(spacing).all() or (spacing<=0).any() or affine.shape!=(4,4) or not np.isfinite(affine).all():
+            raise ValueError('Immutable native physical geometry differs')
+
+    def _guard_binding_receipt(self):
+        if self._binding_receipt is not None and _stat(self._bindings_path)!=self._binding_file_proof:
+            raise ValueError('Admitted immutable input binding metadata changed')
+
+    def _admit_input_bindings(self):
+        before=_stat(self._bindings_path)
+        value=json.loads(self._bindings_path.read_text(encoding='utf8'))
+        header=self._binding_header()
+        expected=set(header)|{'bindings','raw_file_proofs','complete','content_sha256'}
+        if (set(value)!=expected or value.get('complete') is not True
+                or any(value.get(key)!=item for key,item in header.items())
+                or value['content_sha256']!=canonical_hash({key:item for key,item in value.items() if key!='content_sha256'})
+                or set(value['bindings'])!=set(header['case_ids'])
+                or set(value['raw_file_proofs'])!=set(header['raw_files'])):
+            raise ValueError('Complete immutable input binding/source/query proof differs')
+        for case,binding in value['bindings'].items(): self._validate_binding(case,binding)
+        for path,checksum in header['raw_files'].items():
+            proof=value['raw_file_proofs'][path]
+            if (not isinstance(proof,dict) or set(proof)!={'sha256','stat_identity'}
+                    or proof['sha256']!=checksum or len(proof['stat_identity'])!=5
+                    or any(type(item)is not int for item in proof['stat_identity'])
+                    or _stat(path)!=tuple(proof['stat_identity'])):
+                raise ValueError('SHA-verified immutable raw source was changed or replaced: '+path)
+        if _stat(self._bindings_path)!=before:
+            raise ValueError('Immutable input binding metadata changed during admission')
+        self._input_bindings=copy.deepcopy(value['bindings'])
+        self._file_proofs.update({path:tuple(proof['stat_identity']) for path,proof in value['raw_file_proofs'].items()})
+        self._binding_receipt=value; self._binding_file_proof=before
+        index=self.root/'local/index.json'
+        if index.exists() and json.loads(index.read_text(encoding='utf8')).get('input_bindings_sha256')!=value['content_sha256']:
+            raise ValueError('Canonical cache is not bound to the exact immutable input metadata')
+
+    def _publish_input_bindings(self):
+        header=self._binding_header()
+        if set(self._input_bindings)!=set(header['case_ids']):
+            raise ValueError('Every native patient immutable input binding must be prepared')
+        raw_proofs={}
+        for path,checksum in header['raw_files'].items():
+            proof=self._file_proofs.get(path)
+            if proof is None or _stat(path)!=proof:
+                raise ValueError('Actual SHA-verified raw source proof missing or changed: '+path)
+            raw_proofs[path]=dict(sha256=checksum,stat_identity=list(proof))
+        value=dict(**header,bindings=copy.deepcopy(self._input_bindings),raw_file_proofs=raw_proofs,complete=True)
+        value['content_sha256']=canonical_hash(value)
+        _publish(self._bindings_path,value); self._admit_input_bindings()
+        return value['content_sha256']
 
     def guard_source(self):
         """Experiment/supervision provenance, outside the GT-free input cache."""
@@ -162,20 +250,41 @@ class V24NativeInputs:
             if case not in self._regions:
                 self._regions[case]=build_recipient_regions(raw['context'],config=self.graph_config,
                     seed=stable_case_seed(42,case,REGION_CACHE_SEED_SALT),ct_clip=self.ct_clip)
-            self._rss(); return self._regions[case]
+            region=self._regions[case]
+            self._rss(); return region
 
     def input_binding(self,plan):
-        raw=self._case(plan.case_id); row=plan.query_rows[0]
-        donor,source,_=self._donor(row)
-        return dict(recipient=copy.deepcopy(raw['binding']),
-            donor=dict(case_id=row['donor_case_id'],component_id=row['donor_component'],
-                CT_sha256=self.raw[row['donor_case_id']]['image_sha256'],
-                label_sha256=self.raw[row['donor_case_id']]['label_sha256'],
-                mask_sha256=source.v24_mask_sha256),
-            prototype_bank_sha256=self.bank_sha256,config_sha256=self.config_sha256,source_sha256=self.source_sha256)
+        with self._lock:
+            self._guard_binding_receipt()
+            binding=self._input_bindings.get(plan.case_id)
+            if binding is None:
+                if self._binding_receipt is not None:
+                    raise ValueError('Admitted immutable patient input binding is missing')
+                raw=self._case(plan.case_id); row=plan.query_rows[0]
+                donor,source,_=self._donor(row)
+                binding=dict(recipient=copy.deepcopy(raw['binding']),
+                    donor=dict(case_id=row['donor_case_id'],component_id=row['donor_component'],
+                        CT_sha256=self.raw[row['donor_case_id']]['image_sha256'],
+                        label_sha256=self.raw[row['donor_case_id']]['label_sha256'],
+                        mask_sha256=source.v24_mask_sha256),
+                    prototype_bank_sha256=self.bank_sha256,config_sha256=self.config_sha256,source_sha256=self.source_sha256)
+                self._validate_binding(plan.case_id,binding)
+                self._input_bindings[plan.case_id]=copy.deepcopy(binding)
+            row=plan.query_rows[0]
+            if (binding['donor']['case_id'],binding['donor']['component_id'])!=(row['donor_case_id'],row['donor_component']):
+                raise ValueError('Immutable patient donor differs from actual query')
+            self.guard_inputs(plan,binding)
+            return copy.deepcopy(binding)
 
     def guard_inputs(self,plan,binding):
-        self.guard_input_files(plan.case_id,plan.query_rows[0]['donor_case_id']); self._rss()
+        self._guard_binding_receipt()
+        self.guard_input_files(plan.case_id,plan.query_rows[0]['donor_case_id'])
+        # Recipient label provenance is checked outside the forward/cache key;
+        # the binding itself still contains only recipient CT and explicit organ.
+        label=str(Path(self.raw[plan.case_id]['label']).resolve())
+        if label in self._file_proofs and _stat(label)!=self._file_proofs[label]:
+            raise ValueError('Admitted native recipient annotation provenance changed')
+        self._rss()
         if (binding['source_sha256']!=self.source_sha256 or binding['config_sha256']!=self.config_sha256
                 or binding['prototype_bank_sha256']!=self.bank_sha256
                 or binding['recipient']['case_id']!=plan.case_id):
@@ -205,7 +314,9 @@ class V24NativeInputs:
             prototype_bank_sha256=self.bank_sha256)
         if index.exists():
             value=json.loads(index.read_text(encoding='utf8'))
-            if any(value.get(key)!=item for key,item in expected.items()) or value.get('complete') is not True:
+            if (any(value.get(key)!=item for key,item in expected.items()) or value.get('complete') is not True
+                    or self._binding_receipt is None
+                    or value.get('input_bindings_sha256')!=self._binding_receipt['content_sha256']):
                 raise ValueError('Existing GT-free canonical namespace does not match actual query/source')
             return index
         writer=GraphWriter(root,minimum_free_bytes=self.runtime['minimum_free_disk_gib']*2**30)
@@ -246,7 +357,9 @@ class V24NativeInputs:
                 self._rss()
         if {row['id'] for row in stored}!={row['id'] for row in self.inventory['records']} or len(stored)!=len(self.inventory['records']):
             raise ValueError('Full GT-free canonical preparation omitted or duplicated native records')
-        _publish(index,dict(**expected,records=sorted(stored,key=lambda row:row['id']),complete=True))
+        bindings_sha256=self._publish_input_bindings()
+        _publish(index,dict(**expected,input_bindings_sha256=bindings_sha256,
+            records=sorted(stored,key=lambda row:row['id']),complete=True))
         return index
 
     def close(self):

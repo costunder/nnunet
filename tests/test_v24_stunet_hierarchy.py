@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import copy
 import unittest
+from unittest.mock import patch
 import torch
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -84,6 +85,45 @@ class STUCompleteHierarchyDebug(unittest.TestCase):
             input_shape=list(batch.target_patches.shape),local_nodes=sum(s.num_nodes for s in batch.graph.node_stores),
             local_edges=sum(s.num_edges for s in batch.graph.edge_stores),GT_invariance=True,
             all_gradients_finite_and_present=True,all_six_encoder_stages_updated=True),flush=True)
+
+    def test_training_mode_nested_stage_and_outer_checkpoints_reach_every_parameter(self):
+        """Actual complete hierarchy CPU UNIT; CUDA AMP/full4/8 still need calibration."""
+        from torch_geometric.data import Batch
+        from torch.utils.checkpoint import checkpoint
+        from hiercp_v1x.v23_training import V23Scorer, FIELDS, patient_balanced_objective
+        net=copy.deepcopy(self.net).train();net.zero_grad(set_to_none=True)
+        provider=SimpleNamespace(ds=SimpleNamespace(rows=[dict(id=str(i)) for i in range(len(self.fixture.rows))]))
+        scorer=V23Scorer(net,dict(inner_train=provider,inner_val=provider),lambda *a:None,
+            physical_candidate_batch=32,checkpoint_local_chunks=True,amp=False,budget=None)
+        upper=SimpleNamespace(patient_batch=Batch.from_data_list([self.fixture.graph.clone()]),
+            prototype_batch=Batch.from_data_list([self.fixture.prototype.clone()]),counts=(len(self.fixture.rows),))
+        stage_weights=[stage[0].conv1.weight.detach().clone() for stage in net.local_encoder.dense_encoder.conv_blocks_context]
+        with patch('hiercp_v1x.v24_stunet.activation_checkpoint',wraps=checkpoint) as stages, \
+             patch('hiercp_v1x.v23_training.activation_checkpoint',wraps=checkpoint) as outer:
+            packed,consistency=scorer._encode(self.batch,training=True)
+            fields=dict(zip(FIELDS,packed.split(128,dim=1)))
+            scores=tuple(net._score_upper(upper,fields))
+            loss,_=patient_balanced_objective(scores,[(0,)],consistency)
+            loss.backward()
+        self.assertEqual(outer.call_count,1)
+        self.assertIs(outer.call_args.args[1],next(net.parameters()))
+        self.assertFalse(outer.call_args.kwargs['use_reentrant'])
+        invoked={id(call.args[0]) for call in stages.call_args_list}
+        self.assertEqual(invoked,{id(stage) for stage in net.local_encoder.dense_encoder.conv_blocks_context})
+        self.assertTrue(all(call.args[1].device.type=='cpu' and not call.kwargs['use_reentrant']
+                            for call in stages.call_args_list))
+        parameters=list(net.named_parameters())
+        self.assertEqual(len(parameters),537)
+        self.assertEqual([name for name,p in parameters if p.grad is None],[])
+        self.assertTrue(all(torch.isfinite(p.grad).all() for _,p in parameters))
+        optimizer=torch.optim.AdamW(net.parameters(),lr=1e-4,weight_decay=1e-4)
+        optimizer.step()
+        for initial,stage in zip(stage_weights,net.local_encoder.dense_encoder.conv_blocks_context):
+            self.assertFalse(torch.equal(initial,stage[0].conv1.weight))
+        print('STU_NESTED_CHECKPOINT_CPU_UNIT',dict(trainable_tensors=537,encoder_stages=6,
+            outer_real_parameter_input=True,stage_checkpoint_calls=stages.call_count,
+            all_gradients_finite_and_present=True,all_six_encoder_stages_updated=True,
+            CUDA_AMP_or_full_native_physical_batch_verified=False),flush=True)
 
 
 if __name__=='__main__':unittest.main()

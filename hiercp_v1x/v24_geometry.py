@@ -341,8 +341,13 @@ class V24UpperGeometryCache:
     def prepare(self, count, target_selection=None):
         cases = self.population.partition_cases('inner_train', ranking_only=True) + self.population.partition_cases('inner_val')
         plans = [self._plan(case,count,target_selection) for case in cases]
+        def prepare_one(plan):
+            # get admits the complete tensors. Its private clones are only for
+            # a forward consumer, so discard them inside each CPU worker rather
+            # than retaining all86 patients' clones in the coordinator results.
+            self.get(plan)
         with ThreadPoolExecutor(max_workers=self.workers) as pool:
-            list(pool.map(self.get,plans))
+            for _ in pool.map(prepare_one,plans): pass
         return dict(format=FORMAT, active_u=count, cases=len(plans), recipient_GT_used_in_forward=False)
 
     def admit(self, count, target_selection=None):

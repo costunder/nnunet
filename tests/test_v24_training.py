@@ -1,5 +1,6 @@
 """CPU DEBUG policy/state/optimizer tests; not native training results."""
 import copy
+from contextlib import ExitStack
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,7 +10,7 @@ from unittest.mock import patch
 import torch
 
 from hiercp_v1x.v24_targets import new_curriculum,finish_curriculum_epoch,validate_policy
-from hiercp_v1x.v24_training import optimizer_groups,_validate_progress,V24Scorer,patient_batches,validate_calibration,validate_saved_best,FORMAT
+from hiercp_v1x.v24_training import optimizer_groups,_validate_progress,V24Scorer,patient_batches,validate_calibration,validate_saved_best,calibrate_training_batches,FORMAT
 from hiercp_v1x.v23_training import patient_balanced_objective,best_selection_key,parallel_patient_batches
 from tools.run_v24_all_p import validate_config,parse
 
@@ -206,6 +207,54 @@ class V24TrainingContractDebug(unittest.TestCase):
         trial['measurements'][1]['gradient']['missing']=['weight']
         with self.assertRaisesRegex(ValueError,'finite loss gradient'):
             validate_calibration(report,net,scorer,{},4,repeats=3,budget=SimpleNamespace(cuda_bytes=1000),debug=True)
+
+    def test_calibration_rejects_transient_peak_and_actual_RSS_budget_without_losing_safe_trial(self):
+        """CPU DEBUG clone updates; mocked resource counters are not native evidence."""
+        from hiercp_v1x.historical_evaluation import ResourceBudget
+        from hiercp_v1x.u_bridge_training import digest
+        net=torch.nn.Linear(2,1)
+        cases=['UNIT_'+str(i) for i in range(4)]
+        plans={case:SimpleNamespace(case_id=case,record_ids=tuple(case+'_'+str(i) for i in range(129)),
+            positive_indices=(0,)) for case in cases}
+        population=SimpleNamespace(partition_cases=lambda *a,**kw:cases,case=lambda case,*a,**kw:plans[case])
+        class Scorer:
+            def __init__(self):
+                self.net=net;self.physical_candidate_batch=32
+                self.providers={'inner_train':SimpleNamespace(records={record:dict(sampled_two_view_edges=1)
+                    for plan in plans.values() for record in plan.record_ids})}
+            def __call__(self, supplied, **kwargs):
+                if self.physical_candidate_batch==128:
+                    # Exercise the exact production ResourceBudget exception,
+                    # rather than an invented message or a generic exception.
+                    with patch('psutil.Process',return_value=SimpleNamespace(memory_info=lambda:SimpleNamespace(rss=2))):
+                        ResourceBudget(1000,1).check()
+                features=torch.arange(len(supplied)*129*2,dtype=torch.float32).reshape(len(supplied),129,2)/1000
+                values=self.net(features).squeeze(-1)
+                return SimpleNamespace(scores=tuple(values.unbind()),consistency=values.new_zeros(values.numel()),
+                    case_ids=tuple(plan.case_id for plan in supplied),workload=dict(patients=len(supplied),upper_invocations=1))
+        scorer=Scorer();before=digest(net.state_dict())
+        contract=dict(recipient_GT_used_in_forward=False,trained_v23_weights_loaded=False,
+            parameters=3,trainable_parameters=3)
+        config=dict(v24_runtime=dict(physical_patient_batch_candidates=[4],
+            physical_candidate_batch_candidates=[32,64,128],calibration_repeats=3),
+            training=dict(lr=1e-4,weight_decay=.01,fused_optimizer=False,amp=False,grad_clip=1.))
+        with ExitStack() as stack:
+            stack.enter_context(patch('hiercp_v1x.v24_training._groups',side_effect=lambda model:dict(CPU_DEBUG=model)))
+            stack.enter_context(patch('torch.cuda.is_available',return_value=False))
+            for name in ('reset_peak_memory_stats','synchronize','empty_cache'):
+                stack.enter_context(patch('torch.cuda.'+name))
+            stack.enter_context(patch('torch.cuda.memory_allocated',return_value=0))
+            stack.enter_context(patch('torch.cuda.max_memory_allocated',side_effect=[100,1001]))
+            result=calibrate_training_batches(net,scorer,population,config,
+                budget=SimpleNamespace(cuda_bytes=1000,check=lambda:None),model_contract=contract,debug=True)
+        self.assertEqual(result['selected_physical_candidate_batch'],32)
+        self.assertEqual([row['accepted'] for row in result['trials']],[True,False,False])
+        self.assertEqual([row.get('failure') for row in result['trials']],[None,'CUDA_BUDGET','RAM_BUDGET'])
+        self.assertEqual(result['trials'][1]['peak_cuda_bytes'],1001)
+        self.assertEqual(result['trials'][2]['error'],'Historical evaluation RSS budget exceeded; no cases skipped')
+        self.assertEqual(digest(net.state_dict()),before)
+        validate_calibration(result,net,scorer,contract,4,repeats=3,
+            budget=SimpleNamespace(cuda_bytes=1000),debug=True)
 
     def test_resume_preserves_actual_best_or_rejects_missing_and_corrupt(self):
         import uuid
