@@ -84,6 +84,31 @@ Calibration은 cloned model의 자원/연결 검사이며40epoch본학습완료�
 원래 recipient lesion annotation을 graph에 노출하는 과제를 유지한다.
 따라서 annotation-blind CP 효용 또는 segmentation개선을 검증했다고 주장하지 않음.
 
+전체 P의 bbox anchor admission 수정
+GPU 학습 전 CPU upper geometry 준비에서 일부 관측 P의 기준점이 organ mask
+밖에 있다는 이유로 중단됐다. 원래 SourceCollection은 병변 bbox의 중점을
+기준점으로 정하므로, 오목한 병변에서는 그 한 voxel이 background일 수 있다.
+2026-10-01 전체105환자/14102관측 주석 검사에서도 관측 P662개 중652개는
+label2,7개는label1,3개는label0으로 확인했다. P의 bbox 기준점 voxel label은
+완전한 병변 component의 관측 여부와 같은 조건이 아니다.
+이번 read-only 재검사에서도 원본105환자 annotation SHA와14102좌표를
+전부 확인했다. Train P527 =label2 520 +label1 4 +label0 3,
+validation P135 =label2 132 +label1 3이다. 모든 U13440개는label1이며
+좌표 정수형·CT 범위·원래 region_at assignment 불일치는0개였다.
+중단된3환자는 정확히 background bbox 기준점을 갖는 train P3개와 일치했다.
+v2.3 adapter는 organ 안이라는 조건을 고정 native query의 정확한 좌표
+membership 조건으로 바꾼다. Query에는 P/U target이 없으며 모든 관측 P와
+미관측 U의 원래 좌표만 allowlist에 결속한다. 기준점 이동·P 누락·가짜 mask가 없다.
+정수 CT 범위 검사와 원래 spec.region_id == region_at(center) 검사는 유지한다.
+region_at은 원래 코드가 정의한 가장 가까운 기존 region 반환을 그대로 사용한다.
+CNN/GAT, candidate feature 식, graph relation, prototype 식은 변경하지 않는다.
+역사적 helper/source/cache는 수정하지 않는다. Admission receipt는 변경된
+두 조건(환자 partition, native coordinate)을 각각 기록하며, 이전 실패 캐시는
+새 identity로 조용히 덮어쓰거나 무조건 인정하지 않는다.
+UNIT은 합성 CT의 오목한 component bbox중점 반례, native 밖 좌표·CT 범위·
+잘못된 region 거절, 정상 좌표의 모든 graph/prototype tensor 원본 일치를 확인한다.
+이 검사는 CPU UNIT이며 실제 GPU calibration 또는 전체 학습 완료가 아니다.
+
 작업 완료 체크리스트
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
 - [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.

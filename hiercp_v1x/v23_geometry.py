@@ -1,8 +1,10 @@
 """Immutable all-P/active-U CPU upper graphs for the new v2.3 experiment.
 
-Original geometry equations stay byte-for-byte represented by their AST. The
-single held-out-recipient admission clause is replaced with an explicit v2.3
-train/validation partition check. Frozen historical helpers are never edited.
+Original geometry equations stay byte-for-byte represented by their AST. Two
+admission clauses bind the v2.3 train/validation partition and signed native
+candidate coordinates. A native bbox anchor can lie in background; its exact
+coordinate and the original region_at assignment remain unchanged. Frozen
+historical helpers are never edited.
 The cache contains geometry only, never neural features or predictions.
 """
 from __future__ import annotations
@@ -40,16 +42,53 @@ def recipient_admitted(recipient, training, train_cases, validation_cases):
     return str(recipient) in (set(train) | set(validation))
 
 
-def adapted_builders(train_cases, validation_cases):
-    """Extract original equations and change exactly one admission expression."""
+def center_admitted(recipient, center, regions, recorded_centers):
+    """Admit exact recorded native coordinates, with no target/class argument.
+
+    The original builder still independently enforces integer CT bounds and
+    ``spec.region_id == regions.region_at(center)``. Bbox midpoint anchors can
+    occupy a concave component's background hole; region_at already implements
+    an exact nearest original region for those positions. No coordinate moves.
+    """
+    import numpy as np
+    value = np.asarray(center)
+    if (value.shape != (3,) or not np.issubdtype(value.dtype, np.integer)
+            or np.any(value < 0) or np.any(value >= regions.full_organ_mask.shape)):
+        return False
+    coordinate = tuple(map(int, value))
+    if recorded_centers is None:
+        # Direct mechanical admission without an inventory keeps the historical
+        # restriction. Production always passes its frozen native allowlist.
+        return bool(regions.full_organ_mask[coordinate])
+    return coordinate in recorded_centers.get(str(recipient), frozenset())
+
+
+def adapted_builders(train_cases, validation_cases, *, recorded_centers=None):
+    """Change exactly two admission expressions; preserve all graph equations."""
     from . import historical_patient_graph, historical_evaluation
     original = historical_patient_graph.build_external_hierarchy
     text = inspect.getsource(original)
     tree = ast.parse(text)
     expected = _expression('str(recipient_case.paths.case_id) in training')
+    expected_center = _expression('not recipient_regions.full_organ_mask[tuple(center)]')
+    centers = None
+    if recorded_centers is not None:
+        declared = set(map(str, train_cases)) | set(map(str, validation_cases))
+        if not isinstance(recorded_centers, dict) or set(recorded_centers) - declared:
+            raise ValueError('Native center allowlist must belong to bound train/validation cases')
+        centers = {}
+        for case, coordinates in recorded_centers.items():
+            checked = []
+            for center in coordinates:
+                values = tuple(center)
+                if len(values) != 3 or any(type(value) is not int or value < 0 for value in values):
+                    raise ValueError('Frozen native center allowlist requires exact nonnegative integer coordinates')
+                checked.append(values)
+            centers[case] = frozenset(checked)
 
     class Admission(ast.NodeTransformer):
         count = 0
+        center_count = 0
 
         def visit_Compare(self, node):
             if ast.dump(node, include_attributes=False) == expected:
@@ -59,14 +98,26 @@ def adapted_builders(train_cases, validation_cases):
                     mode='eval').body, node)
             return self.generic_visit(node)
 
+        def visit_UnaryOp(self, node):
+            if ast.dump(node, include_attributes=False) == expected_center:
+                self.center_count += 1
+                return ast.copy_location(ast.parse(
+                    'not _v23_center_admitted(str(recipient_case.paths.case_id), center, recipient_regions)',
+                    mode='eval').body, node)
+            return self.generic_visit(node)
+
     replacement = Admission()
     adapted = replacement.visit(copy.deepcopy(tree))
     if replacement.count != 1:
         raise ValueError('Original recipient admission AST changed; exactly one replacement required')
+    if replacement.center_count != 1:
+        raise ValueError('Original organ-center admission AST changed; exactly one replacement required')
     ast.fix_missing_locations(adapted)
     namespace = dict(original.__globals__)
     namespace['_v23_recipient_admitted'] = lambda recipient, training: recipient_admitted(
         recipient, training, train_cases, validation_cases)
+    namespace['_v23_center_admitted'] = lambda recipient, center, regions: center_admitted(
+        recipient, center, regions, centers)
     exec(compile(adapted, original.__code__.co_filename + ':v23_admission', 'exec'), namespace)
     builder = namespace[original.__name__]
 
@@ -86,12 +137,21 @@ def adapted_builders(train_cases, validation_cases):
     upper_namespace['build_external_hierarchy'] = builder
     exec(compile(upper_tree, upper.__code__.co_filename + ':v23_admission', 'exec'), upper_namespace)
     receipt = dict(
-        format='v23_original_upper_AST_single_partition_admission_v1',
+        format='v23_original_upper_AST_partition_and_native_center_admission_v2',
         historical_builder_file_sha256=sha(inspect.getsourcefile(original)),
         historical_upper_file_sha256=sha(inspect.getsourcefile(upper)),
         original_builder_function_sha256=hashlib.sha256(text.encode()).hexdigest(),
         original_upper_function_sha256=hashlib.sha256(inspect.getsource(upper).encode()).hexdigest(),
-        admission_replacements=1, upper_import_removals=1,
+        admission_replacements=1, native_center_admission_replacements=1,
+        total_admission_replacements=2, upper_import_removals=1,
+        native_coordinate_allowlist_bound=centers is not None,
+        native_coordinate_allowlist_sha256=None if centers is None else canonical_hash(
+            {case: [list(center) for center in sorted(values)] for case, values in sorted(centers.items())}),
+        native_coordinate_allowlist_counts=None if centers is None else {
+            case: len(values) for case, values in sorted(centers.items())},
+        coordinate_allowlist_contains_no_P_U_targets=True,
+        native_bbox_anchor_background_permitted_only_if_recorded=True,
+        CT_coordinate_bounds_and_original_region_at_guard_preserved=True,
         original_feature_relation_prototype_equations_preserved=True,
         training_cases=list(train_cases), validation_cases=list(validation_cases),
         train_and_validation_partition_bound=True, original_helpers_modified=False,
@@ -148,7 +208,11 @@ class V23UpperGeometryCache:
         self.validation_cases = tuple(population.partition_cases('inner_val'))
         if set(self.train_cases) & set(self.validation_cases):
             raise ValueError('v2.3 geometry requires disjoint patient partitions')
-        self._upper, self.adaptation = adapted_builders(self.train_cases, self.validation_cases)
+        recorded_centers = {case: tuple(tuple(row['center']) for row in
+            self.population.case(case, 128).query_rows)
+            for case in self.train_cases + self.validation_cases}
+        self._upper, self.adaptation = adapted_builders(self.train_cases, self.validation_cases,
+                                                      recorded_centers=recorded_centers)
         self._entries = {}
         self._stage_signatures = {}
         self._region_bindings = {}

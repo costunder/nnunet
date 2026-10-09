@@ -1,5 +1,6 @@
 """CPU UNIT mechanics only; these fixtures are not experimental results."""
 import copy
+from dataclasses import replace
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,11 +9,13 @@ import unittest
 from unittest.mock import patch
 
 import torch
+import numpy as np
+from scipy import ndimage as ndi
 from torch_geometric.data import HeteroData
 
 from hiercp_v1x.historical_evaluation import sha
 from hiercp_v1x.v23_geometry import (
-    V23UpperGeometryCache, adapted_builders, recipient_admitted,
+    V23UpperGeometryCache, adapted_builders, center_admitted, recipient_admitted,
 )
 
 
@@ -68,6 +71,9 @@ class AdaptationTest(unittest.TestCase):
         upper, receipt = adapted_builders(('train',), ('val',))
         self.assertTrue(callable(upper))
         self.assertEqual(receipt['admission_replacements'], 1)
+        self.assertEqual(receipt['native_center_admission_replacements'], 1)
+        self.assertEqual(receipt['total_admission_replacements'], 2)
+        self.assertFalse(receipt['native_coordinate_allowlist_bound'])
         self.assertEqual(receipt['upper_import_removals'], 1)
         self.assertTrue(receipt['original_feature_relation_prototype_equations_preserved'])
         self.assertFalse(receipt['original_helpers_modified'])
@@ -86,6 +92,96 @@ class AdaptationTest(unittest.TestCase):
         with patch('hiercp_v1x.v23_geometry.inspect.getsource', return_value='def changed():\n    return 1\n'):
             with self.assertRaisesRegex(ValueError, 'exactly one'):
                 adapted_builders(('train',), ('val',))
+
+    def test_native_center_membership_is_target_free_and_does_not_move_center(self):
+        mask = np.ones((5, 5, 5), bool); mask[2, 2, 2] = False
+        regions = SimpleNamespace(full_organ_mask=mask)
+        allowed = {'val': frozenset({(2, 2, 2), (1, 1, 1)})}
+        self.assertTrue(center_admitted('val', (2, 2, 2), regions, allowed))
+        self.assertFalse(center_admitted('val', (2, 2, 2), regions, None))
+        self.assertFalse(center_admitted('val', (3, 3, 3), regions, allowed))
+        self.assertFalse(center_admitted('other', (2, 2, 2), regions, allowed))
+        self.assertFalse(center_admitted('val', (-1, 2, 2), regions, allowed))
+        self.assertFalse(center_admitted('val', (5, 2, 2), regions, allowed))
+        self.assertFalse(center_admitted('val', (2., 2., 2.), regions, allowed))
+
+    @staticmethod
+    def background_anchor_inputs():
+        from tests.test_historical_patient_graph import unit_inputs
+        inputs = unit_inputs(1)
+        case, regions = inputs['recipient_case'], inputs['recipient_regions']
+        center = (3, 4, 5)
+        # The actual component is a hollow 3-cube. Its unchanged bbox midpoint
+        # is background, while its complete surrounding lesion remains real.
+        self_mask = case.label == 2
+        self_mask[center] = False
+        case.label[center] = 0
+        regions.full_organ_mask = np.isin(case.label, (1, 2))
+        regions.region_labels[center] = -1
+        regions.organ_depth = ndi.distance_transform_edt(regions.full_organ_mask,
+            sampling=case.spacing).astype(np.float32)
+        inputs['specs'] = [replace(inputs['specs'][0], center=center,
+            region_id=regions.region_at(center), border_distance_mm=0.)]
+        return inputs, center
+
+    def test_actual_hollow_bbox_anchor_graph_preserves_original_coordinate_region_and_equations(self):
+        from hiercp import hierarchy
+        from hiercp.common import normalized_position
+        from hiercp_v1x.historical_patient_graph import build_external_hierarchy
+        inputs, center = self.background_anchor_inputs()
+        recipient = inputs['recipient_case'].paths.case_id
+        with self.assertRaisesRegex(ValueError, 'actual recipient center and region'):
+            build_external_hierarchy(**inputs)
+        upper, receipt = adapted_builders(inputs['training_case_ids'], (recipient,),
+            recorded_centers={recipient: [center]})
+        build = upper.__globals__['build_external_hierarchy']
+        graph, _, audit = build(**inputs)
+        np.testing.assert_array_equal(graph['candidate'].pos.numpy()[0],
+            normalized_position(center, inputs['recipient_case'].image.shape))
+        self.assertEqual(graph['candidate'].region_index.item(), inputs['recipient_regions'].region_at(center))
+        source_axis, anisotropy = hierarchy._principal_axis(inputs['donor_source'].full_mask,
+                                                           inputs['donor_case'].spacing)
+        case = inputs['recipient_case']; case.shape = case.image.shape
+        expected = hierarchy._candidate_raw(case, inputs['recipient_source'], inputs['specs'][0],
+            inputs['recipient_regions'], source_axis=source_axis, source_anisotropy=anisotropy,
+            ct_clip=inputs['ct_clip'])
+        np.testing.assert_array_equal(graph['candidate'].raw_x.numpy()[0], expected)
+        self.assertFalse(audit['P_U_labels_in_forward'])
+        self.assertTrue(receipt['native_coordinate_allowlist_bound'])
+        self.assertTrue(receipt['coordinate_allowlist_contains_no_P_U_targets'])
+        self.assertTrue(receipt['CT_coordinate_bounds_and_original_region_at_guard_preserved'])
+
+    def test_background_anchor_requires_exact_native_coordinate_and_exact_original_region(self):
+        inputs, center = self.background_anchor_inputs()
+        recipient = inputs['recipient_case'].paths.case_id
+        upper, _ = adapted_builders(inputs['training_case_ids'], (recipient,),
+            recorded_centers={recipient: [(1, 1, 1)]})
+        with self.assertRaisesRegex(ValueError, 'actual recipient center and region'):
+            upper.__globals__['build_external_hierarchy'](**inputs)
+        upper, _ = adapted_builders(inputs['training_case_ids'], (recipient,),
+            recorded_centers={recipient: [center]})
+        inputs['specs'] = [replace(inputs['specs'][0], region_id=(inputs['specs'][0].region_id + 1) % 2)]
+        with self.assertRaisesRegex(ValueError, 'actual recipient center and region'):
+            upper.__globals__['build_external_hierarchy'](**inputs)
+
+    def test_normal_bound_candidates_graphs_equal_the_original_historical_equations(self):
+        from tests.test_historical_patient_graph import unit_inputs
+        from hiercp_v1x.historical_patient_graph import build_external_hierarchy
+        inputs = unit_inputs(5)
+        recipient = inputs['recipient_case'].paths.case_id
+        upper, _ = adapted_builders(inputs['training_case_ids'], (recipient,),
+            recorded_centers={recipient: [tuple(spec.center) for spec in inputs['specs']]})
+        actual = upper.__globals__['build_external_hierarchy'](**inputs)
+        original = build_external_hierarchy(**inputs)
+        for left, right in zip(actual[:2], original[:2]):
+            for store_name in (*left.node_types, *left.edge_types):
+                self.assertEqual(set(left[store_name]), set(right[store_name]))
+                for name, value in left[store_name].items():
+                    if torch.is_tensor(value):
+                        self.assertTrue(torch.equal(value, right[store_name][name]))
+                    else:
+                        self.assertEqual(value, right[store_name][name])
+        self.assertEqual(actual[2], original[2])
 
 
 class CacheTest(unittest.TestCase):
