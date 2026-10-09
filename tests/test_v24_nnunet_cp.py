@@ -10,6 +10,9 @@ import contextlib
 import io
 import subprocess
 import sys
+import ast
+import hashlib
+from collections import OrderedDict
 import numpy as np
 from hiercp_v1x import v24_nnunet_cp as cp
 
@@ -115,18 +118,154 @@ class ActualPastePredicates(unittest.TestCase):
     def test_late_candidate_tumor_overlap_not_silently_ignored(self):
         case,source,centers,settings=self.fixture()
         case.label[tuple(centers[-1])]=2
-        with self.assertRaisesRegex(ValueError,'existing_tumor'):cp.verify_cp_centers(case,source,centers,settings)
+        result=cp.verify_cp_centers(case,source,centers,settings)
+        self.assertFalse(result['eligible_mask'][-1])
+        self.assertIn('existing_tumor',[row['reason'] for row in result['invalid_candidate_reasons']][-1])
+        self.assertGreater(result['eligible_count'],0)
 
     def test_complete_bounds_and_liver_coverage(self):
         case,source,centers,settings=self.fixture();centers[-1]=[0,0,0]
-        with self.assertRaisesRegex(ValueError,'outside_CT'):cp.verify_cp_centers(case,source,centers,settings)
+        result=cp.verify_cp_centers(case,source,centers,settings)
+        self.assertEqual(result['invalid_candidate_reasons'][-1]['reason'],'complete_footprint_outside_CT')
         case,source,centers,settings=self.fixture();case.label[tuple(centers[-1])]=0
-        with self.assertRaisesRegex(ValueError,'liver_coverage'):cp.verify_cp_centers(case,source,centers,settings)
+        result=cp.verify_cp_centers(case,source,centers,settings)
+        self.assertIn('insufficient_liver_coverage',[row['reason'] for row in result['invalid_candidate_reasons']])
 
     def test_center_clearance_is_enforced(self):
         case,source,centers,settings=self.fixture();case.label[14,6,6]=2
         settings['min_center_separation_mm']=5.
-        with self.assertRaisesRegex(ValueError,'center_separation'):cp.verify_cp_centers(case,source,centers,settings)
+        result=cp.verify_cp_centers(case,source,centers,settings)
+        self.assertIn('center_separation_mm',[row['reason'] for row in result['invalid_candidate_reasons']])
+
+    def test_all_invalid_reports_audit_and_never_falls_back(self):
+        case,source,centers,settings=self.fixture();case.label[:]=0
+        with self.assertRaisesRegex(ValueError,'No physically eligible.*no recipient skipped') as error:
+            cp.verify_cp_centers(case,source,centers,settings)
+        self.assertIn('"eligible_count": 0',str(error.exception))
+        self.assertIn('"invalid_candidates": 128',str(error.exception))
+
+    def test_eligible_argmax_preserves_full_scores_and_stable_tie_order(self):
+        values=np.arange(128,dtype=np.float32);values[6]=values[7]=200;values[127]=300
+        mask=np.ones(128,bool);mask[127]=False
+        original=values.copy();self.assertEqual(cp.eligible_argmax(values,mask),6)
+        np.testing.assert_array_equal(values,original)
+        with self.assertRaisesRegex(ValueError,'No eligible'):cp.eligible_argmax(values,np.zeros(128,bool))
+
+
+class FrozenLoaderIntegration(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Real production parent definitions; only external framework setup is
+        # omitted. The actual parent's RNG sampler and raw-paste plan run here.
+        cls.namespace=dict(np=np,torch=__import__('torch'),hashlib=hashlib,json=json,
+            OrderedDict=OrderedDict,Path=Path,nnUNetDataLoader=object,
+            TRAINER_FORMAT='hiercp_online_trainer_v2',BANK_FORMAT='hiercp_online_bank_v2')
+        original=ast.parse((cp.ROOT/'custom_trainers/nnUNetTrainer_OnlinePairedCP.py').read_text(encoding='utf8'))
+        names={'OnlineCPError','OnlineCPBank','_stable_u64','_stable_seed','_select_candidate_index','_anchored_slices','nnUNetDataLoaderOnlineCP'}
+        nodes=[node for node in original.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and node.name in names]
+        if set(node.name for node in nodes)!=names:raise AssertionError('Actual parent definitions missing')
+        future=ast.ImportFrom(module='__future__',names=[ast.alias(name='annotations')],level=0)
+        exec(compile(ast.fix_missing_locations(ast.Module(body=[future,*nodes],type_ignores=[])),'actual_parent_loader','exec'),cls.namespace)
+        cls.namespace.update(eligible_argmax=cp.eligible_argmax,CP_SELECTION=cp.CP_SELECTION,sha=cp.sha,read=cp.read)
+        tree=ast.parse((cp.ROOT/'custom_trainers/nnUNetTrainer_FrozenV23CP.py').read_text(encoding='utf8'))
+        nodes=[node for node in tree.body if isinstance(node,ast.ClassDef) and node.name in ('FrozenV23Bank','FrozenV23Loader')]
+        exec(compile(ast.fix_missing_locations(ast.Module(body=nodes,type_ignores=[])),'actual_FrozenV23Loader','exec'),cls.namespace)
+
+    def test_parent_sampler_keeps_five_draws_and_selects_admitted_raw_payload(self):
+        loader=self.namespace['FrozenV23Loader'].__new__(self.namespace['FrozenV23Loader'])
+        values=np.arange(128,dtype=np.float32);mask=np.ones(128,np.uint8);mask[127]=0
+        centers=np.stack([np.arange(128)+2,np.full(128,3),np.full(128,4)],axis=1)
+        entry=dict(case_id=np.asarray(['UNIT_CASE']),scores=values,candidate_centers=centers,
+            candidate_eligibility=mask,selected_candidate=np.asarray([126]),selection_policy=np.asarray([cp.CP_SELECTION]))
+        class Bank:
+            cp_probability=.5;intensity_scale=(.95,1.05);intensity_shift_hu=(-5.,5.)
+            source_slots_by_case=None;paste_contract='onlinecp_raw_target_paste_v1';hier_top_k=1
+            entries_by_case={'UNIT_CASE':['UNIT_entry']}
+            def entry_names(self,case):return self.entries_by_case[case]
+            def load_for_case(self,case,index):return entry
+            def load_raw_candidate(self,actual,index):
+                self.actual_index=index
+                return {'metadata':{'preprocessed_shape':[200,200,200]}},{'output_bbox':np.asarray([[0,2],[0,2],[0,2]])}
+        class RNG:
+            count=0
+            def random(self):self.count+=1;return [0.1,.4,.9,.2,.8][self.count-1]
+        loader.online_bank=Bank();loader.online_epoch=3;loader.online_policy='hier_argmax'
+        rng=RNG();loader._rng=lambda:rng
+        plan,token=loader._sample_paste_plan('UNIT_CASE')
+        self.assertEqual(rng.count,5);self.assertEqual(plan['candidate_index'],126)
+        self.assertEqual(loader.online_bank.actual_index,126)
+        self.assertEqual(plan['center'],tuple(centers[126]));self.assertAlmostEqual(plan['scale'],.97)
+        self.assertAlmostEqual(plan['shift_hu'],3.)
+        self.assertEqual(len(plan['entry']['scores']),128);self.assertIsInstance(token,int)
+
+    def test_actual_frozen_bank_rejects_changed_scores_mask_and_wrong_payload_index(self):
+        with tempfile.TemporaryDirectory(prefix='v24_payload_UNIT_',dir=Path.cwd()) as temp:
+            root=Path(temp);(root/'scores').mkdir();case='UNIT_CASE';scores=np.arange(128,dtype=np.float32)
+            mask=np.ones(128,np.uint8);mask[127]=0
+            centers=np.stack([np.arange(128)+2,np.full(128,3),np.full(128,4)],axis=1)
+            path=root/'scores'/(case+'.json');path.write_text(json.dumps(dict(scores=scores.tolist(),centers=centers.tolist())),encoding='utf8')
+            checksum=cp.sha(path)
+            bank=self.namespace['FrozenV23Bank'].__new__(self.namespace['FrozenV23Bank'])
+            bank.root=root;bank.paste_contract='onlinecp_raw_target_paste_v1'
+            bank.metadata=dict(split=dict(outer_train=[case]),CP_audits={case:dict(donor_case_id='UNIT_DONOR',donor_component=2,
+                selected_candidate=126,eligibility=dict(eligible_mask=mask.astype(bool).tolist()),scores_file_sha256=checksum)})
+            bank.v24_score_manifest=dict(score_files={case:dict(path='scores/'+case+'.json',sha256=checksum)})
+            entry=dict(case_id=np.asarray([case]),donor_case_id=np.asarray(['UNIT_DONOR']),donor_component_id=np.asarray([2]),
+                candidate_centers=centers.copy(),candidate_raw_centers=centers.copy(),scores=scores.copy(),source_component=np.asarray([2]),
+                source_diameter_mm=np.asarray([5.]),candidate_eligibility=mask.copy(),selection_policy=np.asarray([cp.CP_SELECTION]),
+                selected_candidate=np.asarray([126]),paste_contract=np.asarray([bank.paste_contract]),selected_payload=np.asarray(['UNIT_payload']),
+                selected_payload_sha256=np.asarray(['a'*64]),raw_case_reference=np.asarray(['UNIT_reference']),raw_case_reference_sha256=np.asarray(['b'*64]))
+            bank._validate_raw_entry(entry,root/'UNIT.npz')
+            changed=copy.deepcopy(entry);changed['scores'][126]-=1
+            with self.assertRaisesRegex(ValueError,'score/center'):bank._validate_raw_entry(changed,root/'UNIT.npz')
+            changed=copy.deepcopy(entry);changed['candidate_eligibility'][127]=1
+            with self.assertRaisesRegex(ValueError,'argmax admission'):bank._validate_raw_entry(changed,root/'UNIT.npz')
+            with self.assertRaisesRegex(ValueError,'eligible original128'):bank.load_raw_candidate(entry,127)
+
+
+class ScorePublication(unittest.TestCase):
+    def fixture(self):
+        split=split_fixture();cases=split['outer_train'];pin=pin_fixture()
+        # Actual admission needs only the same explicit original plan fields.
+        plans={}
+        for case in cases:
+            bank=tuple(case+'_U_'+str(i) for i in range(128))
+            plans[case]=SimpleNamespace(record_ids=bank,rows=[dict(id=name,center=[i+1,2,3]) for i,name in enumerate(bank)],
+                bank_record_ids=bank,unobserved_indices=tuple(range(128)),unobserved_bank_positions=tuple(range(128)),
+                donor_case_id=cases[1] if case!=cases[1] else cases[0],donor_component=1,observed_P=0)
+        population=SimpleNamespace(partition_cases=lambda partition:split[partition],case=lambda case,count:plans[case],
+            manifest=lambda:dict(UNIT_explicit_population=True))
+        rows=[dict(case_id=case,donor_case_id=plans[case].donor_case_id,donor_component=1,scores=list(range(128)),
+            centers=[row['center'] for row in plans[case].rows],joint_observed_P=0,joint_candidates=128,
+            all128U_scored=True,all_P_in_joint_context=True,model_sha256=pin['selected']['best_model_sha256']) for case in cases]
+        return population,pin,rows
+
+    def test_full_score_admission_rejects_missing_mutated_donor_center_and_nonfinite(self):
+        population,pin,rows=self.fixture();self.assertEqual(len(cp.validate_score_rows(rows,population,pin)),105)
+        with self.assertRaises(ValueError):cp.validate_score_rows(rows[:-1],population,pin)
+        for key,value in [('donor_component',2),('centers',[[0,0,0]]*128),('scores',[float('nan')]*128)]:
+            changed=copy.deepcopy(rows);changed[0][key]=value
+            with self.assertRaises(ValueError):cp.validate_score_rows(changed,population,pin)
+
+    def test_complete_scores_are_sealed_before_materialization_and_bound_to_bytes(self):
+        population,pin,rows=self.fixture()
+        with tempfile.TemporaryDirectory(prefix='v24_score_UNIT_',dir=Path.cwd()) as temp:
+            root=Path(temp);(root/'scores').mkdir()
+            request=dict(inventory_sha256='a'*64,baseline={'UNIT':True},source_files_sha256={'UNIT':'b'*64})
+            (root/'request.json').write_text(json.dumps(request),encoding='utf8')
+            for row in rows:(root/'scores'/(row['case_id']+'.json')).write_text(json.dumps(row),encoding='utf8')
+            manifest=cp.seal_scores(root,rows,population,pin)
+            self.assertTrue(manifest['complete']);self.assertEqual(len(manifest['score_files']),105)
+            self.assertFalse(manifest['raw_materialization_started'])
+            row=rows[0];path=root/'scores'/(row['case_id']+'.json');path.write_text('{}',encoding='utf8')
+            with self.assertRaisesRegex(ValueError,'Persisted complete score'):cp.seal_scores(root,rows,population,pin)
+
+    def test_scoring_ast_excludes_only_new_publication_and_rejects_changed_inference(self):
+        text=(cp.ROOT/cp.FILES[0]).read_text(encoding='utf8')
+        without=text.replace('    seal_scores(output,rows,population,pin)\n','')
+        self.assertEqual(cp._scoring_core_ast(text),cp._scoring_core_ast(without))
+        changed=without.replace('physical_candidate_batch=32','physical_candidate_batch=8',1)
+        self.assertNotEqual(cp._scoring_core_ast(text),cp._scoring_core_ast(changed))
 
 
 class CLITests(unittest.TestCase):
@@ -156,6 +295,9 @@ with patch.object(local_cnn_device,'select',return_value=None),patch.object(uppe
     def test_action_specific_required_inputs_and_single_gpu(self):
         from tools.run_v24_nnunet_cp import parse
         self.assertEqual(parse(['train','--native','UNIT.json']).gpu,1)
+        recover=parse(['materialize-bank','--pin','UNIT_pin','--inventory','UNIT_inventory','--baseline-preprocessed','UNIT_pre',
+            '--scores','UNIT_scores','--score-source-code','UNIT_old_code','--output','UNIT_new'])
+        self.assertEqual(recover.action,'materialize-bank');self.assertEqual(str(recover.score_source_code),'UNIT_old_code')
         with contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):parse(['train','--native','UNIT.json','--gpu','5'])
             with self.assertRaises(SystemExit):parse(['prepare-bank','--pin','UNIT.json'])

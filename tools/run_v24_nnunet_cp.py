@@ -9,10 +9,12 @@ sys.path.insert(0,str(ROOT));sys.dont_write_bytecode=True
 
 def parse(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('verify','prepare-bank','prepare-native','calibrate-native','train','predict','evaluate'))
+    parser.add_argument('action',choices=('verify','prepare-bank','materialize-bank','prepare-native','calibrate-native','train','predict','evaluate'))
     parser.add_argument('--pin',type=Path)
     parser.add_argument('--inventory',type=Path)
     parser.add_argument('--baseline-preprocessed',type=Path)
+    parser.add_argument('--scores',type=Path)
+    parser.add_argument('--score-source-code',type=Path)
     parser.add_argument('--bank',type=Path)
     parser.add_argument('--native',type=Path)
     parser.add_argument('--predictions',type=Path)
@@ -24,6 +26,7 @@ def parse(argv=None):
     if args.gpu!=1:parser.error('This downstream arm is explicitly assigned GPU1')
     required={'verify':('pin','inventory','baseline_preprocessed'),
         'prepare-bank':('pin','inventory','baseline_preprocessed','output'),
+        'materialize-bank':('pin','inventory','baseline_preprocessed','scores','output'),
         'prepare-native':('bank','output'),'calibrate-native':('native',),'train':('native',),
         'predict':('native','inventory','output'),'evaluate':('native','inventory','predictions','output')}
     for name in required[args.action]:
@@ -41,6 +44,10 @@ def main(args):
     elif args.action=='prepare-bank':
         print(pipeline.prepare_bank(pin_path=args.pin,inventory_path=args.inventory,
             baseline_preprocessed=args.baseline_preprocessed,output=args.output,gpu=args.gpu))
+    elif args.action=='materialize-bank':
+        print(pipeline.materialize_bank(pin_path=args.pin,inventory_path=args.inventory,
+            baseline_preprocessed=args.baseline_preprocessed,scores=args.scores,output=args.output,
+            score_source_code=args.score_source_code,gpu=args.gpu))
     elif args.action=='prepare-native':print(pipeline.prepare_nnunet(args.bank,args.output))
     elif args.action=='calibrate-native':print(pipeline.calibrate_native(args.native,gpu=args.gpu))
     elif args.action=='train':print(pipeline.train(args.native,gpu=args.gpu,resume=args.resume))

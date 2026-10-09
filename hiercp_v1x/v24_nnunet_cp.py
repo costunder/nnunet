@@ -8,6 +8,7 @@ The 26 segmentation-validation patients use the ordinary nnUNet loader.
 from __future__ import annotations
 
 import copy
+import ast
 import hashlib
 import json
 import math
@@ -19,6 +20,8 @@ import sys
 import time
 
 FORMAT = 'v24_frozen_v23_GNN_native_nnunet_CP_v1'
+SCORE_FORMAT = 'v24_frozen_original_GNN_complete105_P_plus128U_scores_v1'
+CP_SELECTION = 'stable_highest_GNN_score_among_original128_hard_CP_eligible_U_v1'
 PIN_FORMAT = 'v24_selected_historical_v23_best_v1'
 TRAINER = 'nnUNetTrainer_250epochs_FrozenV23CP'
 PLANS = 'nnUNetResEncUNetMPlans'
@@ -188,7 +191,8 @@ def verify_cp_centers(case, source, centers, settings):
 
     This is the same bounds/coverage/occupied clearance/center-distance predicate
     used by original build_candidate_pool. No center, donor or mask is redrawn.
-    A mismatched frozen pool is an explicit error, never a smaller candidate set.
+    U are ranking observations, not a promise that every donor footprint fits.
+    Keep every128 score/center and expose a separate physical eligibility mask.
     """
     import numpy as np
     from scipy import ndimage as ndi
@@ -225,11 +229,166 @@ def verify_cp_centers(case, source, centers, settings):
         coverages.append(coverage)
         if reason:
             failures.append(dict(index=index, center=list(center), reason=reason))
-    if failures:
-        raise ValueError('Frozen native128 pool is not a full actual CP pool: ' + json.dumps(failures))
-    return dict(all128_full_footprints_valid=True, source_occupied_voxels=int(mask.sum()),
-        minimum_liver_coverage=min(coverages), invalid_candidates=0, donor_redraw=False,
+    eligible=[True]*128
+    for failure in failures:eligible[failure['index']]=False
+    audit=dict(all128_full_footprints_valid=not failures, source_occupied_voxels=int(mask.sum()),
+        minimum_liver_coverage=min(coverages), invalid_candidates=len(failures), donor_redraw=False,
+        eligible_count=sum(eligible),eligible_mask=eligible,invalid_candidate_reasons=failures,
+        full128_ranking_universe_retained=True,physical_constraints=copy.deepcopy(settings),
         centers_relocated=False, candidates_scored=128, validation_annotations_used=False)
+    if not any(eligible):
+        raise ValueError('No physically eligible CP position for the fixed donor; no recipient skipped or donor/center redrawn: '+json.dumps(audit))
+    return audit
+
+
+def eligible_argmax(scores,eligible_mask):
+    """Stable original-bank tie order; never alter/discard the128 score vector."""
+    import numpy as np
+    values=np.asarray(scores);eligible=np.asarray(eligible_mask)
+    if (values.shape!=(128,) or not np.isfinite(values).all() or eligible.shape!=(128,)
+            or eligible.dtype.kind not in 'bu' or not np.isin(eligible,[0,1]).all()):
+        raise ValueError('Complete finite128 scores and literal128 physical eligibility flags required')
+    indices=np.flatnonzero(eligible)
+    if not len(indices):raise ValueError('No eligible original CP position; no synthetic/default candidate')
+    return int(indices[int(np.argmax(values[indices]))])
+
+
+def validate_score_rows(rows, population, pin):
+    """Admit all105 immutable original scores against the native assignment."""
+    import numpy as np
+    expected=tuple(population.partition_cases('inner_train'))+tuple(population.partition_cases('inner_val'))
+    by_case={row.get('case_id'):row for row in rows}
+    if len(rows)!=105 or len(by_case)!=105 or set(by_case)!=set(expected):
+        raise ValueError('Exactly all105 original recipient score files required; no skipped case')
+    for case_id in expected:
+        row=by_case[case_id];plan=population.case(case_id,128)
+        _,centers=bank_u_values(np.zeros(len(plan.record_ids)),plan)
+        values=np.asarray(row.get('scores'))
+        if (values.shape!=(128,) or not np.isfinite(values).all()
+                or row.get('centers')!=centers.tolist()
+                or row.get('donor_case_id')!=plan.donor_case_id
+                or row.get('donor_component')!=plan.donor_component
+                or row.get('joint_observed_P')!=plan.observed_P
+                or row.get('joint_candidates')!=len(plan.record_ids)
+                or row.get('all128U_scored') is not True or row.get('all_P_in_joint_context') is not True
+                or row.get('model_sha256')!=pin['selected']['best_model_sha256']):
+            raise ValueError('Frozen score/input/donor/full-P ownership differs: '+case_id)
+    return [copy.deepcopy(by_case[case]) for case in expected]
+
+
+def _scoring_core_ast(text):
+    """Only new post-inference publication is excluded from numerical identity."""
+    tree=ast.parse(text);result={}
+    for node in tree.body:
+        if isinstance(node,ast.FunctionDef) and node.name in ('prepare_bank','bank_u_values','make_geometry'):
+            if node.name=='prepare_bank':
+                node.body=[statement for statement in node.body if not (
+                    isinstance(statement,ast.Expr) and isinstance(statement.value,ast.Call)
+                    and isinstance(statement.value.func,ast.Name) and statement.value.func.id=='seal_scores')]
+            result[node.name]=ast.dump(node,include_attributes=False)
+    if set(result)!= {'prepare_bank','bank_u_values','make_geometry'}:
+        raise ValueError('Original scoring core definitions missing')
+    return result
+
+
+def seal_scores(root, rows, population, pin, *, scoring_provenance=None):
+    """Publish the complete score proof before any fallible raw materialization."""
+    from .contracts import canonical_hash
+    root=Path(root);request=read(root/'request.json')
+    rows=validate_score_rows(rows,population,pin)
+    files={row['case_id']:dict(path='scores/'+row['case_id']+'.json',
+        sha256=sha(root/'scores'/(row['case_id']+'.json'))) for row in rows}
+    for row in rows:
+        if read(root/files[row['case_id']]['path'])!=row:
+            raise ValueError('Persisted complete score row differs from admitted result')
+    manifest=dict(format=SCORE_FORMAT,complete=True,debug=False,recipients=105,candidates_per_recipient=128,
+        all_P_retained=True,model_sha256=pin['selected']['best_model_sha256'],pin=pin,
+        inventory_sha256=request['inventory_sha256'],baseline=request['baseline'],
+        request_file_sha256=sha(root/'request.json'),population=population.manifest(),score_files=files,
+        score_row_sha256=canonical_hash(rows),scoring_provenance=scoring_provenance or dict(
+            source_files_sha256=request['source_files_sha256'],original_frozen_GNN_scoring=True),
+        production_GNN_updates=0,raw_materialization_started=False)
+    manifest['manifest_sha256']=canonical_hash(manifest)
+    new_json(root/'scoring_manifest.json',manifest)
+    return manifest
+
+
+def materialize_bank(*, pin_path, inventory_path, baseline_preprocessed, scores, output,
+                     score_source_code=None, gpu=1):
+    """CPU-only recovery from sealed scores or the exact audited legacy source."""
+    if gpu!=1:raise ValueError('This downstream arm is assigned GPU1; recovery itself is CPU-only')
+    from .comparison_native_upper_cache import _load_geometry_inputs
+    from .contracts import canonical_hash
+    from .v23_data import V23Population
+    pin,original_request=admit_pin(pin_path,inventory_path)
+    # Preserve the same preactivation boundary as actual GNN inference.
+    _load_geometry_inputs(original_request['native_experiment'],'native',inventory_path)
+    meta=read(inventory_path);population=V23Population(meta,debug=False)
+    baseline=validate_baseline(baseline_preprocessed,meta['split'])
+    source=Path(scores).resolve(strict=True)
+    if source.is_symlink() or not source.is_dir() or source.name!='scores':
+        raise ValueError('Exact original scores directory required')
+    source_root=source.parent;old_request=read(source_root/'request.json')
+    if (old_request.get('format')!=FORMAT or old_request.get('pin')!=pin
+            or old_request.get('inventory_sha256')!=sha(inventory_path)
+            or old_request.get('baseline')!=baseline or old_request.get('debug') is not False
+            or old_request.get('GPU')!=1 or old_request.get('cp_probability')!=.5
+            or old_request.get('epochs')!=250 or old_request.get('resource_contract')!=resource_contract()):
+        raise ValueError('Original completed scoring request differs from the pinned full experiment')
+    expected=tuple(population.partition_cases('inner_train'))+tuple(population.partition_cases('inner_val'))
+    actual=list(source.iterdir())
+    if {path.name for path in actual}!={case+'.json' for case in expected} or any(path.is_symlink() or not path.is_file() for path in actual):
+        raise ValueError('Exact105 regular original score files required')
+    files={case:dict(path=str(source/(case+'.json')),sha256=sha(source/(case+'.json'))) for case in expected}
+    rows=validate_score_rows([read(files[case]['path']) for case in expected],population,pin)
+    sealed=source_root/'scoring_manifest.json'
+    provenance=dict(source_request=str(source_root/'request.json'),source_request_file_sha256=sha(source_root/'request.json'),
+        source_score_files=files,original_frozen_GNN_scoring=True,CPU_only_recovery=True,GNN_rescored=False)
+    if sealed.exists():
+        manifest=read(sealed)
+        if (manifest.get('format')!=SCORE_FORMAT or manifest.get('complete') is not True
+                or manifest.get('manifest_sha256')!=canonical_hash({k:v for k,v in manifest.items() if k!='manifest_sha256'})
+                or manifest.get('request_file_sha256')!=provenance['source_request_file_sha256']
+                or manifest.get('population')!=population.manifest() or manifest.get('pin')!=pin
+                or manifest.get('inventory_sha256')!=sha(inventory_path)
+                or manifest.get('score_row_sha256')!=canonical_hash(rows)
+                or manifest.get('score_files')!={case:dict(path='scores/'+case+'.json',sha256=files[case]['sha256']) for case in expected}):
+            raise ValueError('Sealed original complete score proof differs')
+        provenance['source_scoring_manifest_sha256']=sha(sealed)
+        provenance['original_scoring_provenance']=manifest['scoring_provenance']
+    else:
+        if score_source_code is None:raise ValueError('Legacy unsealed score recovery requires explicit audited --score-source-code')
+        old_code=Path(score_source_code).resolve(strict=True)
+        if any(sha(old_code/name)!=old_request['source_files_sha256'].get(name) for name in FILES):
+            raise ValueError('Legacy actual scoring code differs from the original request SHA proof')
+        if _scoring_core_ast((old_code/FILES[0]).read_text(encoding='utf8'))!=_scoring_core_ast((ROOT/FILES[0]).read_text(encoding='utf8')):
+            raise ValueError('Original scoring equations/input enumeration changed; scores cannot be silently reused')
+        from tools.run_v23_all_p import EDGE_FEEDING_SHA256,EDGE_ADAPTER_SHA256
+        unchanged=(*EDGE_FEEDING_SHA256,'hiercp_v1x/v23_edge_execution.py','tools/run_v23_all_p.py',
+            'hiercp_v1x/comparison_native_upper_cache.py','hiercp_v1x/transition_v1_local.py')
+        hashes={name:sha(old_code/name) for name in unchanged}
+        if any(sha(ROOT/name)!=checksum for name,checksum in hashes.items()):
+            raise ValueError('Original GNN feeding/archive/execution source bytes changed')
+        provenance.update(source_code=str(old_code),source_files_sha256=old_request['source_files_sha256'],
+            unchanged_GNN_source_sha256=hashes,scoring_core_AST_identical=True,
+            execution_adapter_sha256=EDGE_ADAPTER_SHA256,legacy_unsealed_complete105_recovery=True)
+    root=Path(output).resolve()
+    if root.exists():raise FileExistsError('New recovery bank required; original failed output preserved')
+    for protected in (source_root,Path(pin['admitted_source_experiment']),Path(original_request['native_experiment']),Path(baseline_preprocessed)):
+        protected=protected.resolve()
+        if root.is_relative_to(protected) or protected.is_relative_to(root):raise ValueError('Recovery output overlaps protected original input/results')
+    require_project_budget();root.mkdir(parents=True);(root/'scores').mkdir()
+    request=copy.deepcopy(old_request);request['source_files_sha256']={name:sha(ROOT/name) for name in FILES}
+    request['score_recovery']=provenance
+    new_json(root/'request.json',request)
+    for case in expected:
+        old_file=Path(files[case]['path']);new_file=root/'scores'/(case+'.json')
+        if sha(old_file)!=files[case]['sha256']:raise ValueError('Original score changed during recovery')
+        with old_file.open('rb') as original,new_file.open('xb') as destination:shutil.copyfileobj(original,destination,8*2**20)
+        if sha(old_file)!=files[case]['sha256'] or sha(new_file)!=files[case]['sha256']:
+            raise ValueError('Lossless complete score recovery SHA mismatch')
+    seal_scores(root,rows,population,pin,scoring_provenance=provenance)
+    return _materialize_bank(root,meta,rows,baseline,pin)
 
 
 def make_geometry(bundle, population, output, runtime, full_validation_cache):
@@ -398,6 +557,7 @@ def prepare_bank(*, pin_path, inventory_path, baseline_preprocessed, output, gpu
     del scorer,model,providers,geometry,result
     import gc
     gc.collect();torch.cuda.empty_cache()
+    seal_scores(output,rows,population,pin)
     return _materialize_bank(output, meta, rows, baseline, pin)
 
 
@@ -409,6 +569,9 @@ def _materialize_bank(root, meta, rows, baseline, pin):
     from hiercp_v22.bank import map_center
     from tools.online_raw_bank_preparation import prepare_raw_case, prepare_source_candidates
     from nnunetv2.training.dataloading.nnunet_dataset import infer_dataset_class
+    score_manifest=read(root/'scoring_manifest.json')
+    if score_manifest.get('complete') is not True or score_manifest.get('pin')!=pin:
+        raise ValueError('Completed frozen105 scores must be sealed before raw materialization')
     raw = {row['case_id']: row for row in meta['raw_records']}
     plans = read(Path(baseline['preprocessed']) / (PLANS + '.json'))
     directory = Path(baseline['preprocessed']) / baseline['data_identifier']
@@ -420,6 +583,9 @@ def _materialize_bank(root, meta, rows, baseline, pin):
     entries, digests, audits = {}, {}, {}
     def one(row):
         case_id, donor_id = row['case_id'], row['donor_case_id']
+        score_file=root/score_manifest['score_files'][case_id]['path']
+        if sha(score_file)!=score_manifest['score_files'][case_id]['sha256'] or read(score_file)!=row:
+            raise ValueError('Sealed original128 GNN scores changed before materialization: '+case_id)
         target, donor = load(case_id), load(donor_id)
         collection = sources(donor, meta['base']['cache']['source_pad'], meta['config']['donor_max_diameter_mm'])
         matches = [i for i,(component,_) in enumerate(collection.entries) if component == row['donor_component']]
@@ -427,13 +593,15 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         original, diameter = collection[matches[0]]
         source, _ = donor_in_target_spacing(original, donor.spacing, target.spacing)
         centers = np.asarray(row['centers'], dtype=np.int64)
-        eligibility = verify_cp_centers(target, source, centers, meta['base']['generation'])
+        try:eligibility = verify_cp_centers(target, source, centers, meta['base']['generation'])
+        except ValueError as error:
+            raise ValueError('Recipient '+case_id+', fixed donor '+donor_id+', component '+str(row['donor_component'])+': '+str(error)) from error
         ds = infer_dataset_class(str(directory))(str(directory), [case_id])
         pre, seg, _, props = ds.load_case(case_id)
         native, reference, reference_sha = prepare_raw_case(root, case_id, target.image, target.label,
             props, plans, pre, seg, configuration_name='3d_fullres', raw_spacing=target.spacing,
             raw_spatial_unit=nib.load(raw[case_id]['image']).header.get_xyzt_units()[0], minimum_free_bytes=8*2**30)
-        selected = int(np.argmax(np.asarray(row['scores'])))
+        selected = eligible_argmax(row['scores'],eligibility['eligible_mask'])
         anchor = np.asarray(source.anchor_center) - np.asarray([s.start for s in source.patch_slices])
         refs, hashes, transport = prepare_source_candidates(root, case_id, row['donor_component'], native,
             reference_sha, source.patch_image, source.patch_mask, anchor, centers[selected:selected+1],
@@ -444,10 +612,14 @@ def _materialize_bank(root, meta, rows, baseline, pin):
             np.savez(stream, paste_contract=np.asarray(['onlinecp_raw_target_paste_v1']), case_id=np.asarray([case_id]),
                 donor_case_id=np.asarray([donor_id]), donor_component_id=np.asarray([row['donor_component']]),
                 source_component=np.asarray([row['donor_component']]), source_diameter_mm=np.asarray([diameter]),
+                candidate_eligibility=np.asarray(eligibility['eligible_mask'],dtype=np.uint8),
+                selection_policy=np.asarray([CP_SELECTION]),
                 selected_candidate=np.asarray([selected]), selected_payload=refs, selected_payload_sha256=hashes,
                 raw_case_reference=np.asarray([reference]), raw_case_reference_sha256=np.asarray([reference_sha]),
                 candidate_centers=mapped, candidate_raw_centers=centers, scores=np.asarray(row['scores'], dtype=np.float32))
         return case_id, relative, sha(file), dict(eligibility=eligibility, transport=transport, selected_candidate=selected,
+            selection_policy=CP_SELECTION,unconstrained_argmax=int(np.argmax(row['scores'])),
+            selected_score=float(row['scores'][selected]),scores_file_sha256=score_manifest['score_files'][case_id]['sha256'],
             all_P_in_joint_context=True, scored128=True, donor_case_id=donor_id, donor_component=row['donor_component'])
     from hiercp.preparation_runtime import run_case_jobs, snapshot
     import types
@@ -470,7 +642,7 @@ def _materialize_bank(root, meta, rows, baseline, pin):
     require_project_budget()
     normalization = plans['foreground_intensity_properties_per_channel']['0']
     bank = dict(format='hiercp_online_bank_v2', pipeline_version=FORMAT, complete=True, debug=False,
-        paste_contract='onlinecp_raw_target_paste_v1', entry_storage='v23_scores128_selected_raw_target_v1',
+        paste_contract='onlinecp_raw_target_paste_v1', entry_storage='v23_scores128_eligible_selected_raw_target_v1',
         candidate_count=128, hier_top_k=1, tumor_label=2, liver_label=1, cp_probability=.5,
         intensity_scale_range=[.95,1.05], intensity_shift_range_hu=[-5.,5.],
         normalization=dict(mean=normalization['mean'], std=normalization['std']),
@@ -480,6 +652,7 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         donor_policy_matches_historical_Basic=False, source_identity={name:sha(ROOT/name) for name in FILES},
         baseline=baseline, inference_GT=False, outer_validation_CP=False,
         original_GNN_parameters=PARAMETERS, all105_recipients=True, all_joint_P_retained=True,
+        selection_policy=CP_SELECTION,scoring_manifest='scoring_manifest.json',scoring_manifest_file_sha256=sha(root/'scoring_manifest.json'),
         resource_contract=resource_contract())
     validate_bank(bank)
     new_json(root / 'index.json', bank)
@@ -492,17 +665,25 @@ def validate_bank(bank):
             or bank.get('cp_probability') != .5 or bank.get('candidate_count') != 128
             or bank.get('original_GNN_parameters') != PARAMETERS or bank.get('all105_recipients') is not True
             or bank.get('all_joint_P_retained') is not True or bank.get('outer_validation_CP') is not False
-            or bank.get('inference_GT') is not False):
+            or bank.get('inference_GT') is not False or bank.get('scoring_manifest')!='scoring_manifest.json'
+            or not isinstance(bank.get('scoring_manifest_file_sha256'),str)
+            or len(bank['scoring_manifest_file_sha256'])!=64):
         raise ValueError('Complete frozen original-GNN CP training contract required')
     expected = set(split['outer_train'])
     if set(bank['entries_by_case']) != expected or set(bank['CP_audits']) != expected:
         raise ValueError('Full105 training-only recipient bank required')
     for case in expected:
         audit = bank['CP_audits'][case]
+        eligibility=audit['eligibility'];mask=eligibility.get('eligible_mask',[])
         if (len(bank['entries_by_case'][case]) != 1
                 or audit['donor_case_id'] not in split['inner_train'] or audit['donor_case_id'] == case
-                or audit['eligibility']['all128_full_footprints_valid'] is not True
-                or audit['eligibility']['invalid_candidates'] != 0):
+                or len(mask)!=128 or any(type(value) is not bool for value in mask)
+                or eligibility.get('eligible_count')!=sum(mask) or sum(mask)==0
+                or eligibility.get('invalid_candidates')!=128-sum(mask)
+                or eligibility.get('full128_ranking_universe_retained') is not True
+                or audit.get('selection_policy')!=CP_SELECTION or bank.get('selection_policy')!=CP_SELECTION
+                or type(audit.get('selected_candidate')) is not int or not 0<=audit['selected_candidate']<128
+                or not mask[audit['selected_candidate']]):
             raise ValueError('Invalid native donor/candidate eligibility: ' + case)
         name = bank['entries_by_case'][case][0]
         if name not in bank['entry_sha256']:
@@ -602,6 +783,122 @@ def admit_native(native_path):
     return native,bank
 
 
+def _native_inactive_auxiliary_gradient_proof(trainer, parameters):
+    """Map only actual zero-weight outputs to the original reversed decoder heads."""
+    import ast
+    import hashlib
+    import inspect
+    import math
+    import textwrap
+    weights = getattr(trainer.loss, 'weight_factors', None)
+    if weights is None:
+        if getattr(trainer, 'enable_deep_supervision', False):
+            raise ValueError('Actual native deep-supervision loss weights are missing')
+        return dict(actual_auxiliary_loss_weights=None, zero_weight_output_indices=[],
+            inactive_decoder_layer_indices=[], official_inactive_parameter_names=[])
+    weights = [float(value) for value in weights]
+    if (not weights or not all(math.isfinite(value) and value >= 0 for value in weights)
+            or not any(value > 0 for value in weights)):
+        raise ValueError('Actual native deep-supervision weights must be finite/nonnegative/nonempty')
+    zero = [index for index, value in enumerate(weights) if value == 0]
+    decoder = getattr(trainer.network, 'decoder', None)
+    heads = getattr(decoder, 'seg_layers', None)
+    if heads is None or len(heads) != len(weights):
+        raise ValueError('Actual native auxiliary output/head mapping is missing')
+    source = textwrap.dedent(inspect.getsource(type(decoder).forward))
+    tree = ast.parse(source)
+    reversed_outputs = any(isinstance(node, ast.Return)
+        and isinstance(node.value, ast.Subscript)
+        and isinstance(node.value.value, ast.Name) and node.value.value.id == 'seg_outputs'
+        and isinstance(node.value.slice, ast.Slice)
+        and node.value.slice.lower is None and node.value.slice.upper is None
+        and isinstance(node.value.slice.step, ast.UnaryOp)
+        and isinstance(node.value.slice.step.op, ast.USub)
+        and isinstance(node.value.slice.step.operand, ast.Constant)
+        and node.value.slice.step.operand.value == 1 for node in ast.walk(tree))
+    if not reversed_outputs:
+        raise ValueError('Original native seg_outputs[::-1] head ordering is unproved')
+    layers = [len(heads) - 1 - index for index in zero]
+    inactive = {id(parameter) for index in layers for parameter in heads[index].parameters()}
+    names = [name for name, parameter in parameters.items() if id(parameter) in inactive]
+    if len(names) != len(inactive):
+        raise ValueError('Official inactive auxiliary heads differ from actual trainable parameters')
+    return dict(actual_auxiliary_loss_weights=weights, zero_weight_output_indices=zero,
+        inactive_decoder_layer_indices=layers, official_inactive_parameter_names=names,
+        original_decoder_forward_sha256=hashlib.sha256(source.encode()).hexdigest(),
+        output_order='seg_outputs[::-1]', inactive_parameters_are_not_disconnected_core=True)
+
+
+def _native_clone_step_with_amp_retry(trainer, batch, parameters, before):
+    """Retry the exact augmented batch only after a proved native AMP skip.
+
+    Native train_step owns backward, clipping, scaler.step/update. We never
+    modify loss weights, requires_grad, optimizer, precision or input tensors.
+    CP counters and model RNG are restored before a retry, so this batch is
+    counted once. Actual attempt/resource logs remain separate observations.
+    """
+    import copy
+    import math
+    import numpy as np
+    import torch
+    from hiercp_v1x.u_bridge_training import capture_rng, restore_rng
+    proof = _native_inactive_auxiliary_gradient_proof(trainer, parameters)
+    allowed_missing = set(proof['official_inactive_parameter_names'])
+    if set(before) != set(parameters):
+        raise ValueError('Every actual native parameter needs its pre-update snapshot')
+    counter_names = ('_online_cp_events', '_online_cp_samples', '_online_schedule_hash',
+                     '_online_native_transport')
+    if any(not hasattr(trainer, name) for name in counter_names):
+        raise ValueError('Actual native CP counter ownership is missing')
+    counters = {name: copy.deepcopy(getattr(trainer, name)) for name in counter_names}
+    rng = capture_rng()
+    attempts = []
+    scaler = trainer.grad_scaler
+    while True:
+        scale_before = None if scaler is None else float(scaler.get_scale())
+        # Native train_step removes CP metadata. A shallow private dictionary
+        # preserves the identical original data/target tensors and audit values.
+        result = trainer.train_step(dict(batch))
+        loss = float(np.asarray(result['loss']))
+        if not math.isfinite(loss):
+            raise ValueError('Actual native CUDA forward loss is nonfinite; no AMP retry')
+        missing = [name for name, parameter in parameters.items() if parameter.grad is None]
+        unexpected = sorted(set(missing) - allowed_missing)
+        if unexpected:
+            raise ValueError('Disconnected actual native active/core gradients: ' + repr(unexpected))
+        nonfinite = [name for name, parameter in parameters.items()
+                     if parameter.grad is not None and not bool(torch.isfinite(parameter.grad).all())]
+        changed = [name for name, parameter in parameters.items()
+                   if not torch.equal(before[name], parameter.detach())]
+        scale_after = None if scaler is None else float(scaler.get_scale())
+        if not nonfinite:
+            if not changed:
+                raise ValueError('Finite native gradients did not produce an actual optimizer update')
+            if scale_before is not None and (not math.isfinite(scale_after) or scale_after <= 0
+                    or scale_after < scale_before):
+                raise ValueError('Finite native gradients contradict the GradScaler update state')
+            proof.update(missing_native_gradient_parameters=missing,
+                present_gradient_tensors=len(parameters)-len(missing),
+                trainable_parameter_tensors=len(parameters),
+                changed_parameter_tensors=len(changed), AMP_overflow_attempts=attempts,
+                AMP_scale_after_successful_update=scale_after)
+            return result, proof
+        if (scaler is None or not scaler.is_enabled() or scale_before is None
+                or not math.isfinite(scale_before) or scale_before <= 0
+                or not math.isfinite(scale_after) or not 0 < scale_after < scale_before):
+            raise ValueError('Nonfinite native gradients require a strictly decreased positive AMP scale')
+        if changed:
+            raise ValueError('Native AMP overflow changed model weights; retry is unsafe')
+        attempts.append(dict(attempt=len(attempts)+1, scale_before=scale_before, scale_after=scale_after,
+            nonfinite_gradient_names=nonfinite, weights_unchanged=True, same_augmented_batch=True,
+            model_RNG_restored_before_retry=True, CP_counters_restored_before_retry=True,
+            production_optimizer_updates=0))
+        print('Native CP calibration AMP skip ' + str(attempts[-1]), flush=True)
+        for name, value in counters.items():
+            setattr(trainer, name, copy.deepcopy(value))
+        restore_rng(rng)
+
+
 def _calibrate_native_worker(native_path,physical_batch,output):
     """Actual isolated native clone; no production weights/checkpoints used."""
     from tools.local_cnn_device import select
@@ -642,7 +939,7 @@ def _calibrate_native_worker(native_path,physical_batch,output):
             torch.cuda.reset_peak_memory_stats();torch.cuda.synchronize()
             started=time.perf_counter();measurement=Measurement()
             with measurement:
-                result=trainer.train_step(batch)
+                result,native_gradient_admission=_native_clone_step_with_amp_retry(trainer,batch,parameters,before)
                 torch.cuda.synchronize()
             elapsed=time.perf_counter()-started
             loss=float(np.asarray(result['loss']))
@@ -662,6 +959,9 @@ def _calibrate_native_worker(native_path,physical_batch,output):
                 trainable_parameter_tensors=len(parameters),missing_native_gradient_parameters=missing,
                 model_parameter_count=sum(p.numel() for p in parameters.values()),
                 changed_parameter_tensors=len(changed),encoder_and_decoder_updated=True,
+                native_gradient_admission=native_gradient_admission,
+                AMP_overflow_attempts=native_gradient_admission['AMP_overflow_attempts'],
+                timing_includes_native_AMP_retries_and_gradient_admission=True,
                 peak_allocated_cuda_bytes=torch.cuda.max_memory_allocated(),
                 measurement=measurement.report,project_resource_snapshot=require_project_budget())
             if iteration==0:warmup=row

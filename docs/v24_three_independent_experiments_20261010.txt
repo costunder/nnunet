@@ -58,7 +58,12 @@ STU arm은 원형 L0 CNN/GNN을 대체하며 사용되지 않는 local message-p
 
 GPU 1 nnU-Net CP 계약
 역사적 BEST GNN을 고정하고 각105 학습 recipient의 모든P+128U를 공동 scoring한다.
-128U의 정확한 argmax를 donor 전체 footprint와 native 좌표로 실제 Copy-Paste한다.
+128U 전체 점수와 원래 좌표를 유지하고, donor 전체 footprint가 원래 CP 규칙을 만족하는 후보 중 최고 점수를 실제 Copy-Paste한다.
+원래 native128U는 distance exclusion 없는 랭킹 비교 위치이므로 모두 CP 가능하다고 가정하지 않는다.
+간 포함률/기존 종양 clearance/거리 조건을 바꾸지 않고128개 모두의 유효성 mask와 이유를 기록한다.
+유효 후보가0개인 환자는 명시적으로 실패시키며 환자나 donor를 제외하거나 임의로 바꾸지 않는다.
+GNN 점수·가중치·전체 P+128U inference는 유지한다. 이미 완료한105개 score 파일은 원래 코드 SHA/수치 계산 AST/좌표/donor/모든P/checkpoint를 검증한 뒤 CP 생성부터 복구할 수 있다.
+실제 nnU-Net 로더는 저장된 CP 유효성 mask의 최고 점수 index를 사용하고, 원래5회 RNG draw와 intensity jitter 순서를 보존한다.
 원래 baseline Dataset730 fold0의105/26 split, ResEncM 128^3, CP 확률0.5,250 epoch 및 physical batch를 유지한다.
 recipient별 donor 정책은 v2.3 고정 inner-train donor이므로 원래 Basic-CP의 donor 정책과 완전히 같다고 주장하지 않는다.
 outer26 validation에는 CP를 적용하지 않고 prediction 입력은 CT뿐이다.
@@ -73,8 +78,11 @@ GPU1: CPU4/RAM48GiB, GPU5: CPU4/RAM64GiB, GPU6: CPU4/RAM64GiB.
 CPU 준비 작업은 해당 실험의 같은4코어 안에서 수행하고 작업별 CPU affinity 및 낮은 nice 우선순위를 적용한다.
 RAM은 프로그램의 RSS 검사와 캐시 회계로 관리한다. 이 수치를 실제 확보된 전용 RAM이나 커널 강제 할당량으로 해석하지 않는다.
 모델/데이터를 줄이지 않고 raw/canonical/geometry cache residency를 조정한다. 초과 시 조용히 자원을 더 쓰지 않는다.
-새 cache 저장소 여유 약108GiB; 기존 canonical 압축크기7.68GiB, native preprocessing17.54GiB.
-이 수치는 초기 snapshot이다. 실제 사용량은 각 실행 receipt와 자원 로그로 확인한다.
+GPU5/6 입력 cache는 /var/tmp의 독립 실험 namespace를 사용한다.
+GPU1 전체105 raw CP bank 실측 최소126.94GiB, native preprocessing 복사17.54GiB와8GiB 여유를 합하면152.49GiB이다.
+/var/tmp의 여유104.50GiB로는 부족하여 GPU1의 새 출력만 /home/aicompetition06/Medical/experiments/v24_frozen_v23_CP_20261010 아래에 만든다.
+해당 사용자 소유 경로의 여유3436.63GiB를 확인했다. 이는 전용 할당량이나 예약된 용량이 아니다. 기존 점수/결과/원본은 보존한다.
+실제 사용량은 각 실행 receipt와 자원 로그로 확인한다.
 GPU5/6 physical patient4/8 및 candidate chunk32/64/128을 실제 full128 backward로 비교한다.
 effective batch=physical patient batch x accumulation1 x independent worker1.
 65명 train/21명 val에서 마지막1명 batch가 생기면 마지막 두 batch를 재분배한다.
@@ -84,6 +92,10 @@ GPU5/6 각각4 persistent CPU workers, torch CPU1 thread, pin/nonblocking transf
 CPU 단위 검사와 calibration clone update는 production 전체 학습 완료가 아니다.
 STU 학습 모드의 중첩 activation checkpoint CPU 검사에서537개 trainable tensor의 gradient와6단계 encoder 갱신을 확인했다.
 CUDA calibration에서는 현재 allocation뿐 아니라 전체 update 중 peak VRAM을 예산과 비교하여 후보를 승인한다.
+GPU1 native calibration은 같은 실제 CT/target/CP batch에서 finite forward loss와 모든 active/core gradient를 요구한다.
+원형 nnU-Net의 loss weight0인 auxiliary head만 실제 reversed decoder 출력/parameter identity로 증명하여 별도 기록한다.
+가중치가 바뀌지 않고 GradScaler scale이 양수 범위에서 엄격히 감소한 overflow skip만 같은 batch/RNG/CP 집계로 다시 시도한다.
+production 모델/원형 loss/precision/optimizer를 바꾸지 않는다. 38개 CPU UNIT 검사는 실제 CUDA native calibration 완료를 뜻하지 않는다.
 최종 실행 상태/commit/PID/로그/peak VRAM은 outputs/v24_20261010의 실행 증거에 별도로 기록한다.
 
 작업 완료 체크리스트
