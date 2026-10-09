@@ -9,6 +9,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import copy
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -27,6 +28,7 @@ from .u_bridge_training import (
 
 
 FORMAT = 'v23_native_all_P_patient_balanced_training_v1'
+TARGET_POLICIES = ('native_prefix', 'hard_score_top', 'score_stratified_mix')
 FIELDS = ('tumor', 'source_context', 'target_context', 'source_relation',
           'target_relation', 'source_c0', 'source_c1', 'source_c2',
           'target_c0', 'target_c1', 'target_c2', 'fused')
@@ -330,8 +332,347 @@ def finish_curriculum_epoch(curriculum, stage_report, *, epoch, successful_train
     return current, transition
 
 
-def _plans(population, case_ids, active_u):
-    return [population.case(case_id, active_u_count=active_u) for case_id in case_ids]
+def _plans(population, case_ids, active_u, target_selection=None):
+    if target_selection is None or active_u == 128:
+        return [population.case(case_id, active_u_count=active_u) for case_id in case_ids]
+    return [population.case(case_id, active_u_count=active_u,
+                           active_u_indices=target_selection[case_id]) for case_id in case_ids]
+
+
+def new_target_state(population, policy, active_u, *, selections=None, receipts=()):
+    """Freeze actual U membership across training, both gate checks and resume."""
+    from .v23_targets import target_selection_manifest, validate_target_selection
+    if policy not in TARGET_POLICIES:
+        raise ValueError('Explicit supported native-U target management policy required')
+    cases = list(population.partition_cases('inner_train', ranking_only=True)) + list(
+        population.partition_cases('inner_val'))
+    if selections is None:
+        selections = {case: list(range(active_u)) for case in cases}
+    selections = validate_target_selection(population, active_u, selections)
+    manifest = target_selection_manifest(population, active_u, selections)
+    return dict(policy=policy, active_u=active_u, selections=selections,
+                selection_manifest=manifest, receipts=copy.deepcopy(list(receipts)))
+
+
+def validate_target_state(population, targets, *, policy, active_u):
+    expected = new_target_state(population, policy, active_u,
+        selections=targets['selections'], receipts=targets['receipts'])
+    if digest(targets) != digest(expected):
+        raise ValueError('Checkpointed native-U membership/policy/manifest changed')
+    return expected
+
+
+def bank_u_scores(score, plan):
+    """Extract only actual U scores in the original full128 bank order."""
+    values = torch.as_tensor(score).detach().double().cpu()
+    if (plan.active_u_count != 128 or values.shape != (len(plan.record_ids),)
+            or len(plan.unobserved_indices) != 128 or not bool(torch.isfinite(values).all())):
+        raise ValueError('Actual complete finite full128 forward required for target mining')
+    positions = tuple(plan.unobserved_bank_positions)
+    if sorted(positions) != list(range(128)):
+        raise ValueError('Full native U bank position ownership changed')
+    result = [None] * 128
+    for local, bank in zip(plan.unobserved_indices, positions):
+        result[bank] = float(values[local])
+    return result
+
+
+def advance_target_state(population, targets, active_u, *, epoch, model_sha256, mining_rows=None):
+    """Admit new U only at a completed gate; existing U remain unchanged."""
+    from .v23_targets import admit_targets
+    previous = targets['active_u']
+    if not previous < active_u <= 128:
+        raise ValueError('Target admission must be a real cumulative expansion')
+    policy = targets['policy']
+    cases = list(targets['selections'])
+    if policy == 'native_prefix':
+        selections = {case: list(range(active_u)) for case in cases}
+        receipt = dict(policy=policy, epoch=epoch, previous_active_u=previous,
+            active_u=active_u, native_bank_order_preserved=True, score_mining=False)
+    else:
+        if (not mining_rows or [row['case_id'] for row in mining_rows] != cases
+                or any(row['model_sha256'] != model_sha256 for row in mining_rows)):
+            raise ValueError('Complete fixed-model train/validation U-only mining coverage required')
+        selections, admissions = {}, {}
+        for row in mining_rows:
+            case = row['case_id']
+            result = admit_targets(policy, targets['selections'][case], row['u_scores'],
+                add_count=active_u-previous, seed=42, case_id=case,
+                epoch=epoch, model_sha256=model_sha256)
+            selections[case], admissions[case] = result['indices'], result['receipt']
+        receipt = dict(policy=policy, epoch=epoch, previous_active_u=previous,
+            active_u=active_u, score_mining=True, no_grad=True, U_scores_only=True,
+            model_sha256=model_sha256, cases=admissions,
+            mining_rows_sha256=digest(mining_rows))
+    for case in cases:
+        if not set(targets['selections'][case]).issubset(selections[case]):
+            raise ValueError('Target management cannot remove a previously admitted U')
+    receipt['sha256'] = digest(receipt)
+    return new_target_state(population, policy, active_u, selections=selections,
+        receipts=[*targets['receipts'], receipt]), receipt
+
+
+def execution_identity(request, continuation=None):
+    identity = dict(request_sha256=request['request_sha256'], source=request['source'],
+        initialization='exact original shared random initialization; no trained weights')
+    if continuation is not None:
+        identity['initialization'] = 'original shared random initialization; explicit checkpoint continuation'
+        identity['checkpoint_continuation'] = cpu_copy(continuation)
+    return identity
+
+
+def apply_patient_order(population, state, policy, random_order):
+    from .v23_targets import patient_epoch_order
+    cases = list(population.partition_cases('inner_train', ranking_only=True))
+    previous = state['history'][-1]['train']['cases'] if state['history'] else []
+    if not state['history']:
+        if state['epoch'] != 1 or state['updates'] != 0 or state['train_position'] != 0:
+            raise ValueError('Missing preceding completed TRAIN history outside explicit cold start')
+        result = patient_epoch_order(cases, previous, 'native_prefix', random_order)
+        if policy != 'native_prefix':
+            receipt = dict(format='v23_explicit_first_epoch_seeded_patient_order_bootstrap_v1',
+                requested_policy=policy, bootstrap_reason='no completed TRAIN epoch yet',
+                original_seeded_order_receipt=result['receipt'], order=result['order'],
+                fake_losses_used=False, prior_validation_used=False, full_patient_coverage=True)
+            receipt['sha256'] = digest(receipt)
+            result['receipt'] = receipt
+    else:
+        result = patient_epoch_order(cases, previous, policy, random_order)
+    if (len(result['order']) != len(cases) or set(result['order']) != set(cases)
+            or len(result['order']) != len(set(result['order']))):
+        raise ValueError('Patient target scheduling must retain all training patients exactly once')
+    return result
+
+
+def training_binding(config, population, *, identity, physical_patient_batch,
+                     physical_candidate_batch, world_size, workers, initial_hash, epochs=40, debug=False):
+    bound_config = copy.deepcopy(config)
+    for key in ('resume_checkpoint', 'pause_file', 'debug_pause_after_updates'):
+        bound_config['v23_runtime'].pop(key, None)
+    return dict(format=FORMAT, identity=cpu_copy(identity), config=bound_config,
+        population=population.manifest(),
+        train_cases=list(population.partition_cases('inner_train', ranking_only=True)),
+        val_cases=list(population.partition_cases('inner_val')), epochs=epochs, debug=debug,
+        physical_patient_batch=physical_patient_batch,
+        physical_candidate_batch=physical_candidate_batch,
+        data_parallel_world_size=world_size, workers=workers, initial_state_sha256=initial_hash)
+
+
+def remaining_training_updates(state, train_cases, physical_patient_batch, world_size, epochs=40):
+    """Count only unprocessed batches; a continuation does not restart forty epochs."""
+    batches = parallel_patient_batches(state['train_order'] or train_cases, physical_patient_batch, world_size)
+    if state['phase'] == 'training':
+        cursor = 0; current = 0
+        for batch in batches:
+            if cursor >= state['train_position']: current += 1
+            cursor += len(batch)
+    elif state['phase'] == 'initial_full_validation':
+        current = len(batches)
+    else:
+        current = 0
+    return current + max(0, epochs-state['epoch']) * len(parallel_patient_batches(
+        train_cases, physical_patient_batch, world_size))
+
+
+def _file_sha256(path):
+    value = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for part in iter(lambda: stream.read(8 * 1024**2), b''):
+            value.update(part)
+    return value.hexdigest()
+
+
+def publish_epoch_curve(path, curve):
+    """Admit an already-published owned epoch after interruption, exactly once."""
+    path = Path(path)
+    matches = []
+    if path.exists():
+        if path.is_symlink(): raise ValueError('Owned curve must be a regular file')
+        with path.open(encoding='utf8') as stream:
+            for line in stream:
+                stored = json.loads(line)
+                if stored['epoch'] == curve['epoch']: matches.append(stored)
+    if matches:
+        if len(matches) != 1 or digest(matches[0]) != digest(curve):
+            raise ValueError('Previously published owned epoch curve differs or is duplicated')
+        return
+    _append(path, curve)
+
+
+def handoff_single_gpu_checkpoint(source_checkpoint, source_identity, destination_request,
+        config, calibration, output, *, source_proof, population,
+        physical_patient_batch=4, source_best_checkpoint=None, debug=False):
+    """Explicit verified fork, preserving trained state and forty total epochs.
+
+    This performs CPU file verification/copy only. The caller verifies old
+    source and geometry/calibration receipts and supplies those immutable
+    proofs. No source file, old checkpoint or server process is modified.
+    """
+    from .contracts import canonical_hash
+    source_checkpoint, source_identity, output = map(Path, (source_checkpoint, source_identity, output))
+    if any(path.is_symlink() or not path.is_file() for path in (source_checkpoint, source_identity)):
+        raise ValueError('Regular immutable source checkpoint/identity required')
+    required = ('source_commit', 'source_request', 'source_files_sha256',
+        'source_checkpoint_file_sha256', 'source_identity_file_sha256',
+        'geometry_receipt_sha256', 'calibration_receipt_sha256',
+        'core_equations_preserved', 'original_model_parameters')
+    if any(key not in source_proof for key in required):
+        raise ValueError('Explicit verified source/geometry/calibration handoff proof required')
+    if (source_proof['core_equations_preserved'] is not True
+            or (not debug and source_proof['original_model_parameters'] != EXPECTED_PARAMETERS)):
+        raise ValueError('Handoff cannot change original model, loss or numerical equations')
+    for key in ('source_checkpoint_file_sha256', 'source_identity_file_sha256',
+                'geometry_receipt_sha256', 'calibration_receipt_sha256'):
+        if (len(source_proof[key]) != 64 or any(c not in '0123456789abcdef' for c in source_proof[key])):
+            raise ValueError('Exact handoff SHA256 proof required: ' + key)
+    if (_file_sha256(source_checkpoint) != source_proof['source_checkpoint_file_sha256']
+            or _file_sha256(source_identity) != source_proof['source_identity_file_sha256']):
+        raise ValueError('Source checkpoint/identity file SHA256 differs')
+    ownership = json.loads(source_identity.read_text(encoding='utf8'))
+    old_binding = ownership['binding']
+    saved = torch.load(source_checkpoint, map_location='cpu', weights_only=False)
+    checksum = saved.get('content_sha256')
+    if (saved.get('format') != FORMAT or checksum != digest({k:v for k,v in saved.items() if k != 'content_sha256'})
+            or saved['identity_sha256'] != ownership['identity_sha256']
+            or ownership['identity_sha256'] != digest(old_binding)):
+        raise ValueError('Source checkpoint content or ownership identity differs')
+    old_request = source_proof['source_request']
+    if (canonical_hash({k:v for k,v in old_request.items() if k != 'request_sha256'}) != old_request['request_sha256']
+            or old_binding['identity']['request_sha256'] != old_request['request_sha256']
+            or old_binding['identity']['source'] != old_request['source']
+            or source_proof['source_files_sha256'] != old_request['source']):
+        raise ValueError('Verified source request/source SHA binding differs')
+    if (canonical_hash({k:v for k,v in destination_request.items() if k != 'request_sha256'})
+            != destination_request['request_sha256']):
+        raise ValueError('Destination singleton request SHA differs')
+    if (len(destination_request['gpus']) != 1 or destination_request['gpus'][0] not in (1,5,6)
+            or old_binding['data_parallel_world_size'] != 3 or len(saved['rank_rng']) != 3
+            or physical_patient_batch != 4 or old_binding['physical_patient_batch'] != 4):
+        raise ValueError('Only explicit measured physical4 world3-to-singleton handoff is supported')
+    if (old_binding['epochs'] != 40 or old_binding['debug'] is not debug
+            or config['v23_runtime'].get('debug') is not debug
+            or digest(old_binding['population']) != digest(population.manifest())):
+        raise ValueError('Handoff must preserve complete production population and forty total epochs')
+    for key in ('model', 'graph', 'training', 'ct_clip', 'runtime'):
+        if digest(config[key]) != digest(old_binding['config'][key]):
+            raise ValueError('Original model/graph/optimizer/precision setting changed: ' + key)
+    if (calibration['world_size'] != 1 or calibration.get('request_sha256') != destination_request['request_sha256']
+            or calibration.get('physical_GPUs') != destination_request['gpus']
+            or not calibration['measured_full_P_U128_backward']
+            or not calibration['original_model_and_RNG_preserved']
+            or calibration['initial_state_sha256'] != old_binding['initial_state_sha256']
+            or calibration['selected_physical_patient_batch'] != physical_patient_batch
+            or calibration['selected_physical_candidate_batch'] != old_binding['physical_candidate_batch']):
+        raise ValueError('Explicit verified per-GPU full128 physical4 calibration rebind required')
+    state = saved['state']
+    if state['phase'] == 'complete' or state['epoch'] > 40:
+        raise ValueError('Completed forty-epoch training cannot receive forty additional epochs')
+    if state.get('status') == 'FAILED' and not source_proof.get('diagnosed_recovery'):
+        raise ValueError('Failed source requires an explicit diagnosed recovery receipt')
+    scheduler = SimpleNamespace(last_epoch=saved['scheduler']['last_epoch'])
+    _validate_progress(state, old_binding['train_cases'], old_binding['val_cases'], 4, 40, scheduler, 3)
+    _validate_progress(state, old_binding['train_cases'], old_binding['val_cases'], 4, 40, scheduler, 1)
+    for slot in saved['optimizer']['state'].values():
+        step = slot['step']
+        if int(step.item() if torch.is_tensor(step) else step) != state['updates']:
+            raise ValueError('Source optimizer step history differs from successful updates')
+    continuation = dict(source_commit=source_proof['source_commit'],
+        source_checkpoint=str(source_checkpoint.resolve()), source_identity=str(source_identity.resolve()),
+        source_checkpoint_file_sha256=source_proof['source_checkpoint_file_sha256'],
+        source_checkpoint_content_sha256=checksum, source_identity_sha256=saved['identity_sha256'],
+        source_request_sha256=old_request['request_sha256'], source_world_size=3,
+        source_rank_rng_index=0, destination_world_size=1,
+        destination_physical_GPU=destination_request['gpus'][0],
+        inherited_epoch=state['epoch'], inherited_phase=state['phase'], inherited_updates=state['updates'],
+        geometry_receipt_sha256=source_proof['geometry_receipt_sha256'],
+        calibration_receipt_sha256=source_proof['calibration_receipt_sha256'])
+    identity = execution_identity(destination_request, continuation)
+    config = copy.deepcopy(config); config['v23_runtime']['batch_calibration'] = copy.deepcopy(calibration)
+    binding = training_binding(config, population, identity=identity,
+        physical_patient_batch=4, physical_candidate_batch=old_binding['physical_candidate_batch'],
+        world_size=1, workers=config['v23_runtime']['workers'],
+        initial_hash=old_binding['initial_state_sha256'], debug=debug)
+    fork = cpu_copy(saved)
+    fork['identity_sha256'] = digest(binding)
+    fork['rank_rng'] = [cpu_copy(saved['rank_rng'][0])]
+    policy = config['v23_runtime'].get('target_selection_policy', 'native_prefix')
+    if 'targets' in state:
+        selections = state['targets']['selections']
+        receipts = state['targets']['receipts']
+    else:
+        selections, receipts = None, ()
+    fork['state']['targets'] = new_target_state(population, policy, state['curriculum']['active_u'],
+        selections=selections, receipts=receipts)
+    order_receipt = None
+    if (fork['state']['phase'] == 'training' and fork['state']['train_position'] == 0
+            and fork['state']['train_order'] is not None):
+        ordered = apply_patient_order(population, fork['state'], policy, fork['state']['train_order'])
+        fork['state']['train_order'] = ordered['order']
+        order_receipt = ordered['receipt']
+        fork['state'].setdefault('patient_order_receipts', []).append(order_receipt)
+    fork['state']['handoff'] = continuation
+    fork.pop('content_sha256'); fork['content_sha256'] = digest(fork)
+    preserved = ('model', 'optimizer', 'scheduler', 'scaler', 'shuffle_generator')
+    if any(digest(fork[key]) != digest(saved[key]) for key in preserved):
+        raise ValueError('Handoff changed trained numerical state')
+    if (_file_sha256(source_checkpoint) != source_proof['source_checkpoint_file_sha256']
+            or _file_sha256(source_identity) != source_proof['source_identity_file_sha256']):
+        raise ValueError('Source changed during handoff snapshot')
+    if output.exists() and any(output.iterdir()):
+        raise FileExistsError('Handoff requires a fresh training namespace; existing results preserved')
+    best_fork, best_proof = None, None
+    if state['best'] is not None:
+        if source_best_checkpoint is None or 'source_best_checkpoint_file_sha256' not in source_proof:
+            raise ValueError('Actual inherited BEST checkpoint and file proof required; latest cannot substitute BEST')
+        source_best_checkpoint = Path(source_best_checkpoint)
+        if (source_best_checkpoint.is_symlink() or not source_best_checkpoint.is_file()
+                or _file_sha256(source_best_checkpoint) != source_proof['source_best_checkpoint_file_sha256']):
+            raise ValueError('Source BEST checkpoint file proof differs')
+        source_best = torch.load(source_best_checkpoint, map_location='cpu', weights_only=False)
+        best_checksum = source_best.get('content_sha256')
+        if (source_best.get('format') != FORMAT or source_best['identity_sha256'] != saved['identity_sha256']
+                or best_checksum != digest({k:v for k,v in source_best.items() if k != 'content_sha256'})
+                or len(source_best['rank_rng']) != 3
+                or digest(source_best['state']['best']) != digest(state['best'])):
+            raise ValueError('Actual source BEST ownership/metric/content differs')
+        best_fork = cpu_copy(source_best)
+        best_fork['identity_sha256'] = digest(binding)
+        best_fork['rank_rng'] = [cpu_copy(source_best['rank_rng'][0])]
+        best_fork['state']['targets'] = new_target_state(population, policy,
+            source_best['state']['curriculum']['active_u'])
+        best_proof = dict(source_checkpoint=str(source_best_checkpoint.resolve()),
+            source_file_sha256=source_proof['source_best_checkpoint_file_sha256'],
+            source_content_sha256=best_checksum, model_sha256=digest(source_best['model']),
+            best_record=cpu_copy(source_best['state']['best']),
+            preserved_state_sha256={key:digest(source_best[key]) for key in preserved},
+            actual_best_weights_preserved=True, latest_weights_substituted=False)
+        best_fork['state']['handoff'] = dict(**continuation, inherited_best_origin=best_proof)
+        best_fork.pop('content_sha256'); best_fork['content_sha256'] = digest(best_fork)
+        if (any(digest(best_fork[key]) != digest(source_best[key]) for key in preserved)
+                or _file_sha256(source_best_checkpoint) != source_proof['source_best_checkpoint_file_sha256']):
+            raise ValueError('Source BEST changed during verified handoff')
+    output.mkdir(parents=True, exist_ok=True)
+    receipt = dict(format='v23_verified_world3_to_single_gpu_checkpoint_handoff_v1',
+        destination_request_sha256=destination_request['request_sha256'], destination_identity=identity,
+        destination_binding_sha256=digest(binding), continuation=continuation,
+        source_proof=cpu_copy(source_proof), preserved_state_sha256={key:digest(saved[key]) for key in preserved},
+        source_rank0_rng_sha256=digest(saved['rank_rng'][0]),
+        source_history_sha256=digest(state['history']), source_best_record=cpu_copy(state['best']),
+        patient_order_change_at_empty_cursor=order_receipt,
+        inherited_successful_train_rows_sha256=digest(state['train_rows']),
+        inherited_validation_rows_sha256=digest(state['evaluation_rows']),
+        destination_checkpoint_content_sha256=fork['content_sha256'],
+        total_target_epochs=40, completed_epochs=len(state['history']),
+        remaining_epochs=40-len(state['history']), old_effective_patient_batch=12,
+        new_effective_patient_batch=4, physical_patient_batch=4,
+        target_policy=policy, no_new_optimizer_update=True, original_files_written=False,
+        inherited_best_checkpoint=best_proof,
+        destination_best_checkpoint_content_sha256=None if best_fork is None else best_fork['content_sha256'], debug=debug)
+    _write_new(output/'training_identity.json', dict(identity_sha256=digest(binding), binding=cpu_copy(binding)))
+    atomic_save(output/'checkpoint_latest.pt', fork)
+    if best_fork is not None: atomic_save(output/'checkpoint_best.pt', best_fork)
+    _write_new(output/'handoff_receipt.json', receipt)
+    return receipt
 
 
 def parallel_patient_batches(case_ids, physical_patient_batch, world_size):
@@ -393,17 +734,18 @@ class _Distributed:
             raise RuntimeError('Rank0 operation failed; all ranks safely stop: ' + outcome[0]['error'])
         return outcome[0]['value']
 
-    def prepare_geometry(self, geometry, active_u):
+    def prepare_geometry(self, geometry, active_u, target_selection=None):
         prepare = getattr(geometry, 'prepare', None)
-        if callable(prepare): self.root_action(lambda: prepare(active_u))
+        if callable(prepare): self.root_action(lambda: prepare(active_u, target_selection=target_selection)
+            if target_selection is not None else prepare(active_u))
         if self.world > 1: self.dist.barrier()
         admit = getattr(geometry, 'admit', None)
         if callable(admit):
-            admit(active_u)
+            admit(active_u, target_selection=target_selection) if target_selection is not None else admit(active_u)
         elif callable(prepare) and self.rank != 0:
             # Existing sealed stage preparation must be a read/validate reuse;
             # the factory may instead expose explicit read-only ``admit``.
-            prepare(active_u)
+            prepare(active_u, target_selection=target_selection) if target_selection is not None else prepare(active_u)
         if self.world > 1: self.dist.barrier()
 
 
@@ -542,6 +884,8 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             or calibration['selected_physical_candidate_batch'] != scorer.physical_candidate_batch
             or not calibration['original_model_and_RNG_preserved']
             or calibration['initial_state_sha256'] != initial_hash
+            or calibration.get('world_size') != distributed.world
+            or not calibration.get('measured_full_P_U128_backward')
             or not any(row['accepted'] and row['physical_patient_batch'] == physical_patient_batch
                 and row['physical_candidate_batch'] == scorer.physical_candidate_batch for row in calibration['trials'])):
         raise ValueError('Production execution requires its actual unchanged-weight full128 backward calibration')
@@ -570,14 +914,9 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=40)
     scaler = torch.amp.GradScaler('cuda', enabled=training['amp'])
     generator = torch.Generator().manual_seed(42 + 2003)
-    bound_config = copy.deepcopy(config)
-    for key in ('resume_checkpoint', 'pause_file', 'debug_pause_after_updates'):
-        bound_config['v23_runtime'].pop(key, None)
-    binding = dict(format=FORMAT, identity=identity, config=bound_config,
-        population=population.manifest(), train_cases=train_cases, val_cases=val_cases,
-        epochs=epochs, debug=debug, physical_patient_batch=physical_patient_batch,
-        physical_candidate_batch=scorer.physical_candidate_batch, data_parallel_world_size=distributed.world, workers=workers,
-        initial_state_sha256=initial_hash)
+    binding = training_binding(config, population, identity=identity,
+        physical_patient_batch=physical_patient_batch, physical_candidate_batch=scorer.physical_candidate_batch,
+        world_size=distributed.world, workers=workers, initial_hash=initial_hash, epochs=epochs, debug=debug)
     binding_hash = digest(binding)
     root = Path(output).resolve()
     distributed.root_action(lambda: root.mkdir(parents=True, exist_ok=True))
@@ -596,6 +935,10 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
         updates=0, attempts=0, overflows=0, curriculum=curriculum, history=[], best=None,
         train_rows=[], evaluation_position=0, evaluation_rows=[], epoch_start_updates=0,
         connected=[], initial_validation=None, status='RUNNING')
+    target_policy = runtime.get('target_selection_policy', 'native_prefix')
+    if runtime.get('independent_single_gpu') and distributed.world != 1:
+        raise ValueError('Independent v2.3 runs cannot join a data-parallel process group')
+    state['targets'] = new_target_state(population, target_policy, curriculum['active_u'])
     if resume:
         saved = torch.load(resume, map_location='cpu', weights_only=False)
         checksum = saved.pop('content_sha256', None)
@@ -609,6 +952,8 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
         restore_rng(saved['rank_rng'][distributed.rank])
         restore_optimizer_history(optimizer, state['updates'])
         _validate_progress(state, train_cases, val_cases, physical_patient_batch, epochs, scheduler, distributed.world)
+        validate_target_state(population, state['targets'], policy=target_policy,
+                              active_u=state['curriculum']['active_u'])
         del saved
     torch.set_num_threads(workers)
     pause_after = runtime.get('debug_pause_after_updates')
@@ -626,8 +971,8 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
                 scheduler=cpu_copy(scheduler.state_dict()), scaler=cpu_copy(scaler.state_dict()),
                 state=cpu_copy(state), rank_rng=rank_rng, shuffle_generator=generator.get_state().clone())
             payload['content_sha256'] = digest(payload)
-            atomic_save(root / 'checkpoint_latest.pt', payload)
             if best: atomic_save(root / 'checkpoint_best.pt', payload)
+            atomic_save(root / 'checkpoint_latest.pt', payload)
         distributed.root_action(publish)
     contract = root / 'execution_contract.json'
     def publish_contract():
@@ -636,7 +981,12 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             trainable_parameters=sum(p.numel() for p in params), hidden_dim=128, heads=4,
             layers=dict(L0=3, L1=2, L2=2), input=[5,48,48,48], views=2, margin_mm=10,
             epochs=epochs, updates_per_epoch=len(parallel_patient_batches(train_cases, physical_patient_batch, distributed.world)),
-            total_planned_updates=epochs * len(parallel_patient_batches(train_cases, physical_patient_batch, distributed.world)),
+            total_planned_updates=state['updates'] + remaining_training_updates(
+                state, train_cases, physical_patient_batch, distributed.world, epochs),
+            successful_updates_inherited=state['updates'], completed_epochs_inherited=len(state['history']),
+            remaining_planned_updates=remaining_training_updates(
+                state, train_cases, physical_patient_batch, distributed.world, epochs),
+            remaining_target_epochs=epochs-len(state['history']),
             physical_patient_batch=physical_patient_batch, gradient_accumulation_steps=1,
             data_parallel_world_size=distributed.world,
             effective_patient_batch=physical_patient_batch*distributed.world, physical_candidate_batch=scorer.physical_candidate_batch,
@@ -646,6 +996,10 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             stage_validation='all native P + current cumulative activeU actual joint graph',
             best_rule='full native per-P patient-MRR, then per-P top1, then negative patient-balanced pair loss',
             stage_gate='all-P-vs-U patient-MRR/top1; never selects BEST',
+            target_selection_policy=target_policy, target_membership_frozen_between_gate_expansions=True,
+            patient_order_uses_previous_completed_training_only=True,
+            continued_checkpoint_state=bool(identity.get('checkpoint_continuation')),
+            checkpoint_continuation=identity.get('checkpoint_continuation'),
             initial_low_full_validation_causes_early_stop=False,
             gpu=torch.cuda.get_device_name(), gpu_count=torch.cuda.device_count(),
             cpu_affinity_cores=len(psutil.Process().cpu_affinity()), RAM=psutil.virtual_memory()._asdict(),
@@ -659,6 +1013,23 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
                 raise ValueError('Owned previously published validation differs from completed checkpoint rows')
         else:
             _write_new(path, report)
+    def finish_epoch(pending):
+        stage, report = pending['stage'], pending['full']
+        if pending['improved']: state['best'] = pending['candidate_best']
+        curve = dict(epoch=state['epoch'], update=state['updates'], train=aggregate_patients(state['train_rows']),
+            stage_validation=stage, full_validation=report, curriculum_transition=pending['transition'],
+            target_selection_sha256=pending['epoch_target_selection_sha256'],
+            next_stage_target_selection_sha256=digest(state['targets']['selection_manifest']),
+            next_stage_active_u=pending['curriculum']['active_u'],
+            target_selection_policy=target_policy)
+        state['history'].append(curve)
+        distributed.root_action(lambda: publish_epoch_curve(root / 'curve.jsonl', curve))
+        scheduler.step(); state.update(epoch=state['epoch']+1, phase='training', train_position=0,
+            train_order=None, train_rows=[], curriculum=pending['curriculum'])
+        for key in ('pending_epoch_completion', 'target_mining_position', 'target_mining_rows', 'target_mining_model_sha256'):
+            state.pop(key, None)
+        if state['epoch'] > epochs: state['phase'] = 'complete'
+        save(best=pending['improved'])
     save()
     started = time.perf_counter()
     try:
@@ -666,12 +1037,62 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             _check_budget(budget)
             if paused():
                 save('PAUSED'); break
+            if state['phase'] == 'target_mining':
+                pending = state['pending_epoch_completion']
+                net.eval(); distributed.prepare_geometry(scorer.geometry, 128)
+                model_hash = digest(net.state_dict())
+                if model_hash != state['target_mining_model_sha256']:
+                    raise ValueError('Target mining resumed under changed model weights')
+                mining_cases = list(state['targets']['selections'])
+                cursor = 0
+                # Providers cannot mix partitions in one forward. Every case
+                # is still scored once using complete all-P+128U geometry.
+                for partition_cases in (train_cases, val_cases):
+                    for global_cases in parallel_patient_batches(partition_cases, physical_patient_batch, distributed.world):
+                        start = cursor; cursor += len(global_cases)
+                        if start < state['target_mining_position']: continue
+                        if paused(): break
+                        cases = rank_cases(global_cases, distributed.world, distributed.rank)
+                        plans = _plans(population, cases, 128)
+                        rng = capture_rng(); began = time.perf_counter()
+                        try:
+                            with torch.no_grad():
+                                result = execution(plans, epoch=training['fixed_validation_epoch'], training=False)
+                            rows = distributed.rows([dict(case_id=plan.case_id,
+                                u_scores=bank_u_scores(score, plan), model_sha256=model_hash)
+                                for score, plan in zip(result.scores, plans)])
+                            if [row['case_id'] for row in rows] != global_cases:
+                                raise ValueError('U-only mining lost complete patient ownership')
+                            state['target_mining_rows'].extend(rows); state['target_mining_position'] = cursor
+                            distributed.root_action(lambda: _append(root/'target_mining_timing.jsonl',
+                                dict(epoch=state['epoch'], case_ids=global_cases, full_U=128, no_grad=True,
+                                     U_scores_only=True, seconds=time.perf_counter()-began, workload=result.workload)))
+                            del result
+                        finally:
+                            restore_rng(rng)
+                        save()
+                    if paused(): break
+                if paused(): continue
+                if [row['case_id'] for row in state['target_mining_rows']] != mining_cases:
+                    raise ValueError('Target mining must cover all ranking train and validation patients')
+                targets, target_receipt = advance_target_state(population, state['targets'],
+                    pending['curriculum']['active_u'], epoch=state['epoch'], model_sha256=model_hash,
+                    mining_rows=state['target_mining_rows'])
+                distributed.root_action(lambda: publish_validation(
+                    root/f'target_admission_epoch_{state["epoch"]:03d}.json', target_receipt))
+                state['targets'] = targets
+                finish_epoch(pending)
+                continue
             if state['phase'] == 'training':
                 net.train()
-                distributed.prepare_geometry(scorer.geometry, state['curriculum']['active_u'])
+                selection = state['targets']['selections']
+                distributed.prepare_geometry(scorer.geometry, state['curriculum']['active_u'], selection)
                 if state['train_order'] is None:
                     permutation = torch.randperm(len(train_cases), generator=generator).tolist()
-                    state['train_order'] = [train_cases[index] for index in permutation]
+                    random_order = [train_cases[index] for index in permutation]
+                    ordered = apply_patient_order(population, state, target_policy, random_order)
+                    state['train_order'] = ordered['order']
+                    state.setdefault('patient_order_receipts', []).append(ordered['receipt'])
                     state['epoch_start_updates'] = state['updates']; save()
                 order = state['train_order']
                 batches = parallel_patient_batches(order, physical_patient_batch, distributed.world)
@@ -680,7 +1101,7 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
                     if start < state['train_position']: continue
                     if paused(): break
                     cases = rank_cases(global_cases, distributed.world, distributed.rank)
-                    plans = _plans(population, cases, state['curriculum']['active_u'])
+                    plans = _plans(population, cases, state['curriculum']['active_u'], selection)
                     began = time.perf_counter(); torch.cuda.reset_peak_memory_stats()
                     while True:
                         optimizer.zero_grad(set_to_none=True); state['attempts'] += 1
@@ -739,7 +1160,8 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             if phase not in ('initial_full_validation', 'stage_validation', 'full_validation'):
                 raise ValueError('Invalid checkpointed training phase')
             net.eval(); active = state['curriculum']['active_u'] if phase == 'stage_validation' else 128
-            distributed.prepare_geometry(scorer.geometry, active)
+            selection = state['targets']['selections'] if phase == 'stage_validation' else None
+            distributed.prepare_geometry(scorer.geometry, active, selection)
             label_epoch = 0 if phase == 'initial_full_validation' else state['epoch']
             batches = parallel_patient_batches(val_cases, physical_patient_batch, distributed.world)
             offsets = [sum(map(len, batches[:index])) for index in range(len(batches))]
@@ -747,7 +1169,7 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
                 if start < state['evaluation_position']: continue
                 if paused(): break
                 cases = rank_cases(global_cases, distributed.world, distributed.rank)
-                plans = _plans(population, cases, active)
+                plans = _plans(population, cases, active, selection)
                 rng = capture_rng(); began = time.perf_counter()
                 try:
                     with torch.no_grad():
@@ -774,6 +1196,8 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
             report.update(epoch=label_epoch, updates=state['updates'], active_u=active,
                 phase=phase, all_P_scored=True, actual_joint_upper=True, debug=debug,
                 per_P_tie_policy='pessimistic: rank1 + number of U scores >= this P; other P excluded',
+                target_selection_policy=target_policy,
+                actual_target_membership_sha256=digest(state['targets']['selection_manifest']) if phase == 'stage_validation' else None,
                 legacy_first_P_tie_policy='unchanged geometry_sha256 native candidate_order')
             distributed.root_action(lambda: publish_validation(root / f'{phase}_epoch_{label_epoch:03d}.json', report))
             state['evaluation_position'] = 0; state['evaluation_rows'] = []
@@ -788,17 +1212,22 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
                     expected_train_cases=train_cases, updates_in_epoch=state['updates']-state['epoch_start_updates'])
                 key = best_selection_key(report)
                 improved = state['best'] is None or key > tuple(state['best']['selection_key'])
-                if improved:
-                    state['best'] = dict(epoch=state['epoch'], updates=state['updates'], selection_key=list(key),
-                        candidate_universe='all native P + fixed128U', selected_by='full_validation_only')
-                curve = dict(epoch=state['epoch'], update=state['updates'], train=aggregate_patients(state['train_rows']),
-                    stage_validation=stage, full_validation=report, curriculum_transition=transition)
-                state['history'].append(curve)
-                distributed.root_action(lambda: _append(root / 'curve.jsonl', curve))
-                scheduler.step(); state.update(epoch=state['epoch']+1, phase='training', train_position=0,
-                    train_order=None, train_rows=[], curriculum=curriculum)
-                if state['epoch'] > epochs: state['phase'] = 'complete'
-                save(best=improved)
+                pending = dict(stage=stage, full=report, curriculum=curriculum,
+                    transition=transition, improved=improved,
+                    candidate_best=dict(epoch=state['epoch'], updates=state['updates'], selection_key=list(key),
+                        candidate_universe='all native P + fixed128U', selected_by='full_validation_only'),
+                    epoch_target_selection_sha256=digest(state['targets']['selection_manifest']))
+                if transition['expanded'] and target_policy != 'native_prefix':
+                    state.update(phase='target_mining', pending_epoch_completion=pending,
+                        target_mining_position=0, target_mining_rows=[],
+                        target_mining_model_sha256=digest(net.state_dict()))
+                    save(); continue
+                if transition['expanded']:
+                    state['targets'], target_receipt = advance_target_state(population, state['targets'],
+                        curriculum['active_u'], epoch=state['epoch'], model_sha256=digest(net.state_dict()))
+                    distributed.root_action(lambda: publish_validation(
+                        root/f'target_admission_epoch_{state["epoch"]:03d}.json', target_receipt))
+                finish_epoch(pending)
             metrics = report['metrics']
             if distributed.rank == 0: tqdm.write(f'v2.3 {phase} epoch{label_epoch} U{active} | perP-MRR={metrics["per_P_patient_mrr"]:.6f} '
                 f'perP-top1={metrics["per_P_patient_top1"]:.6f} firstP-MRR={metrics["case_first_P_mrr"]:.6f} '
@@ -824,7 +1253,7 @@ def run_training(net, scorer, population, config, *, output, physical_patient_ba
 
 
 def _validate_progress(state, train_cases, val_cases, physical, epochs, scheduler, world_size=1):
-    if state['phase'] not in ('initial_full_validation', 'training', 'stage_validation', 'full_validation', 'complete'):
+    if state['phase'] not in ('initial_full_validation', 'training', 'stage_validation', 'full_validation', 'target_mining', 'complete'):
         raise ValueError('Unknown resumed v2.3 phase')
     if state['epoch'] != len(state['history']) + 1 or not 1 <= state['epoch'] <= epochs+1:
         raise ValueError('Saved epoch/history progress differs')
@@ -856,3 +1285,17 @@ def _validate_progress(state, train_cases, val_cases, physical, epochs, schedule
         raise ValueError('Resumed validation coverage differs from cursor')
     if state['curriculum']['last_completed_epoch'] != len(state['history']):
         raise ValueError('Resumed curriculum advancement differs from actual complete epochs')
+    if state['phase'] == 'target_mining':
+        pending = state['pending_epoch_completion']
+        if (not pending['transition']['expanded']
+                or pending['curriculum']['active_u'] <= state['curriculum']['active_u']
+                or pending['stage']['epoch'] != state['epoch'] or pending['full']['epoch'] != state['epoch']):
+            raise ValueError('Resumed target mining must belong to the completed real gate')
+        mining_cases = train_cases + val_cases
+        boundaries = {0}; cursor = 0
+        for partition in (train_cases, val_cases):
+            for batch in parallel_patient_batches(partition, physical, world_size):
+                cursor += len(batch); boundaries.add(cursor)
+        position = state['target_mining_position']
+        if position not in boundaries or [row['case_id'] for row in state['target_mining_rows']] != mining_cases[:position]:
+            raise ValueError('Resumed mining cursor/coverage splits a real patient batch')

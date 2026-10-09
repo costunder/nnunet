@@ -1,0 +1,129 @@
+v2.3 독립 GPU 학습 대상 관리 비교 — 2026-10-09
+
+사용자 지시
+GPU1은 현재 v2.3을 이어서 학습한다. GPU5와 GPU6은 각각 다른 학습 대상 관리
+방식을 비교한다. L0/L1/L2 전체 구조와 loss를 바꾸는 실험이 아니다.
+한 모델을 GPU1/5/6에 DDP로 분산한 이전 실행 선택은 사용자 의도에 맞지 않았다.
+새 실행은 GPU당 서로 다른 모델/optimizer/checkpoint/log/tmux를 가진 독립 실험이다.
+세 모델 사이 gradient/parameter/optimizer state를 공유하거나 합치지 않는다.
+
+모든 실험의 필수 공통 베이스
+모든 적격 관측 P527개를 첫epoch부터 각각 학습한다.
+환자마다 고정 독립 inner-train donor를 사용하고 P끼리 negative로 넣지 않는다.
+같은 환자의 P마다 활성U 전체의 softplus(s_U-s_P)를 평균한다.
+U평균 -> 환자 내 P평균 -> 환자평균으로 loss를 계산한다.
+원본6개key 두-view cosine consistency0.1도 그대로 유지한다.
+기존 활성U를 누적 유지하고 매epoch 다시 학습한다.
+단계validation은 train과 같은 활성U 수와 해당실험의 고정된 선택 방식으로 평가한다.
+단계MRR>=0.80 AND top1>=0.70,최소2완료epoch,2회연속통과,
+완전한65환자 optimizer coverage가 충족된 경우에만 U를7개 추가한다.
+활성U7->14->...->126->128,목표총40epoch,초기전체metric으로earlystop하지 않는다.
+BEST는 항상 같은21명/allP135+원래고정128U/동일donor/고정viewepoch29로 선택한다.
+BEST key는 per-P 환자평균MRR,top1,음수pair loss 순이다.
+단계metric이나trainmetric을 BEST 선택에 사용하지 않는다.
+
+세 방식
+GPU1 native_prefix:
+  기존 seeded random 환자순서를 유지한다.
+  gate통과 시 원래 native Ubank의 다음7개를 추가한다.
+GPU5 hard_score_top:
+  직전 완료epoch의 TRAIN에서 계산한 환자별 per-P mean pair loss가 큰 순으로
+  모든65환자를 한 번씩 학습한다. 누락/중복/oversampling/가중치변경은 없다.
+  gate통과 시 아직 학습에 포함되지 않은 U 중 모델Ulogit이 높은7개를 추가한다.
+GPU6 score_stratified_mix:
+  직전 완료epoch TRAIN per-P mean pair loss의 높은/중간/낮은 구간을 번갈아
+  배치에 넣는다. 모든65환자를 한 번씩 학습하며 누락/중복/가중치변경은 없다.
+  gate통과 시 unseenU의 모델logit 순위를 세구간으로 나누어 기본7개 중
+  높은구간3개/중간2개/낮은2개를 추가한다. tail은 남은실제U만 중복없이 사용한다.
+
+환자난이도는 TRAIN에서 나온 직전epoch 값만 사용한다.
+Validation/test 지표로 train환자 우선순위를 정하지 않는다.
+U추가는 실제 allP+128U joint no_grad forward에서 나온 Ulogit만 사용한다.
+Pscore/P-Urank/정답P표시/validationmetric으로 U를 고르지 않는다.
+각환자의 고정bank좌표와 원래record identity를 그대로 유지한다.
+Train과held-outvalidation은 서로 자신의Ubank에서 같은선택규칙을 적용한다.
+활성U membership은 한단계 안에서 고정된다. gate검사 사이 매epoch 바꾸지 않는다.
+선택된U와점수/원래bankindex/모델state/정책/시점을 receipt와checkpoint에 기록한다.
+전체128U BEST 평가의 후보집합과순서는 어느실험에서도 바뀌지 않는다.
+GPU5/6은 성능개선 가설을 검증한다. 더좋은성능을 보장하는 구현으로 표현하지 않는다.
+
+학습 이어가기와 비교조건
+이전commit697d8a6의 서버 checkpoint는7완료epoch/42updates/epoch8시작이다.
+이전launcher와3worker가 이미 종료됐고,중단helper는 신호를 보내지 않았다.
+세실험은 같은저장checkpoint에서 분기해 모델/optimizer/scheduler/scaler/
+curriculum/history/환자cursor를 보존한다. GPU1도처음부터다시학습하지 않는다.
+기존world3 RNG 중rank0 state와shuffle generator를 각독립실험으로 복사한다.
+기존epoch진척을 이어 전체40epoch를 목표로 하며40epoch를 추가하는것이 아니다.
+GPU5/6의환자순서 변경은 train_position0에서만 기존전체order를 재배열한다.
+부분epoch라면 이미처리한환자를 건너뛰거나 중복하지 않고 다음완전epoch부터 적용한다.
+기존world3 checkpoint를 world1 checkpoint로 조용히 재해석하지 않는다.
+명시적 handoff receipt가 원본file/content/model/optimizer SHA와원래binding,
+새source/config/request/world1/정책binding을 연결하고 실제tensor보존을 검사한다.
+기존결과를 덮어쓰지 않고 새독립output3개에 이어가기state를 기록한다.
+기존BEST/history는 원래provenance를 유지하고 향후BEST는전체validation으로만 갱신한다.
+이전7epoch는공통이력이다. 이전전체학습이3개의독립실험이었다고 표시하지 않는다.
+
+모델과데이터규모
+원본 HierarchicalPyGPlacementModel:10,434,532 parameter/trainable.
+Hidden128,heads4,L0/L1/L2 layers3/2/2,dropout0.1.
+Dense base12/feature32/microbatch4,입력5x48x48x48,2views,margin10mm.
+원본graph방정식/radius/spacing/node/edge/sample384/hops2 계약을 유지한다.
+새hidden cap/subset/fast mode/모델축소/자동CPU fallback이 없다.
+Seed42,AdamWlr1e-4/wd1e-4/fused,AMP,clip5,cosine40,accumulation1.
+Inner-train84명/P527/U10752,그중P가있는65명 모두 ranking loss에 참여한다.
+Zero-P train19명/U2432는inventory에 보존하며undefinedP loss를 만들지 않는다.
+Inner-validation21명/P135/U2688 모두 점수화,순위metric은P가있는16명의 평균이다.
+Outer-test26명은 학습/gate/BEST/대상선택에 사용하지 않는다.
+P는원래적격관측component이고 U는미관측비교위치다. 임상CP부적합정답이 아니다.
+원래recipient lesion annotation노출구조를 유지한다. annotation-blind효용이나
+segmentation성능을 검증했다고 표현하지 않는다.
+
+자원과batch변경
+RTXA6000 GPU1/5/6각46GB급,독립실험당GPU1개,CPU affinity96,
+CPU readers12/experiment,GPUbudget40GiB,RSS192GiB,residentcache128GiB.
+원래fullP+128U calibration은모든GPU에서2/4patients x chunk32/64/128을
+각3회측정했다(18GPU/config trial,54clone optimizer update).
+모든1085gradient finite,missing0,overflow0,5모듈표본parameter변경확인.
+각GPU의기존실측 중선택4patients/chunk32,stresspeak22.85GiB이하.
+독립전환은physical4patients/GPU를 유지하고 gradient accumulation1을 유지한다.
+새effectivebatch=physical4 x accumulation1 x world1=4patients.
+이전world3 globalbatch12와달라졌다. 모델/data축소가아닌독립실험전환의결과다.
+환자65명은17updates/epoch(마지막1명),모든환자는누락없이처리한다.
+이전42updates는보존한다. 향후전체40epoch진척에따라 실제update계획을별도기록한다.
+원래모델연산/전체128query/초기tensor/그래프방정식이동일함을 검증한 경우에만
+과거해당GPU calibration을provenance와함께 새실행binding으로 재결속한다.
+기존54회실측을 새로측정한것처럼 보고하지 않는다. 장치/freeVRAM은실행직전재확인한다.
+Fullgeometry는원래tensor를증명하며새경로binding으로복사한다.선택집합이달라진
+단계geometry는선택manifest SHA별로새로준비하며기존cache를 덮어쓰지 않는다.
+주요U정책의 mining은실제전체bank no_grad 계산이며추가계산비용을기록한다.
+Native입력residentcache와병렬CPU readers를 유지한다.
+세부H2D/forward/backward/prefetch/pinning profiler분해는 별도미검증이다.
+
+검증과실행상태
+로컬6개모듈 UNIT96개 PASS(실제local CUDA dropout UNIT포함,skip없음).
+원본forward/loss/calibration/metric/gate/geometryadmission 14개정의는697과AST동일하다.
+Standalone fresh실행은 첫완료TRAIN epoch가 없을때 첫epoch만원래seeded random
+환자순서를명시적으로사용하고,다음epoch부터실제직전TRAIN loss로관리한다.
+현재세fork는이미7완료epoch TRAIN이력이있으므로GPU5/6순서차이가바로적용된다.
+Static/UNIT/CPU geometry재사용/실제본학습/전체40epoch완료를 각각구분한다.
+UNIT은analyticfixture의수학/상태/gradient 검사이며실제CT 최종성능이 아니다.
+실제CT forward/backward/optimizer증거는server실행receipt로 별도보고한다.
+이문서는설계계약이며새3개실험의실행성공을 미리주장하지 않는다.
+실제commit/session/checkpoint/진척/peakVRAM/처리량은task-local runtime보고서에 기록한다.
+기존 checkpoint의로컬전송은별도승인대기이며새handoff는서버내부복사다.
+서버내부handoff와로컬/GitHub/노션에모델tensor게시를동일작업으로취급하지 않는다.
+
+## 작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리와 병목 원인을 먼저 조사한다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 새대상관리와handoff 핵심경로의forward/loss/gradient/optimizer 연결은 검증진행중이다.
+- [x] 실제 실행설정과변경사항을 명확하게 보고했다.
+- [x] UNIT/smoke와전체학습 또는전체평가를 구분해서 보고했다.

@@ -7,17 +7,25 @@ from types import SimpleNamespace
 
 import copy
 import inspect
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 import torch
 from torch.nn import functional as F
 
 from hiercp_v1x.v23_training import (
-    CONSISTENCY_FIELDS, FIELDS, V23Scorer, _validate_progress,
+    CONSISTENCY_FIELDS, FIELDS, FORMAT, V23Scorer, _Distributed, _validate_progress,
+    advance_target_state, apply_patient_order, bank_u_scores, execution_identity,
+    handoff_single_gpu_checkpoint, new_target_state, publish_epoch_curve, remaining_training_updates,
+    training_binding, validate_target_state,
     aggregate_patients, best_selection_key, finish_curriculum_epoch,
     new_curriculum, parallel_patient_batches, patient_balanced_objective,
     rank_cases, score_patient,
 )
+from hiercp_v1x.u_bridge_training import digest
+from hiercp_v1x.contracts import canonical_hash
 
 
 def _raises(error, match=None):
@@ -314,6 +322,206 @@ def test_resume_cursor_must_align_with_rebalanced_distributed_batches():
         _validate_progress(state, cases, [str(index) for index in range(21)], 2, 40, SimpleNamespace(last_epoch=0), 3)
 
 
+class _TargetUnitPopulation:
+    """Metadata-only UNIT population, never a clinical production input."""
+    def __init__(self):
+        self.train = [f'train{i:02d}' for i in range(65)]
+        self.val = [f'val{i:02d}' for i in range(21)]
+    def partition_cases(self, partition, ranking_only=False):
+        return self.train if partition == 'inner_train' else self.val
+    def manifest(self):
+        return {'sha256':'1'*64, 'UNIT':True, 'DEBUG':True}
+    def case(self, case, active_u_count=128, active_u_indices=None):
+        indices = list(range(active_u_count)) if active_u_indices is None else sorted(active_u_indices)
+        assert case in self.train+self.val
+        assert len(indices) == active_u_count and len(set(indices)) == active_u_count
+        return SimpleNamespace(case_id=case, active_u_count=active_u_count,
+            active_u_indices=tuple(indices), positive_indices=(0,),
+            record_ids=tuple([case+'P']+[case+str(i) for i in indices]),
+            unobserved_indices=tuple(range(1,active_u_count+1)),
+            unobserved_bank_positions=tuple(indices))
+
+
+def test_singleton_cli_and_calibration_are_bound_to_one_authorized_gpu():
+    from tools.run_v23_all_p import parse, validate_single_gpu_calibration
+    base = ['--native-experiment','UNIT','--inventory','UNIT','--prepared-cache','UNIT',
+            '--full-validation-upper-cache','UNIT','--output','UNIT','--gpus']
+    for gpu in (1,5,6):
+        assert parse(base+[str(gpu)]).gpus == [gpu]
+    for gpus in (['0'],['2'],['1','5','6'],['1','1']):
+        with _raises(ValueError, match='exactly one'):
+            parse(base+gpus)
+    request = dict(request_sha256='a'*64,gpus=[5])
+    calibration = dict(world_size=1, request_sha256='a'*64, physical_GPUs=[5], debug=False,
+        measured_full_P_U128_backward=True, original_model_and_RNG_preserved=True,
+        initial_state_sha256='b'*64, GPU_reports=[dict(physical_GPU=5,initial_state_sha256='b'*64)])
+    validate_single_gpu_calibration(calibration,request)
+    for key,value in [('world_size',3),('physical_GPUs',[1]),('request_sha256','c'*64)]:
+        bad=copy.deepcopy(calibration);bad[key]=value
+        with _raises(ValueError):validate_single_gpu_calibration(bad,request)
+
+
+def test_world_one_never_calls_collectives_or_constructs_ddp():
+    calls=[]
+    with patch('torch.distributed.is_initialized',return_value=False), \
+         patch('torch.distributed.all_gather_object',side_effect=AssertionError('collective')), \
+         patch('torch.distributed.broadcast_object_list',side_effect=AssertionError('collective')), \
+         patch('torch.distributed.barrier',side_effect=AssertionError('collective')):
+        execution = _Distributed()
+        assert execution.world == 1 and execution.rank == 0
+        assert execution.rows([{'case_id':'UNIT'}]) == [{'case_id':'UNIT'}]
+        assert execution.root_action(lambda: 7) == 7
+        geometry=SimpleNamespace(prepare=lambda count,**kw:calls.append(('prepare',count,kw)),
+                                 admit=lambda count,**kw:calls.append(('admit',count,kw)))
+        execution.prepare_geometry(geometry,7,{'UNIT':list(range(7))})
+    assert [call[0] for call in calls] == ['prepare','admit']
+
+
+def test_U_only_mining_maps_actual_full_scores_to_bank_and_freezes_cumulative_membership():
+    population=_TargetUnitPopulation();plan=population.case(population.train[0],128)
+    score=torch.arange(129,dtype=torch.float64);score[0]=-99999  # P score must be absent from selection.
+    u=bank_u_scores(score,plan)
+    assert u == list(map(float,range(1,129)))
+    state=new_target_state(population,'hard_score_top',7)
+    cases=population.train+population.val
+    mined=[dict(case_id=case,u_scores=u,model_sha256='a'*64) for case in cases]
+    expanded,receipt=advance_target_state(population,state,14,epoch=2,model_sha256='a'*64,mining_rows=mined)
+    assert expanded['selections'][cases[0]] == list(range(7))+list(range(121,128))
+    assert state['active_u'] == 7 and expanded['active_u'] == 14
+    assert receipt['U_scores_only'] and receipt['no_grad']
+    assert validate_target_state(population,expanded,policy='hard_score_top',active_u=14) == expanded
+    bad=copy.deepcopy(expanded);bad['selections'][cases[0]][0]=20
+    with _raises(ValueError):validate_target_state(population,bad,policy='hard_score_top',active_u=14)
+    with _raises(ValueError,match='coverage'):
+        advance_target_state(population,state,14,epoch=2,model_sha256='a'*64,mining_rows=mined[:-1])
+
+
+def test_explicit_cold_start_uses_seeded_order_then_requires_real_previous_train_losses():
+    population=_TargetUnitPopulation();random_order=population.train[::-1]
+    state=dict(epoch=1,updates=0,train_position=0,history=[])
+    first=apply_patient_order(population,state,'hard_score_top',random_order)
+    assert first['order'] == random_order
+    assert first['receipt']['bootstrap_reason'] == 'no completed TRAIN epoch yet'
+    assert first['receipt']['fake_losses_used'] is False
+    state['epoch']=2
+    with _raises(ValueError,match='Missing preceding'):
+        apply_patient_order(population,state,'hard_score_top',random_order)
+    prior=[dict(case_id=case,observed_P=1,per_P=dict(pair_loss=float(i+1))) for i,case in enumerate(population.train)]
+    state['history']=[dict(train=dict(cases=prior))]
+    second=apply_patient_order(population,state,'hard_score_top',random_order)
+    assert second['order'] == population.train[::-1]
+    mix=apply_patient_order(population,state,'score_stratified_mix',random_order)
+    assert set(mix['order']) == set(population.train) and len(mix['order']) == 65
+    assert mix['order'] != second['order']
+
+
+def _handoff_unit_fixture(directory):
+    population=_TargetUnitPopulation()
+    runtime=dict(debug=True,initial_u=7,increment_u=7,total_u=128,workers=12)
+    config=dict(model={'UNIT':True},graph={'UNIT':True},training={'UNIT':True},
+                ct_clip=[-200,300],runtime={'UNIT':True},v23_runtime=runtime)
+    old_request=dict(format='UNIT',source={'unit_source':'2'*64},gpus=[1,5,6])
+    old_request['request_sha256']=canonical_hash(old_request)
+    old_binding=training_binding(config,population,identity=execution_identity(old_request),
+        physical_patient_batch=4,physical_candidate_batch=32,world_size=3,workers=12,
+        initial_hash='3'*64,debug=True)
+    rows=[dict(case_id=case,observed_P=1,per_P=dict(pair_loss=float(i+1))) for i,case in enumerate(population.train)]
+    history=[dict(train=dict(cases=rows)) for _ in range(7)]
+    curriculum=_policy();curriculum['last_completed_epoch']=7
+    best=dict(epoch=1,updates=6,selection_key=[.4,.2,-.5],selected_by='full_validation_only')
+    state=dict(epoch=8,phase='training',train_position=0,train_order=population.train,
+        updates=42,attempts=42,overflows=0,history=history,best=best,curriculum=curriculum,
+        train_rows=[],evaluation_position=0,evaluation_rows=[],epoch_start_updates=42,
+        connected=['UNIT'],initial_validation=None,status='RUNNING')
+    saved=dict(format=FORMAT,identity_sha256=digest(old_binding),model={'UNIT':torch.tensor([2.,3.])},
+        optimizer={'state':{0:{'step':torch.tensor(42.),'exp_avg':torch.tensor([.2,.3])}}},
+        scheduler={'last_epoch':7},scaler={'scale':128.},state=state,
+        rank_rng=[{'UNIT_rank':i,'torch':torch.tensor([i],dtype=torch.uint8)} for i in range(3)],
+        shuffle_generator=torch.Generator().manual_seed(42).get_state())
+    saved['content_sha256']=digest(saved)
+    checkpoint=directory/'old_latest.pt';torch.save(saved,checkpoint)
+    ownership=directory/'old_identity.json'
+    ownership.write_text(json.dumps(dict(identity_sha256=digest(old_binding),binding=old_binding)),'utf8')
+    actual_best=copy.deepcopy(saved);actual_best.pop('content_sha256')
+    actual_best['model']['UNIT']=torch.tensor([1.,1.])
+    actual_best['optimizer']['state'][0]['step']=torch.tensor(6.)
+    actual_best['scheduler']['last_epoch']=1
+    actual_best['state'].update(epoch=2,history=history[:1],updates=6,train_order=None)
+    actual_best['state']['curriculum']['last_completed_epoch']=1
+    actual_best['content_sha256']=digest(actual_best)
+    best_path=directory/'old_best.pt';torch.save(actual_best,best_path)
+    from hiercp_v1x.v23_training import _file_sha256
+    proof=dict(source_commit='a'*40,source_request=old_request,
+        source_files_sha256=old_request['source'],source_checkpoint_file_sha256=_file_sha256(checkpoint),
+        source_identity_file_sha256=_file_sha256(ownership),geometry_receipt_sha256='4'*64,
+        calibration_receipt_sha256='5'*64,core_equations_preserved=True,original_model_parameters=2,
+        source_best_checkpoint_file_sha256=_file_sha256(best_path))
+    destination_request=dict(format='UNIT',source={'unit_source':'6'*64},gpus=[5])
+    destination_request['request_sha256']=canonical_hash(destination_request)
+    calibration=dict(world_size=1,request_sha256=destination_request['request_sha256'],physical_GPUs=[5],
+        measured_full_P_U128_backward=True,original_model_and_RNG_preserved=True,
+        initial_state_sha256='3'*64,selected_physical_patient_batch=4,selected_physical_candidate_batch=32)
+    config=copy.deepcopy(config);config['v23_runtime']['target_selection_policy']='hard_score_top'
+    return population,checkpoint,ownership,best_path,proof,destination_request,calibration,config,saved,actual_best
+
+
+def test_verified_handoff_preserves_latest_and_actual_best_and_continues_remaining_epochs():
+    with tempfile.TemporaryDirectory(prefix='v23_handoff_UNIT_',dir=Path.cwd()) as name:
+        directory=Path(name)
+        population,checkpoint,ownership,best_path,proof,request,calibration,config,source,best=_handoff_unit_fixture(directory)
+        output=directory/'new_training'
+        receipt=handoff_single_gpu_checkpoint(checkpoint,ownership,request,config,calibration,output,
+            source_proof=proof,population=population,source_best_checkpoint=best_path,debug=True)
+        fork=torch.load(output/'checkpoint_latest.pt',weights_only=False)
+        fork_best=torch.load(output/'checkpoint_best.pt',weights_only=False)
+        for key in ('model','optimizer','scheduler','scaler','shuffle_generator'):
+            assert digest(fork[key]) == digest(source[key])
+            assert digest(fork_best[key]) == digest(best[key])
+        assert digest(fork['rank_rng'][0]) == digest(source['rank_rng'][0]) and len(fork['rank_rng']) == 1
+        assert fork['state']['history'] == source['state']['history'] and fork['state']['updates'] == 42
+        assert fork['state']['train_order'] == population.train[::-1]
+        assert source['state']['train_order'] == population.train  # Source was not mutated.
+        assert receipt['remaining_epochs'] == 33 and receipt['total_target_epochs'] == 40
+        assert receipt['inherited_best_checkpoint']['latest_weights_substituted'] is False
+        assert digest(fork_best['model']) != digest(fork['model'])
+        assert remaining_training_updates(fork['state'],population.train,4,1) == 561
+        assert fork['state']['updates']+remaining_training_updates(fork['state'],population.train,4,1) == 603
+        with _raises(FileExistsError):
+            handoff_single_gpu_checkpoint(checkpoint,ownership,request,config,calibration,output,
+                source_proof=proof,population=population,source_best_checkpoint=best_path,debug=True)
+
+
+def test_handoff_rejects_changed_core_or_missing_best_and_completed_training():
+    with tempfile.TemporaryDirectory(prefix='v23_handoff_reject_UNIT_',dir=Path.cwd()) as name:
+        directory=Path(name)
+        population,checkpoint,ownership,best_path,proof,request,calibration,config,source,best=_handoff_unit_fixture(directory)
+        bad=copy.deepcopy(config);bad['training']['UNIT']=False
+        with _raises(ValueError,match='setting changed'):
+            handoff_single_gpu_checkpoint(checkpoint,ownership,request,bad,calibration,directory/'badcore',
+                source_proof=proof,population=population,source_best_checkpoint=best_path,debug=True)
+
+
+        with _raises(ValueError,match='BEST checkpoint'):
+            handoff_single_gpu_checkpoint(checkpoint,ownership,request,config,calibration,directory/'nobest',
+                source_proof=proof,population=population,debug=True)
+        from hiercp_v1x.v23_training import _file_sha256
+        source['state']['phase']='complete';source['state']['epoch']=41
+        source.pop('content_sha256');source['content_sha256']=digest(source);torch.save(source,checkpoint)
+        proof['source_checkpoint_file_sha256']=_file_sha256(checkpoint)
+        with _raises(ValueError,match='additional epochs'):
+            handoff_single_gpu_checkpoint(checkpoint,ownership,request,config,calibration,directory/'complete',
+                source_proof=proof,population=population,source_best_checkpoint=best_path,debug=True)
+
+
+def test_completed_epoch_curve_publication_is_exactly_once_after_resume():
+    with tempfile.TemporaryDirectory(prefix='v23_curve_UNIT_',dir=Path.cwd()) as name:
+        path=Path(name)/'curve.jsonl';curve=dict(epoch=8,update=59,UNIT=True,metric=.5)
+        publish_epoch_curve(path,curve);publish_epoch_curve(path,copy.deepcopy(curve))
+        assert len(path.read_text('utf8').splitlines()) == 1
+        with _raises(ValueError,match='differs'):
+            publish_epoch_curve(path,dict(curve,metric=.4))
+
+
 def load_tests(loader, tests, pattern):
     """Run standard-library UNIT functions, including every explicit case."""
     parameter_sets = {
@@ -322,7 +530,7 @@ def load_tests(loader, tests, pattern):
         'test_gate_requires_real_optimizer_history_and_exact_patient_coverage':
             [(['a'], 1), (['a', 'b', 'b'], 1), (['a', 'b'], 0)],
         'test_parallel_batches_have_no_duplicated_dropped_or_empty_rank_patients':
-            [(65, 2, 3), (21, 2, 3), (61, 2, 3), (17, 4, 3), (5, 2, 1)],
+            [(65, 2, 3), (21, 2, 3), (61, 2, 3), (17, 4, 3), (5, 2, 1), (65,4,1), (21,4,1)],
     }
     suite = unittest.TestSuite()
     for name, function in sorted(globals().items()):

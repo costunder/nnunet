@@ -1,0 +1,67 @@
+{
+  "version": "v2.3",
+  "experiment": "all_observed_P_fixed_donor_cumulative_native_U_native_prefix",
+  "seed": 42,
+  "epochs": 40,
+  "base_arm": "native",
+  "model_parameters": 10434532,
+  "margin_mm": 10,
+  "population": {
+    "inner_train_cases": 84,
+    "inner_train_P": 527,
+    "inner_train_U": 10752,
+    "inner_val_cases": 21,
+    "inner_val_P": 135,
+    "inner_val_U": 2688,
+    "outer_test_cases": 26,
+    "outer_test_used": false
+  },
+  "v23_runtime": {
+    "initial_u": 7,
+    "increment_u": 7,
+    "total_u": 128,
+    "gate_mrr": 0.8,
+    "gate_top1": 0.7,
+    "minimum_stage_epochs": 2,
+    "consecutive_passes": 2,
+    "all_P_active_from_epoch_one": true,
+    "retained_U_replay": "every admitted U in each joint patient forward",
+    "U_order": "frozen native comparison.centers bank; coverage order, not claimed difficulty order",
+    "donor": "native seed42 fixed independent inner-train donor for each patient",
+    "other_P_as_negative": false,
+    "ranking_loss": "softplus(U-P): mean U, then mean P within patient, then mean patients",
+    "consistency_weight": 0.1,
+    "stage_metrics": "each P ranked against active U only; mean P then mean patient",
+    "best_metrics": "same per-P patient-macro MRR on fixed all-P+128U, then top1, then negative pairwise loss",
+    "legacy_first_P_metrics_also_recorded": true,
+    "zero_P_training": "retain population; P-versus-U ranking undefined and excluded explicitly",
+    "zero_P_validation": "all zero-P patients scored; exclude only undefined P ranking denominators",
+    "checkpoint_local_chunks": true,
+    "gradient_accumulation_steps": 1,
+    "data_parallel_gpus": [
+      1
+    ],
+    "physical_candidate_batch_candidates": [
+      32,
+      64,
+      128
+    ],
+    "physical_patient_batch_candidates": [
+      2,
+      4
+    ],
+    "calibration_repeats": 3,
+    "workers": 12,
+    "cuda_gib_per_gpu": 40,
+    "rss_gib_per_rank": 192,
+    "resident_gib_per_rank": 128,
+    "minimum_free_disk_gib": 10,
+    "full_model_and_graph_preserved": true,
+    "debug": false,
+    "hidden_subset": false,
+    "independent_single_gpu": true,
+    "target_selection_policy": "native_prefix",
+    "target_management_description": "existing frozen native bank order; cumulative admission and replay",
+    "patient_target_order": "original seeded random patient order; all patients once"
+  }
+}

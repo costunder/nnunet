@@ -215,6 +215,7 @@ class V23UpperGeometryCache:
                                                       recorded_centers=recorded_centers)
         self._entries = {}
         self._stage_signatures = {}
+        self._plan_stages = {}
         self._region_bindings = {}
         self._input_stats = {}
         self._raw = {row['case_id']: row for row in population.meta['raw_records']}
@@ -296,7 +297,7 @@ class V23UpperGeometryCache:
                 raise ValueError('Admitted v2.3 CT/annotation/region input changed: ' + case)
 
     def _binding(self, plan):
-        return dict(format=FORMAT, population_sha256=self.population.manifest()['sha256'],
+        value = dict(format=FORMAT, population_sha256=self.population.manifest()['sha256'],
             query_rows=plan.query_rows, query_sha256=canonical_hash(plan.query_rows),
             active_U=plan.active_u_count, candidate_count=len(plan.record_ids),
             model_graph_config=self.bundle.config['graph'], ct_clip=self.bundle.config['ct_clip'],
@@ -308,23 +309,73 @@ class V23UpperGeometryCache:
                 (plan.case_id, plan.donor_case_id)},
             regions={case: self._region_bindings[case] for case in
                      (plan.case_id, plan.donor_case_id)})
+        selected = getattr(plan, 'active_u_indices', tuple(range(plan.active_u_count)))
+        if selected != tuple(range(plan.active_u_count)):
+            value['frozen_U_bank_indices'] = list(selected)
+        return value
 
-    def _payload_path(self, count, case):
-        return self.output / ('active_U_' + str(count)) / 'cases' / (
+    @staticmethod
+    def _plan_key(plan):
+        selected = getattr(plan, 'active_u_indices', tuple(range(plan.active_u_count)))
+        if selected == tuple(range(plan.active_u_count)):
+            return (plan.active_u_count, plan.case_id)
+        return (plan.active_u_count, plan.case_id, tuple(selected))
+
+    def _stage_path(self, stage_key):
+        if isinstance(stage_key, tuple):
+            count, selection_sha = stage_key
+            return self.output / 'target_selections' / selection_sha / ('active_U_' + str(count))
+        return self.output / ('active_U_' + str(stage_key))
+
+    def _plans_for_stage(self, active_u_count, target_selection):
+        cases = tuple(self.population.partition_cases('inner_train', ranking_only=True)) + self.validation_cases
+        if target_selection is None:
+            plans = [self.population.case(case, active_u_count) for case in cases]
+            selection = None
+            stage_key = active_u_count
+        else:
+            from .v23_targets import target_selection_manifest
+            selection = target_selection_manifest(self.population, active_u_count, target_selection)
+            plans = [self.population.case(case, active_u_count,
+                active_u_indices=selection['selections'][case]) for case in cases]
+            stage_key = active_u_count if selection['prefix_equivalent'] else (active_u_count, selection['sha256'])
+            if selection['prefix_equivalent']:
+                selection = None
+        for plan in plans:
+            self._plan_stages[self._plan_key(plan)] = stage_key
+        return cases, plans, stage_key, selection
+
+    def _stage_request(self, active_u_count, plans, selection):
+        request = dict(format=FORMAT, active_U=active_u_count,
+            population_sha256=self.population.manifest()['sha256'],
+            query_hashes={plan.case_id: canonical_hash(plan.query_rows) for plan in plans},
+            adaptation=self.adaptation, original_bank_fingerprint=self.bundle.prototype_bank.fingerprint(),
+            model_graph_config=self.bundle.config['graph'], ct_clip=self.bundle.config['ct_clip'])
+        if selection is not None:
+            request['target_selection'] = selection
+        return request
+
+    def _payload_path(self, count, case, *, stage_key=None):
+        return self._stage_path(count if stage_key is None else stage_key) / 'cases' / (
             hashlib.sha256(case.encode()).hexdigest() + '.pt')
 
-    def _entry_path(self, count, case):
-        return self._payload_path(count, case).with_suffix('.json')
+    def _entry_path(self, count, case, *, stage_key=None):
+        return self._payload_path(count, case, stage_key=stage_key).with_suffix('.json')
 
     def _validate_plan(self, plan):
-        expected = self.population.case(plan.case_id, plan.active_u_count)
+        if hasattr(plan, 'active_u_indices'):
+            expected = self.population.case(plan.case_id, plan.active_u_count,
+                                            active_u_indices=plan.active_u_indices)
+        else:
+            expected = self.population.case(plan.case_id, plan.active_u_count)
         if plan.manifest() != expected.manifest() or plan.query_rows != expected.query_rows:
             raise ValueError('v2.3 upper query belongs to another population or changed candidate order')
 
     def _load(self, entry, plan):
         import torch
         self._guard_inputs(plan)
-        path = self._payload_path(plan.active_u_count, plan.case_id)
+        path = self._payload_path(plan.active_u_count, plan.case_id,
+                                  stage_key=self._plan_stages.get(self._plan_key(plan), plan.active_u_count))
         if (path.is_symlink() or sha(path) != entry['payload_sha256']
                 or entry['binding'] != self._binding(plan)):
             raise ValueError('Immutable v2.3 geometry payload/query/source identity differs')
@@ -343,12 +394,13 @@ class V23UpperGeometryCache:
         import torch
         self._rss()
         self._guard_inputs(plan)
-        entry_path = self._entry_path(plan.active_u_count, plan.case_id)
+        stage_key = self._plan_stages.get(self._plan_key(plan), plan.active_u_count)
+        entry_path = self._entry_path(plan.active_u_count, plan.case_id, stage_key=stage_key)
         if entry_path.exists():
             entry = json.loads(entry_path.read_text())
             self._load(entry, plan)
             return entry
-        path = self._payload_path(plan.active_u_count, plan.case_id)
+        path = self._payload_path(plan.active_u_count, plan.case_id, stage_key=stage_key)
         if path.exists():
             # A completed no-overwrite payload may precede its receipt at an interruption.
             # Admit only its complete original query/bank/source binding; never replace it.
@@ -387,18 +439,13 @@ class V23UpperGeometryCache:
         self._guard_inputs(plan)
         return entry
 
-    def prepare(self, active_u_count):
+    def prepare(self, active_u_count, *, target_selection=None):
         """Prepare every defined training loss case and every held-out case."""
         self.population.case(self.validation_cases[0], active_u_count)
         self._prepare_regions()
-        cases = tuple(self.population.partition_cases('inner_train', ranking_only=True)) + self.validation_cases
-        plans = [self.population.case(case, active_u_count) for case in cases]
-        request = dict(format=FORMAT, active_U=active_u_count,
-            population_sha256=self.population.manifest()['sha256'],
-            query_hashes={plan.case_id: canonical_hash(plan.query_rows) for plan in plans},
-            adaptation=self.adaptation, original_bank_fingerprint=self.bundle.prototype_bank.fingerprint(),
-            model_graph_config=self.bundle.config['graph'], ct_clip=self.bundle.config['ct_clip'])
-        stage = self.output / ('active_U_' + str(active_u_count))
+        cases, plans, stage_key, selection = self._plans_for_stage(active_u_count, target_selection)
+        request = self._stage_request(active_u_count, plans, selection)
+        stage = self._stage_path(stage_key)
         request_path = stage / 'request.json'
         if request_path.exists():
             if json.loads(request_path.read_text()) != request:
@@ -412,7 +459,7 @@ class V23UpperGeometryCache:
             if active_u_count == 128 and plan.case_id in self.validation_cases and self._full_validation is not None:
                 self._full_validation.upper_graphs(self.bundle, provider, plan.query_rows,
                                                    region_output=self.output / 'regions')
-                self._entries[(active_u_count, plan.case_id)] = dict(reuse_full_validation=True)
+                self._entries[self._plan_key(plan)] = dict(reuse_full_validation=True)
                 self.receipt['full_validation_historical_cache_reused'] = True
                 prepared.append(dict(case_id=plan.case_id, reuse_full_validation=True))
             else:
@@ -422,7 +469,7 @@ class V23UpperGeometryCache:
             for future in as_completed(futures):
                 plan = futures[future]
                 entry = future.result()
-                self._entries[(active_u_count, plan.case_id)] = entry
+                self._entries[self._plan_key(plan)] = entry
                 prepared.append(entry)
                 self._rss()
         prepared.sort(key=lambda item: cases.index(item['case_id']))
@@ -437,18 +484,23 @@ class V23UpperGeometryCache:
                 raise ValueError('Existing complete v2.3 geometry stage index changed')
         else:
             _new_json(index_path, completed)
-        self._stage_signatures[active_u_count] = sha(index_path)
+        self._stage_signatures[stage_key] = sha(index_path)
         if active_u_count not in self.receipt['stages']:
             self.receipt['stages'].append(active_u_count)
+        if selection is not None:
+            targets = self.receipt.setdefault('target_selection_stages', [])
+            if selection['sha256'] not in targets:
+                targets.append(selection['sha256'])
         return copy.deepcopy(completed)
 
     def get(self, plan, provider):
         self._validate_plan(plan)
-        key = (plan.active_u_count, plan.case_id)
+        key = self._plan_key(plan)
         if key not in self._entries:
             raise ValueError('Complete joint v2.3 upper geometry stage must be prepared first')
-        index_path = self.output / ('active_U_' + str(plan.active_u_count)) / 'index.json'
-        if sha(index_path) != self._stage_signatures[plan.active_u_count]:
+        stage_key = self._plan_stages.get(key, plan.active_u_count)
+        index_path = self._stage_path(stage_key) / 'index.json'
+        if sha(index_path) != self._stage_signatures[stage_key]:
             raise ValueError('Complete v2.3 geometry stage index changed')
         entry = self._entries[key]
         if entry.get('reuse_full_validation'):
@@ -461,37 +513,28 @@ class V23UpperGeometryCache:
 
     __call__ = get
 
-    def admit(self, active_u_count):
+    def admit(self, active_u_count, *, target_selection=None):
         """Read-only admission for other DDP ranks after rank-zero publication."""
         self._prepare_regions(readonly=True)
-        stage = self.output / ('active_U_' + str(active_u_count))
+        cases, plans, stage_key, selection = self._plans_for_stage(active_u_count, target_selection)
+        stage = self._stage_path(stage_key)
         request_path, index_path = stage / 'request.json', stage / 'index.json'
         if not request_path.is_file() or not index_path.is_file():
             raise ValueError('Complete rank-zero geometry publication required before DDP admission')
         request, complete = json.loads(request_path.read_text()), json.loads(index_path.read_text())
-        cases = tuple(self.population.partition_cases('inner_train', ranking_only=True)) + self.validation_cases
-        expected_queries = {case: canonical_hash(self.population.case(case, active_u_count).query_rows)
-                            for case in cases}
-        if (request.get('format') != FORMAT or request.get('active_U') != active_u_count
-                or request.get('population_sha256') != self.population.manifest()['sha256']
-                or request.get('query_hashes') != expected_queries
-                or request.get('adaptation') != self.adaptation
-                or request.get('original_bank_fingerprint') != self.bundle.prototype_bank.fingerprint()
-                or request.get('model_graph_config') != self.bundle.config['graph']
-                or request.get('ct_clip') != self.bundle.config['ct_clip']
+        if (request != self._stage_request(active_u_count, plans, selection)
                 or complete.get('request_sha256') != canonical_hash(request)
                 or complete.get('complete') is not True or complete.get('active_U') != active_u_count
                 or [entry.get('case_id') for entry in complete.get('cases', [])] != list(cases)):
             raise ValueError('Published v2.3 DDP geometry request/population/query/bank differs')
-        for entry in complete['cases']:
-            plan = self.population.case(entry['case_id'], active_u_count)
+        for entry, plan in zip(complete['cases'], plans):
             if entry.get('reuse_full_validation'):
                 if active_u_count != 128 or plan.case_id not in self.validation_cases or self._full_validation is None:
                     raise ValueError('Exact historical validation cache missing on this DDP rank')
             else:
                 self._load(entry, plan)
-            self._entries[(active_u_count, plan.case_id)] = copy.deepcopy(entry)
-        self._stage_signatures[active_u_count] = sha(index_path)
+            self._entries[self._plan_key(plan)] = copy.deepcopy(entry)
+        self._stage_signatures[stage_key] = sha(index_path)
         if active_u_count not in self.receipt['stages']:
             self.receipt['stages'].append(active_u_count)
         self.receipt['read_only_DDP_stage_admission'] = True

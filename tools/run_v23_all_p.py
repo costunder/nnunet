@@ -2,7 +2,8 @@
 
 The archived model, actual native inputs and old experiments are read only.
 Each new experiment owns its CPU geometry, calibration and training directory.
-Only the user's GPUs 1/5/6 are accepted. No GPU or CPU fallback is performed.
+Each invocation uses exactly one of the user's GPUs 1/5/6 independently.
+No NCCL/DDP process group or GPU/CPU fallback is created.
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
 FILES = ('config/v23_all_p_native.json', 'hiercp_v1x/v23_data.py',
          'hiercp_v1x/v23_geometry.py', 'hiercp_v1x/v23_training.py',
-         'tools/run_v23_all_p.py')
+         'hiercp_v1x/v23_targets.py', 'tools/run_v23_all_p.py')
 
 
 def sha(path):
@@ -49,7 +50,7 @@ def new_json(path, value):
 def parse(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('all', 'prepare', 'calibrate', 'train'), default='all')
-    parser.add_argument('--config', type=Path, default=ROOT / 'config/v23_all_p_native.json')
+    parser.add_argument('--config', type=Path, default=ROOT / 'config/v23_gpu1_prefix.json')
     parser.add_argument('--native-experiment', type=Path, required=True)
     parser.add_argument('--inventory', type=Path, required=True)
     parser.add_argument('--prepared-cache', type=Path, required=True)
@@ -60,8 +61,8 @@ def parse(argv=None):
     parser.add_argument('--worker-rank', type=int, help=argparse.SUPPRESS)
     parser.add_argument('--invocation', help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    if args.gpus != [1, 5, 6]:
-        raise ValueError('v2.3 uses the three explicitly authorized physical GPUs1/5/6')
+    if len(args.gpus) != 1 or args.gpus[0] not in (1,5,6):
+        raise ValueError('Each independent v2.3 run requires exactly one physical GPU1,5 or6')
     if args.worker_rank is not None and not 0 <= args.worker_rank < len(args.gpus):
         raise ValueError('Worker rank is outside this exact GPU request')
     if args.resume and args.mode != 'train':
@@ -80,8 +81,17 @@ def contract(args):
             or config['v23_runtime']['debug'] is not False
             or config['v23_runtime']['hidden_subset'] is not False):
         raise ValueError('Complete explicitly non-DEBUG v2.3 contract required')
+    runtime = config['v23_runtime']
+    if (runtime.get('independent_single_gpu') is not True or runtime['data_parallel_gpus'] != args.gpus
+            or runtime.get('target_selection_policy') not in ('native_prefix','hard_score_top','score_stratified_mix')):
+        raise ValueError('Independent GPU and target policy must match this explicit config')
+    source = {name: sha(ROOT / name) for name in FILES}
+    config_path = args.config.resolve()
+    if not config_path.is_relative_to(ROOT):
+        raise ValueError('The selected variant config must belong to the bound source checkout')
+    source[config_path.relative_to(ROOT).as_posix()] = sha(config_path)
     value = dict(format='v23_native_all_P_execution_request_v1', config=config,
-        config_sha256=sha(args.config), source={name: sha(ROOT / name) for name in FILES},
+        config_sha256=sha(args.config), source=source,
         native_experiment=str(args.native_experiment.resolve(strict=True)),
         inventory=str(args.inventory.resolve(strict=True)), inventory_sha256=sha(args.inventory),
         prepared_cache=str(args.prepared_cache.resolve(strict=True)),
@@ -218,6 +228,8 @@ def gpu_setup(args, request):
         graph_config=config['graph'], precision_AMP=config['training']['amp'],
         seed=42, epochs=40, population=population.manifest(), initial_model_tensor_sha256=initial_sha,
         actual_native_inputs=True, original_initialization_restored=True, trained_weights_used=False)
+    resources['initialization_phase'] = 'initial model restoration for input/calibration admission; continuation loads later'
+    resources['production_continued_state_reported_by'] = 'training/execution_contract.json and training/handoff_receipt.json'
     path = args.output / ('resources_' + args.mode + '_rank' + str(rank) + '_' + args.invocation + '.json')
     if not path.exists():
         new_json(path, resources)
@@ -241,25 +253,44 @@ def worker(args, request):
         new_json(args.output / ('calibration_rank' + str(args.worker_rank) + '.json'), report)
         print(f"v2.3 FULL128 BACKWARD CALIBRATION COMPLETE | rank{args.worker_rank}", flush=True)
         return
-    import torch.distributed as dist
-    from datetime import timedelta
     calibration = read(args.output / 'calibration.json')
+    validate_single_gpu_calibration(calibration, request)
     config['v23_runtime']['batch_calibration'] = calibration
     scorer.physical_candidate_batch = calibration['selected_physical_candidate_batch']
     if args.resume:
         config['v23_runtime']['resume_checkpoint'] = str(args.output / 'training/checkpoint_latest.pt')
-    dist.init_process_group('nccl', init_method=(args.output / ('ddp_rendezvous_' + args.invocation)).resolve().as_uri(),
-        world_size=len(args.gpus), rank=args.worker_rank, timeout=timedelta(minutes=30))
+    from hiercp_v1x.v23_training import execution_identity
+    identity = execution_identity(request)
+    handoff_path = args.output / 'training/handoff_receipt.json'
+    if handoff_path.exists():
+        if not args.resume:
+            raise ValueError('Explicit checkpoint continuation requires --mode train --resume')
+        handoff = read(handoff_path)
+        if (handoff['destination_request_sha256'] != request['request_sha256']
+                or handoff['destination_identity'] != execution_identity(request, handoff['continuation'])):
+            raise ValueError('Checkpoint handoff belongs to another singleton/source request')
+        identity = handoff['destination_identity']
     report = run_training(model, scorer, population, config, output=args.output / 'training',
         physical_patient_batch=calibration['selected_physical_patient_batch'], workers=runtime['workers'],
-        identity=dict(request_sha256=request['request_sha256'], source=request['source'],
-                      initialization='exact original shared random initialization; no trained weights'),
+        identity=identity,
         budget=budget, epochs=40, debug=False)
     if args.worker_rank == 0:
         final_inputs = scorer.geometry.finish()
         new_json(args.output / ('final_inputs_' + args.invocation + '.json'), final_inputs)
         path = args.output / ('completion_' + args.invocation + '.json')
         new_json(path, report)
+
+
+def validate_single_gpu_calibration(calibration, request):
+    if (calibration.get('world_size') != 1 or calibration.get('request_sha256') != request['request_sha256']
+            or calibration.get('physical_GPUs') != request['gpus'] or calibration.get('debug') is not False
+            or not calibration.get('measured_full_P_U128_backward')
+            or not calibration.get('original_model_and_RNG_preserved')):
+        raise ValueError('Actual per-GPU full128 calibration must belong to this independent request')
+    reports = calibration['GPU_reports']
+    if (len(reports) != 1 or reports[0]['physical_GPU'] != request['gpus'][0]
+            or reports[0]['initial_state_sha256'] != calibration['initial_state_sha256']):
+        raise ValueError('Single GPU calibration hardware/initialization provenance differs')
 
 
 def child_command(args, mode, rank):
@@ -335,6 +366,8 @@ def common_calibration(args, request):
         measured_full_P_U128_backward=True, world_size=len(args.gpus),
         effective_patient_batch=selected['physical_patient_batch'] * len(args.gpus),
         gradient_accumulation_steps=1, debug=False)
+    report.update(request_sha256=request['request_sha256'], physical_GPUs=args.gpus,
+                  independent_single_gpu=True, new_measurement=True)
     new_json(args.output / 'calibration.json', report)
     print('v2.3 COMMON MEASURED BATCH | patients/rank=' + str(selected['physical_patient_batch'])
           + ' | local candidates=' + str(selected['physical_candidate_batch'])

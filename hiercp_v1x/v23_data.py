@@ -48,6 +48,7 @@ class CasePlan:
     positive_indices: tuple[int, ...]
     unobserved_indices: tuple[int, ...]
     unobserved_bank_positions: tuple[int, ...]
+    active_u_indices: tuple[int, ...]
     bank_record_ids: tuple[str, ...]
     donor_case_id: str
     donor_component: int
@@ -83,6 +84,9 @@ class CasePlan:
                                       component=self.donor_component, group=self.donor_group),
                      query_rows_sha256=_digest(self.query_rows),
                      all_P_retained=True, P_as_negative=False, donor_redraw=False)
+        if self.active_u_indices != tuple(range(self.active_u_count)):
+            value["active_U_bank_indices"] = list(self.active_u_indices)
+            value["U_selection_frozen_within_stage"] = True
         value["sha256"] = _digest(value)
         return value
 
@@ -193,13 +197,23 @@ class V23Population:
             cases = tuple(case for case in cases if self._positive_counts[case] > 0)
         return cases
 
-    def case(self, case_id, active_u_count=128):
+    def case(self, case_id, active_u_count=128, *, active_u_indices=None):
         if case_id not in self._by_case:
             raise ValueError("Case outside signed retained native population: " + str(case_id))
         if type(active_u_count) is not int or not 1 <= active_u_count <= 128:
             raise ValueError("Explicit active native-U count within full128 required")
         bank = self._bank_ids[case_id]
-        active = set(bank[:active_u_count])
+        if active_u_indices is None:
+            selected = tuple(range(active_u_count))
+        else:
+            if not isinstance(active_u_indices, (tuple, list)):
+                raise ValueError("Explicit native-U bank index sequence required")
+            if (len(active_u_indices) != active_u_count
+                    or any(type(i) is not int or not 0 <= i < 128 for i in active_u_indices)
+                    or len(set(active_u_indices)) != active_u_count):
+                raise ValueError("Exactly active_U distinct original native bank indices required")
+            selected = tuple(sorted(active_u_indices))
+        active = {bank[i] for i in selected}
         indices = tuple(i for i in self._by_case[case_id]
                         if self._records[i]["target"] == 1 or self._records[i]["id"] in active)
         rows = tuple(self._records[i] for i in indices)
@@ -214,6 +228,7 @@ class V23Population:
                         active_u_count=active_u_count, record_ids=tuple(row["id"] for row in rows),
                         inventory_indices=indices, positive_indices=p, unobserved_indices=u,
                         unobserved_bank_positions=tuple(positions[rows[i]["id"]] for i in u),
+                        active_u_indices=selected,
                         bank_record_ids=bank, donor_case_id=first["donor_case_id"],
                         donor_component=first["donor_component"], donor_group=first["donor_group"],
                         _rows=copy.deepcopy(rows))
@@ -222,7 +237,8 @@ class V23Population:
         """Map the exact case query order into an original provider partition."""
         if not isinstance(plan, CasePlan):
             raise ValueError("Case plan belongs to another native population")
-        expected_plan = self.case(plan.case_id, plan.active_u_count)
+        expected_plan = self.case(plan.case_id, plan.active_u_count,
+                                  active_u_indices=plan.active_u_indices)
         if plan != expected_plan or plan._rows != expected_plan._rows:
             raise ValueError("Case plan belongs to another native population")
         rows = getattr(dataset_or_rows, "rows", dataset_or_rows)
@@ -239,8 +255,13 @@ class V23Population:
             indices.append(index)
         return tuple(indices)
 
-    def stage_manifest(self, active_u_count):
-        plans = [self.case(case, active_u_count).manifest()
+    def stage_manifest(self, active_u_count, *, target_selection=None):
+        if target_selection is not None:
+            if (not isinstance(target_selection, Mapping)
+                    or set(target_selection) != set(self._case_ids["outer_train"])):
+                raise ValueError("Stage population manifest requires all retained train and validation cases")
+        plans = [self.case(case, active_u_count,
+                          active_u_indices=None if target_selection is None else target_selection[case]).manifest()
                  for case in self._case_ids["outer_train"]]
         value = dict(format=FORMAT, population_sha256=self._manifest["sha256"],
                      active_U=active_u_count, cases=plans, all_P_retained=True,
