@@ -18,7 +18,7 @@ import torch
 from .contracts import canonical_hash
 from hiercp_v22.contracts import sha
 from .v24_inputs import (recipient_context, prepare_donor, build_local_record,
-    materialize_pair, query_inputs, array_digest)
+    materialize_pair, query_inputs, array_digest, immutable_array)
 from .v24_provider import FORMAT as CANONICAL_FORMAT, V24InputCoordinator, V24InputProvider
 
 
@@ -104,12 +104,13 @@ class V24NativeInputs:
             loaded=load_case(CasePaths(case,Path(row['image']),Path(row['label'])))
             organ=np.isin(loaded.label,(1,2))
             context=recipient_context(case,loaded.image,organ,loaded.spacing,loaded.image_affine)
+            depth=context.organ_depth
             # Donor annotation remains available only in this explicit donor
             # branch; recipient builders receive context, never loaded.label.
             loaded.image=context.image; loaded.spacing=context.spacing; loaded.image_affine=context.image_affine
             loaded.label.flags.writeable=False
-            value=dict(context=context,donor_case=loaded,binding=context.binding())
-            size=context.image.nbytes+context.organ_mask.nbytes+loaded.label.nbytes
+            value=dict(context=context,donor_case=loaded,binding=context.binding(),organ_depth=depth)
+            size=context.image.nbytes+context.organ_mask.nbytes+loaded.label.nbytes+depth.nbytes
             self._raw_cache[case]=(value,size); self._raw_bytes+=size
             while self._raw_bytes>self.raw_resident_bytes and len(self._raw_cache)>1:
                 old,(unused,bytes_)=self._raw_cache.popitem(last=False); self._raw_bytes-=bytes_
@@ -144,7 +145,7 @@ class V24NativeInputs:
                 match=[i for i,(component,_) in enumerate(collection.entries) if component==key[1]]
                 if len(match)!=1: raise ValueError('Exact native donor component absent')
                 source,_=collection[match[0]]
-                source.full_mask.flags.writeable=False
+                source.full_mask=immutable_array(source.full_mask)
                 source.v24_mask_sha256=array_digest(source.full_mask)
                 prepared=prepare_donor(raw['donor_case'],source,config=self.graph_config,
                     seed=self.config['seed'],ct_clip=self.ct_clip)
@@ -192,7 +193,8 @@ class V24NativeInputs:
         raw=self._case(row['case_id']); donor,source,prepared=self._donor(row)
         return build_local_record(raw['context'],donor,source,prepared,row,
             config=self.graph_config,seed=self.config['seed'],
-            ct_clip=self.ct_clip,scope_contract=self.bundle.scope['contract_sha256'])
+            ct_clip=self.ct_clip,scope_contract=self.bundle.scope['contract_sha256'],
+            donor_mask_sha256=source.v24_mask_sha256)
 
     def prepare_local(self):
         from hiercp_v22.storage import GraphWriter

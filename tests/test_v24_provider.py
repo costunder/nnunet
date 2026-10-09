@@ -117,5 +117,27 @@ class V24CPUProviderDebug(unittest.TestCase):
             coordinator.trim(strict=False)
         self.assertEqual(ownership,[True,True])
 
+    def test_factory_cached_EDT_is_counted_once_in_raw_residency(self):
+        # Actual original UNIT CT/organ/EDT; only filesystem loading is mocked.
+        from collections import OrderedDict
+        import threading
+        from unittest.mock import patch
+        from hiercp_v22.contracts import sha
+        from hiercp_v1x.v24_factory import V24NativeInputs
+        inputs=object.__new__(V24NativeInputs);inputs._lock=threading.RLock()
+        inputs._raw_cache=OrderedDict();inputs._regions=OrderedDict();inputs._donors=OrderedDict()
+        inputs._raw_bytes=0;inputs.raw_resident_bytes=2**30;inputs._file_proofs={}
+        inputs.guard_input_files=lambda *args:None;inputs._rss=lambda:None
+        inputs.raw=dict(UNIT_case=dict(image=str(self.index),label=str(self.index),
+            image_sha256=sha(self.index),label_sha256=sha(self.index)))
+        loaded=copy.deepcopy(self.fixture.donor)
+        with patch('hiercp.common.load_case',return_value=loaded):
+            first=inputs._case('UNIT_case');second=inputs._case('UNIT_case')
+        self.assertIs(first,second);self.assertIs(first['organ_depth'],first['context'].organ_depth)
+        expected=sum(value.nbytes for value in (first['context'].image,first['context'].organ_mask,
+            loaded.label,first['organ_depth']))
+        self.assertEqual(inputs._raw_bytes,expected)
+        self.assertEqual(inputs._raw_cache['UNIT_case'][1],expected)
+
 
 if __name__=='__main__':unittest.main()

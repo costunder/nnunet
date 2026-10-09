@@ -8,6 +8,8 @@ The unchanged annotated donor mask remains an allowed Copy-Paste source.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from functools import cached_property
+import copy
 import hashlib
 import importlib
 import json
@@ -18,6 +20,12 @@ import torch
 FORMAT = 'v24_recipient_CT_organ_no_tumor_annotation_v1'
 LOCAL_FORMAT = 'v24_original_local_CT_organ_donor_footprint_v1'
 QUERY_KEYS = ('id', 'case_id', 'center', 'donor_case_id', 'donor_component')
+
+
+def immutable_array(value):
+    """Snapshot exact dtype/values with an immutable bytes owner."""
+    array = np.asarray(value)
+    return np.frombuffer(array.tobytes(order='C'), dtype=array.dtype).reshape(array.shape)
 
 
 def array_digest(value):
@@ -63,6 +71,12 @@ class RecipientContext:
     spacing: np.ndarray
     image_affine: np.ndarray
 
+    def __post_init__(self):
+        # A writable NumPy owner can re-enable its write flag. Bytes-backed
+        # snapshots cannot, so cached proofs and depth cannot become stale.
+        for name in ('image', 'organ_mask', 'spacing', 'image_affine'):
+            object.__setattr__(self, name, immutable_array(getattr(self, name)))
+
     @property
     def shape(self):
         return self.image.shape
@@ -76,10 +90,19 @@ class RecipientContext:
     def label(self):
         raise AttributeError('Recipient tumor annotation is not a v2.4 model input')
 
-    def binding(self):
+    @cached_property
+    def _input_binding(self):
         return dict(format=FORMAT, case_id=self.case_id, CT_sha256=array_digest(self.image),
                     organ_sha256=array_digest(self.organ_mask), spacing=self.spacing.tolist(),
                     image_affine=self.image_affine.tolist(), recipient_tumor_GT_used=False)
+
+    def binding(self):
+        return copy.deepcopy(self._input_binding)
+
+    @cached_property
+    def organ_depth(self):
+        from hiercp.common import organ_depth_mm
+        return immutable_array(organ_depth_mm(self.organ_mask, self.spacing))
 
 
 def recipient_context(case_id, CT, organ_mask, spacing, image_affine):
@@ -92,9 +115,7 @@ def recipient_context(case_id, CT, organ_mask, spacing, image_affine):
             or physical.shape != (3,) or not np.isfinite(physical).all() or (physical <= 0).any()
             or affine.shape != (4, 4) or not np.isfinite(affine).all()):
         raise ValueError('Finite real CT, explicit full organ mask, native spacing/affine required')
-    arrays = [np.array(value, copy=True) for value in (image, organ, physical, affine)]
-    for array in arrays: array.flags.writeable = False
-    return RecipientContext(case_id, *arrays)
+    return RecipientContext(case_id, image, organ, physical, affine)
 
 
 def query_inputs(rows):
@@ -132,9 +153,8 @@ def prepare_donor(donor_case, source, *, config, seed, ct_clip):
 
 
 def build_local_record(recipient, donor_case, source, prepared, row, *, config, seed, ct_clip,
-                       scope_contract):
+                       scope_contract, donor_mask_sha256=None):
     """Original complete physical L0 construction, with no recipient label access."""
-    from hiercp.common import organ_depth_mm
     from hiercp_v22.data import donor_in_target_spacing, candidate_spec
     from hiercp_v1x import transition_v1_empty_context
     local = importlib.import_module('hiercp.local')
@@ -145,6 +165,14 @@ def build_local_record(recipient, donor_case, source, prepared, row, *, config, 
             or recipient.case_id == donor_case.paths.case_id
             or any(x >= extent for x, extent in zip(query['center'], recipient.shape))):
         raise ValueError('Actual independent donor/recipient/native center binding differs')
+    if donor_mask_sha256 is not None:
+        admitted = getattr(source, 'v24_mask_sha256', None)
+        if (not isinstance(donor_mask_sha256, str) or len(donor_mask_sha256) != 64
+                or any(character not in '0123456789abcdef' for character in donor_mask_sha256)
+                or donor_mask_sha256 != admitted or source.full_mask.flags.writeable):
+            raise ValueError('Cached donor mask SHA requires the admitted immutable source mask')
+    else:
+        donor_mask_sha256 = array_digest(source.full_mask)
     # Only the donor footprint is regridded; source CT/topology stay donor-native.
     target_source, target_mask = donor_in_target_spacing(source, donor_case.spacing, recipient.spacing)
     transported = replace(prepared, source_footprint=spatial.exact_source_footprint(target_source))
@@ -152,7 +180,7 @@ def build_local_record(recipient, donor_case, source, prepared, row, *, config, 
     spec = candidate_spec(target_source, query['center'])
     built = local.build_local_graph(recipient, target_source, spec,
         full_organ_mask=recipient.organ_mask,
-        organ_depth=organ_depth_mm(recipient.organ_mask, recipient.spacing), config=config,
+        organ_depth=recipient.organ_depth, config=config,
         rng=np.random.default_rng(seed), ct_clip=ct_clip, prepared_source=transported)
     if int(transported.source_footprint.sum()) != int(target_mask.sum()):
         raise ValueError('Native transport lost actual donor footprint voxels')
@@ -162,7 +190,7 @@ def build_local_record(recipient, donor_case, source, prepared, row, *, config, 
         observation_id=query['id'], center=list(query['center']), seed=seed,
         graph_config=config.to_dict(), scope_contract=scope_contract,
         recipient_binding=recipient.binding(),
-        donor_mask_sha256=array_digest(source.full_mask),
+        donor_mask_sha256=donor_mask_sha256,
         source_patch=torch.from_numpy(prepared.source_patch.astype(np.float16)),
         target_patch=torch.from_numpy(built.target_patch.astype(np.float16)),
         source_local=built.source_local, target_local=built.target_local,
