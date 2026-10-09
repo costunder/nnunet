@@ -1,0 +1,100 @@
+v2.3 — 모든 관측 P와 고정 donor를 사용하는 누적 U 학습
+기록 기준: 2026-10-09 KST
+
+사용자 승인
+- 전체 P를 처음부터 각각 학습, U는 이전 후보를 유지한 채 누적 확장.
+- 환자별 seed42 고정 inner-train donor, 다른 P는 negative로 사용하지 않음.
+- U별 softplus(s_U-s_P)를 P별 평균, 환자 내 P 평균, 환자별 평균.
+- 단계 MRR0.80 / top1 0.70, 최소2완료epoch 및2회연속통과 후 확장.
+- v2.3으로 새 학습 시작. 기존 4개 실험의 checkpoint는 덮어쓰지 않음.
+
+이전 실험에서 바꾸는 것
+기존 4개 대조군은 원본 source sample의 단일 P를 비교하는 과제였다.
+v2.3은 고정 외부 donor로 실제 관측된 적격 P527개를 모두 학습한다.
+각 환자의 모든 P와 활성 U를 하나의 upper graph에 넣는다. 모든 P에
+같은 U pool을 사용하며 P끼리 비교 loss를 만들지 않는다.
+모든 후보의 live CNN/L0 특징에 gradient가 흐른다. Detached 학습 특징
+memory로 다른 P를 대체하지 않는다. Geometry만 불변 CPU cache로 재사용.
+기존 10,434,532parameter GAT/CNN 모델을 보존한 새 학습 과제이며,
+과거 v2.2의 CT-only/관측class/군집L2 모델과 동일 구조라고 표기하지 않는다.
+
+전체 데이터
+Inner-train84환자: 적격 P527 + U10752 =11279관측.
+P가 있는65환자는 순위 loss에 참여. P가 없는19환자는 inventory에 유지하고
+정의되지 않는 P대U loss만 제외한다. 임의의 positive/negative를 만들지 않음.
+Inner-validation21환자: P135 + U2688 =2823관측, 전체21명을 점수화.
+P가 없는5환자는 점수는 생성하고 정의되지 않는 P 순위 분모에서만 제외.
+Outer-test26환자는 학습·확장 판단·best선택에 사용하지 않음.
+P는 원래 적격 소형 병변 계약의 관측 component이며 모든 크기의 종양 수가 아님.
+U는 미관측 비교 위치이며 CP 부적합의 절대 정답이라고 해석하지 않는다.
+
+누적 후보와 validation
+U의 원래 comparison.centers 순서를 보존하여7→14→21→…→126→128개로 확장.
+각 epoch에는 현재 활성 U 전체를 다시 학습하므로 과거 U가 사라지지 않는다.
+이 순서는 후보 범위 확장 순서이며, 난이도를 측정해 정렬한 hard curriculum은 아님.
+모든 P는 첫epoch부터 마지막epoch까지 유지.
+단계 validation: held-out21환자의 모든 P와 현재 활성 U를 실제 joint forward.
+각 P는 U만을 경쟁자로 순위를 계산. 각 P의 MRR/top1을 환자 내 평균 후 환자 평균.
+단계 gate는 최소2완료epoch,2연속통과, 해당epoch의 모든 P환자 실제update를 요구.
+전체 validation: 동일21환자, 모든P+고정128U, 동일donor·graph·점수경로.
+Best는 전체 validation의 per-P 환자 평균MRR, per-P top1, 음수pairwise loss 순.
+이전 hard평가와 비교할 first-P MRR, Hit@1, Recall@1/5/10도 별도로 기록.
+단계간 후보 수가 달라지는 metric을 직접 같은 난이도의 수치로 취급하지 않음.
+초기 전체validation이 낮다는 이유로 early stopping하지 않음.40epoch유지.
+
+모델과 optimizer
+동일 원본 L0/L1/L2/scalar head, hidden128, heads4, layers3/2/2.
+5채널48³입력, 실제 sampled view2개, physical margin10mm.
+12개 원본 L0 semantic readout을 모두 upper모델에 전달.
+원본6개 key의 두-view cosine consistency를 환자별 평균하고 weight0.1유지.
+AdamW lr1e-4, weight_decay1e-4, fused optimizer, AMP, grad_clip5.
+CosineAnnealingLR T_max40, accumulation1, seed42.
+기존 실험의 공통 random initial.pt를 정확히 읽으며 학습된 best/latest를 초기값으로 쓰지 않음.
+Candidate L0 chunk 전체를 activation checkpoint하여 모두 역전파.
+Chunking은 완전한 graph/환자/candidate 삭제가 아니며 upper는 각 환자 전체를 보존.
+
+실제 자원과 실행
+현재 확인된 ece-a6gpu6의 A6000 GPU1/5/6 각46068MiB, MIG없음.
+Read-only audit에서 각GPU1MiB사용, free45622MiB.
+CPU affinity96코어, available RAM 약988GiB.
+GPU당40GiB budget, rank당RSS192GiB / resident128GiB, CPU readers12.
+기존 complete D cache14102관측/14200파일을 재사용. Stat 검사누락0/크기불일치0.
+압축payload합계8184159630bytes; train canonical tensor 약36.8GiB.
+새 실행의 실제 입력 payload SHA는 provider가 사용 시 검증.
+GPU별 candidate32/64/128 × patient2/4를 실제 full128 forward/backward/update로3회측정.
+모든GPU에서 통과한 공통batch 중 가장 느린GPU의 처리량 기준으로 선택.
+DDP3rank: 환자graph는 disjoint union, 마지막batch는 중복/padding/drop없이 분배.
+실제환자 수로 rank loss를 가중하여 global patient mean을 유지.
+Physical patient batch와 candidate chunk는 다른 축이며 로그에 각각 기록.
+Effective patient batch =physical patients/rank ×accumulation1 ×DDPworld3.
+
+저장과 동기화
+기존 home 실험은 EDQUOT으로 멈췄다. 새 결과는 별도의 writable /var/tmp namespace에 저장.
+새 source/config/test는 로컬·GitHub·서버의 동일 commit으로 배포.
+기존 raw CT, prototype bank, canonical cache, 네 실험checkpoint는 read-only.
+/var/tmp는 서버 로컬 디스크이며 영구보관을 보장하지 않는다. checkpoint의
+로컬 백업 여부는 실행 증거에 별도로 기록하고, 백업을 가정하지 않는다.
+서버는 기존 SSH/MobaXterm세션을 종료하지 않는다. 새 tmux실행창과 실행log를 제공.
+
+검증과 상태
+CPU unit은 데이터범위·donor·loss균형·P-P배제·gate·DDPtail·cache결속을 확인한다.
+실제 GPU full128 calibration은 원본모델의 forward/loss/gradient/update를 확인한다.
+Calibration은 cloned model의 자원/연결 검사이며40epoch본학습완료로 표현하지 않음.
+본학습의 시작/epoch/update와 fullvalidation실행은 별도 launch/runtime 증거로 기록.
+원래 recipient lesion annotation을 graph에 노출하는 과제를 유지한다.
+따라서 annotation-blind CP 효용 또는 segmentation개선을 검증했다고 주장하지 않음.
+
+작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] Physical batch size와 병렬화 실제측정 완료는 calibration증거 확인 후 표시.
+- [x] GPU, CPU, RAM 활용 상태를 확인했다. 실행중 peak/처리량은 별도 로그.
+- [x] OOM시 모델축소 없이 memory/chunk/병목을 먼저 조사하도록 구성.
+- [x] 단위/calibration 검사와 최종40epoch실행을 분리했다.
+- [x] Dummy, placeholder, random fallback을 실제 결과로 사용하지 않았다.
+- [ ] 실제 원본모델 forward/loss/gradient/optimizer검증은 GPU calibration후 표시.
+- [x] 실제 실행설정과 변경사항을 명확하게 기록했다.
+- [x] Unit/calibration/전체학습/전체평가의 상태를 구분했다.
