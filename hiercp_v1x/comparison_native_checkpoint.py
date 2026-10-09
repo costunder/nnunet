@@ -62,7 +62,7 @@ def _validate_binding(arm, family, manifest, ownership, calibration, initial):
     from . import u_bridge_training as engine
     from .scope_probe_support import state_digest
     binding = ownership.get('binding')
-    if not isinstance(binding, dict) or ownership.get('identity_sha256') != engine.digest(binding):
+    if not isinstance(binding, dict):
         raise ValueError('Comparison training identity content changed')
     initial_model = initial.get('model')
     if (not isinstance(initial_model, dict)
@@ -94,9 +94,19 @@ def _validate_binding(arm, family, manifest, ownership, calibration, initial):
         policy = arm_policy(arm)
         config['comparison_policy'] = copy.deepcopy(policy)
         identity['comparison_policy'] = copy.deepcopy(policy)
-    samples = manifest['samples']
-    # Provider examples are already sealed in the experiment.  Require the
-    # exact lists and their order rather than recreating graph/input caches.
+    # UBridgeData._centers constructs a tuple of coordinate tuples. Its
+    # examples() and engine._examples() preserve those tuples inside an outer
+    # list. Both experiment.json and training_identity.json serialize them as
+    # JSON arrays, but engine.digest deliberately distinguishes tuples/lists.
+    # Recover only these known provider fields; never normalize the digest or
+    # accept a hash of the lossy JSON binding as the original training identity.
+    from .u_bridge_data import _centers
+    samples = copy.deepcopy(manifest['samples'])
+    for row in samples:
+        row['positive_center'] = _centers([row['positive_center']], 1, row['id'] + ' P')[0]
+        row['selected_centers'] = _centers(row['selected_centers'], 7, row['id'] + ' selected')
+        row['native_centers'] = _centers(row['native_centers'], 128, row['id'] + ' native U')
+    # Preserve every sealed sample and its order without loading input caches.
     train = [row for row in samples if row['partition'] == 'train']
     validation = [row for row in samples if row['partition'] == 'val']
     if not train or not validation or len(train) + len(validation) != len(samples):
@@ -104,7 +114,10 @@ def _validate_binding(arm, family, manifest, ownership, calibration, initial):
     expected = dict(format=training_format, identity=identity, config=config, arm=arm,
         debug=False, epochs=40, physical_batch=chosen, workers=manifest['workers'],
         train_examples=train, val_examples=validation, initial_state_sha256=initial_hash)
-    if binding != expected or ownership['identity_sha256'] != engine.digest(expected):
+    # Match every persisted JSON field separately from proving the original
+    # type-sensitive training hash. A JSON round trip is not a new identity.
+    if (json_digest(binding) != json_digest(expected)
+            or ownership.get('identity_sha256') != engine.digest(expected)):
         raise ValueError('Checkpoint ownership is not the original complete comparison binding')
     return training_format, policy
 

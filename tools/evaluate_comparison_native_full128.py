@@ -121,6 +121,11 @@ def worker(args):
     bundle = load_comparison(job['arm'], job['experiment'], job['selection'], budget=budget)
     if bundle.receipt['native_inventory_sha256'] != request['inventory_sha256']:
         raise ValueError('Checkpoint and hard evaluation do not share the sealed native inventory')
+    from hiercp.tensor import configure_runtime
+    runtime = bundle.config['runtime']
+    configure_runtime(deterministic=bool(runtime.get('deterministic', True)),
+        allow_tf32=bool(runtime.get('allow_tf32', False)),
+        cudnn_benchmark=bool(runtime.get('cudnn_benchmark', False)))
     inventory = json.loads((args.native_run / 'inventory/index.json').read_text())
     cohort = validate_cohort(inventory, debug=False)
     if (cohort['records'], cohort['observed_P'], cohort['unobserved_U']) != (2823, 135, 2688):
@@ -143,6 +148,12 @@ def worker(args):
         margin_mm=10, input_representation='unchanged original five-channel/48-cube two-view GAT/CNN',
         hidden_dim=128, heads=4, local_layers=3, task_layers=2, alignment_layers=2,
         validation_cases=21, validation_records=2823, observed_P=135, unobserved_U=2688,
+        precision_AMP=bool(bundle.config['training']['amp']),
+        deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+        cudnn_deterministic=torch.backends.cudnn.deterministic,
+        cudnn_benchmark=torch.backends.cudnn.benchmark,
+        cudnn_allow_tf32=torch.backends.cudnn.allow_tf32,
+        matmul_allow_tf32=torch.backends.cuda.matmul.allow_tf32,
         evaluation_fraction=1., DEBUG=False, model_training=False, optimizer_updates=0,
         checkpoint=bundle.checkpoint)
     write_new(attempt / 'resources.json', resources)
