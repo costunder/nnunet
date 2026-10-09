@@ -1,0 +1,99 @@
+v2.4 독립 실험 실행 계약 (2026-10-10)
+
+사용자가 지정한 변경
+GPU 1: 기존 v2.3 최고 GNN으로 nnU-Net Copy-Paste 학습.
+GPU 5: recipient 종양 annotation 입력 누수를 제거하고, 학습 후보가 고정되는 커리큘럼을 수정하여 새로 학습.
+GPU 6: GPU 5와 같은 데이터/목표/커리큘럼을 사용하되 L0를 공개 사전학습 STU-Net-S encoder로 교체.
+세 실험은 독립 프로세스이며 DDP나 모델/gradient 공유를 하지 않는다.
+
+기존 학습 보존
+기존 GPU 1/5/6 작업은 원래 STOP_AFTER_BATCH 경로로 정상 중단하고 PAUSED checkpoint를 보존했다.
+선택한 GNN은 GPU 5 epoch 15 BEST, 전체128U validation MRR 0.40083163035759634/top1 0.30493678774928773이다.
+checkpoint SHA256: 4d25477404d0c21b93b9fa03431665f07ad6df9c038e80aff85c7a6fb8f46c25
+이 모델은 기존 annotation 노출 입력 계약으로 학습된 역사적 비교 모델이다.
+
+GPU 5/6 입력 수정의 정확한 범위
+recipient의 종양 GT lesion 노드, 해당 6종 relation, lesion projection 및 메시지 전달 모듈,
+간 descriptor의 종양 개수 항목을 제거한다. 나머지 원형 GNN의 폭128/head4, L0/L1/L2 깊이3/2/2를 유지한다.
+기존 occupied distance raw column4는 원래 모델에서도 마스킹되어 있었다. 직접 사용된 누수로 주장하지 않는다.
+새 recipient 객체에는 CT, 명시적 organ mask, spacing, affine만 들어간다.
+organ mask는 간과 종양 label의 합집합으로 얻은 장기 조건 입력이다. CT-only 또는 모든 종류의 GT 제거라고 주장하지 않는다.
+donor 종양 annotation은 합성할 source의 허용된 입력이며, donor는 inner-train에서 환자마다 고정한다.
+P/U 정답은 loss/평가용이다. 후보 좌표는 기존 고정 은행을 유지하며 정답 변경 metamorphic 검사는 CT/organ/좌표를 고정한다.
+이 검사는 실제 임상 후보 생성의 독립성이나 독립 환자 test를 증명하지 않는다.
+기존 종양 annotation 의존 upper/canonical 캐시는 재사용하지 않는다. 새 공용 CPU 입력 캐시를 GPU 5/6에서 읽는다.
+
+전체 학습 및 평가 계약
+inner-train 84 case/P527: P가 있는65 case의 모든 P를 첫 epoch부터 학습한다.
+zero-P19 case는 inventory에서 보존하고 정의되지 않는 P 대 U ranking loss 분모에서만 제외한다.
+inner-val21 case/P135는 전부 forward한다. zero-P case는 정의되지 않는 ranking metric 분모에서만 제외한다.
+P 각각과 U의 softplus pair loss → P 평균 → 환자 평균; 다른 P를 negative로 넣지 않는다.
+고정 train donor, 원형 두-view consistency 가중치0.1, seed42, AdamW LR1e-4, 총40 epoch를 유지한다.
+새 모델과 optimizer로 시작하며 누수 입력으로 학습된 v2.3 가중치를 이어받지 않는다.
+각 단계의 모든65 train case를 eval 모드/fixed view29로 평가하고, 같은 범위의21 val과 비교한다.
+BEST 선택은 별도의 고정 전체128U validation MRR, top1, pair loss 순서만 사용한다.
+
+누적 후보 일정
+U7에서 시작하여 이전 후보를 유지하며16개씩 확장한다: 7,23,39,55,71,87,103,119,128.
+단계 최소2 epoch 후 아래 조건 중 하나이면 확장한다.
+1. 단계 validation MRR>=0.80 및 top1>=0.70을 2회 연속 통과.
+2. train probe MRR>=0.90 및 top1>=0.85, train-val MRR gap>=0.10,
+   단계 val MRR/top1 개선폭0.005 이하의 정체2회가 동시에 충족.
+3. 해당 단계4 epoch 완료: coverage_deadline으로 명시하며 mastery로 표시하지 않는다.
+단계 변경 시 통과 streak/정체 기준을 초기화한다. 늦어도33 epoch부터128U 전체를 학습하여8 epoch 이상 전체 복습한다.
+
+GPU 6 공개 가중치 출처
+공식 저장소 https://github.com/uni-medical/STU-Net
+공식 모델 https://huggingface.co/ziyanhuang/STU-Net/resolve/main/small_ep4k.model
+SHA256 f440f401bf4cac1d1d6f7c4635542ef057193a5f96c0b3c661a6179afeab7be6
+공개 설명의 사전학습 자료: TotalSegmentator 1,204 CT/104 해부학 구조/4,000 epoch.
+공개 자료에는 LiTS 학습이 명시되어 있지 않다. 비식별 환자 ID의 연구 간 중복 여부까지 확인할 수 없으므로 무중복을 확정하지 않는다.
+6단계 encoder 전체: channels16/32/64/128/256/256, residual depth1/1/1/1/1/1,
+7,185,744 encoder parameter,60개 tensor 전부 strict SHA/shape 검증 후 로드한다.
+segmentation decoder는 구성하지 않는다. 모든 encoder stage를 실제로 사용하고 LR1e-4로 fine-tune한다.
+원래 full-FOV dense CT view(48^3)와 좌표를 유지하고 stride 정합 end padding만 추가한다.
+기존 CT 정규화를 사용하므로 사전학습 전처리와 동일하다고 주장하지 않는다.
+6 scale feature를 모든 원래 물리 샘플링 node에서 보간하여 기존 semantic readout을 통해 L1의12 field로 전달한다.
+STU arm은 원형 L0 CNN/GNN을 대체하며 사용되지 않는 local message-passing/decoder parameter를 남기지 않는다.
+
+GPU 1 nnU-Net CP 계약
+역사적 BEST GNN을 고정하고 각105 학습 recipient의 모든P+128U를 공동 scoring한다.
+128U의 정확한 argmax를 donor 전체 footprint와 native 좌표로 실제 Copy-Paste한다.
+원래 baseline Dataset730 fold0의105/26 split, ResEncM 128^3, CP 확률0.5,250 epoch 및 physical batch를 유지한다.
+recipient별 donor 정책은 v2.3 고정 inner-train donor이므로 원래 Basic-CP의 donor 정책과 완전히 같다고 주장하지 않는다.
+outer26 validation에는 CP를 적용하지 않고 prediction 입력은 CT뿐이다.
+이26 case는 nnU-Net validation으로 사용되므로 최종 결과를 독립 test라고 부르지 않는다.
+기존 nnU-Net normalization/planning 통계가105만으로 fit됐는지는 별도 미확인 사항이다.
+
+자원과 검증
+실측 공유 서버: A6000 GPU1/5/6 각각46068MiB, 사용 가능45622MiB; 호스트 CPU96코어; 호스트 가용 RAM 약982GiB.
+호스트 자원 수치는 우리 작업의 할당량이 아니다. 다른 사용자의 작업과 공유한다.
+사용자의 공유 자원 지시에 따라 세 실험 합계 CPU12개 논리코어/RAM176GiB 상한으로 관리한다.
+GPU1: CPU4/RAM48GiB, GPU5: CPU4/RAM64GiB, GPU6: CPU4/RAM64GiB.
+CPU 준비 작업은 해당 실험의 같은4코어 안에서 수행하고 작업별 CPU affinity 및 낮은 nice 우선순위를 적용한다.
+모델/데이터를 줄이지 않고 raw/canonical/geometry cache residency를 조정한다. 초과 시 조용히 자원을 더 쓰지 않는다.
+새 cache 저장소 여유 약108GiB; 기존 canonical 압축크기7.68GiB, native preprocessing17.54GiB.
+이 수치는 초기 snapshot이다. 실제 사용량은 각 실행 receipt와 자원 로그로 확인한다.
+GPU5/6 physical patient4/8 및 candidate chunk32/64/128을 실제 full128 backward로 비교한다.
+effective batch=physical patient batch x accumulation1 x independent worker1.
+65명 train/21명 val에서 마지막1명 batch가 생기면 마지막 두 batch를 재분배한다.
+nominal physical4일 때 마지막2+3, physical8일 때4+5로 처리하여 모든환자를 정확히1회 사용하고 update수를 유지한다.
+GPU5/6 각각4 persistent CPU workers, torch CPU1 thread, pin/nonblocking transfer와 prefetch를 사용한다.
+각64GiB RSS 내 canonical/view cache32GiB, raw cache8GiB, geometry cache8GiB와 transient 여유를 관리한다.
+CPU 단위 검사와 calibration clone update는 production 전체 학습 완료가 아니다.
+최종 실행 상태/commit/PID/로그/peak VRAM은 outputs/v24_20261010의 실행 증거에 별도로 기록한다.
+
+작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. (새 모델 CUDA 측정 후 실행 증거에 기록)
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사한다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (CPU UNIT 범위)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
