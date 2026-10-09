@@ -25,7 +25,95 @@ sys.dont_write_bytecode = True
 FILES = ('config/v23_all_p_native.json', 'hiercp_v1x/v23_data.py',
          'hiercp_v1x/v23_geometry.py', 'hiercp_v1x/v23_training.py',
          'hiercp_v1x/v23_targets.py', 'hiercp_v1x/v23_inputs.py',
-         'hiercp_v1x/v23_runtime_upgrade.py', 'tools/run_v23_all_p.py')
+         'hiercp_v1x/v23_runtime_upgrade.py', 'hiercp_v1x/v23_edge_execution.py',
+         'tools/run_v23_all_p.py')
+
+
+EDGE_ADAPTER_SHA256 = 'ead4ec316d19cef4cf6388476cb792f275f0e73f174f15b58bea70e5ae09b6fb'
+EDGE_FEEDING_SHA256 = {'hiercp_v1x/v23_training.py': 'e8d488a95f0950382c464aab755bab7be5f2f1b0c33b86029df779a6b347af34', 'hiercp_v1x/v23_data.py': 'cbaf9523183f2d76bdcf58a22d06dcb04c7e32f098c20b865278948ac114890a', 'hiercp_v1x/v23_inputs.py': 'b5f42a5e49d4fce935489d82ce433d41633d868df68ae57611b0c7c60f557d65', 'hiercp_v1x/v23_geometry.py': 'f537054cf1c68d5f5e44fa3545cca5df5c60b5bb36d78d845a75e6783f540198', 'hiercp_v1x/v23_targets.py': '5e0c08637ce3c69aeee1b32cc42b6af0e86434cc4431738513b3ec5e2206a2a7'}
+
+
+def validate_v23_edge_runtime_config(config, source):
+    """Pure metadata: this must not import Torch before physical GPU selection."""
+    runtime = config['v23_runtime']
+    mode = runtime.get('l0_edge_workspace_mib')
+    if (type(mode) is not int or mode not in (64, 256, 1024)
+            or runtime.get('l0_edge_adapter_sha256') != EDGE_ADAPTER_SHA256
+            or source.get('hiercp_v1x/v23_edge_execution.py') != EDGE_ADAPTER_SHA256
+            or any(source.get(name) != checksum for name, checksum in EDGE_FEEDING_SHA256.items())):
+        raise ValueError('Explicit measured execution settings, exact adapter and five unchanged d3f feeding files required')
+    return mode
+
+
+def install_v23_l0_execution(model, scorer, config):
+    """Same low-level smoke/production path; continuation admission is separate."""
+    from hiercp_v1x.v23_edge_execution import install_l0_edge_workspace
+    runtime = config['v23_runtime']
+    source_paths = [ROOT / name for name in (*EDGE_FEEDING_SHA256,
+        'hiercp_v1x/v23_edge_execution.py')]
+    if any(not path.is_file() or path.is_symlink() for path in source_paths):
+        raise ValueError('Regular source files required for the execution overlay')
+    def fingerprints():
+        result = []
+        for path in source_paths:
+            stat = path.stat()
+            result.append((stat.st_dev, stat.st_ino, stat.st_size,
+                stat.st_mtime_ns, stat.st_ctime_ns))
+        return tuple(result)
+    admitted_files = fingerprints()
+    source = {path.relative_to(ROOT).as_posix(): sha(path) for path in source_paths}
+    if fingerprints() != admitted_files:
+        raise ValueError('Source file changed during execution admission')
+    mode = validate_v23_edge_runtime_config(config, source)
+    if scorer.net is not model:
+        raise ValueError('The guarded scorer must own the same original model')
+    handle = install_l0_edge_workspace(model, mode * 2**20)
+    handle._v23_forward_guard_calls = 0
+    def before_forward(module, args):
+        if module is not scorer:
+            raise ValueError('Execution guard belongs to another scorer')
+        if fingerprints() != admitted_files:
+            raise ValueError('Admitted execution/feeding source file changed while running')
+        handle.guard()
+        handle._v23_forward_guard_calls += 1
+        return None
+    try:
+        handle.guard()
+        receipt = handle.receipt()
+        if (receipt['relation_convolutions'] != 48 or receipt['local_blocks'] != 3
+                or receipt['workspace_bytes'] != mode * 2**20
+                or receipt['adapter_sha256'] != EDGE_ADAPTER_SHA256
+                or receipt['original_global_workspace_bytes'] != 64 * 2**20
+                or receipt['upper_execution_changed'] is not False
+                or receipt['global_workspace_changed'] is not False):
+            raise ValueError('Exact 48 L0 instance-only workspace installation required')
+        hook = scorer.register_forward_pre_hook(before_forward)
+    except Exception:
+        handle.restore()
+        raise
+    return handle, hook
+
+
+def cleanup_v23_l0_execution(scorer):
+    """Close every owned provider, remove own hook and restore own overlay."""
+    errors = []
+    for provider in scorer.providers.values():
+        try:
+            provider.close()
+        except Exception as error:
+            errors.append(error)
+    actions = []
+    if hasattr(scorer, '_l0_edge_guard_hook'):
+        actions.append(scorer._l0_edge_guard_hook.remove)
+    if hasattr(scorer, '_l0_edge_handle'):
+        actions.append(scorer._l0_edge_handle.restore)
+    for action in actions:
+        try:
+            action()
+        except Exception as error:
+            errors.append(error)
+    if errors:
+        raise RuntimeError('Explicit execution cleanup errors: ' + '; '.join(str(error) for error in errors)) from errors[0]
 
 
 def sha(path):
@@ -87,6 +175,7 @@ def contract(args):
             or runtime.get('target_selection_policy') not in ('native_prefix','hard_score_top','score_stratified_mix')):
         raise ValueError('Independent GPU and target policy must match this explicit config')
     source = {name: sha(ROOT / name) for name in FILES}
+    validate_v23_edge_runtime_config(config, source)
     config_path = args.config.resolve()
     if not config_path.is_relative_to(ROOT):
         raise ValueError('The selected variant config must belong to the bound source checkout')
@@ -238,6 +327,7 @@ def gpu_setup(args, request):
         graph_config=config['graph'], precision_AMP=config['training']['amp'],
         seed=42, epochs=40, population=population.manifest(), initial_model_tensor_sha256=initial_sha,
         actual_native_inputs=True, original_initialization_restored=True, trained_weights_used=False)
+    resources['L0_execution_overlay_requested'] = runtime['l0_edge_workspace_mib']
     resources['initialization_phase'] = 'initial model restoration for input/calibration admission; continuation loads later'
     resources['production_continued_state_reported_by'] = 'training/execution_contract.json and training/handoff_receipt.json'
     path = args.output / ('resources_' + args.mode + '_rank' + str(rank) + '_' + args.invocation + '.json')
@@ -248,6 +338,13 @@ def gpu_setup(args, request):
         physical_candidate_batch=min(runtime['physical_candidate_batch_candidates']),
         checkpoint_local_chunks=runtime['checkpoint_local_chunks'], amp=config['training']['amp'], budget=budget,
         prefetch_cpu_chunks=runtime['prefetch_cpu_chunks'], pin_cpu_batches=runtime['pin_cpu_batches'])
+    try:
+        handle, hook = install_v23_l0_execution(model, scorer, config)
+        scorer._l0_edge_handle, scorer._l0_edge_guard_hook = handle, hook
+        new_json(args.output / ('L0_execution_' + args.invocation + '.json'), handle.receipt())
+    except Exception:
+        cleanup_v23_l0_execution(scorer)
+        raise
     return model, scorer, population, config, budget
 
 
@@ -256,8 +353,7 @@ def worker(args, request):
     try:
         _run_worker(args, request, model, scorer, population, config, budget)
     finally:
-        for provider in scorer.providers.values():
-            provider.close()
+        cleanup_v23_l0_execution(scorer)
 
 
 def _run_worker(args, request, model, scorer, population, config, budget):
@@ -301,6 +397,13 @@ def _run_worker(args, request, model, scorer, population, config, budget):
 
 
 def validate_single_gpu_calibration(calibration, request):
+    runtime = request.get('config', {}).get('v23_runtime', {})
+    edge_keys = {'l0_edge_workspace_mib', 'l0_edge_adapter_sha256'}
+    if edge_keys.intersection(runtime):
+        if not edge_keys.issubset(runtime):
+            raise ValueError('Both explicit edge execution keys are required')
+        from hiercp_v1x.v23_runtime_upgrade import require_engineering_calibration
+        require_engineering_calibration(calibration, runtime, request['gpus'][0], ROOT, execution_request=request)
     if (calibration.get('world_size') != 1 or calibration.get('request_sha256') != request['request_sha256']
             or calibration.get('physical_GPUs') != request['gpus'] or calibration.get('debug') is not False
             or not calibration.get('measured_full_P_U128_backward')

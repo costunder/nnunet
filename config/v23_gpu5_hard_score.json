@@ -69,6 +69,8 @@
     "cache_stage_admission": true,
     "geometry_resident_gib_per_rank": 128,
     "memoize_fixed_views": true,
-    "persistent_cpu_workers": true
+    "persistent_cpu_workers": true,
+    "l0_edge_workspace_mib": 1024,
+    "l0_edge_adapter_sha256": "ead4ec316d19cef4cf6388476cb792f275f0e73f174f15b58bea70e5ae09b6fb"
   }
 }

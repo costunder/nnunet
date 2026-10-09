@@ -49,6 +49,8 @@
     "minimum_free_disk_gib": 10,
     "full_model_and_graph_preserved": true,
     "debug": false,
-    "hidden_subset": false
+    "hidden_subset": false,
+    "l0_edge_workspace_mib": 1024,
+    "l0_edge_adapter_sha256": "ead4ec316d19cef4cf6388476cb792f275f0e73f174f15b58bea70e5ae09b6fb"
   }
 }
