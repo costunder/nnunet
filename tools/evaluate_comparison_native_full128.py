@@ -35,6 +35,8 @@ def parse(argv=None):
     parser.add_argument('--experiments-dir', type=Path, required=True)
     parser.add_argument('--native-run', type=Path, required=True)
     parser.add_argument('--prepared-cache', type=Path, required=True)
+    parser.add_argument('--upper-cache', type=Path,
+                        help='Sealed exact whole-case original upper graphs prepared once on CPU')
     parser.add_argument('--region-cache-source', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--workers', type=int, required=True)
@@ -77,6 +79,8 @@ def verify_request(args, request):
         raise ValueError('Native hard-evaluation inventory changed')
     if sha(args.prepared_cache) != request['prepared_cache_sha256']:
         raise ValueError('Preserved original-input geometry index changed')
+    if args.upper_cache is not None and sha(args.upper_cache / 'index.json') != request['upper_cache_sha256']:
+        raise ValueError('Sealed original whole-case upper geometry cache changed')
     for job in request['jobs']:
         if sha(job['checkpoint']) != job['checkpoint_sha256']:
             raise ValueError('Selected checkpoint changed; evaluation must not follow a moving model')
@@ -135,6 +139,13 @@ def worker(args):
         root=attempt / 'geometry_request', workers=args.workers,
         resident_bytes=int(args.resident_gib * 2**30), rss_bytes=budget.rss_bytes,
         prepared_cache=args.prepared_cache, minimum_free_bytes=int(args.minimum_free_gib * 2**30))
+    upper_cache = None
+    if args.upper_cache is not None:
+        from hiercp_v1x.comparison_native_upper_cache import UpperGeometryCache
+        from hiercp_v1x import historical_evaluation
+        upper_cache = UpperGeometryCache(args.upper_cache, bundle, args.native_run / 'inventory/index.json')
+        historical_evaluation.upper_graphs = upper_cache.upper_graphs
+        print('Exact original upper geometry cache admitted: all21 whole-case graphs', flush=True)
     model = bundle.model
     model.eval()
     resources = dict(physical_gpu=args.worker_gpu, gpu_name=properties.name,
@@ -172,6 +183,10 @@ def worker(args):
     report, _ = evaluate_historical(bundle, inventory, ds, loader,
         batch=measured_batch, budget=budget, output=attempt, debug=False,
         region_output=args.output / 'shared_regions')
+    if upper_cache is not None:
+        upper_cache.finish()
+        if upper_cache.receipt['cache_hits'] != 21:
+            raise ValueError('Exact complete whole-case upper cache was not consumed for all21 cases')
     verify_request(args, request)
     report.update(arm=job['arm'], selection=job['selection'],
         benchmark='native full21 observed-P +128U; external training donor fixed per recipient',
@@ -180,6 +195,8 @@ def worker(args):
         training_started=False, optimizer_updates=0, DEBUG=False,
         prior_source_anchor_validation_is_this_benchmark=False,
         checkpoint_selected_before_native_evaluation=True)
+    if upper_cache is not None:
+        report['upper_geometry_cache'] = upper_cache.receipt
     report_path = destination / 'report.json'
     write_new(report_path, report)
     write_new(destination / 'complete.json', dict(name=job['name'],
@@ -196,6 +213,8 @@ def main(args):
         return
     preserved = [args.native_run, args.prepared_cache,
                  *(args.experiments_dir / name for name in EXPERIMENTS.values())]
+    if args.upper_cache is not None:
+        preserved.append(args.upper_cache)
     if args.region_cache_source is not None:
         preserved.append(args.region_cache_source)
     assert_new_destination(args.output, preserved)
@@ -215,6 +234,7 @@ def main(args):
     request = dict(format='four_arm_native_full128_readonly_evaluation_v1', settings=settings,
         jobs=jobs, inventory_sha256=sha(args.native_run / 'inventory/index.json'),
         prepared_cache_sha256=sha(args.prepared_cache), source=source_receipt(),
+        upper_cache_sha256=None if args.upper_cache is None else sha(args.upper_cache / 'index.json'),
         selection_policy='predeclared original full129 BEST and saved latest; no hard-score selection',
         training_started=False, original_experiment_files_written=False,
         validation_cases=21, observations=2823, observed_P=135, U_per_case=128,
