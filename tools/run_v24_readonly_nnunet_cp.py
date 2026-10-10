@@ -26,7 +26,7 @@ ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibra
 CHECKSUM_ENV = 'V24_READONLY_STORAGE_ADMISSION_SHA256'
 FILES = ('tools/run_v24_readonly_nnunet_cp.py', 'hiercp_v1x/v24_readonly_native_storage.py',
          'hiercp_v1x/v24_native_calibration_runtime.py', 'hiercp_v1x/v24_native_crop_runtime.py',
-         'hiercp_v1x/v24_native_gradient_runtime.py')
+         'hiercp_v1x/v24_native_gradient_runtime.py', 'hiercp_v1x/v24_native_best_eval_runtime.py')
 
 
 def _sha(path):
@@ -186,7 +186,7 @@ def redirect(command, *, executable, native_path, admission_path, runtime, train
             and command[4] == str(native_path) and command[5] in ('2', '4')):
         return [*prefix, '--readonly-worker', 'calibrate', '--native', str(native_path),
                 '--physical-batch', command[5], '--worker-output', command[6]]
-    tail = ['730', '3d_fullres', '0', '-tr', trainer, '-p', plans]
+    tail = ['730', '3d_fullres', '0', '-tr', trainer, '-p', plans, '--val_best']
     if isinstance(command, list) and command == [*head, runtime.TRAIN_COMMAND, *tail]:
         return [*prefix, '--readonly-worker', 'train', '--native', str(native_path), '--', *tail]
     raise ValueError('Only the exact original fresh B2/B4 clone or full250 native child is admitted')
@@ -247,7 +247,7 @@ def worker(args, pipeline, storage, checksum, guard):
         result = runtime._calibrate_native_worker(args.native, args.physical_batch, args.worker_output)
         receipt = args.worker_output / 'readonly_storage_worker.json'
     else:
-        expected = ['730', '3d_fullres', '0', '-tr', pipeline.TRAINER, '-p', pipeline.PLANS]
+        expected = ['730', '3d_fullres', '0', '-tr', pipeline.TRAINER, '-p', pipeline.PLANS, '--val_best']
         if args.training_args != expected or bank['baseline']['epochs'] != 250 or bank['baseline']['physical_batch'] != 2:
             raise ValueError('Original fresh full250/physicalB2 Dataset730 native CLI tail required')
         if native.get('storage_extension') == EXTENSION:

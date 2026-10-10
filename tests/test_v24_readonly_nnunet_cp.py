@@ -173,7 +173,7 @@ class ReadonlyEntryTest(unittest.TestCase):
         pipeline = SimpleNamespace(TRAINER='original_full250_trainer', PLANS='original_full_plans',
             admit_native=unittest.mock.Mock(), new_json=unittest.mock.Mock())
         args = SimpleNamespace(native=self.native, storage_admission=self.admission, readonly_worker='train', physical_batch=None,
-            training_args=['730', '3d_fullres', '0', '-tr', pipeline.TRAINER, '-p', pipeline.PLANS])
+            training_args=['730', '3d_fullres', '0', '-tr', pipeline.TRAINER, '-p', pipeline.PLANS, '--val_best'])
         trainer = object(); events = []
         def install(*args):events.append('install');return proof
         def run():
@@ -215,7 +215,7 @@ class ReadonlyEntryTest(unittest.TestCase):
             self.assertEqual(original[3], self.runtime.WORKER_COMMAND)
 
     def test_redirect_preserves_exact_full_native_cli_tail(self):
-        tail = ['730', '3d_fullres', '0', '-tr', 'original_full250_trainer', '-p', 'original_plans']
+        tail = ['730', '3d_fullres', '0', '-tr', 'original_full250_trainer', '-p', 'original_plans', '--val_best']
         original = ['DEBUG_python', '-B', '-c', self.runtime.TRAIN_COMMAND, *tail]
         actual = entry.redirect(original, **self.common)
         args = entry.parse(actual[4:])
@@ -224,6 +224,7 @@ class ReadonlyEntryTest(unittest.TestCase):
 
     def test_unknown_worker_smaller_batch_resume_or_other_dataset_cannot_be_redirected(self):
         commands = [
+            ['DEBUG_python', '-B', '-c', self.runtime.TRAIN_COMMAND, '730', '3d_fullres', '0', '-tr', 'original_full250_trainer', '-p', 'original_plans'],
             ['DEBUG_python', '-B', '-c', 'unknown entry', str(self.native), '2', str(self.root)],
             ['DEBUG_python', '-B', '-c', self.runtime.WORKER_COMMAND, str(self.native), '1', str(self.root)],
             ['DEBUG_python', '-B', '-c', self.runtime.TRAIN_COMMAND, '730', '3d_fullres', '0', '-tr', 'original_full250_trainer', '-p', 'original_plans', '--c'],

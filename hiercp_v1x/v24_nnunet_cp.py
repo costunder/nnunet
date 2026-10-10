@@ -39,7 +39,8 @@ LEGACY_FILES = ('hiercp_v1x/v24_nnunet_cp.py', 'tools/run_v24_nnunet_cp.py',
 LOSSLESS_SOURCE_FILES = (*LEGACY_FILES,'hiercp_v1x/v24_lossless_raw_storage.py')
 RAW_HELPER_FILES = ('custom_trainers/onlinecp_raw_bank.py','custom_trainers/onlinecp_raw_resampling.py',
                     'tools/online_raw_bank_preparation.py','hiercp/preparation_runtime.py')
-FILES = (*LOSSLESS_SOURCE_FILES,*RAW_HELPER_FILES)
+OLD_CURRENT_FILES = (*LOSSLESS_SOURCE_FILES,*RAW_HELPER_FILES)
+FILES = (*OLD_CURRENT_FILES,'hiercp_v1x/v24_native_best_eval_runtime.py')
 RAW_STORAGE = 'v24_blosc2_lossless_v1'
 _ROOT_RAW_MODULES = {}
 
@@ -547,7 +548,7 @@ def materialize_bank(*, pin_path, inventory_path, baseline_preprocessed, scores,
         if score_source_code is None:raise ValueError('Legacy unsealed score recovery requires explicit audited --score-source-code')
         old_code=Path(score_source_code).resolve(strict=True)
         original_sources=old_request['source_files_sha256']
-        if (set(original_sources) not in (set(LEGACY_FILES),set(LOSSLESS_SOURCE_FILES),set(FILES))
+        if (set(original_sources) not in (set(LEGACY_FILES),set(LOSSLESS_SOURCE_FILES),set(OLD_CURRENT_FILES),set(FILES))
                 or any(sha(old_code/name)!=checksum for name,checksum in original_sources.items())):
             raise ValueError('Legacy actual scoring code differs from the original request SHA proof')
         if _scoring_core_ast((old_code/FILES[0]).read_text(encoding='utf8'))!=_scoring_core_ast((ROOT/FILES[0]).read_text(encoding='utf8')):
@@ -1526,6 +1527,7 @@ def admit_native_calibration(native):
 
 
 def train(native_path, *, gpu=1, resume=False):
+    from . import v24_native_best_eval_runtime as best_runtime
     from tools.local_cnn_device import select
     select(gpu)
     require_project_budget()
@@ -1535,7 +1537,7 @@ def train(native_path, *, gpu=1, resume=False):
     root=Path(native['root']); result=root/'nnUNet_results'/bank['baseline']['dataset_name']/f'{TRAINER}__{PLANS}__3d_fullres'/'fold_0'
     if result.exists() and not resume: raise FileExistsError('Existing segmentation run requires explicit native resume')
     if resume and not (result/'checkpoint_latest.pth').is_file(): raise ValueError('Native resume checkpoint missing; no fresh fallback')
-    command=[sys.executable,'-B','-m','nnunetv2.run.run_training','730','3d_fullres','0','-tr',TRAINER,'-p',PLANS]
+    command=[sys.executable,'-B','-c',best_runtime.TRAIN_COMMAND,'730','3d_fullres','0','-tr',TRAINER,'-p',PLANS,'--val_best']
     if resume: command.append('--c')
     stamp=str(time.time_ns()); log=root/('train_'+stamp+'.log')
     new_json(root/('training_started_'+stamp+'.json'),dict(format=native['format'],GPU=gpu,command=command,epochs=250,
@@ -1548,8 +1550,14 @@ def train(native_path, *, gpu=1, resume=False):
         status=child.wait()
     if status: raise RuntimeError(f'Native segmentation failed ({status}); preserved log {log}')
     checkpoint=result/'checkpoint_final.pth'
+    best_receipt=result/best_runtime.RECEIPT
+    best_proof=best_runtime.validate_best_validation_receipt(best_receipt,fold=result,
+        expected_cases=bank['split']['outer_val'],bank_sha256=native['bank_sha256'])
     new_json(root/('training_complete_'+stamp+'.json'),dict(format=native['format'],GPU=gpu,checkpoint=str(checkpoint),
-        checkpoint_sha256=sha(checkpoint),bank_sha256=native['bank_sha256'],epochs=250,log=str(log)))
+        checkpoint_sha256=sha(checkpoint),checkpoint_role='full250_training_completion_witness',
+        evaluation_checkpoint_name=best_runtime.BEST,evaluation_checkpoint_path=best_proof['checkpoint_path'],
+        evaluation_checkpoint_sha256=best_proof['checkpoint_sha256'],best_validation_receipt=str(best_receipt),
+        best_validation_receipt_sha256=sha(best_receipt),bank_sha256=native['bank_sha256'],epochs=250,log=str(log)))
     return checkpoint
 
 
@@ -1569,32 +1577,73 @@ def predict(native_path, *, inventory_path, output, gpu=1):
         source=Path(raw[case]['image'])
         if sha(source)!=raw[case]['image_sha256']:raise ValueError('Original outer26 CT changed')
         dest=inputs/(case+'_0000.nii.gz');shutil.copy2(source,dest);hashes[case]=sha(dest)
-    checkpoint=Path(native['root'])/'nnUNet_results'/bank['baseline']['dataset_name']/f'{TRAINER}__{PLANS}__3d_fullres'/'fold_0'/'checkpoint_final.pth'
+    checkpoint=_native_best_checkpoint(native,bank)
     checkpoint_sha=sha(checkpoint)
     command=[sys.executable,'-B','-c','from nnunetv2.inference.predict_from_raw_data import predict_entry_point; predict_entry_point()','-i',str(inputs),
-        '-o',str(target/'predictions'),'-d','730','-c','3d_fullres','-f','0','-tr',TRAINER,'-p',PLANS,'-chk','checkpoint_final.pth']
+        '-o',str(target/'predictions'),'-d','730','-c','3d_fullres','-f','0','-tr',TRAINER,'-p',PLANS,'-chk','checkpoint_best.pth']
     with (target/'predict.log').open('x',encoding='utf8') as stream:
         status=subprocess.run(command,cwd=ROOT,env=environment(native),stdout=stream,stderr=subprocess.STDOUT).returncode
     if status:raise RuntimeError('Prediction failed; original artifacts and new log preserved')
-    new_json(target/'prediction_complete.json',dict(format=FORMAT,checkpoint_sha256=checkpoint_sha,
+    if sha(checkpoint)!=checkpoint_sha:raise ValueError('Native BEST changed during prediction')
+    actual={path.name.removesuffix('.nii.gz') for path in (target/'predictions').glob('*.nii.gz')}
+    if actual!=set(bank['split']['outer_val']):raise ValueError('BEST predictor must produce all and only outer26 cases')
+    new_json(target/'prediction_complete.json',dict(format='v24_native_best_CT_only_prediction_v1',
+        checkpoint_name='checkpoint_best.pth',checkpoint_path=str(checkpoint),checkpoint_sha256=checkpoint_sha,
+        bank_sha256=native['bank_sha256'],native_metadata_path=str(Path(native_path).resolve(strict=True)),
+        native_metadata_sha256=sha(native_path),command=command,
         CT_inputs_sha256=hashes,GT_passed_to_predictor=False,CP_at_inference=False,
         outer26_role='segmentation validation, not independent test',
         predictions_sha256={case:sha(target/'predictions'/(case+'.nii.gz')) for case in bank['split']['outer_val']}))
     return target/'predictions'
 
 
+def _native_best_checkpoint(native,bank):
+    checkpoint=Path(native['root'])/'nnUNet_results'/bank['baseline']['dataset_name']/f'{TRAINER}__{PLANS}__3d_fullres'/'fold_0'/'checkpoint_best.pth'
+    if not checkpoint.is_file():raise ValueError('Native BEST checkpoint missing; FINAL evaluation fallback is forbidden')
+    if checkpoint.is_symlink() or checkpoint.absolute()!=checkpoint.resolve(strict=True):
+        raise ValueError('Exact native BEST checkpoint path required')
+    return checkpoint.resolve(strict=True)
+
+
+def validate_best_prediction_receipt(native_path,native,bank,predictions):
+    """Reject FINAL and provenance-free historical prediction receipts."""
+    from . import v24_native_best_eval_runtime as best_runtime
+    predictions=Path(predictions).resolve(strict=True)
+    checkpoint=_native_best_checkpoint(native,bank)
+    expected=bank['split']['outer_val']
+    if predictions==checkpoint.parent/'validation':
+        path=checkpoint.parent/best_runtime.RECEIPT
+        proof=best_runtime.validate_best_validation_receipt(path,fold=checkpoint.parent,
+            expected_cases=expected,bank_sha256=native['bank_sha256'])
+    else:
+        path=predictions.parent/'prediction_complete.json';proof=read(path)
+        command=proof.get('command',[])
+        if (proof.get('format')!='v24_native_best_CT_only_prediction_v1'
+                or proof.get('checkpoint_name')!=best_runtime.BEST
+                or proof.get('checkpoint_path')!=str(checkpoint)
+                or proof.get('checkpoint_sha256')!=sha(checkpoint)
+                or proof.get('bank_sha256')!=native['bank_sha256']
+                or proof.get('native_metadata_path')!=str(Path(native_path).resolve(strict=True))
+                or proof.get('native_metadata_sha256')!=sha(native_path)
+                or command.count('-chk')!=1 or command[command.index('-chk')+1:command.index('-chk')+2]!=[best_runtime.BEST]):
+            raise ValueError('Prediction provenance must identify this exact native BEST, never FINAL')
+    if (proof.get('GT_passed_to_predictor') is not False or proof.get('CP_at_inference') is not False
+            or len(expected)!=26 or len(set(expected))!=26
+            or set(proof.get('predictions_sha256',{}))!=set(expected)
+            or {path.name.removesuffix('.nii.gz') for path in predictions.glob('*.nii.gz')}!=set(expected)
+            or any(sha(predictions/(case+'.nii.gz'))!=proof['predictions_sha256'][case] for case in expected)):
+        raise ValueError('Complete CT-only full26 native BEST predictions must be proved')
+    return path,proof
+
+
 def evaluate(native_path, *, inventory_path, predictions, output, basic_predictions=None):
     """Use the established paired full26 evaluator and exact historical baseline."""
     from tools.online_eval_v2 import parser, evaluate as evaluate_full
     native=read(native_path);bank=validate_bank(read(native['bank']));meta=read(inventory_path)
-    if bank['split']!=meta['split']:raise ValueError('Evaluation cohort changed')
+    if bank['split']!=meta['split'] or sha(native['bank'])!=native['bank_sha256']:raise ValueError('Evaluation cohort/bank changed')
     predictions=Path(predictions).resolve(strict=True)
-    proof=read(predictions.parent/'prediction_complete.json')
+    receipt,proof=validate_best_prediction_receipt(native_path,native,bank,predictions)
     expected=bank['split']['outer_val']
-    if (proof['GT_passed_to_predictor'] is not False or proof['CP_at_inference'] is not False
-            or set(proof['predictions_sha256'])!=set(expected)
-            or any(sha(predictions/(case+'.nii.gz'))!=proof['predictions_sha256'][case] for case in expected)):
-        raise ValueError('Complete CT-only full26 native predictions must be proved')
     pre=Path(bank['baseline']['preprocessed']);legacy_project=pre.parents[4]
     basic=(Path(basic_predictions) if basic_predictions else pre.parent.parent/'nnUNet_results'/pre.name/
         f'nnUNetTrainer_250epochs_OnlineBasicCP__{PLANS}__3d_fullres'/'fold_0'/'validation')
@@ -1602,7 +1651,9 @@ def evaluate(native_path, *, inventory_path, predictions, output, basic_predicti
         '--hier-validation',str(predictions),'--hier-trainer',TRAINER,'--output',str(output)])
     result=evaluate_full(args)
     new_json(Path(output)/'v24_comparison_scope.json',dict(format=FORMAT,
-        frozen_GNN_pin=bank['pin'],bank_sha256=native['bank_sha256'],prediction_receipt_sha256=sha(predictions.parent/'prediction_complete.json'),
+        frozen_GNN_pin=bank['pin'],bank_sha256=native['bank_sha256'],prediction_receipt_sha256=sha(receipt),
+        evaluation_checkpoint_name=proof['checkpoint_name'],evaluation_checkpoint_path=proof['checkpoint_path'],
+        evaluation_checkpoint_sha256=proof['checkpoint_sha256'],
         cohort=expected,validation_patients=26,independent_test_available=False,
         cp_probability_equal=.5,segmentation_epochs_equal=250,native_patch_equal=[128,128,128],
         donor_policy_equal=False,donor_policy_difference='historical Basic source policy versus independent inner-train v23 fixed donor per recipient',

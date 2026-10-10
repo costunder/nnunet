@@ -36,6 +36,9 @@ READONLY_ENTRY = 'tools/run_v24_readonly_nnunet_cp.py'
 READONLY_HELPER = 'hiercp_v1x/v24_readonly_native_storage.py'
 STATIC_EXTENSION = 'reuse_full105_exact_static_raw_case_operators_readonly_v1'
 STATIC_HELPER = 'hiercp_v1x/v24_readonly_static_operator_storage.py'
+BEST_EVALUATION_HELPER = 'hiercp_v1x/v24_native_best_eval_runtime.py'
+BEST_EVALUATION_HANDOFF_PROOF = 'v24_native_best_evaluation_only_supersession_proof_v1'
+BEST_EVALUATION_HANDOFF_LEASE = 'v24_native_best_evaluation_only_supersession_lease_v1'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
 PARAMETER_TENSORS = {4: 537, 5: 981, 6: 537}
@@ -320,7 +323,9 @@ def validate_request(request, *, fresh=True):
             owned(path)
     if request.get('recovery') is not None:
         _validate_recovery(request)
-    if request.get('storage_handoff') is not None:
+    if request.get('evaluation_handoff') is not None:
+        _validate_evaluation_handoff(request)
+    elif request.get('storage_handoff') is not None:
         _validate_storage_handoff(request)
     return request
 
@@ -871,6 +876,8 @@ def stage_proof(request, action):
                 or value.get('production_cp_probability') != .5):
             raise ValueError('Actual native clone calibration must preserve the full production contract')
     elif action == 'train':
+        from hiercp_v1x import v24_nnunet_cp as pipeline
+        from hiercp_v1x import v24_native_best_eval_runtime as best_runtime
         candidates = list((root / 'native').glob('training_complete_*.json'))
         if len(candidates) != 1:
             raise ValueError('Exactly one successful full native training receipt required')
@@ -880,6 +887,30 @@ def stage_proof(request, action):
         checkpoint = owned(value['checkpoint']); _inside(checkpoint, root / 'native')
         if sha(checkpoint) != value['checkpoint_sha256']:
             raise ValueError('Actual final native checkpoint checksum differs')
+        native = read(root / 'native/native.json')
+        bank_path = owned(root / 'bank/index.json'); bank = read(bank_path)
+        if (native.get('root') != str(root / 'native') or native.get('bank') != str(bank_path)
+                or not _checksum(native.get('bank_sha256')) or sha(bank_path) != native['bank_sha256']
+                or value.get('bank_sha256') != native['bank_sha256']):
+            raise ValueError('Actual full native completion must retain its own bank/native identity')
+        fold = root / 'native/nnUNet_results' / bank['baseline']['dataset_name'] / (
+            pipeline.TRAINER + '__' + pipeline.PLANS + '__3d_fullres') / 'fold_0'
+        best = owned(fold / best_runtime.BEST)
+        if not isinstance(value.get('best_validation_receipt'), str):
+            raise ValueError('Full native completion requires its actual own-fold BEST validation receipt')
+        best_receipt = owned(value['best_validation_receipt'])
+        if (checkpoint != fold / 'checkpoint_final.pth'
+                or value.get('checkpoint_role') != 'full250_training_completion_witness'
+                or value.get('evaluation_checkpoint_name') != best_runtime.BEST
+                or value.get('evaluation_checkpoint_path') != str(best)
+                or not _checksum(value.get('evaluation_checkpoint_sha256'))
+                or value['evaluation_checkpoint_sha256'] != sha(best)
+                or best_receipt != fold / best_runtime.RECEIPT
+                or not _checksum(value.get('best_validation_receipt_sha256'))
+                or value['best_validation_receipt_sha256'] != sha(best_receipt)):
+            raise ValueError('Full native completion requires exact own-fold BEST evaluation checkpoint and receipt')
+        best_runtime.validate_best_validation_receipt(best_receipt, fold=fold,
+            expected_cases=bank['split']['outer_val'], bank_sha256=native['bank_sha256'])
     else:
         raise ValueError('Unknown chain stage')
     proof = dict(path=str(path), sha256=sha(path), action=action)
@@ -895,7 +926,8 @@ def stage_proof(request, action):
                 or declared.get('model_data_scale_preserved') is not True):
             raise ValueError('Explicit read-only stage/cache/admission completion proof differs')
         runtime_files = (READONLY_ENTRY, READONLY_HELPER, 'hiercp_v1x/v24_native_calibration_runtime.py',
-                         'hiercp_v1x/v24_native_crop_runtime.py', 'hiercp_v1x/v24_native_gradient_runtime.py')
+                         'hiercp_v1x/v24_native_crop_runtime.py', 'hiercp_v1x/v24_native_gradient_runtime.py',
+                         BEST_EVALUATION_HELPER)
         if request.get('storage_extension') == STATIC_EXTENSION:
             runtime_files = (*runtime_files, STATIC_HELPER)
         if declared.get('storage_extension') != request.get('storage_extension'):
@@ -1107,8 +1139,115 @@ def _validate_storage_handoff(request):
     return proof, checksum
 
 
+def _validate_evaluation_handoff(request):
+    """Preserve old claims while replacing one closed CPU-only prelaunch waiter.
+
+    The old storage handoff belongs to the old request, including its original
+    root and code checksum. Validate that complete lineage there; it must never
+    be reinterpreted as a lease for this new BEST-evaluation-only controller.
+    """
+    handoff = request.get('evaluation_handoff')
+    if (request.get('GPU_arm') not in (4, 5, 6) or request.get('storage_profile') != READONLY_PROFILE
+            or request.get('storage_extension') != STATIC_EXTENSION or request.get('recovery') is not None
+            or not isinstance(handoff, dict) or set(handoff) != {'proof', 'proof_sha256', 'lease'}
+            or BEST_EVALUATION_HELPER not in request.get('code_files', {})):
+        raise ValueError('Only an explicit own GPU4/5/6 BEST-evaluation controller supersession is supported')
+    claim_path = owned(request['source_claim_path'])
+    proof_path = owned(handoff['proof'])
+    lease = claim_path.with_name(claim_path.stem + '.best_evaluation_handoff_lease.json')
+    if (not _checksum(handoff['proof_sha256']) or sha(proof_path) != handoff['proof_sha256']
+            or proof_path.parent != claim_path.parent
+            or not proof_path.name.startswith(claim_path.stem + '.best_evaluation_handoff_proof_')
+            or proof_path.suffix != '.json' or handoff['lease'] != str(lease)):
+        raise ValueError('BEST evaluation handoff requires one SHA-pinned proof/exclusive lease in the original registry')
+    owned(lease, must_exist=False)
+    proof = read(proof_path)
+    previous_root = owned(proof['previous_chain_root'], directory=True)
+    root = Path(request['chain_root'])
+    if (proof.get('format') != BEST_EVALUATION_HANDOFF_PROOF
+            or proof.get('chain_root') != str(root) or proof.get('source_output') != request['source_output']
+            or previous_root == root or previous_root in root.parents or root in previous_root.parents
+            or set(proof.get('previous_files_sha256', {})) !=
+                {'request.json', 'status.json', 'launch.lease.json', 'registration.json'}
+            or not _checksum(proof.get('source_claim_sha256'))
+            or proof.get('old_waiter_closed') is not True or proof.get('old_waiter_children') != []
+            or proof.get('old_waiter_cuda_visible_devices') != ''
+            or proof.get('original_GNN_processes_signaled') is not False
+            or proof.get('previous_results_written') is not False
+            or proof.get('evaluation_checkpoint') != 'checkpoint_best.pth'
+            or proof.get('full_training_preserved') is not True):
+        raise ValueError('Immutable never-launched CPU-only BEST evaluation handoff proof required')
+    for name, checksum in proof['previous_files_sha256'].items():
+        if not _checksum(checksum) or sha(previous_root / name) != checksum:
+            raise ValueError('Previous registered evaluation controller artifact changed: ' + name)
+    previous = read(previous_root / 'request.json')
+    if (previous.get('chain_root') != str(previous_root) or previous.get('evaluation_handoff') is not None
+            or previous.get('recovery') is not None or previous.get('storage_profile') != READONLY_PROFILE
+            or previous.get('storage_extension') != STATIC_EXTENSION):
+        raise ValueError('BEST evaluation handoff requires the original static waiter; nested handoff/recovery refused')
+    # Only the downstream immutable checkout and its fresh owned destination
+    # change. Every scientific source, allocation, old storage handoff and all
+    # unrecognized request fields must retain their original exact values.
+    changed = {'chain_root', 'code', 'commit', 'code_files', 'stages', 'storage_admission',
+               'storage_admission_sha256', 'storage_admission_stat', 'evaluation_handoff'}
+    old_contract = {name: value for name, value in previous.items() if name not in changed}
+    new_contract = {name: value for name, value in request.items() if name not in changed}
+    if (old_contract != new_contract or previous.get('code') == request.get('code')
+            or previous.get('commit') == request.get('commit')):
+        raise ValueError('BEST evaluation supersession changed original GNN/assets/storage/PBS contract or replayed its code')
+    validate_request(previous, fresh=False)
+    verify_code(previous)
+    checksum = proof['previous_files_sha256']['request.json']
+    original_claim_checksum = verify_source_claim(previous, checksum)
+    if original_claim_checksum != proof['source_claim_sha256']:
+        raise ValueError('Original source claim checksum changed during BEST evaluation handoff')
+    status, registration, old_lease = (read(previous_root / name) for name in
+                                       ('status.json', 'registration.json', 'launch.lease.json'))
+    pid, birth, command = (proof.get('previous_supervisor_' + key) for key in ('pid', 'create_time', 'command'))
+    expected_command = [previous['python'], '-B', '-u', str(Path(previous['code']) / 'tools/watch_v24_gnn_to_nnunet.py'),
+                        '--request', str(previous_root / 'request.json')]
+    if (type(pid) is not int or pid <= 0 or type(birth) not in (int, float) or not math.isfinite(birth) or birth <= 0
+            or command != expected_command
+            or registration.get('GPU_arm') != request['GPU_arm'] or registration.get('root') != str(previous_root)
+            or registration.get('pid') != pid or registration.get('create_time') != birth
+            or registration.get('command') != command or registration.get('request_sha256') != checksum
+            or registration.get('CPU_affinity') != request['CPU_affinity']
+            or registration.get('CUDA_visible_devices_while_waiting') != ''
+            or status.get('GPU_arm') != request['GPU_arm'] or status.get('status') != 'WAITING_FOR_FULL_GNN'
+            or status.get('stage') is not None or status.get('child_pid') is not None
+            or status.get('child_create_time') is not None or status.get('gnn_completion') is not None
+            or status.get('stages_completed') != [] or status.get('stage_proofs') != []
+            or status.get('signals_sent') is not False or status.get('request_sha256') != checksum
+            or status.get('source_job') != request['source_job'] or status.get('supervisor_pid') != pid
+            or status.get('supervisor_create_time') != birth
+            or status.get('actual_CPU_affinity') != request['CPU_affinity']
+            or status.get('source_claim_path') != request['source_claim_path']
+            or status.get('source_claim_sha256') != proof['source_claim_sha256']
+            or old_lease.get('supervisor_pid') != pid or old_lease.get('request_sha256') != checksum):
+        raise ValueError('Previous evaluation controller is not its registered CPU-only never-launched waiter')
+    witness = process_witness(pid, birth, command)
+    if witness is not None and witness['status'] != 'zombie':
+        raise RuntimeError('Previous own CPU waiter remains live; no BEST evaluation controller may launch')
+    allowed = {'request.json', 'status.json', 'launch.lease.json', 'registration.json', 'watcher.log'}
+    for path in previous_root.iterdir():
+        if path.name not in allowed:
+            raise ValueError('Previous waiter contains native stage/output artifacts; BEST evaluation handoff refused')
+        owned(path)
+    return proof, checksum
+
+
 def verify_source_claim(request, request_checksum):
     path = request['source_claim_path']
+    if request.get('evaluation_handoff') is not None:
+        proof, _ = _validate_evaluation_handoff(request)
+        handoff = request['evaluation_handoff']
+        expected_lease = dict(format=BEST_EVALUATION_HANDOFF_LEASE, GPU_arm=request['GPU_arm'],
+            source_output=request['source_output'], source_claim_path=path, source_claim_sha256=proof['source_claim_sha256'],
+            previous_chain_root=proof['previous_chain_root'], chain_root=request['chain_root'], request_sha256=request_checksum,
+            proof=handoff['proof'], proof_sha256=handoff['proof_sha256'])
+        if read(handoff['lease']) != expected_lease:
+            raise ValueError('Exclusive BEST evaluation handoff lease belongs to another request/root; no replay')
+        return proof['source_claim_sha256']
     if request.get('storage_handoff') is not None:
         proof, previous_checksum = _validate_storage_handoff(request)
         handoff = request['storage_handoff']

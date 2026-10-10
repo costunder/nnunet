@@ -109,6 +109,7 @@ def _prove_fresh_cli(trainer_source, cli_source):
 def _metadata(pipeline, native_path):
     from . import v24_native_crop_runtime as crop_runtime
     from . import v24_native_gradient_runtime as gradient_runtime
+    from . import v24_native_best_eval_runtime as best_runtime
     native_path = Path(native_path).resolve(strict=True)
     native = pipeline.read(native_path)
     bank = pipeline.read(native['bank'])
@@ -141,6 +142,9 @@ def _metadata(pipeline, native_path):
         gradient_runtime_module_path=str(Path(gradient_runtime.__file__).resolve()),
         gradient_runtime_module_sha256=_sha(gradient_runtime.__file__),
         gradient_runtime_contract=gradient_runtime.gradient_runtime_contract(),
+        best_evaluation_runtime_module_path=str(Path(best_runtime.__file__).resolve()),
+        best_evaluation_runtime_module_sha256=_sha(best_runtime.__file__),
+        evaluation_checkpoint='checkpoint_best.pth', evaluation_flag='--val_best',
         continuation_CLI_path=str(pipeline.ROOT / 'tools/run_v24_native_continuation.py'),
         continuation_CLI_sha256=_sha(pipeline.ROOT / 'tools/run_v24_native_continuation.py'),
         original_calibration_function_sha256=_function_sha(pipeline.calibrate_native),
@@ -178,8 +182,9 @@ def _replace_worker_command(command, native_path, executable):
 
 
 def _replace_training_command(command, executable, *, trainer, plans):
-    expected = [executable, '-B', '-m', 'nnunetv2.run.run_training',
-        '730', '3d_fullres', '0', '-tr', trainer, '-p', plans]
+    from . import v24_native_best_eval_runtime as best_runtime
+    expected = [executable, '-B', '-c', best_runtime.TRAIN_COMMAND,
+        '730', '3d_fullres', '0', '-tr', trainer, '-p', plans, '--val_best']
     if not isinstance(command, list) or command != expected:
         raise ValueError('Only the exact fresh original native training CLI command may be redirected')
     return [*command[:2], '-c', TRAIN_COMMAND, *command[4:]]

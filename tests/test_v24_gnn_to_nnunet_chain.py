@@ -16,6 +16,15 @@ from unittest.mock import patch
 from tools import watch_v24_gnn_to_nnunet as chain
 
 
+class DebugBestReceiptSource:
+    """Source witnesses only; these methods are never training/inference."""
+    def load_checkpoint(self, checkpoint):
+        raise RuntimeError('CPU DEBUG receipt source fixture must not execute')
+
+    def perform_actual_validation(self, save_probabilities=False):
+        raise RuntimeError('CPU DEBUG receipt source fixture must not execute')
+
+
 class CompletedArmFixture(unittest.TestCase):
     def setUp(self):
         temporary_parent = Path(__file__).absolute().parents[1] / 'outputs'
@@ -141,6 +150,48 @@ class CompletedArmFixture(unittest.TestCase):
         self.write_json(request['source_claim_path'], dict(format='v24_owned_gnn_to_native_source_claim_v1',
             source_output=request['source_output'], GPU_arm=request['GPU_arm'], chain_root=request['chain_root'],
             request_sha256=chain.sha(request_path)))
+
+    def write_native_best_completion(self, native):
+        """DEBUG checksum/provenance fixture, never a model or real inference."""
+        from hiercp_v1x import v24_nnunet_cp as pipeline
+        from hiercp_v1x import v24_native_best_eval_runtime as best_runtime
+        native = Path(native);native.mkdir(parents=True, exist_ok=True)
+        cases = ['DEBUG_outer_' + str(index).zfill(2) for index in range(26)]
+        bank_path = self.target / 'bank/index.json';bank_path.parent.mkdir(exist_ok=True)
+        self.write_json(bank_path, dict(baseline=dict(dataset_name='Dataset730_LiverOnlineCP_OF0'),
+            split=dict(outer_train=['DEBUG_train_' + str(index).zfill(3) for index in range(105)], outer_val=cases)))
+        native_path = native / 'native.json'
+        metadata = chain.read(native_path) if native_path.exists() else {}
+        metadata.update(root=str(native), bank=str(bank_path), bank_sha256=chain.sha(bank_path))
+        self.write_json(native_path, metadata)
+        fold = native / 'nnUNet_results/Dataset730_LiverOnlineCP_OF0' / (
+            pipeline.TRAINER + '__' + pipeline.PLANS + '__3d_fullres') / 'fold_0';fold.mkdir(parents=True)
+        final = fold / 'checkpoint_final.pth';final.write_bytes(b'DEBUG full250 completion checksum; no model')
+        best = fold / best_runtime.BEST;best.write_bytes(b'DEBUG BEST checkpoint checksum; no model')
+        predictions = fold / 'validation';predictions.mkdir()
+        for case in cases:(predictions / (case + '.nii.gz')).write_bytes(('DEBUG checksum fixture: ' + case).encode())
+        self.write_json(predictions / 'summary.json', {'DEBUG_only': True, 'actual_inference': False})
+        best_receipt = fold / best_runtime.RECEIPT
+        self.write_json(best_receipt, dict(format=best_runtime.FORMAT, checkpoint_name=best_runtime.BEST,
+            checkpoint_path=str(best), checkpoint_sha256=chain.sha(best), checkpoint_stat=chain._file_stat(best),
+            native_fold=str(fold), bank_sha256=metadata['bank_sha256'], validation_cases=sorted(cases),
+            predictions_path=str(predictions), predictions_sha256={case: chain.sha(predictions / (case + '.nii.gz')) for case in cases},
+            summary_sha256=chain.sha(predictions / 'summary.json'), complete=True,
+            native_validation_returned_successfully=True, original_checkpoint_load_called=True,
+            original_full_validation_called=True, final_checkpoint_fallback=False,
+            GT_passed_to_predictor=False, CP_at_inference=False,
+            source_proofs=[dict(path=str(bank_path), sha256=chain.sha(bank_path), stat=chain._file_stat(bank_path)),
+                dict(path=str(Path(best_runtime.__file__).resolve()), sha256=chain.sha(best_runtime.__file__),
+                     stat=chain._file_stat(best_runtime.__file__)),
+                best_runtime._function_source_proof(DebugBestReceiptSource.load_checkpoint),
+                best_runtime._function_source_proof(DebugBestReceiptSource.perform_actual_validation)]))
+        complete = native / 'training_complete_DEBUG.json'
+        self.write_json(complete, dict(epochs=250, checkpoint=str(final), checkpoint_sha256=chain.sha(final),
+            checkpoint_role='full250_training_completion_witness', bank_sha256=metadata['bank_sha256'],
+            evaluation_checkpoint_name=best_runtime.BEST, evaluation_checkpoint_path=str(best),
+            evaluation_checkpoint_sha256=chain.sha(best), best_validation_receipt=str(best_receipt),
+            best_validation_receipt_sha256=chain.sha(best_receipt)))
+        return dict(fold=fold, final=final, best=best, best_receipt=best_receipt, complete=complete)
 
     def make_recovery(self):
         self.request = self.make_request(4); self.write_completion(4)
@@ -517,6 +568,222 @@ class CompletedArmFixture(unittest.TestCase):
     def static_mock(self):
         return patch('hiercp_v1x.v24_readonly_static_operator_storage.verify_admission')
 
+    def make_best_evaluation_handoff(self, gpu=4):
+        """DEBUG-only proof lineage; no controller, model or GPU is executed."""
+        if gpu == 4:
+            self.make_readonly_continuation()
+            path = self.code / chain.STATIC_HELPER
+            path.write_text('# DEBUG static immutable source witness\n')
+            self.request['code_files'][chain.STATIC_HELPER] = chain.sha(path)
+            self.storage_document.update(storage_extension=chain.STATIC_EXTENSION,
+                checkpoint_coordination=dict(format='original_native_final_publication_flock_global7_v1',
+                    global_peak_checkpoint_slots=7, per_arm_peak_checkpoint_slots=3, optimizer_work_locked=False),
+                aggregate_budget=dict(required_free_bytes=int(16.5 * 2**30), global_peak_checkpoint_slots=7,
+                    arms={'gpu4': dict(root=str(self.target))}))
+            self.write_json(self.storage_path, self.storage_document)
+            self.request.update(storage_extension=chain.STATIC_EXTENSION, min_free_disk_GiB=16.5,
+                storage_admission_sha256=chain.sha(self.storage_path), storage_admission_stat=chain._file_stat(self.storage_path))
+        else:
+            self.make_static_handoff(gpu)
+        previous = copy.deepcopy(self.request)
+        previous_root = self.target; previous_root.mkdir()
+        previous_path = previous_root / 'request.json'; self.write_json(previous_path, previous)
+        previous_checksum = chain.sha(previous_path)
+        if gpu == 4:
+            self.write_claim(previous_path, previous)
+        else:
+            self.new_request_checksum = previous_checksum
+            self.write_handoff_lease()
+        claim_checksum = chain.sha(previous['source_claim_path'])
+        command = [previous['python'], '-B', '-u', str(Path(previous['code']) / 'tools/watch_v24_gnn_to_nnunet.py'),
+                   '--request', str(previous_path)]
+        self.write_json(previous_root / 'registration.json', dict(GPU_arm=gpu, root=str(previous_root),
+            pid=777, create_time=99., command=command, request_sha256=previous_checksum,
+            CPU_affinity=previous['CPU_affinity'], CUDA_visible_devices_while_waiting=''))
+        self.write_json(previous_root / 'launch.lease.json', dict(request_sha256=previous_checksum, supervisor_pid=777))
+        self.write_json(previous_root / 'status.json', dict(status='WAITING_FOR_FULL_GNN', GPU_arm=gpu,
+            request_sha256=previous_checksum, supervisor_pid=777, supervisor_create_time=99., stage=None,
+            child_pid=None, child_create_time=None, gnn_completion=None, stages_completed=[], stage_proofs=[],
+            signals_sent=False, source_job=previous['source_job'], actual_CPU_affinity=previous['CPU_affinity'],
+            source_claim_path=previous['source_claim_path'], source_claim_sha256=claim_checksum))
+        (previous_root / 'watcher.log').write_text('DEBUG CPU-only waiter; no training was performed\n')
+        preserved = [*previous_root.iterdir(), Path(previous['source_claim_path']), self.storage_path]
+        if gpu in (5, 6):
+            preserved += [*self.previous_waiter_root.iterdir(), Path(previous['storage_handoff']['proof']),
+                          Path(previous['storage_handoff']['lease'])]
+        self.previous_evaluation_bytes = {str(path): path.read_bytes() for path in preserved}
+        self.previous_evaluation_root = previous_root
+        self.previous_evaluation_request = previous
+        self.evaluation_heads = {previous[key]: previous[commit] for key, commit in
+            (('code', 'commit'), ('source_code', 'source_commit'), ('source_execution_code', 'source_execution_commit'))}
+        self.code = self.root / ('best_evaluation_runtime_gpu' + str(gpu)); self.code.mkdir()
+        for name in previous['code_files']:
+            source = Path(previous['code']) / name; dest = self.code / name
+            dest.parent.mkdir(parents=True, exist_ok=True); dest.write_bytes(source.read_bytes())
+        helper = self.code / chain.BEST_EVALUATION_HELPER
+        helper.parent.mkdir(parents=True, exist_ok=True); helper.write_text('# DEBUG BEST policy source witness\n')
+        self.target = self.root / ('best_evaluation_native_gpu' + str(gpu))
+        self.storage_document = copy.deepcopy(self.storage_document)
+        self.storage_document['aggregate_budget']['arms']['gpu' + str(gpu)]['root'] = str(self.target)
+        self.storage_path = self.root / 'DEBUG_best_evaluation_storage_admission.json'
+        self.write_json(self.storage_path, self.storage_document)
+        self.request = copy.deepcopy(previous)
+        self.request.update(chain_root=str(self.target), code=str(self.code), commit='d' * 40,
+            code_files={name: chain.sha(self.code / name) for name in (*previous['code_files'], chain.BEST_EVALUATION_HELPER)},
+            storage_admission=str(self.storage_path), storage_admission_sha256=chain.sha(self.storage_path),
+            storage_admission_stat=chain._file_stat(self.storage_path))
+        for row in self.request['stages']:
+            row['command'] = [value.replace(str(previous_root), str(self.target)) for value in row['command']]
+            row['command'][3] = str(self.code / chain.READONLY_ENTRY)
+            index = row['command'].index('--storage-admission') + 1; row['command'][index] = str(self.storage_path)
+        claim_path = Path(previous['source_claim_path'])
+        self.evaluation_proof_path = claim_path.with_name(claim_path.stem + '.best_evaluation_handoff_proof_DEBUG.json')
+        proof = dict(format=chain.BEST_EVALUATION_HANDOFF_PROOF, previous_chain_root=str(previous_root),
+            chain_root=str(self.target), source_output=previous['source_output'], source_claim_sha256=claim_checksum,
+            previous_files_sha256={name: chain.sha(previous_root / name) for name in
+                ('request.json', 'status.json', 'launch.lease.json', 'registration.json')},
+            previous_supervisor_pid=777, previous_supervisor_create_time=99., previous_supervisor_command=command,
+            old_waiter_closed=True, old_waiter_children=[], old_waiter_cuda_visible_devices='',
+            original_GNN_processes_signaled=False, previous_results_written=False,
+            evaluation_checkpoint='checkpoint_best.pth', full_training_preserved=True)
+        self.write_json(self.evaluation_proof_path, proof)
+        self.request['evaluation_handoff'] = dict(proof=str(self.evaluation_proof_path),
+            proof_sha256=chain.sha(self.evaluation_proof_path),
+            lease=str(claim_path.with_name(claim_path.stem + '.best_evaluation_handoff_lease.json')))
+        self.evaluation_request_checksum = 'f' * 64
+        self.write_evaluation_lease()
+
+    def write_evaluation_lease(self):
+        handoff = self.request['evaluation_handoff']; proof = chain.read(handoff['proof'])
+        self.write_json(handoff['lease'], dict(format=chain.BEST_EVALUATION_HANDOFF_LEASE,
+            GPU_arm=self.request['GPU_arm'], source_output=self.request['source_output'],
+            source_claim_path=self.request['source_claim_path'], source_claim_sha256=proof['source_claim_sha256'],
+            previous_chain_root=proof['previous_chain_root'], chain_root=self.request['chain_root'],
+            request_sha256=self.evaluation_request_checksum, proof=handoff['proof'], proof_sha256=handoff['proof_sha256']))
+
+    def evaluation_git_head(self, command, **kwargs):
+        self.assertEqual(command[:2], ['git', '-C']); self.assertEqual(command[3:], ['rev-parse', 'HEAD'])
+        return self.evaluation_heads[command[2]]
+
+    def resign_evaluation_proof(self, change):
+        proof = chain.read(self.evaluation_proof_path); proof.update(change)
+        self.write_json(self.evaluation_proof_path, proof)
+        self.request['evaluation_handoff']['proof_sha256'] = chain.sha(self.evaluation_proof_path)
+
+    def test_best_evaluation_gpu4_handoff_preserves_original_claim_and_closed_waiter_bytes(self):
+        self.make_best_evaluation_handoff()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain.subprocess, 'check_output', side_effect=self.evaluation_git_head), \
+                patch.object(chain, 'process_witness', return_value=None):
+            chain.validate_request(self.request)
+            self.assertEqual(chain.verify_source_claim(self.request, self.evaluation_request_checksum),
+                             chain.sha(self.request['source_claim_path']))
+        for path, value in self.previous_evaluation_bytes.items():self.assertEqual(Path(path).read_bytes(), value)
+
+    def test_best_evaluation_gpu5_gpu6_handoff_verifies_original_storage_lease_at_its_old_root(self):
+        for gpu in (5, 6):
+            with self.subTest(gpu=gpu):
+                # Each DEBUG fixture has its own exclusive old/new registry.
+                fixture = CompletedArmFixture(); fixture.setUp()
+                try:
+                    fixture.make_best_evaluation_handoff(gpu)
+                    with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), fixture.static_mock(), \
+                            patch.object(chain.subprocess, 'check_output', side_effect=fixture.evaluation_git_head), \
+                            patch.object(chain, 'process_witness', return_value=None):
+                        chain.validate_request(fixture.request)
+                        chain.verify_source_claim(fixture.request, fixture.evaluation_request_checksum)
+                    self.assertEqual(fixture.request['storage_handoff'], fixture.previous_evaluation_request['storage_handoff'])
+                    for path, value in fixture.previous_evaluation_bytes.items():self.assertEqual(Path(path).read_bytes(), value)
+                finally:
+                    fixture.tearDown()
+
+    def test_best_evaluation_handoff_rejects_previous_pid_birth_command_or_active_process(self):
+        self.make_best_evaluation_handoff()
+        original = chain.read(self.evaluation_proof_path)
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain.subprocess, 'check_output', side_effect=self.evaluation_git_head), \
+                patch.object(chain, 'process_witness', return_value=None):
+            for change in ({'previous_supervisor_pid': 888}, {'previous_supervisor_create_time': 100.},
+                           {'previous_supervisor_command': ['DEBUG_wrong_owned_argv']}):
+                with self.subTest(change=change):
+                    self.resign_evaluation_proof(dict(original, **change))
+                    with self.assertRaisesRegex(ValueError, 'registered CPU-only never-launched'):
+                        chain._validate_evaluation_handoff(self.request)
+            self.resign_evaluation_proof(original)
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain.subprocess, 'check_output', side_effect=self.evaluation_git_head), \
+                patch.object(chain, 'process_witness', return_value=dict(status='running')):
+            with self.assertRaisesRegex(RuntimeError, 'waiter remains live'):
+                chain._validate_evaluation_handoff(self.request)
+
+    def test_best_evaluation_handoff_rejects_changed_old_file_hash_or_code(self):
+        self.make_best_evaluation_handoff()
+        registration = self.previous_evaluation_root / 'registration.json'
+        original = registration.read_bytes();registration.write_bytes(original + b' ')
+        with self.assertRaisesRegex(ValueError, 'controller artifact changed'):
+            chain._validate_evaluation_handoff(self.request)
+        registration.write_bytes(original)
+        old_source = Path(self.previous_evaluation_request['code']) / chain.READONLY_ENTRY
+        old_source.write_text('# DEBUG changed source\n')
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain.subprocess, 'check_output', side_effect=self.evaluation_git_head):
+            with self.assertRaisesRegex(ValueError, 'Actual source changed'):
+                chain._validate_evaluation_handoff(self.request)
+
+    def test_best_evaluation_handoff_rejects_prior_native_artifacts_or_started_stage(self):
+        self.make_best_evaluation_handoff()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain.subprocess, 'check_output', side_effect=self.evaluation_git_head), \
+                patch.object(chain, 'process_witness', return_value=None):
+            (self.previous_evaluation_root / 'native').mkdir()
+            with self.assertRaisesRegex(ValueError, 'stage/output artifacts'):
+                chain._validate_evaluation_handoff(self.request)
+            (self.previous_evaluation_root / 'native').rmdir()
+            status_path = self.previous_evaluation_root / 'status.json'
+            status = chain.read(status_path);status['stage'] = 'pin_current_gnn';self.write_json(status_path, status)
+            proof = chain.read(self.evaluation_proof_path)
+            proof['previous_files_sha256']['status.json'] = chain.sha(status_path);self.resign_evaluation_proof(proof)
+            with self.assertRaisesRegex(ValueError, 'registered CPU-only never-launched'):
+                chain._validate_evaluation_handoff(self.request)
+
+    def test_best_evaluation_handoff_requires_full_best_policy_and_same_scientific_contract(self):
+        self.make_best_evaluation_handoff()
+        original = chain.read(self.evaluation_proof_path)
+        for change in ({'evaluation_checkpoint': 'checkpoint_final.pth'}, {'full_training_preserved': False},
+                       {'old_waiter_children': [999]}, {'old_waiter_cuda_visible_devices': '4'},
+                       {'original_GNN_processes_signaled': True}, {'previous_results_written': True}):
+            with self.subTest(change=change):
+                self.resign_evaluation_proof(dict(original, **change))
+                with self.assertRaisesRegex(ValueError, 'CPU-only BEST evaluation'):
+                    chain._validate_evaluation_handoff(self.request)
+        self.resign_evaluation_proof(original)
+        for field, value in (('source_commit', 'e' * 40), ('native_RAM_GiB', 32), ('min_free_disk_GiB', 12),
+                             ('source_execution_commit', 'e' * 40)):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'GNN/assets/storage/PBS'):
+                chain._validate_evaluation_handoff(dict(self.request, **{field: value}))
+        missing = copy.deepcopy(self.request);missing['code_files'].pop(chain.BEST_EVALUATION_HELPER)
+        with self.assertRaisesRegex(ValueError, 'BEST-evaluation controller'):
+            chain._validate_evaluation_handoff(missing)
+
+    def test_best_evaluation_handoff_rejects_nested_upgrade_lease_replay_or_original_claim_change(self):
+        self.make_best_evaluation_handoff()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain.subprocess, 'check_output', side_effect=self.evaluation_git_head), \
+                patch.object(chain, 'process_witness', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'another request/root; no replay'):
+                chain.verify_source_claim(self.request, 'e' * 64)
+            claim_path = Path(self.request['source_claim_path']);old_claim = claim_path.read_bytes()
+            claim = chain.read(claim_path);claim['chain_root'] = str(self.target);self.write_json(claim_path, claim)
+            with self.assertRaisesRegex(ValueError, 'claimed by another native chain'):
+                chain.verify_source_claim(self.request, self.evaluation_request_checksum)
+            claim_path.write_bytes(old_claim)
+            previous_path = self.previous_evaluation_root / 'request.json'
+            previous = chain.read(previous_path);previous['evaluation_handoff'] = {};self.write_json(previous_path, previous)
+            proof = chain.read(self.evaluation_proof_path)
+            proof['previous_files_sha256']['request.json'] = chain.sha(previous_path);self.resign_evaluation_proof(proof)
+            with self.assertRaisesRegex(ValueError, 'nested handoff/recovery refused'):
+                chain._validate_evaluation_handoff(self.request)
+
     def test_static_storage_handoff_preserves_all_original_controller_files(self):
         self.make_static_handoff()
         with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
@@ -616,16 +883,16 @@ class CompletedArmFixture(unittest.TestCase):
         private_runtime = native / 'private_runtime'
         private = private_runtime / 'nnunetv2/training/nnUNetTrainer/nnUNetTrainer.py'
         private.parent.mkdir(parents=True);private.write_text(source)
+        self.write_json(native / 'native.json', dict(private_runtime=str(private_runtime)))
+        completion = self.write_native_best_completion(native)
         coordination = dict(self.storage_document['checkpoint_coordination'],
             lock_file=dict(path=str(self.target / 'final.lock'), sha256='a' * 64),
-            folds={'gpu5': str(native / 'fold_0')})
+            folds={'gpu5': str(completion['fold'])})
         publication = dict(source=core.proof(installed), compiled_methods=static._compiled_methods(installed))
         self.storage_document.update(checkpoint_coordination=coordination, checkpoint_publication_proof=publication)
         self.write_json(self.storage_path, self.storage_document)
         self.request.update(storage_admission_sha256=chain.sha(self.storage_path), storage_admission_stat=chain._file_stat(self.storage_path))
-        native_path = native / 'native.json';self.write_json(native_path, dict(private_runtime=str(private_runtime)))
-        checkpoint = native / 'checkpoint_final.pth'; checkpoint.write_bytes(b'DEBUG only, no training was performed')
-        self.write_json(native / 'training_complete_DEBUG.json', dict(epochs=250, checkpoint=str(checkpoint), checkpoint_sha256=chain.sha(checkpoint)))
+        native_path = native / 'native.json'
         active = dict(format=entry.COORDINATION, active=True, coordination_active=True,
             global_peak_checkpoint_slots=7, per_arm_peak_checkpoint_slots=3, lock_file=coordination['lock_file'],
             original_on_train_end_code_preserved=True, original_on_train_end_called_once_per_completion=True,
@@ -1116,12 +1383,31 @@ class CompletedArmFixture(unittest.TestCase):
 
     def test_native_complete_receipt_requires_actual_checkpoint_checksum(self):
         self.target.mkdir(); native = self.target / 'native'; native.mkdir()
-        checkpoint = native / 'checkpoint_final.pth'; checkpoint.write_bytes(b'DEBUG checksum fixture, not a model')
-        receipt = dict(epochs=250, checkpoint=str(checkpoint), checkpoint_sha256=chain.sha(checkpoint))
-        self.write_json(native / 'training_complete_DEBUG.json', receipt)
+        completion = self.write_native_best_completion(native);checkpoint = completion['final']
         self.assertEqual(chain.stage_proof(self.request, 'train')['action'], 'train')
         checkpoint.write_bytes(b'changed DEBUG file')
         with self.assertRaisesRegex(ValueError, 'checksum differs'):
+            chain.stage_proof(self.request, 'train')
+
+    def test_native_completion_rejects_final_evaluation_missing_best_receipt_and_wrong_best_bytes(self):
+        self.target.mkdir(); completion = self.write_native_best_completion(self.target / 'native')
+        complete = chain.read(completion['complete'])
+        for change in ({'evaluation_checkpoint_name': 'checkpoint_final.pth'},
+                       {'evaluation_checkpoint_path': str(completion['final'])},
+                       {'evaluation_checkpoint_sha256': 'a' * 64}, {'best_validation_receipt_sha256': 'a' * 64}):
+            with self.subTest(change=change):
+                self.write_json(completion['complete'], dict(complete, **change))
+                with self.assertRaisesRegex(ValueError, 'BEST evaluation checkpoint and receipt'):
+                    chain.stage_proof(self.request, 'train')
+        missing = dict(complete);missing.pop('best_validation_receipt');self.write_json(completion['complete'], missing)
+        with self.assertRaisesRegex(ValueError, 'BEST validation receipt'):
+            chain.stage_proof(self.request, 'train')
+
+    def test_native_completion_checks_all26_actual_best_validation_prediction_hashes(self):
+        self.target.mkdir(); completion = self.write_native_best_completion(self.target / 'native')
+        receipt = chain.read(completion['best_receipt']);predictions = Path(receipt['predictions_path'])
+        (predictions / (receipt['validation_cases'][0] + '.nii.gz')).write_bytes(b'DEBUG tampered prediction checksum')
+        with self.assertRaisesRegex(ValueError, 'full26 evaluation provenance'):
             chain.stage_proof(self.request, 'train')
 
     def test_native_child_failure_stops_before_all_downstream_stages(self):

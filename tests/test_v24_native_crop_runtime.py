@@ -169,13 +169,15 @@ class NativeCropProtocolDebug(unittest.TestCase):
 
     def test_training_entry_preserves_exact_native_CLI_argument_tail(self):
         from nnunetv2.run import run_training as cli
-        tail=['730','3d_fullres','0','-tr','nnUNetTrainer_250epochs_FrozenV23CP','-p','nnUNetResEncUNetMPlans']
+        from hiercp_v1x import v24_native_best_eval_runtime as best_runtime
+        tail=['730','3d_fullres','0','-tr','nnUNetTrainer_250epochs_FrozenV23CP','-p','nnUNetResEncUNetMPlans','--val_best']
         captured=[]
         def native_entry():captured.append(sys.argv[1:]);return 'original native CLI return'
         with (patch.object(runtime,'install_crop_protocol',return_value=runtime.crop_protocol_contract()) as install,
+              patch.object(best_runtime,'install_best_evaluation_guard') as best_install,
               patch.object(sys,'argv',['-c',*tail]),patch.object(cli,'run_training_entry',side_effect=native_entry)):
             self.assertEqual(runtime.run_training_entry(),'original native CLI return')
-        install.assert_called_once_with();self.assertEqual(captured,[tail])
+        install.assert_called_once_with();best_install.assert_called_once_with();self.assertEqual(captured,[tail])
 
 
 if __name__=='__main__':unittest.main()

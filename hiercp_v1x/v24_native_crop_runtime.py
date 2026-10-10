@@ -159,5 +159,5 @@ def install_crop_protocol():
 def run_training_entry():
     """Preserve the native CLI's exact argument tail and trainer/epoch behavior."""
     install_crop_protocol()
-    from nnunetv2.run.run_training import run_training_entry as original_entry
-    return original_entry()
+    from .v24_native_best_eval_runtime import run_training_entry as best_entry
+    return best_entry()

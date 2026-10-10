@@ -139,8 +139,9 @@ class NativeFreshCLITransportDebug(unittest.TestCase):
             runtime.train_native('nonexistent-native.json', gpu=5)
 
     def test_original_fresh_training_argument_tail_is_preserved(self):
-        command = [sys.executable, '-B', '-m', 'nnunetv2.run.run_training',
-            '730', '3d_fullres', '0', '-tr', 'ActualPinnedTrainer', '-p', 'ActualPinnedPlans']
+        from hiercp_v1x import v24_native_best_eval_runtime as best_runtime
+        command = [sys.executable, '-B', '-c', best_runtime.TRAIN_COMMAND,
+            '730', '3d_fullres', '0', '-tr', 'ActualPinnedTrainer', '-p', 'ActualPinnedPlans', '--val_best']
         original = command.copy()
         actual = runtime._replace_training_command(command, sys.executable,
             trainer='ActualPinnedTrainer', plans='ActualPinnedPlans')
@@ -150,11 +151,12 @@ class NativeFreshCLITransportDebug(unittest.TestCase):
         self.assertEqual(actual[4:], original[4:])
 
     def test_training_resume_foreign_dataset_or_changed_flags_are_refused(self):
-        command = [sys.executable, '-B', '-m', 'nnunetv2.run.run_training',
-            '730', '3d_fullres', '0', '-tr', 'ActualPinnedTrainer', '-p', 'ActualPinnedPlans']
-        variants = [tuple(command), command + ['--c'], command + ['--val'], command[:-2],
+        from hiercp_v1x import v24_native_best_eval_runtime as best_runtime
+        command = [sys.executable, '-B', '-c', best_runtime.TRAIN_COMMAND,
+            '730', '3d_fullres', '0', '-tr', 'ActualPinnedTrainer', '-p', 'ActualPinnedPlans', '--val_best']
+        variants = [tuple(command), command + ['--c'], command + ['--val'], command[:-1], command[:-2],
             ['different-python', *command[1:]]]
-        for index, value in ((1, '-u'), (2, '-c'), (3, 'foreign.entry'),
+        for index, value in ((1, '-u'), (2, '-m'), (3, 'foreign.entry'),
                 (4, '731'), (5, '2d'), (6, '1'), (8, 'ForeignTrainer'), (10, 'ForeignPlans')):
             modified = command.copy(); modified[index] = value; variants.append(modified)
         for value in variants:
