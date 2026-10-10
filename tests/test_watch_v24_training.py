@@ -1,6 +1,7 @@
 """Viewer metadata tests; no training, model, process control or GPU work."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -60,6 +61,8 @@ class ViewerTest(unittest.TestCase):
         self.lines(self.train/'update_timing.jsonl',[dict(status='OPTIMIZER_UPDATED',epoch=4,update=68,
             active_u=7,case_ids=['t0','t1','t2','t3'],loss=.7)])
         self.lines(self.train/'curve.jsonl',[dict(epoch=4,curriculum_transition=dict(previous_active_u=7,next_active_u=23))])
+        for name in ('update_timing.jsonl','curve.jsonl'):
+            os.utime(self.train/name, ns=(1_700_000_000_000_000_000,)*2)
         s=watch.Viewer().snapshot(self.root)
         self.assertEqual((s['stage'],s['epoch'],s['active_U'],s['progress']['done']),('training',5,23,0))
         self.assertNotEqual(s['stage'],'upper_prepare')

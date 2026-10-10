@@ -188,7 +188,12 @@ class Viewer:
         phase, epoch, phase_source = pipeline_stage, None, 'pipeline_status'
         if pipeline_stage == 'train':
             if candidates:
-                _, phase, epoch, phase_source = max(candidates, key=lambda item: item[0])
+                # Epoch/phase progress is monotonic. File timestamp resolution
+                # may tie across a completed curve and the previous update.
+                order = dict(initial_full_validation=0, training=1, train_probe=2,
+                    stage_validation=3, full_validation=4, epoch_completion=5, complete=6)
+                _, phase, epoch, phase_source = max(candidates,
+                    key=lambda item: (item[2], order[item[1]], item[0]))
             elif binding:
                 phase, epoch, phase_source = 'initial_full_validation', 1, 'execution_contract_before_first_batch'
         active_u = latest_update.get('active_u') if latest_update else baseline.get('active_u')
