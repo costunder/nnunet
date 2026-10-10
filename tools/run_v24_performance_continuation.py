@@ -36,6 +36,10 @@ def compare_probes(baseline,optimized,checkpoint_sha256):
           'case_ids','physical_candidate_chunk','debug_numerics','ordered_CPU_input_sha256')
     if any(baseline.get(key)!=optimized.get(key) for key in keys):
         raise ValueError('Actual native output/loss/gradient/model/RNG parity differs')
+    chunk=baseline.get('physical_candidate_chunk')
+    if chunk not in (32,64) or baseline.get('case_ids')!=['liver_6','liver_129','liver_123','liver_69']:
+        raise ValueError('Original complete stress patients and physical candidate chunk required')
+    expected_chunks=(524+chunk-1)//chunk
     for row in (baseline,optimized):
         policy=row.get('debug_numerics',{})
         flags=policy.get('actual_forward_flags',{})
@@ -48,9 +52,10 @@ def compare_probes(baseline,optimized,checkpoint_sha256):
                 or policy.get('unsupported_operator_fallback') is not False
                 or proof.get('complete') is not True or proof.get('every_actual_value_hashed') is not True
                 or proof.get('both_sampled_views') is not True or proof.get('ordered_records')!=524
-                or proof.get('observed_native_chunks')!=9 or proof.get('expected_native_chunks')!=9
+                or proof.get('observed_native_chunks')!=expected_chunks or proof.get('expected_native_chunks')!=expected_chunks
                 or proof.get('observed_upper_graphs')!=4 or proof.get('expected_upper_graphs')!=4
-                or len(proof.get('content',{}).get('local_chunks',[]))!=9
+                or proof.get('physical_candidate_chunk')!=chunk or proof.get('epoch')!=1
+                or len(proof.get('content',{}).get('local_chunks',[]))!=expected_chunks
                 or len(proof.get('content',{}).get('upper_graphs',[]))!=4
                 or row.get('ordered_CPU_input_sha256')!=proof.get('content_sha256')
                 or not isinstance(proof.get('content_sha256'),str)

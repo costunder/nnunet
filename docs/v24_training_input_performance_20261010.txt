@@ -63,7 +63,34 @@ exact-key로 재사용하고 별도 C-order copy를 반환한다. epoch 사이�
 원형 sampling/RNG/offset/metadata를 유지하고 final CPU cat/stack destination을 바로 pinned memory에 할당한다.
 일반 CPU tensor가 아닌 layout/gradient/out 입력은 원형 cat/stack 규칙을 그대로 사용한다.
 원형 source 파일은 변경하지 않으며 다른 identity/source의 실행을 거부한다.
-통합 CPU DEBUG 단위검사85/85 통과(28.878초); 실제 GPU 수치·속도 및 production 재개 결과는 다음에 기록한다.
+통합 CPU DEBUG 단위검사85/85 통과(28.878초); gate의 전체9/4 counts 보강 후 해당12개 검사도 통과했다.
+수정 없이 원본만 반복한 control은 같은 checkpoint/model/RNG/workload에서도
+loss가6.975606e-7(0.005255%) 달랐다. 이전의 전체 입력 SHA와 개별 수치 tensor는 저장되지 않아
+이 차이의 원인을 CUDA로 확정하거나 개별 score/parameter 오차를 입증한 것으로 주장하지 않는다.
+명시적 deterministic DEBUG baseline/optimized에서는 전체 입력·output·loss·모든537 gradients·RNG가 정확히 같다.
+89.171685초→82.230671초(단일 DEBUG 배치7.78% 감소), pin14.263920초→1.150859초였다.
+이 시간은 모든 실제 CPU tensor를 해시하는 관측 비용을 포함하며 steady-state production 처리량이 아니다.
+초기 생성 CPUget67.355505초→73.879682초, 전체prepare81.619425초→75.030541초였다.
+coordinator lock 아래 숨은 대기가 future wait에 드러나므로 exposed wait의 전후값만으로 속도를 판단하지 않는다.
+peak CUDA는10.73358/10.73149GB, 학습 파라미터537개 모두 finite gradient/missing0이었다.
+새 production은 원래 수치 설정으로 epoch5/full validation12/21/U23/updates85 지점에서 재개한다.
+bf499 production 실제 epoch6/U23 update101까지 재개를 확인했다.
+44.74초 warm training의 정규4환자5배치 평균6.956초, 입력get5.854초/노출대기5.043초,
+추가pin0.00358초였다. 마지막2환자 remainder는 정규배치 통계에서 제외했다.
+GPU point평균17.59%, NVML9.735–9.739GiB, RAM40.8–41.9GiB, CPU1.58/4개였다.
+이전의 다른 환자·epoch와 비교한 speedup으로 보고하지 않으며 자원 활용이 충분하다고 주장하지 않는다.
+압력/eviction/provider failure는0, 실제537개 gradient는 모두 finite/missing0이었다.
+
+다음 pure radius 개선은 같은 pair 안에서 원형 _radius_neighbor_ids의 전체 full/query bytes·dtype·shape와
+실제 float(radius)의 IEEE754 bytes가 같은 결과만 재사용한다.
+원형 _select_context와 _balanced_indices 및 hop union/RNG를 그대로 실행한다.
+원형 radius code의 cKDTree factory만 private clone하여 같은 full coordinates와 정확한 constructor kwargs의 tree를 재사용한다.
+query_ball_point→원형 flatten→np.unique의 결과 순서를 유지하고 독립 int64 copy를 반환한다.
+tree는 별도 owned source snapshot을 보유하며 finally에서 결과/tree/table/function cycle을 모두 해제한다.
+반경 query/hit/miss, tree build/reuse, 해시/복사 시간과 key/result/exposed tree bytes를 별도로 기록한다.
+exposed tree bytes는 C++ 내부 heap 전체가 아니며 원형64GiB RSSguard를 유지한다.
+해당22 CPU DEBUG 검사는 full sampler/provider graph/patch/metadata/RNG·empty/error/source guard·cache release를 통과했다.
+전체 통합 검사와 새 full-native 수치·속도 결과는 수행 후 기록한다.
 별도 DEBUG 성능 probe는 기존 최대부하 liver_6/liver_129/liver_123/liver_69의 모든P+128U,
 physical4와 실제 동일 모델·checkpoint로 forward/loss/backward를 수행하고 optimizer update는0이다.
 수정 전후 output/loss/모든gradient/model buffer/RNG가 정확히 같아야 production resume을 허용한다.

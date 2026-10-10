@@ -1,4 +1,4 @@
-"""Exact input execution: pair-local attribute reuse and final pinned collation.
+"""Exact input execution: pair-local attributes/radius and pinned collation.
 
 No neural features or epoch views are cached here. Attribute reuse lasts only
 for the two views of one record and returns independent storage on every hit.
@@ -11,13 +11,17 @@ import copy
 import hashlib
 import inspect
 import json
+import math
 from pathlib import Path
+import struct
 import threading
 import time
 from types import FunctionType, SimpleNamespace
 
 import numpy as np
 import torch
+from scipy.spatial import cKDTree as _SCIPY_TREE
+from scipy.spatial import _ckdtree as _SCIPY_TREE_MODULE
 from torch_geometric.data import Batch as _Batch
 from torch_geometric.data.collate import collate as _PYG_COLLATE,_collate as _PYG_LEAF
 
@@ -25,7 +29,7 @@ from . import v24_inputs as inputs
 from . import v24_memory_runtime as memory
 from . import transition_v1_local as local
 
-FORMAT='v24_exact_pair_local_attributes_and_pinned_collate_runtime_v1'
+FORMAT='v24_exact_pair_local_attributes_radius_and_pinned_collate_runtime_v2'
 _PAIR=inputs.materialize_pair
 _COLLATE=inputs.collate
 _LOCAL_COLLATE=local.collate
@@ -38,12 +42,26 @@ _LOCK=threading.RLock()
 _SAMPLER=None
 _PIN_COLLATE=None
 _PIN_OUTPUTS=True
+_SCIPY_TREE_QUERY=_SCIPY_TREE.query_ball_point
+_SCIPY_TREE_SOURCE=Path(_SCIPY_TREE_MODULE.__file__).resolve()
+_SCIPY_TREE_STAT=memory._ORIGINAL_PROVIDER._stat(_SCIPY_TREE_SOURCE)
+_SCIPY_TREE_SHA256=hashlib.sha256(_SCIPY_TREE_SOURCE.read_bytes()).hexdigest()
 _STATS=dict(materialize_calls=0,attribute_calls=0,attribute_memo_hits=0,
     attribute_memo_misses=0,attribute_reused_output_bytes=0,
     attribute_key_hash_seconds=0.,attribute_original_compute_seconds=0.,
     attribute_private_copy_seconds=0.,materialize_wall_seconds=0.,
     collate_calls=0,collate_wall_seconds=0.,direct_pinned_cat_calls=0,
-    direct_pinned_stack_calls=0,direct_pinned_output_bytes=0)
+    direct_pinned_stack_calls=0,direct_pinned_output_bytes=0,
+    radius_calls=0,radius_memo_hits=0,radius_memo_misses=0,
+    radius_key_hash_seconds=0.,radius_original_compute_seconds=0.,
+    radius_private_copy_seconds=0.,radius_input_bytes_hashed=0,
+    radius_cache_snapshot_bytes=0,radius_cache_snapshot_seconds=0.,
+    radius_reused_output_bytes=0,radius_tree_calls=0,radius_tree_hits=0,
+    radius_tree_builds=0,radius_tree_build_seconds=0.,radius_tree_key_hash_seconds=0.,
+    radius_tree_input_bytes_hashed=0,radius_pairs_closed=0,
+    radius_live_pairs=0,radius_live_result_bytes=0,radius_live_key_bytes=0,
+    radius_live_tree_visible_array_bytes=0,radius_peak_live_result_bytes=0,
+    radius_peak_live_key_bytes=0,radius_peak_live_tree_visible_array_bytes=0)
 
 
 def _sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -64,6 +82,11 @@ def _guard_originals():
     if any(memory._ORIGINAL_PROVIDER._stat(path)!=proof
             for path,proof in _ORIGINAL_SOURCE_STATS.items()):
         raise ValueError('Original input or PyG source changed')
+    from scipy.spatial import cKDTree
+    if (cKDTree is not _SCIPY_TREE or _SCIPY_TREE_MODULE.cKDTree is not _SCIPY_TREE
+            or _SCIPY_TREE.query_ball_point is not _SCIPY_TREE_QUERY
+            or memory._ORIGINAL_PROVIDER._stat(_SCIPY_TREE_SOURCE)!=_SCIPY_TREE_STAT):
+        raise ValueError('Original SciPy cKDTree implementation or source changed')
 
 
 def _clone(original,namespace,closure=None):
@@ -105,12 +128,14 @@ def _sampling_proof(original,attributes):
         for function in functions)
 
 
-def _private_sampling_chain(original,attributes):
+def _private_sampling_chain(original,attributes,select_context=None):
     replacements={}
     def clone(function):
         if id(function) in replacements:return replacements[id(function)]
         namespace=dict(function.__globals__)
         if '_edge_attributes' in function.__code__.co_names:namespace['_edge_attributes']=attributes
+        if select_context is not None and '_select_context' in function.__code__.co_names:
+            namespace['_select_context']=select_context
         closure=tuple(_cell(clone(cell.cell_contents))
             if name in ('bounded_view','allowed_view','patched_view') else cell
             for name,cell in zip(function.__code__.co_freevars,function.__closure__ or ()))
@@ -123,6 +148,14 @@ def _private_sampling_chain(original,attributes):
 def _bump(**counts):
     with _LOCK:
         for key,value in counts.items():_STATS[key]+=value
+
+
+def _radius_memory(**changes):
+    with _LOCK:
+        for kind,value in changes.items():
+            live='radius_live_'+kind
+            _STATS[live]+=value
+            _STATS['radius_peak_live_'+kind]=max(_STATS['radius_peak_live_'+kind],_STATS[live])
 
 
 def _private_import(original,replacements):
@@ -149,12 +182,23 @@ def _sampler():
                 attributes=module._edge_attributes,
                 source=Path(module.__file__).resolve(),stat=memory._ORIGINAL_PROVIDER._stat(module.__file__),
                 scope_sha256=admitted['scope']['contract_sha256'],
-                chain=_sampling_proof(module.build_local_view,module._edge_attributes))
+                chain=_sampling_proof(module.build_local_view,module._edge_attributes),
+                select_context=module._select_context,radius=module._radius_neighbor_ids,
+                select_code=module._select_context.__code__,radius_code=module._radius_neighbor_ids.__code__)
         if (_SAMPLER['module'] is not module or _SAMPLER['build'] is not module.build_local_view
                 or _SAMPLER['attributes'] is not module._edge_attributes
                 or _SAMPLER['scope_sha256']!=admitted['scope']['contract_sha256']
                 or memory._ORIGINAL_PROVIDER._stat(_SAMPLER['source'])!=_SAMPLER['stat']
-                or _sampling_proof(module.build_local_view,module._edge_attributes)!=_SAMPLER['chain']):
+                or _sampling_proof(module.build_local_view,module._edge_attributes)!=_SAMPLER['chain']
+                or module._select_context is not _SAMPLER['select_context']
+                or module._radius_neighbor_ids is not _SAMPLER['radius']
+                or module._select_context.__code__ is not _SAMPLER['select_code']
+                or module._radius_neighbor_ids.__code__ is not _SAMPLER['radius_code']
+                or module._select_context.__globals__.get('_radius_neighbor_ids') is not _SAMPLER['radius']
+                or module._radius_neighbor_ids.__globals__.get('cKDTree') is not _SCIPY_TREE
+                or any(function.__globals__.get('_select_context') is not _SAMPLER['select_context']
+                    for function in _sampling_functions(module.build_local_view)
+                    if '_select_context' in function.__code__.co_names)):
             raise ValueError('Admitted original sampling implementation changed')
         return dict(_SAMPLER)
 
@@ -196,15 +240,100 @@ def _attribute_reuse(original):
     return attributes
 
 
+def _array_key(value):
+    if not isinstance(value,np.ndarray) or value.dtype.hasobject:return None
+    array=np.ascontiguousarray(value);digest=hashlib.sha256()
+    header=json.dumps([str(array.dtype),list(array.shape)],separators=(',',':')).encode()
+    digest.update(len(header).to_bytes(8,'little'));digest.update(header)
+    digest.update(memoryview(array).cast('B') if array.size else b'')
+    return digest.digest()
+
+
+class _PairRadius:
+    """One pair only; original tree/query/unique code and context RNG intact."""
+    def __init__(self,original,tree_class):
+        self._results={};self._trees={};self._closed=False
+        self._result_bytes=0;self._key_bytes=0;self._tree_visible_array_bytes=0
+        self._signature=inspect.signature(original);self._tree_class=tree_class
+        namespace=dict(original.__globals__);namespace['cKDTree']=self._tree
+        self.original=_clone(original,namespace)
+        _bump(radius_live_pairs=1)
+
+    def _tree(self,data,*args,**kwargs):
+        # Only the exact admitted original constructor call is memoized.
+        if args or kwargs!={'compact_nodes':True,'balanced_tree':True}:
+            return self._tree_class(data,*args,**kwargs)
+        started=time.perf_counter();key=_array_key(data);hashed=time.perf_counter()
+        _bump(radius_tree_calls=1,radius_tree_key_hash_seconds=hashed-started,
+            radius_tree_input_bytes_hashed=data.nbytes if isinstance(data,np.ndarray) else 0)
+        if key is not None and key in self._trees:
+            _bump(radius_tree_hits=1);return self._trees[key]
+        # A float64 source may otherwise alias tree.data. Own an exact snapshot
+        # so no caller array mutation can corrupt an admitted tree key.
+        owned=np.array(data,copy=True,order='C') if key is not None else data
+        result=self._tree_class(owned,*args,**kwargs)
+        _bump(radius_tree_builds=1,radius_tree_build_seconds=time.perf_counter()-hashed)
+        if key is not None:
+            # These are exposed ndarray bytes, not an estimate of C++ heap or RSS.
+            visible=int(result.data.nbytes)+int(result.indices.nbytes)
+            self._trees[key]=result;self._key_bytes+=len(key);self._tree_visible_array_bytes+=visible
+            _radius_memory(key_bytes=len(key),tree_visible_array_bytes=visible)
+        return result
+
+    def __call__(self,*args,**kwargs):
+        if self._closed:raise RuntimeError('Pair radius memo already released')
+        started=time.perf_counter()
+        try:bound=self._signature.bind(*args,**kwargs)
+        except TypeError:return self.original(*args,**kwargs)
+        bound.apply_defaults()
+        full=bound.arguments['full_position_mm'];query=bound.arguments['query_position_mm']
+        radius=bound.arguments['radius_mm'];full_key=_array_key(full);query_key=_array_key(query)
+        key=None
+        if (full_key is not None and query_key is not None
+                and isinstance(radius,(float,int,np.floating,np.integer))
+                and math.isfinite(float(radius))):
+            key=hashlib.sha256(full_key+query_key+struct.pack('>d',float(radius))).digest()
+        hashed=time.perf_counter()
+        _bump(radius_calls=1,radius_key_hash_seconds=hashed-started,
+            radius_input_bytes_hashed=sum(value.nbytes for value in (full,query) if isinstance(value,np.ndarray)))
+        if key is not None and key in self._results:
+            result=self._results[key].copy(order='C')
+            _bump(radius_memo_hits=1,radius_reused_output_bytes=result.nbytes,
+                radius_private_copy_seconds=time.perf_counter()-hashed)
+            return result
+        result=self.original(*args,**kwargs)
+        _bump(radius_memo_misses=1,radius_original_compute_seconds=time.perf_counter()-hashed)
+        if key is not None:
+            started=time.perf_counter();self._results[key]=result.copy(order='C')
+            _bump(radius_cache_snapshot_bytes=result.nbytes,
+                radius_cache_snapshot_seconds=time.perf_counter()-started)
+            self._result_bytes+=result.nbytes;self._key_bytes+=len(key)
+            _radius_memory(result_bytes=result.nbytes,key_bytes=len(key))
+        return result
+
+    def close(self):
+        if not self._closed:
+            self._results.clear();self._trees.clear();self._closed=True
+            self.original=None  # Break the private function->bound factory cycle.
+            _radius_memory(result_bytes=-self._result_bytes,key_bytes=-self._key_bytes,
+                tree_visible_array_bytes=-self._tree_visible_array_bytes)
+            self._result_bytes=self._key_bytes=self._tree_visible_array_bytes=0
+            _bump(radius_live_pairs=-1,radius_pairs_closed=1)
+
+
 def materialize_pair(record,*,epoch):
     admitted=_sampler()
-    build=_private_sampling_chain(admitted['build'],_attribute_reuse(admitted['attributes']))
-    pair_namespace=_private_import(_PAIR,{('hiercp.sample',('build_local_view',),0):
-        SimpleNamespace(build_local_view=build)})
-    pair=_clone(_PAIR,pair_namespace)
+    radius=_PairRadius(admitted['radius'],_SCIPY_TREE)
     started=time.perf_counter()
-    try:return pair(record,epoch=epoch)
-    finally:_bump(materialize_calls=1,materialize_wall_seconds=time.perf_counter()-started)
+    try:
+        namespace=dict(admitted['select_context'].__globals__);namespace['_radius_neighbor_ids']=radius
+        select=_clone(admitted['select_context'],namespace)
+        build=_private_sampling_chain(admitted['build'],_attribute_reuse(admitted['attributes']),select)
+        pair_namespace=_private_import(_PAIR,{('hiercp.sample',('build_local_view',),0):
+            SimpleNamespace(build_local_view=build)})
+        return _clone(_PAIR,pair_namespace)(record,epoch=epoch)
+    finally:
+        radius.close();_bump(materialize_calls=1,materialize_wall_seconds=time.perf_counter()-started)
 
 
 def _allocate(shape,dtype):
@@ -297,6 +426,14 @@ def runtime_contract():
         PyG_from_list_code_sha256=hashlib.sha256(Batch.from_data_list.__func__.__code__.co_code).hexdigest(),
         attribute_memo_scope='two views of one record only; discarded before return',
         attribute_memo_key='all exact argument bytes, dtype, shape, chunk size and overrides',
+        radius_memo_scope='two views of one record only; explicitly released before return or exception',
+        radius_memo_key='full/query exact bytes, dtype, shape and IEEE754 float radius',
+        original_context_selection_and_radius_code_preserved=True,
+        original_context_RNG_and_balanced_indices_executed=True,
+        original_SciPy_tree_class_and_query_identity_guarded=True,
+        SciPy_cKDTree_binary_sha256=_SCIPY_TREE_SHA256,
+        original_cKDTree_constructor_kwargs={'compact_nodes':True,'balanced_tree':True},
+        radius_memory_counters='key/result bytes and exposed tree data/indices only; C++ heap covered by original RSS guard',
         memo_hits_return_independent_C_order_storage=True,
         all_edges_nodes_sampling_seeds_metadata_and_exceptions_preserved=True,
         pinned_final_outputs=_PIN_OUTPUTS,no_epoch_or_neural_cache=True,

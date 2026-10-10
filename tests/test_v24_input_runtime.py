@@ -3,6 +3,7 @@ import copy
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import weakref
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -53,6 +54,8 @@ class OriginalInputRuntimeDebug(unittest.TestCase):
         self.assertTrue(torch.equal(rng,torch.get_rng_state()))
         after=runtime.profile();self.assertGreater(after['attribute_memo_hits'],before['attribute_memo_hits'])
         self.assertGreater(after['attribute_reused_output_bytes'],before['attribute_reused_output_bytes'])
+        for name in ('radius_live_pairs','radius_live_result_bytes','radius_live_key_bytes','radius_live_tree_visible_array_bytes'):
+            self.assertEqual(after[name],before[name])
 
     def test_second_view_is_private_and_no_memo_survives_epoch_calls(self):
         record=self.data.fixture.records[0]
@@ -97,6 +100,40 @@ class OriginalInputRuntimeDebug(unittest.TestCase):
         with patch.object(admitted['module'],'_edge_attributes',lambda *args,**kwargs:None):
             with self.assertRaisesRegex(ValueError,'sampling implementation changed'):
                 runtime.materialize_pair(self.data.fixture.records[0],epoch=1)
+
+    def test_private_context_and_radius_code_RNG_paths_and_source_guards(self):
+        admitted=runtime._sampler();select=admitted['select_context'];neighbor=admitted['radius']
+        original_globals=dict(select.__globals__);radius_globals=dict(neighbor.__globals__)
+        memo=runtime._PairRadius(neighbor,runtime._SCIPY_TREE)
+        try:
+            namespace=dict(select.__globals__);namespace['_radius_neighbor_ids']=memo
+            private=runtime._clone(select,namespace)
+            self.assertIs(private.__code__,select.__code__);self.assertIs(memo.original.__code__,neighbor.__code__)
+            # Actual original context algorithm takes seeded balanced samples
+            # then two complete hop unions. Same RNG state must survive both.
+            config=SimpleNamespace(sample_context_nodes=3,sample_interface_radius_mm=.1,
+                sample_hops=2,sample_hop_radius_mm=1.1,context_radial_bins=3,
+                context_azimuth_bins=4,context_elevation_bins=3)
+            position=np.column_stack((np.arange(12),np.zeros(12),np.zeros(12))).astype(np.float32)
+            node={'pos_mm':torch.from_numpy(position),'x':torch.zeros((12,16))}
+            anchors=position[[0]]
+            for seed in (1,42,123):
+                left=np.random.default_rng(seed);right=np.random.default_rng(seed)
+                expected=select(node,anchors,config,left);actual=private(node,anchors,config,right)
+                self.assertTrue(np.array_equal(expected,actual));self.assertEqual(left.bit_generator.state,right.bit_generator.state)
+            for key,value in original_globals.items():self.assertIs(select.__globals__[key],value)
+            for key,value in radius_globals.items():self.assertIs(neighbor.__globals__[key],value)
+        finally:memo.close()
+        for name in ('_select_context','_radius_neighbor_ids','cKDTree'):
+            with patch.object(admitted['module'],name,lambda *args,**kwargs:None):
+                with self.assertRaisesRegex(ValueError,'sampling implementation changed'):
+                    runtime._sampler()
+
+    def test_actual_pair_radius_table_released_on_original_validation_error(self):
+        before=runtime.profile()
+        with self.assertRaises(ValueError):runtime.materialize_pair(self.data.fixture.records[0],epoch=41)
+        after=runtime.profile();self.assertEqual(after['radius_pairs_closed'],before['radius_pairs_closed']+1)
+        self.assertEqual(after['radius_live_pairs'],before['radius_live_pairs'])
 
     def test_private_collator_full_PyG_offsets_metadata_debatch_and_patches_exact(self):
         items=[(runtime._PAIR(record,epoch=29),i) for i,record in enumerate(self.data.fixture.records)]
@@ -146,6 +183,103 @@ class OriginalInputRuntimeDebug(unittest.TestCase):
                 self.assertEqual(expected,self.data.signature(optimized.get([0,1,2],epoch=29)))
             self.assertEqual(optimized._protected_ids,set());self.assertEqual(optimized._protected_views,set())
         finally:original.close();optimized.close()
+
+
+class RadiusExecutionDebug(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):fixture._gt_fixture.RecipientGTBlindDebug.setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):fixture._gt_fixture.RecipientGTBlindDebug.tearDownClass()
+
+    def original_radius(self):
+        # Same original admitted archived routine; never approximate neighbors.
+        return runtime._sampler()['radius']
+
+    def test_radius_keys_all_bytes_radius_dtype_shape_and_independent_outputs(self):
+        original=self.original_radius();memo=runtime._PairRadius(original,runtime._SCIPY_TREE)
+        full=np.array([[0,0,0],[1,0,0],[2,0,0],[2,1,0]],dtype=np.float32)
+        query=full[[0,2]];before=runtime.profile()
+        try:
+            expected=original(full,query,1.0);first=memo(full,query,1.0);second=memo(full.copy(),query.copy(),1.0)
+            self.assertTrue(np.array_equal(first,expected));self.assertTrue(np.array_equal(second,expected))
+            self.assertIsNot(first,second);first[:]=-1;second[:]=-2
+            self.assertTrue(np.array_equal(memo(full,query,1.0),expected))
+            cases=[(full,query,.5),(full,query[[0]],1.0),(full.astype(np.float64),query,1.0),
+                (full.copy(),query.copy(),1.0)]
+            cases[-1][0][1,0]=1.01
+            for points,queries,radius in cases:
+                self.assertTrue(np.array_equal(original(points,queries,radius),memo(points,queries,radius)))
+            after=runtime.profile();self.assertEqual(after['radius_memo_hits']-before['radius_memo_hits'],2)
+            self.assertGreater(after['radius_tree_hits'],before['radius_tree_hits'])
+            self.assertGreater(after['radius_live_key_bytes'],before['radius_live_key_bytes'])
+            self.assertGreater(after['radius_live_tree_visible_array_bytes'],before['radius_live_tree_visible_array_bytes'])
+        finally:memo.close()
+        after=runtime.profile()
+        for key in ('radius_live_pairs','radius_live_key_bytes','radius_live_result_bytes','radius_live_tree_visible_array_bytes'):
+            self.assertEqual(after[key],before[key]-(1 if key=='radius_live_pairs' else 0))
+        with self.assertRaisesRegex(RuntimeError,'already released'):memo(full,query,1.0)
+
+    def test_tree_reuse_keeps_exact_kwargs_owned_data_and_releases_handles(self):
+        original=self.original_radius();trees=[];calls=[]
+        class ObservedTree:
+            # cKDTree itself has no weakref slot. This CPU-only observation
+            # wrapper delegates every actual original query unchanged.
+            def __init__(self,value):self.value=value
+            def __getattr__(self,name):return getattr(self.value,name)
+        def tree(points,*args,**kwargs):
+            calls.append((points.copy(),args,kwargs.copy()));result=runtime._SCIPY_TREE(points,*args,**kwargs)
+            observed=ObservedTree(result);trees.append(weakref.ref(observed));return observed
+        memo=runtime._PairRadius(original,tree);full=np.arange(30,dtype=np.float64).reshape(10,3)
+        saved=full.copy()
+        try:
+            for query in (saved[[0]],saved[[3]],saved[[9]]):
+                self.assertTrue(np.array_equal(original(saved,query,4.),memo(full,query,4.)))
+            self.assertEqual(len(calls),1);self.assertEqual(calls[0][1],())
+            self.assertEqual(calls[0][2],{'compact_nodes':True,'balanced_tree':True})
+            full[:]=999
+            self.assertTrue(np.array_equal(original(saved,saved[[1]],4.),memo(saved,saved[[1]],4.)))
+        finally:memo.close()
+        self.assertTrue(all(reference() is None for reference in trees))
+
+    def test_empty_neighbors_and_original_invalid_inputs_keep_results_and_exceptions(self):
+        original=self.original_radius();memo=runtime._PairRadius(original,runtime._SCIPY_TREE)
+        full=np.array([[0,0,0],[1,1,1]],dtype=np.float32)
+        cases=[(np.empty((0,3),np.float32),full,1.),(full,np.empty((0,3),np.float32),1.),
+            (np.zeros((2,2),np.float32),full,1.),(np.array([[np.nan,0,0]],np.float32),full,1.),
+            (full,np.zeros((2,2),np.float32),1.),(full,full,'invalid')]
+        try:
+            for args in cases:
+                values=[];errors=[]
+                for function in (original,memo):
+                    try:values.append(function(*args))
+                    except Exception as error:errors.append((type(error),str(error)))
+                if errors:self.assertEqual(len(errors),2);self.assertEqual(errors[0],errors[1])
+                else:self.assertTrue(np.array_equal(values[0],values[1]))
+        finally:memo.close()
+
+    def test_original_argument_binding_errors_and_nonfinite_radius_are_not_hidden(self):
+        original=self.original_radius();memo=runtime._PairRadius(original,runtime._SCIPY_TREE)
+        full=np.array([[0,0,0],[1,1,1]],dtype=np.float32)
+        cases=[((full,),{}),((full,full,1.),{'radius_mm':1.}),
+            ((full,full,1.),{'unknown':True}),((full,full,float('nan')),{}),
+            ((full,full,float('inf')), {})]
+        try:
+            for args,kwargs in cases:
+                errors=[];values=[]
+                for function in (original,memo):
+                    try:values.append(function(*args,**kwargs))
+                    except Exception as error:errors.append((type(error),str(error)))
+                if errors:self.assertEqual(len(errors),2);self.assertEqual(errors[0],errors[1])
+                else:self.assertTrue(np.array_equal(values[0],values[1]))
+        finally:memo.close()
+
+    def test_scipy_identity_and_binary_stat_guard(self):
+        import scipy.spatial
+        with patch.object(scipy.spatial,'cKDTree',lambda *args,**kwargs:None):
+            with self.assertRaisesRegex(ValueError,'SciPy'):runtime.runtime_contract()
+        with patch.object(runtime,'_SCIPY_TREE_STAT',None):
+            with self.assertRaisesRegex(ValueError,'SciPy'):runtime.runtime_contract()
 
 
 class AttributeAndOutputExecutionDebug(unittest.TestCase):

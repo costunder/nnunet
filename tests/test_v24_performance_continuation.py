@@ -26,6 +26,7 @@ class NativeProbeAdmissionUnit(unittest.TestCase):
             ordered_CPU_input_sha256='1'*64,
             input_tensor_proof=dict(complete=True,every_actual_value_hashed=True,both_sampled_views=True,
                 ordered_records=524,content_sha256='1'*64,observed_native_chunks=9,expected_native_chunks=9,
+                epoch=1,physical_candidate_chunk=64,
                 observed_upper_graphs=4,expected_upper_graphs=4,
                 content=dict(local_chunks=[{} for _ in range(9)],upper_graphs=[{} for _ in range(4)])),
             gradient=dict(missing=[],finite=True),seconds=65.)
@@ -35,6 +36,18 @@ class NativeProbeAdmissionUnit(unittest.TestCase):
         row=compare_probes(self.baseline,self.optimized,'actual-snapshot')
         self.assertEqual(row['status'],'ACTUAL_FULL128_OUTPUT_LOSS_GRADIENT_MODEL_RNG_EXACT_PASS')
         self.assertTrue(row['debug_single_batch_timing'])
+
+    def test_original_chunk32_requires_all17_chunks(self):
+        baseline=copy.deepcopy(self.baseline);optimized=copy.deepcopy(self.optimized)
+        for row in (baseline,optimized):
+            row['physical_candidate_chunk']=32
+            row['input_tensor_proof'].update(physical_candidate_chunk=32,observed_native_chunks=17,
+                expected_native_chunks=17,content=dict(local_chunks=[{} for _ in range(17)],
+                    upper_graphs=[{} for _ in range(4)]))
+        self.assertEqual(compare_probes(baseline,optimized,'actual-snapshot')['status'],
+            'ACTUAL_FULL128_OUTPUT_LOSS_GRADIENT_MODEL_RNG_EXACT_PASS')
+        optimized['input_tensor_proof']['observed_native_chunks']=9
+        with self.assertRaises(ValueError):compare_probes(baseline,optimized,'actual-snapshot')
 
     def test_each_numerical_change_is_rejected(self):
         for key in ('loss','output_sha256','gradient_sha256','initial_RNG_sha256','after_RNG_sha256',
@@ -48,6 +61,7 @@ class NativeProbeAdmissionUnit(unittest.TestCase):
                                     ('every_actual_value_hashed',False),('both_sampled_views',False),
                                     ('observed_native_chunks',8),('expected_native_chunks',8),
                                     ('observed_upper_graphs',3),('expected_upper_graphs',3),
+                                    ('physical_candidate_chunk',32),('epoch',2),
                                     ('content',dict(local_chunks=[{} for _ in range(8)],upper_graphs=[{} for _ in range(4)]))):
             changed=copy.deepcopy(self.optimized);changed['input_tensor_proof'][changed_field]=value
             with self.subTest(field=changed_field),self.assertRaisesRegex(ValueError,'CPU tensor proof'):
