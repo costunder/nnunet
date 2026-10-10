@@ -20,6 +20,16 @@ class _nnUNetTrainer_250epochs_OnlineCP:
         self._online_cp_events = 0
         self._online_cp_samples = 0
         self._online_schedule_hash = 0xCBF29CE484222325
+        self._online_train_loader = None
+        self._online_train_augmenter = None
+        self._online_active_epoch = None
+        self._online_process_count = None
+    def train_step(self, batch):
+        self._online_cp_events += 1
+        self._online_cp_samples += 1
+        self._online_schedule_hash ^= 1
+        self._online_schedule_hash *= 1099511628211
+        return super().train_step(batch)
 '''
 
 
@@ -113,6 +123,8 @@ class MatchedAMPDebug(fixtures.NativeAMPAdmissionDebug):
         variants = [SOURCE.replace('_online_schedule_hash', '_online_native_transport'),
             SOURCE + '\n# fixture additional class\nclass Other:\n    def transport(self): return self._online_native_transport\n',
             SOURCE.replace('        self._online_cp_samples = 0\n', ''),
+            SOURCE.replace('        return super().train_step(batch)',
+                '        self._online_active_epoch = 1\n        return super().train_step(batch)'),
             SOURCE.replace('class _nnUNetTrainer_250epochs_OnlineCP:', 'class Other:')]
         for source in variants:
             self.source.write_text(source, encoding='utf8')

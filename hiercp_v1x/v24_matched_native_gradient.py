@@ -50,10 +50,16 @@ def _source_contract(path, expected_sha256):
     names = [target.attr for node in ast.walk(constructors[0]) if isinstance(node, ast.Assign)
         for target in node.targets if isinstance(target, ast.Attribute)
         and isinstance(target.value, ast.Name) and target.value.id == 'self'
-        and target.attr.startswith('_online_')]
+        and target.attr in ORIGINAL_COUNTERS]
     if (len(names) != 3 or set(names) != set(MATCHED_COUNTERS)
             or any(isinstance(node, ast.Attribute) and node.attr == ORIGINAL_COUNTERS[-1] for node in ast.walk(tree))):
         raise ValueError('Exactly the original three historical CP counters and no raw transport counter required')
+    steps = [node for node in classes[0].body if isinstance(node, ast.FunctionDef) and node.name == 'train_step']
+    writes = [] if len(steps) != 1 else [node.attr for node in ast.walk(steps[0])
+        if isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store)
+        and isinstance(node.value, ast.Name) and node.value.id == 'self']
+    if set(writes) != set(MATCHED_COUNTERS):
+        raise ValueError('Original historical train_step must write only the three admitted CP counters')
     if _stat(path) != before:
         raise ValueError('Historical trainer source changed during clone counter admission')
     return path, before
@@ -93,6 +99,7 @@ def _clone_step(original, historical_trainer_source, *, expected_sha256, verify_
     contract = dict(format=FORMAT, debug=True, production_optimizer_updates=0,
         original_historical_trainer=str(path), original_historical_trainer_sha256=expected_sha256,
         original_counter_names=list(ORIGINAL_COUNTERS), matched_counter_names=list(MATCHED_COUNTERS),
+        actual_historical_train_step_writes_only_three_CP_counters=True,
         removed_counter='absent original historical raw-target transport counter only',
         replaced_code_constant_index=constant_position, instruction_bytes_preserved=True,
         original_loss_gradient_clipping_scaler_optimizer_and_AMP_retry_equations_preserved=True,
