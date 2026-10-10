@@ -147,7 +147,7 @@ class MemoryRuntimePolicyDebug(unittest.TestCase):
         coordinator._malloc_trim=lambda pad:calls.append(('malloc_trim',pad)) or 1
         coordinator._malloc_info=None
         with patch.object(torch.cuda, 'is_initialized', return_value=True), \
-                patch.object(torch.cuda.memory, 'host_memory_stats', return_value={'active_bytes.current':240}), \
+                patch.object(torch.cuda.memory, 'host_memory_stats', return_value={'active_bytes.current':240}, create=True), \
                 patch.object(torch._C, '_host_emptyCache', lambda:calls.append(('host_empty',)), create=True):
             coordinator._release_allocators()
         self.assertEqual(calls, [('host_empty',), ('malloc_trim',0)])
