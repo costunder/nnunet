@@ -65,7 +65,7 @@ Git 및 서버 실행
 - 복구 코드: /var/tmp/aicompetition06_v24_20261010/code_8496f20cedd1
 - GitHub: https://github.com/costunder/nnunet/tree/codex/v24-cpu-pipeline
 - 승인된 기존 저장소에 코드 commit70dfc2b305271f392a7a58a46785900a28a75249까지 push했고, 동일 commit의 불변 서버 checkout을 검증했다. 데이터·가중치·checkpoint는 push하지 않았다.
-- 세 native supervisor 코드: /var/tmp/aicompetition06_v24_20261010/code_70dfc2b30527
+- 최초 native supervisor 코드: /var/tmp/aicompetition06_v24_20261010/code_70dfc2b30527(아래 BEST 평가 코드로 대기 controller 교체)
 - GPU4 GNN은 검증된 복구 execution8496을 유지하고 GPU5/6 GNN은 기존 b558 실행 코드와 원본 request 설정을 유지한다.
 - 이 작업 기록은 별도 문서 commit으로 추가한다. 실행 중인 GNN과 supervisor는 위에 기록한 검증된 코드 commit을 유지한다.
 - 새 결과 parent: /var/tmp/aicompetition06_v24_20261010/GPU4_exact_continuation_20261011_1791646551374150800
@@ -77,7 +77,7 @@ Git 및 서버 실행
 - 기존 GPU5 worker1240177/create1791628518.53, GPU6 worker1239673/create1791628462.49 그대로 유지했다. GPU6 PBS129443.ECE-util1을 빌리거나 변경하지 않았다.
 - 기존 GPU4 failed worker/child와 watcher는 모두 자연 종료됐다. 기존 결과·claim·실패 기록은 보존했다.
 
-세 native 자동 연결 등록
+최초 native 자동 연결 등록(70dfc2b; 아래 BEST 평가 코드로 대기 controller 교체)
 - group: /var/tmp/aicompetition06_v24_20261010/GPU456_full_readonly_native_1791651784025210900
 - GPU4 supervisor1395872/create1791652007.14, CPU0–3.
 - GPU5 supervisor1395896/create1791652010.14, CPU42–45.
@@ -113,6 +113,23 @@ Git 및 서버 실행
 
 GPU4 화면 실행 명령
 /home/aicompetition06/.conda/envs/nnunet/bin/python3.10 -B /var/tmp/aicompetition06_v24_20261010/GPU4_exact_continuation_20261011_1791646551374150800/view_gpu4.py
+
+nnU-Net BEST 평가 정책 추가 적용(2026-10-11)
+- nnU-Net 전체26명 평가는 checkpoint_best.pth로 수행한다. GNN placement 선택에 사용하는 checkpoint_best.pt와 별개인 nnU-Net 자체 BEST이다.
+- 학습 종료 CLI에 --val_best를 필수화하고 일반 예측은 -chk checkpoint_best.pth로 고정했다. BEST가 없거나 마지막 실제 로드 checkpoint가 해당 fold의 BEST가 아니면 평가를 거부한다.
+- 원래 checkpoint load와 full validation 함수를 호출하면서 source-compiled 코드 식별, BEST SHA/stat, 전체26명 cohort와 실제 예측 SHA를 검증한다. 기존 FINAL 또는 출처가 불명확한 예측을 새 BEST 결과로 재표기하지 않는다.
+- checkpoint_final.pth는 전체250epoch 학습 완료 증거와 원래 checkpoint 보관 정책에만 사용한다. 평가 checkpoint는 BEST 경로/SHA와 별도 best_validation_complete.json으로 확인한다.
+- 코드 commit:4b57d9349b724b176b652a6f8d3508d6affc73c5. 승인된 기존 GitHub 브랜치 push와 불변 서버 checkout 검증을 완료했다.
+- 실제 Linux nnunet Python3.10 CPU 회귀 검사291개 통과(57.487s). 실제 설치된 nnU-Net load_checkpoint/perform_actual_validation/run_training의 source-compiled 코드 검증도 통과했다. 전체 학습 및 전체 평가 완료를 의미하지 않는다.
+- 새 group: /var/tmp/aicompetition06_v24_20261010/GPU456_full_readonly_native_1791653458857094300
+- 새 CPU 대기 supervisor: GPU4 PID1407155/create1791653487.82, GPU5 PID1407207/create1791653495.22, GPU6 PID1407278/create1791653502.25.
+- 정확한 PID/birth/argv/UID/CPU 전용/child 없음/GNN 대기 상태를 확인·보고한 뒤 이 작업의 이전 CPU 대기 프로세스1395872/1395896/1395917만 안전한 SIGTERM으로 교체했다. 원래 세 GNN과 PBS 및 기존 결과는 유지했다.
+- 기존 claim과 storage handoff proof/lease를 보존하고 BEST evaluation handoff proof/lease를 별도 파일로 추가했다. native 전체105/26/B2/250epoch와 기존 저장 예산·최종 저장 조정은 유지한다.
+- 새 세 controller는 원래 GNN 완료를 기다린다. 실제 native 학습과 BEST 전체 평가는 아직 시작하지 않았다.
+- 증거: outputs/v24_gpu4_20261010/best_eval_preflight_4b57d9349b72_1791653371964530800.json
+- 증거: outputs/v24_gpu4_20261010/best_eval_admission_4b57d9349b72_1791653458857094300.json
+- 증거: outputs/v24_gpu4_20261010/best_eval_register_4b57d9349b72_1791653474315278300.json
+- 등록 후 읽기 전용 재확인 PASS: 세 새 supervisor가 WAITING_FOR_FULL_GNN 상태이며 원래 세 GNN worker가 그대로 실행 중이다. 증거: outputs/v24_gpu4_20261010/best_eval_readback_4b57d9349b72_1791653515135158200.json
 
 ## 작업 완료 체크리스트
 
