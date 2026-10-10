@@ -1,0 +1,68 @@
+v2.4 학습 중 CPU 입력 공급 및 prefetch 개선 (2026-10-10)
+
+실제 문제
+이전 단계 캐시 개선 뒤 GPU6 실제 학습4명 배치11.679초 중 노출입력대기4.287초(36.7%).
+43.52초 관측에서 GPU1/5/6 GPU사용률 표본평균79.0/58.73/4.45%였으며,
+GPU5/6 CPU사용은 각4개 할당 중1.162/1.704개였다.
+원형 provider.get이 다음 입력을 준비하며 coordinator.lock을 잡고 있는 동안,
+현재 배치 budget.check→trim도 같은 lock을 기다려 one-ahead prefetch가 직렬화되는 경로를 확인했다.
+tensor_digest는 실제 값 검증 과정에서 flat Tensor copy와 Python bytes copy를 반복했다.
+
+실행 개선 범위
+새 v24_prefetch_runtime은 원래 RSS pressure trigger48GiB 아래에서 두 번 actualRSS를 확인한 뒤
+cache lock을 기다리지 않고 원래 ResourceBudget의64GiB·CUDA40GiB 검사를 이어간다.
+압력 구간에서는 기존 protected-input/cache eviction/GC/malloc/pinned allocator 정리를 그대로 사용한다.
+원형 single-future CPU producer,4worker,physical patient4,chunk GPU5=32/GPU6=64를 유지한다.
+별도 짧은 telemetry lock으로 입력 준비·collate·cache hit/miss·pressure lock 대기를 기록한다.
+새 v24_hash_runtime은 원래 header/order/실제 값의 SHA를 CPU buffer로 계산한다.
+Torch/NumPy의 추가 큰 복사만 제거하며, hash memoization이나 검증 생략을 하지 않는다.
+sealed 입력·모델·loss·학습 코드와 원래 query/cache format 파일bytes는 변경하지 않는다.
+
+안전 적용
+계획은 본 작업에서 생성한 GPU5/6 모델만 기존 STOP_AFTER_BATCH 프로토콜로 배치 저장 경계에서 잠시 멈추는 것이었다.
+적용 전 16:00:23에 이전 PBS129367 작업이24h walltime을 초과해 스케줄러가 종료했다.
+tracejob에 walltime86496 exceeded limit86400, kill_job, qstat Exit_status=-29 및
+comment='exceeded resource walltime'를 확인했다. 본 작업에서 신호나 STOP marker를 보내지 않았다.
+이전 wrapper·child PID 부재, 1초 이상 간격의 동일 checkpointSHA/size/mtime 증거를 새 별도 폴더에 남긴다.
+명시적 source-interruption-proof를 원형 numerical inspector와 대조한 경우에만 RUNNING checkpoint를 복구한다.
+이전 status나 checkpoint의 RUNNING을 PAUSED로 위조하거나 기존 결과를 변경하지 않는다.
+부모 wrapper/SSH/MobaXterm/다른 사용자 프로세스에 신호를 보내지 않는다.
+원형 exact-byte continuation으로 새로운 결과 폴더에 latest/BEST/model/optimizer/scheduler/scaler/RNG를 복사한다.
+학습 순서·부분 cursor·curriculum·학습 기록을 그대로 승계하며 기존 결과를 덮어쓰지 않는다.
+원형40epoch, 전체65 ranking train/21 validation, 모든P,128U full-validation BEST 선택을 유지한다.
+새 PBS129443은 GPU6만, CPU6개32–37, RAM128GiB를 배정했다.
+현재 복구는 GPU6만 CPU32–35의4개/RAM64GiB로 진행하며 기존 작업당4CPU/64GiB를 유지한다.
+GPU1/5는 배정 확인 전 학습을 재시작하지 않으며 저장된 결과를 보존한다.
+GPU1 nnUNet 재개는 원래 nnUNet checkpoint가 저장한 범위만 복구 가능하며 원형에 없는 RNG를 재현한 것으로 주장하지 않는다.
+
+검증
+통합 CPU 단위검사56/56 통과(26.918초): 원형 실제 입력 parity, pressure 보호,
+producer/consumer 겹침,1future 제한, Torch/NumPy 값·layout·변조 감지 및 원형 SHA 동일성.
+8개 중단 복구 검사는 실제 checkpoint fixture를 사용하여 원형6종 상태·partial evaluation cursor·BEST의
+정확한 byte 복사, 기존 RUNNING 보존, PID 재사용·부족한 snapshot·변경된 checkpoint/proof·잘못된 소유권 거부를 검증했다.
+정적 검사 통과. 서버 실제검사·적용 결과는 수행 후 기록한다.
+별도 DEBUG 성능 probe는 기존 최대부하 liver_6/liver_129/liver_123/liver_69의 모든P+128U,
+physical4와 실제 동일 모델·checkpoint로 forward/loss/backward를 수행하고 optimizer update는0이다.
+수정 전후 output/loss/모든gradient/model buffer/RNG가 정확히 같아야 production resume을 허용한다.
+이1배치 DEBUG probe는 전체 학습 또는 전체평가가 아니며, production calibration3회 설정은 유지한다.
+
+GPU1 마지막 완료 로그epoch143과 별개로 실제 nnUNet latest는current_epoch100, BEST는126이다.
+원래 save_every50 때문에 latest로 복구하면 완료한44epoch를 다시 학습해야 한다.
+BEST에는 전체 model/SGD momentum/scaler/logger가 있으나 RNG는 원래 저장되지 않았으며,
+어느 것을 재개에 사용할지는 GPU1 배정 확인과 명시적인 checkpoint 선택 후 결정한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 기존 연결은 보존하며 입력 실행만 변경한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
