@@ -1,9 +1,10 @@
-"""Explicit full-cache read-only GPU4 CP stages; historical copy stages stay intact."""
+"""Explicit full-cache read-only CP stages; historical copy stages stay intact."""
 from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
 import hashlib
+import importlib
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,8 @@ if str(ROOT) not in sys.path:
 sys.dont_write_bytecode = True
 
 PROFILE = 'reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly'
+EXTENSION = 'reuse_full105_exact_static_raw_case_operators_readonly_v1'
+EXTENSION_FILE = 'hiercp_v1x/v24_readonly_static_operator_storage.py'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 CHECKSUM_ENV = 'V24_READONLY_STORAGE_ADMISSION_SHA256'
 FILES = ('tools/run_v24_readonly_nnunet_cp.py', 'hiercp_v1x/v24_readonly_native_storage.py',
@@ -72,8 +75,12 @@ def parse(argv=None):
         parser.error('Worker-only options cannot alter a public native stage')
     from tools.run_v24_nnunet_cp import parse as original_parse
     arguments = original_parse(remaining)
-    if arguments.action not in ACTIONS or arguments.gpu != 4 or arguments.resume:
-        parser.error('This explicit read-only profile requires fresh own-arm GPU4 and its original five stages')
+    if arguments.action not in ACTIONS or arguments.gpu not in (4, 5, 6) or arguments.resume:
+        parser.error('This explicit read-only profile requires fresh own-arm GPU4/5/6 and its original five stages')
+    if arguments.gpu in (5, 6):
+        _stat(options.storage_admission)
+        if json.loads(options.storage_admission.read_text(encoding='utf8')).get('storage_extension') != EXTENSION:
+            parser.error('GPU5/6 require the explicit full105 static-operator extension')
     arguments.storage_admission = options.storage_admission
     arguments.readonly_worker = None
     return arguments
@@ -89,12 +96,18 @@ def admit(path):
         raise ValueError('The watcher-pinned read-only storage admission SHA is required')
     document = json.loads(path.read_text(encoding='utf8'))
     storage.verify_admission(document, full_hash=False)
+    extension = document.get('storage_extension')
+    if extension is not None:
+        if extension != EXTENSION:
+            raise ValueError('Unknown explicit full-static-array storage extension')
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        static.verify_admission(document, full_hash=False)
     if (document.get('profile') != PROFILE or document.get('format') != storage.FORMAT
             or document.get('debug') is not False or document.get('model_data_scale_preserved') is not True
             or document.get('scores_reused') is not False or document.get('learned_upper_reused') is not False
             or _stat(path) != before):
         raise ValueError('Actual unchanged full105/full131 static-only storage admission required')
-    witnesses = {ROOT / name: _stat(ROOT / name) for name in FILES}
+    witnesses = {ROOT / name: _stat(ROOT / name) for name in runtime_files(document)}
     witnesses[path] = before
     def guard():
         for filename, stat in witnesses.items():
@@ -103,12 +116,19 @@ def admit(path):
     return document, checksum, guard
 
 
+def runtime_files(document):
+    return (*FILES, EXTENSION_FILE) if document.get('storage_extension') == EXTENSION else FILES
+
+
 @contextmanager
-def runtime_scope(pipeline, storage, admission_path, guard, *, write_root, reserve_bytes):
+def runtime_scope(pipeline, storage, admission_path, guard, *, write_root, reserve_bytes, extension=None):
     """Adapt storage only inside this dedicated process and restore its namespace."""
     original = {name: getattr(pipeline, name) for name in ('_materialize_bank', 'require_project_budget', 'subprocess')}
     try:
-        storage.install_pipeline_adapter(pipeline, admission_path)
+        if extension is None:
+            storage.install_pipeline_adapter(pipeline, admission_path)
+        else:
+            extension.install_pipeline_adapter(pipeline, admission_path, admission_path)
         if pipeline._materialize_bank.__code__ is not original['_materialize_bank'].__code__:
             raise ValueError('Original complete CP materialization code must be preserved')
         def budget():
@@ -140,13 +160,28 @@ def redirect(command, *, executable, native_path, admission_path, runtime, train
 def _bind_native(pipeline, storage, args, checksum):
     native = pipeline.read(args.native)
     bank = pipeline.validate_bank(pipeline.read(native['bank']))
-    if (native.get('format') != pipeline.CURRENT_FORMAT or native.get('physical_GPU') != 4
+    extended = native.get('storage_extension') == EXTENSION
+    gpu = native.get('physical_GPU')
+    if (native.get('format') != pipeline.CURRENT_FORMAT or gpu not in (4, 5, 6)
+            or bank.get('physical_GPU') != gpu
+            or not extended and gpu != 4
+            or getattr(args, 'gpu', gpu) != gpu
             or native.get('storage_profile') != PROFILE or bank.get('storage_profile') != PROFILE
             or native.get('storage_admission') != str(args.storage_admission)
             or native.get('storage_admission_sha256') != checksum or bank.get('storage_admission_sha256') != checksum):
         raise ValueError('Native/bank must declare this exact own-arm read-only full-cache admission')
     private = Path(native['root']) / 'nnUNet_preprocessed' / bank['baseline']['dataset_name'] / bank['baseline']['data_identifier']
-    adapters = storage.install_runtime_adapters(args.storage_admission, Path(native['bank']).parent, private)
+    if extended:
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        if bank.get('storage_extension') != EXTENSION:
+            raise ValueError('Native and bank must declare the same full-static-array extension')
+        trainer = getattr(importlib.import_module('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_FrozenV23CP'), pipeline.TRAINER)
+        adapters = dict(raw_store=static.install_runtime_adapters(args.storage_admission, Path(native['bank']).parent),
+            preprocessed=storage.install_dataset_adapter(args.storage_admission, private),
+            checkpoint_publication=static.verify_private_checkpoint_publication(args.storage_admission, native['private_runtime'],
+                trainer_class=trainer))
+    else:
+        adapters = storage.install_runtime_adapters(args.storage_admission, Path(native['bank']).parent, private)
     if (not isinstance(adapters, dict)
             or adapters.get('raw_store', {}).get('exact_original_store_class') is not True
             or adapters.get('raw_store', {}).get('readonly_role_references') != 210
@@ -156,6 +191,10 @@ def _bind_native(pipeline, storage, args, checksum):
             or adapters.get('preprocessed', {}).get('unpack_noop') is not True
             or adapters.get('preprocessed', {}).get('full_preprocessed_cases') != 131):
         raise ValueError('Actual read-only dataset/raw-store installation proof required')
+    if extended and (adapters['raw_store'].get('readonly_static_operator_references') != 840
+            or adapters['raw_store'].get('original_load_case_code_preserved') is not True
+            or adapters['raw_store'].get('read_mode') != 'r'):
+        raise ValueError('All105 original eight static array roles must use the exact read-only loader')
     return native, bank, adapters
 
 
@@ -180,6 +219,7 @@ def worker(args, pipeline, storage, checksum, guard):
         worker=args.readonly_worker, storage_profile=PROFILE, storage_admission=str(args.storage_admission),
         storage_admission_sha256=checksum, native=str(args.native), native_sha256=_sha(args.native),
         adapters=adapters, cached_inputs_written=False, model_data_scale_preserved=True,
+        storage_extension=native.get('storage_extension'),
         physical_batch=args.physical_batch if args.readonly_worker == 'calibrate' else 2,
         native_epochs=250, completed_at=time.time()))
     return result
@@ -206,10 +246,19 @@ def main(args):
     from hiercp_v1x import v24_readonly_native_storage as storage
     from hiercp_v1x import v24_native_calibration_runtime as runtime
     document, checksum, guard = admit(args.storage_admission)
+    extension = None
+    if document.get('storage_extension') == EXTENSION:
+        from hiercp_v1x import v24_readonly_static_operator_storage as extension
+    if args.readonly_worker is None and args.gpu in (5, 6) and extension is None:
+        raise ValueError('GPU5/6 require the explicitly admitted complete static-operator extension')
     launches = []
     write_root = (Path(native['root']) if args.readonly_worker is not None else _chain_root(args))
+    chain_root = write_root.parent if args.readonly_worker is not None else write_root
+    growth = 0 if extension is None else document['aggregate_budget']['growth_margin_bytes']
+    if extension is not None:
+        extension.check_aggregate_disk(document, chain_root, preparation=True)
     with runtime_scope(pipeline, storage, args.storage_admission, guard, write_root=write_root,
-            reserve_bytes=document['budget']['minimum_runtime_free_bytes']):
+            reserve_bytes=document['budget']['minimum_runtime_free_bytes'] + growth, extension=extension):
         if args.readonly_worker is not None:
             return worker(args, pipeline, storage, checksum, guard)
         if args.action in ('pin-current-gnn', 'prepare-current-bank') and (
@@ -227,7 +276,8 @@ def main(args):
                 gpu=args.gpu, stunet_checkpoint=args.stunet_checkpoint)
         elif args.action == 'prepare-native':
             pipeline._admit_arm_gpu(pipeline.validate_bank(pipeline.read(args.bank))['pin'], args.gpu)
-            result = storage.prepare_native(args.bank, args.output, args.storage_admission, pipeline)
+            preparer = storage if extension is None else extension
+            result = preparer.prepare_native(args.bank, args.output, args.storage_admission, pipeline)
         else:
             _bind_native(pipeline, storage, args, checksum)
             original = pipeline.subprocess
@@ -259,6 +309,7 @@ def main(args):
                         or declared.get('worker') != kind or declared.get('physical_batch') != batch
                         or declared.get('native_epochs') != 250 or declared.get('native') != str(args.native)
                         or declared.get('storage_admission_sha256') != checksum
+                        or declared.get('storage_extension') != document.get('storage_extension')
                         or declared.get('native_sha256') != _sha(args.native)
                         or declared.get('cached_inputs_written') is not False
                         or not isinstance(declared.get('adapters'), dict)):
@@ -267,10 +318,14 @@ def main(args):
                 launch['readonly_worker_receipt'] = dict(path=str(path), sha256=_sha(path))
         guard()
         storage.verify_admission(document, full_hash=False)
+        if extension is not None:
+            extension.verify_admission(document, full_hash=False)
+            extension.check_aggregate_disk(document, chain_root, preparation=False)
     proof = dict(format='v24_readonly_native_stage_v1', status='COMPLETE', action=args.action,
         storage_profile=PROFILE, storage_admission=str(args.storage_admission), storage_admission_sha256=checksum,
         cached_inputs_written=False, model_data_scale_preserved=True, scores_reused=False, learned_upper_reused=False,
-        runtime_sources_sha256={name: _sha(ROOT / name) for name in FILES}, launches=launches,
+        storage_extension=document.get('storage_extension'),
+        runtime_sources_sha256={name: _sha(ROOT / name) for name in runtime_files(document)}, launches=launches,
         native_epochs=250, native_physical_batch=2, cp_probability=.5, completed_at=time.time())
     pipeline.new_json(_chain_root(args) / ('readonly_storage_' + args.action.replace('-', '_') + '.json'), proof)
     print(result)

@@ -443,6 +443,163 @@ class CompletedArmFixture(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'admission SHA/stat changed'):
                 self.inspect_continuation(live=True)
 
+    def make_static_handoff(self, gpu=5):
+        self.request = self.make_request(gpu); self.write_completion(gpu)
+        previous = copy.deepcopy(self.request); previous_root = self.target
+        previous_root.mkdir()
+        self.write_json(previous_root / 'request.json', previous)
+        old_checksum = chain.sha(previous_root / 'request.json')
+        claim = dict(format='v24_owned_gnn_to_native_source_claim_v1', source_output=previous['source_output'],
+            GPU_arm=gpu, chain_root=str(previous_root), request_sha256=old_checksum)
+        self.write_json(previous['source_claim_path'], claim)
+        command = [previous['python'], '-B', '-u', str(self.code / 'tools/watch_v24_gnn_to_nnunet.py'),
+                   '--request', str(previous_root / 'request.json')]
+        registration = dict(GPU_arm=gpu, root=str(previous_root), pid=999, create_time=12., command=command,
+            request_sha256=old_checksum, CPU_affinity=previous['CPU_affinity'], CUDA_visible_devices_while_waiting='')
+        self.write_json(previous_root / 'registration.json', registration)
+        self.write_json(previous_root / 'launch.lease.json', dict(request_sha256=old_checksum, supervisor_pid=999))
+        self.write_json(previous_root / 'status.json', dict(status='WAITING_FOR_FULL_GNN', GPU_arm=gpu,
+            request_sha256=old_checksum, supervisor_pid=999, supervisor_create_time=12., stage=None,
+            stages_completed=[], stage_proofs=[], signals_sent=False, source_job=previous['source_job'],
+            actual_CPU_affinity=previous['CPU_affinity'], source_claim_path=previous['source_claim_path'],
+            source_claim_sha256=chain.sha(previous['source_claim_path'])))
+        (previous_root / 'watcher.log').write_text('CPU-only DEBUG old waiter log remains immutable')
+        self.old_waiter_bytes = {str(p): p.read_bytes() for p in previous_root.iterdir()}
+        self.previous_waiter_root = previous_root
+        self.target = self.root / ('new_static_native_gpu' + str(gpu))
+        for name in (chain.READONLY_ENTRY, chain.READONLY_HELPER, chain.STATIC_HELPER):
+            path = self.code / name; path.parent.mkdir(exist_ok=True); path.write_text('# DEBUG static storage source\n')
+            self.request['code_files'][name] = chain.sha(path)
+        self.storage_document = dict(format='v24_native_immutable_full_cache_storage_v1', profile=chain.READONLY_PROFILE,
+            storage_extension=chain.STATIC_EXTENSION, inventory=dict(path=str(self.inventory), sha256=chain.sha(self.inventory)),
+            baseline=dict(preprocessed=str(self.preprocessed)), model_data_scale_preserved=True, debug=False,
+            scores_reused=False, learned_upper_reused=False,
+            budget=dict(new_writable_bytes_estimate=2 * 2**30, checkpoint_reserve_bytes=10 * 2**30,
+                required_free_bytes=12 * 2**30, minimum_runtime_free_bytes=10 * 2**30),
+            aggregate_budget=dict(required_free_bytes=int(16.5 * 2**30), growth_margin_bytes=2**29,
+                arms={'gpu' + str(gpu): dict(root=str(self.target))}))
+        self.storage_path = self.root / 'DEBUG_static_storage_admission.json'; self.write_json(self.storage_path, self.storage_document)
+        self.request.update(chain_root=str(self.target), storage_profile=chain.READONLY_PROFILE,
+            storage_extension=chain.STATIC_EXTENSION, storage_admission=str(self.storage_path),
+            storage_admission_sha256=chain.sha(self.storage_path), storage_admission_stat=chain._file_stat(self.storage_path),
+            min_free_disk_GiB=16.5, source_execution_code=previous['source_code'],
+            source_execution_commit=previous['source_commit'], source_execution_files=previous['source_files'])
+        for row in self.request['stages']:
+            row['command'] = [value.replace(str(previous_root), str(self.target)) for value in row['command']]
+            row['command'][3] = str(self.code / chain.READONLY_ENTRY)
+            row['command'] += ['--storage-admission', str(self.storage_path)]
+        claim_path = Path(previous['source_claim_path'])
+        self.handoff_path = claim_path.with_name(claim_path.stem + '.storage_handoff_proof_DEBUG.json')
+        proof = dict(format='v24_native_storage_only_supersession_proof_v1', previous_chain_root=str(previous_root),
+            chain_root=str(self.target), source_output=previous['source_output'],
+            source_claim_sha256=chain.sha(claim_path), previous_files_sha256={name: chain.sha(previous_root / name)
+                for name in ('request.json', 'status.json', 'launch.lease.json', 'registration.json')},
+            previous_supervisor_pid=999, previous_supervisor_create_time=12., previous_supervisor_command=command,
+            old_waiter_closed=True, old_waiter_children=[], old_waiter_cuda_visible_devices='',
+            original_GNN_processes_signaled=False, previous_results_written=False)
+        self.write_json(self.handoff_path, proof)
+        self.request['storage_handoff'] = dict(proof=str(self.handoff_path), proof_sha256=chain.sha(self.handoff_path),
+            lease=str(claim_path.with_name(claim_path.stem + '.storage_handoff_lease.json')))
+        self.new_request_checksum = 'e' * 64
+        self.write_handoff_lease()
+
+    def write_handoff_lease(self):
+        proof = chain.read(self.handoff_path); handoff = self.request['storage_handoff']
+        self.write_json(handoff['lease'], dict(format='v24_native_storage_only_supersession_lease_v1',
+            GPU_arm=self.request['GPU_arm'], source_output=self.request['source_output'],
+            source_claim_path=self.request['source_claim_path'], source_claim_sha256=proof['source_claim_sha256'],
+            previous_chain_root=proof['previous_chain_root'], chain_root=self.request['chain_root'],
+            request_sha256=self.new_request_checksum, proof=handoff['proof'], proof_sha256=handoff['proof_sha256']))
+
+    def static_mock(self):
+        return patch('hiercp_v1x.v24_readonly_static_operator_storage.verify_admission')
+
+    def test_static_storage_handoff_preserves_all_original_controller_files(self):
+        self.make_static_handoff()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain, 'process_witness', return_value=None):
+            chain.validate_request(self.request)
+            self.assertEqual(chain.verify_source_claim(self.request, self.new_request_checksum),
+                             chain.sha(self.request['source_claim_path']))
+        for path, value in self.old_waiter_bytes.items():self.assertEqual(Path(path).read_bytes(), value)
+
+    def test_static_storage_gpu6_preserves_original_STU_and_PBS_source(self):
+        self.make_static_handoff(6)
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock(), \
+                patch.object(chain, 'process_witness', return_value=None):
+            chain.validate_request(self.request)
+            chain.verify_source_claim(self.request, self.new_request_checksum)
+            changed = dict(self.request, scheduler=dict(self.request['scheduler'], expires_at_unix=9999999999))
+            with self.assertRaisesRegex(ValueError, 'GNN/assets/assignment/PBS'):
+                chain._validate_storage_handoff(changed)
+
+    def test_static_storage_handoff_rejects_live_prior_CPU_waiter(self):
+        self.make_static_handoff()
+        with patch.object(chain, 'process_witness', return_value=dict(status='running')):
+            with self.assertRaisesRegex(RuntimeError, 'waiter remains live'):
+                chain._validate_storage_handoff(self.request)
+
+    def test_static_storage_handoff_rejects_outputs_and_nonwaiting_prior(self):
+        self.make_static_handoff()
+        (self.previous_waiter_root / 'bank').mkdir()
+        with patch.object(chain, 'process_witness', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'stage/output'):
+                chain._validate_storage_handoff(self.request)
+        (self.previous_waiter_root / 'bank').rmdir()
+        status_path = self.previous_waiter_root / 'status.json'; status = chain.read(status_path)
+        status['stage'] = 'prepare_current_bank'; self.write_json(status_path, status)
+        proof = chain.read(self.handoff_path); proof['previous_files_sha256']['status.json'] = chain.sha(status_path)
+        self.write_json(self.handoff_path, proof); self.request['storage_handoff']['proof_sha256'] = chain.sha(self.handoff_path)
+        with patch.object(chain, 'process_witness', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'never-launched waiter'):
+                chain._validate_storage_handoff(self.request)
+
+    def test_static_storage_handoff_rejects_source_change_and_proof_tampering(self):
+        self.make_static_handoff()
+        with self.assertRaisesRegex(ValueError, 'GNN/assets/assignment/PBS'):
+            chain._validate_storage_handoff(dict(self.request, source_commit='f' * 40))
+        self.handoff_path.write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'SHA-pinned proof'):
+            chain._validate_storage_handoff(self.request)
+
+    def test_static_storage_handoff_rejects_lease_replay_and_oldclaim_replacement(self):
+        self.make_static_handoff()
+        with patch.object(chain, 'process_witness', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'another request/root'):
+                chain.verify_source_claim(self.request, 'f' * 64)
+            claim = chain.read(self.request['source_claim_path']); claim['chain_root'] = str(self.target)
+            self.write_json(self.request['source_claim_path'], claim)
+            with self.assertRaisesRegex(ValueError, 'exclusive source claim changed'):
+                chain.verify_source_claim(self.request, self.new_request_checksum)
+
+    def test_static_extension_cannot_reduce_aggregate_floor_or_retarget_execution(self):
+        self.make_static_handoff()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock():
+            with self.assertRaisesRegex(ValueError, 'storage reservation'):
+                chain._readonly_storage(dict(self.request, min_free_disk_GiB=12))
+            with self.assertRaisesRegex(ValueError, 'original scientific execution'):
+                chain._readonly_storage(dict(self.request, source_execution_code=self.request['code']))
+
+    def test_static_resource_gate_credits_prior_writes_before_every_stage(self):
+        self.make_static_handoff()
+        admitted = dict(required_free_bytes=int(10.75 * 2**30), actual_free_bytes=11 * 2**30,
+            remaining_new_writable_bytes={'gpu4': 2**28}, expensive_output_scan=True)
+        def device(command):
+            return '5, GPU-5, 81920, 81920, Disabled' if '--id=5' in command else ''
+        with patch.object(chain, '_readonly_storage', return_value=self.storage_document), \
+                patch.object(chain, '_run', side_effect=device), patch.object(chain, 'scheduler_proof', return_value=None), \
+                patch.object(chain.shutil, 'disk_usage', return_value=SimpleNamespace(free=11 * 2**30)), \
+                patch('psutil.Process') as process, \
+                patch('hiercp_v1x.v24_readonly_static_operator_storage.check_aggregate_disk', return_value=admitted) as aggregate:
+            process.return_value.cpu_affinity.return_value = self.request['CPU_affinity']
+            result = chain.resources(self.request, initial=True)
+            self.assertEqual(result['minimum_free_disk_GiB'], 10.75)
+            self.assertEqual(result['aggregate_storage'], admitted)
+            aggregate.assert_called_once_with(self.storage_document, self.request['chain_root'], preparation=True)
+            aggregate.side_effect = OSError('DEBUG aggregate remaining writes do not fit')
+            with self.assertRaisesRegex(OSError, 'aggregate remaining writes'):
+                chain.resources(self.request, initial=False, stage_index=3)
+
     def test_gpu4_exact_continuation_full_completion_preserves_old_bytes_and_native_contract(self):
         self.make_continuation()
         chain.validate_request(self.request)

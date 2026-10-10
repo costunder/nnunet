@@ -34,6 +34,8 @@ NUMERICAL_STATES = ('model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'sh
 READONLY_PROFILE = 'reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly'
 READONLY_ENTRY = 'tools/run_v24_readonly_nnunet_cp.py'
 READONLY_HELPER = 'hiercp_v1x/v24_readonly_native_storage.py'
+STATIC_EXTENSION = 'reuse_full105_exact_static_raw_case_operators_readonly_v1'
+STATIC_HELPER = 'hiercp_v1x/v24_readonly_static_operator_storage.py'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
 PARAMETER_TENSORS = {4: 537, 5: 981, 6: 537}
@@ -139,11 +141,13 @@ def _readonly_storage(request):
     profile = request.get('storage_profile')
     if profile is None:
         if any(key in request for key in ('storage_admission', 'storage_admission_sha256', 'storage_admission_stat',
-                                          'source_execution_code', 'source_execution_commit', 'source_execution_files')):
+                                          'source_execution_code', 'source_execution_commit', 'source_execution_files',
+                                          'storage_extension', 'storage_handoff')):
             raise ValueError('Explicit reviewed read-only storage profile required for storage/execution overrides')
         return None
-    if profile != READONLY_PROFILE or request.get('GPU_arm') != 4 or request.get('recovery') is not None:
-        raise ValueError('The immutable full-cache storage profile explicitly belongs to a fresh GPU4 chain')
+    if (profile != READONLY_PROFILE or request.get('GPU_arm') not in (4, 5, 6)
+            or request.get('recovery') is not None):
+        raise ValueError('The immutable full-cache storage profile requires an explicitly admitted fresh own-arm chain')
     path = owned(request['storage_admission'])
     if (not _checksum(request.get('storage_admission_sha256'))
             or sha(path) != request['storage_admission_sha256']
@@ -152,6 +156,31 @@ def _readonly_storage(request):
     from hiercp_v1x.v24_readonly_native_storage import verify_admission
     document = read(path)
     verify_admission(document, full_hash=False)
+    extension = request.get('storage_extension')
+    if document.get('storage_extension') != extension or extension not in (None, STATIC_EXTENSION):
+        raise ValueError('The supplemental static operator admission differs from its explicit request')
+    if request['GPU_arm'] in (5, 6) and extension != STATIC_EXTENSION:
+        raise ValueError('GPU5/6 require the explicit full105 static-operator extension')
+    if extension is not None:
+        from hiercp_v1x.v24_readonly_static_operator_storage import verify_admission as verify_static
+        verify_static(document, full_hash=False)
+        aggregate = document.get('aggregate_budget', {})
+        if (type(request.get('min_free_disk_GiB')) not in (int, float)
+                or not math.isfinite(request['min_free_disk_GiB'])
+                or type(aggregate.get('required_free_bytes')) is not int
+                or request['min_free_disk_GiB'] * 2**30 < aggregate['required_free_bytes']
+                or aggregate.get('arms', {}).get('gpu' + str(request['GPU_arm']), {}).get('root') != request['chain_root']
+                or STATIC_HELPER not in request.get('code_files', {})):
+            raise ValueError('Complete three-arm original checkpoint/growth storage reservation required')
+    if request['GPU_arm'] in (5, 6):
+        if (request.get('source_execution_code') != request['source_code']
+                or request.get('source_execution_commit') != request['source_commit']
+                or request.get('source_execution_files') != request['source_files']):
+            raise ValueError('GPU5/6 storage cannot retarget their original scientific execution checkout')
+        if request.get('storage_handoff') is None:
+            raise ValueError('Existing GPU5/6 exclusive source claims require an append-only storage handoff')
+    elif request.get('storage_handoff') is not None:
+        raise ValueError('GPU4 retains its ordinary fresh source claim')
     budget = document.get('budget', {})
     estimate, reserve, required = (budget.get(key) for key in
         ('new_writable_bytes_estimate', 'checkpoint_reserve_bytes', 'required_free_bytes'))
@@ -286,6 +315,8 @@ def validate_request(request, *, fresh=True):
             owned(path)
     if request.get('recovery') is not None:
         _validate_recovery(request)
+    if request.get('storage_handoff') is not None:
+        _validate_storage_handoff(request)
     return request
 
 
@@ -606,7 +637,7 @@ def inspect_source(request):
     execution_code, execution_commit, _ = _source_execution(request)
     expected_code, expected_commit = ((execution_code, execution_commit) if continuation else
         (request['source_code'], request['source_commit']))
-    if request.get('storage_profile') == READONLY_PROFILE and not continuation:
+    if request.get('storage_profile') == READONLY_PROFILE and gpu == 4 and not continuation:
         raise ValueError('Read-only GPU4 chain requires its explicitly pinned exact saved-state source pipeline')
     scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu in (4, 5) else (
         'original_total_epochs', 'original_patient_batch', 'original_candidate_chunk')
@@ -768,7 +799,7 @@ def scheduler_proof(request, *, stage_index=0):
 
 
 def resources(request, *, initial=False, stage_index=0):
-    _readonly_storage(request)
+    storage = _readonly_storage(request)
     import psutil
     affinity = psutil.Process().cpu_affinity()
     if affinity != request['CPU_affinity']:
@@ -785,10 +816,16 @@ def resources(request, *, initial=False, stage_index=0):
         raise AssignedGPUUnavailable('Assigned GPU still has a compute application; no duplicate/downstream launch')
     free = shutil.disk_usage(request['chain_root']).free
     minimum = request['min_free_disk_GiB'] if initial else request.get('minimum_runtime_free_disk_GiB', 10)
-    if free < minimum * 2**30:
+    aggregate = None
+    if request.get('storage_extension') == STATIC_EXTENSION:
+        from hiercp_v1x.v24_readonly_static_operator_storage import check_aggregate_disk
+        aggregate = check_aggregate_disk(storage, request['chain_root'], preparation=True)
+        minimum = aggregate['required_free_bytes'] / 2**30
+    elif free < minimum * 2**30:
         raise OSError('Full native data/checkpoint reserve does not fit; no subset or overwrite fallback')
     return dict(actual_CPU_affinity=affinity, GPU_UUID=request['GPU_UUID'], free_VRAM_MiB=float(fields[3]),
-                free_disk_bytes=free, minimum_free_disk_GiB=minimum, scheduler=scheduler_proof(request, stage_index=stage_index))
+                free_disk_bytes=free, minimum_free_disk_GiB=minimum, aggregate_storage=aggregate,
+                scheduler=scheduler_proof(request, stage_index=stage_index))
 
 
 def stage_proof(request, action):
@@ -854,6 +891,10 @@ def stage_proof(request, action):
             raise ValueError('Explicit read-only stage/cache/admission completion proof differs')
         runtime_files = (READONLY_ENTRY, READONLY_HELPER, 'hiercp_v1x/v24_native_calibration_runtime.py',
                          'hiercp_v1x/v24_native_crop_runtime.py', 'hiercp_v1x/v24_native_gradient_runtime.py')
+        if request.get('storage_extension') == STATIC_EXTENSION:
+            runtime_files = (*runtime_files, STATIC_HELPER)
+        if declared.get('storage_extension') != request.get('storage_extension'):
+            raise ValueError('The actual completed stage static-operator extension differs')
         sources = declared.get('runtime_sources_sha256')
         if (not isinstance(sources, dict) or set(sources) != set(runtime_files)
                 or any(request['code_files'].get(name) != checksum or sha(Path(request['code']) / name) != checksum
@@ -864,6 +905,8 @@ def stage_proof(request, action):
                 or value.get('storage_admission') != request['storage_admission']
                 or value.get('storage_admission_sha256') != request['storage_admission_sha256']):
             raise ValueError('Bank/native metadata does not declare its actual read-only cache profile')
+        if action in ('prepare-current-bank', 'prepare-native') and value.get('storage_extension') != request.get('storage_extension'):
+            raise ValueError('Bank/native metadata does not declare its actual static-operator extension')
         proof['storage_receipt'] = dict(path=str(receipt), sha256=sha(receipt))
     return proof
 
@@ -953,8 +996,101 @@ def _validate_recovery(request):
     return proof, previous_checksum
 
 
+def _validate_storage_handoff(request):
+    """Append a storage-only controller to a closed, never-launched own waiter."""
+    handoff = request.get('storage_handoff')
+    if (request.get('GPU_arm') not in (5, 6) or request.get('storage_profile') != READONLY_PROFILE
+            or request.get('storage_extension') != STATIC_EXTENSION
+            or request.get('recovery') is not None or not isinstance(handoff, dict)
+            or set(handoff) != {'proof', 'proof_sha256', 'lease'}):
+        raise ValueError('Only the explicit GPU5/6 static-storage controller supersession is supported')
+    claim_path = owned(request['source_claim_path'])
+    proof_path = owned(handoff['proof'])
+    lease = claim_path.with_name(claim_path.stem + '.storage_handoff_lease.json')
+    if (not _checksum(handoff['proof_sha256']) or sha(proof_path) != handoff['proof_sha256']
+            or proof_path.parent != claim_path.parent
+            or not proof_path.name.startswith(claim_path.stem + '.storage_handoff_proof_')
+            or proof_path.suffix != '.json' or handoff['lease'] != str(lease)):
+        raise ValueError('Storage handoff must append one SHA-pinned proof/exclusive lease to the original registry')
+    owned(lease, must_exist=False)
+    proof = read(proof_path)
+    previous_root = owned(proof['previous_chain_root'], directory=True)
+    root = Path(request['chain_root'])
+    if (proof.get('format') != 'v24_native_storage_only_supersession_proof_v1'
+            or proof.get('chain_root') != str(root) or proof.get('source_output') != request['source_output']
+            or previous_root == root or previous_root in root.parents or root in previous_root.parents
+            or set(proof.get('previous_files_sha256', {})) !=
+                {'request.json', 'status.json', 'launch.lease.json', 'registration.json'}
+            or not _checksum(proof.get('source_claim_sha256'))
+            or proof.get('old_waiter_closed') is not True or proof.get('old_waiter_children') != []
+            or proof.get('old_waiter_cuda_visible_devices') != ''
+            or proof.get('original_GNN_processes_signaled') is not False
+            or proof.get('previous_results_written') is not False):
+        raise ValueError('Immutable prelaunch CPU-only storage handoff proof required')
+    for name, checksum in proof['previous_files_sha256'].items():
+        if not _checksum(checksum) or sha(previous_root / name) != checksum:
+            raise ValueError('Original GPU5/6 controller artifact changed: ' + name)
+    previous = read(previous_root / 'request.json')
+    if (previous.get('chain_root') != str(previous_root) or previous.get('storage_profile') is not None
+            or previous.get('storage_handoff') is not None or previous.get('recovery') is not None):
+        raise ValueError('Storage handoff requires the original full-copy waiter, never another handoff')
+    validate_request(previous, fresh=False)
+    same = ('GPU_arm', 'GPU_UUID', 'source_output', 'source_code', 'source_commit', 'source_files', 'source_job',
+            'CPU_affinity', 'scoring_RAM_GiB', 'native_RAM_GiB', 'python', 'inventory', 'baseline_preprocessed',
+            'input_cache', 'stunet_checkpoint', 'stunet_checkpoint_sha256', 'scheduler', 'source_claim_path')
+    if any(previous.get(name) != request.get(name) for name in same):
+        raise ValueError('Storage supersession changed original GNN/assets/assignment/PBS contract')
+    checksum = proof['previous_files_sha256']['request.json']
+    status, registration, old_lease = (read(previous_root / name) for name in
+                                       ('status.json', 'registration.json', 'launch.lease.json'))
+    pid, birth, command = (proof.get('previous_supervisor_' + key) for key in ('pid', 'create_time', 'command'))
+    expected_command = [previous['python'], '-B', '-u', str(Path(previous['code']) / 'tools/watch_v24_gnn_to_nnunet.py'),
+                        '--request', str(previous_root / 'request.json')]
+    if (type(pid) is not int or pid <= 0 or type(birth) not in (int, float) or command != expected_command
+            or registration.get('GPU_arm') != request['GPU_arm'] or registration.get('root') != str(previous_root)
+            or registration.get('pid') != pid or registration.get('create_time') != birth
+            or registration.get('command') != command or registration.get('request_sha256') != checksum
+            or registration.get('CPU_affinity') != request['CPU_affinity']
+            or registration.get('CUDA_visible_devices_while_waiting') != ''
+            or status.get('GPU_arm') != request['GPU_arm'] or status.get('status') != 'WAITING_FOR_FULL_GNN'
+            or status.get('stage') is not None or status.get('child_pid') is not None
+            or status.get('child_create_time') is not None or status.get('gnn_completion') is not None
+            or status.get('stages_completed') != [] or status.get('stage_proofs') != []
+            or status.get('signals_sent') is not False or status.get('request_sha256') != checksum
+            or status.get('source_job') != request['source_job'] or status.get('supervisor_pid') != pid
+            or status.get('supervisor_create_time') != birth
+            or status.get('actual_CPU_affinity') != request['CPU_affinity']
+            or status.get('source_claim_path') != request['source_claim_path']
+            or status.get('source_claim_sha256') != proof['source_claim_sha256']
+            or old_lease.get('supervisor_pid') != pid or old_lease.get('request_sha256') != checksum):
+        raise ValueError('Original controller is not its registered CPU-only never-launched waiter')
+    witness = process_witness(pid, birth, command)
+    if witness is not None and witness['status'] != 'zombie':
+        raise RuntimeError('Original own CPU waiter remains live; no storage controller may launch')
+    allowed = {'request.json', 'status.json', 'launch.lease.json', 'registration.json', 'watcher.log'}
+    for path in previous_root.iterdir():
+        if path.name not in allowed:
+            raise ValueError('Original waiter contains native stage/output artifacts; storage-only handoff refused')
+        owned(path)
+    return proof, checksum
+
+
 def verify_source_claim(request, request_checksum):
     path = request['source_claim_path']
+    if request.get('storage_handoff') is not None:
+        proof, previous_checksum = _validate_storage_handoff(request)
+        handoff = request['storage_handoff']
+        expected = dict(format='v24_owned_gnn_to_native_source_claim_v1', source_output=request['source_output'],
+            GPU_arm=request['GPU_arm'], chain_root=proof['previous_chain_root'], request_sha256=previous_checksum)
+        if read(path) != expected or sha(path) != proof['source_claim_sha256']:
+            raise ValueError('Original exclusive source claim changed; storage handoff cannot replace it')
+        expected_lease = dict(format='v24_native_storage_only_supersession_lease_v1', GPU_arm=request['GPU_arm'],
+            source_output=request['source_output'], source_claim_path=path, source_claim_sha256=proof['source_claim_sha256'],
+            previous_chain_root=proof['previous_chain_root'], chain_root=request['chain_root'], request_sha256=request_checksum,
+            proof=handoff['proof'], proof_sha256=handoff['proof_sha256'])
+        if read(handoff['lease']) != expected_lease:
+            raise ValueError('Exclusive storage handoff lease belongs to another request/root; no replay')
+        return sha(path)
     if request.get('recovery') is not None:
         proof, previous_checksum = _validate_recovery(request)
         recovery = request['recovery']

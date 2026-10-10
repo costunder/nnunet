@@ -38,6 +38,81 @@ class ReadonlyEntryTest(unittest.TestCase):
         with patch('sys.stderr', io.StringIO()), self.assertRaises(SystemExit):
             entry.parse(['train', '--native', str(self.native), '--gpu', '4'])
 
+    def test_gpu56_public_stages_require_the_declared_static_extension(self):
+        self.admission.write_text(json.dumps(dict(storage_extension=entry.EXTENSION)))
+        for gpu in (5, 6):
+            self.native.write_text(json.dumps(dict(format='v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1', physical_GPU=gpu)))
+            args = entry.parse(['train', '--native', str(self.native), '--gpu', str(gpu),
+                '--storage-admission', str(self.admission)])
+            self.assertEqual(args.gpu, gpu); self.assertFalse(args.resume)
+        self.admission.write_text('{}')
+        with patch('sys.stderr', io.StringIO()), self.assertRaises(SystemExit):
+            entry.parse(['train', '--native', str(self.native), '--gpu', '6', '--storage-admission', str(self.admission)])
+
+    def test_static_extension_keeps_original_materializer_and_growth_floor(self):
+        def materialize():return 'DEBUG full original CP operator equations'
+        pipeline = SimpleNamespace(_materialize_bank=materialize, require_project_budget=lambda: 'full', subprocess=object())
+        def install(target, base, admission):
+            self.assertEqual(base, admission)
+            target._materialize_bank = FunctionType(materialize.__code__, materialize.__globals__, materialize.__name__)
+        extension = SimpleNamespace(install_pipeline_adapter=unittest.mock.Mock(side_effect=install))
+        core = SimpleNamespace(install_pipeline_adapter=unittest.mock.Mock())
+        with patch.object(entry.shutil, 'disk_usage', return_value=SimpleNamespace(free=int(10.25 * 2**30))):
+            with entry.runtime_scope(pipeline, core, self.admission, lambda: None, write_root=self.root,
+                    reserve_bytes=int(10.5 * 2**30), extension=extension):
+                with self.assertRaisesRegex(OSError, 'checkpoint reserve'):
+                    pipeline.require_project_budget()
+                self.assertIs(pipeline._materialize_bank.__code__, materialize.__code__)
+        extension.install_pipeline_adapter.assert_called_once(); core.install_pipeline_adapter.assert_not_called()
+        self.assertIs(pipeline._materialize_bank, materialize)
+
+    def test_static_extension_pins_the_actual_additional_runtime_module(self):
+        from hiercp_v1x import v24_readonly_native_storage as storage
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        document = dict(format=storage.FORMAT, profile=entry.PROFILE, storage_extension=entry.EXTENSION,
+            debug=False, model_data_scale_preserved=True, scores_reused=False, learned_upper_reused=False)
+        self.admission.write_text(json.dumps(document)); checksum = entry._sha(self.admission)
+        with patch.object(storage, 'verify_admission'), patch.object(static, 'verify_admission') as verify, \
+                patch.dict(os.environ, {entry.CHECKSUM_ENV: checksum}):
+            actual, _, guard = entry.admit(self.admission)
+            verify.assert_called_once_with(document, full_hash=False); guard()
+            self.assertEqual(entry.runtime_files(actual), (*entry.FILES, entry.EXTENSION_FILE))
+        document['storage_extension'] = 'unknown'; self.admission.write_text(json.dumps(document))
+        with patch.object(storage, 'verify_admission'), patch.dict(os.environ, {entry.CHECKSUM_ENV: entry._sha(self.admission)}):
+            with self.assertRaisesRegex(ValueError, 'Unknown explicit'):
+                entry.admit(self.admission)
+
+    def test_static_native_binding_checks_all105_roles_and_original_checkpoint_methods(self):
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        checksum = 'e' * 64
+        native = dict(format='DEBUG_current_full_model', physical_GPU=6, root=str(self.root / 'native'),
+            bank=str(self.root / 'bank/index.json'), private_runtime=str(self.root / 'private_runtime'),
+            storage_profile=entry.PROFILE, storage_extension=entry.EXTENSION,
+            storage_admission=str(self.admission), storage_admission_sha256=checksum)
+        bank = dict(physical_GPU=6, storage_profile=entry.PROFILE, storage_extension=entry.EXTENSION,
+            storage_admission_sha256=checksum, baseline=dict(dataset_name='full131', data_identifier='original_fullres'))
+        pipeline = SimpleNamespace(read=lambda path: native if Path(path) == self.native else bank,
+            validate_bank=lambda value: value, CURRENT_FORMAT='DEBUG_current_full_model', TRAINER='original_full250_trainer')
+        args = SimpleNamespace(native=self.native, storage_admission=self.admission, gpu=6)
+        raw = dict(exact_original_store_class=True, readonly_role_references=210,
+            readonly_static_operator_references=840, original_load_case_code_preserved=True, read_mode='r')
+        dataset = dict(original_dataset_class='nnUNetDatasetBlosc2', original_load_case_code_preserved=True,
+            readonly_mode='r', unpack_noop=True, full_preprocessed_cases=131)
+        original_trainer = object()
+        core = SimpleNamespace(install_dataset_adapter=unittest.mock.Mock(return_value=dataset))
+        with patch.object(entry.importlib, 'import_module', return_value=SimpleNamespace(original_full250_trainer=original_trainer)), \
+                patch.object(static, 'install_runtime_adapters', return_value=raw), \
+                patch.object(static, 'verify_private_checkpoint_publication', return_value={'peak_checkpoint_slots': 3}) as checkpoints:
+            result = entry._bind_native(pipeline, core, args, checksum)
+            self.assertEqual(result[2]['raw_store']['readonly_static_operator_references'], 840)
+            checkpoints.assert_called_once_with(self.admission, native['private_runtime'], trainer_class=original_trainer)
+            raw['readonly_static_operator_references'] = 839
+            with self.assertRaisesRegex(ValueError, 'eight static array roles'):
+                entry._bind_native(pipeline, core, args, checksum)
+            native.pop('storage_extension')
+            with self.assertRaisesRegex(ValueError, 'own-arm read-only'):
+                entry._bind_native(pipeline, core, args, checksum)
+
     def test_redirect_installs_adapter_in_both_original_physical_clone_workers(self):
         for batch in ('2', '4'):
             original = ['DEBUG_python', '-B', '-c', self.runtime.WORKER_COMMAND, str(self.native), batch, str(self.root / ('batch_' + batch))]
