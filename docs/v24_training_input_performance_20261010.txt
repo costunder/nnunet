@@ -90,7 +90,38 @@ tree는 별도 owned source snapshot을 보유하며 finally에서 결과/tree/t
 반경 query/hit/miss, tree build/reuse, 해시/복사 시간과 key/result/exposed tree bytes를 별도로 기록한다.
 exposed tree bytes는 C++ 내부 heap 전체가 아니며 원형64GiB RSSguard를 유지한다.
 해당22 CPU DEBUG 검사는 full sampler/provider graph/patch/metadata/RNG·empty/error/source guard·cache release를 통과했다.
-전체 통합 검사와 새 full-native 수치·속도 결과는 수행 후 기록한다.
+전체 통합 CPU DEBUG93/93 통과(28.799초), 독립 read-only review 통과.
+bf499 작업만 신원/부모/argv/소유권을 확인한 PID1159720에 STOP_AFTER_BATCH를 신규 생성했다.
+원형 코드가 자연적으로 PAUSED를 저장하고 종료했으며 완료된6epoch/updates102/e7training/U23/position0를
+새 code_4affb7e1776c의 별도 결과로 model/optimizer/scheduler/scaler/RNG/순서/BEST까지 정확히 복사했다.
+SSH·부모wrapper·타 사용자에게 신호를 보내거나 기존 결과를 덮어쓰지 않았다.
+
+새 full128 DEBUG baseline88.928875초→optimized69.969174초(시간21.3201% 감소, 처리량1.27097배).
+모든 CPU 입력 SHA950ba5bfd30fde82d3f103077ea978ce2a1b1ca8b0f445b7e276d9a5ffefc68b,
+score/consistency/loss·모든537 named gradients·초기/종료 model/RNG·6개 checkpoint 상태가 bitwise 동일하다.
+저장 numerical_tensors.pt의 raw SHA까지 동일하며 모든 수치 최대 차이는0이다.
+관측 해시 비용10.748/10.700초를 포함한 한 배치 DEBUG 결과라 전체 학습 속도나 여러 반복 평균을 뜻하지 않는다.
+실제524 pairs에서 radius6270calls=3118hits+3152misses, tree3152calls=2107reuse+1045builds를 확인했다.
+524pairs 모두 closed, pair/key/result/tree-visible live bytes는0, peak visible tree559104B였다.
+worker별 누적 radius compute35.798초/keyhash1.125초/treebuild0.577초는 중첩시간이라 step에 합산하지 않는다.
+provider materialize43.707초→27.798초, prepare81.352초→62.534초였다.
+collate8.604초→17.853초와 pin14.254초→2.443초를 함께 보고하며 collate 비용은 남아 있다.
+exposed pending wait33.376초→55.453초는 락 대기 위치가 달라져 단독으로 활용률 개선을 증명하지 않는다.
+production은 strict native gate 통과 후 원래 수치 설정으로 재개했고 실제 epoch7/U23/update119까지 진행했다.
+새 작업 PID1169039/create1791619515.15, namespace run_1791619281966732300/gpu6이다.
+기존 view_gpu6.py --json이 이 새 namespace/RUNNING/e7/U23/physical4/chunk64/RAM64/errornull을 표시함을 확인했다.
+45.062초 읽기 관측의 정규4환자 update114–117 네 배치는 평균6.9669초/median7.4657초,
+범위5.2503–7.6859초, 입력get5.6737초/노출대기5.0073초/추가pin0.00394초였다.
+update118(2환자)/119(3환자)는 원래 tail 균형 규칙이며 정규4환자 통계에서 제외했다.
+cold update103은 관측에 포함되지 않았고 모든 관측 업데이트의537 gradient는 finite/missing0였다.
+전체 관측은 학습말미→train_probe 경계를 포함할 수 있어 GPU평균13.36%를 정규배치 전용값으로 표현하지 않는다.
+NVML9709MiB, RAMtree10.93–11.95GiB, CPU1.50/4개, power123.18W,47–52°C,
+physicaldisk read delta0, 압력/eviction/providerfailure/strictfailure0이었다.
+모든 forward의 pair/result/key/tree-visible live bytes0, pairs_closed==materialized_pairs를 확인했다.
+작업당4CPU/64GiB/GPU40GiB 한도와 단일GPU6 배정을 유지했다.
+이전 다른 case·epoch의 평균과 비교하여 실제 학습 speedup 또는 활용률 개선을 주장하지 않는다.
+전체40epoch 학습은 계속 실행 중이며 전체 test 평가는 수행하지 않았다.
+구현/정적검사/93개 CPU단위검사/실제 전체128U DEBUG 수치검사/실제 학습 재개와 관측을 구분하여 기록했다.
 별도 DEBUG 성능 probe는 기존 최대부하 liver_6/liver_129/liver_123/liver_69의 모든P+128U,
 physical4와 실제 동일 모델·checkpoint로 forward/loss/backward를 수행하고 optimizer update는0이다.
 수정 전후 output/loss/모든gradient/model buffer/RNG가 정확히 같아야 production resume을 허용한다.
