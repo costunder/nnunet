@@ -1,0 +1,63 @@
+v2.4 GPU5/6 RAM 회수와 학습 화면 수정 — 2026-10-10
+
+GPU6은 epoch 4의 학습 업데이트 68회까지 저장한 뒤 전체 U128 validation에서
+프로세스 RSS 64GiB 제한에 걸렸다. GPU5도 같은 provider/cache 코드를 사용하므로
+동일한 위험이 있었다. GPU5는 정확히 확인한 현재 작업의 학습 PID 1064103에
+기존 STOP_AFTER_BATCH를 적용하여 업데이트 17회와 부분 validation을 저장했다.
+SSH/셸/다른 사용자 프로세스에는 신호를 보내지 않았다. GPU1의 CP nnU-Net은 유지한다.
+
+기존 provider는 collate 후에도 get() 내부의 record/payload/private clone 참조와
+보호 ID가 남아 있는 위치에서 최종 RSS 검사를 했다. 캐시 소유권을 제거해도
+이 참조 또는 allocator가 RAM을 유지할 수 있었다. 이전 임계점은 hard64GiB에
+너무 가까워 prefetch/collate/checkpoint의 일시적 공간을 충분히 확보하지 못했다.
+
+새 hiercp_v1x/v24_memory_runtime.py는 다음 실행 관리만 추가한다.
+- 원형 get의 tensor 연산과 출력은 그대로 둔다. 마지막 검사만 원형 finally와
+  임시 frame이 끝난 뒤 같은 64GiB strict 검사로 옮긴다.
+- 기존 resident32GiB/전체64GiB와 host_memory.PressureBudget의 공간 분할 근거로
+  RSS48GiB에서 회수를 시작한다. 비활성 view/record/geometry/raw 캐시만 제거하고,
+  GC와 glibc malloc_trim을 수행한다. 사용 중 tensor는 그대로 살아 있다.
+- 원형 ResourceBudget.check와 scorer forward 전후에도 회수를 연결한다.
+  CUDA 제한과 hard RSS64GiB 검사는 그대로 유지한다.
+- 원형 모델, 모든 P, 전체 데이터, 그래프, 후보 수, loss, 난수, physical patient
+  batch4, GPU5 candidate chunk32/GPU6 chunk64, 한 chunk prefetch를 유지한다.
+- 설치된 Torch2.6.0+cu118에는 공개 pinned-host 캐시 회수 API가 없다.
+  지원되지 않는 pinned cache를 회수했다고 보고하지 않으며 private C++ API는 쓰지 않는다.
+
+새 training_continuation 모듈/CLI는 원형 run_v24_all_p.py와 모든 sealed source,
+request와 calibration을 그대로 사용한다. 최신/BEST 체크포인트와 model/optimizer/
+scheduler/scaler/RNG/shuffle, curriculum/history/부분 cursor를 새 output에 바이트
+그대로 복사하고 별도 실행 관리 receipt를 게시한다. 기존 결과를 덮어쓰지 않는다.
+원형 strict resume 검사에 예외를 넣거나 checkpoint identity를 재작성하지 않는다.
+
+MobaXterm 화면은 watch_v24_training.py에서 원형 status/JSONL/로그를 읽어 tqdm으로
+갱신한다. 캐시 준비, 실제 optimizer 학습, train probe, 단계/전체 validation을
+구분한다. 상세 로그는 그대로 보존하며 표시된 점수는 실제 저장된 값만 사용한다.
+
+검증 범위
+메모리 adapter CPU 단위/회귀 검사 22/22 통과: 실제 입력 cold/warm/evicted digest와
+RNG 동일, 기존 수명 문제 재현/해결, 사용 중 batch가 진짜 제한을 넘으면 거부,
+원형 CUDA 검사와 gradient 보존, source 변조 거부, lock inversion 회피.
+이어받기 CPU 검사 13/13 통과: 최신/BEST 원본과 여섯 수치 상태의 바이트 보존,
+GPU5/GPU6의 부분 validation cursor, 실제 BEST 전체128 보고서/점수 대조,
+변조·중복 환자·불완전 physical cursor 거부, 원형 main code/private import 연결.
+진행 화면 검사 13/13 통과: 4줄 tqdm 렌더링, 실제 NumPy scalar Dice 출력,
+새 실행의 상태와 기존 PAUSED/실패 구분, 정확한 부분 cursor/JSONL offset 처리,
+숫자 epoch 선택, 안정적인 로그 링크 재연결, 학습/Torch import 없음.
+이는 전체 40epoch 학습 완료나 전체 성능 검증을 뜻하지 않는다.
+실제 GPU5/6 재개와 전체 U128 validation의 RAM 측정 결과는 별도 실행 receipt/로그에 남긴다.
+
+작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
