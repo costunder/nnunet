@@ -149,7 +149,7 @@ def validate_current_pin(pin):
     from .contracts import canonical_hash
     selected=pin.get('selected',{}); contract=pin.get('model_contract',{})
     gpu=pin.get('physical_GPU')
-    if (gpu not in (5,6) or type(gpu)is not int or pin.get('completed_epochs')!=40
+    if (gpu not in (4,5,6) or type(gpu)is not int or pin.get('completed_epochs')!=40
             or pin.get('optimizer_updates')!=680 or pin.get('debug')is not False
             or pin.get('full_training')is not True or pin.get('recipient_annotation_exposed')is not False
             or pin.get('selection_metric')!='fixed full128 per-P patient-macro MRR, top1, negativepairloss'
@@ -170,6 +170,8 @@ def validate_current_pin(pin):
             raise ValueError('Actual completed own-arm BEST checksum missing: '+name)
     if selected.get('best_record',{}).get('candidate_universe')!='all native P + fixed128U':
         raise ValueError('Own-arm full128 BEST selection required')
+    if gpu==4 and pin.get('training_U_policy')!=dict(all_U_from_epoch_one=True,initial_u=128,total_u=128,total_epochs=40):
+        raise ValueError('GPU4 full128U from epoch one through every actual training epoch required')
     return copy.deepcopy(pin)
 
 
@@ -225,7 +227,7 @@ def _inspect_completed_current(source_output, source_code, inventory, *, gpu, in
     declared={key:value for key,value in request.items() if key!='request_sha256'}
     if (request.get('format')!='v24_full_native_GT_free_execution_request_v1'
             or request.get('request_sha256')!=hashlib.sha256(json.dumps(declared,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-            or set(request.get('source',{}))!=set(cli.FILES)
+            or set(request.get('source',{}))!=set(cli.execution_source_files(gpu))
             or any(sha(code/name)!=checksum or sha(cli.ROOT/name)!=checksum for name,checksum in request['source'].items())
             or request.get('physical_GPU')!=gpu or request.get('inventory_sha256')!=sha(inventory)
             or Path(request['inventory']).resolve(strict=True)!=Path(inventory).resolve(strict=True)
@@ -235,7 +237,7 @@ def _inspect_completed_current(source_output, source_code, inventory, *, gpu, in
             or owner['binding'].get('epochs')!=40):
         raise ValueError('Actual immutable completed v24 request/source/ownership required')
     cli.validate_config(request['config'],gpu,stunet_checkpoint)
-    if ((gpu==6 and sha(stunet_checkpoint)!=request['STU_checkpoint_sha256'])
+    if ((gpu in (4,6) and sha(stunet_checkpoint)!=request['STU_checkpoint_sha256'])
             or (gpu==5 and (stunet_checkpoint is not None or request['STU_checkpoint_sha256']is not None))):
         raise ValueError('Actual own-arm original STU checkpoint provenance differs')
     calibration=read(output/'calibration.json');binding=owner['binding']
@@ -257,6 +259,14 @@ def _inspect_completed_current(source_output, source_code, inventory, *, gpu, in
             or selected.get('selected_by')!='fixed_full128_validation_only'):
         raise ValueError('Full40 completed trained GNN and its own actual BEST are required')
     reports=[row['full_validation'] for row in history]
+    if gpu==4:
+        for epoch,row in enumerate(history,1):
+            transition=row.get('curriculum_transition',{})
+            if (any(row.get(phase,{}).get('active_u')!=128 for phase in ('train_probe','stage_validation'))
+                    or transition.get('epoch')!=epoch or transition.get('previous_active_u')!=128
+                    or transition.get('next_active_u')!=128 or transition.get('expanded')is not False
+                    or transition.get('reason')!='full_bank_replay'):
+                raise ValueError('Every actual GPU4 training epoch must replay all128U without a curriculum expansion')
     for epoch,report in enumerate(reports,1):
         if (report.get('phase')!='full_validation' or report.get('active_u')!=128 or report.get('epoch')!=epoch
                 or report.get('debug')is not False or report.get('recipient_GT_used_in_forward')is not False
@@ -295,6 +305,8 @@ def _inspect_completed_current(source_output, source_code, inventory, *, gpu, in
             best_content_sha256=best_proof['content_sha256'],best_model_sha256=digest(best['model']),
             identity_sha256=owner['identity_sha256'],best_record=record),
         admitted_source_experiment=str(output),admitted_source_request_sha256=request['request_sha256'])
+    if gpu==4:
+        value['training_U_policy']=dict(all_U_from_epoch_one=True,initial_u=128,total_u=128,total_epochs=40)
     value['pin_sha256']=canonical_hash(value)
     del latest,best
     return validate_current_pin(value)

@@ -1,0 +1,60 @@
+{
+  "version": "v2.4",
+  "experiment": "all_P_recipient_GT_blind_all_U_from_epoch_one_official_STUNetS",
+  "encoder": "official_pretrained_STU_Net_S",
+  "seed": 42,
+  "epochs": 40,
+  "margin_mm": 10,
+  "v24_runtime": {
+    "physical_GPU": 4,
+    "independent_single_GPU": true,
+    "workers": 4,
+    "torch_threads": 1,
+    "CUDA_gib": 40,
+    "rss_gib": 64,
+    "resident_gib": 32,
+    "raw_resident_gib": 8,
+    "geometry_resident_gib": 8,
+    "minimum_free_disk_gib": 10,
+    "physical_patient_batch_candidates": [
+      4,
+      8
+    ],
+    "physical_candidate_batch_candidates": [
+      32,
+      64,
+      128
+    ],
+    "calibration_repeats": 3,
+    "all_P_from_epoch_one": true,
+    "other_P_as_negative": false,
+    "patient_order": "seed42 complete random permutation; every ranking patient once per epoch",
+    "U_order": "fixed full native bank; all128U from epoch one; complete replay every epoch",
+    "fixed_validation_epoch": 29,
+    "train_mastery_probe": "all65 ranking train patients; current-U; eval/no_grad; fixed29",
+    "BEST": "all21 validation patients/allP/fixed128U only",
+    "prefetch_CPU_chunks": 1,
+    "persistent_CPU_workers": true,
+    "pin_CPU_batches": true,
+    "non_blocking_H2D": true,
+    "debug": false,
+    "hidden_subset": false,
+    "curriculum": {
+      "initial_u": 128,
+      "increment_u": 16,
+      "total_u": 128,
+      "minimum_stage_epochs": 2,
+      "consecutive_passes": 2,
+      "validation_mrr": 0.8,
+      "validation_top1": 0.7,
+      "train_mrr": 0.9,
+      "train_top1": 0.85,
+      "overfit_mrr_gap": 0.1,
+      "plateau_patience": 2,
+      "plateau_min_delta": 0.005,
+      "maximum_stage_epochs": 4,
+      "total_epochs": 40
+    },
+    "all_U_from_epoch_one": true
+  }
+}

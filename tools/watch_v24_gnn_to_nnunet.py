@@ -21,7 +21,7 @@ FORMAT = 'v24_completed_gnn_to_native_chain_request_v1'
 CURRENT_FORMAT = 'v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
-PARAMETER_TENSORS = {5: 981, 6: 537}
+PARAMETER_TENSORS = {4: 537, 5: 981, 6: 537}
 POLL_SECONDS = 5
 
 
@@ -77,6 +77,20 @@ def _checksum(value):
     return isinstance(value, str) and len(value) == 64 and set(value) <= set('0123456789abcdef')
 
 
+def _assigned_cpu_contract(gpu, affinity):
+    if gpu in AFFINITIES:
+        return affinity == AFFINITIES[gpu]
+    return (gpu == 4 and isinstance(affinity, list) and len(affinity) == 4
+            and all(type(core) is int and core >= 0 for core in affinity)
+            and affinity == sorted(set(affinity)))
+
+
+def _gpu4_full_u(runtime):
+    curriculum = runtime.get('curriculum', {})
+    return (runtime.get('all_U_from_epoch_one') is True and curriculum.get('initial_u') == 128
+            and curriculum.get('total_u') == 128 and curriculum.get('total_epochs') == 40)
+
+
 def _inside(path, parent):
     try:
         Path(path).relative_to(parent)
@@ -108,13 +122,13 @@ def command_options(command, *, python, entry, action):
 
 def validate_request(request, *, fresh=True):
     gpu = request.get('GPU_arm')
-    if (request.get('format') != FORMAT or type(gpu) is not int or gpu not in (5, 6)
-            or request.get('CPU_affinity') != AFFINITIES[gpu]
+    if (request.get('format') != FORMAT or type(gpu) is not int or gpu not in (4, 5, 6)
+            or not _assigned_cpu_contract(gpu, request.get('CPU_affinity'))
             or request.get('scoring_RAM_GiB') != 64 or request.get('native_RAM_GiB') != 48
             or request.get('min_free_disk_GiB', 0) < 160
             or request.get('minimum_runtime_free_disk_GiB', 10) < 10
             or not isinstance(request.get('GPU_UUID'), str) or not request['GPU_UUID'].startswith('GPU-')):
-        raise ValueError('Unchanged explicitly assigned GPU5/6 CPU/RAM/disk contract required')
+        raise ValueError('Explicitly assigned GPU4/5/6 four-CPU/full RAM/disk contract required')
     chain = owned(request['chain_root'], directory=True, must_exist=False)
     owned(chain.parent, directory=True)
     source = owned(request['source_output'], directory=True)
@@ -142,10 +156,22 @@ def validate_request(request, *, fresh=True):
     owned(request['python'])
     for name in ('inventory', 'baseline_preprocessed', 'input_cache'):
         owned(request[name], directory=name != 'inventory')
-    if gpu == 6:
+    if gpu in (4, 6):
         owned(request['stunet_checkpoint'])
         scheduler = request.get('scheduler')
-        if (not isinstance(scheduler, dict) or scheduler.get('state') != 'R'
+        if gpu == 4:
+            if not _checksum(request.get('stunet_checkpoint_sha256')) or sha(request['stunet_checkpoint']) != request['stunet_checkpoint_sha256']:
+                raise ValueError('GPU4 exact original official STU checkpoint SHA required')
+            if scheduler is not None and (not isinstance(scheduler, dict) or scheduler.get('state') != 'R'
+                    or not isinstance(scheduler.get('job_id'), str) or not scheduler['job_id']
+                    or scheduler['job_id'] == '129443.ECE-util1'
+                    or scheduler.get('expected_owner') != 'aicompetition06'
+                    or not isinstance(scheduler.get('expected_node'), str) or not scheduler['expected_node']
+                    or scheduler.get('minimum_remaining_seconds', 0) < 28800
+                    or scheduler.get('native_minimum_remaining_seconds', 25200) < 25200
+                    or not isinstance(scheduler.get('expires_at_unix'), (int, float))):
+                raise ValueError('GPU4 requires its own direct allocation or distinct owned PBS reservation')
+        elif (not isinstance(scheduler, dict) or scheduler.get('state') != 'R'
                 or scheduler.get('job_id') != '129443.ECE-util1'
                 or scheduler.get('expected_owner') != 'aicompetition06'
                 or scheduler.get('expected_node') != 'ece-a6gpu6'
@@ -175,7 +201,7 @@ def validate_request(request, *, fresh=True):
                 '--input-cache': request['input_cache'], '--output': str(chain / 'bank')}),
         dict(common, **{'--bank': bank, '--output': str(chain / 'native')}),
         dict(common, **{'--native': native}), dict(common, **{'--native': native})]
-    if gpu == 6:
+    if gpu in (4, 6):
         for options in expected[:2]:
             options['--stunet-checkpoint'] = request['stunet_checkpoint']
     for action, row, options in zip(ACTIONS, stages, expected):
@@ -262,6 +288,48 @@ def source_completion(request, status, worker, child):
                 checkpoint_validation_delegated_to='pin-current-gnn', worker_and_child_finished=True)
 
 
+def _validate_gpu4_pipeline_inputs(request, pipeline):
+    """Admit a fresh source before its calibration/training ownership exists."""
+    from tools.run_v24_all_p import validate_config
+    code = Path(request['source_code'])
+    config_path = owned(pipeline['source_config'])
+    _inside(config_path, code)
+    name = config_path.relative_to(code).as_posix()
+    config_checksum = sha(config_path)
+    config = read(config_path)
+    if (request['source_files'].get(name) != config_checksum
+            or pipeline.get('source_config_sha256') != config_checksum
+            or pipeline.get('gnn_config') != config
+            or sha(request['stunet_checkpoint']) != request['stunet_checkpoint_sha256']):
+        raise ValueError('GPU4 actual immutable full source configuration/SHA required before waiting')
+    validate_config(config, 4, request['stunet_checkpoint'])
+    stages = pipeline.get('stages', [])
+    if tuple(stage.get('name') for stage in stages) != ('prepare_inputs', 'calibrate', 'train'):
+        raise ValueError('GPU4 requires its exact fresh prepare_inputs/calibrate/train pipeline')
+    entry = str(owned(code / 'tools/run_v24_gpu4_all_u.py'))
+    native_experiment = None
+    for stage, mode in zip(stages, ('prepare', 'calibrate', 'train')):
+        command = stage.get('command')
+        if (not isinstance(command, list) or any(not isinstance(arg, str) or '\x00' in arg for arg in command)
+                or command[:4] != [request['python'], '-B', '-u', entry]
+                or len(command[4:]) % 2):
+            raise ValueError('GPU4 exact pinned fresh runner argument array required')
+        options = {}
+        for flag, value in zip(command[4::2], command[5::2]):
+            if not flag.startswith('--') or flag in options:
+                raise ValueError('GPU4 repeated/invalid fresh source option')
+            options[flag] = value
+        actual_native = str(owned(options['--native-experiment'], directory=True))
+        if native_experiment is None:
+            native_experiment = actual_native
+        expected = {'--mode': mode, '--config': str(config_path), '--native-experiment': native_experiment,
+            '--inventory': request['inventory'], '--input-cache': request['input_cache'],
+            '--output': request['source_output'], '--gpu': '4', '--stunet-checkpoint': request['stunet_checkpoint'],
+            '--cpu-affinity': ','.join(str(core) for core in request['CPU_affinity'])}
+        if options != expected:
+            raise ValueError('GPU4 fresh stage changed full source inputs/config/GPU/CPU or added an unapproved option')
+
+
 def inspect_source(request):
     status = read(request['source_job']['status'])
     job = request['source_job']
@@ -270,7 +338,7 @@ def inspect_source(request):
         raise ValueError('Registered original worker request changed')
     pipeline = read(pipeline_request_path)
     gpu = request['GPU_arm']
-    scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu == 5 else (
+    scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu in (4, 5) else (
         'original_total_epochs', 'original_patient_batch', 'original_candidate_chunk')
     if (status.get('request') != pipeline or pipeline.get('GPU') != gpu
             or pipeline.get('GPU_uuid') != request['GPU_UUID'] or pipeline.get('code') != request['source_code']
@@ -278,12 +346,17 @@ def inspect_source(request):
             or pipeline.get('CPU_affinity') != request['CPU_affinity'] or pipeline.get('RAM_GiB') != 64
             or tuple(pipeline.get(name) for name in scale_fields) != (40, 4, 32 if gpu == 5 else 64)):
         raise ValueError('Registered GNN worker request does not match the exact full own-arm contract')
-    validate_source_metadata(request)
+    if gpu == 4:
+        _validate_gpu4_pipeline_inputs(request, pipeline)
+    else:
+        validate_source_metadata(request)
     trains = [stage for stage in pipeline.get('stages', []) if stage.get('name') == job['training_stage']]
     if len(trains) != 1 or pipeline['stages'][-1] != trains[0]:
         raise ValueError('One actual final train command required in original worker request')
     worker = process_witness(job['worker_pid'], job['worker_create_time'], job['worker_command'])
     child = None
+    if gpu == 4 and status.get('stage') not in ('prepare_inputs', 'calibrate', 'train'):
+        raise ValueError('GPU4 source is not in one of its exact declared fresh stages')
     if status.get('child_pid') is not None:
         # A pipeline may still be in a preceding DEBUG admission stage at first
         # registration. Bind the exact live child to its actual declared stage.
@@ -295,6 +368,48 @@ def inspect_source(request):
             import psutil
             if psutil.Process(child['pid']).ppid() != job['worker_pid']:
                 raise ValueError('Original GNN child is not parented by its exact owned worker')
+    if gpu == 4:
+        metadata = [Path(request['source_output']) / name for name in
+                    ('request.json', 'calibration.json', 'training/training_identity.json')]
+        missing = [path for path in metadata if not path.exists()]
+        if missing:
+            # Existing malformed artifacts are real errors, even while another
+            # required artifact has not been published. No synthetic identity
+            # or calibration is substituted during fresh preparation.
+            present = {}
+            for path in metadata:
+                if path.exists():
+                    present[path] = read(path)
+                    if not isinstance(present[path], dict):
+                        raise ValueError('Actual GPU4 source metadata must be a JSON object: ' + str(path))
+            scientific = present.get(metadata[0])
+            if scientific is not None:
+                declared = {key: value for key, value in scientific.items() if key != 'request_sha256'}
+                checksum = hashlib.sha256(json.dumps(declared, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                if (scientific.get('config') != pipeline['gnn_config'] or scientific.get('physical_GPU') != 4
+                        or scientific.get('STU_checkpoint_sha256') != request['stunet_checkpoint_sha256']
+                        or scientific.get('request_sha256') != checksum):
+                    raise ValueError('Published GPU4 scientific request differs from its immutable fresh full configuration')
+            calibration = present.get(metadata[1])
+            if calibration is not None and (scientific is None
+                    or calibration.get('request_sha256') != scientific['request_sha256']
+                    or calibration.get('physical_GPU') != 4
+                    or calibration.get('selected_physical_patient_batch') != 4
+                    or calibration.get('selected_physical_candidate_batch') != 64):
+                raise ValueError('Published GPU4 calibration lacks its actual full B4/chunk64 source binding')
+            owner = present.get(metadata[2])
+            if owner is not None and (scientific is None or calibration is None
+                    or owner.get('binding', {}).get('identity') != scientific
+                    or owner.get('binding', {}).get('epochs') != 40 or owner.get('binding', {}).get('debug') is not False
+                    or not _checksum(owner.get('identity_sha256'))):
+                raise ValueError('Published GPU4 training ownership lacks its actual complete source binding')
+            if status.get('status') == 'COMPLETE':
+                raise FileNotFoundError('Completed GPU4 source is missing required real metadata: ' + str(missing[0]))
+            source_completion(request, status, worker, child)
+            if status.get('status') != 'RUNNING' or worker is None or worker['status'] == 'zombie':
+                raise RuntimeError('GPU4 missing metadata may wait only for its exact live RUNNING source worker')
+            return None
+        validate_source_metadata(request)
     return source_completion(request, status, worker, child)
 
 
@@ -320,6 +435,13 @@ def validate_source_metadata(request):
             or calibration.get('selected_physical_candidate_batch') != (32 if request['GPU_arm'] == 5 else 64)
             or binding.get('config', {}).get('v24_runtime', {}).get('batch_calibration') != calibration):
         raise ValueError('Actual immutable checksum/identity/config/full40/B4/calibration metadata required')
+    if request['GPU_arm'] == 4 and (config.get('encoder') != 'official_pretrained_STU_Net_S'
+            or runtime.get('physical_GPU') != 4 or not _gpu4_full_u(runtime)
+            or runtime.get('all_P_from_epoch_one') is not True or runtime.get('other_P_as_negative') is not False
+            or not _gpu4_full_u(binding.get('config', {}).get('v24_runtime', {}))
+            or scientific.get('STU_checkpoint_sha256') != request['stunet_checkpoint_sha256']
+            or sha(request['stunet_checkpoint']) != request['stunet_checkpoint_sha256']):
+        raise ValueError('GPU4 original STU asset and actual all-P/full128U from epoch one required')
 
 
 def _run(command):
@@ -362,7 +484,7 @@ def scheduler_proof(request, *, stage_index=0):
             or fields.get('Resource_List.ncpus') != '6' or fields.get('Resource_List.ngpus') != '1'
             or fields.get('Resource_List.mem', '').lower() != '128gb'
             or remaining < floor):
-        raise AllocationUnavailable('Original GPU6 owned PBS allocation or remaining walltime is insufficient; no native launch')
+        raise AllocationUnavailable('Assigned owned PBS allocation or remaining walltime is insufficient; no native launch')
     return dict(job_id=expected['job_id'], remaining_seconds=remaining, required_remaining_seconds=floor,
                 expires_at_unix=expires, reported_remaining_seconds=reported_remaining,
                 ownership_and_allocation_checked=True)
@@ -406,6 +528,10 @@ def stage_proof(request, action):
                 or value.get('selected', {}).get('best_record', {}).get('selected_by') != 'fixed_full128_validation_only'
                 or not _checksum(value.get('selected', {}).get('best_file_sha256'))):
             raise ValueError('Native first stage did not publish the actual completed own-arm BEST pin')
+        if gpu == 4 and (value.get('training_U_policy') != dict(all_U_from_epoch_one=True, initial_u=128, total_u=128, total_epochs=40)
+                or value.get('model_contract', {}).get('encoder') != 'official_pretrained_STU_Net_S'
+                or value.get('stunet_checkpoint') != request['stunet_checkpoint']):
+            raise ValueError('GPU4 native pin must retain its original STU/full128U from epoch one contract')
     elif action == 'prepare-current-bank':
         path = root / 'bank/index.json'; value = read(path)
         if (value.get('pipeline_version') != CURRENT_FORMAT or value.get('physical_GPU') != gpu

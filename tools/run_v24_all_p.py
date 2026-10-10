@@ -19,6 +19,16 @@ FILES=('hiercp_v1x/v24_training.py','hiercp_v1x/v24_targets.py','hiercp_v1x/v24_
     'hiercp_v1x/v23_training.py','hiercp_v1x/u_bridge_training.py',
     'hiercp_v1x/transition_v1_local.py','hiercp_v1x/transition_v1_empty_context.py',
     'hiercp_v1x/v23_data.py','hiercp_v22/storage.py')
+GPU4_EXECUTION_FILES=('tools/run_v24_gpu4_all_u.py',
+    'hiercp_v1x/v24_memory_runtime.py','hiercp_v1x/v24_hash_runtime.py',
+    'hiercp_v1x/v24_prefetch_runtime.py','hiercp_v1x/v24_input_runtime.py')
+
+
+def execution_source_files(gpu):
+    """Bind GPU4's fresh optimized runner without changing GPU5/6 identities."""
+    if gpu not in (4,5,6):
+        raise ValueError('Explicit physical GPU4,5or6 required for execution source binding')
+    return FILES+GPU4_EXECUTION_FILES if gpu==4 else FILES
 
 
 def sha(path):
@@ -34,9 +44,9 @@ def parse(argv=None):
     parser.add_argument('--config',type=Path,default=ROOT/'config/v24_gpu5_GT_blind.json')
     parser.add_argument('--native-experiment',type=Path,required=True)
     parser.add_argument('--inventory',type=Path,required=True)
-    parser.add_argument('--input-cache',type=Path,required=True,help='Fresh shared GT-free input namespace for GPU5/6')
+    parser.add_argument('--input-cache',type=Path,required=True,help='Fresh shared GT-free input namespace for GPU4/5/6')
     parser.add_argument('--output',type=Path,required=True,help='Fresh per-experiment result namespace')
-    parser.add_argument('--gpu',type=int,choices=(5,6),required=True)
+    parser.add_argument('--gpu',type=int,choices=(4,5,6),required=True)
     parser.add_argument('--stunet-checkpoint',type=Path)
     parser.add_argument('--cpu-affinity',type=lambda text:[int(value) for value in text.split(',')],
         help='Exactly four assigned logical CPU IDs; or launch under an existing four-CPU affinity')
@@ -52,14 +62,21 @@ def validate_config(config,gpu,stunet_checkpoint=None):
             or runtime.get('hidden_subset')is not False or runtime.get('workers')!=4
             or runtime.get('all_P_from_epoch_one')is not True or runtime.get('other_P_as_negative')is not False
             or runtime.get('fixed_validation_epoch')!=29):
-        raise ValueError('Explicit whole-population40epoch/seed42/10mm/singleGPU5or6 contract required')
+        raise ValueError('Explicit whole-population40epoch/seed42/10mm/singleGPU4,5or6 contract required')
     if (runtime['rss_gib']!=64 or runtime['resident_gib']!=32 or runtime['raw_resident_gib']!=8
             or runtime['geometry_resident_gib']!=8 or runtime['torch_threads']!=1):
         raise ValueError('Explicit shared-host64GiB/32GiB canonical/8GiB raw/8GiB geometry budgets required')
-    if (gpu==5 and config['encoder']!='original_CNN_GAT') or (gpu==6 and config['encoder']!='official_pretrained_STU_Net_S'):
-        raise ValueError('GPU5 original CNN/GAT; GPU6 official pretrained STU-Net-S, same other contract')
-    if gpu==6 and stunet_checkpoint is None:
+    if (gpu not in (4,5,6) or (gpu==5 and config['encoder']!='original_CNN_GAT')
+            or (gpu in (4,6) and config['encoder']!='official_pretrained_STU_Net_S')):
+        raise ValueError('GPU5 original CNN/GAT; GPU4/6 official pretrained STU-Net-S, same other contract')
+    if gpu in (4,6) and stunet_checkpoint is None:
         raise ValueError('Official pretrained STU-Net-S checkpoint must be supplied explicitly')
+    if gpu==4:
+        if (runtime.get('all_U_from_epoch_one')is not True
+                or runtime['curriculum']['initial_u']!=128
+                or runtime['curriculum']['total_u']!=128
+                or runtime['curriculum']['total_epochs']!=40):
+            raise ValueError('GPU4 requires every native128U from epoch one through all40epochs')
     if runtime['prefetch_CPU_chunks']!=1 or not all(runtime[key]is True for key in
             ('persistent_CPU_workers','pin_CPU_batches','non_blocking_H2D')):
         raise ValueError('Explicit persistent/pinned/prefetched CPU path required')
@@ -70,7 +87,7 @@ def request(args,config):
     # Mode/output/resume do not redefine the scientific request. Same sealed
     # sources and config bind prepare/calibration and exact continuation.
     value=dict(format='v24_full_native_GT_free_execution_request_v1',config=copy.deepcopy(config),
-        source={name:sha(ROOT/name) for name in FILES},config_file_sha256=sha(args.config),
+        source={name:sha(ROOT/name) for name in execution_source_files(args.gpu)},config_file_sha256=sha(args.config),
         native_experiment=str(args.native_experiment.resolve()),inventory=str(args.inventory.resolve()),
         inventory_sha256=sha(args.inventory),input_cache=str(args.input_cache.resolve()),
         physical_GPU=args.gpu,STU_checkpoint_sha256=None if args.stunet_checkpoint is None else sha(args.stunet_checkpoint))

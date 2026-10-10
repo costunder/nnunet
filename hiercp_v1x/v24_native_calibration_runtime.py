@@ -372,5 +372,5 @@ def _require_explicit_native_gpu(native_path,gpu):
     from . import v24_nnunet_cp as pipeline
     path=Path(native_path)
     native=_read(path) if path.is_file() and not path.is_symlink() else {}
-    if gpu not in (5,6) or type(gpu)is not int or native.get('format')!=pipeline.CURRENT_FORMAT or native.get('physical_GPU')!=gpu:
-        raise ValueError('Historical native arm remains GPU1; explicit completed own-arm GPU5/6 native binding required')
+    if gpu not in (4,5,6) or type(gpu)is not int or native.get('format')!=pipeline.CURRENT_FORMAT or native.get('physical_GPU')!=gpu:
+        raise ValueError('Historical native arm remains GPU1; explicit completed own-arm GPU4/5/6 native binding required')

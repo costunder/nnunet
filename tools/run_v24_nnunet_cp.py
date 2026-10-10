@@ -25,15 +25,15 @@ def parse(argv=None):
     parser.add_argument('--source-code',type=Path)
     parser.add_argument('--input-cache',type=Path)
     parser.add_argument('--stunet-checkpoint',type=Path)
-    parser.add_argument('--gpu',type=int,choices=(1,5,6),default=1)
+    parser.add_argument('--gpu',type=int,choices=(1,4,5,6),default=1)
     parser.add_argument('--resume',action='store_true')
     args=parser.parse_args(argv)
     if args.gpu!=1 and args.action not in ('pin-current-gnn','prepare-current-bank','prepare-native','calibrate-native','train'):
         parser.error('Historical v23 actions remain explicitly assigned GPU1')
     if args.action in ('pin-current-gnn','prepare-current-bank'):
-        if args.gpu not in (5,6):parser.error('Completed current v24 actions require the matching physical GPU5/6')
-        if (args.gpu==6)!=(args.stunet_checkpoint is not None):
-            parser.error('Only GPU6 requires its exact original --stunet-checkpoint')
+        if args.gpu not in (4,5,6):parser.error('Completed current v24 actions require the matching physical GPU4/5/6')
+        if (args.gpu in (4,6))!=(args.stunet_checkpoint is not None):
+            parser.error('GPU4/6 require their exact original --stunet-checkpoint')
     required={'verify':('pin','inventory','baseline_preprocessed'),
         'prepare-bank':('pin','inventory','baseline_preprocessed','output'),
         'materialize-bank':('pin','inventory','baseline_preprocessed','scores','output'),
@@ -43,13 +43,13 @@ def parse(argv=None):
         'prepare-current-bank':('pin','inventory','baseline_preprocessed','input_cache','output')}
     for name in required[args.action]:
         if getattr(args,name) is None:parser.error('--'+name.replace('_','-')+' is required')
-    if args.gpu in (5,6) and args.action in ('calibrate-native','train'):
+    if args.gpu in (4,5,6) and args.action in ('calibrate-native','train'):
         import json
         from hiercp_v1x.v24_nnunet_cp import CURRENT_FORMAT
         path=args.native
         native=json.loads(path.read_text(encoding='utf8')) if path.is_file() and not path.is_symlink() else {}
         if native.get('format')!=CURRENT_FORMAT or native.get('physical_GPU')!=args.gpu:
-            parser.error('GPU5/6 native actions require their explicit completed current-arm native.json; historical arm remains GPU1')
+            parser.error('GPU4/5/6 native actions require their explicit completed current-arm native.json; historical arm remains GPU1')
     if args.resume and args.action!='train':parser.error('Explicit native resume applies only to train')
     if args.resume and args.gpu!=1:parser.error('Current automatic downstream native stage starts fresh; explicit recovery uses its own receipt')
     return args

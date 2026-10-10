@@ -52,7 +52,11 @@ class CurrentOwnArmAdmission(unittest.TestCase):
 
     def make_fixture(self):
         gpu=self.gpu
-        config_path=cp.ROOT/('config/v24_gpu5_GT_blind.json' if gpu==5 else 'config/v24_gpu6_STUNetS_GT_blind.json')
+        config_path=cp.ROOT/({4:'config/v24_gpu4_STUNetS_all_U_GT_blind.json',
+            5:'config/v24_gpu5_GT_blind.json',6:'config/v24_gpu6_STUNetS_GT_blind.json'}[gpu])
+        for name in cli.execution_source_files(gpu):
+            target=self.code/name;target.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(cp.ROOT/name,target)
         config=json.loads(config_path.read_text(encoding='utf8'))
         args=SimpleNamespace(config=config_path,native_experiment=self.root/'UNIT_native',inventory=self.inventory,
             input_cache=self.cache,gpu=gpu,stunet_checkpoint=self.stu)
@@ -74,6 +78,11 @@ class CurrentOwnArmAdmission(unittest.TestCase):
                 per_P_patient_top1=.2,patient_balanced_pair_loss=.4)) for epoch in range(1,41)]
         self.winner=dict(epoch=17,updates=289,selection_key=[.6,.2,-.4],selected_by='fixed_full128_validation_only')
         history=[dict(epoch=epoch,full_validation=reports[epoch-1]) for epoch in range(1,41)]
+        if gpu==4:
+            for row in history:
+                row.update(train_probe=dict(active_u=128),stage_validation=dict(active_u=128),
+                    curriculum_transition=dict(epoch=row['epoch'],previous_active_u=128,next_active_u=128,
+                        expanded=False,reason='full_bank_replay'))
         state=dict(epoch=41,phase='complete',status='COMPLETE',updates=680,attempts=680,history=history,
             best=self.winner,connected=['UNIT_parameter_'+str(i) for i in range(981 if gpu==5 else 537)],
             curriculum=dict(policy=config['v24_runtime']['curriculum'],active_u=128),
@@ -123,6 +132,53 @@ class CurrentOwnArmAdmission(unittest.TestCase):
         self.assertEqual(pin['model_contract']['encoder'],'official_pretrained_STU_Net_S')
         self.stu.write_bytes(b'changed asset')
         with self.assertRaisesRegex(ValueError,'STU checkpoint'):self.inspect()
+
+    def test_fresh_gpu4_actual_all128_best_has_its_own_stu_and_execution_manifest(self):
+        self.gpu=4;self.stu=self.root/'UNIT_official_asset.model';self.stu.write_bytes(b'CPU UNIT provenance only')
+        self.make_fixture();pin=self.inspect()
+        self.assertFalse((self.output/'training/training_continuation.json').exists())
+        self.assertEqual(pin['physical_GPU'],4)
+        self.assertEqual(pin['selected']['best_model_sha256'],digest(self.best['model']))
+        self.assertEqual(pin['training_U_policy'],dict(all_U_from_epoch_one=True,initial_u=128,total_u=128,total_epochs=40))
+        self.assertEqual(set(pin['source_files_sha256']),set(cli.execution_source_files(4)))
+        self.assertEqual(pin['stunet_checkpoint'],str(self.stu.resolve()))
+        self.assertNotIn('training_U_policy',self.request)
+        changed=copy.deepcopy(pin);changed['training_U_policy']['initial_u']=7
+        changed['pin_sha256']=canonical_hash({k:v for k,v in changed.items() if k!='pin_sha256'})
+        with self.assertRaisesRegex(ValueError,'full128U from epoch one'):cp.validate_current_pin(changed)
+
+    def test_gpu4_every_training_epoch_must_replay_all128_not_only_validation(self):
+        self.gpu=4;self.stu=self.root/'UNIT_official_asset.model';self.stu.write_bytes(b'CPU UNIT provenance only')
+        self.make_fixture()
+        for key,value in (('train_probe',dict(active_u=7)),('stage_validation',dict(active_u=112)),
+                ('curriculum_transition',dict(epoch=1,previous_active_u=7,next_active_u=128,expanded=True,reason='coverage_deadline'))):
+            original=copy.deepcopy(self.latest);self.latest['state']['history'][0][key]=value;self.persist()
+            with self.subTest(key=key),self.assertRaisesRegex(ValueError,'actual GPU4 training epoch'):self.inspect()
+            self.latest=original
+
+    def test_gpu4_asset_and_optimized_execution_sources_remain_exact(self):
+        self.gpu=4;self.stu=self.root/'UNIT_official_asset.model';self.stu.write_bytes(b'CPU UNIT provenance only')
+        self.make_fixture()
+        self.stu.write_bytes(b'changed officialasset fixture')
+        with self.assertRaisesRegex(ValueError,'STU checkpoint'):self.inspect()
+        self.make_fixture()
+        (self.code/'tools/run_v24_gpu4_all_u.py').write_text('# changed CPU UNIT execution source')
+        with self.assertRaisesRegex(ValueError,'immutable completed v24 request'):self.inspect()
+
+    def test_gpu4_native_cli_requires_exact_current_arm_and_official_asset(self):
+        common=['--source-output','UNIT_output','--source-code','UNIT_code','--inventory','UNIT_inventory',
+            '--input-cache','UNIT_cache','--output','UNIT_pin','--gpu','4']
+        self.assertEqual(parse(['pin-current-gnn',*common,'--stunet-checkpoint','UNIT_official_asset']).gpu,4)
+        with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):parse(['pin-current-gnn',*common])
+        native=self.root/'native_GPU4.json';write_json(native,dict(format=cp.CURRENT_FORMAT,physical_GPU=4))
+        for action in ('calibrate-native','train'):
+            self.assertEqual(parse([action,'--native',str(native),'--gpu','4']).gpu,4)
+        native_runtime._require_explicit_native_gpu(native,4)
+        write_json(native,dict(format=cp.CURRENT_FORMAT,physical_GPU=6))
+        with self.assertRaisesRegex(ValueError,'GPU1'):native_runtime._require_explicit_native_gpu(native,4)
+        with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):parse(['train','--native',str(native),'--gpu','4'])
+        write_json(native,dict(format=cp.FORMAT,physical_GPU=4))
+        with self.assertRaisesRegex(ValueError,'GPU1'):native_runtime._require_explicit_native_gpu(native,4)
 
     def test_live_paused_debug_or_incomplete_latest_cannot_trigger_native(self):
         for change in ({'status':'RUNNING'},{'status':'PAUSED'},{'phase':'training'},{'updates':679}):
