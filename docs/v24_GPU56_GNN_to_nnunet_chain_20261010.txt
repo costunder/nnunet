@@ -1,0 +1,72 @@
+v2.4 GPU5 / GPU6 독립 GNN 완료 후 native nnU-Net 자동 연결 — 2026-10-10
+
+사용자 요청: GPU5와 GPU6 각각 GNN 학습을 마친 후 같은 GPU에서 nnU-Net 학습이 자동으로 이어지도록 설정.
+구현·배포·실제 대기 프로세스 등록을 완료했다. 현재 두 GNN은 그대로 학습 중이며, downstream 전체 학습은 아직 시작되지 않았다.
+GPU1, 기존 GNN worker/child, 기존 결과 및 SSH/MobaXterm 세션에 신호나 변경을 가하지 않았다.
+
+실행 순서와 완료 조건
+각 GPU는 다른 arm을 기다리지 않는다. 현재 고정된 b558 GNN source/output/PID/create-time/argv/UID를 추적한다.
+정상 전체 40 epochs/680 optimizer updates, actual CUDA, 981(GPU5)/537(GPU6) gradient 연결과 COMPLETE를 확인한다.
+완료 worker/child가 실행을 끝낸 뒤 첫 단계에서 latest/BEST의 여섯 수치 상태, finite tensor, 40개 full128 validation 기록과 실제 자체 BEST를 검증한다.
+과거 v23 또는 다른 GPU 모델을 선택하지 않는다. 해당 arm의 BEST만 동결해 모든 105 recipients(all P + 128 U, zero-P 19명 포함)를 추론한다.
+이후 full CP bank → fresh native dataset/runtime → 실제 B2/B4 clone calibration → nnU-Net 250 epochs 순으로 자동 실행한다.
+생성된 bank와 native runtime은 GPU별 별도 새 경로를 사용한다. 실패/중단/소유권 변경 시 다음 단계가 시작되지 않는다.
+GNN source별 전역 exclusive claim과 chain별 lease가 중복 실행을 막는다. 기존 lease의 자동 재실행이나 결과 덮어쓰기는 허용하지 않는다.
+
+보존한 최종 설정
+GNN: physical/effective batch 4, accumulation 1, single-GPU each; GPU5 chunk32 / GPU6 chunk64, 원래 깊이·너비·그래프·전체 데이터·40 epochs 유지.
+Frozen GNN score: B4, workers4, 원래 CNN/GAT 9,752,804 또는 STU-Net-S 13,331,792 parameters, fixed evaluation epoch29, 모든 P+128U 유지.
+Native nnU-Net: 원래 ResEncUNetM plans, 105 training / 26 validation, 128×128×128, physical/effective B2, 250 epochs, CP probability0.5.
+GPU5 CPU42–45 / GPU6 CPU32–35; scoring RAM64GiB, native process+DA RAM48GiB, workers4, Torch threads1.
+A6000 각 46068MiB; source GNN이 끝나고 해당 GPU UUID에 compute application이 없으며 40GiB 이상 여유가 있을 때만 다음 단계를 실행한다.
+두 전체 bank를 위해 /home의 새 경로에 합계320GiB 여유를 검증했다. /var/tmp의 기존 데이터/실험을 삭제하거나 덮어쓰지 않았다.
+
+실제 검증과 현재 상태
+로컬 완료/BEST/native wrapper/AMP 회귀 57개 통과. 서버에서 추가 기존 CP·gradient 경로까지 포함한 105개 CPU 테스트 통과.
+실제 서버 원래 snapshot/model factory 및 공식 STU checkpoint로 두 모델을 CPU에 생성해 parameter 수와 981/537 tensors 일치를 검증했다.
+실제 131명 preprocessing split/plans와 native constructor/CLI AST 계약을 확인했다. CUDA 초기화 및 production optimizer update는 없었다.
+syntax/정적 검사 및 단위 테스트 완료. 실제 GNN worker를 대상으로 source metadata/UID/PID/생성시각/명령/CPU 검증 완료.
+이번 연결에 대한 downstream CUDA smoke test, 전체 CP materialization, nnU-Net 전체 학습·평가는 아직 수행되지 않았다.
+실제 데이터 경로를 사용한다. unit DEBUG fixture는 학습/평가 결과가 아니며 최종 설정을 축소하지 않는다.
+
+GPU6 할당 조건
+PBS129443.ECE-util1, 소유자aicompetition06, ece-a6gpu6, 6CPU/128GiB/1GPU의 R 상태를 확인한다.
+현재 할당 만료는 2026-10-11 16:00:55 KST이다. pin/score 단계 전 8시간, native 준비/calibration/train 전 7시간 이상 남아야 한다.
+남은 시간이 부족하거나 job이 종료되면 WAITING_ALLOCATION으로 CPU 대기하며, 할당 밖에서 새 GPU 작업을 시작하지 않는다.
+전체 GNN+bank+native가 현재 GPU6 예약 안에 끝나는 것은 보장하지 않는다. 기존 고정 job의 만료 후에는 할당 갱신과 명시적 recovery가 필요하다.
+원래 Dataset730 normalization의 train-only provenance와 독립 test split은 이 작업에서 새로 인증하지 않았다. outer26은 validation이며 독립 test로 보고하지 않는다.
+
+등록된 실제 프로세스
+GPU5: WAITING_FOR_FULL_GNN; supervisor PID 1259128, create 1791630897.34; RSS 19.03MiB.
+고정 코드: 37b436885bbb5612a749194e1f8846d0e1fbfbc0 / /var/tmp/aicompetition06_v24_20261010/code_37b436885bbb
+원래 GNN: b5581f6244480a66299f84a5c79200c52e9edd49 / /var/tmp/aicompetition06_v24_20261010/experiment_gpu5_measured_resume_1791628409535468800
+새 결과·상태: /home/aicompetition06/Medical/experiments/v24_current_gnn_CP_20261010_1791630892990309000/gpu5/status.json
+단계별 로그: /home/aicompetition06/Medical/experiments/v24_current_gnn_CP_20261010_1791630892990309000/gpu5/{pin_current_gnn,prepare_current_bank,prepare_native,calibrate_native,train}.log
+GPU6: WAITING_FOR_FULL_GNN; supervisor PID 1259132, create 1791630897.42; RSS 19.06MiB.
+고정 코드: 37b436885bbb5612a749194e1f8846d0e1fbfbc0 / /var/tmp/aicompetition06_v24_20261010/code_37b436885bbb
+원래 GNN: b5581f6244480a66299f84a5c79200c52e9edd49 / /var/tmp/aicompetition06_v24_20261010/experiment_gpu6_optimizer_b5581f624448_1791628370120572500
+새 결과·상태: /home/aicompetition06/Medical/experiments/v24_current_gnn_CP_20261010_1791630892990309000/gpu6/status.json
+단계별 로그: /home/aicompetition06/Medical/experiments/v24_current_gnn_CP_20261010_1791630892990309000/gpu6/{pin_current_gnn,prepare_current_bank,prepare_native,calibrate_native,train}.log
+
+증거 파일
+D:\AI project\nnunet\outputs\v24_chain_20261010\registration_complete_1791630892990309000.json
+D:\AI project\nnunet\outputs\v24_chain_20261010\server_cpu_preflight_1791630832082043300.json
+D:\AI project\nnunet\outputs\v24_chain_20261010\registration_readback_1791630946969169700.json
+outputs/v24_optimizer_20261010/GPU56_nnunet_chain_contract_1791629733812780700.json
+GitHub push는 이 요청에 포함되지 않았으며, local/server 동일 고정 commit만 배포했다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
