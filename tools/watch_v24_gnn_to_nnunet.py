@@ -15,7 +15,13 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
+import sys
 import time
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+sys.dont_write_bytecode = True
 
 FORMAT = 'v24_completed_gnn_to_native_chain_request_v1'
 CURRENT_FORMAT = 'v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1'
@@ -216,6 +222,8 @@ def validate_request(request, *, fresh=True):
             raise FileExistsError('Existing lease/stage/output found; explicit recovery required, no replay')
         for path in chain.iterdir():
             owned(path)
+    if request.get('recovery') is not None:
+        _validate_recovery(request)
     return request
 
 
@@ -586,8 +594,87 @@ def claim(root, request_sha256):
         stream.flush(); os.fsync(stream.fileno())
 
 
+def _validate_recovery(request):
+    """Only an owned GPU4 import failure before every native stage may recover."""
+    recovery = request.get('recovery')
+    if request.get('GPU_arm') != 4 or not isinstance(recovery, dict) or set(recovery) != {'proof', 'proof_sha256', 'lease'}:
+        raise ValueError('Only explicit GPU4 prelaunch registration-failure recovery is supported')
+    proof_path = owned(recovery['proof'])
+    if not _checksum(recovery['proof_sha256']) or sha(proof_path) != recovery['proof_sha256']:
+        raise ValueError('Immutable GPU4 recovery proof changed')
+    proof = read(proof_path)
+    previous_root = owned(proof['previous_chain_root'], directory=True)
+    root = Path(request['chain_root'])
+    lease_path = previous_root / 'recovery.lease.json'
+    if (proof.get('format') != 'v24_GPU4_prelaunch_chain_recovery_v1'
+            or proof.get('chain_root') != str(root) or root.parent != previous_root
+            or not root.name.startswith('recovery_') or root.name == 'recovery_'
+            or proof.get('source_output') != request['source_output']
+            or proof_path.parent != previous_root or not proof_path.name.startswith('recovery_proof_')
+            or proof_path.suffix != '.json' or recovery['lease'] != str(lease_path)
+            or set(proof.get('previous_files_sha256', {})) != {'request.json', 'status.json', 'launch.lease.json'}
+            or not _checksum(proof.get('source_claim_sha256'))):
+        raise ValueError('GPU4 recovery must append one new root/proof/lease to its original failed chain')
+    owned(lease_path, must_exist=False)
+    for name, checksum in proof['previous_files_sha256'].items():
+        if not _checksum(checksum) or sha(previous_root / name) != checksum:
+            raise ValueError('Original failed GPU4 request/status/lease changed: ' + name)
+    previous = read(previous_root / 'request.json')
+    if previous.get('recovery') is not None or previous.get('chain_root') != str(previous_root):
+        raise ValueError('Recovery requires the original direct GPU4 chain, never another recovery')
+    validate_request(previous, fresh=False)
+    same_source = ('GPU_arm', 'GPU_UUID', 'source_output', 'source_code', 'source_commit', 'source_files',
+        'CPU_affinity', 'scoring_RAM_GiB', 'native_RAM_GiB', 'min_free_disk_GiB', 'minimum_runtime_free_disk_GiB',
+        'python', 'inventory', 'baseline_preprocessed', 'input_cache', 'stunet_checkpoint',
+        'stunet_checkpoint_sha256', 'scheduler', 'source_job', 'source_claim_path')
+    if any(previous.get(key) != request.get(key) for key in same_source):
+        raise ValueError('GPU4 recovery changed its original GNN/source/assets/assignment contract')
+    previous_checksum = proof['previous_files_sha256']['request.json']
+    status = read(previous_root / 'status.json')
+    prior_lease = read(previous_root / 'launch.lease.json')
+    pid, birth = proof.get('previous_supervisor_pid'), proof.get('previous_supervisor_create_time')
+    if (type(pid) is not int or pid <= 0 or type(birth) not in (int, float)
+            or status.get('status') != 'FAILED' or status.get('GPU_arm') != 4
+            or status.get('error') != "ModuleNotFoundError: No module named 'tools'"
+            or status.get('stage') is not None or status.get('child_pid') is not None
+            or status.get('child_create_time') is not None or status.get('gnn_completion') is not None
+            or status.get('stages_completed') != [] or status.get('stage_proofs') != []
+            or status.get('signals_sent') is not False or status.get('request_sha256') != previous_checksum
+            or status.get('source_job') != previous['source_job']
+            or status.get('source_claim_path') != request['source_claim_path']
+            or status.get('source_claim_sha256') != proof['source_claim_sha256']
+            or status.get('supervisor_pid') != pid or status.get('supervisor_create_time') != birth
+            or prior_lease.get('supervisor_pid') != pid or prior_lease.get('request_sha256') != previous_checksum):
+        raise ValueError('Original GPU4 failure was not the proven tools import failure before native launch')
+    witness = process_witness(pid, birth)
+    if witness is not None and witness['status'] != 'zombie':
+        raise RuntimeError('Prior GPU4 chain supervisor is still live; recovery cannot launch')
+    allowed = {'request.json', 'status.json', 'launch.lease.json', 'watcher.log', 'registration.json',
+               proof_path.name, lease_path.name, root.name}
+    for path in previous_root.iterdir():
+        if path.name not in allowed:
+            raise ValueError('Original failed GPU4 chain contains stage/output files; no prelaunch recovery')
+        owned(path, directory=path.name == root.name)
+    return proof, previous_checksum
+
+
 def verify_source_claim(request, request_checksum):
     path = request['source_claim_path']
+    if request.get('recovery') is not None:
+        proof, previous_checksum = _validate_recovery(request)
+        recovery = request['recovery']
+        expected = dict(format='v24_owned_gnn_to_native_source_claim_v1', source_output=request['source_output'],
+            GPU_arm=4, chain_root=proof['previous_chain_root'], request_sha256=previous_checksum)
+        if read(path) != expected or sha(path) != proof['source_claim_sha256']:
+            raise ValueError('Original exclusive GPU4 source claim changed; recovery cannot replace it')
+        expected_lease = dict(format='v24_GPU4_prelaunch_chain_recovery_lease_v1', GPU_arm=4,
+            source_output=request['source_output'], source_claim_path=path,
+            source_claim_sha256=proof['source_claim_sha256'], previous_chain_root=proof['previous_chain_root'],
+            chain_root=request['chain_root'], request_sha256=request_checksum,
+            proof=recovery['proof'], proof_sha256=recovery['proof_sha256'])
+        if read(recovery['lease']) != expected_lease:
+            raise ValueError('Exclusive GPU4 recovery lease belongs to another request/root; no replay')
+        return sha(path)
     expected = dict(format='v24_owned_gnn_to_native_source_claim_v1', source_output=request['source_output'],
                     GPU_arm=request['GPU_arm'], chain_root=request['chain_root'], request_sha256=request_checksum)
     if read(path) != expected:
@@ -673,7 +760,7 @@ def run(request_path):
         if status['actual_CPU_affinity'] != request['CPU_affinity']:
             raise ValueError('Watcher did not inherit its exact assigned CPU affinity')
         while True:
-            if sha(request_path) != request_checksum or sha(request['source_claim_path']) != source_claim_checksum:
+            if sha(request_path) != request_checksum or verify_source_claim(request, request_checksum) != source_claim_checksum:
                 raise ValueError('Registered request changed while waiting')
             completion = inspect_source(request)
             if completion is not None:
@@ -722,6 +809,8 @@ def main(args):
     if args.check:
         request = validate_request(read(args.request))
         verify_code(request)
+        if request['GPU_arm'] == 4:
+            _validate_gpu4_pipeline_inputs(request, read(request['source_job']['worker_command'][-1]))
         print(json.dumps(dict(status='REQUEST_ADMITTED', GPU_arm=request['GPU_arm'], server_files_written=False,
                               GPU_child_started=False, GNN_checkpoint_loaded=False)), flush=True)
     else:

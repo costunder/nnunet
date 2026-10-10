@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import time
 from types import SimpleNamespace
@@ -138,6 +141,58 @@ class CompletedArmFixture(unittest.TestCase):
         self.write_json(request['source_claim_path'], dict(format='v24_owned_gnn_to_native_source_claim_v1',
             source_output=request['source_output'], GPU_arm=request['GPU_arm'], chain_root=request['chain_root'],
             request_sha256=chain.sha(request_path)))
+
+    def make_recovery(self):
+        self.request = self.make_request(4); self.write_completion(4)
+        self.target.mkdir()
+        previous_path = self.target / 'request.json'; self.write_json(previous_path, self.request)
+        self.write_claim(previous_path)
+        previous_checksum = chain.sha(previous_path)
+        claim_checksum = chain.sha(self.request['source_claim_path'])
+        status = dict(format='v24_completed_gnn_to_native_chain_status_v1', GPU_arm=4, status='FAILED',
+            error="ModuleNotFoundError: No module named 'tools'", request_sha256=previous_checksum,
+            source_job=self.request['source_job'], source_claim_path=self.request['source_claim_path'],
+            source_claim_sha256=claim_checksum, supervisor_pid=99999, supervisor_create_time=42.,
+            stage=None, child_pid=None, child_create_time=None, stages_completed=[], stage_proofs=[], signals_sent=False)
+        self.write_json(self.target / 'status.json', status)
+        self.write_json(self.target / 'launch.lease.json', dict(request_sha256=previous_checksum,
+            supervisor_pid=99999, created=43.))
+        self.original_paths = [self.target / name for name in ('request.json', 'status.json', 'launch.lease.json')]
+        self.original_paths.append(Path(self.request['source_claim_path']))
+        self.original_bytes = {str(path): path.read_bytes() for path in self.original_paths}
+        old_root = self.target
+        recovered = copy.deepcopy(self.request)
+        self.target = old_root / 'recovery_CPU_UNIT'; self.target.mkdir()
+        recovered['chain_root'] = str(self.target)
+        for row in recovered['stages']:
+            row['command'] = [argument.replace(str(old_root), str(self.target)) for argument in row['command']]
+        self.recovery_proof_path = old_root / 'recovery_proof_CPU_UNIT.json'
+        proof = dict(format='v24_GPU4_prelaunch_chain_recovery_v1', previous_chain_root=str(old_root),
+            chain_root=str(self.target), source_output=recovered['source_output'],
+            previous_files_sha256={name: chain.sha(old_root / name) for name in ('request.json', 'status.json', 'launch.lease.json')},
+            source_claim_sha256=claim_checksum, previous_supervisor_pid=99999, previous_supervisor_create_time=42.)
+        self.write_json(self.recovery_proof_path, proof)
+        recovered['recovery'] = dict(proof=str(self.recovery_proof_path), proof_sha256=chain.sha(self.recovery_proof_path),
+            lease=str(old_root / 'recovery.lease.json'))
+        self.request = recovered
+        self.recovery_request_path = self.target / 'request.json'; self.write_json(self.recovery_request_path, recovered)
+        lease = dict(format='v24_GPU4_prelaunch_chain_recovery_lease_v1', GPU_arm=4,
+            source_output=recovered['source_output'], source_claim_path=recovered['source_claim_path'],
+            source_claim_sha256=claim_checksum, previous_chain_root=str(old_root), chain_root=str(self.target),
+            request_sha256=chain.sha(self.recovery_request_path), proof=recovered['recovery']['proof'],
+            proof_sha256=recovered['recovery']['proof_sha256'])
+        with Path(recovered['recovery']['lease']).open('x', encoding='utf8') as stream:
+            json.dump(lease, stream)
+        return recovered, self.recovery_request_path
+
+    def resign_previous_debug_status(self, change):
+        proof = chain.read(self.recovery_proof_path)
+        status_path = Path(proof['previous_chain_root']) / 'status.json'
+        status = chain.read(status_path); status.update(change); self.write_json(status_path, status)
+        proof['previous_files_sha256']['status.json'] = chain.sha(status_path)
+        self.write_json(self.recovery_proof_path, proof)
+        self.request['recovery']['proof_sha256'] = chain.sha(self.recovery_proof_path)
+        self.write_json(self.recovery_request_path, self.request)
 
     def completion(self, status=None, worker=None, child=None):
         return chain.source_completion(self.request, status or chain.read(self.job / 'status.json'), worker, child)
@@ -279,6 +334,99 @@ class CompletedArmFixture(unittest.TestCase):
         self.request['source_job']['pipeline_request_sha256'] = chain.sha(self.job / 'request.json')
         with self.assertRaisesRegex(ValueError, 'native128U from epoch one'):
             chain.inspect_source(self.request)
+
+    def test_actual_standalone_gpu4_cli_bootstraps_canonical_project_from_other_cwd(self):
+        request = self.make_request(4)
+        project = chain.PROJECT_ROOT
+        commit = subprocess.check_output(['git', '-c', 'safe.directory=' + str(project), '-C', str(project),
+            'rev-parse', 'HEAD'], text=True).strip()
+        request.update(code=str(project), commit=commit, source_code=str(project), source_commit=commit)
+        request['code_files'] = {name: chain.sha(project / name) for name in
+            ('tools/watch_v24_gnn_to_nnunet.py', 'tools/run_v24_nnunet_cp.py')}
+        request['source_files'] = {name: chain.sha(project / name) for name in
+            ('config/v24_gpu4_STUNetS_all_U_GT_blind.json', 'tools/run_v24_gpu4_all_u.py')}
+        request['python'] = sys.executable
+        for row in request['stages']:
+            row['command'][0] = sys.executable
+            row['command'][3] = str(project / 'tools/run_v24_nnunet_cp.py')
+            if '--source-code' in row['command']:
+                row['command'][row['command'].index('--source-code') + 1] = str(project)
+        pipeline = chain.read(self.job / 'request.json')
+        pipeline.update(code=str(project), commit=commit, source_config=str(project / 'config/v24_gpu4_STUNetS_all_U_GT_blind.json'))
+        pipeline['source_config_sha256'] = chain.sha(pipeline['source_config'])
+        for row in pipeline['stages']:
+            command = row['command']; command[0] = sys.executable; command[3] = str(project / 'tools/run_v24_gpu4_all_u.py')
+            command[command.index('--config') + 1] = pipeline['source_config']
+        self.write_json(self.job / 'request.json', pipeline)
+        request['source_job']['pipeline_request_sha256'] = chain.sha(self.job / 'request.json')
+        request_path = self.root / 'standalone_request.json'; self.write_json(request_path, request)
+        env = os.environ.copy(); env.pop('PYTHONPATH', None)
+        count = int(env.get('GIT_CONFIG_COUNT', '0'))
+        env.update(GIT_CONFIG_COUNT=str(count + 1))
+        env['GIT_CONFIG_KEY_' + str(count)] = 'safe.directory'; env['GIT_CONFIG_VALUE_' + str(count)] = str(project)
+        result = subprocess.run([sys.executable, '-B', str(project / 'tools/watch_v24_gnn_to_nnunet.py'),
+            '--request', str(request_path), '--check'], cwd=self.root, env=env, text=True,
+            encoding='utf8', capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        value = json.loads(result.stdout)
+        self.assertEqual(value['status'], 'REQUEST_ADMITTED')
+        self.assertFalse(value['server_files_written']); self.assertFalse(value['GPU_child_started'])
+        self.assertFalse(value['GNN_checkpoint_loaded'])
+        self.assertFalse((self.target / 'launch.lease.json').exists())
+
+    def test_gpu4_recovery_preserves_initial_claim_and_every_failed_artifact_byte(self):
+        request, request_path = self.make_recovery()
+        with patch.object(chain, 'process_witness', return_value=None) as witness:
+            chain.validate_request(request)
+            checksum = chain.verify_source_claim(request, chain.sha(request_path))
+        self.assertEqual(checksum, chain.sha(request['source_claim_path']))
+        self.assertEqual(witness.call_args.args, (99999, 42.))
+        for path, content in self.original_bytes.items():
+            self.assertEqual(Path(path).read_bytes(), content)
+        self.assertFalse((self.target / 'launch.lease.json').exists())
+
+    def test_gpu4_recovery_refuses_live_previous_supervisor_and_any_stage_or_output(self):
+        request, _ = self.make_recovery()
+        with patch.object(chain, 'process_witness', return_value={'status': 'running'}), \
+                self.assertRaisesRegex(RuntimeError, 'still live'):
+            chain.validate_request(request)
+        self.resign_previous_debug_status({'stage': 'pin_current_gnn', 'stages_completed': ['pin_current_gnn']})
+        with patch.object(chain, 'process_witness', return_value=None), self.assertRaisesRegex(ValueError, 'before native launch'):
+            chain.validate_request(self.request)
+        self.resign_previous_debug_status({'stage': None, 'stages_completed': []})
+        old_root = Path(chain.read(self.recovery_proof_path)['previous_chain_root'])
+        (old_root / 'native').mkdir()
+        with patch.object(chain, 'process_witness', return_value=None), self.assertRaisesRegex(ValueError, 'stage/output'):
+            chain.validate_request(self.request)
+
+    def test_gpu4_recovery_refuses_edited_lineage_source_contract_and_other_request_replay(self):
+        request, request_path = self.make_recovery()
+        changed = copy.deepcopy(request); changed['source_job']['worker_pid'] += 1
+        with patch.object(chain, 'process_witness', return_value=None), self.assertRaisesRegex(ValueError, 'original GNN/source'):
+            chain.validate_request(changed)
+        with patch.object(chain, 'process_witness', return_value=None), self.assertRaisesRegex(ValueError, 'another request/root'):
+            chain.verify_source_claim(request, 'f' * 64)
+        proof = chain.read(self.recovery_proof_path); proof['previous_supervisor_create_time'] = 43.
+        self.write_json(self.recovery_proof_path, proof)
+        with self.assertRaisesRegex(ValueError, 'recovery proof changed'):
+            chain.verify_source_claim(request, chain.sha(request_path))
+
+    def test_gpu4_waiting_rechecks_recovery_lease_before_any_native_launch(self):
+        request, request_path = self.make_recovery()
+        def waiting_source(*args):
+            lease = chain.read(request['recovery']['lease']); lease['request_sha256'] = 'f' * 64
+            self.write_json(request['recovery']['lease'], lease)
+            return None
+        with patch.object(chain, 'process_witness', return_value=None), patch.object(chain, 'verify_code'), \
+                patch.object(chain, 'inspect_source', side_effect=waiting_source), patch.object(chain.time, 'sleep'), \
+                patch.object(chain, 'run_stage') as launch, patch('psutil.Process') as process:
+            process.return_value.cpu_affinity.return_value = request['CPU_affinity']
+            process.return_value.create_time.return_value = 100.
+            with self.assertRaisesRegex(ValueError, 'another request/root'):
+                chain.run(request_path)
+        launch.assert_not_called()
+        for path, content in self.original_bytes.items():
+            self.assertEqual(Path(path).read_bytes(), content)
 
     def test_gpu4_native_child_routes_physical_device_and_retains_ram_and_full_calibration(self):
         self.request = self.make_request(4); self.target.mkdir(); (self.target / 'native').mkdir()
