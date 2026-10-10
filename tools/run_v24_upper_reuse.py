@@ -34,6 +34,17 @@ def _write_new(path,value):
         json.dump(value,stream,indent=2,allow_nan=False)
 
 
+def _require_verification(proof,identity):
+    # Receipt JSON converts native partition tuples to lists. Compare the exact
+    # persisted identity, preserving values and order rather than Python types.
+    persisted=json.loads(json.dumps(identity,allow_nan=False))
+    stages=proof.get('stages',[])
+    if (proof.get('status')!='FULL_NATIVE_EXISTING_GRAPH_EQUIVALENCE_PASS'
+            or proof.get('identity')!=persisted or not stages
+            or stages[0].get('active_U')!=7 or stages[0].get('compared_cases')!=86):
+        raise ValueError('Source/cache/runtime/full-population verification identity differs')
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--action',choices=('verify','prepare'),required=True)
@@ -135,9 +146,7 @@ def main(argv=None):
             if args.verification is None:
                 raise ValueError('Explicit complete native equivalence receipt required before production cache publication')
             proof=json.loads(args.verification.read_text(encoding='utf8'))
-            if (proof.get('status')!='FULL_NATIVE_EXISTING_GRAPH_EQUIVALENCE_PASS'
-                    or proof.get('identity')!=identity or proof['stages'][0]['compared_cases']!=86):
-                raise ValueError('Source/cache/runtime/full-population verification identity differs')
+            _require_verification(proof,identity)
             document['verification_file_sha256']=_sha(args.verification)
             for count in STAGES:
                 plans=[inputs.population.case(case,count) for case in cases]
