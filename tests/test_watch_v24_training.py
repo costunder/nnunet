@@ -127,6 +127,30 @@ class ViewerTest(unittest.TestCase):
         self.assertIn('stage e4 U7',terminal.bars[3].desc)
         self.assertIn('full128 e4 U128',terminal.bars[3].desc)
 
+    def test_tty_renderer_explicitly_overrides_disabled_environment(self):
+        import io, os
+        with patch.dict(os.environ, {'TQDM_DISABLE':'1'}):
+            stream=io.StringIO();terminal=watch.TerminalView(stream)
+            try:
+                terminal.render(dict(GPU=6,status='RUNNING',epoch=4,epochs=40,
+                    completed_epochs=3,stage='full_validation',stage_label='전체 validation',
+                    active_U=128,progress=dict(done=0,total=21),reports={}))
+                self.assertTrue(all(bar.disable is False for bar in terminal.bars))
+                self.assertIn('\r',stream.getvalue())
+                self.assertIn('GPU6 RUNNING',stream.getvalue())
+            finally:terminal.close()
+
+    def test_rss_sums_verified_arm_tree_and_excludes_other_uid(self):
+        import sys
+        from types import SimpleNamespace as NS
+        def process(rss,uid):return NS(memory_info=lambda:NS(rss=rss),uids=lambda:NS(real=uid))
+        owned=process(100,42);owned.create_time=lambda:123.;owned.children=lambda recursive:[process(200,42),process(300,7)]
+        fake=NS(Process=lambda pid:owned,NoSuchProcess=type('NoSuchProcess',(Exception,),{}))
+        with patch.dict(sys.modules,{'psutil':fake}), patch.object(watch.os,'getuid',return_value=42,create=True):
+            rss,label=watch.Viewer._rss(dict(status='RUNNING',child_pid=1,child_create_time=123.),None)
+        self.assertEqual(rss,300)
+        self.assertEqual(label,'live owned arm process tree')
+
     def test_no_training_or_torch_imports(self):
         import ast
         tree=ast.parse(Path(watch.__file__).read_text(encoding='utf8'))

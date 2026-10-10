@@ -267,7 +267,14 @@ class Viewer:
                     process = psutil.Process(status['child_pid'])
                     if (abs(process.create_time()-status['child_create_time']) < .1
                             and (not hasattr(os, 'getuid') or process.uids().real == os.getuid())):
-                        return process.memory_info().rss, 'live owned child'
+                        total = process.memory_info().rss
+                        for child in process.children(recursive=True):
+                            try:
+                                if not hasattr(os, 'getuid') or child.uids().real == os.getuid():
+                                    total += child.memory_info().rss
+                            except psutil.NoSuchProcess:
+                                continue
+                        return total, 'live owned arm process tree'
                 except psutil.NoSuchProcess:
                     pass
         if latest and latest.get('RSS_bytes') is not None:
@@ -364,7 +371,7 @@ class TerminalView:
     def __init__(self, stream):
         from tqdm import tqdm
         self.stream = stream
-        self.bars = [tqdm(total=None, position=i, leave=False, dynamic_ncols=True, file=stream,
+        self.bars = [tqdm(total=None, position=i, leave=False, dynamic_ncols=True, file=stream, disable=False,
             bar_format='{desc} |{bar}| {n_fmt}/{total_fmt}' if i < 2 else '{desc}') for i in range(4)]
 
     def render(self, snapshot):
