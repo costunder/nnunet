@@ -88,7 +88,8 @@ class ReadonlyNativeStorageUnit(unittest.TestCase):
         for case in self.train+self.val:
             image=self.root/'UNIT_raw'/ (case+'.ct');label=self.root/'UNIT_raw'/(case+'.seg')
             image.parent.mkdir(exist_ok=True);image.write_bytes(('UNIT_CT_'+case).encode());label.write_bytes(('UNIT_seg_'+case).encode())
-            records.append(dict(case_id=case,image=str(image),label=str(label),image_sha256=ro.sha(image),label_sha256=ro.sha(label)))
+            if case in self.train:
+                records.append(dict(case_id=case,image=str(image),label=str(label),image_sha256=ro.sha(image),label_sha256=ro.sha(label)))
             save_array(self.data/(case+'.b2nd'),np.ones((1,2,2,2),dtype=np.float32))
             save_array(self.data/(case+'_seg.b2nd'),np.ones((1,2,2,2),dtype=np.int16))
             write(self.data/(case+'.pkl'),dict(UNIT=True,case_id=case))
@@ -156,6 +157,19 @@ class ReadonlyNativeStorageUnit(unittest.TestCase):
     def test_missing_raw_case_rejected(self):
         (self.bank/'raw_cases'/(self.train[-1]+'.json')).unlink()
         with self.assertRaisesRegex(ValueError,'full105'):self.admission()
+
+    def test_missing_authoritative_raw_recipient_rejected(self):
+        inventory=ro.read(self.inventory);inventory['raw_records'].pop();write(self.inventory,inventory)
+        write(self.bank/'request.json',dict(inventory_sha256=ro.sha(self.inventory)))
+        with self.assertRaisesRegex(ValueError,'authoritative105 raw recipients'):self.admission()
+
+    def test_outer_validation_raw_record_cannot_enter_recipient_inventory(self):
+        inventory=ro.read(self.inventory);case=self.val[0]
+        image=self.root/'UNIT_raw'/(case+'.ct');label=self.root/'UNIT_raw'/(case+'.seg')
+        inventory['raw_records'].append(dict(case_id=case,image=str(image),label=str(label),
+            image_sha256=ro.sha(image),label_sha256=ro.sha(label)))
+        write(self.inventory,inventory);write(self.bank/'request.json',dict(inventory_sha256=ro.sha(self.inventory)))
+        with self.assertRaisesRegex(ValueError,'authoritative105 raw recipients'):self.admission()
 
     def test_missing_preprocessed_case_rejected(self):
         (self.data/(self.val[-1]+'.b2nd')).unlink()

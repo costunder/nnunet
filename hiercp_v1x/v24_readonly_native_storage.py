@@ -159,9 +159,9 @@ def build_admission(*,source_bank,inventory_path,baseline_preprocessed,additiona
     expected,all_cases=_case_ids(meta['split'])
     baseline=pipeline.validate_baseline(baseline_preprocessed,meta['split'])
     if (bank['split']!=meta['split'] or bank['baseline']!=baseline or request['inventory_sha256']!=inventory_proof['sha256']
-            or set(bank['entries_by_case'])!=expected or len(meta['raw_records'])!=131
-            or {row['case_id'] for row in meta['raw_records']}!=all_cases):
-        raise ValueError('Cache and authoritative full105/131 inventory/plans must coincide')
+            or set(bank['entries_by_case'])!=expected or len(meta['raw_records'])!=105
+            or {row['case_id'] for row in meta['raw_records']}!=expected):
+        raise ValueError('Cache and authoritative105 raw recipients/131 preprocessed inventory/plans must coincide')
     scientific={name:sha(ROOT/name) for name in SCIENCE_FILES}
     if any(bank['source_identity'].get(name)!=checksum for name,checksum in scientific.items()):
         raise ValueError('Static cache original raw preparation/resampling source differs')
