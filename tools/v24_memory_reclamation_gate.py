@@ -106,6 +106,7 @@ def route_memory_runtime(source_code, variant):
         spec.loader.exec_module(module)
         if _sha(module.__file__)!=expected or module.memory_runtime_contract()['runtime_source_sha256']!=expected:
             raise ValueError('Actual selected memory implementation differs from its admitted source')
+        hash_binding=_bind_selected_memory_hash_reference(module,proof,expected)
     except BaseException:
         if previous is None:sys.modules.pop(name,None)
         else:sys.modules[name]=previous
@@ -114,7 +115,76 @@ def route_memory_runtime(source_code, variant):
         raise
     return dict(variant=variant,actual_module_name=module.__name__,actual_module_path=str(path),
         actual_module_sha256=expected,actual_contract=module.memory_runtime_contract(),
-        imported_before_prefetch_input_factory=True,source_provenance=proof)
+        imported_before_prefetch_input_factory=True,source_provenance=proof,
+        actual_hash_memory_reference_binding=hash_binding)
+
+
+def _bind_selected_memory_hash_reference(module,provenance,expected):
+    """Bind the unchanged hash guard to the real admitted cold memory source.
+
+    The hash implementation, private-get AST checks, input source and every
+    reference allowlist remain unchanged. Retain the candidate file witness
+    as well as the selected preserved file witness. No hash is memoized and
+    no file identity is projected onto a different implementation.
+    """
+    from hiercp_v1x import v24_hash_runtime as hashes
+    if hashes.torch.cuda.is_initialized():raise RuntimeError('Hash source binding must precede CUDA')
+    initial=(ROOT/'hiercp_v1x/v24_hash_runtime.py',ROOT/'hiercp_v1x/v24_inputs.py',
+             ROOT/'hiercp_v1x/v24_memory_runtime.py')
+    if tuple(hashes._SOURCE_PATHS)!=initial or hashes.inputs.tensor_digest is not hashes._ORIGINAL_DIGEST:
+        raise ValueError('Fresh unchanged hash reference paths and original input digest required')
+    if Path(hashes.__file__).resolve()!=initial[0] or sys.modules.get(module.__name__) is not module:
+        raise ValueError('Actual candidate hash and canonical admitted memory modules required')
+    for item in provenance['source_file_proofs']:_recheck(item)
+    selected=Path(module.__file__).resolve(strict=True)
+    admitted=[item for item in provenance['source_file_proofs']
+              if item['path']==str(selected) and item['raw_sha256']==expected]
+    if len(admitted)!=1 or module.memory_runtime_contract()['runtime_source_sha256']!=expected:
+        raise ValueError('Selected memory hash reference must match its actual owned SHA/stat proof')
+    hashes._prove_original()
+    for item in initial:
+        witness=hashes._SOURCE_PROOFS.get(str(item))
+        if witness is None or witness!=(hashes._stat(item),_sha(item)):
+            raise ValueError('Original hash guard source proof changed before routing')
+    original_paths=hashes._SOURCE_PATHS;original_proofs=dict(hashes._SOURCE_PROOFS)
+    try:
+        hashes._SOURCE_PROOFS[str(selected)]=(tuple(admitted[0]['stat']),expected)
+        hashes._SOURCE_PATHS=(initial[0],initial[1],selected)
+        # Execute the original private guard now, before installing any digest.
+        actual=hashes._private_memory_reference()
+        if actual is None or actual[1]['unchanged_memory_source_sha256']!=expected:
+            raise ValueError('Actual original private-get hash guard failed selected source admission')
+        for item in provenance['source_file_proofs']:_recheck(item)
+    except BaseException:
+        hashes._SOURCE_PATHS=original_paths;hashes._SOURCE_PROOFS=original_proofs
+        raise
+    return dict(actual_memory_path=str(selected),actual_memory_sha256=expected,
+        actual_hash_source_sha256=_sha(initial[0]),original_hash_function_code_unchanged=True,
+        original_private_get_AST_provider_input_checks_preserved=True,
+        original_candidate_memory_witness_retained=True,bound_before_hash_install=True)
+
+
+def _hash_pair_contract(baseline,optimized,provenance):
+    """Only two actual selected-memory identities may differ in hash receipts."""
+    import copy
+    normalized=[]
+    for row,prefix in ((baseline,'preserved'),(optimized,'candidate')):
+        receipt=copy.deepcopy(row.get('hash_runtime',{}));expected=provenance[prefix+'_memory_sha256']
+        contract=receipt.get('contract',{})
+        private=receipt.get('installed_private_global_references')
+        if (contract.get('unchanged_memory_source_sha256')!=expected
+                or contract.get('runtime_source_sha256')!=provenance['unchanged_source_sha256']['v24_hash_runtime.py']
+                or not isinstance(private,list) or len(private)!=1
+                or private[0].get('name')!='hiercp_v1x.v24_memory_runtime._GET.__globals__[tensor_digest]'
+                or private[0].get('unchanged_memory_source_sha256')!=expected
+                or private[0].get('private_get_code_reconstructed_from_original') is not True
+                or receipt.get('all_loaded_references_preflighted_before_install') is not True):
+            raise ValueError('Actual unchanged hash code and selected-memory private reference proof required')
+        contract['unchanged_memory_source_sha256']='ACTUAL_ADMITTED_MEMORY_ONLY'
+        private[0]['unchanged_memory_source_sha256']='ACTUAL_ADMITTED_MEMORY_ONLY'
+        normalized.append(receipt)
+    if normalized[0]!=normalized[1]:
+        raise ValueError('Hash receipts differ beyond actual bound selected-memory source identity')
 
 
 def _memory_pair_contract(baseline,optimized,provenance):
@@ -143,8 +213,8 @@ def _memory_pair_contract(baseline,optimized,provenance):
             raise ValueError('Actual prefetch must capture the selected real memory classes/functions')
         if set(row.get('trainable_parameter_schema',{}))==set() or len(row['trainable_parameter_schema'])!=537:
             raise ValueError('Actual complete named537 gradient schema required')
-    if (baseline.get('hash_runtime')!=optimized.get('hash_runtime')
-            or baseline.get('input_runtime',{}).get('contract')!=optimized.get('input_runtime',{}).get('contract')
+    _hash_pair_contract(baseline,optimized,provenance)
+    if (baseline.get('input_runtime',{}).get('contract')!=optimized.get('input_runtime',{}).get('contract')
             or baseline['trainable_parameter_schema']!=optimized['trainable_parameter_schema']):
         raise ValueError('Hash/input contracts and all named native parameters must remain exact')
     first,second=baseline['prefetch_runtime'],optimized['prefetch_runtime']

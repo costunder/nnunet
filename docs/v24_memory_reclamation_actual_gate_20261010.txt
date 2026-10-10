@@ -17,6 +17,19 @@ profile. The prefetch memory-source and pressure-function hashes are checked
 against the selected actual implementation. No existing receipt is rewritten
 to pretend this is the prior input-only optimization.
 
+The first real cold launches rejected the preserved memory module because
+the unchanged hash guard still named the candidate package's memory path.
+No CUDA probe or optimizer update occurred; the exact checkpoint and failed
+logs were preserved. Cold routing now binds that guard to the actual selected
+owned memory file's SHA/stat proof, retains the candidate file witness, and
+executes the original private-get AST/provider/input checks before hash
+installation. The hash implementation file and function code remain unchanged.
+Only the two selected-memory SHA fields in old/new hash receipts may differ;
+each must match its separately admitted actual source. All other hash receipt
+fields require equality. Routing and metadata roll back on admission failure.
+CPU tests exercise real old-memory routing, hash install and adapter capture
+together before another real CUDA launch; results are recorded separately.
+
 The cold body preserves the complete four stress patients, all P+128 U in two
 views, physical patient batch 4, candidate chunk 64, full128 network and the
 original 537 trainable parameters. It performs one explicit DEBUG forward,

@@ -47,7 +47,15 @@ class MemoryOnlyActualTensorGateDEBUG(unittest.TestCase):
                 comparison_memory_runtime_provenance=copy.deepcopy(self.provenance),
                 probe_source_sha256=gate._sha(gate.ROOT/'tools/run_v24_memory_reclamation_probe.py'),
                 input_runtime=dict(contract=dict(runtime_source_sha256=self.provenance['input_adapter_sha256'])),
-                hash_runtime=dict(explicit_DEBUG_contract=True),
+                hash_runtime=dict(explicit_DEBUG_contract=True,
+                    contract=dict(runtime_source_sha256=self.provenance['unchanged_source_sha256']['v24_hash_runtime.py'],
+                        unchanged_memory_source_sha256=self.provenance[prefix+'_memory_sha256']),
+                    installed_private_global_references=[dict(
+                        name='hiercp_v1x.v24_memory_runtime._GET.__globals__[tensor_digest]',
+                        unchanged_memory_source_sha256=self.provenance[prefix+'_memory_sha256'],
+                        private_get_code_reconstructed_from_original=True,
+                        private_get_AST_proof=copy.deepcopy(receipt['contract']['provider_lifetime']))],
+                    all_loaded_references_preflighted_before_install=True),
                 prefetch_runtime=dict(explicit_DEBUG_contract=True,
                     memory_runtime_source_sha256=self.provenance[prefix+'_memory_sha256'],
                     original_locked_pressure_function_sha256=self.provenance[prefix+'_pressure_function_sha256']),
@@ -150,6 +158,21 @@ print("DEBUG cold actual old module/classes/helper capture PASS; no CUDA or trai
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertIn('capture PASS',result.stdout)
 
+    def test_hash_receipts_admit_only_two_actual_memory_SHA_fields(self):
+        self.compare()
+        original=copy.deepcopy(self.optimized)
+        mutations=(lambda row:row['hash_runtime']['contract'].update(unchanged_memory_source_sha256='0'*64),
+            lambda row:row['hash_runtime']['installed_private_global_references'][0].update(unchanged_memory_source_sha256='0'*64),
+            lambda row:row['hash_runtime'].update(injected_nonmemory_field='DEBUG_should_not_be_admitted'),
+            lambda row:row['hash_runtime']['contract'].update(runtime_source_sha256='0'*64),
+            lambda row:row['hash_runtime']['installed_private_global_references'][0].update(private_get_AST_proof={}),
+            lambda row:row['hash_runtime']['installed_private_global_references'].append({'name':'DEBUG_foreign_reference'}))
+        for index,mutate in enumerate(mutations):
+            self.optimized=copy.deepcopy(original);mutate(self.optimized)
+            with self.subTest(mutation=index),self.assertRaisesRegex(ValueError,'hash|Hash'):
+                self.compare()
+        self.optimized=original
+
     def test_candidate_continuation_proof_binds_actual_current_file(self):
         value=continuation.candidate_continuation_runtime_proof()
         self.assertEqual(value['memory_module_path'],str(gate.ROOT/'hiercp_v1x/v24_memory_runtime.py'))
@@ -162,6 +185,104 @@ print("DEBUG cold actual old module/classes/helper capture PASS; no CUDA or trai
         clone=continuation._clone(original,selected=marker)
         self.assertIs(clone.__code__,original.__code__)
         self.assertEqual(clone(42),('DEBUG_only',42));self.assertNotIn('selected',original.__globals__)
+
+
+class MemoryHashRoutingColdActualCPUDEBUG(unittest.TestCase):
+    """Real preserved0340 module and actual CPU byte hashing, never CUDA/train."""
+    def setUp(self):
+        temporary=gate.ROOT/'tmp';temporary.mkdir(exist_ok=True)
+        self.temp=tempfile.TemporaryDirectory(prefix='DEBUG_memory_hash_routing_',dir=temporary)
+        self.source=Path(self.temp.name)/'preserved0340_DEBUG_source'
+        (self.source/'hiercp_v1x').mkdir(parents=True)
+        for name in gate.UNCHANGED_NAMES:
+            shutil.copyfile(gate.ROOT/'hiercp_v1x'/name,self.source/'hiercp_v1x'/name)
+        old=subprocess.check_output(['git','-c','safe.directory='+str(gate.ROOT),
+            'show','0340ac3537e9fe8e677b41b0833c6498b9033953:hiercp_v1x/v24_memory_runtime.py'],cwd=gate.ROOT)
+        (self.source/'hiercp_v1x/v24_memory_runtime.py').write_bytes(old)
+        self.old_sha=gate._sha(self.source/'hiercp_v1x/v24_memory_runtime.py')
+        self.assertEqual(self.old_sha,'f0cd0a23d583bb8776a48597d0b80357a3813b6f27dff0a441f59ec20d497e76')
+
+    def tearDown(self):self.temp.cleanup()
+
+    def run_cold(self,body,variant='current-control'):
+        script='''from pathlib import Path
+import sys,torch,numpy as np
+from types import SimpleNamespace
+from tools.v24_memory_reclamation_gate import route_memory_runtime,ROOT
+source=Path(SOURCE)
+selection=route_memory_runtime(source,VARIANT)
+from hiercp_v1x import v24_hash_runtime as hashes,v24_memory_runtime as memory
+assert not torch.cuda.is_initialized()
+'''.replace('SOURCE',repr(str(self.source))).replace('VARIANT',repr(variant))+body
+        result=subprocess.run([sys.executable,'-X','utf8','-B','-c',script],cwd=gate.ROOT,
+            text=True,capture_output=True,check=False)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('DEBUG actual CPU routing PASS',result.stdout)
+
+    def test_actual_old_and_candidate_memory_hash_install_prefetch_input_capture_and_bytes(self):
+        body='''
+original_paths=(ROOT/'hiercp_v1x/v24_hash_runtime.py',ROOT/'hiercp_v1x/v24_inputs.py',ROOT/'hiercp_v1x/v24_memory_runtime.py')
+selected=Path(selection['actual_module_path'])
+assert hashes._SOURCE_PATHS==(*original_paths[:2],selected)
+assert str(original_paths[2]) in hashes._SOURCE_PROOFS
+assert hashes._SOURCE_PROOFS[str(selected)][1]==selection['actual_module_sha256']
+binding=selection['actual_hash_memory_reference_binding']
+assert binding['actual_memory_path']==str(selected) and binding['actual_memory_sha256']==selection['actual_module_sha256']
+assert binding['original_hash_function_code_unchanged'] and binding['original_private_get_AST_provider_input_checks_preserved']
+before=torch.get_rng_state().clone()
+payload={'noncontiguous':torch.arange(60,dtype=torch.float32).reshape(3,4,5).transpose(0,2),
+ 'signed_zero':torch.tensor([0.,-0.,1.],dtype=torch.float64),
+ 'bf16':torch.arange(11,dtype=torch.bfloat16),
+ 'numpy':np.arange(48,dtype='>i4').reshape(6,8)[:,::2],
+ 'nested':[None,True,42,'DEBUG_actual_CPU_byte_values']}
+expected=hashes._ORIGINAL_DIGEST(payload)
+receipt=hashes.install()
+assert hashes.tensor_digest(payload)==expected
+assert torch.equal(before,torch.get_rng_state()) and not torch.cuda.is_initialized()
+assert receipt['contract']['unchanged_memory_source_sha256']==selection['actual_module_sha256']
+assert len(receipt['installed_private_global_references'])==1
+assert receipt['installed_private_global_references'][0]['unchanged_memory_source_sha256']==selection['actual_module_sha256']
+from hiercp_v1x import v24_factory as factory,v24_prefetch_runtime as prefetch,v24_input_runtime as inputs
+assert prefetch.memory is memory and inputs.memory is memory and prefetch._COORDINATOR is memory.MemorySafeCoordinator
+memory.install_memory_runtime(factory);prefetch.install_runtime(memory);inputs.install_runtime(pin_final_outputs=True)
+assert factory.V24InputProvider is memory.MemorySafeInputProvider
+assert memory._GET.__globals__['tensor_digest'] is hashes.tensor_digest
+assert memory._GET.__globals__['materialize_pair'] is inputs.materialize_pair
+assert memory._GET.__globals__['tensor_digest'](payload)==expected
+assert not torch.cuda.is_initialized()
+print('DEBUG actual CPU routing PASS')
+'''
+        for variant in ('current-control','optimized'):
+            with self.subTest(variant=variant):self.run_cold(body,variant)
+
+    def test_real_selected_old_source_tamper_is_rejected_before_hash_install(self):
+        self.run_cold(r'''
+path=Path(selection['actual_module_path'])
+with path.open('ab') as stream:stream.write(b'\n# DEBUG tampered selected real source\n')
+try:hashes.install()
+except ValueError as error:assert 'source changed' in str(error)
+else:raise AssertionError('Tampered actual selected old source was admitted')
+assert hashes.inputs.tensor_digest is hashes._ORIGINAL_DIGEST
+print('DEBUG actual CPU routing PASS')
+''')
+
+    def test_foreign_hash_memory_paths_or_private_module_code_are_refused(self):
+        bodies=('''
+module=SimpleNamespace(__file__=memory.__file__,__name__=memory.__name__,_deferred_get=lambda:None)
+sys.modules[memory.__name__]=module
+''','''
+memory.__file__=str(ROOT/'hiercp_v1x/v24_inputs.py')
+''','''
+memory._GET.__globals__['materialize_pair']=lambda *args,**kwargs:None
+''')
+        for body in bodies:
+            with self.subTest(mutation=body):self.run_cold(body+'''
+try:hashes.install()
+except ValueError as error:assert 'Private' in str(error)
+else:raise AssertionError('Foreign actual memory private reference was admitted')
+assert hashes.inputs.tensor_digest is hashes._ORIGINAL_DIGEST
+print('DEBUG actual CPU routing PASS')
+''')
 
 
 if __name__=='__main__':unittest.main()
