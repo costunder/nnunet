@@ -137,6 +137,11 @@ clone의 실제 full128 loss/backward/update/CP 검증 후에만250 epoch native
 실제 private trainer/parent/ROOT storage SHA와 method AST를 결속하며 기존8 CP source/private package/plans/기존 결과를 변경하지 않는다.
 동일 protocol을 calibration 및 fresh native training subprocess에 적용한다. 원형 CLI argument tail과250 epoch 설정은 유지한다.
 CPU 검사 통과와 실제 CUDA calibration 및250 epoch 전체 학습 완료는 각각 구분하여 실행 증거에 기록한다.
+실제 배치 생성 이후 보조 출력 검증의 direct return 가정도 확인했다. 설치된 UNetDecoder는 먼저 seg_outputs를 역전한 뒤 r로 반환한다.
+새 gradient runtime은 실제 ascending head 수집/역전1회/deep-supervision 반환 경로를 검증하여 원형 보조 출력 검사만 연결한다.
+서버의 실제 forward source SHA는9cd2ff47f0bddf0db631b979687614a435f3bf9363f0705027d746d33ff8e18a였다.
+원형 loss의0 가중치 출력만 실제 head parameter identity로 추적한다. active/core gradient 누락이나 비유한 gradient는 계속 오류로 처리한다.
+원형 calibration worker 및 AMP retry step의 code object, CP 집계, 동일 batch/RNG 복원, optimizer와 모델은 변경하지 않는다.
 
 작업 완료 체크리스트
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

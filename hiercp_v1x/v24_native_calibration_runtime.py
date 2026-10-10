@@ -108,6 +108,7 @@ def _prove_fresh_cli(trainer_source, cli_source):
 
 def _metadata(pipeline, native_path):
     from . import v24_native_crop_runtime as crop_runtime
+    from . import v24_native_gradient_runtime as gradient_runtime
     native_path = Path(native_path).resolve(strict=True)
     native = pipeline.read(native_path)
     bank = pipeline.read(native['bank'])
@@ -136,6 +137,9 @@ def _metadata(pipeline, native_path):
         crop_runtime_module_path=str(Path(crop_runtime.__file__).resolve()),
         crop_runtime_module_sha256=_sha(crop_runtime.__file__),
         crop_runtime_contract=crop_runtime.crop_protocol_contract(),
+        gradient_runtime_module_path=str(Path(gradient_runtime.__file__).resolve()),
+        gradient_runtime_module_sha256=_sha(gradient_runtime.__file__),
+        gradient_runtime_contract=gradient_runtime.gradient_runtime_contract(),
         continuation_CLI_path=str(pipeline.ROOT / 'tools/run_v24_native_continuation.py'),
         continuation_CLI_sha256=_sha(pipeline.ROOT / 'tools/run_v24_native_continuation.py'),
         original_calibration_function_sha256=_function_sha(pipeline.calibrate_native),
@@ -184,6 +188,7 @@ def _calibrate_native_worker(native_path, physical_batch, output):
     """Called only by the isolated clone command; model/step code stays original."""
     from . import v24_nnunet_cp as pipeline
     from . import v24_native_crop_runtime as crop_runtime
+    from . import v24_native_gradient_runtime as gradient_runtime
     native, bank, proof = _metadata(pipeline, native_path)
     output = Path(output).resolve(strict=True)
     if (not output.is_relative_to(Path(native['root']).resolve())
@@ -197,7 +202,10 @@ def _calibrate_native_worker(native_path, physical_batch, output):
         raise ValueError('Installed crop protocol differs from the admitted exact parent source')
     reader, count = _plans_reader(pipeline.read, proof['plans_path'])
     original = pipeline._calibrate_native_worker
-    worker = _function(original, {'read': reader})
+    step = gradient_runtime.clone_step(pipeline._native_clone_step_with_amp_retry)
+    if step.__code__ is not pipeline._native_clone_step_with_amp_retry.__code__:
+        raise ValueError('Original complete native AMP retry step code must be preserved')
+    worker = _function(original, {'read': reader, '_native_clone_step_with_amp_retry': step})
     if worker.__code__ is not original.__code__:
         raise ValueError('Original complete native worker code must be preserved')
     result = worker(native_path, physical_batch, output)
@@ -207,7 +215,9 @@ def _calibrate_native_worker(native_path, physical_batch, output):
     value = dict(format=WORKER_FORMAT, complete=True, physical_batch=physical_batch,
         proof=proof, trial_path=str(trial), trial_sha256=_sha(trial),
         continue_training_value=False, in_memory_plans_only=True,
-        original_worker_code_preserved=True, globals_replaced=['read'],
+        original_worker_code_preserved=True,
+        globals_replaced=['read', '_native_clone_step_with_amp_retry'],
+        original_step_code_preserved=True, gradient_proof_adapter_connected=True,
         plans_file_unchanged=True, crop_protocol_installed=True, production_optimizer_updates=0)
     _publish(runtime_receipt, value)
     return result
@@ -293,7 +303,10 @@ def admit_runtime_receipt(native_path):
                 or worker.get('in_memory_plans_only') is not True or worker.get('plans_file_unchanged') is not True
                 or worker.get('crop_protocol_installed') is not True
                 or worker.get('original_worker_code_preserved') is not True
-                or worker.get('globals_replaced') != ['read'] or worker.get('production_optimizer_updates') != 0
+                or worker.get('globals_replaced') != ['read', '_native_clone_step_with_amp_retry']
+                or worker.get('original_step_code_preserved') is not True
+                or worker.get('gradient_proof_adapter_connected') is not True
+                or worker.get('production_optimizer_updates') != 0
                 or trial not in reports or worker['trial_sha256'] != reports[trial]['sha256']
                 or _sha(trial) != worker['trial_sha256']):
             raise ValueError('Actual native trial is not bound to the fresh in-memory flag proof')

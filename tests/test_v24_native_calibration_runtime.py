@@ -177,8 +177,31 @@ class NativeFreshCLITransportDebug(unittest.TestCase):
         self.assertLess(install[0].lineno, original[0].lineno)
         metadata = inspect.getsource(runtime._metadata)
         for key in ('crop_runtime_module_sha256', 'crop_runtime_contract',
+                'gradient_runtime_module_sha256', 'gradient_runtime_contract',
                 'continuation_CLI_sha256', 'original_training_function_sha256'):
             self.assertIn(key, metadata)
+
+    def test_original_worker_and_amp_retry_step_preserve_code_at_connection(self):
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(runtime._calibrate_native_worker))
+        assignments = [node for node in ast.walk(tree) if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Call)]
+        step = [node for node in assignments if isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == 'clone_step']
+        worker = [node for node in assignments if isinstance(node.value.func, ast.Name)
+            and node.value.func.id == '_function']
+        self.assertEqual(len(step), 1)
+        self.assertEqual(ast.unparse(step[0].value.args[0]), 'pipeline._native_clone_step_with_amp_retry')
+        self.assertEqual(len(worker), 1)
+        replacements = worker[0].value.args[1]
+        self.assertIsInstance(replacements, ast.Dict)
+        self.assertEqual([key.value for key in replacements.keys],
+            ['read', '_native_clone_step_with_amp_retry'])
+        self.assertEqual([value.id for value in replacements.values], ['reader', 'step'])
+        source = inspect.getsource(runtime._calibrate_native_worker)
+        self.assertIn('step.__code__ is not pipeline._native_clone_step_with_amp_retry.__code__', source)
+        self.assertIn('worker.__code__ is not original.__code__', source)
 
     def test_receipt_publication_refuses_overwriting_existing_proof(self):
         with unit_directory() as directory:
