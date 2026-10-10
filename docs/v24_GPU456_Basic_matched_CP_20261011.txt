@@ -20,7 +20,8 @@ Matched CP conditions:
 - All 105 train cases remain present, including 24 ordinary no-CP cases.
 - All 26 validation patients retain ordinary CT inference without CP.
 - Same native full model, physical B2, 128-cube patch and 250 epochs.
-- B2/B4 complete actual clone updates must pass before production training.
+- Both B2/B4 must be measured; original B2 must pass. Actual larger-B4 CUDA
+  OOM is reported explicitly and does not reduce the original production model.
 - Evaluation must load checkpoint_best.pth and prove all 26 predictions.
 
 Only the CP position-selection policy differs: Basic chooses uniformly from
@@ -57,6 +58,15 @@ Historical metrics from the previous fixed-donor/raw-target arm cannot be
 relabelled as this matched experiment. Existing Basic validation checkpoint
 provenance is not established by its summary alone; a final BEST comparison
 must retain/prove the actual Basic checkpoint used for the same 26 patients.
+
+Actual server CPU preflight:
+237 tests passed in 62.974s on code e6b4ef42364dddd2eeafe4ccc348d3d3e7b4307a.
+All642 original native bank entries were loaded and every original payload
+array was compared exactly; full81/82176 coverage and source SHA were proved.
+No CUDA was initialized and no production optimizer update occurred.
+Receipt: outputs/v24_gpu4_20261010/matched_basic_preflight_e6b4ef42364d_1791654993807936400.json
+The final source binding additionally rejects another completed model on the
+same GPU and requires the overlay pin to equal the chain's actual own BEST.
 
 ## 작업 완료 체크리스트
 

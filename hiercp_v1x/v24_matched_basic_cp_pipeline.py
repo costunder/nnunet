@@ -424,11 +424,14 @@ def stage_proof(request, action):
         raise ValueError('Actual matched native child completion proof required')
     path = root/'pin.json'
     pin = original.validate_current_pin(read(path))
-    if pin['physical_GPU'] != request['GPU_arm']:
-        raise ValueError('Wrong completed GNN arm')
+    if (pin['physical_GPU'] != request['GPU_arm'] or pin['source_output'] != request['source_output']
+            or pin['source_code'] != request['source_code']):
+        raise ValueError('Wrong completed original GNN source/arm')
     if action != 'pin-current-gnn':
         path = root/'bank/score_overlay.json'
-        runtime.validate_overlay(path)
+        overlay_binding = runtime.validate_overlay(path)
+        if overlay_binding['overlay']['pin'] != pin:
+            raise ValueError('Matched source scores must use the exact chain-pinned GNN BEST')
     if action in ('prepare-native','calibrate-native','train'):
         path = root/'native/native.json'
         _guard_native(path)

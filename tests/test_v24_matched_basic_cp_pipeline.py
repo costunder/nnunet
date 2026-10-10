@@ -85,5 +85,24 @@ class MatchedNativeAdmissionDEBUG(unittest.TestCase):
         parsed=parse([*args,'--historical-basic-bank','bank','--stunet-checkpoint','small_ep4k.model'])
         self.assertEqual(parsed.gpu,6)
 
+    def test_another_completed_source_on_same_gpu_cannot_replace_chain_pin(self):
+        action='pin-current-gnn'
+        document=dict(format=pipeline.STAGE_FORMAT,status='COMPLETE',action=action,
+            storage_profile=pipeline.PROFILE,storage_admission_sha256='b'*64,
+            cached_inputs_written=False,model_data_scale_preserved=True,
+            runtime_sources_sha256={name:pipeline.sha(pipeline.ROOT/name) for name in pipeline.FILES})
+        pipeline.publish(self.root/'matched_storage_pin_current_gnn.json',document)
+        pipeline.publish(self.root/'pin.json',dict(debug_fixture=True))
+        request=dict(chain_root=str(self.root),storage_admission_sha256='b'*64,GPU_arm=6,
+                     source_output='/DEBUG/original_GNN',source_code='/DEBUG/original_source')
+        pin=dict(physical_GPU=6,source_output=request['source_output'],source_code=request['source_code'])
+        from hiercp_v1x import v24_nnunet_cp as original
+        with patch.object(original,'validate_current_pin',return_value=pin):
+            self.assertEqual(pipeline.stage_proof(request,action)['physical_GPU'],6)
+        for key in ('source_output','source_code'):
+            changed=dict(pin,**{key:'/DEBUG/another_completed_source'})
+            with patch.object(original,'validate_current_pin',return_value=changed),self.assertRaises(ValueError):
+                pipeline.stage_proof(request,action)
+
 
 if __name__=='__main__':unittest.main()
