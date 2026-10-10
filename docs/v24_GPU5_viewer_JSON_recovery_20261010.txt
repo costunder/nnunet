@@ -1,0 +1,85 @@
+GPU5 진행 모니터 JSON 읽기 오류 복구 — 2026-10-10 23:11 KST
+
+결과
+GPU5와 GPU6의 task 생성 모니터 실행 파일을 수정 버전에 연결했다. 서버 CPU debug 검증 30개와
+실제 현재 job에 대한 --json, --once 화면 출력을 확인했다. 독립 읽기 전용 사후점검에서
+기존 GNN의 PID, 생성 시각, 전체 실행 인자, 부모 PID와 CPU affinity가 그대로 유지됨을 확인했다.
+
+오류와 원인 범위
+사용자가 제공한 traceback은 view_gpu5.py → 기존 복구 wrapper → watch_v24_training.py의
+phase report read_json/json.load에서 JSONDecodeError(line 1 column 1)로 끝났다.
+따라서 이 오류는 모니터의 JSON 읽기 실패다. 실제 GNN 로그와 상태에는 해당 학습 실패가 없다.
+오래된 뷰어는 작성 중인 빈/부분 JSON을 읽으면 예외를 처리하지 못해 화면이 종료될 수 있었다.
+오류 당시 정확한 JSON 파일 경로는 원래 traceback에 기록되지 않아 확정할 수 없다.
+현재 관련 phase JSON은 정상이며, 동일 GNN 프로세스가 다음 epoch로 진행했음을 확인했다.
+
+수정 내용
+빈/부분 JSON 및 UTF8 기록을 발견하면 READ_PENDING으로 표시하며 계속 재시도한다.
+최근 정상 snapshot을 보존할 때는 오래된 값임을 명시한다. 처음 읽기에 실패하면 임의 metric을 만들지 않는다.
+동일한 잘못된 기록이 10초간 유지되거나 형식이 잘못되면 READ_ERROR로 표시하고 재시도한다.
+텍스트/JSON/터미널 오류 화면에 실제 파일 경로와 파싱 원인을 표시한다.
+JSONL의 완료되지 않은 마지막 행은 기다리며, 중간 오류 시 cursor를 앞당기지 않아
+복구 이후 정상 update 기록의 누락과 중복을 방지한다. job root 변경 시 이전 job 수치를 재사용하지 않는다.
+
+배포 버전
+Commit: a13ed05a512d649bdd3d245950ad1edeba403298
+Viewer source SHA256: 6a4bc68bb2f19e9f7ead7879ac7a3b2ec440350aef2fc40da0fb4a84a32450a9
+Server code: /var/tmp/aicompetition06_v24_20261010/code_a13ed05a512d
+수정 파일: tools/watch_v24_training.py, tests/test_watch_v24_training.py
+GitHub에는 이번 작업으로 push하지 않았다. 로컬/서버의 정확한 배포 커밋과 SHA를 확인했다.
+
+보존 및 실제 실행 범위
+기존 task 생성 frontdoor의 UID와 SHA를 확인한 뒤 아래 전용 디렉터리에 원본을 새 파일로 보존하고
+새 versioned wrapper를 연결하는 frontdoor만 원자 교체했다.
+/var/tmp/aicompetition06_v24_20261010/viewer_JSON_fix_1791641467718450000
+원본: view_gpu5_original.py, view_gpu6_original.py
+배포 영수증: deployment_receipt.json
+기존 view_gpu5_recovered_1791620958225425000.py와 과거 code 체크아웃은 변경하지 않았다.
+이미 메모리에 로드된 모니터는 재시작하거나 신호를 보내지 않았다. 새 실행부터 수정 버전을 사용한다.
+기존 GNN과 nnU-Net 연결 supervisor에는 어떤 신호도 보내지 않았다.
+모델, 그래프, 데이터, batch, epoch, optimizer 및 기존 결과 파일은 이번 수정으로 변경하지 않았다.
+서버 최초 테스트는 새 checkout의 ignored outputs 폴더 부재로 fixture setup에 실패했다.
+frontdoor 교체 전에 새 checkout 안에 전용 debug 폴더를 만든 뒤 30개 전부 통과했다.
+전체 학습에 디버그 데이터나 설정을 적용하지 않았다.
+
+실제 상태 — 독립 사후점검 23:11:29 KST
+GPU5: child PID 1240438, epoch 16/40, update 256, gradient 981/981 finite, RAM 47.38/64 GiB, physical patient batch 4, candidate chunk 32.
+GPU6: child PID 1241654, epoch 24/40, update 393, gradient 537/537 finite, RAM 47.00/64 GiB, physical patient batch 4, candidate chunk 64.
+두 GNN 모두 실제 데이터로 기존 전체 40 epoch 학습을 계속 진행 중이다. 전체 GNN 학습/평가 완료를 의미하지 않는다.
+nnU-Net 연결 supervisor: GPU5 PID 1259128, GPU6 PID 1259132.
+둘 다 WAITING_FOR_FULL_GNN, error null, GPU child 없음, 원래 request SHA와 실행 명령 유지.
+각 GNN 완료 → 전체 CP bank → nnU-Net 순서의 기존 자동 연결과 GPU6 할당 시간 검사는 그대로 유지된다.
+이번 작업에서 새로운 전체 nnU-Net 학습이나 전체 평가를 실행하지 않았다.
+모니터 수정으로 학습 성능이나 정확도가 향상됐다는 주장은 하지 않는다.
+
+검증 구분
+구현: 완료. 로컬/원격 배포 스크립트 문법 검사: 완료.
+단위/회귀: 로컬 30개 PASS, 서버 30개 PASS.
+실제 모니터 smoke/readback: GPU5/6 각각 --json 및 --once PASS, snapshot_fresh true, error null.
+학습 연결: 실제 GNN의 전체 trainable gradient 연결/finite 및 기존 source/supervisor identity 확인.
+전체 학습: 기존 작업 진행 중. 전체 평가 완료: 확인하지 않음. 임시 fixture 결과는 연구 metric으로 사용하지 않음.
+
+사용자의 현재 GPU5 셸에서 모니터 다시 실행
+/var/tmp/aicompetition06_v24_20261010/view_gpu5.py
+이 명령은 학습을 시작하거나 재시작하지 않고 진행 화면을 연다.
+
+근거 파일
+D:\AI project\nnunet\outputs\v24_chain_20261010\viewer_JSON_fix_deployment_1791641467718450000.json
+D:\AI project\nnunet\outputs\v24_optimizer_20261010\GPU56_live_minimal_readonly_1791641489239071200.json
+D:\AI project\nnunet\outputs\v24_optimizer_20261010\GPU56_viewer_error_report_1791640781890261400.json
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
