@@ -39,6 +39,12 @@ STATIC_HELPER = 'hiercp_v1x/v24_readonly_static_operator_storage.py'
 BEST_EVALUATION_HELPER = 'hiercp_v1x/v24_native_best_eval_runtime.py'
 BEST_EVALUATION_HANDOFF_PROOF = 'v24_native_best_evaluation_only_supersession_proof_v1'
 BEST_EVALUATION_HANDOFF_LEASE = 'v24_native_best_evaluation_only_supersession_lease_v1'
+MATCHED_BASIC_PROFILE = 'reuse_historical_Basic642_scores_only_and_full131_Blosc2_readonly'
+MATCHED_BASIC_ENTRY = 'tools/run_v24_matched_basic_cp.py'
+MATCHED_BASIC_SCORING = 'hiercp_v1x/v24_matched_basic_cp_scoring.py'
+MATCHED_BASIC_PIPELINE = 'hiercp_v1x/v24_matched_basic_cp_pipeline.py'
+CP_PARITY_HANDOFF_PROOF = 'v24_historical_Basic642_CP_parity_supersession_proof_v1'
+CP_PARITY_HANDOFF_LEASE = 'v24_historical_Basic642_CP_parity_supersession_lease_v1'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
 PARAMETER_TENSORS = {4: 537, 5: 981, 6: 537}
@@ -142,6 +148,8 @@ def command_options(command, *, python, entry, action):
 
 def _readonly_storage(request):
     profile = request.get('storage_profile')
+    if profile == MATCHED_BASIC_PROFILE:
+        return _matched_storage(request)
     if profile is None:
         if any(key in request for key in ('storage_admission', 'storage_admission_sha256', 'storage_admission_stat',
                                           'source_execution_code', 'source_execution_commit', 'source_execution_files',
@@ -213,8 +221,57 @@ def _readonly_storage(request):
     return document
 
 
+def _matched_storage(request):
+    """Admit a scores-only Basic overlay without relabeling the old raw bank."""
+    if (request.get('GPU_arm') not in (4, 5, 6) or request.get('recovery') is not None
+            or request.get('cp_parity_handoff') is None):
+        raise ValueError('Matched Basic CP requires its explicit own-arm prelaunch parity handoff')
+    path = owned(request['storage_admission'])
+    if (not _checksum(request.get('storage_admission_sha256'))
+            or sha(path) != request['storage_admission_sha256']
+            or _file_stat(path) != request.get('storage_admission_stat')):
+        raise ValueError('Matched Basic storage admission SHA/stat changed')
+    from hiercp_v1x.v24_matched_basic_cp_pipeline import verify_admission
+    verify_admission(path, full_hash=False)
+    document = read(path)
+    source = document.get('historical_basic_bank', {})
+    bank = owned(request['historical_basic_bank'], directory=True)
+    index = owned(bank / 'index.json')
+    aggregate = document.get('aggregate_budget', {})
+    if (document.get('format') != 'v24_matched_Basic642_storage_admission_v1'
+            or document.get('profile') != MATCHED_BASIC_PROFILE
+            or source.get('path') != str(bank)
+            or source.get('index_sha256') != request.get('historical_basic_bank_index_sha256')
+            or not _checksum(request.get('historical_basic_bank_index_sha256'))
+            or sha(index) != request['historical_basic_bank_index_sha256']
+            or source.get('index_stat') != _file_stat(index)
+            or not _checksum(source.get('manifest_sha256'))
+            or document.get('baseline', {}).get('preprocessed') != request['baseline_preprocessed']
+            or document.get('inventory', {}).get('path') != request['inventory']
+            or document['inventory'].get('sha256') != sha(request['inventory'])
+            or document.get('arm_roots', {}).get('gpu' + str(request['GPU_arm'])) != request['chain_root']
+            or type(aggregate.get('required_free_bytes')) is not int
+            or aggregate['required_free_bytes'] < 10 * 2**30
+            or type(request.get('min_free_disk_GiB')) not in (int, float)
+            or not math.isfinite(request['min_free_disk_GiB'])
+            or request['min_free_disk_GiB'] * 2**30 < aggregate['required_free_bytes']
+            or aggregate.get('global_peak_checkpoint_slots') != 7
+            or request.get('minimum_runtime_free_disk_GiB', 10) < 10):
+        raise ValueError('Complete immutable Basic642/full131 matched storage and original global7 budget required')
+    required_files = (MATCHED_BASIC_ENTRY, MATCHED_BASIC_PIPELINE, MATCHED_BASIC_SCORING, BEST_EVALUATION_HELPER)
+    if any(name not in request.get('code_files', {}) for name in required_files):
+        raise ValueError('Actual matched scoring/native API and BEST evaluation helpers must be SHA pinned')
+    if request['GPU_arm'] in (5, 6) and (
+            request.get('source_execution_code') != request['source_code']
+            or request.get('source_execution_commit') != request['source_commit']
+            or request.get('source_execution_files') != request['source_files']
+            or request.get('storage_handoff') is None):
+        raise ValueError('Matched GPU5/6 retain their exact scientific execution and original storage claim lineage')
+    return document
+
+
 def _source_execution(request):
-    if request.get('storage_profile') == READONLY_PROFILE:
+    if request.get('storage_profile') in (READONLY_PROFILE, MATCHED_BASIC_PROFILE):
         return request['source_execution_code'], request['source_execution_commit'], request['source_execution_files']
     return request['code'], request['commit'], request['code_files']
 
@@ -295,8 +352,11 @@ def validate_request(request, *, fresh=True):
     stages = request.get('stages')
     if not isinstance(stages, list) or tuple(row.get('action') for row in stages) != ACTIONS:
         raise ValueError('Exactly pin, complete bank, native preparation, calibration, full train required')
-    entry = str(Path(request['code']) / (READONLY_ENTRY if storage is not None else 'tools/run_v24_nnunet_cp.py'))
-    pin, bank, native = str(chain / 'pin.json'), str(chain / 'bank/index.json'), str(chain / 'native/native.json')
+    entry_name = (MATCHED_BASIC_ENTRY if request.get('storage_profile') == MATCHED_BASIC_PROFILE else
+                  READONLY_ENTRY if storage is not None else 'tools/run_v24_nnunet_cp.py')
+    entry = str(Path(request['code']) / entry_name)
+    bank_name = 'score_overlay.json' if request.get('storage_profile') == MATCHED_BASIC_PROFILE else 'index.json'
+    pin, bank, native = str(chain / 'pin.json'), str(chain / 'bank' / bank_name), str(chain / 'native/native.json')
     common = {'--gpu': str(gpu)}
     if storage is not None:
         common['--storage-admission'] = request['storage_admission']
@@ -306,6 +366,8 @@ def validate_request(request, *, fresh=True):
                 '--input-cache': request['input_cache'], '--output': str(chain / 'bank')}),
         dict(common, **{'--bank': bank, '--output': str(chain / 'native')}),
         dict(common, **{'--native': native}), dict(common, **{'--native': native})]
+    if request.get('storage_profile') == MATCHED_BASIC_PROFILE:
+        expected[1]['--historical-basic-bank'] = request['historical_basic_bank']
     if gpu in (4, 6):
         for options in expected[:2]:
             options['--stunet-checkpoint'] = request['stunet_checkpoint']
@@ -323,7 +385,9 @@ def validate_request(request, *, fresh=True):
             owned(path)
     if request.get('recovery') is not None:
         _validate_recovery(request)
-    if request.get('evaluation_handoff') is not None:
+    if request.get('cp_parity_handoff') is not None:
+        _validate_cp_parity_handoff(request)
+    elif request.get('evaluation_handoff') is not None:
         _validate_evaluation_handoff(request)
     elif request.get('storage_handoff') is not None:
         _validate_storage_handoff(request)
@@ -332,7 +396,7 @@ def validate_request(request, *, fresh=True):
 
 def verify_code(request):
     fields = [('code', 'code_files', 'commit'), ('source_code', 'source_files', 'source_commit')]
-    if request.get('storage_profile') == READONLY_PROFILE:
+    if request.get('storage_profile') in (READONLY_PROFILE, MATCHED_BASIC_PROFILE):
         fields.append(('source_execution_code', 'source_execution_files', 'source_execution_commit'))
     for root_key, files_key, commit_key in fields:
         code = owned(request[root_key], directory=True)
@@ -469,7 +533,7 @@ def _validate_gpu4_continuation_pipeline(request, pipeline, config_path):
             or any(not _checksum(value) or execution_files.get(name) != value
                    or sha(Path(execution_code) / name) != value for name, value in files.items())):
         raise ValueError('GPU4 continuation exact new execution source SHA manifest differs')
-    if request.get('storage_profile') == READONLY_PROFILE:
+    if request.get('storage_profile') in (READONLY_PROFILE, MATCHED_BASIC_PROFILE):
         if (execution_files != files or subprocess.check_output(
                 ['git', '-C', execution_code, 'rev-parse', 'HEAD'], text=True).strip() != execution_commit):
             raise ValueError('Original separately pinned live continuation execution checkout changed')
@@ -647,7 +711,7 @@ def inspect_source(request):
     execution_code, execution_commit, _ = _source_execution(request)
     expected_code, expected_commit = ((execution_code, execution_commit) if continuation else
         (request['source_code'], request['source_commit']))
-    if request.get('storage_profile') == READONLY_PROFILE and gpu == 4 and not continuation:
+    if request.get('storage_profile') in (READONLY_PROFILE, MATCHED_BASIC_PROFILE) and gpu == 4 and not continuation:
         raise ValueError('Read-only GPU4 chain requires its explicitly pinned exact saved-state source pipeline')
     scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu in (4, 5) else (
         'original_total_epochs', 'original_patient_batch', 'original_candidate_chunk')
@@ -827,7 +891,11 @@ def resources(request, *, initial=False, stage_index=0):
     free = shutil.disk_usage(request['chain_root']).free
     minimum = request['min_free_disk_GiB'] if initial else request.get('minimum_runtime_free_disk_GiB', 10)
     aggregate = None
-    if request.get('storage_extension') == STATIC_EXTENSION:
+    if request.get('storage_profile') == MATCHED_BASIC_PROFILE:
+        from hiercp_v1x.v24_matched_basic_cp_pipeline import check_aggregate_disk
+        aggregate = check_aggregate_disk(storage, request['chain_root'], preparation=True)
+        minimum = aggregate['required_free_bytes'] / 2**30
+    elif request.get('storage_extension') == STATIC_EXTENSION:
         from hiercp_v1x.v24_readonly_static_operator_storage import check_aggregate_disk
         aggregate = check_aggregate_disk(storage, request['chain_root'], preparation=True)
         minimum = aggregate['required_free_bytes'] / 2**30
@@ -839,6 +907,9 @@ def resources(request, *, initial=False, stage_index=0):
 
 
 def stage_proof(request, action):
+    if request.get('storage_profile') == MATCHED_BASIC_PROFILE:
+        from hiercp_v1x.v24_matched_basic_cp_pipeline import stage_proof as matched_stage_proof
+        return matched_stage_proof(request, action)
     root = Path(request['chain_root'])
     gpu = request['GPU_arm']
     if action == 'pin-current-gnn':
@@ -1236,8 +1307,119 @@ def _validate_evaluation_handoff(request):
     return proof, checksum
 
 
+def _validate_cp_parity_handoff(request):
+    """Append the user-requested Basic parity controller to a closed BEST waiter.
+
+    Its prior BEST and storage leases continue to bind their prior requests;
+    recursive validation proves their full history before this new lease can
+    authorize a scores-only overlay of the authentic Basic bank.
+    """
+    handoff = request.get('cp_parity_handoff')
+    if (request.get('GPU_arm') not in (4, 5, 6) or request.get('storage_profile') != MATCHED_BASIC_PROFILE
+            or request.get('recovery') is not None or not isinstance(handoff, dict)
+            or set(handoff) != {'proof', 'proof_sha256', 'lease'}
+            or any(name not in request.get('code_files', {}) for name in
+                   (MATCHED_BASIC_ENTRY, MATCHED_BASIC_PIPELINE, MATCHED_BASIC_SCORING, BEST_EVALUATION_HELPER))):
+        raise ValueError('Only an explicit own GPU4/5/6 matched Basic CP controller supersession is supported')
+    claim_path = owned(request['source_claim_path'])
+    proof_path = owned(handoff['proof'])
+    lease = claim_path.with_name(claim_path.stem + '.cp_parity_handoff_lease.json')
+    if (not _checksum(handoff['proof_sha256']) or sha(proof_path) != handoff['proof_sha256']
+            or proof_path.parent != claim_path.parent
+            or not proof_path.name.startswith(claim_path.stem + '.cp_parity_handoff_proof_')
+            or proof_path.suffix != '.json' or handoff['lease'] != str(lease)):
+        raise ValueError('Basic CP parity handoff requires one SHA-pinned proof/exclusive lease in the original registry')
+    owned(lease, must_exist=False)
+    proof = read(proof_path)
+    previous_root = owned(proof['previous_chain_root'], directory=True)
+    root = Path(request['chain_root'])
+    if (proof.get('format') != CP_PARITY_HANDOFF_PROOF
+            or proof.get('chain_root') != str(root) or proof.get('source_output') != request['source_output']
+            or previous_root == root or previous_root in root.parents or root in previous_root.parents
+            or set(proof.get('previous_files_sha256', {})) !=
+                {'request.json', 'status.json', 'launch.lease.json', 'registration.json'}
+            or not _checksum(proof.get('source_claim_sha256'))
+            or proof.get('old_waiter_closed') is not True or proof.get('old_waiter_children') != []
+            or proof.get('old_waiter_cuda_visible_devices') != ''
+            or proof.get('original_GNN_processes_signaled') is not False
+            or proof.get('previous_results_written') is not False
+            or proof.get('evaluation_checkpoint') != 'checkpoint_best.pth'
+            or proof.get('full_training_preserved') is not True
+            or type(proof.get('matched_historical_Basic_sources')) is not int
+            or proof['matched_historical_Basic_sources'] != 642
+            or type(proof.get('matched_historical_Basic_candidates_per_source')) is not int
+            or proof['matched_historical_Basic_candidates_per_source'] != 128
+            or proof.get('source_payloads_written') is not False):
+        raise ValueError('Immutable never-launched CPU-only full642 Basic CP parity handoff proof required')
+    for name, checksum in proof['previous_files_sha256'].items():
+        if not _checksum(checksum) or sha(previous_root / name) != checksum:
+            raise ValueError('Previous registered Basic parity controller artifact changed: ' + name)
+    previous = read(previous_root / 'request.json')
+    if (previous.get('chain_root') != str(previous_root) or previous.get('cp_parity_handoff') is not None
+            or previous.get('evaluation_handoff') is None or previous.get('recovery') is not None
+            or previous.get('storage_profile') != READONLY_PROFILE
+            or previous.get('storage_extension') != STATIC_EXTENSION):
+        raise ValueError('Basic CP parity handoff requires the previous BEST static waiter; nested parity handoff refused')
+    changed = {'chain_root', 'code', 'commit', 'code_files', 'stages', 'storage_profile', 'storage_extension',
+               'storage_admission', 'storage_admission_sha256', 'storage_admission_stat', 'min_free_disk_GiB',
+               'historical_basic_bank', 'historical_basic_bank_index_sha256', 'cp_parity_handoff'}
+    old_contract = {name: value for name, value in previous.items() if name not in changed}
+    new_contract = {name: value for name, value in request.items() if name not in changed}
+    if (old_contract != new_contract or previous.get('code') == request.get('code')
+            or previous.get('commit') == request.get('commit')):
+        raise ValueError('Basic parity supersession changed original GNN/assets/assignment/PBS/BEST lineage or replayed its code')
+    validate_request(previous, fresh=False)
+    verify_code(previous)
+    checksum = proof['previous_files_sha256']['request.json']
+    if verify_source_claim(previous, checksum) != proof['source_claim_sha256']:
+        raise ValueError('Original source claim checksum changed during Basic CP parity handoff')
+    status, registration, old_lease = (read(previous_root / name) for name in
+                                       ('status.json', 'registration.json', 'launch.lease.json'))
+    pid, birth, command = (proof.get('previous_supervisor_' + key) for key in ('pid', 'create_time', 'command'))
+    expected_command = [previous['python'], '-B', '-u', str(Path(previous['code']) / 'tools/watch_v24_gnn_to_nnunet.py'),
+                        '--request', str(previous_root / 'request.json')]
+    if (type(pid) is not int or pid <= 0 or type(birth) not in (int, float) or not math.isfinite(birth) or birth <= 0
+            or command != expected_command
+            or registration.get('GPU_arm') != request['GPU_arm'] or registration.get('root') != str(previous_root)
+            or registration.get('pid') != pid or registration.get('create_time') != birth
+            or registration.get('command') != command or registration.get('request_sha256') != checksum
+            or registration.get('CPU_affinity') != request['CPU_affinity']
+            or registration.get('CUDA_visible_devices_while_waiting') != ''
+            or status.get('GPU_arm') != request['GPU_arm'] or status.get('status') != 'WAITING_FOR_FULL_GNN'
+            or status.get('stage') is not None or status.get('child_pid') is not None
+            or status.get('child_create_time') is not None or status.get('gnn_completion') is not None
+            or status.get('stages_completed') != [] or status.get('stage_proofs') != []
+            or status.get('signals_sent') is not False or status.get('request_sha256') != checksum
+            or status.get('source_job') != request['source_job'] or status.get('supervisor_pid') != pid
+            or status.get('supervisor_create_time') != birth
+            or status.get('actual_CPU_affinity') != request['CPU_affinity']
+            or status.get('source_claim_path') != request['source_claim_path']
+            or status.get('source_claim_sha256') != proof['source_claim_sha256']
+            or old_lease.get('supervisor_pid') != pid or old_lease.get('request_sha256') != checksum):
+        raise ValueError('Previous Basic parity controller is not its registered CPU-only never-launched waiter')
+    witness = process_witness(pid, birth, command)
+    if witness is not None and witness['status'] != 'zombie':
+        raise RuntimeError('Previous own CPU waiter remains live; no matched Basic CP controller may launch')
+    allowed = {'request.json', 'status.json', 'launch.lease.json', 'registration.json', 'watcher.log'}
+    for path in previous_root.iterdir():
+        if path.name not in allowed:
+            raise ValueError('Previous waiter contains native stage/output artifacts; Basic parity handoff refused')
+        owned(path)
+    return proof, checksum
+
+
 def verify_source_claim(request, request_checksum):
     path = request['source_claim_path']
+    if request.get('cp_parity_handoff') is not None:
+        proof, _ = _validate_cp_parity_handoff(request)
+        handoff = request['cp_parity_handoff']
+        expected_lease = dict(format=CP_PARITY_HANDOFF_LEASE, GPU_arm=request['GPU_arm'],
+            source_output=request['source_output'], source_claim_path=path, source_claim_sha256=proof['source_claim_sha256'],
+            previous_chain_root=proof['previous_chain_root'], chain_root=request['chain_root'], request_sha256=request_checksum,
+            proof=handoff['proof'], proof_sha256=handoff['proof_sha256'])
+        if read(handoff['lease']) != expected_lease:
+            raise ValueError('Exclusive matched Basic CP handoff lease belongs to another request/root; no replay')
+        return proof['source_claim_sha256']
     if request.get('evaluation_handoff') is not None:
         proof, _ = _validate_evaluation_handoff(request)
         handoff = request['evaluation_handoff']
@@ -1308,7 +1490,7 @@ def run_stage(request, stage, status, request_path, request_checksum):
                VECLIB_MAXIMUM_THREADS='1', PYTHONDONTWRITEBYTECODE='1',
                V24_ARM_RSS_GIB=str(request['scoring_RAM_GiB'] if stage['action'] == 'prepare-current-bank' else request['native_RAM_GiB']))
     env['CUDA_VISIBLE_DEVICES'] = str(request['GPU_arm'])
-    if request.get('storage_profile') == READONLY_PROFILE:
+    if request.get('storage_profile') in (READONLY_PROFILE, MATCHED_BASIC_PROFILE):
         _readonly_storage(request)
         env['V24_READONLY_STORAGE_ADMISSION_SHA256'] = request['storage_admission_sha256']
     status.update(status='RUNNING', stage=stage['name'], stage_started=time.time(), command=stage['command'])

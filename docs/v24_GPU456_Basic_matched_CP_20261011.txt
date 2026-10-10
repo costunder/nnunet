@@ -1,0 +1,75 @@
+# GPU4/5/6 downstream CP: historical Basic parity
+
+User-requested change, 2026-10-11:
+Use the actual historical Basic CP source/paste/candidate contract for the
+downstream nnU-Net comparison. Preserve ongoing current GNN training.
+
+Authoritative immutable bank:
+/home/aicompetition06/Medical/HierCP/work/online_basic_vs_hiercp/folds/fold_0/bank
+index SHA256: 9e5be3e3ab8f04fd23c166b3267bc4efbfb4b321ef974920dfc08fbf5dd275e6
+Original installed historical preprocessed trainer SHA256:
+a3df56435fedff46fbc42a502596fdade2632d0211ea412630dba1555f32567d
+
+Matched CP conditions:
+- Same own-patient lesions: 81 eligible patients, all 642 original sources.
+- Same ordered 128 already CP-valid positions for each source: 82,176 total.
+- Same original source list/order and uniform source selection per visit.
+- Same probability 0.5, maximum lesion diameter 20 mm and coverage 0.85.
+- Same HU scale [0.95,1.05] and shift [-5,5], normalized preprocessed paste.
+- Same historical five RNG draws, ordinary augmentation and loader methods.
+- All 105 train cases remain present, including 24 ordinary no-CP cases.
+- All 26 validation patients retain ordinary CT inference without CP.
+- Same native full model, physical B2, 128-cube patch and 250 epochs.
+- B2/B4 complete actual clone updates must pass before production training.
+- Evaluation must load checkpoint_best.pth and prove all 26 predictions.
+
+Only the CP position-selection policy differs: Basic chooses uniformly from
+the selected source's 128 positions; this arm chooses the highest own GNN
+score among those same 128 positions. Lesion selection remains stochastic.
+Original source_data/source_mask/anchor_offset/positions are read unchanged.
+There is no new fixed external donor or raw-target paste in this profile.
+
+Frozen scoring uses each GPU arm's actual own full40-complete BEST and its
+complete original CNN/STU model, full P context, physical patient B4 capacity,
+measured candidate chunks GPU5=32/GPU4,6=64, CPU4 and RAM64GiB.
+The inference-only self-source adapter binds the original selected lesion.
+Other recipient lesions do not enter local/upper learned inputs; CPU tests
+prove exact input invariance when other lesion GT changes. Historical CP
+eligibility is reused offline and is not presented as GT-blind generation.
+Original inner-train84 prototype scope and all GNN training stay unchanged.
+
+Storage uses immutable historical NPZs plus a separate scores-only overlay.
+No original source bank, current GNN cache or existing result is overwritten.
+All131 Blosc2 preprocessing cases are read through the existing proven reader.
+Private runtime, plans, annotation copies and new nnU-Net output remain owned.
+Original 7-slot final-checkpoint coordination and 10GiB reserve are preserved.
+Original scientific source claims and previous BEST/storage leases are linked
+through a new exclusive prelaunch CP-parity handoff. Only this task's exact
+registered CPU-only waiters may be replaced; GNN workers receive no signal.
+
+Implementation: new matched scorer, historical score-overlay runtime, native
+pipeline/CLI, native clone gradient adapter and explicit watcher handoff.
+CPU DEBUG tests preserve full contracts with separate fixtures. Actual CUDA
+scoring and full250 native training are future automatic stages after full40
+GNN completion, and are not claimed completed by CPU verification.
+
+Historical metrics from the previous fixed-donor/raw-target arm cannot be
+relabelled as this matched experiment. Existing Basic validation checkpoint
+provenance is not established by its summary alone; a final BEST comparison
+must retain/prove the actual Basic checkpoint used for the same 26 patients.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
