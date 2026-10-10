@@ -1,0 +1,606 @@
+"""Task-owned, CPU-only wait followed by one completed arm's native nnUNet.
+
+No signal is sent to the running GNN or to a failed child. A durable exclusive
+lease makes uncertain/repeated registration fail explicitly instead of replaying
+stages or overwriting an experiment. This launcher never imports torch while
+waiting; the pin-current-gnn child admits the actual completed own-arm BEST.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import time
+
+FORMAT = 'v24_completed_gnn_to_native_chain_request_v1'
+CURRENT_FORMAT = 'v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1'
+ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
+AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
+PARAMETER_TENSORS = {5: 981, 6: 537}
+POLL_SECONDS = 5
+
+
+class AllocationUnavailable(RuntimeError):
+    """An owned reservation is insufficient; wait without launching a GPU child."""
+
+
+class AssignedGPUUnavailable(RuntimeError):
+    """The assigned device is occupied; leave all existing applications alone."""
+
+
+def owned(path, *, directory=False, must_exist=True):
+    """Reject path aliases and require ownership of the actual input/output."""
+    path = Path(path)
+    if not path.is_absolute() or '..' in path.parts:
+        raise ValueError('Absolute non-traversing path required: ' + str(path))
+    for part in (path, *path.parents):
+        if part.is_symlink():
+            raise ValueError('Symlink path is not an owned immutable input: ' + str(part))
+    if not path.exists():
+        if must_exist:
+            raise FileNotFoundError(path)
+        return path
+    info = path.stat()
+    if hasattr(os, 'getuid') and info.st_uid != os.getuid():
+        raise ValueError('Input/output belongs to a different UID: ' + str(path))
+    if directory != stat.S_ISDIR(info.st_mode) or (not directory and not stat.S_ISREG(info.st_mode)):
+        raise ValueError('Owned regular file/directory required: ' + str(path))
+    return path
+
+
+def sha(path):
+    path = owned(path)
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(8 * 2**20), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def read(path):
+    return json.loads(owned(path).read_text(encoding='utf8'))
+
+
+def last_jsonl(path):
+    lines = [line for line in owned(path).read_text(encoding='utf8').splitlines() if line.strip()]
+    if not lines:
+        raise ValueError('Actual completion receipt is empty: ' + str(path))
+    return json.loads(lines[-1])
+
+
+def _checksum(value):
+    return isinstance(value, str) and len(value) == 64 and set(value) <= set('0123456789abcdef')
+
+
+def _inside(path, parent):
+    try:
+        Path(path).relative_to(parent)
+    except ValueError as error:
+        raise ValueError('Stage output escapes the fresh arm directory: ' + str(path)) from error
+
+
+def command_options(command, *, python, entry, action):
+    if not isinstance(command, list) or any(not isinstance(x, str) or '\x00' in x for x in command):
+        raise ValueError('Explicit argument array required; shell commands are not accepted')
+    if not command or command[0] != python:
+        raise ValueError('The pinned Python interpreter must execute every child')
+    args = command[1:]
+    flags = []
+    while args and args[0] in ('-B', '-u'):
+        flags.append(args.pop(0))
+    if set(flags) != {'-B', '-u'} or len(flags) != 2 or args[:2] != [entry, action]:
+        raise ValueError('Pinned unbuffered API entry/action required')
+    args = args[2:]
+    if len(args) % 2:
+        raise ValueError('Native stages accept only explicit flag/value pairs')
+    options = {}
+    for flag, value in zip(args[::2], args[1::2]):
+        if not flag.startswith('--') or flag in options:
+            raise ValueError('Duplicate or invalid native argument: ' + flag)
+        options[flag] = value
+    return options
+
+
+def validate_request(request, *, fresh=True):
+    gpu = request.get('GPU_arm')
+    if (request.get('format') != FORMAT or type(gpu) is not int or gpu not in (5, 6)
+            or request.get('CPU_affinity') != AFFINITIES[gpu]
+            or request.get('scoring_RAM_GiB') != 64 or request.get('native_RAM_GiB') != 48
+            or request.get('min_free_disk_GiB', 0) < 160
+            or request.get('minimum_runtime_free_disk_GiB', 10) < 10
+            or not isinstance(request.get('GPU_UUID'), str) or not request['GPU_UUID'].startswith('GPU-')):
+        raise ValueError('Unchanged explicitly assigned GPU5/6 CPU/RAM/disk contract required')
+    chain = owned(request['chain_root'], directory=True, must_exist=False)
+    owned(chain.parent, directory=True)
+    source = owned(request['source_output'], directory=True)
+    if chain == source or chain in source.parents or source in chain.parents:
+        raise ValueError('Fresh chain output must not overlap a GNN source experiment')
+    claim_path = source.parent / 'gnn_native_chain_claims_20261010' / (hashlib.sha256(str(source).encode()).hexdigest() + '.json')
+    if request.get('source_claim_path') != str(claim_path):
+        raise ValueError('One globally derived exclusive claim is required for each completed GNN source')
+    owned(claim_path.parent, directory=True)
+    owned(claim_path, must_exist=False)
+    for key in ('code', 'source_code'):
+        owned(request[key], directory=True)
+        commit = request.get('commit' if key == 'code' else 'source_commit')
+        if not isinstance(commit, str) or len(commit) != 40 or set(commit) - set('0123456789abcdef'):
+            raise ValueError('Pinned full Git commit required: ' + key)
+        files = request.get('code_files' if key == 'code' else 'source_files')
+        if not isinstance(files, dict) or not files:
+            raise ValueError('Actual immutable source SHA witnesses required: ' + key)
+        for name, checksum in files.items():
+            if Path(name).is_absolute() or '..' in Path(name).parts or not _checksum(checksum):
+                raise ValueError('Invalid source SHA witness')
+            owned(Path(request[key]) / name)
+    if 'tools/watch_v24_gnn_to_nnunet.py' not in request['code_files'] or 'tools/run_v24_nnunet_cp.py' not in request['code_files']:
+        raise ValueError('The actual chain supervisor and native API must be SHA pinned')
+    owned(request['python'])
+    for name in ('inventory', 'baseline_preprocessed', 'input_cache'):
+        owned(request[name], directory=name != 'inventory')
+    if gpu == 6:
+        owned(request['stunet_checkpoint'])
+        scheduler = request.get('scheduler')
+        if (not isinstance(scheduler, dict) or scheduler.get('state') != 'R'
+                or scheduler.get('job_id') != '129443.ECE-util1'
+                or scheduler.get('expected_owner') != 'aicompetition06'
+                or scheduler.get('expected_node') != 'ece-a6gpu6'
+                or scheduler.get('minimum_remaining_seconds', 0) < 28800
+                or scheduler.get('native_minimum_remaining_seconds', 25200) < 25200
+                or not isinstance(scheduler.get('expires_at_unix'), (int, float))):
+            raise ValueError('GPU6 original owned PBS reservation and explicit remaining-time floor required')
+    elif request.get('stunet_checkpoint') is not None or request.get('scheduler') is not None:
+        raise ValueError('GPU5 must retain its own CNN source and direct owned reservation')
+    job = request.get('source_job', {})
+    owned(job['status'])
+    if (type(job.get('worker_pid')) is not int or job['worker_pid'] <= 0
+            or not isinstance(job.get('worker_create_time'), (float, int))
+            or not isinstance(job.get('worker_command'), list) or not job['worker_command']
+            or job.get('training_stage') != 'train' or not _checksum(job.get('pipeline_request_sha256'))):
+        raise ValueError('Exact original owned worker identity and final train stage required')
+    owned(job['worker_command'][-1])
+    stages = request.get('stages')
+    if not isinstance(stages, list) or tuple(row.get('action') for row in stages) != ACTIONS:
+        raise ValueError('Exactly pin, complete bank, native preparation, calibration, full train required')
+    entry = str(Path(request['code']) / 'tools/run_v24_nnunet_cp.py')
+    pin, bank, native = str(chain / 'pin.json'), str(chain / 'bank/index.json'), str(chain / 'native/native.json')
+    common = {'--gpu': str(gpu)}
+    expected = [dict(common, **{'--source-output': request['source_output'], '--source-code': request['source_code'],
+                '--inventory': request['inventory'], '--input-cache': request['input_cache'], '--output': pin}),
+        dict(common, **{'--pin': pin, '--inventory': request['inventory'], '--baseline-preprocessed': request['baseline_preprocessed'],
+                '--input-cache': request['input_cache'], '--output': str(chain / 'bank')}),
+        dict(common, **{'--bank': bank, '--output': str(chain / 'native')}),
+        dict(common, **{'--native': native}), dict(common, **{'--native': native})]
+    if gpu == 6:
+        for options in expected[:2]:
+            options['--stunet-checkpoint'] = request['stunet_checkpoint']
+    for action, row, options in zip(ACTIONS, stages, expected):
+        if row.get('name') != action.replace('-', '_'):
+            raise ValueError('Unambiguous stage log name required')
+        actual = command_options(row.get('command'), python=request['python'], entry=entry, action=action)
+        if actual != options:
+            raise ValueError('A stage changed its arm, source, full data, output, or API: ' + action)
+    if fresh and chain.exists():
+        allowed = {'request.json', 'watcher.log', 'registration.json'}
+        if any(p.name not in allowed for p in chain.iterdir()):
+            raise FileExistsError('Existing lease/stage/output found; explicit recovery required, no replay')
+        for path in chain.iterdir():
+            owned(path)
+    return request
+
+
+def verify_code(request):
+    for root_key, files_key, commit_key in (('code', 'code_files', 'commit'), ('source_code', 'source_files', 'source_commit')):
+        code = owned(request[root_key], directory=True)
+        actual = subprocess.check_output(['git', '-C', str(code), 'rev-parse', 'HEAD'], text=True).strip()
+        if actual != request[commit_key]:
+            raise ValueError('Pinned immutable Git checkout changed: ' + str(code))
+        for name, expected in request[files_key].items():
+            if sha(code / name) != expected:
+                raise ValueError('Actual source changed: ' + str(code / name))
+
+
+def process_witness(pid, birth, command=None):
+    """A zombie is still present; PID reuse or unknown identity fails closed."""
+    import psutil
+    try:
+        process = psutil.Process(pid)
+        actual_birth = process.create_time()
+        if abs(actual_birth - birth) > .001 or (hasattr(os, 'getuid') and process.uids().real != os.getuid()):
+            raise ValueError('Owned exact process identity changed: ' + str(pid))
+        actual_status = process.status()
+        if command is not None and actual_status != psutil.STATUS_ZOMBIE and process.cmdline() != command:
+            raise ValueError('Exact GNN worker command changed: ' + str(pid))
+        return dict(pid=pid, create_time=actual_birth, status=actual_status)
+    except psutil.NoSuchProcess:
+        return None
+
+
+def source_completion(request, status, worker, child):
+    job = request['source_job']
+    if (status.get('worker_pid') != job['worker_pid']
+            or abs(status.get('worker_create_time', -1) - job['worker_create_time']) > .001
+            or status.get('actual_CPU_affinity') != request['CPU_affinity']):
+        raise ValueError('Source worker ownership/CPU proof differs')
+    source = Path(request['source_output'])
+    for marker in (source / 'training/STOP_AFTER_BATCH', Path(job['status']).parent / 'STOP_BEFORE_NEXT_STAGE'):
+        if marker.exists():
+            raise RuntimeError('GNN has a cooperative pause marker; downstream was not started: ' + str(marker))
+    outcome = status.get('status')
+    if outcome in ('FAILED', 'PAUSED', 'PAUSED_BETWEEN_STAGES'):
+        raise RuntimeError('GNN source is ' + outcome + '; downstream was not started')
+    if outcome != 'COMPLETE':
+        if worker is None:
+            raise RuntimeError('GNN worker disappeared without COMPLETE; preserve source and inspect its log')
+        return None
+    if (status.get('stage') != job['training_stage'] or not status.get('stages_completed')
+            or status['stages_completed'][-1] != job['training_stage']):
+        raise ValueError('Source pipeline completed without completing the actual final GNN train stage')
+    if any(witness is not None and witness['status'] != 'zombie' for witness in (worker, child)):
+        return None
+    receipt = last_jsonl(source / 'training/invocations.jsonl')
+    count = PARAMETER_TENSORS[request['GPU_arm']]
+    if (receipt.get('status') != 'COMPLETE' or receipt.get('full_training') is not True
+            or receipt.get('debug') is not False or receipt.get('actual_CUDA') is not True
+            or receipt.get('completed_epochs') != 40 or receipt.get('optimizer_updates') != 680
+            or receipt.get('connected_parameter_tensors') != count
+            or receipt.get('expected_parameter_tensors') != count
+            or receipt.get('recipient_GT_used_in_forward') is not False
+            or receipt.get('checkpoint') != str(source / 'training/checkpoint_latest.pt')
+            or receipt.get('best', {}).get('selected_by') != 'fixed_full128_validation_only'):
+        raise ValueError('Actual full40/680 CUDA connected own-arm training completion required')
+    arm = read(source / 'request.json')
+    if arm.get('physical_GPU') != request['GPU_arm']:
+        raise ValueError('Completed GNN receipt belongs to another GPU arm')
+    # No torch import/checkpoint unpickling here. The first pinned API child
+    # independently proves every epoch, actual BEST, all six saved states.
+    return dict(invocation_sha256=sha(source / 'training/invocations.jsonl'), invocation=receipt,
+                checkpoint_validation_delegated_to='pin-current-gnn', worker_and_child_finished=True)
+
+
+def inspect_source(request):
+    status = read(request['source_job']['status'])
+    job = request['source_job']
+    pipeline_request_path = job['worker_command'][-1]
+    if sha(pipeline_request_path) != job['pipeline_request_sha256']:
+        raise ValueError('Registered original worker request changed')
+    pipeline = read(pipeline_request_path)
+    gpu = request['GPU_arm']
+    scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu == 5 else (
+        'original_total_epochs', 'original_patient_batch', 'original_candidate_chunk')
+    if (status.get('request') != pipeline or pipeline.get('GPU') != gpu
+            or pipeline.get('GPU_uuid') != request['GPU_UUID'] or pipeline.get('code') != request['source_code']
+            or pipeline.get('commit') != request['source_commit'] or pipeline.get('production_output') != request['source_output']
+            or pipeline.get('CPU_affinity') != request['CPU_affinity'] or pipeline.get('RAM_GiB') != 64
+            or tuple(pipeline.get(name) for name in scale_fields) != (40, 4, 32 if gpu == 5 else 64)):
+        raise ValueError('Registered GNN worker request does not match the exact full own-arm contract')
+    validate_source_metadata(request)
+    trains = [stage for stage in pipeline.get('stages', []) if stage.get('name') == job['training_stage']]
+    if len(trains) != 1 or pipeline['stages'][-1] != trains[0]:
+        raise ValueError('One actual final train command required in original worker request')
+    worker = process_witness(job['worker_pid'], job['worker_create_time'], job['worker_command'])
+    child = None
+    if status.get('child_pid') is not None:
+        # A pipeline may still be in a preceding DEBUG admission stage at first
+        # registration. Bind the exact live child to its actual declared stage.
+        stages = [stage for stage in pipeline['stages'] if stage.get('name') == status.get('stage')]
+        if len(stages) != 1:
+            raise ValueError('Original live GNN child does not have one declared stage')
+        child = process_witness(status['child_pid'], status['child_create_time'], stages[0]['command'])
+        if child is not None and child['status'] != 'zombie':
+            import psutil
+            if psutil.Process(child['pid']).ppid() != job['worker_pid']:
+                raise ValueError('Original GNN child is not parented by its exact owned worker')
+    return source_completion(request, status, worker, child)
+
+
+def validate_source_metadata(request):
+    """Admit immutable real training metadata without loading a checkpoint."""
+    source = Path(request['source_output'])
+    scientific = read(source / 'request.json')
+    declared = {key: value for key, value in scientific.items() if key != 'request_sha256'}
+    checksum = hashlib.sha256(json.dumps(declared, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    owner = read(source / 'training/training_identity.json')
+    calibration = read(source / 'calibration.json')
+    binding = owner.get('binding', {})
+    config = scientific.get('config', {})
+    runtime = config.get('v24_runtime', {})
+    if (scientific.get('format') != 'v24_full_native_GT_free_execution_request_v1'
+            or scientific.get('request_sha256') != checksum or scientific.get('physical_GPU') != request['GPU_arm']
+            or config.get('epochs') != 40 or runtime.get('debug') is not False or runtime.get('hidden_subset') is not False
+            or runtime.get('workers') != 4 or runtime.get('torch_threads') != 1
+            or binding.get('identity') != scientific or binding.get('epochs') != 40 or binding.get('debug') is not False
+            or not _checksum(owner.get('identity_sha256'))
+            or calibration.get('request_sha256') != checksum or calibration.get('physical_GPU') != request['GPU_arm']
+            or calibration.get('selected_physical_patient_batch') != 4
+            or calibration.get('selected_physical_candidate_batch') != (32 if request['GPU_arm'] == 5 else 64)
+            or binding.get('config', {}).get('v24_runtime', {}).get('batch_calibration') != calibration):
+        raise ValueError('Actual immutable checksum/identity/config/full40/B4/calibration metadata required')
+
+
+def _run(command):
+    return subprocess.check_output(command, text=True).strip()
+
+
+def _seconds(text):
+    fields = text.split(':')
+    if len(fields) != 3 or any(not x.isdigit() for x in fields):
+        raise ValueError('Explicit PBS walltime required: ' + text)
+    hours, minutes, seconds = map(int, fields)
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def scheduler_proof(request, *, stage_index=0):
+    expected = request.get('scheduler')
+    if expected is None:
+        return None
+    try:
+        text = _run(['/opt/pbs/bin/qstat', '-f', expected['job_id']])
+    except subprocess.CalledProcessError as error:
+        raise AllocationUnavailable('The original owned PBS reservation is unavailable; no native launch') from error
+    fields = {}
+    for line in text.splitlines():
+        if ' = ' in line:
+            key, value = line.strip().split(' = ', 1)
+            fields[key] = value
+    walltime = _seconds(fields.get('Resource_List.walltime', ''))
+    reported_remaining = walltime - _seconds(fields.get('resources_used.walltime', ''))
+    started = time.mktime(time.strptime(fields.get('stime', ''), '%a %b %d %H:%M:%S %Y'))
+    expires = started + walltime
+    if abs(expires - expected['expires_at_unix']) > 1:
+        raise AllocationUnavailable('Original owned PBS start/expiry changed; no native launch')
+    # Scheduler resource counters can lag; the actual wall-clock expiry must
+    # independently leave the required native training margin.
+    remaining = min(reported_remaining, expires - time.time())
+    floor = expected['minimum_remaining_seconds'] if stage_index < 2 else expected.get('native_minimum_remaining_seconds', 25200)
+    if (fields.get('job_state') != 'R' or not fields.get('Job_Owner', '').startswith(expected['expected_owner'] + '@')
+            or expected['expected_node'] not in fields.get('exec_host', '')
+            or fields.get('Resource_List.ncpus') != '6' or fields.get('Resource_List.ngpus') != '1'
+            or fields.get('Resource_List.mem', '').lower() != '128gb'
+            or remaining < floor):
+        raise AllocationUnavailable('Original GPU6 owned PBS allocation or remaining walltime is insufficient; no native launch')
+    return dict(job_id=expected['job_id'], remaining_seconds=remaining, required_remaining_seconds=floor,
+                expires_at_unix=expires, reported_remaining_seconds=reported_remaining,
+                ownership_and_allocation_checked=True)
+
+
+def resources(request, *, initial=False, stage_index=0):
+    import psutil
+    affinity = psutil.Process().cpu_affinity()
+    if affinity != request['CPU_affinity']:
+        raise ValueError('Watcher must inherit exactly its original four assigned CPU IDs')
+    row = _run(['nvidia-smi', '--id=' + str(request['GPU_arm']),
+        '--query-gpu=index,uuid,memory.total,memory.free,mig.mode.current', '--format=csv,noheader,nounits'])
+    fields = [value.strip() for value in row.split(',')]
+    if (len(fields) != 5 or fields[0] != str(request['GPU_arm']) or fields[1] != request['GPU_UUID']
+            or float(fields[2]) < 40 * 1024 or float(fields[3]) < 40 * 1024
+            or fields[4] not in ('N/A', 'Disabled', '[N/A]')):
+        raise AssignedGPUUnavailable('The exact assigned full GPU is not free for the next native stage')
+    apps = _run(['nvidia-smi', '--query-compute-apps=pid,gpu_uuid', '--format=csv,noheader,nounits'])
+    if any(line.strip().split(',')[-1].strip() == request['GPU_UUID'] for line in apps.splitlines() if ',' in line):
+        raise AssignedGPUUnavailable('Assigned GPU still has a compute application; no duplicate/downstream launch')
+    free = shutil.disk_usage(request['chain_root']).free
+    minimum = request['min_free_disk_GiB'] if initial else request.get('minimum_runtime_free_disk_GiB', 10)
+    if free < minimum * 2**30:
+        raise OSError('Full native data/checkpoint reserve does not fit; no subset or overwrite fallback')
+    return dict(actual_CPU_affinity=affinity, GPU_UUID=request['GPU_UUID'], free_VRAM_MiB=float(fields[3]),
+                free_disk_bytes=free, minimum_free_disk_GiB=minimum, scheduler=scheduler_proof(request, stage_index=stage_index))
+
+
+def stage_proof(request, action):
+    root = Path(request['chain_root'])
+    gpu = request['GPU_arm']
+    if action == 'pin-current-gnn':
+        path = root / 'pin.json'; value = read(path)
+        if (value.get('format') != 'v24_completed_single_arm_GT_blind_best_v1'
+                or value.get('physical_GPU') != gpu or value.get('completed_epochs') != 40
+                or value.get('optimizer_updates') != 680 or value.get('full_training') is not True
+                or value.get('debug') is not False or value.get('source_output') != request['source_output']
+                or value.get('source_code') != request['source_code']
+                or value.get('selection_scope') != 'this completed arm only; no cross-arm winner'
+                or value.get('selected', {}).get('gpu') != gpu
+                or value.get('selected', {}).get('best_record', {}).get('selected_by') != 'fixed_full128_validation_only'
+                or not _checksum(value.get('selected', {}).get('best_file_sha256'))):
+            raise ValueError('Native first stage did not publish the actual completed own-arm BEST pin')
+    elif action == 'prepare-current-bank':
+        path = root / 'bank/index.json'; value = read(path)
+        if (value.get('pipeline_version') != CURRENT_FORMAT or value.get('physical_GPU') != gpu
+                or value.get('complete') is not True or value.get('pin') != read(root / 'pin.json')):
+            raise ValueError('Complete own-arm native bank proof required')
+    elif action == 'prepare-native':
+        path = root / 'native/native.json'; value = read(path)
+        if (value.get('format') != CURRENT_FORMAT or value.get('physical_GPU') != gpu
+                or value.get('bank') != str(root / 'bank/index.json')
+                or value.get('baseline', {}).get('epochs') != 250
+                or value.get('model_weights_fresh') is not True):
+            raise ValueError('Fresh full250 own-arm native nnUNet proof required')
+    elif action == 'calibrate-native':
+        path = root / 'native/calibration.json'; value = read(path)
+        if (value.get('debug') is not True or value.get('production_updates') != 0
+                or value.get('production_epochs') != 250 or value.get('production_physical_batch') != 2
+                or value.get('production_cp_probability') != .5):
+            raise ValueError('Actual native clone calibration must preserve the full production contract')
+    elif action == 'train':
+        candidates = list((root / 'native').glob('training_complete_*.json'))
+        if len(candidates) != 1:
+            raise ValueError('Exactly one successful full native training receipt required')
+        path = candidates[0]; value = read(path)
+        if value.get('epochs') != 250 or not _checksum(value.get('checkpoint_sha256')):
+            raise ValueError('Actual full250 native completion checkpoint proof required')
+        checkpoint = owned(value['checkpoint']); _inside(checkpoint, root / 'native')
+        if sha(checkpoint) != value['checkpoint_sha256']:
+            raise ValueError('Actual final native checkpoint checksum differs')
+    else:
+        raise ValueError('Unknown chain stage')
+    return dict(path=str(path), sha256=sha(path), action=action)
+
+
+def publish(root, status):
+    path = root / 'status.json'
+    if path.exists():
+        owned(path)
+    temporary = root / ('status.' + str(os.getpid()) + '.' + str(time.time_ns()) + '.tmp')
+    with temporary.open('x', encoding='utf8') as stream:
+        json.dump(status, stream, indent=2); stream.flush(); os.fsync(stream.fileno())
+    os.replace(temporary, path)
+
+
+def claim(root, request_sha256):
+    owned(root, directory=True, must_exist=False)
+    if not root.exists():
+        root.mkdir()
+    lease = root / 'launch.lease.json'
+    with lease.open('x', encoding='utf8') as stream:
+        json.dump(dict(request_sha256=request_sha256, supervisor_pid=os.getpid(), created=time.time(),
+                       replay_policy='Existing lease requires explicit recovery; completed stages are never replayed'), stream)
+        stream.flush(); os.fsync(stream.fileno())
+
+
+def verify_source_claim(request, request_checksum):
+    path = request['source_claim_path']
+    expected = dict(format='v24_owned_gnn_to_native_source_claim_v1', source_output=request['source_output'],
+                    GPU_arm=request['GPU_arm'], chain_root=request['chain_root'], request_sha256=request_checksum)
+    if read(path) != expected:
+        raise ValueError('This completed GNN source is claimed by another native chain; no duplicate launch')
+    return sha(path)
+
+
+def _tree_rss(process):
+    import psutil
+    total = 0
+    try:
+        children = [process, *process.children(recursive=True)]
+    except psutil.NoSuchProcess:
+        return total
+    for child in children:
+        try:
+            total += child.memory_info().rss
+        except psutil.NoSuchProcess:
+            continue
+    return total
+
+
+def run_stage(request, stage, status, request_path, request_checksum):
+    """Direct file output avoids a blocked stdout reader and preserves every log."""
+    import psutil
+    root = Path(request['chain_root'])
+    env = os.environ.copy()
+    env.update(OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', NUMEXPR_NUM_THREADS='1',
+               VECLIB_MAXIMUM_THREADS='1', PYTHONDONTWRITEBYTECODE='1',
+               V24_ARM_RSS_GIB=str(request['scoring_RAM_GiB'] if stage['action'] == 'prepare-current-bank' else request['native_RAM_GiB']))
+    env['CUDA_VISIBLE_DEVICES'] = str(request['GPU_arm'])
+    status.update(status='RUNNING', stage=stage['name'], stage_started=time.time(), command=stage['command'])
+    publish(root, status)
+    print(json.dumps(dict(stage=stage['name'], command=stage['command'])), flush=True)
+    log_path = root / (stage['name'] + '.log')
+    budget = (request['scoring_RAM_GiB'] if stage['action'] in ('pin-current-gnn', 'prepare-current-bank') else request['native_RAM_GiB']) * 2**30
+    violation = None
+    with log_path.open('xb', buffering=0) as log:
+        process = subprocess.Popen(stage['command'], cwd=request['code'], env=env,
+                                   stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+        own = psutil.Process(process.pid)
+        status.update(child_pid=process.pid, child_create_time=own.create_time(), stage_log=str(log_path))
+        publish(root, status)
+        while process.poll() is None:
+            rss = _tree_rss(own)
+            if rss > budget:
+                violation = 'Owned native child process tree exceeded its fixed RSS budget; no downstream stage will run'
+            if sha(request_path) != request_checksum:
+                violation = 'Registered immutable request changed while its owned child was running'
+            status.update(child_process_tree_RSS_bytes=rss, RAM_budget_bytes=budget, resource_violation=violation,
+                          checked_at=time.time())
+            publish(root, status)
+            time.sleep(POLL_SECONDS)
+        result = process.wait()
+    if result or violation:
+        raise RuntimeError('Stage ' + stage['name'] + ' failed (' + str(result) + '): ' + str(violation)
+                           + '; logs preserved; no process was signaled and no downstream stage was launched')
+    proof = stage_proof(request, stage['action'])
+    status['stages_completed'].append(stage['name'])
+    status['stage_proofs'].append(proof)
+    status.update(child_pid=None, child_create_time=None)
+    publish(root, status)
+
+
+def run(request_path):
+    import psutil
+    request_path = owned(request_path)
+    request_checksum = sha(request_path)
+    request = validate_request(read(request_path))
+    verify_code(request)
+    source_claim_checksum = verify_source_claim(request, request_checksum)
+    root = Path(request['chain_root'])
+    claim(root, request_checksum)
+    status = dict(format='v24_completed_gnn_to_native_chain_status_v1', request_sha256=request_checksum,
+                  GPU_arm=request['GPU_arm'], source_job=request['source_job'], source_output=request['source_output'],
+                  source_code=request['source_code'], source_commit=request['source_commit'], code=request['code'], commit=request['commit'],
+                  supervisor_pid=os.getpid(), supervisor_create_time=psutil.Process().create_time(),
+                  actual_CPU_affinity=psutil.Process().cpu_affinity(), status='WAITING_FOR_FULL_GNN', stage=None,
+                  stages_completed=[], stage_proofs=[], started=time.time(), signals_sent=False,
+                  source_claim_path=request['source_claim_path'], source_claim_sha256=source_claim_checksum)
+    publish(root, status)
+    try:
+        if status['actual_CPU_affinity'] != request['CPU_affinity']:
+            raise ValueError('Watcher did not inherit its exact assigned CPU affinity')
+        while True:
+            if sha(request_path) != request_checksum or sha(request['source_claim_path']) != source_claim_checksum:
+                raise ValueError('Registered request changed while waiting')
+            completion = inspect_source(request)
+            if completion is not None:
+                status.update(gnn_completion=completion, status='GNN_COMPLETE', gnn_completed_detected=time.time())
+                publish(root, status)
+                break
+            status.update(checked_at=time.time())
+            publish(root, status)
+            time.sleep(POLL_SECONDS)
+        for index, stage in enumerate(request['stages']):
+            verify_code(request)
+            if sha(request_path) != request_checksum or verify_source_claim(request, request_checksum) != source_claim_checksum:
+                raise ValueError('Registered request changed before a native stage')
+            if inspect_source(request) != completion:
+                raise ValueError('Completed GNN source/receipt changed before a native stage')
+            while True:
+                try:
+                    status['resources'] = resources(request, initial=index == 0, stage_index=index)
+                    break
+                except (AllocationUnavailable, AssignedGPUUnavailable) as error:
+                    status.update(status='WAITING_ALLOCATION' if isinstance(error, AllocationUnavailable)
+                                  else 'WAITING_FOR_ASSIGNED_GPU', waiting_reason=str(error), checked_at=time.time())
+                    publish(root, status)
+                    time.sleep(POLL_SECONDS)
+                    if (sha(request_path) != request_checksum or verify_source_claim(request, request_checksum) != source_claim_checksum
+                            or inspect_source(request) != completion):
+                        raise ValueError('Request or completed GNN changed while waiting for its owned allocation')
+            run_stage(request, stage, status, request_path, request_checksum)
+        status.update(status='COMPLETE', completed=time.time(), full_native_training_completed=True)
+        publish(root, status)
+    except Exception as error:
+        status.update(status='FAILED', error=type(error).__name__ + ': ' + str(error), failed=time.time(),
+                      recovery='Keep this lease and every log/result. Inspect the exact failed stage; an explicit new recovery request is required.')
+        publish(root, status)
+        raise
+
+
+def parse(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--request', type=Path, required=True)
+    parser.add_argument('--check', action='store_true', help='Read-only request/code admission; never starts a child or creates a lease')
+    return parser.parse_args(argv)
+
+
+def main(args):
+    if args.check:
+        request = validate_request(read(args.request))
+        verify_code(request)
+        print(json.dumps(dict(status='REQUEST_ADMITTED', GPU_arm=request['GPU_arm'], server_files_written=False,
+                              GPU_child_started=False, GNN_checkpoint_loaded=False)), flush=True)
+    else:
+        run(args.request)
+
+
+if __name__ == '__main__':
+    main(parse())

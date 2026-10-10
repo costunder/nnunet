@@ -23,6 +23,9 @@ FORMAT = 'v24_frozen_v23_GNN_native_nnunet_CP_v1'
 SCORE_FORMAT = 'v24_frozen_original_GNN_complete105_P_plus128U_scores_v1'
 CP_SELECTION = 'stable_highest_GNN_score_among_original128_hard_CP_eligible_U_v1'
 PIN_FORMAT = 'v24_selected_historical_v23_best_v1'
+CURRENT_PIN_FORMAT = 'v24_completed_single_arm_GT_blind_best_v1'
+CURRENT_FORMAT = 'v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1'
+CURRENT_SCORE_FORMAT = 'v24_frozen_current_GT_blind_GNN_complete105_P_plus128U_scores_v1'
 TRAINER = 'nnUNetTrainer_250epochs_FrozenV23CP'
 PLANS = 'nnUNetResEncUNetMPlans'
 PARAMETERS = 10434532
@@ -62,7 +65,7 @@ def require_project_budget():
         raise ValueError('Launcher must assign exactly four logical CPU cores; host capacity is not our allocation')
     rss=process_tree_rss()
     if rss>PROJECT_RSS_BYTES:
-        raise MemoryError('GPU1 project process+DA children exceed48GiB; no host-RAM expansion or model reduction')
+        raise MemoryError('Native project process+DA children exceed48GiB; no host-RAM expansion or model reduction')
     return dict(**resource_contract(),actual_affinity=affinity,actual_process_and_children_RSS_bytes=rss)
 
 
@@ -102,6 +105,8 @@ def validate_split(split):
 
 
 def validate_pin(pin):
+    if pin.get('format') == CURRENT_PIN_FORMAT:
+        return validate_current_pin(pin)
     if (pin.get('format') != PIN_FORMAT or pin.get('all_three_paused') is not True
             or pin.get('recipient_annotation_exposed') is not True
             or pin.get('selection_metric') != 'fixed full128 per-P patient-macro MRR, top1, negativepairloss'):
@@ -125,8 +130,57 @@ def validate_pin(pin):
     return copy.deepcopy(pin)
 
 
+def pin_format(pin):
+    return CURRENT_FORMAT if pin.get('format') == CURRENT_PIN_FORMAT else FORMAT
+
+
+def pin_parameters(pin):
+    return pin['model_contract']['parameters'] if pin.get('format') == CURRENT_PIN_FORMAT else PARAMETERS
+
+
+def _admit_arm_gpu(pin, gpu):
+    expected = pin['physical_GPU'] if pin.get('format') == CURRENT_PIN_FORMAT else 1
+    if type(gpu) is not int or gpu != expected:
+        raise ValueError('Physical GPU must match the explicitly pinned downstream arm')
+    return expected
+
+
+def validate_current_pin(pin):
+    from .contracts import canonical_hash
+    selected=pin.get('selected',{}); contract=pin.get('model_contract',{})
+    gpu=pin.get('physical_GPU')
+    if (gpu not in (5,6) or type(gpu)is not int or pin.get('completed_epochs')!=40
+            or pin.get('optimizer_updates')!=680 or pin.get('debug')is not False
+            or pin.get('full_training')is not True or pin.get('recipient_annotation_exposed')is not False
+            or pin.get('selection_metric')!='fixed full128 per-P patient-macro MRR, top1, negativepairloss'
+            or pin.get('selection_scope')!='this completed arm only; no cross-arm winner'
+            or selected.get('gpu')!=gpu or selected.get('best_record',{}).get('selected_by')!='fixed_full128_validation_only'
+            or len(selected.get('best_record',{}).get('selection_key',[]))!=3
+            or any(type(x)not in (float,int) or not math.isfinite(x) for x in selected['best_record']['selection_key'])
+            or contract.get('recipient_GT_used_in_forward')is not False
+            or contract.get('trained_v23_weights_loaded')is not False
+            or type(contract.get('parameters'))is not int or contract['parameters']<=0
+            or contract.get('trainable_parameters')!=contract['parameters']
+            or contract.get('encoder')!=('original_CNN_GAT' if gpu==5 else 'official_pretrained_STU_Net_S')
+            or pin.get('pin_sha256')!=canonical_hash({k:v for k,v in pin.items() if k!='pin_sha256'})):
+        raise ValueError('Completed full40 own-arm GT-blind BEST pin required')
+    for name in ('best_file_sha256','best_content_sha256','best_model_sha256','identity_sha256'):
+        value=selected.get(name)
+        if not isinstance(value,str) or len(value)!=64 or any(c not in '0123456789abcdef' for c in value):
+            raise ValueError('Actual completed own-arm BEST checksum missing: '+name)
+    if selected.get('best_record',{}).get('candidate_universe')!='all native P + fixed128U':
+        raise ValueError('Own-arm full128 BEST selection required')
+    return copy.deepcopy(pin)
+
+
 def admit_pin(path, inventory):
     pin = validate_pin(read(path))
+    if pin.get('format') == CURRENT_PIN_FORMAT:
+        current = _inspect_completed_current(pin['source_output'],pin['source_code'],inventory,
+            gpu=pin['physical_GPU'],input_cache=pin['input_cache'],stunet_checkpoint=pin['stunet_checkpoint'])
+        if current != pin:
+            raise ValueError('Completed own-arm BEST/source/calibration/invocation proof changed')
+        return pin, read(Path(pin['source_output'])/'request.json')
     selected=pin['selected'];training=Path(selected['best_path']).parent
     if sha(selected['best_path']) != selected['best_file_sha256']:
         raise ValueError('Pinned best checkpoint changed')
@@ -143,6 +197,120 @@ def admit_pin(path, inventory):
     pin['admitted_source_experiment']=str(training.parent)
     pin['admitted_source_request_sha256']=request['request_sha256']
     return pin, request
+
+
+def _finite_checkpoint(value):
+    import torch
+    if isinstance(value,torch.Tensor):
+        if (value.is_floating_point() or value.is_complex()) and not bool(torch.isfinite(value).all()):
+            raise FloatingPointError('Nonfinite completed GNN checkpoint tensor')
+    elif isinstance(value,dict):
+        for item in value.values():_finite_checkpoint(item)
+    elif isinstance(value,(list,tuple)):
+        for item in value:_finite_checkpoint(item)
+    elif isinstance(value,float) and not math.isfinite(value):
+        raise FloatingPointError('Nonfinite completed GNN checkpoint scalar')
+
+
+def _inspect_completed_current(source_output, source_code, inventory, *, gpu, input_cache,
+                               stunet_checkpoint=None):
+    """Read actual COMPLETE/latest/BEST states without constructing a model or CUDA."""
+    from tools import run_v24_all_p as cli
+    from .v24_training_continuation import _checkpoint
+    from .u_bridge_training import digest
+    from .v23_training import best_selection_key
+    from .contracts import canonical_hash
+    output=Path(source_output).resolve(strict=True);code=Path(source_code).resolve(strict=True)
+    request=read(output/'request.json');owner=read(output/'training/training_identity.json')
+    declared={key:value for key,value in request.items() if key!='request_sha256'}
+    if (request.get('format')!='v24_full_native_GT_free_execution_request_v1'
+            or request.get('request_sha256')!=hashlib.sha256(json.dumps(declared,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            or set(request.get('source',{}))!=set(cli.FILES)
+            or any(sha(code/name)!=checksum or sha(cli.ROOT/name)!=checksum for name,checksum in request['source'].items())
+            or request.get('physical_GPU')!=gpu or request.get('inventory_sha256')!=sha(inventory)
+            or Path(request['inventory']).resolve(strict=True)!=Path(inventory).resolve(strict=True)
+            or Path(request['input_cache']).resolve(strict=True)!=Path(input_cache).resolve(strict=True)
+            or owner.get('identity_sha256')!=digest(owner.get('binding'))
+            or owner['binding'].get('identity')!=request or owner['binding'].get('debug')is not False
+            or owner['binding'].get('epochs')!=40):
+        raise ValueError('Actual immutable completed v24 request/source/ownership required')
+    cli.validate_config(request['config'],gpu,stunet_checkpoint)
+    if ((gpu==6 and sha(stunet_checkpoint)!=request['STU_checkpoint_sha256'])
+            or (gpu==5 and (stunet_checkpoint is not None or request['STU_checkpoint_sha256']is not None))):
+        raise ValueError('Actual own-arm original STU checkpoint provenance differs')
+    calibration=read(output/'calibration.json');binding=owner['binding']
+    if (calibration.get('request_sha256')!=request['request_sha256'] or calibration.get('physical_GPU')!=gpu
+            or calibration!=binding['config']['v24_runtime']['batch_calibration']
+            or calibration.get('model_contract')!=binding['model_contract']
+            or calibration.get('initial_state_sha256')!=binding['initial_state_sha256']
+            or calibration.get('selected_physical_patient_batch')!=4
+            or calibration.get('selected_physical_candidate_batch')!=(32 if gpu==5 else 64)):
+        raise ValueError('Unchanged actual own-arm B4/chunk calibration required')
+    latest,latest_proof=_checkpoint(output/'training/checkpoint_latest.pt',owner)
+    best,best_proof=_checkpoint(output/'training/checkpoint_best.pt',owner)
+    _finite_checkpoint(latest);_finite_checkpoint(best)
+    state=latest['state'];history=state['history'];selected=state.get('best')
+    if (state.get('phase')!='complete' or state.get('status')!='COMPLETE' or state.get('epoch')!=41
+            or len(history)!=40 or state.get('updates')!=680 or len(state.get('connected',[]))!=(981 if gpu==5 else 537)
+            or selected is None or best['state'].get('best')!=selected
+            or best['state'].get('epoch')!=selected['epoch'] or best['state'].get('updates')!=selected['updates']
+            or selected.get('selected_by')!='fixed_full128_validation_only'):
+        raise ValueError('Full40 completed trained GNN and its own actual BEST are required')
+    reports=[row['full_validation'] for row in history]
+    for epoch,report in enumerate(reports,1):
+        if (report.get('phase')!='full_validation' or report.get('active_u')!=128 or report.get('epoch')!=epoch
+                or report.get('debug')is not False or report.get('recipient_GT_used_in_forward')is not False
+                or report.get('all_P_scored')is not True or report.get('evaluation_view_epoch')!=29
+                or any(not math.isfinite(float(x)) for x in best_selection_key(report))):
+            raise ValueError('Every original epoch must contain its actual fixed-full128 validation')
+    winner=max(range(40),key=lambda index:best_selection_key(reports[index]))
+    full=best['state'].get('pending_epoch_completion',{}).get('full_validation')
+    if (selected['epoch']!=winner+1 or selected['selection_key']!=list(best_selection_key(reports[winner]))
+            or full!=reports[winner]):
+        raise ValueError('Pinned weights must be the actual own-arm full128 BEST, never LAST/stage metrics')
+    invocation_path=output/'training/invocations.jsonl'
+    lines=[line for line in invocation_path.read_text(encoding='utf8').splitlines() if line.strip()]
+    invocation={} if not lines else json.loads(lines[-1])
+    if (invocation.get('status')!='COMPLETE' or invocation.get('full_training')is not True
+            or invocation.get('debug')is not False or invocation.get('actual_CUDA')is not True
+            or invocation.get('completed_epochs')!=40 or invocation.get('optimizer_updates')!=680
+            or invocation.get('connected_parameter_tensors')!=(981 if gpu==5 else 537)
+            or invocation.get('expected_parameter_tensors')!=(981 if gpu==5 else 537)
+            or invocation.get('best')!=selected):
+        raise ValueError('Successful actual full-training invocation required before downstream native stage')
+    record=copy.deepcopy(selected);record['candidate_universe']='all native P + fixed128U'
+    value=dict(format=CURRENT_PIN_FORMAT,physical_GPU=gpu,completed_epochs=40,optimizer_updates=680,
+        debug=False,full_training=True,recipient_annotation_exposed=False,
+        selection_metric='fixed full128 per-P patient-macro MRR, top1, negativepairloss',
+        selection_scope='this completed arm only; no cross-arm winner',
+        source_output=str(output),source_code=str(code),inventory=str(Path(inventory).resolve(strict=True)),
+        input_cache=str(Path(input_cache).resolve(strict=True)),
+        stunet_checkpoint=None if stunet_checkpoint is None else str(Path(stunet_checkpoint).resolve(strict=True)),
+        model_contract=copy.deepcopy(binding['model_contract']),population=copy.deepcopy(binding['population']),
+        final_checkpoint_proof=latest_proof,BEST_checkpoint_proof=best_proof,
+        source_files_sha256=copy.deepcopy(request['source']),
+        source_artifacts_sha256={name:sha(output/name) for name in
+            ('request.json','calibration.json','training/training_identity.json','training/invocations.jsonl')},
+        selected=dict(gpu=gpu,best_path=best_proof['path'],best_file_sha256=best_proof['raw_sha256'],
+            best_content_sha256=best_proof['content_sha256'],best_model_sha256=digest(best['model']),
+            identity_sha256=owner['identity_sha256'],best_record=record),
+        admitted_source_experiment=str(output),admitted_source_request_sha256=request['request_sha256'])
+    value['pin_sha256']=canonical_hash(value)
+    del latest,best
+    return validate_current_pin(value)
+
+
+def pin_completed_current(*,source_output,source_code,inventory_path,input_cache,output,gpu,stunet_checkpoint=None):
+    import torch
+    if torch.cuda.is_initialized():raise RuntimeError('Completion pin admission must precede CUDA initialization')
+    value=_inspect_completed_current(source_output,source_code,inventory_path,gpu=gpu,
+        input_cache=input_cache,stunet_checkpoint=stunet_checkpoint)
+    output=Path(output).resolve()
+    if output.exists():raise FileExistsError('Fresh completed-own-arm pin required; no old artifact overwrite')
+    for protected in (Path(source_output).resolve(),Path(input_cache).resolve(),Path(source_code).resolve()):
+        if output.is_relative_to(protected):raise ValueError('Pin output must not write into original inputs/results')
+    new_json(output,value)
+    return output
 
 
 def validate_baseline(preprocessed, split):
@@ -307,7 +475,8 @@ def seal_scores(root, rows, population, pin, *, scoring_provenance=None):
     for row in rows:
         if read(root/files[row['case_id']]['path'])!=row:
             raise ValueError('Persisted complete score row differs from admitted result')
-    manifest=dict(format=SCORE_FORMAT,complete=True,debug=False,recipients=105,candidates_per_recipient=128,
+    manifest=dict(format=CURRENT_SCORE_FORMAT if pin.get('format')==CURRENT_PIN_FORMAT else SCORE_FORMAT,
+        complete=True,debug=False,recipients=105,candidates_per_recipient=128,
         all_P_retained=True,model_sha256=pin['selected']['best_model_sha256'],pin=pin,
         inventory_sha256=request['inventory_sha256'],baseline=request['baseline'],
         request_file_sha256=sha(root/'request.json'),population=population.manifest(),score_files=files,
@@ -659,6 +828,135 @@ def prepare_bank(*, pin_path, inventory_path, baseline_preprocessed, output, gpu
     return _materialize_bank(output, meta, rows, baseline, pin)
 
 
+def prepare_current_bank(*,pin_path,inventory_path,baseline_preprocessed,input_cache,output,gpu,
+                         stunet_checkpoint=None):
+    """Frozen trained CNN/GAT or STU-Net-S placement; full original105/P+128U."""
+    from tools.local_cnn_device import select
+    select(gpu)
+    import numpy as np
+    import psutil
+    import torch
+    from types import SimpleNamespace
+    from .u_bridge_training import capture_rng,restore_rng,digest
+    from .historical_evaluation import ResourceBudget
+    pin,request=admit_pin(pin_path,inventory_path)
+    if pin.get('format')!=CURRENT_PIN_FORMAT:raise ValueError('Explicit completed current v24 arm required')
+    _admit_arm_gpu(pin,gpu)
+    if (Path(input_cache).resolve(strict=True)!=Path(pin['input_cache'])
+            or (None if stunet_checkpoint is None else str(Path(stunet_checkpoint).resolve(strict=True)))!=pin['stunet_checkpoint']):
+        raise ValueError('Pinned own-arm exact input cache/STU provenance required')
+    require_project_budget()
+    from . import v24_factory,v24_memory_runtime,v24_prefetch_runtime,v24_input_runtime,v24_hash_runtime
+    if torch.cuda.is_initialized():raise RuntimeError('Frozen scoring requires fresh pre-CUDA runtime installation')
+    v24_memory_runtime.install_memory_runtime(v24_factory)
+    v24_hash_runtime.install();v24_prefetch_runtime.install_runtime(v24_memory_runtime)
+    v24_input_runtime.install_runtime(pin_final_outputs=True)
+    if (not torch.cuda.is_available() or torch.cuda.device_count()!=1
+            or 'A6000'not in torch.cuda.get_device_name(0)):
+        raise RuntimeError('Actual assigned singleton A6000 required for frozen trained GNN')
+    free,total=torch.cuda.mem_get_info()
+    if min(free,total)<=40*2**30:raise MemoryError('Unchanged40GiB trained GNN CUDA budget unavailable')
+    torch.cuda.set_per_process_memory_fraction(40*2**30/total);torch.set_num_threads(1)
+    from .v24_geometry import V24UpperGeometryCache
+    root=Path(output).resolve()
+    if root.exists():raise FileExistsError('Fresh own-arm frozen bank required')
+    for protected in (Path(pin['source_output']),Path(input_cache),Path(baseline_preprocessed),Path(pin['source_code'])):
+        protected=protected.resolve(strict=True)
+        if root.is_relative_to(protected) or protected.is_relative_to(root):
+            raise ValueError('Frozen bank output overlaps original inputs/results')
+    meta=read(inventory_path);baseline=validate_baseline(baseline_preprocessed,meta['split'])
+    root.mkdir(parents=True)
+    args=SimpleNamespace(native_experiment=Path(request['native_experiment']),inventory=Path(inventory_path),
+        input_cache=Path(input_cache),stunet_checkpoint=stunet_checkpoint)
+    budget=ResourceBudget(40*2**30,64*2**30)
+    net,scorer,population,config,contract,close=v24_factory.build_runtime(args,request['config'],budget)
+    try:
+        if contract!=pin['model_contract'] or population.manifest()!=pin['population']:
+            raise ValueError('Actual unchanged full trained model/population contract differs')
+        calibration=read(Path(pin['source_output'])/'calibration.json')
+        scorer.physical_candidate_batch=calibration['selected_physical_candidate_batch']
+        saved=torch.load(pin['selected']['best_path'],map_location='cpu',weights_only=False,mmap=True)
+        if saved['content_sha256']!=pin['selected']['best_content_sha256'] or digest(saved['model'])!=pin['selected']['best_model_sha256']:
+            raise ValueError('Actual own-arm BEST weights changed before frozen inference')
+        net.load_state_dict(saved['model'],strict=True);del saved
+        net.eval()
+        for parameter in net.parameters():parameter.requires_grad_(False)
+        if sum(parameter.numel() for parameter in net.parameters())!=pin_parameters(pin):
+            raise ValueError('Full trained own-arm model parameter count differs')
+        # Ranking training omits nineteen zero-P patients from its upper cache.
+        # They remain CP recipients: use a private upper workspace for all105,
+        # reading already-sealed existing full graphs when available.
+        old=scorer.geometry;inputs=old.memory_guard.__self__
+        from .v24_training_continuation import _stat
+        shared_upper_paths={path.name:_stat(path) for path in (Path(input_cache)/'upper').glob('*.pt')
+            if path.is_file() and not path.is_symlink()}
+        class CompleteCPGeometry(V24UpperGeometryCache):
+            def _path(self,plan):
+                path,key,binding=super()._path(plan)
+                source=Path(input_cache)/'upper'/(key+'.pt')
+                if source.name in shared_upper_paths:
+                    if (source.is_symlink() or not source.is_file() or _stat(source)!=shared_upper_paths[source.name]):
+                        raise ValueError('Admitted sealed GT-free upper input changed')
+                    return source,key,binding
+                return path,key,binding
+        geometry=CompleteCPGeometry(population,root/'upper_geometry',old.builder,
+            input_binding=old.input_binding,guard_inputs=old.guard_inputs,workers=4,
+            resident_bytes=old.resident_bytes,rss_bytes=old.rss_bytes)
+        geometry.memory_guard=old.memory_guard;inputs.geometry=geometry;scorer.geometry=geometry
+        with old._lock:
+            old._memo.clear();old._proofs.clear();old._bytes=0
+        v24_memory_runtime.bind_memory_runtime(scorer)
+        v24_prefetch_runtime.bind(scorer);v24_input_runtime.bind(scorer)
+        source_names=tuple(request['source'])+('hiercp_v1x/v24_memory_runtime.py','hiercp_v1x/v24_prefetch_runtime.py',
+            'hiercp_v1x/v24_input_runtime.py','hiercp_v1x/v24_hash_runtime.py')
+        scoring_sources={name:sha(ROOT/name) for name in source_names}
+        new_json(root/'request.json',dict(format=CURRENT_FORMAT,pin=pin,pin_sha256=sha(pin_path),
+            inventory=str(Path(inventory_path).resolve()),inventory_sha256=sha(inventory_path),baseline=baseline,
+            source_files_sha256={name:sha(ROOT/name) for name in FILES},scoring_source_files_sha256=scoring_sources,
+            historical_training_annotation_contract=False,inference_GT=False,GPU=gpu,resource_contract=resource_contract(),
+            frozen_scoring_resource_contract=dict(logical_CPU_cores=4,RSS_bytes=64*2**30,CUDA_bytes=40*2**30,
+                physical_patient_batch=4,physical_candidate_batch=scorer.physical_candidate_batch),
+            donor_policy='unchanged_v23_independent_inner_train_fixed_per_recipient',
+            donor_policy_matches_historical_Basic=False,cp_probability=.5,epochs=250,debug=False))
+        from .v24_training import patient_batches
+        rows=[];initial_rng=capture_rng()
+        for partition in ('inner_train','inner_val'):
+            cases=population.partition_cases(partition,ranking_only=False)
+            for batch in patient_batches(cases,4):
+                plans=[population.case(case,128) for case in batch];rng=capture_rng();began=time.perf_counter()
+                try:
+                    with torch.no_grad():result=scorer(plans,epoch=29,training=False)
+                    torch.cuda.synchronize()
+                    if psutil.Process().memory_info().rss>64*2**30:raise MemoryError('Frozen full105 scoring exceeds original64GiB budget')
+                    for score,plan in zip(result.scores,plans):
+                        values,centers=bank_u_values(score.detach().float().cpu().numpy(),plan)
+                        row=dict(case_id=plan.case_id,donor_case_id=plan.donor_case_id,donor_component=plan.donor_component,
+                            scores=values.tolist(),centers=centers.tolist(),joint_observed_P=plan.observed_P,
+                            joint_candidates=len(plan.record_ids),all128U_scored=True,all_P_in_joint_context=True,
+                            model_sha256=pin['selected']['best_model_sha256'],workload=result.workload)
+                        new_json(root/'scores'/(plan.case_id+'.json'),row);rows.append(row)
+                    del result
+                finally:restore_rng(rng)
+                print(json.dumps(dict(phase='frozen_current_GNN_CP_scores',GPU=gpu,completed=len(rows),total=105,
+                    seconds=time.perf_counter()-began,production_GNN_updates=0)),flush=True)
+        if digest(capture_rng())!=digest(initial_rng) or digest(net.state_dict())!=pin['selected']['best_model_sha256']:
+            raise ValueError('Frozen own-arm GNN model or RNG changed during placement inference')
+        if any(sha(ROOT/name)!=checksum for name,checksum in scoring_sources.items()):
+            raise ValueError('Actual frozen GT-blind scoring implementation changed')
+        if _inspect_completed_current(pin['source_output'],pin['source_code'],inventory_path,gpu=gpu,
+                input_cache=input_cache,stunet_checkpoint=stunet_checkpoint)!=pin:
+            raise ValueError('Completed GNN provenance changed during frozen inference')
+        seal_scores(root,rows,population,pin,scoring_provenance=dict(source_files_sha256=scoring_sources,
+            frozen_current_v24_scoring=True,recipient_GT_used_in_forward=False,production_GNN_updates=0,
+            model_and_RNG_unchanged=True,fixed_evaluation_view_epoch=29,physical_patient_batch=4,
+            physical_candidate_batch=scorer.physical_candidate_batch))
+    finally:close()
+    del net,scorer,geometry,inputs,old,close,config,contract,args
+    import gc
+    gc.collect();torch.cuda.empty_cache();require_project_budget()
+    return _materialize_bank(root,meta,rows,baseline,pin)
+
+
 def _materialize_bank(root, meta, rows, baseline, pin):
     import numpy as np
     import nibabel as nib
@@ -675,6 +973,8 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         for name,checksum in source_binding.items():
             if sha(ROOT/name)!=checksum:raise ValueError('Admitted CP preparation/publication source changed: '+name)
     source_guard()
+    for name,checksum in request.get('scoring_source_files_sha256',{}).items():
+        if sha(ROOT/name)!=checksum:raise ValueError('Frozen current GT-blind scorer source changed: '+name)
     if score_manifest.get('complete') is not True or score_manifest.get('pin')!=pin:
         raise ValueError('Completed frozen105 scores must be sealed before raw materialization')
     raw = {row['case_id']: row for row in meta['raw_records']}
@@ -751,7 +1051,7 @@ def _materialize_bank(root, meta, rows, baseline, pin):
     require_project_budget()
     source_guard()
     normalization = plans['foreground_intensity_properties_per_channel']['0']
-    bank = dict(format='hiercp_online_bank_v2', pipeline_version=FORMAT, complete=True, debug=False,
+    bank = dict(format='hiercp_online_bank_v2', pipeline_version=pin_format(pin), complete=True, debug=False,
         paste_contract='onlinecp_raw_target_paste_v1', entry_storage='v23_scores128_eligible_selected_raw_target_v1',
         candidate_count=128, hier_top_k=1, tumor_label=2, liver_label=1, cp_probability=.5,
         intensity_scale_range=[.95,1.05], intensity_shift_range_hu=[-5.,5.],
@@ -761,11 +1061,15 @@ def _materialize_bank(root, meta, rows, baseline, pin):
         donor_policy='unchanged_v23_independent_inner_train_fixed_per_recipient',
         donor_policy_matches_historical_Basic=False, source_identity={name:sha(ROOT/name) for name in FILES},
         baseline=baseline, inference_GT=False, outer_validation_CP=False,
-        original_GNN_parameters=PARAMETERS, all105_recipients=True, all_joint_P_retained=True,
+        original_GNN_parameters=pin_parameters(pin), all105_recipients=True, all_joint_P_retained=True,
         raw_storage_policy=RAW_STORAGE,raw_CT_dtype='float64',raw_segmentation_dtype='int16',
         case_arrays_losslessly_compressed=True,training_crop_only_decompression=True,
         selection_policy=CP_SELECTION,scoring_manifest='scoring_manifest.json',scoring_manifest_file_sha256=sha(root/'scoring_manifest.json'),
         resource_contract=resource_contract())
+    if pin.get('format')==CURRENT_PIN_FORMAT:
+        bank.update(physical_GPU=pin['physical_GPU'],frozen_model_contract=pin['model_contract'],
+            trained_GNN_checkpoint_choice='own fixed-full128 BEST after COMPLETE40; never LAST',
+            recipient_GT_used_in_scoring=False)
     validate_bank(bank)
     new_json(root / 'index.json', bank)
     return root / 'index.json'
@@ -773,9 +1077,10 @@ def _materialize_bank(root, meta, rows, baseline, pin):
 
 def validate_bank(bank):
     split = validate_split(bank['split'])
-    if (bank.get('pipeline_version') != FORMAT or bank.get('complete') is not True or bank.get('debug') is not False
+    pin=validate_pin(bank['pin'])
+    if (bank.get('pipeline_version') != pin_format(pin) or bank.get('complete') is not True or bank.get('debug') is not False
             or bank.get('cp_probability') != .5 or bank.get('candidate_count') != 128
-            or bank.get('original_GNN_parameters') != PARAMETERS or bank.get('all105_recipients') is not True
+            or bank.get('original_GNN_parameters') != pin_parameters(pin) or bank.get('all105_recipients') is not True
             or bank.get('all_joint_P_retained') is not True or bank.get('outer_validation_CP') is not False
             or bank.get('inference_GT') is not False or bank.get('scoring_manifest')!='scoring_manifest.json'
             or not isinstance(bank.get('scoring_manifest_file_sha256'),str)
@@ -785,6 +1090,11 @@ def validate_bank(bank):
             or bank.get('case_arrays_losslessly_compressed') is not True
             or bank.get('training_crop_only_decompression') is not True):
         raise ValueError('Complete frozen original-GNN CP training contract required')
+    if pin.get('format')==CURRENT_PIN_FORMAT and (
+            bank.get('physical_GPU')!=pin['physical_GPU'] or bank.get('frozen_model_contract')!=pin['model_contract']
+            or bank.get('recipient_GT_used_in_scoring')is not False
+            or bank.get('trained_GNN_checkpoint_choice')!='own fixed-full128 BEST after COMPLETE40; never LAST'):
+        raise ValueError('Explicit frozen completed own-arm GT-blind bank binding required')
     expected = set(split['outer_train'])
     if set(bank['entries_by_case']) != expected or set(bank['CP_audits']) != expected:
         raise ValueError('Full105 training-only recipient bank required')
@@ -805,13 +1115,13 @@ def validate_bank(bank):
         name = bank['entries_by_case'][case][0]
         if name not in bank['entry_sha256']:
             raise ValueError('SHA-bound native entry missing')
-    validate_pin(bank['pin'])
     return bank
 
 
 def prepare_nnunet(bank_path, output):
     """Private runtime and immutable preprocessing references; no old writes."""
     import nnunetv2
+    require_project_budget()
     bank_path = Path(bank_path).resolve(); bank = validate_bank(read(bank_path))
     baseline = validate_baseline(bank['baseline']['preprocessed'], bank['split'])
     if baseline != bank['baseline']: raise ValueError('Historical native plans changed')
@@ -858,7 +1168,7 @@ def prepare_nnunet(bank_path, output):
         if sha(pre/relative)!=checksum:raise ValueError('Full native preprocessing copy differs: '+relative)
         copied_arrays[relative]=checksum
     if validate_baseline(source,bank['split'])!=baseline:raise ValueError('Native plans changed during reuse')
-    document = dict(format=FORMAT, root=str(output), bank=str(bank_path), bank_sha256=sha(bank_path),
+    document = dict(format=pin_format(bank['pin']), root=str(output), bank=str(bank_path), bank_sha256=sha(bank_path),
         baseline=baseline, private_runtime=str(private.parent), trainer=TRAINER,
         native_preprocessed_source_written=False, model_weights_fresh=True,
         preprocessed_storage='independent full original arrays; no directory symlink/hardlink',
@@ -867,6 +1177,7 @@ def prepare_nnunet(bank_path, output):
         private_trainer_sha256={name:sha(dest/name) for name in custom_names},
         pretrained_segmentation_used=False, prediction_inputs='outer26 CT images only',
         source_files_sha256={name:sha(ROOT/name) for name in FILES},resource_contract=resource_contract())
+    if bank['pin'].get('format')==CURRENT_PIN_FORMAT:document['physical_GPU']=bank['physical_GPU']
     new_json(output/'native.json',document)
     return output/'native.json'
 
@@ -885,10 +1196,12 @@ def admit_native(native_path):
     """Guard the actual private runtime and complete source copy before use."""
     native=read(native_path)
     bank=validate_bank(read(native['bank']))
-    if (native['format']!=FORMAT or sha(native['bank'])!=native['bank_sha256']
+    if (native['format']!=pin_format(bank['pin']) or sha(native['bank'])!=native['bank_sha256']
             or native['resource_contract']!=resource_contract()
             or any(sha(ROOT/name)!=checksum for name,checksum in native['source_files_sha256'].items())):
         raise ValueError('Completed immutable native runtime/source/bank changed')
+    if bank['pin'].get('format')==CURRENT_PIN_FORMAT and native.get('physical_GPU')!=bank['physical_GPU']:
+        raise ValueError('Native runtime belongs to a different completed GNN arm')
     pre=Path(native['root'])/'nnUNet_preprocessed'/bank['baseline']['dataset_name']
     if validate_baseline(pre,bank['split'])['source_files_sha256']!=native['baseline']['source_files_sha256']:
         raise ValueError('Private native plans/split/normalization differ from the historical baseline')
@@ -1124,8 +1437,8 @@ def calibrate_native(native_path,*,gpu=1):
     """Measure the fixed baseline batch and double-sized native clone batch."""
     from tools.local_cnn_device import select
     select(gpu)
-    if gpu!=1:raise ValueError('This isolated native calibration is assigned GPU1')
     native,bank=admit_native(native_path);require_project_budget()
+    _admit_arm_gpu(bank['pin'],gpu)
     root=Path(native['root']);final=root/'calibration.json'
     if final.exists():raise FileExistsError('Completed native calibration is immutable')
     output=root/('native_clone_calibration_'+str(time.time_ns()));output.mkdir()
@@ -1203,9 +1516,9 @@ def admit_native_calibration(native):
 def train(native_path, *, gpu=1, resume=False):
     from tools.local_cnn_device import select
     select(gpu)
-    if gpu != 1: raise ValueError('GPU1 assigned to actual frozen-best GNN segmentation arm')
     require_project_budget()
     native,bank = admit_native(native_path)
+    _admit_arm_gpu(bank['pin'],gpu)
     calibration=admit_native_calibration(native)
     root=Path(native['root']); result=root/'nnUNet_results'/bank['baseline']['dataset_name']/f'{TRAINER}__{PLANS}__3d_fullres'/'fold_0'
     if result.exists() and not resume: raise FileExistsError('Existing segmentation run requires explicit native resume')
@@ -1213,7 +1526,7 @@ def train(native_path, *, gpu=1, resume=False):
     command=[sys.executable,'-B','-m','nnunetv2.run.run_training','730','3d_fullres','0','-tr',TRAINER,'-p',PLANS]
     if resume: command.append('--c')
     stamp=str(time.time_ns()); log=root/('train_'+stamp+'.log')
-    new_json(root/('training_started_'+stamp+'.json'),dict(format=FORMAT,command=command,epochs=250,
+    new_json(root/('training_started_'+stamp+'.json'),dict(format=native['format'],GPU=gpu,command=command,epochs=250,
         cp_probability=.5,split=bank['split'],bank_sha256=native['bank_sha256'],resume=resume,debug=False,
         native_calibration_sha256=sha(calibration)))
     with log.open('x',encoding='utf8') as stream:
@@ -1223,7 +1536,7 @@ def train(native_path, *, gpu=1, resume=False):
         status=child.wait()
     if status: raise RuntimeError(f'Native segmentation failed ({status}); preserved log {log}')
     checkpoint=result/'checkpoint_final.pth'
-    new_json(root/('training_complete_'+stamp+'.json'),dict(format=FORMAT,checkpoint=str(checkpoint),
+    new_json(root/('training_complete_'+stamp+'.json'),dict(format=native['format'],GPU=gpu,checkpoint=str(checkpoint),
         checkpoint_sha256=sha(checkpoint),bank_sha256=native['bank_sha256'],epochs=250,log=str(log)))
     return checkpoint
 

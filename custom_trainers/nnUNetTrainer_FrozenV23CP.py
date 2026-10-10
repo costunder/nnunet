@@ -194,10 +194,10 @@ class nnUNetTrainer_250epochs_FrozenV23CP(_nnUNetTrainer_250epochs_OnlineCP):
         result=super().initialize()
         torch.set_num_threads(1);require_project_budget()
         from hiercp.preparation_runtime import snapshot
-        self.print_to_log_file(json.dumps(dict(pipeline=FORMAT,epochs=self.num_epochs,
+        self.print_to_log_file(json.dumps(dict(pipeline=self.v24_metadata['pipeline_version'],epochs=self.num_epochs,
             physical_batch=self.batch_size,effective_batch=self.batch_size,gradient_accumulation=1,
             patch_size=self.configuration_manager.patch_size,train105=True,val26=True,
-            cp_probability=.5,candidates=128,frozen_GNN_parameters=10434532,
+            cp_probability=.5,candidates=128,frozen_GNN_parameters=self.v24_metadata['original_GNN_parameters'],
             donor_policy_matches_historical_Basic=False,validation_CP=False,inference_GT=False,
             segmentation_parameters=sum(p.numel() for p in self.network.parameters()),
             resource_snapshot=snapshot(),project_resource_contract=resource_contract(),debug=False)))

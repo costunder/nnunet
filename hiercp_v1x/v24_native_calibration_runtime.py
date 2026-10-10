@@ -112,7 +112,8 @@ def _metadata(pipeline, native_path):
     native_path = Path(native_path).resolve(strict=True)
     native = pipeline.read(native_path)
     bank = pipeline.read(native['bank'])
-    if (native['format'] != pipeline.FORMAT or native['model_weights_fresh'] is not True
+    admitted_bank=pipeline.validate_bank(bank)
+    if (native['format'] != pipeline.pin_format(admitted_bank['pin']) or native['model_weights_fresh'] is not True
             or _sha(native['bank']) != native['bank_sha256']
             or native['source_files_sha256'].keys() != set(pipeline.FILES)
             or any(_sha(pipeline.ROOT / name) != checksum
@@ -225,10 +226,10 @@ def _calibrate_native_worker(native_path, physical_batch, output):
 
 def calibrate_native(native_path, *, gpu=1):
     """Reuse the pinned pipeline, redirecting only its two fresh clone workers."""
-    if gpu != 1:
-        raise ValueError('This existing native downstream arm is assigned GPU1')
+    _require_explicit_native_gpu(native_path,gpu)
     from . import v24_nnunet_cp as pipeline
     native, bank, proof = _metadata(pipeline, native_path)
+    pipeline._admit_arm_gpu(bank['pin'],gpu)
     root = Path(native['root']).resolve(strict=True)
     receipt = root / RECEIPT
     if receipt.exists():
@@ -319,11 +320,11 @@ def train_native(native_path, *, gpu=1):
     This is the original fresh training path. Existing outputs are still refused
     by the original pipeline; resume is not silently selected by this wrapper.
     """
-    if gpu != 1:
-        raise ValueError('This existing native downstream arm is assigned GPU1')
+    _require_explicit_native_gpu(native_path,gpu)
     from . import v24_nnunet_cp as pipeline
     runtime_receipt = Path(admit_runtime_receipt(native_path)).resolve(strict=True)
     native, bank, proof = _metadata(pipeline, native_path)
+    pipeline._admit_arm_gpu(bank['pin'],gpu)
     root = Path(native['root']).resolve(strict=True)
     original = pipeline.train
     launches = []
@@ -336,7 +337,7 @@ def train_native(native_path, *, gpu=1):
             proof=proof, native_calibration_runtime_path=str(runtime_receipt),
             native_calibration_runtime_sha256=_sha(runtime_receipt),
             calibration_path=str(root / 'calibration.json'),
-            calibration_sha256=_sha(root / 'calibration.json'), GPU=1,
+            calibration_sha256=_sha(root / 'calibration.json'), GPU=gpu,
             original_command=command.copy(), actual_command=actual.copy(),
             original_training_code_preserved=True, globals_replaced=['subprocess'],
             original_CLI_argument_tail_preserved=actual[4:] == command[4:],
@@ -359,7 +360,17 @@ def train_native(native_path, *, gpu=1):
     _publish(complete, dict(format=FORMAT, status='COMPLETE', debug=False, proof=proof,
         launches=launches, checkpoint_path=str(checkpoint), checkpoint_sha256=_sha(checkpoint),
         native_calibration_runtime_path=str(runtime_receipt),
-        native_calibration_runtime_sha256=_sha(runtime_receipt), epochs=250, GPU=1,
+        native_calibration_runtime_sha256=_sha(runtime_receipt), epochs=250, GPU=gpu,
         original_training_code_preserved=True, model_or_data_equations_changed=False,
         existing_native_source_files_changed=False, completed_at=time.time()))
     return checkpoint
+
+
+def _require_explicit_native_gpu(native_path,gpu):
+    """Keep the historical GPU1 guard; new arms require their new sealed format."""
+    if gpu==1:return
+    from . import v24_nnunet_cp as pipeline
+    path=Path(native_path)
+    native=_read(path) if path.is_file() and not path.is_symlink() else {}
+    if gpu not in (5,6) or type(gpu)is not int or native.get('format')!=pipeline.CURRENT_FORMAT or native.get('physical_GPU')!=gpu:
+        raise ValueError('Historical native arm remains GPU1; explicit completed own-arm GPU5/6 native binding required')
