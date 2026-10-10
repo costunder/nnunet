@@ -14,7 +14,7 @@ SPEC.loader.exec_module(watch)
 
 class ViewerTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = tempfile.TemporaryDirectory(prefix='DEBUG_v24_viewer_', dir=Path(__file__).absolute().parents[1]/'outputs')
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)/'job'
         self.output = Path(self.tmp.name)/'experiment'
@@ -123,6 +123,122 @@ class ViewerTest(unittest.TestCase):
         s=watch.Viewer().snapshot(self.root)
         self.assertEqual(s['reports']['stage_validation']['epoch'],10)
         self.assertIn('MRR 0.4000 top1 0.3000',watch.text_snapshot(s))
+
+    def test_empty_new_report_preserves_explicitly_stale_snapshot_then_recovers(self):
+        metric=dict(per_P_patient_mrr=.4,per_P_patient_top1=.3)
+        previous=self.train/'full_validation_epoch_009.json'
+        self.write(previous,dict(epoch=9,active_u=128,metrics=metric))
+        viewer=watch.Viewer(); observed=viewer.snapshot(self.root)
+        newest=self.train/'full_validation_epoch_010.json';newest.write_text('',encoding='utf8')
+        pending=viewer.snapshot(self.root)
+        self.assertEqual(pending['status'],'READ_PENDING')
+        self.assertFalse(pending['snapshot_fresh'])
+        self.assertEqual(pending['reports'],observed['reports'])
+        self.assertEqual(pending['last_confirmed_status'],'RUNNING')
+        self.assertEqual(pending['read_problem']['path'],str(newest))
+        self.assertIn('새 기록이 아님',watch.text_snapshot(pending))
+        self.write(newest,dict(epoch=10,active_u=128,metrics=dict(per_P_patient_mrr=.5,per_P_patient_top1=.4)))
+        fresh=viewer.snapshot(self.root)
+        self.assertEqual((fresh['status'],fresh['reports']['full_validation']['epoch']),('RUNNING',10))
+        self.assertTrue(fresh['snapshot_fresh']);self.assertNotIn('read_problem',fresh)
+
+    def test_partial_report_on_first_poll_has_no_invented_epoch_or_metrics(self):
+        path=self.train/'stage_validation_epoch_001.json';path.write_text('{"epoch":',encoding='utf8')
+        pending=watch.Viewer().snapshot(self.root)
+        self.assertEqual(pending['status'],'READ_PENDING')
+        self.assertIsNone(pending['progress']);self.assertNotIn('epoch',pending)
+        self.assertNotIn('reports',pending);self.assertFalse(pending['last_valid_snapshot_preserved'])
+        self.assertIn(str(path),watch.text_snapshot(pending))
+
+    def test_invalid_report_shape_is_visible_and_viewer_keeps_retrying(self):
+        path=self.train/'full_validation_epoch_001.json'
+        viewer=watch.Viewer();viewer.snapshot(self.root)
+        for value in ([],dict(epoch='bad',active_u=128,metrics={}),dict(epoch=1,active_u=128,metrics=[]),
+                      dict(epoch=1,active_u=128,metrics=dict(per_P_patient_mrr='bad'))):
+            with self.subTest(value=value):
+                self.write(path,value);failed=viewer.snapshot(self.root)
+                self.assertEqual(failed['status'],'READ_ERROR')
+                self.assertTrue(failed['read_problem']['retries_continue'])
+                self.assertFalse(failed['full_training_completed'])
+        self.write(path,dict(epoch=1,active_u=128,metrics=dict(per_P_patient_mrr=.2,per_P_patient_top1=.1)))
+        self.assertEqual(viewer.snapshot(self.root)['status'],'RUNNING')
+
+    def test_unchanged_malformed_json_becomes_clear_read_error_without_exit(self):
+        path=self.train/'train_probe_epoch_001.json';path.write_text('{malformed}',encoding='utf8')
+        viewer=watch.Viewer()
+        with patch.object(watch.time,'monotonic',side_effect=[100.,111.]):
+            first=viewer.snapshot(self.root);second=viewer.snapshot(self.root)
+        self.assertEqual(first['status'],'READ_PENDING');self.assertEqual(second['status'],'READ_ERROR')
+        self.assertIn('JSONDecodeError',second['read_problem']['detail'])
+        self.assertTrue(second['read_problem']['retries_continue'])
+
+    def test_partial_status_preserves_last_valid_progress_without_consuming_updates(self):
+        row=dict(status='OPTIMIZER_UPDATED',epoch=1,update=1,active_u=7,case_ids=['t0','t1','t2','t3'],loss=.7)
+        self.lines(self.train/'update_timing.jsonl',[row])
+        viewer=watch.Viewer();observed=viewer.snapshot(self.root)
+        (self.root/'status.json').write_text('{"status":',encoding='utf8')
+        pending=viewer.snapshot(self.root)
+        self.assertEqual(pending['optimizer_updates'],observed['optimizer_updates'])
+        self.assertEqual(pending['progress']['done'],4);self.assertFalse(pending['snapshot_fresh'])
+        self.write(self.root/'status.json',dict(status='RUNNING',stage='train',request=self.request))
+        self.assertEqual(viewer.snapshot(self.root)['progress']['done'],4)
+
+    def test_broken_later_jsonl_line_cannot_consume_valid_earlier_update(self):
+        path=self.train/'update_timing.jsonl'
+        row=dict(status='OPTIMIZER_UPDATED',epoch=1,update=1,active_u=7,case_ids=['t0','t1','t2','t3'],loss=.7)
+        path.write_text(json.dumps(row)+'\n{malformed}\n',encoding='utf8')
+        viewer=watch.Viewer();self.assertEqual(viewer.snapshot(self.root)['status'],'READ_PENDING')
+        self.lines(path,[row])
+        observed=viewer.snapshot(self.root)
+        self.assertEqual(observed['optimizer_updates'],1);self.assertEqual(observed['progress']['done'],4)
+        self.assertEqual(viewer.snapshot(self.root)['progress']['done'],4)
+
+    def test_broken_replacement_jsonl_commits_reset_only_after_valid_repair(self):
+        path=self.train/'update_timing.jsonl'
+        row=dict(status='OPTIMIZER_UPDATED',epoch=1,update=1,active_u=7,case_ids=['t0','t1','t2','t3'],loss=.7)
+        self.lines(path,[row]);viewer=watch.Viewer()
+        self.assertEqual(viewer.snapshot(self.root)['optimizer_updates'],1)
+        replacement=self.train/'DEBUG_replacement.jsonl';replacement.write_text('{malformed}\n',encoding='utf8')
+        os.replace(replacement,path)
+        self.assertEqual(viewer.snapshot(self.root)['status'],'READ_PENDING')
+        newer=dict(row,update=2,case_ids=['t4','t5','t6','t7'])
+        self.lines(path,[newer])
+        repaired=viewer.snapshot(self.root)
+        self.assertEqual((repaired['optimizer_updates'],repaired['progress']['done']),(2,4))
+        self.assertEqual(viewer.snapshot(self.root)['progress']['done'],4)
+
+    def test_partial_utf8_write_is_pending_and_completed_record_recovers(self):
+        path=self.train/'full_validation_epoch_001.json'
+        path.write_bytes(b'{"message":"\xec')
+        viewer=watch.Viewer();pending=viewer.snapshot(self.root)
+        self.assertEqual(pending['status'],'READ_PENDING')
+        self.assertIn('UTF8',pending['read_problem']['detail'])
+        self.write(path,dict(epoch=1,active_u=128,metrics=dict(per_P_patient_mrr=.2,per_P_patient_top1=.1)))
+        self.assertEqual(viewer.snapshot(self.root)['status'],'RUNNING')
+
+    def test_root_switch_does_not_display_another_jobs_stale_metrics(self):
+        viewer=watch.Viewer();viewer.snapshot(self.root)
+        new=Path(self.tmp.name)/'new_job';new.mkdir();(new/'status.json').write_text('',encoding='utf8')
+        pending=viewer.snapshot(new)
+        self.assertEqual(pending['job_root'],str(new));self.assertFalse(pending['last_valid_snapshot_preserved'])
+        self.assertNotIn('GPU',pending)
+
+    def test_once_json_display_returns_pending_record_instead_of_traceback(self):
+        import io
+        path=self.train/'full_validation_epoch_001.json';path.write_text('',encoding='utf8')
+        stream=io.StringIO()
+        with patch.object(watch.sys,'stdout',stream):
+            watch.main(['--job-root',str(self.root),'--json'])
+        shown=json.loads(stream.getvalue())
+        self.assertEqual(shown['status'],'READ_PENDING');self.assertEqual(shown['read_problem']['path'],str(path))
+
+    def test_empty_pointer_once_reports_pending_without_losing_control(self):
+        import io
+        pointer=Path(self.tmp.name)/'pointer.json';pointer.write_text('',encoding='utf8')
+        stream=io.StringIO()
+        with patch.object(watch.sys,'stdout',stream):
+            watch.main(['--pointer',str(pointer),'--json'])
+        shown=json.loads(stream.getvalue());self.assertEqual(shown['status'],'READ_PENDING')
 
     def test_native_text_uses_observed_losses_and_pseudo_dice(self):
         n=watch.parse_nnunet_lines(['2026: Epoch 3','train_loss -0.18','val_loss -0.16','Pseudo dice [0.93, 0.42]','Epoch time: 40 s'])

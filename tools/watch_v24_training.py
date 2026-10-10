@@ -6,7 +6,9 @@ or --pointer /path/to/gpu5.json. Ctrl-C stops this viewer alone.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -24,12 +26,39 @@ LABELS.update(prepare_continuation='체크포인트 이어받기 준비', calibr
     nnunet_training='nnUNet 학습')
 
 
+class JsonRecordError(ValueError):
+    """One visible metadata record is incomplete or has an invalid shape."""
+    def __init__(self, path, detail, *, pending=False):
+        self.path, self.detail, self.pending = str(path), detail, pending
+        try:
+            info = Path(path).stat()
+        except FileNotFoundError:
+            self.identity = None
+        else:
+            self.identity = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+        super().__init__(self.path + ': ' + detail)
+
+
+def decode_record(value, path):
+    try:
+        row = json.loads(value)
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise JsonRecordError(path, type(error).__name__ + ': ' + str(error), pending=True) from error
+    if not isinstance(row, dict):
+        raise JsonRecordError(path, 'JSON object required; observed ' + type(row).__name__)
+    return row
+
+
 def read_json(path):
     try:
         with Path(path).open(encoding='utf8') as stream:
-            return json.load(stream)
+            try:
+                text = stream.read()
+            except UnicodeDecodeError as error:
+                raise JsonRecordError(path, 'UTF8 record is incomplete: ' + str(error), pending=True) from error
     except FileNotFoundError:
         return None
+    return decode_record(text, path)
 
 
 def resolve_job_root(*, job_root=None, log=None, pointer=None):
@@ -40,16 +69,20 @@ def resolve_job_root(*, job_root=None, log=None, pointer=None):
             text = path.read_text(encoding='utf8').strip()
         except FileNotFoundError:
             return None
+        if not text:
+            raise JsonRecordError(path, 'Pointer record is empty/incomplete', pending=True)
         if text.startswith('{'):
-            value = json.loads(text)
+            value = decode_record(text, path)
             if value.get('job_root') or value.get('root'):
                 job_root = value.get('job_root') or value['root']
             elif value.get('log') or value.get('console_log'):
                 log = value.get('log') or value['console_log']
             else:
-                raise ValueError('Pointer requires job_root/root or log/console_log')
+                raise JsonRecordError(path, 'Pointer requires job_root/root or log/console_log')
         else:
             job_root = text
+        if not isinstance(job_root or log, (str, Path)):
+            raise JsonRecordError(path, 'Pointer path must be a string')
         candidate = Path(job_root or log)
         if not candidate.is_absolute():
             candidate = path.parent / candidate
@@ -76,20 +109,22 @@ class JsonlCursor:
             return [], False
         identity = (stat.st_dev, stat.st_ino)
         reset = identity != self.identity or stat.st_size < self.offset
-        if reset:
-            self.identity, self.offset = identity, 0
+        offset = 0 if reset else self.offset
         rows = []
         with path.open('rb') as stream:
-            stream.seek(self.offset)
+            stream.seek(offset)
             while True:
                 line = stream.readline()
                 if not line or not line.endswith(b'\n'):
                     break
                 if line.strip():
-                    row = json.loads(line)
+                    row = decode_record(line, path)
                     row['_viewer_end_offset'] = stream.tell()
                     rows.append(row)
-                self.offset = stream.tell()
+                offset = stream.tell()
+        # Commit the cursor only after every completed line parsed. A broken
+        # later line cannot consume valid earlier rows without displaying them.
+        self.identity, self.offset = identity, offset
         return rows, reset
 
 
@@ -115,8 +150,40 @@ def production_output(request):
 class Viewer:
     def __init__(self):
         self.root = None
+        self.last_valid = None
+        self.read_problem = None
 
     def snapshot(self, root):
+        if root != self.root:
+            self.last_valid = None
+            self.read_problem = None
+        try:
+            value = self._snapshot(root)
+        except JsonRecordError as error:
+            return self.read_failure(error, root)
+        value['snapshot_fresh'] = True
+        self.last_valid = copy.deepcopy(value)
+        self.read_problem = None
+        return value
+
+    def read_failure(self, error, root):
+        """Keep observed values explicitly stale; retry the same file next poll."""
+        signature = (error.path, error.identity, error.detail)
+        now = time.monotonic()
+        if self.read_problem is None or self.read_problem['signature'] != signature:
+            self.read_problem = dict(signature=signature, since=now)
+        unchanged = now - self.read_problem['since']
+        value = copy.deepcopy(self.last_valid) if self.last_valid else dict(
+            job_root=str(root) if root else None, stage='완성된 표시 기록 대기', progress=None)
+        last_status = value.get('status')
+        value.update(status='READ_PENDING' if error.pending and unchanged < 10 else 'READ_ERROR',
+            snapshot_fresh=False, last_confirmed_status=last_status,
+            last_valid_snapshot_preserved=self.last_valid is not None,
+            read_problem=dict(path=error.path, detail=error.detail, unchanged_seconds=unchanged,
+                retries_continue=True))
+        return value
+
+    def _snapshot(self, root):
         if root != self.root:
             self.root = root
             self.cursors = {name: JsonlCursor() for name in ('update_timing', 'validation_timing', 'curve', 'invocations', 'failures')}
@@ -127,12 +194,16 @@ class Viewer:
         if status is None:
             return dict(status='WAITING', stage='status 기록 대기', job_root=str(root), progress=None)
         request = status.get('request') or read_json(root/'request.json') or {}
+        if not isinstance(request, dict):
+            raise JsonRecordError(root/'status.json', 'request must be a JSON object')
         output = production_output(request)
         training = output/'training' if output else None
         contract = read_json(training/'execution_contract.json') if training else None
         contract = contract or {}
         ownership = read_json(training/'training_identity.json') if training else None
         binding = (ownership or {}).get('binding') or contract.get('binding', {})
+        if not isinstance(binding, dict):
+            raise JsonRecordError(training/'training_identity.json', 'binding must be a JSON object')
         train_total = len(binding.get('train_cases', [])) or None
         val_total = len(binding.get('val_cases', [])) or None
         epoch_total = binding.get('epochs') or contract.get('epochs')
@@ -167,6 +238,7 @@ class Viewer:
                 path = paths[-1]
                 report = read_json(path)
                 if report is not None:
+                    self._validate_report(report, path)
                     reports[phase] = {key: report.get(key) for key in ('epoch', 'active_u', 'updates', 'metrics')}
                     next_phase = {'initial_full_validation': 'training', 'train_probe': 'stage_validation',
                         'stage_validation': 'full_validation', 'full_validation': 'epoch_completion'}[phase]
@@ -263,6 +335,17 @@ class Viewer:
                     completed_epochs=native['epoch_index']+int(native['epoch_finished']), progress=None,
                     native_metrics=native, active_U=None)
         return snapshot
+
+    @staticmethod
+    def _validate_report(report, path):
+        if (type(report.get('epoch')) is not int or report['epoch'] < 0
+                or type(report.get('active_u')) is not int or report['active_u'] < 1
+                or not isinstance(report.get('metrics'), dict)):
+            raise JsonRecordError(path, 'Completed report requires integer epoch/active_u and a metrics object')
+        for key in ('per_P_patient_mrr', 'per_P_patient_top1'):
+            value = report['metrics'].get(key)
+            if value is not None and (type(value) not in (int, float) or not math.isfinite(value)):
+                raise JsonRecordError(path, 'Observed metric must be finite numeric: ' + key)
 
     @staticmethod
     def _event(name, row, fresh=True):
@@ -366,6 +449,11 @@ def text_snapshot(snapshot):
     if p:
         header += f" | {p['done']}/{p['total'] or '?'} {p['unit']} 완료 기록"
     details = []
+    if s.get('read_problem'):
+        problem = s['read_problem']
+        if s.get('last_valid_snapshot_preserved'):
+            details.append('최근 정상 표시 보존 ('+str(s.get('last_confirmed_status'))+'); 아래 수치는 새 기록이 아님')
+        details.append('표시 기록 읽기 재시도: '+problem['path']+' | '+problem['detail'])
     if s.get('loss') is not None:
         details.append(f"loss {s['loss']:.6f} (최근 train update {s['optimizer_updates']})")
     if s.get('RSS_GiB') is not None:
@@ -404,6 +492,9 @@ class TerminalView:
         current.total, current.n = p.get('total'), p.get('done', 0)
         current.set_description_str((snapshot.get('stage_label') or snapshot['stage'])+(f" U{s['active_U']}" if s.get('active_U') is not None else ''), refresh=False)
         info = []
+        if s.get('read_problem'):
+            info.append('표시 기록 읽기 재시도; 최근 정상 기록 보존' if s.get('last_valid_snapshot_preserved')
+                        else '완성된 표시 기록 대기')
         if s.get('loss') is not None:
             info.append(f"last train loss {s['loss']:.5f} upd{s['optimizer_updates']}")
         if s.get('RSS_GiB') is not None:
@@ -450,8 +541,12 @@ def main(argv=None):
     previous = None
     try:
         while True:
-            root = resolve_job_root(job_root=args.job_root, log=args.log, pointer=args.pointer)
-            snapshot = viewer.snapshot(root)
+            try:
+                root = resolve_job_root(job_root=args.job_root, log=args.log, pointer=args.pointer)
+            except JsonRecordError as error:
+                snapshot = viewer.read_failure(error, viewer.root)
+            else:
+                snapshot = viewer.snapshot(root)
             if args.json:
                 print(json.dumps(snapshot, ensure_ascii=False)); return
             if terminal:
