@@ -95,11 +95,39 @@ class NativeCropReuseProtocolDebug(unittest.TestCase):
         self.proxy[self.index]
         self.assertEqual(len(self.decodes),4)
 
+    def test_native_singleton_channel_int_and_full_slice_share_crop_with_original_rank(self):
+        full = (slice(None), *self.index[1:])
+        bounded = (slice(0,1,1), *self.index[1:])
+        for indices in ((self.index, full, bounded), (full, self.index, bounded)):
+            self.decodes.clear()
+            def apply(loader,data,seg,bbox,plan,case):
+                outputs = [self.proxy[index] for index in indices]
+                for index, actual in zip(indices, outputs):
+                    expected = self.array[index]
+                    self.assertEqual(expected.shape,actual.shape)
+                    self.assertEqual(expected.tobytes(),actual.tobytes())
+                    self.assertFalse(actual.flags.writeable)
+                for left in range(len(outputs)):
+                    for right in range(left+1,len(outputs)):
+                        self.assertFalse(np.shares_memory(outputs[left],outputs[right]))
+                return outputs
+            loader,_ = self.scope(apply)
+            self.assertEqual(len(self.decodes),1)
+            self.assertEqual(loader._v24_native_crop_reuse_last['crop_hits'],2)
+        # Larger channel axes and other integer selectors retain distinct
+        # keys and their original indexing semantics.
+        self.assertNotEqual(runtime._crop_cache_key(self.index,(2,7,8,9))[0],
+                            runtime._crop_cache_key(full,(2,7,8,9))[0])
+        self.assertNotEqual(runtime._crop_cache_key((-1,*self.index[1:]),self.array.shape)[0],
+                            runtime._crop_cache_key(full,self.array.shape)[0])
+
     def test_every_hit_rechecks_payload_and_changed_bytes_fail_with_scope_released(self):
         def apply(loader, data, seg, bbox, plan, case):
             self.proxy[self.index]
-            with (self.root/'labels.npy').open('r+b') as stream:
-                stream.seek(-1,2); value=stream.read(1); stream.seek(-1,2); stream.write(bytes([value[0]^1]))
+            # A size change guarantees a changed original stat witness even
+            # on filesystems whose time tick coalesces very fast writes.
+            with (self.root/'labels.npy').open('ab') as stream:
+                stream.write(b'\x01')
             self.proxy[self.index]
         loader = SimpleNamespace()
         with self.assertRaisesRegex(ValueError,'changed after verification'):
@@ -144,7 +172,7 @@ class NativeCropReuseProtocolDebug(unittest.TestCase):
         source.write_text('a=123\n')
         with self.assertRaisesRegex(ValueError,'source changed'):wrapped(SimpleNamespace(),None,None,None,self.plan(),'DEBUG')
         self.assertIsNone(runtime._ACTIVE.get())
-        for value in ((Ellipsis,), (0,slice(None,None,2)), (None,), (np.array([1,2]),), (0,)*5):
+        for value in ((Ellipsis,), (0,slice(None,None,2)), (None,), (np.array([1,2]),), (0,)*5, (True,), (np.bool_(True),)):
             self.assertIsNone(runtime._basic_index(value,4))
         self.assertEqual(runtime._basic_index((np.int64(0),slice(np.int64(1),6)),4),
                          runtime._basic_index((0,slice(1,6)),4))
@@ -188,6 +216,26 @@ class NativeCropReuseProtocolDebug(unittest.TestCase):
         self.assertEqual(expected,_hash_cpu_tensors(dict(state,array=tensor.contiguous())))
         self.assertNotEqual(expected,_hash_cpu_tensors(dict(state,scalar=torch.tensor(2.))))
         self.assertNotEqual(expected,_hash_cpu_tensors(dict(state,array=tensor.double())))
+
+    def test_DEBUG_gate_optimizer_membership_and_loaded_checkpoint_binding_reject_corruption(self):
+        from tools.probe_v24_native_execution_cuda_debug import (_hash_cpu_tensors,
+            _loaded_checkpoint_binding,_require_unique_optimizer_membership)
+        model=torch.nn.Linear(3,2);optimizer=torch.optim.SGD(model.parameters(),lr=.01,momentum=.9)
+        parameters=dict(model.named_parameters());_require_unique_optimizer_membership(parameters,optimizer)
+        duplicate=SimpleNamespace(param_groups=[{'params':list(parameters.values())+list(parameters.values())[:1]}])
+        with self.assertRaisesRegex(ValueError,'exactly once'):_require_unique_optimizer_membership(parameters,duplicate)
+        class TrainerCheckpointProtocolDebug:pass
+        trainer=TrainerCheckpointProtocolDebug();trainer.current_epoch=150
+        initial={name:value.detach().clone() for name,value in model.state_dict().items()}
+        saved=dict(network_weights=initial,optimizer_state=optimizer.state_dict(),grad_scaler_state={'scale':131072.},
+                   current_epoch=150,trainer_name=type(trainer).__name__)
+        actual_hash=_hash_cpu_tensors(optimizer.state_dict())
+        proof=_loaded_checkpoint_binding(trainer,saved,initial,actual_hash,{'scale':131072.})
+        self.assertTrue(proof['all_actual_loaded_states_match_source'])
+        wrong_weights={name:value+1 for name,value in initial.items()}
+        with self.assertRaisesRegex(ValueError,'model differs'):_loaded_checkpoint_binding(trainer,saved,wrong_weights,actual_hash,{'scale':131072.})
+        with self.assertRaisesRegex(ValueError,'optimizer differs'):_loaded_checkpoint_binding(trainer,saved,initial,'0'*64,{'scale':131072.})
+        with self.assertRaisesRegex(ValueError,'AMP scaler differs'):_loaded_checkpoint_binding(trainer,saved,initial,actual_hash,{'scale':65536.})
 
 
 class NativeCropReuseActualLosslessDebug(unittest.TestCase):

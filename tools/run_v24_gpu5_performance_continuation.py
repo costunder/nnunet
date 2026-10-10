@@ -3,8 +3,10 @@
 The shared execution-only adapters retain the original numerical CLI, model,
 data, sampling, physical patient batch4/candidate chunk32 and forty epochs.
 The additional GPU5 gate reads the saved actual numerical tensor values and
-refuses any changed bit, disconnected parameter, optimizer/scaler update or
-incomplete checkpoint proof. Existing results and shared source are preserved.
+requires exact inputs, forward values and checkpoint state. Strict mode also
+requires exact gradients; the explicit native-grid mode bounds gradient
+variation by measured original repeats. Disconnected parameters and state
+updates are refused. Existing results and shared source are preserved.
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from types import FunctionType
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +52,8 @@ def _gpu5_args(args):
 def runtime_identity():
     """Include the GPU5 gate/probe themselves in the immutable receipt."""
     from tools import run_v24_performance_continuation as shared
-    files = (Path(__file__).resolve(), ROOT / 'tools/run_v24_gpu5_performance_probe.py')
+    files = (Path(__file__).resolve(), ROOT / 'tools/run_v24_gpu5_performance_probe.py',
+             ROOT / 'tools/v24_gpu5_native_grid_gate.py')
     return dict(shared_runtime=shared.runtime_identity(),
                 GPU5_files_sha256={str(path): _sha(path) for path in files},
                 all_named_trainable_gradients=EXPECTED_GRADIENTS,
@@ -148,7 +152,16 @@ def _same_bits(left, right, name):
         raise ValueError('Actual native numerical bits differ: ' + name)
 
 
-def compare_probes(baseline_path, optimized_path, checkpoint_sha256):
+def compare_probes(baseline_path, optimized_path, checkpoint_sha256, *, baseline_repeat_path=None,
+                   debug_native_grid_sampler_numerics=False, gradient_envelope_policy='per-element'):
+    if debug_native_grid_sampler_numerics:
+        if baseline_repeat_path is None:
+            raise ValueError('Explicit native grid admission requires a separate original baseline repeat')
+        from tools import v24_gpu5_native_grid_gate as native_grid
+        return native_grid.compare(baseline_path, baseline_repeat_path, optimized_path, checkpoint_sha256,
+                                   policy=gradient_envelope_policy, gate=sys.modules[__name__])
+    if baseline_repeat_path is not None or gradient_envelope_policy != 'per-element':
+        raise ValueError('Native repeat/envelope options require explicit native grid DEBUG opt-in')
     from tools import run_v24_performance_continuation as shared
     baseline = json.loads(Path(baseline_path).read_text(encoding='utf8'))
     optimized = json.loads(Path(optimized_path).read_text(encoding='utf8'))
@@ -207,7 +220,7 @@ def compare_probes(baseline_path, optimized_path, checkpoint_sha256):
     return comparison
 
 
-def _guarded_training(shared):
+def _guarded_training(shared, native_comparator=None):
     """Private original execution code; bind GPU5 file proofs to each forward."""
     def bounded_admit(*args, **kwargs):
         original, document = admit(*args, **kwargs)
@@ -218,21 +231,46 @@ def _guarded_training(shared):
         return original, private
     namespace = dict(shared.train.__globals__)
     namespace['admit'] = bounded_admit
+    if native_comparator is not None:
+        namespace['compare_probes'] = native_comparator
     return FunctionType(shared.train.__code__, namespace, shared.train.__name__,
                         shared.train.__defaults__, shared.train.__closure__)
 
 
 def train(args, source_output, source_code, probe_baseline, probe_optimized,
-          source_interruption_proof=None):
+          source_interruption_proof=None, *, probe_baseline_repeat=None,
+          debug_native_grid_sampler_numerics=False, gradient_envelope_policy='per-element'):
     from tools import run_v24_performance_continuation as shared
     _, document = admit(args, source_output, source_code, source_interruption_proof)
     if probe_baseline is None or probe_optimized is None:
         raise ValueError('Both actual full128 GPU5 native probe receipts required')
-    comparison = compare_probes(probe_baseline, probe_optimized, document['source']['latest']['raw_sha256'])
+    comparison_options = dict(baseline_repeat_path=probe_baseline_repeat,
+        debug_native_grid_sampler_numerics=debug_native_grid_sampler_numerics,
+        gradient_envelope_policy=gradient_envelope_policy)
+    checkpoint = document['source']['latest']['raw_sha256']
+    from tools.v24_gpu5_native_grid_gate import NativeGradientEnvelopeError
+    try:
+        comparison = compare_probes(probe_baseline, probe_optimized, checkpoint, **comparison_options)
+    except NativeGradientEnvelopeError as error:
+        _publish(args.output / ('gpu5_native_gradient_envelope_failure_' + str(time.time_ns()) + '.json'),
+            dict(debug=True, admitted=False, checkpoint_sha256=checkpoint, evidence=error.evidence,
+                 baseline_file_sha256=_sha(probe_baseline), baseline_repeat_file_sha256=_sha(probe_baseline_repeat),
+                 optimized_file_sha256=_sha(probe_optimized), production_started=False,
+                 production_config_modified=False, silent_fallback=False))
+        raise
     _publish(args.output / 'gpu5_actual_native_probe_admission.json', dict(comparison=comparison,
         GPU5_receipt_sha256=_sha(args.output / RECEIPT),
-        baseline_file_sha256=_sha(probe_baseline), optimized_file_sha256=_sha(probe_optimized)))
-    native = _guarded_training(shared)
+        baseline_file_sha256=_sha(probe_baseline), optimized_file_sha256=_sha(probe_optimized),
+        baseline_repeat_file_sha256=_sha(probe_baseline_repeat) if probe_baseline_repeat is not None else None))
+    def native_comparator(baseline, optimized, expected_checkpoint):
+        from tools import v24_gpu5_native_grid_gate as native_grid
+        if (expected_checkpoint != checkpoint
+                or native_grid.read_receipt(probe_baseline, sys.modules[__name__])[0] != baseline
+                or native_grid.read_receipt(probe_optimized, sys.modules[__name__])[0] != optimized):
+            raise ValueError('Shared production invocation received different native grid evidence')
+        # Re-admit actual values; no DEBUG kernel flags are installed in production.
+        return compare_probes(probe_baseline, probe_optimized, checkpoint, **comparison_options)
+    native = _guarded_training(shared, native_comparator if debug_native_grid_sampler_numerics else None)
     if native.__code__ is not shared.train.__code__:
         raise ValueError('Shared original full training execution code must remain identical')
     return native(args, source_output, source_code, probe_baseline, probe_optimized,
@@ -246,6 +284,11 @@ def main(argv=None):
     parser.add_argument('--source-code', type=Path, required=True)
     parser.add_argument('--probe-baseline', type=Path)
     parser.add_argument('--probe-optimized', type=Path)
+    parser.add_argument('--probe-baseline-repeat', type=Path)
+    parser.add_argument('--debug-native-grid-sampler-numerics', action='store_true')
+    parser.add_argument('--gradient-native-noise-policy', '--debug-gradient-envelope-policy',
+                        dest='debug_gradient_envelope_policy', choices=('per-element', 'per-tensor-max-rms'),
+                        default='per-element')
     parser.add_argument('--source-interruption-proof', type=Path)
     options, remaining = parser.parse_known_args(argv)
     from tools.run_v24_all_p import parse
@@ -258,7 +301,10 @@ def main(argv=None):
         print(json.dumps(result, allow_nan=False), flush=True)
         return result
     return train(args, options.source_output, options.source_code,
-                 options.probe_baseline, options.probe_optimized, options.source_interruption_proof)
+                 options.probe_baseline, options.probe_optimized, options.source_interruption_proof,
+                 probe_baseline_repeat=options.probe_baseline_repeat,
+                 debug_native_grid_sampler_numerics=options.debug_native_grid_sampler_numerics,
+                 gradient_envelope_policy=options.debug_gradient_envelope_policy)
 
 
 if __name__ == '__main__':

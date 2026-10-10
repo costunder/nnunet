@@ -49,7 +49,7 @@ def runtime_contract():
         original_crop_getitem_source_sha256=hashlib.sha256(inspect.getsource(_BASE_GETITEM).encode()).hexdigest(),
         reused_role='only exact bound baseline_seg lossless int16 proxy',
         cache_scope='one unchanged native raw CP paste call; finally releases all arrays',
-        key='proxy object identity and exact basic index; file/stat verified on every access',
+        key='proxy identity and basic region; equivalent singleton channel 0/full slice share one crop; file/stat verified on every access',
         independent_readonly_returned_arrays=True, CT_or_source_or_model_output_cache=False,
         raw_resampling_engine_changed=False, actual_segmentation_comparison_preserved=True,
         candidate_geometry_source_mask_jitter_and_RNG_unchanged=True,
@@ -72,6 +72,8 @@ def _basic_index(index, dimensions):
         return None
     key = []
     for item in index:
+        if isinstance(item, (bool, np.bool_)):
+            return None
         if isinstance(item, (int, np.integer)):
             key.append(('int', int(item)))
         elif isinstance(item, slice) and item.step in (None, 1):
@@ -87,6 +89,20 @@ def _basic_index(index, dimensions):
     return tuple(key)
 
 
+def _crop_cache_key(index, shape):
+    """Share the native singleton channel crop while preserving return rank."""
+    key = _basic_index(index, len(shape))
+    if key is None or not key or shape[0] != 1:
+        return key, False
+    channel = key[0]
+    if channel == ('int', 0):
+        return (('slice', 0, 1, 1), *key[1:]), True
+    if (channel[0] == 'slice' and channel[1] in (None, 0)
+            and channel[2] in (None, 1) and channel[3] in (None, 1)):
+        return (('slice', 0, 1, 1), *key[1:]), False
+    return key, False
+
+
 def _cached_getitem(self, index):
     state = _ACTIVE.get()
     if state is None or self is not state['proxy'] or type(self) is not storage._CropArray:
@@ -95,7 +111,7 @@ def _cached_getitem(self, index):
     spec_signature = tuple(self._spec.get(name) for name in ('path','sha256','storage','dtype')) + (tuple(self._spec.get('shape', ())),)
     if spec_signature != state['spec_signature']:
         raise ValueError('Bound native segmentation crop descriptor changed within event')
-    key = _basic_index(index, self.ndim)
+    key, removed_singleton_channel = _crop_cache_key(index, self.shape)
     if key is None:
         return _BASE_GETITEM(self, index)
     stats = state['stats']; stats['crop_accesses'] += 1
@@ -106,6 +122,8 @@ def _cached_getitem(self, index):
         stats['original_decodes'] += 1
         copied = time.perf_counter()
         snapshot = np.array(result, copy=True, order='K')
+        if removed_singleton_channel:
+            snapshot = snapshot[None]
         snapshot.flags.writeable = False
         state['cache'][key] = snapshot
         stats['snapshot_copy_seconds'] += time.perf_counter()-copied
@@ -123,7 +141,8 @@ def _cached_getitem(self, index):
     owner._check(self._spec['path'], self._spec['sha256'])
     stats['hit_original_stat_seconds'] += time.perf_counter()-started
     copied = time.perf_counter()
-    result = np.array(state['cache'][key], copy=True, order='K')
+    cached = state['cache'][key]
+    result = np.array(cached[0] if removed_singleton_channel else cached, copy=True, order='K')
     result.flags.writeable = False
     stats['hit_return_copy_seconds'] += time.perf_counter()-copied
     stats['crop_hits'] += 1

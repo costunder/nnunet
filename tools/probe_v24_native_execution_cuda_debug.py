@@ -7,6 +7,7 @@ diagnostic uses deterministic CUDA kernels explicitly; production precision,
 seeds, architecture and optimization schedule are not changed.
 """
 import argparse
+import copy
 import hashlib
 import inspect
 import json
@@ -48,6 +49,37 @@ def _rng():
     return dict(python=random.getstate(),numpy=np.random.get_state(),torch_CPU=torch.get_rng_state(),torch_CUDA=torch.cuda.get_rng_state_all())
 
 
+def _require_unique_optimizer_membership(parameters, optimizer):
+    expected=[id(parameter) for parameter in parameters.values()]
+    actual=[id(parameter) for group in optimizer.param_groups for parameter in group['params']]
+    if len(actual)!=len(expected) or len(actual)!=len(set(actual)) or set(actual)!=set(expected):
+        raise ValueError('Native optimizer must contain every trainable parameter exactly once')
+
+
+def _loaded_checkpoint_binding(trainer, saved, initial_model, optimizer_hash, scaler_state):
+    required={'network_weights','optimizer_state','grad_scaler_state','current_epoch','trainer_name'}
+    if not isinstance(saved,dict) or not required<=set(saved):
+        raise ValueError('Complete real native source checkpoint states required')
+    expected_model=_hash_cpu_tensors(saved['network_weights'])
+    expected_optimizer=_hash_cpu_tensors(saved['optimizer_state'])
+    if _hash_cpu_tensors(initial_model)!=expected_model:
+        raise ValueError('Actual initialized native model differs from loaded source checkpoint weights')
+    if optimizer_hash!=expected_optimizer:
+        raise ValueError('Actual initialized native optimizer differs from loaded source checkpoint state')
+    if scaler_state!=saved['grad_scaler_state']:
+        raise ValueError('Actual initialized native AMP scaler differs from loaded source checkpoint state')
+    if trainer.current_epoch!=saved['current_epoch'] or type(trainer).__name__!=saved['trainer_name']:
+        raise ValueError('Loaded native epoch/trainer differs from explicit source checkpoint')
+    return dict(network_weights_sha256=expected_model,optimizer_state_sha256=expected_optimizer,
+        grad_scaler_state=saved['grad_scaler_state'],current_epoch=saved['current_epoch'],
+        trainer_name=saved['trainer_name'],all_actual_loaded_states_match_source=True)
+
+
+def _stat(path):
+    value=Path(path).stat()
+    return (value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns)
+
+
 def _finish_owned_debug_workers(augmenters):
     import psutil
     own=psutil.Process();records=[]
@@ -83,7 +115,9 @@ def main(argv=None):
     from hiercp_v1x import v24_nnunet_cp as pipeline
     from hiercp_v1x import v24_native_calibration_runtime as calibration
     native,bank,source_proof=calibration._metadata(pipeline,args.native)
-    if pipeline.sha(args.checkpoint)!=args.checkpoint_sha256:raise ValueError('Explicit source checkpoint SHA changed')
+    checkpoint_stat=_stat(args.checkpoint)
+    if pipeline.sha(args.checkpoint)!=args.checkpoint_sha256 or _stat(args.checkpoint)!=checkpoint_stat:
+        raise ValueError('Explicit source checkpoint SHA/stat changed')
     os.environ.update(pipeline.environment(native));os.environ['CUBLAS_WORKSPACE_CONFIG']=':4096:8'
     os.environ['nnUNet_results']=str(args.output/'native_results')
     sys.path.insert(0,native['private_runtime'])
@@ -113,20 +147,25 @@ def main(argv=None):
         raise ValueError('Full native 250-epoch batch2/128-cube contract changed')
     torch.backends.cudnn.benchmark=False;torch.backends.cudnn.deterministic=True;torch.use_deterministic_algorithms(True)
     parameters={name:parameter for name,parameter in trainer.network.named_parameters() if parameter.requires_grad}
-    if {id(p) for group in trainer.optimizer.param_groups for p in group['params']}!={id(p) for p in parameters.values()}:
-        raise ValueError('Native optimizer omits or adds trainable model parameters')
+    _require_unique_optimizer_membership(parameters,trainer.optimizer)
     helper=gradient.clone_step(pipeline._native_clone_step_with_amp_retry).__globals__[gradient.HELPER]
     gradient_proof=helper(trainer,parameters);inactive=set(gradient_proof['official_inactive_parameter_names'])
     initial_model={name:value.detach().cpu().clone() for name,value in trainer.network.state_dict().items()}
     initial_optimizer_hash=_hash_cpu_tensors(trainer.optimizer.state_dict())
     initial_model_hash=_hash_cpu_tensors(initial_model)
     initial_scaler=trainer.grad_scaler.state_dict() if trainer.grad_scaler is not None else None
+    saved=torch.load(args.checkpoint,map_location='cpu',weights_only=False)
+    if _stat(args.checkpoint)!=checkpoint_stat or pipeline.sha(args.checkpoint)!=args.checkpoint_sha256:
+        raise ValueError('Explicit native checkpoint changed while loading actual probe states')
+    loaded_binding=_loaded_checkpoint_binding(trainer,saved,initial_model,initial_optimizer_hash,initial_scaler)
+    del saved
     loaders=[]
     try:
         train_loader,val_loader=trainer.get_dataloaders();loaders=[train_loader,val_loader]
         for position in range(args.batch_position+1):batch=next(train_loader)
         if list(batch['data'].shape)!=[2,1,128,128,128]:raise ValueError('Actual full native batch2 input required')
         input_hash=_hash_cpu_tensors(batch)
+        actual_input=copy.deepcopy(batch)
         flags=np.asarray(batch['online_cp_applied']).tolist()
         if not any(flags):raise ValueError('Explicit DEBUG batch has no actual CP event; choose a verified CP batch position')
         trainer._consume_native_transport_audit(batch,batch['online_cp_applied'])
@@ -149,15 +188,24 @@ def main(argv=None):
         if not torch.isfinite(loss):raise ValueError('Actual native loss is nonfinite')
         rng_after=_rng();rng_after_hash=_hash_cpu_tensors(rng_after)
         final_model={name:value.detach().cpu().clone() for name,value in trainer.network.state_dict().items()}
-        if _hash_cpu_tensors(trainer.optimizer.state_dict())!=initial_optimizer_hash:
+        final_optimizer_hash=_hash_cpu_tensors(trainer.optimizer.state_dict())
+        if final_optimizer_hash!=initial_optimizer_hash:
             raise ValueError('DEBUG numerical admission unexpectedly changed optimizer state')
-        numerical=dict(outputs=[item.detach().cpu().clone() for item in outputs] if isinstance(outputs,list) else outputs.detach().cpu().clone(),
+        final_scaler=trainer.grad_scaler.state_dict() if trainer.grad_scaler is not None else None
+        if final_scaler!=initial_scaler:raise ValueError('DEBUG no-update admission unexpectedly changed AMP scaler state')
+        numerical=dict(inputs=actual_input,
+            outputs=[item.detach().cpu().clone() for item in outputs] if isinstance(outputs,list) else outputs.detach().cpu().clone(),
             loss=loss.detach().cpu().clone(),gradients=gradients,initial_model=initial_model,final_model=final_model,
             rng_before=rng_before,rng_after=rng_after)
         path=args.output/'numerical_tensors.pt'
         with path.open('xb') as stream:torch.save(numerical,stream)
         report=dict(format='v24_native_batch2_full128_CUDA_execution_admission_DEBUG_v1',debug=True,mode=args.mode,
             original_checkpoint_sha256=args.checkpoint_sha256,source_epoch=int(trainer.current_epoch),
+            source_checkpoint_path=str(args.checkpoint.resolve()),
+            source_checkpoint_stat=dict(zip(('device','inode','size','mtime_ns','ctime_ns'),checkpoint_stat)),
+            actual_loaded_checkpoint_binding=loaded_binding,
+            probe_source_sha256=pipeline.sha(__file__),
+            production_entry_source_sha256=pipeline.sha(ROOT/'tools/run_v24_native_execution.py'),
             original_source_proof=source_proof,execution_runtime=runtime.runtime_contract(),
             original_native_train_step_sha256=hashlib.sha256(inspect.getsource(nnUNetTrainer.train_step).encode()).hexdigest(),
             actual_input_shape=list(batch['data'].shape),physical_batch=2,epochs=250,full105_train=True,ordinary26_validation=True,
@@ -165,9 +213,16 @@ def main(argv=None):
             input_keys=list(batch['keys']),CP_flags=flags,native_transport=trainer._online_native_transport,
             input_tensor_and_CP_schedule_sha256=input_hash,initial_model_sha256=initial_model_hash,
             final_model_sha256=_hash_cpu_tensors(final_model),initial_optimizer_sha256=initial_optimizer_hash,
-            initial_scaler=initial_scaler,final_scaler=trainer.grad_scaler.state_dict() if trainer.grad_scaler is not None else None,
+            final_optimizer_sha256=final_optimizer_hash,optimizer_state_unchanged=True,
+            initial_scaler=initial_scaler,final_scaler=final_scaler,AMP_scaler_state_unchanged=True,
             RNG_before_sha256=rng_before_hash,RNG_after_sha256=rng_after_hash,
             trainable_parameter_count=sum(p.numel() for p in parameters.values()),gradient_tensors=len(gradients),
+            trainable_parameter_names=list(parameters),
+            trainable_parameter_schema={name:dict(shape=list(parameter.shape),dtype=str(parameter.dtype),numel=parameter.numel())
+                                        for name,parameter in parameters.items()},
+            optimizer_parameter_names=[[next(name for name,parameter in parameters.items() if parameter is value)
+                                         for value in group['params']] for group in trainer.optimizer.param_groups],
+            optimizer_trainable_parameters_exactly_once=True,
             missing_parameter_names=sorted(missing),inactive_head_proof=gradient_proof,
             forward_backward_unscale_clip_seconds=elapsed,peak_CUDA_bytes=torch.cuda.max_memory_allocated(),
             resources=pipeline.require_project_budget(),optimizer_updates=0,production_training_performed=False,

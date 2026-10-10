@@ -37,6 +37,27 @@ gate/probe 자체 source 파일을 원형 training wrapper의 private globals cl
 검사한 optimized input adapter의 SHA가 현재 prepare/train에서 admitted된 source SHA와 같아야 한다.
 optimized source chunk의 live chunk/entry/key/result/tree-visible bytes가 모두0이어야 적용한다.
 
+GPU5 원형3D grid backward DEBUG 검증의 명시적 분기
+최초 strict baseline이 grid_sampler_3d_backward_cuda의 deterministic implementation 미지원으로
+명시적으로 실패했다. strict 기본 gate와 GPU6 공유 gate는 완화하지 않았다.
+GPU5 probe --debug-native-grid-sampler-numerics를 명시할 때만 DEBUG warn_only를 사용한다.
+이 연산의 실제 PyTorch UserWarning만 허용하고 다른 경고 또는 선언된 경고 누락은 거부한다.
+production kernel/precision 설정은 바꾸지 않으며 원형 native atomic backward를 실행한다.
+동일checkpoint/input/model/RNG의 원형baseline A, 별도원형repeat B, optimized O 세 파일을 읽는다.
+입력/score/loss/consistency/model/RNG/optimizer/scaler/6 checkpoint 상태는 여전히 exact이다.
+모든981 gradient의 이름/순서/shape/dtype/finite/연결은 유지한다.
+--gradient-native-noise-policy per-element는 원소별 |O-A|<=|B-A|이며,
+관측변동0인 원소는 signed zero까지 byte exact여야 한다.
+명시적인 per-tensor-max-rms는 각 tensor의 maxabs(O-A)<=maxabs(B-A)와
+RMS(O-A)<=RMS(B-A)를 모두 요구한다. native 변동이 완전0인 tensor는 byte exact를 요구한다.
+epsilon0, 계수1이며 임의배수/고정tolerance/production 설정 변경을 도입하지 않았다.
+원소별 실패 통계도 함께 저장한다. 두 native repeat의 관측 범위는 모든 실행의 보편적 상한이 아니다.
+따라서 이 분기에서 gradient bitwise equality를 보장한다고 표현하지 않는다.
+범위 초과 시 fresh failure JSON에 actual tensor별 max/RMS/원소별 위반을 기록하고 학습을 시작하지 않는다.
+train 필수 추가 인수는 --probe-baseline-repeat PATH --debug-native-grid-sampler-numerics
+--gradient-native-noise-policy per-tensor-max-rms이다. 원형 shared.train code object의
+private compare_probes binding만 actual 3-file 재검증으로 연결하고 production DEBUG flags는 설정하지 않는다.
+
 현재 확인된 자원
 outputs/v24_optimizer_20261010/resources_1791623181296792400.json의 읽기 관측에서
 GPU5는 RTX A6000(46068MiB), CPU42–45 네 개, RAM64GiB 계약을 사용한다.
@@ -46,7 +67,7 @@ namespace 스토리지 free22.55GiB이며 배포/검사/분리결과 쓰기에�
 단일 point sample이므로 steady-state throughput/병목시간비율이나 peak로 표현하지 않는다.
 
 완료 및 미검증
-구현과3개 파일 AST 정적 검사 완료.
+구현과 정적 검사 완료.
 신규 CPU UNIT12/12 통과(3.883초): 실제 tensor-file 값 변조,gradient 누락,
 원형 scheduler/optimizer/scaler 상태 변경, 다른GPU/chunk/검사source,
 불완전524 score/chunk coverage,파일 경로 바꿔치기,shape와signed zero 차이를 거부했다.
@@ -54,9 +75,14 @@ namespace 스토리지 free22.55GiB이며 배포/검사/분리결과 쓰기에�
 private training clone은 동일 code object이며 공유source/global/document를 변경하지 않고
 GPU5 own source guard를 추가함을 확인했다.
 CPU UNIT은 명시적인 synthetic fixture이며 실제 모델 성능이나 임상 예측 결과가 아니다.
+명시native-grid 분기 추가 후 CPU22/22 통과(20.932초): 기존 strict12개와 신규10개.
+원형 반복에서 직접 측정한 원소별/각tensor max+RMS 상한, 0 변동 signed-zero,
+input/forward/loss/state 변경, 알려지지 않은 경고, repeat누락/재사용, 모든981실제gradient
+nonfinite/누락/순서변경을 검사했다. native kernel이나 임상 입력을 모사한 결과로 보고하지 않는다.
 Windows sandbox에서 strict canonical-path 읽기가 거부돼, workspace 임시 fixture만 쓰는
 CPU UNIT을 automatic reviewer가 허용한 unsandboxed 실행으로 검증했다. 관리자 권한을 사용하지 않았다.
-실제 GPU5 full128 probe, steady-state 개선 측정, 새 runtime 학습 재개는 이 문서 작성 시 아직 미실행이다.
+실제 GPU5 strict full128 baseline은 위 미지원 연산으로 실패한 상태다.
+신규3-probe gate, steady-state 개선 측정, 새 runtime 학습 재개는 이 문서 갱신 시 아직 미실행이다.
 전체40epoch 학습 완료 또는 전체test 평가 완료를 주장하지 않는다.
 신규 runtime의 최종 적용과 native 결과는 루트 담당자가 안전 경계와 배포를 조율하여 별도로 기록한다.
 

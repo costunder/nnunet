@@ -37,7 +37,7 @@ def main(argv=None):
     if args.repeats<3:parser.error('At least three explicit DEBUG measurements required')
     if args.output.exists():raise FileExistsError('Fresh DEBUG report path required; no overwrite')
     native=json.loads(args.native.read_text(encoding='utf8'))
-    private=Path(native['root'])/'runtime';sys.path.insert(0,str(private))
+    private=Path(native['private_runtime']);sys.path.insert(0,str(private))
     import numpy as np
     import torch
     import psutil
@@ -88,6 +88,11 @@ def main(argv=None):
                     started=time.perf_counter()
                     (wrapped if mode=='optimized' else original)(loader,actual_data,actual_seg,lower.tolist(),plan,case_id)
                     wall=time.perf_counter()-started
+                    reuse=getattr(loader,'_v24_native_crop_reuse_last',None)
+                    if mode=='optimized' and (reuse is None or any(reuse[name]!=expected for name,expected in
+                            {'events':1,'completed_events':1,'failed_events':0,'crop_accesses':2,
+                             'original_decodes':1,'crop_hits':1,'live_crop_bytes':0,'closed_event_scopes':1}.items())):
+                        raise ValueError('Actual optimized native CP did not reuse and release the exact singleton segmentation crop')
                     result=(actual_data,actual_seg,loader._last_raw_pasted_support,loader._last_raw_paste_audit)
                     digest=_tensor_digest(result)
                     compared[mode]=digest
@@ -96,7 +101,7 @@ def main(argv=None):
                         crop_shape=[1,128,128,128],selected_candidate=selected,
                         source_mask_voxels=int(np.count_nonzero(candidate['source_mask'])),
                         paste_audit=loader._last_raw_paste_audit,
-                        event_reuse=getattr(loader,'_v24_native_crop_reuse_last',None)))
+                        event_reuse=reuse))
                     largest_RSS=max(largest_RSS,process.memory_info().rss)
                 if compared['baseline']!=compared['optimized']:raise ValueError('Actual CPU transport output/support/audit parity failed')
         samples[-1]['baseline_crop_preparation_seconds']=preparation_seconds
@@ -110,6 +115,7 @@ def main(argv=None):
         original_bank_sha256=bank_hash,actual_training_cases=args.cases,full_training_population=105,
         complete_dataset_training_run=False,full_model_neural_forward_backward_performed=False,
         optimizer_updates=0,production_epochs_unchanged=250,physical_batch_contract_unchanged=2,
+        probe_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         runtime_contract=runtime.runtime_contract(),source_shape_and_source_masks_unchanged=True,
         all_output_seg_support_audit_equal=True,RNG_equal=True,summary=summary,samples=samples,
         CPU_wall_seconds=time.perf_counter()-before,CPU_seconds=sum(process.cpu_times()[:2])-before_cpu,

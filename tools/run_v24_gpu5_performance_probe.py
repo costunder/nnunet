@@ -8,6 +8,7 @@ are verified before admitting the execution-only hash/prefetch/input adapters.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -15,12 +16,14 @@ from pathlib import Path
 import sys
 import threading
 import time
+import warnings
 from types import MethodType
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode=True
 if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
 CASES=('liver_6','liver_129','liver_123','liver_69')
+NATIVE_GRID_OPERATOR='grid_sampler_3d_backward_cuda'
 
 
 def parse_probe_options(argv):
@@ -31,8 +34,11 @@ def parse_probe_options(argv):
     parser.add_argument('--source-interruption-proof',type=Path)
     parser.add_argument('--probe-output',type=Path,required=True)
     parser.add_argument('--debug-performance-probe',action='store_true',required=True)
-    parser.add_argument('--debug-deterministic-numerics',action='store_true',
+    policy=parser.add_mutually_exclusive_group()
+    policy.add_argument('--debug-deterministic-numerics',action='store_true',
         help='DEBUG-only strict deterministic kernels; unsupported operators fail without fallback')
+    policy.add_argument('--debug-native-grid-sampler-numerics',action='store_true',
+        help='Explicit DEBUG native atomic grid backward; requires repeated original baseline admission')
     return parser.parse_known_args(argv)
 
 
@@ -58,14 +64,16 @@ def numerical_flags(torch):
         fill_uninitialized_memory=torch.utils.deterministic.fill_uninitialized_memory)
 
 
-def configure_debug_numerics(torch,enabled):
+def configure_debug_numerics(torch,enabled,native_grid=False):
     """After original build_runtime/configure_runtime; never a production edit."""
-    if type(enabled) is not bool:raise TypeError('Explicit DEBUG numerics flag required')
+    if type(enabled) is not bool or type(native_grid) is not bool:
+        raise TypeError('Explicit DEBUG numerics flags required')
+    enabled=enabled or native_grid
     before=numerical_flags(torch)
     if enabled:
         if os.environ.get('CUBLAS_WORKSPACE_CONFIG')!=':4096:8':
             raise ValueError('DEBUG CUBLAS workspace must be configured before CUDA initialization')
-        torch.use_deterministic_algorithms(True,warn_only=False)
+        torch.use_deterministic_algorithms(True,warn_only=native_grid)
         torch.backends.cudnn.deterministic=True
         torch.backends.cudnn.benchmark=False
     after=numerical_flags(torch)
@@ -74,8 +82,36 @@ def configure_debug_numerics(torch,enabled):
         raise ValueError('DEBUG determinism must preserve original arithmetic precision')
     return dict(debug_deterministic_numerics=enabled,original_after_build_flags=before,
         actual_forward_flags=after,unsupported_operator_fallback=False,
+        debug_native_grid_sampler_numerics=native_grid,
+        admitted_native_nondeterministic_operator=NATIVE_GRID_OPERATOR if native_grid else None,
         production_config_modified=False,
         strict_parity_scope='same explicit DEBUG kernel policy; original production trajectory equivalence is not claimed')
+
+
+def native_grid_warning_receipt(records):
+    """Permit only the explicitly declared PyTorch native grid backward warning."""
+    rows=[dict(category=record.category.__name__,message=str(record.message)) for record in records]
+    for row in rows:
+        if (row['category']!='UserWarning' or not row['message'].startswith(
+                NATIVE_GRID_OPERATOR+' does not have a deterministic implementation, but you set ')
+                or 'torch.use_deterministic_algorithms(True, warn_only=True)' not in row['message']):
+            raise ValueError('Unexpected warning in native grid DEBUG policy: '+row['message'])
+    if not rows:
+        raise ValueError('Native grid DEBUG policy requires the actual declared operator warning')
+    return dict(operator=NATIVE_GRID_OPERATOR,only_declared_operator=True,
+                original_native_atomic_kernel=True,warning_count=len(rows),warnings=rows)
+
+
+@contextmanager
+def native_grid_warning_scope(enabled):
+    receipt={}
+    if not enabled:
+        yield receipt
+        return
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter('always')
+        yield receipt
+        receipt.update(native_grid_warning_receipt(records))
 
 
 class InputTensorObserver:
@@ -161,7 +197,7 @@ def _sha(path):
 
 def main(argv=None):
     options,remaining=parse_probe_options(argv)
-    configure_debug_environment(options.debug_deterministic_numerics)
+    configure_debug_environment(options.debug_deterministic_numerics or options.debug_native_grid_sampler_numerics)
     from tools.run_v24_all_p import parse,validate_config
     args=parse(remaining)
     if args.mode!='train' or args.gpu!=5:
@@ -217,7 +253,8 @@ def main(argv=None):
     try:
         # The original factory has just reset cudnn/precision config. Apply the
         # explicit DEBUG policy now, before the actual diagnostic forward.
-        debug_numerics=configure_debug_numerics(torch,options.debug_deterministic_numerics)
+        debug_numerics=configure_debug_numerics(torch,options.debug_deterministic_numerics,
+                                               options.debug_native_grid_sampler_numerics)
         memory.bind_memory_runtime(scorer)
         if options.variant=='optimized':prefetch.bind(scorer)
         if input_runtime is not None:input_runtime_receipt=input_runtime.bind(scorer)
@@ -249,10 +286,11 @@ def main(argv=None):
         optimizer.zero_grad(set_to_none=True);torch.cuda.reset_peak_memory_stats()
         started=time.perf_counter()
         # Epoch1 matches the original full128 maximum-cost calibration's seeds.
-        result=scorer(plans,epoch=1,training=True)
-        loss,terms=patient_balanced_objective(result.scores,[_positive_indices(plan) for plan in plans],result.consistency)
-        if not bool(torch.isfinite(loss)):raise FloatingPointError('Nonfinite native diagnostic loss')
-        scaler.scale(loss).backward();scaler.unscale_(optimizer);torch.cuda.synchronize()
+        with native_grid_warning_scope(options.debug_native_grid_sampler_numerics) as native_warnings:
+            result=scorer(plans,epoch=1,training=True)
+            loss,terms=patient_balanced_objective(result.scores,[_positive_indices(plan) for plan in plans],result.consistency)
+            if not bool(torch.isfinite(loss)):raise FloatingPointError('Nonfinite native diagnostic loss')
+            scaler.scale(loss).backward();scaler.unscale_(optimizer);torch.cuda.synchronize()
         seconds=time.perf_counter()-started
         gradient=gradient_receipt(net,_groups(net))
         if gradient['trainable_parameter_tensors']!=981 or gradient['gradient_present']!=981:
@@ -286,6 +324,7 @@ def main(argv=None):
             optimizer_contains_all_trainable_parameters_exactly_once=True,
             scheduler_and_shuffle_state_unchanged=True,
             GPU5_probe_source_sha256=_sha(__file__),
+            native_grid_sampler_warning_receipt=native_warnings,
             output_sha256=digest(tuple(score.detach().cpu() for score in result.scores)),
             loss=float(loss.detach()),gradient_sha256=digest({name:parameter.grad.detach().cpu()
                 for name,parameter in net.named_parameters() if parameter.requires_grad}),
