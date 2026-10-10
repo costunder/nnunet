@@ -63,6 +63,19 @@ class NativeActualTensorAdmissionDebug(unittest.TestCase):
         self.assertGreater(result['torch_tensors'],5);self.assertEqual(result['numpy_arrays'],2)
         self.assertGreater(result['tensor_bytes'],24*4)
 
+    def test_real_Module_state_dict_source_OrderedDict_matches_owned_plain_clones_and_tamper_fails(self):
+        module=torch.nn.Linear(2,3)
+        original=module.state_dict()
+        clone={name:value.detach().clone() for name,value in original.items()}
+        self.assertIsNot(type(original),type(clone))
+        gate._equal_leaves(dict(original),clone,'actual_source_checkpoint_weights')
+        clone['weight'][0,0]+=1
+        with self.assertRaisesRegex(ValueError,'tensor bytes differ'):
+            gate._equal_leaves(dict(original),clone,'actual_source_checkpoint_weights')
+        # Paired probe artifacts retain their declared exact dict schema.
+        with self.assertRaisesRegex(ValueError,'Dictionary schema differs'):
+            gate._equal_leaves(original,{name:value.detach().clone() for name,value in original.items()})
+
     def test_changed_input_loss_output_gradient_model_and_RNG_bytes_fail(self):
         for field in ('inputs','outputs','loss','gradients','initial_model','final_model','rng_before','rng_after'):
             with self.subTest(field=field):
@@ -90,6 +103,21 @@ class NativeActualTensorAdmissionDebug(unittest.TestCase):
                       np.array([np.inf]),np.array(['DEBUG'],dtype=object)):
             with self.subTest(value=str(value)):
                 with self.assertRaisesRegex(ValueError,'Nonfinite|object data'):gate._equal_leaves(value,copy.deepcopy(value))
+
+    def test_RNG_Python_and_NumPy_scalar_signed_zero_is_byte_exact_and_nonfinite_fails(self):
+        for first,second in (({'cached_gaussian':0.},{'cached_gaussian':-0.}),
+                             (np.float64(0.),np.float64(-0.)),(np.float32(0.),np.float32(-0.))):
+            with self.assertRaisesRegex(ValueError,'scalar bytes differ'):gate._equal_leaves(first,second,'actual_RNG')
+        for value in (float('inf'),float('nan'),np.float64(np.inf),np.float32(np.nan)):
+            with self.assertRaisesRegex(ValueError,'Nonfinite'):gate._equal_leaves(value,copy.deepcopy(value))
+
+    def test_missing_or_extra_scientific_source_entry_cannot_be_admitted(self):
+        names=['explicit_DEBUG_source_a.py','explicit_DEBUG_source_b.py']
+        original=dict(source_files_sha256={name:'a'*64 for name in names})
+        gate._scientific_source_contract(original,names)
+        for changed in (dict(source_files_sha256={names[0]:'a'*64}),
+                        dict(source_files_sha256={**original['source_files_sha256'],'extra.py':'b'*64})):
+            with self.assertRaisesRegex(ValueError,'complete original scientific'):gate._scientific_source_contract(changed,names)
 
     def test_missing_unknown_or_duplicate_gradient_and_optimizer_membership_fail(self):
         report,numerical=self.gradient_fixture();gate._gradient_contract(report,numerical)

@@ -1,0 +1,64 @@
+2026-10-10 GPU5 원형 CUDA 변동과 적용 판단
+
+원형 모델의 grid_sampler_3d_backward_cuda는 DEBUG deterministic warn-only에서
+명시된 단일 unsupported operator 경고를 냈다. 다른 연산 경고는 거부한다.
+Production kernel, precision, 모델, sampling, physical4/chunk32, 40epoch는 변경하지 않는다.
+
+실제 동일 checkpoint136의 full128 원형2회/개선1회 결과
+원형362.703358초, 원형반복360.346627초, 개선337.443568초.
+입력524후보/1048view와 네 upper graph, 예측, loss0.318462997674942,
+model/RNG/checkpoint/optimizer/scaler가 같았다. 모든981 gradient가 존재하고 유한했다.
+957개 gradient tensor는 실제 byte가 같고, 원형 반복에서 변했던24개만 개선형에서도 변했다.
+원형 반복에서 변하지 않은 다른 tensor로 변동이 확장되지 않았다.
+관측된 전체 최대 절대 차이는 원형과 개선형 모두0.0003662109375였다.
+
+최초 per-tensor-max-rms 정책은 12개 tensor를 거부했다.
+각 작은 tensor의 RMS/max가 두 원형 반복의 관측값보다 커진 경우다.
+이를 성공으로 바꾸어 기록하지 않고 원형 실패 JSON과 모든 numerical artifact를 보존한다:
+/var/tmp/aicompetition06_v24_20261010/experiment_gpu5_optimizer_0340ac3537e9_1791625381400537400/gpu5_native_gradient_envelope_failure_1791626575278840858.json
+
+별도 명시적 정책 native-support-global-max
+기존 per-element와 per-tensor-max-rms 정책은 유지한다.
+새 정책은 실패 결과를 확인한 뒤 선택한 제한된 경험적 적용 기준이다.
+원형 반복에서 변하지 않은 named gradient는 원형A/B/개선형 모두 byte가 같아야 한다.
+원형 반복에서 실제 변했던 named gradient에만 변동을 허용한다.
+그 절대 차이는 원형 반복의 관측된 전역 최대 차이를 넘을 수 없다.
+모든981개 schema/finite/연결과 실제 tensor artifact SHA를 검사하며,
+입력/forward/loss/model/RNG/optimizer/scaler 동일성은 계속 엄격하게 요구한다.
+임의 epsilon이나 multiplier는 없고 관측값 자체가 절대 차이의 acceptance threshold다.
+원형 과학 코드와 neural kernel을 바꾸지 않는 순수 CPU input cache/prefetch 변경에 한정한다.
+
+이 기준은 tensor별 상대오차/RMS 상한이나 모든 gradient의 bitwise 동등성,
+또는 앞으로 발생할 모든 native CUDA 변동의 보편적 상한을 보장하지 않는다.
+per-tensor/per-element 실패 수, 각 RMS/max, 24개 변동 범위와 사후 정책 선택 사실을 기록한다.
+정확한 future training trajectory나 전체 학습 처리량 개선을 주장하지 않는다.
+위 시간에는 DEBUG input hash와 별도 수치 정책이 포함되며 단일 batch 측정이다.
+
+GPU5 실제 측정에서 사용한 allocator 보존
+새 GPU6 메모리 회수 코드를 GPU5에 함께 적용하지 않는다.
+--source-code code_f22da14b6b91은 원형 checkpoint와 학습 source binding 용도다.
+--preserved-memory-code code_0340ac3537e9는 세 실제 CUDA probe가 사용한 allocator 용도다.
+두 source의 역할을 구분한다. allocator는 실제 보존된 원형 파일에서 cold import한다.
+원형 scientific/hash/prefetch/input bytes와 새 후보가 같은지 확인한다.
+선택된 실제 module SHA/contract를 세 probe의 모든 provider memory contract와 비교한다.
+64GiB 한도와 strict failure0, source파일 witness도 요구한다.
+훈련 forward source guard에는 실제 선택된 old memory 파일과 routing helper SHA를 포함한다.
+
+단위 테스트는 명시적 CPU UNIT fixture이며 실제 연구 결과로 사용하지 않는다.
+실제 적용 여부와 optimizer update는 docs/v24_GPU_optimization_rollout_20261010.txt에 별도로 기록한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 실제981gradient와 optimizer membership 검사, DEBUG update0으로 구분.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

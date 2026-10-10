@@ -29,6 +29,7 @@ FORMAT = 'v24_gpu5_execution_only_exact_continuation_v1'
 RECEIPT = 'gpu5_performance_continuation.json'
 EXPECTED_GRADIENTS = 981
 NUMERICAL_STATES = {'model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'shuffle_generator'}
+_PRESERVED_MEMORY_SELECTION = None
 
 
 def _sha(path):
@@ -52,13 +53,45 @@ def _gpu5_args(args):
 def runtime_identity():
     """Include the GPU5 gate/probe themselves in the immutable receipt."""
     from tools import run_v24_performance_continuation as shared
-    files = (Path(__file__).resolve(), ROOT / 'tools/run_v24_gpu5_performance_probe.py',
-             ROOT / 'tools/v24_gpu5_native_grid_gate.py')
+    files = [Path(__file__).resolve(), ROOT / 'tools/run_v24_gpu5_performance_probe.py',
+             ROOT / 'tools/v24_gpu5_native_grid_gate.py']
+    if _PRESERVED_MEMORY_SELECTION is not None:
+        from tools.v24_memory_reclamation_gate import _recheck
+        for proof in _PRESERVED_MEMORY_SELECTION['source_provenance']['source_file_proofs']:
+            _recheck(proof)
+        module=sys.modules.get('hiercp_v1x.v24_memory_runtime')
+        if (module is None or _sha(module.__file__) != _PRESERVED_MEMORY_SELECTION['actual_module_sha256']
+                or module.memory_runtime_contract() != _PRESERVED_MEMORY_SELECTION['actual_contract']):
+            raise ValueError('GPU5 must retain its actually probed preserved memory runtime')
+        files.extend((Path(module.__file__).resolve(),ROOT/'tools/v24_memory_reclamation_gate.py'))
     return dict(shared_runtime=shared.runtime_identity(),
                 GPU5_files_sha256={str(path): _sha(path) for path in files},
+                preserved_memory_selection=copy.deepcopy(_PRESERVED_MEMORY_SELECTION),
                 all_named_trainable_gradients=EXPECTED_GRADIENTS,
                 physical_patient_batch=4, physical_candidate_chunk=32,
                 epochs=40, production_numerical_policy_changed=False)
+
+
+def select_preserved_probed_memory(source_code, probe_paths):
+    """Retain the real old allocator measured in the three GPU5 CUDA probes."""
+    global _PRESERVED_MEMORY_SELECTION
+    from tools.v24_memory_reclamation_gate import route_memory_runtime,_guard,_recheck
+    if len(probe_paths)!=3 or any(path is None for path in probe_paths) or len(set(probe_paths))!=3:
+        raise ValueError('Three distinct actual GPU5 probes required for preserved memory routing')
+    proofs=[_guard(path) for path in probe_paths]
+    rows=[json.loads(Path(path).read_text(encoding='utf8')) for path in probe_paths]
+    selection=route_memory_runtime(source_code,'current-control')
+    for row in rows:
+        profiles=row.get('provider_profiles_after',{})
+        if (row.get('GPU_arm')!=5 or row.get('production_optimizer_updates')!=0 or not profiles
+                or any(value.get('memory_runtime',{}).get('contract')!=selection['actual_contract']
+                       or value['memory_runtime'].get('RSS_limit_bytes')!=64*2**30
+                       or value['memory_runtime'].get('profile',{}).get('strict_failures')!=0
+                       for value in profiles.values())):
+            raise ValueError('Selected GPU5 allocator differs from the actually measured native probes')
+    for proof in proofs:_recheck(proof)
+    _PRESERVED_MEMORY_SELECTION=selection
+    return selection
 
 
 def prepare(args, source_output, source_code, source_interruption_proof=None):
@@ -287,15 +320,19 @@ def main(argv=None):
     parser.add_argument('--probe-baseline-repeat', type=Path)
     parser.add_argument('--debug-native-grid-sampler-numerics', action='store_true')
     parser.add_argument('--gradient-native-noise-policy', '--debug-gradient-envelope-policy',
-                        dest='debug_gradient_envelope_policy', choices=('per-element', 'per-tensor-max-rms'),
+                        dest='debug_gradient_envelope_policy', choices=('per-element', 'per-tensor-max-rms', 'native-support-global-max'),
                         default='per-element')
     parser.add_argument('--source-interruption-proof', type=Path)
+    parser.add_argument('--preserved-memory-code',type=Path)
     options, remaining = parser.parse_known_args(argv)
     from tools.run_v24_all_p import parse
     args = parse(remaining)
     _gpu5_args(args)
     os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
     os.environ['CUDA_VISIBLE_DEVICES'] = '' if options.action == 'prepare' else '5'
+    if options.preserved_memory_code is not None:
+        select_preserved_probed_memory(options.preserved_memory_code,
+            (options.probe_baseline,options.probe_baseline_repeat,options.probe_optimized))
     if options.action == 'prepare':
         result = prepare(args, options.source_output, options.source_code, options.source_interruption_proof)
         print(json.dumps(result, allow_nan=False), flush=True)

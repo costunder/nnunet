@@ -15,6 +15,7 @@ import inspect
 import os
 from pathlib import Path
 import textwrap
+import time
 import weakref
 
 import psutil
@@ -23,7 +24,7 @@ import torch
 from . import v24_provider as provider_module
 from .contracts import canonical_hash
 
-FORMAT = 'v24_exact_input_lifetime_RSS_reclamation_runtime_v1'
+FORMAT = 'v24_exact_input_lifetime_RSS_reclamation_runtime_v2'
 _ORIGINAL_COORDINATOR = provider_module.V24InputCoordinator
 _ORIGINAL_PROVIDER = provider_module.V24InputProvider
 _SCIENCE_NAMES = ('v24_factory.py', 'v24_geometry.py', 'v24_inputs.py',
@@ -77,6 +78,11 @@ def memory_runtime_contract():
         candidate_chunk_and_patient_batch_changed=False, prefetch_chunks_changed=False,
         inactive_cache_eviction_only=True, active_pinned_checkpoint_inputs_preserved=True,
         allocator_release_on_RSS_pressure_only=True,
+        allocator_release_coalescing='actual_RSS_minus_original_target_by_released_ledger_bytes_then_fresh_RSS',
+        original_initial_pressure_collection_preserved=True,
+        garbage_collection_disabled=False, fixed_eviction_batch_or_collection_cap=False,
+        original_eviction_category_provider_order_and_protection_preserved=True,
+        inactive_eviction_count_may_change=True, strict_RSS_check_after_coalescing=True,
         pressure_trigger='RSS_limit - (RSS_limit - per_provider_resident_limit)/2',
         pressure_headroom_basis='existing host_memory.PressureBudget execution policy; collate/prefetch/checkpoint scratch')
 
@@ -115,6 +121,11 @@ class MemorySafeCoordinator(_ORIGINAL_COORDINATOR):
             view_evictions=0, record_evictions=0, geometry_evictions=0,
             raw_evictions=0, region_evictions=0, donor_evictions=0,
             released_cache_logical_bytes=0, strict_failures=0,
+            allocator_release_wall_seconds=0., gc_wall_seconds=0.,
+            inactive_host_release_wall_seconds=0., malloc_trim_wall_seconds=0.,
+            provider_coalescing_batches=0, provider_coalesced_evictions=0,
+            provider_coalesced_logical_bytes=0, external_coalescing_batches=0,
+            external_coalesced_logical_bytes=0,
             maximum_observed_RSS_bytes=0, last_reclamation=None)
 
     def _guard_runtime(self):
@@ -136,17 +147,23 @@ class MemorySafeCoordinator(_ORIGINAL_COORDINATOR):
             pinned_host=None if not callable(host) or not torch.cuda.is_initialized() else dict(host()))
 
     def _release_allocators(self):
+        began = time.perf_counter()
         before = self._rss(); before_allocators = self._allocator_snapshot()
+        started = time.perf_counter()
         collected = gc.collect()
+        self._memory_stats['gc_wall_seconds'] += time.perf_counter()-started
         host_empty = getattr(torch._C, '_host_emptyCache', None)
         host_released = callable(host_empty) and torch.cuda.is_initialized()
         if host_released:
             # The native caching host allocator releases only inactive blocks;
             # its outstanding stream events and live Tensor owners stay intact.
-            host_empty()
+            started = time.perf_counter(); host_empty()
+            self._memory_stats['inactive_host_release_wall_seconds'] += time.perf_counter()-started
             self._memory_stats['host_cache_releases'] += 1
+        started = time.perf_counter()
         trimmed = None if self._malloc_trim is None else int(self._malloc_trim(0))
         if trimmed is not None:
+            self._memory_stats['malloc_trim_wall_seconds'] += time.perf_counter()-started
             self._memory_stats['malloc_trim_calls'] += 1
         self._memory_stats['allocator_releases'] += 1
         self._memory_stats['gc_collected'] += collected
@@ -154,6 +171,7 @@ class MemorySafeCoordinator(_ORIGINAL_COORDINATOR):
             after_RSS_bytes=self._rss(), before_allocators=before_allocators,
             after_allocators=self._allocator_snapshot(), gc_collected=collected,
             inactive_pinned_cache_release_called=host_released, malloc_trim_result=trimmed)
+        self._memory_stats['allocator_release_wall_seconds'] += time.perf_counter()-began
 
     def bind_inputs(self, geometry, inputs):
         with self.lock:
@@ -229,20 +247,50 @@ class MemorySafeCoordinator(_ORIGINAL_COORDINATOR):
                 raise MemoryError(_OVERFLOW)
             return
         for category in ('view', 'record'):
-            while self._rss() > target:
-                changed = False
-                for provider in self.providers:
-                    before = provider._ledger.bytes('all')
-                    evicted = provider.evict(category)
-                    if evicted:
-                        self._memory_stats[category+'_evictions'] += 1
-                        self._memory_stats['released_cache_logical_bytes'] += before-provider._ledger.bytes('all')
-                    changed |= evicted
-                if not changed:
-                    break
+            current = self._rss()
+            while current > target:
+                # Cache ownership is removed in the original category/provider
+                # order. No materialization or new tensor/patch buffer occurs.
+                # Logical bytes select a release boundary only; they never
+                # replace measured RSS or declare successful admission.
+                deficit = current-target; freed = 0; evictions = 0; exhausted = False
+                while freed < deficit:
+                    changed = False
+                    for provider in self.providers:
+                        before = provider._ledger.bytes('all')
+                        evicted = provider.evict(category)
+                        if evicted:
+                            released = before-provider._ledger.bytes('all')
+                            if released < 0:
+                                raise ValueError('Inactive cache eviction increased resident ledger bytes')
+                            self._memory_stats[category+'_evictions'] += 1
+                            self._memory_stats['released_cache_logical_bytes'] += released
+                            freed += released; evictions += 1
+                        changed |= evicted
+                    if not changed:
+                        exhausted = True; break
+                if not evictions: break
+                self._memory_stats['provider_coalescing_batches'] += 1
+                self._memory_stats['provider_coalesced_evictions'] += evictions
+                self._memory_stats['provider_coalesced_logical_bytes'] += freed
                 self._release_allocators()
-        while self._rss() > target and self._evict_external():
+                current = self._rss()
+                if exhausted: break
+        current = self._rss()
+        while current > target:
+            deficit = current-target
+            before = self._memory_stats['released_cache_logical_bytes']
+            changed = False; exhausted = False
+            while self._memory_stats['released_cache_logical_bytes']-before < deficit:
+                if not self._evict_external():
+                    exhausted = True; break
+                changed = True
+            if not changed: break
+            self._memory_stats['external_coalescing_batches'] += 1
+            self._memory_stats['external_coalesced_logical_bytes'] += self._memory_stats['released_cache_logical_bytes']-before
             self._release_allocators()
+            current = self._rss()
+            if exhausted: break
         if strict and self._rss() > self.rss_bytes:
             self._memory_stats['strict_failures'] += 1
             raise MemoryError(_OVERFLOW)

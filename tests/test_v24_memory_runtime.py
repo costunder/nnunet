@@ -112,6 +112,31 @@ class MemoryRuntimeActualInputsDebug(unittest.TestCase):
         finally:
             original.close(); optimized.close()
 
+    def test_actual_protected_views_and_live_returned_inputs_survive_coalescing(self):
+        provider=self.provider(); coordinator=provider.coordinator; releases=[]
+        try:
+            live=provider.get([0,1,2],epoch=29); expected=self.data.signature(live)
+            original_keys=list(provider._views); protected=original_keys[-1]
+            provider._protected_views={protected}; provider._protected_ids={protected[0]}
+            resident=provider.resident_bytes
+            trigger=coordinator.rss_bytes-(coordinator.rss_bytes-resident)//2
+            coordinator._rss_process=SimpleNamespace(memory_info=lambda:SimpleNamespace(
+                rss=trigger+2**20 if len(provider._views)>1 else trigger-2**26))
+            coordinator._release_allocators=lambda:releases.append(len(provider._views))
+            rng=torch.get_rng_state().clone()
+            coordinator.trim()
+            self.assertEqual(list(provider._views),[protected])
+            self.assertEqual(provider._protected_views,{protected})
+            self.assertEqual(provider._protected_ids,{protected[0]})
+            self.assertEqual(releases,[3,1])
+            self.assertEqual(coordinator._memory_stats['provider_coalesced_evictions'],2)
+            self.assertEqual(expected,self.data.signature(live))
+            self.assertTrue(torch.equal(rng,torch.get_rng_state()))
+            provider._protected_views.clear(); provider._protected_ids.clear()
+            self.assertEqual(expected,self.data.signature(provider.get([0,1,2],epoch=29)))
+        finally:
+            provider._protected_views.clear(); provider._protected_ids.clear(); provider.close()
+
     def test_immutable_record_guard_remains_on_warm_input(self):
         provider = self.provider()
         try:
@@ -139,6 +164,10 @@ class MemoryRuntimePolicyDebug(unittest.TestCase):
         self.assertEqual(contract['provider_lifetime']['final_trim_expressions_changed'], 1)
         self.assertFalse(contract['provider_lifetime']['tensor_operations_changed'])
         self.assertEqual(set(contract['unchanged_scientific_files_sha256']), set(runtime._SCIENCE_NAMES))
+        self.assertTrue(contract['original_initial_pressure_collection_preserved'])
+        self.assertTrue(contract['original_eviction_category_provider_order_and_protection_preserved'])
+        self.assertFalse(contract['fixed_eviction_batch_or_collection_cap'])
+        self.assertFalse(contract['garbage_collection_disabled'])
 
     def test_inactive_allocator_release_preserves_live_tensor_and_RNG(self):
         coordinator = self.coordinator(); calls=[]
@@ -153,6 +182,9 @@ class MemoryRuntimePolicyDebug(unittest.TestCase):
         self.assertEqual(calls, [('host_empty',), ('malloc_trim',0)])
         self.assertTrue(torch.equal(live, expected)); self.assertTrue(torch.equal(rng,torch.get_rng_state()))
         self.assertEqual(coordinator._memory_stats['host_cache_releases'],1)
+        for name in ('allocator_release_wall_seconds','gc_wall_seconds',
+                     'inactive_host_release_wall_seconds','malloc_trim_wall_seconds'):
+            self.assertGreaterEqual(coordinator._memory_stats[name],0)
 
     def test_no_allocator_support_does_not_relax_RSS_guard(self):
         coordinator=self.coordinator(); coordinator._rss_process=SimpleNamespace(memory_info=lambda:SimpleNamespace(rss=1025))
@@ -258,6 +290,142 @@ class MemoryRuntimePolicyDebug(unittest.TestCase):
                 scorer.budget.check()
         self.assertEqual(coordinator._bound_scorers[scorer][1],original)
         self.assertEqual(inputs.guard_calls,2)
+
+
+class MemoryRuntimeCoalescingDebug(unittest.TestCase):
+    """Deterministic DEBUG resident-page model; original protected/LRU evict."""
+    def setup_policy(self, *, rss=900, reclaim_fraction=1.):
+        coordinator=runtime.MemorySafeCoordinator(1024)
+        state=dict(rss=rss,pending=0,events=[],releases=0)
+        coordinator._rss_process=SimpleNamespace(memory_info=lambda:SimpleNamespace(rss=state['rss']))
+        def release():
+            state['events'].append('release'); state['releases']+=1
+            state['rss']-=int(state['pending']*reclaim_fraction); state['pending']=0
+        coordinator._release_allocators=release
+        class Provider:
+            resident_bytes=512
+            def __init__(self,name,views,records=(),protected_views=(),protected_records=()):
+                self.name=name; self._views=OrderedDict(views); self._records=OrderedDict(records)
+                self._protected_views=set(protected_views); self._protected_ids=set(protected_records)
+                self._stats=dict(view_evictions=0,record_evictions=0)
+                self._ledger=SimpleNamespace(bytes=lambda group:sum(self._views.values())+sum(self._records.values()))
+            def evict(self,category):
+                cache=self._views if category=='view' else self._records
+                protected=self._protected_views if category=='view' else self._protected_ids
+                key=next((key for key in cache if key not in protected),None)
+                before=self._ledger.bytes('all')
+                result=V24InputProvider.evict(self,category)
+                if result:
+                    state['pending']+=before-self._ledger.bytes('all')
+                    state['events'].append((self.name,category,key))
+                return result
+        return coordinator,state,Provider
+
+    def test_coalesces_by_measured_deficit_and_preserves_provider_round_order(self):
+        coordinator,state,Provider=self.setup_policy()
+        first=Provider('A',[('live',32)]+[(str(i),32) for i in range(8)],protected_views=('live',))
+        second=Provider('B',[(str(i),32) for i in range(8)],records=(('record',128),))
+        coordinator.providers=[first,second]; coordinator.trim()
+        self.assertEqual(state['releases'],2)
+        self.assertEqual(state['events'],['release',('A','view','0'),('B','view','0'),
+            ('A','view','1'),('B','view','1'),('A','view','2'),('B','view','2'),'release'])
+        self.assertIn('live',first._views); self.assertIn('record',second._records)
+        self.assertEqual(coordinator._memory_stats['provider_coalesced_logical_bytes'],192)
+        self.assertLessEqual(state['rss'],752)
+
+    def test_fresh_RSS_requires_more_batches_when_logical_freeing_overestimates_pages(self):
+        coordinator,state,Provider=self.setup_policy(reclaim_fraction=.5)
+        provider=Provider('A',[(str(i),16) for i in range(30)])
+        coordinator.providers=[provider]; coordinator.trim()
+        self.assertEqual(state['releases'],6)
+        self.assertEqual(coordinator._memory_stats['provider_coalescing_batches'],5)
+        self.assertEqual(coordinator._memory_stats['provider_coalesced_evictions'],19)
+        self.assertEqual(len(provider._views),11)
+        self.assertLessEqual(state['rss'],752)
+
+    def test_zero_logical_alias_bytes_drain_inactive_entries_and_keep_hard_overflow(self):
+        coordinator,state,Provider=self.setup_policy(rss=1025)
+        provider=Provider('A',[('live',0),('0',0),('1',0),('2',0)],protected_views=('live',))
+        coordinator.providers=[provider]
+        with self.assertRaisesRegex(MemoryError,'Full active'):
+            coordinator.trim()
+        self.assertEqual(list(provider._views),['live'])
+        self.assertEqual(state['releases'],2)
+        self.assertEqual(coordinator._memory_stats['provider_coalesced_evictions'],3)
+        self.assertEqual(coordinator._memory_stats['strict_failures'],1)
+
+    def test_inactive_views_then_records_and_live_protected_records_survive(self):
+        coordinator,state,Provider=self.setup_policy()
+        provider=Provider('A',[('view',16)],records=(('live',64),('0',64),('1',64),('2',64)),protected_records=('live',))
+        coordinator.providers=[provider]; coordinator.trim()
+        self.assertEqual(state['events'],['release',('A','view','view'),'release',
+            ('A','record','0'),('A','record','1'),('A','record','2'),'release'])
+        self.assertEqual(list(provider._records),['live'])
+        self.assertLessEqual(state['rss'],752)
+
+    def test_coalesced_allocator_and_original_eviction_exceptions_propagate(self):
+        for allocator in (True,False):
+            with self.subTest(allocator=allocator):
+                coordinator,state,Provider=self.setup_policy()
+                provider=Provider('A',[(str(i),64) for i in range(5)])
+                coordinator.providers=[provider]
+                failure=RuntimeError('original allocation release failed' if allocator else 'original eviction failed')
+                if allocator:
+                    before=coordinator._release_allocators
+                    def release():
+                        if state['releases']:raise failure
+                        before()
+                    coordinator._release_allocators=release
+                else:
+                    def evict(category):raise failure
+                    provider.evict=evict
+                with self.assertRaises(RuntimeError) as caught:coordinator.trim()
+                self.assertIs(caught.exception,failure)
+
+    def test_external_zero_bytes_and_unavailable_locks_end_with_original_strict_error(self):
+        for locked in (False,True):
+            with self.subTest(locked=locked):
+                coordinator,state,Provider=self.setup_policy(rss=1025)
+                coordinator.providers=[Provider('empty',())]
+                class Owner:pass
+                geometry=Owner(); geometry._lock=threading.Lock()
+                live=torch.arange(6); expected=live.clone(); rng=torch.get_rng_state().clone()
+                geometry._memo=OrderedDict((str(i),(live,live,{},0)) for i in range(3))
+                geometry._bytes=0; geometry._proofs={str(i):None for i in range(3)}
+                inputs=Owner(); inputs._lock=threading.Lock(); inputs._raw_cache=OrderedDict()
+                inputs._regions={}; inputs._donors={}; inputs._raw_bytes=0
+                coordinator.bind_inputs(geometry,inputs)
+                if locked:geometry._lock.acquire(); inputs._lock.acquire()
+                try:
+                    with self.assertRaisesRegex(MemoryError,'Full active'):coordinator.trim()
+                finally:
+                    if locked:geometry._lock.release();inputs._lock.release()
+                self.assertEqual(len(geometry._memo),3 if locked else 0)
+                self.assertEqual(state['releases'],1 if locked else 2)
+                self.assertEqual(coordinator._memory_stats['strict_failures'],1)
+                self.assertTrue(torch.equal(live,expected));self.assertTrue(torch.equal(rng,torch.get_rng_state()))
+
+    def test_external_owned_cache_reclamation_rechecks_actual_RSS(self):
+        coordinator,state,Provider=self.setup_policy()
+        coordinator.providers=[Provider('empty',())]
+        class Owner:pass
+        geometry=Owner(); geometry._lock=threading.RLock()
+        live=torch.arange(6); expected=live.clone()
+        geometry._memo=OrderedDict((str(i),(live,live,{},64)) for i in range(6))
+        geometry._bytes=384; geometry._proofs={str(i):None for i in range(6)}
+        inputs=Owner(); inputs._lock=threading.RLock(); inputs._raw_cache=OrderedDict()
+        inputs._regions={}; inputs._donors={}; inputs._raw_bytes=0
+        coordinator.bind_inputs(geometry,inputs)
+        def release():
+            state['releases']+=1
+            state['rss']=900-(384-geometry._bytes)//2
+        coordinator._release_allocators=release
+        coordinator.trim()
+        self.assertEqual(state['releases'],4)
+        self.assertEqual(coordinator._memory_stats['external_coalescing_batches'],3)
+        self.assertEqual(len(geometry._memo),1)
+        self.assertLessEqual(state['rss'],752)
+        self.assertTrue(torch.equal(live,expected))
 
 
 if __name__=='__main__':unittest.main()

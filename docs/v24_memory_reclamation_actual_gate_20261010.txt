@@ -1,0 +1,99 @@
+GPU6 memory-only actual gate and continuation (2026-10-10)
+
+Implemented files:
+  tools/run_v24_memory_reclamation_probe.py
+  tools/run_v24_memory_reclamation_continuation.py
+  tools/v24_memory_reclamation_gate.py
+  tests/test_v24_memory_reclamation_probe.py
+
+The dedicated DEBUG control imports the preserved deployment's actual
+hiercp_v1x/v24_memory_runtime.py as the canonical module, before prefetch/input
+adapters capture any MemorySafeCoordinator/MemorySafeInputProvider classes or
+the deferred original provider get globals. The optimized process imports the
+actual candidate module. Both routes use byte-identical scientific factory,
+geometry, inputs, model, provider, preparation, hash, prefetch and input files.
+Each report names its real selected memory path, SHA, contract and bound
+profile. The prefetch memory-source and pressure-function hashes are checked
+against the selected actual implementation. No existing receipt is rewritten
+to pretend this is the prior input-only optimization.
+
+The cold body preserves the complete four stress patients, all P+128 U in two
+views, physical patient batch 4, candidate chunk 64, full128 network and the
+original 537 trainable parameters. It performs one explicit DEBUG forward,
+loss and backward without optimizer updates. Its strict deterministic CUDA
+policy is explicit, fails unsupported operators, and never changes production
+precision or kernels. Every actual ordered CPU chunk/upper graph is hashed;
+four actual score tensors cover all524 records. Owned nonsymlink report and
+weights-only tensor files are SHA/stat checked before and after reading.
+Scores, consistency, scalar loss and every actual named gradient require
+dtype/shape/byte equality. All537 gradient identities/schema are checked.
+Actual model/RNG and loaded optimizer/scaler digests bind to the same original
+six-state checkpoint; persisted optimizer and scaler states remain unchanged.
+The original checkpoint inspector validates all six states, history, cursor,
+curriculum, actual BEST, scientific request and exact copied file bytes.
+
+An original continuation receipt describes the candidate target, even when
+the isolated DEBUG control executes the preserved old memory implementation.
+The private candidate_continuation_runtime_proof reads that real candidate
+module; it does not rewrite or fake the selected control implementation.
+Original prepare/admit code objects are privately cloned with this explicit
+target-proof callback. The actual old/new selections are independently bound
+in the dedicated report and source provenance. Production privately clones
+the existing shared train code with dedicated admission/comparison globals;
+the original scientific training CLI code object is preserved. The candidate
+memory implementation is installed around the unchanged original constructor.
+All dedicated/source files are included in the production input source guard.
+
+Invoke with the complete original GPU6 train arguments after each prefix:
+  python -B tools/run_v24_memory_reclamation_continuation.py --action prepare
+    --source-output OLD_OUTPUT --source-code OLD_CODE [original GPU6 arguments]
+  python -B tools/run_v24_memory_reclamation_probe.py --variant current-control
+    --source-output OLD_OUTPUT --source-code OLD_CODE --probe-output FRESH_CONTROL
+    --debug-performance-probe --debug-deterministic-numerics [original GPU6 arguments]
+  python -B tools/run_v24_memory_reclamation_probe.py --variant optimized
+    --source-output OLD_OUTPUT --source-code OLD_CODE --probe-output FRESH_OPTIMIZED
+    --debug-performance-probe --debug-deterministic-numerics [original GPU6 arguments]
+  python -B tools/run_v24_memory_reclamation_continuation.py --action train
+    --source-output OLD_OUTPUT --source-code OLD_CODE
+    --probe-baseline FRESH_CONTROL/result.json --probe-optimized FRESH_OPTIMIZED/result.json
+    [original GPU6 arguments]
+
+Old output/code must remain immutable. Prepare creates a disjoint new output.
+An actual cooperative PAUSED checkpoint is required; the separately verified
+original interrupted-RUNNING proof remains supported. This tool never pauses,
+signals or kills a worker. Root coordinates the resource guard and pause.
+
+Both DEBUG rows expose actual pressure_events, allocator_releases and complete
+profiles. Candidate profiles additionally contain measured GC/host/malloc wall
+times and coalescing counts. A cold parity pass without memory pressure does
+not demonstrate pressure reclamation throughput. observed_pressure_in_both is
+false in that case, and memory_reclamation_speedup_claimed remains false. A
+full original validation workload with matching U128/patients must provide the
+production timing evidence. No arbitrary warm-up, subset, cache cap, numerical
+tolerance or original fallback is introduced.
+
+Verification: AST for the three tools passed. Ten dedicated CPU fixture tests
+plus eight existing collected comparison tests passed (18 total,14.108sec).
+Fixtures are explicitly DEBUG synthetic scalar tensors/source identity copies;
+they do not represent the clinical inputs or production model. The cold fresh
+CPU subprocess proved actual preserved memory module/class/_GET captures by
+all dependent adapters. Agent6 independently reviewed source routing, target
+continuation identity, actual537 byte gate and production code preservation.
+Actual full128 CUDA probes, production resume and final training/evaluation
+are coordinated by root and were not executed by this author.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

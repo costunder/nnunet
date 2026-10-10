@@ -1,0 +1,358 @@
+"""DEBUG: actual full128 old versus coalesced memory reclamation parity probe.
+
+The complete production40epoch/calibration3repeat configuration is untouched.
+This explicit diagnostic uses the same four maximum-cost native patients,
+all their P+128U and real forward/loss/backward, with zero optimizer updates.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import sys
+import threading
+import time
+from types import MethodType
+
+ROOT=Path(__file__).resolve().parents[1]
+sys.dont_write_bytecode=True
+if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+CASES=('liver_6','liver_129','liver_123','liver_69')
+
+
+def parse_probe_options(argv):
+    parser=argparse.ArgumentParser(description=__doc__,add_help=False)
+    parser.add_argument('--variant',choices=('current-control','optimized'),required=True)
+    parser.add_argument('--source-output',type=Path,required=True)
+    parser.add_argument('--source-code',type=Path,required=True)
+    parser.add_argument('--source-interruption-proof',type=Path)
+    parser.add_argument('--probe-output',type=Path,required=True)
+    parser.add_argument('--debug-performance-probe',action='store_true',required=True)
+    parser.add_argument('--debug-deterministic-numerics',action='store_true',
+        help='DEBUG-only strict deterministic kernels; unsupported operators fail without fallback')
+    return parser.parse_known_args(argv)
+
+
+def configure_debug_environment(enabled):
+    """Called before importing Torch or initializing any CUDA context."""
+    if type(enabled) is not bool:raise TypeError('Explicit DEBUG numerics flag required')
+    if enabled:
+        loaded=sys.modules.get('torch')
+        if loaded is not None and loaded.cuda.is_initialized():
+            raise RuntimeError('DEBUG CUBLAS workspace requires a fresh pre-CUDA process')
+        os.environ['CUBLAS_WORKSPACE_CONFIG']=':4096:8'
+
+
+def numerical_flags(torch):
+    return dict(deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+        deterministic_warn_only=torch.is_deterministic_algorithms_warn_only_enabled(),
+        cudnn_deterministic=torch.backends.cudnn.deterministic,
+        cudnn_benchmark=torch.backends.cudnn.benchmark,
+        matmul_allow_tf32=torch.backends.cuda.matmul.allow_tf32,
+        cudnn_allow_tf32=torch.backends.cudnn.allow_tf32,
+        float32_matmul_precision=torch.get_float32_matmul_precision(),
+        CUBLAS_WORKSPACE_CONFIG=os.environ.get('CUBLAS_WORKSPACE_CONFIG'),
+        fill_uninitialized_memory=torch.utils.deterministic.fill_uninitialized_memory)
+
+
+def configure_debug_numerics(torch,enabled):
+    """After original build_runtime/configure_runtime; never a production edit."""
+    if type(enabled) is not bool:raise TypeError('Explicit DEBUG numerics flag required')
+    before=numerical_flags(torch)
+    if enabled:
+        if os.environ.get('CUBLAS_WORKSPACE_CONFIG')!=':4096:8':
+            raise ValueError('DEBUG CUBLAS workspace must be configured before CUDA initialization')
+        torch.use_deterministic_algorithms(True,warn_only=False)
+        torch.backends.cudnn.deterministic=True
+        torch.backends.cudnn.benchmark=False
+    after=numerical_flags(torch)
+    if any(before[key]!=after[key] for key in
+        ('matmul_allow_tf32','cudnn_allow_tf32','float32_matmul_precision')):
+        raise ValueError('DEBUG determinism must preserve original arithmetic precision')
+    return dict(debug_deterministic_numerics=enabled,original_after_build_flags=before,
+        actual_forward_flags=after,unsupported_operator_fallback=False,
+        production_config_modified=False,
+        strict_parity_scope='same explicit DEBUG kernel policy; original production trajectory equivalence is not claimed')
+
+
+class InputTensorObserver:
+    """Read every actual CPU batch/upper tensor; return inputs unmodified."""
+    def __init__(self,scorer,content_digest):
+        self.scorer=scorer;self.digest=content_digest;self.lock=threading.Lock()
+        self.local=[];self.upper=[];self.seconds=0.;self.references=[]
+        self.original_geometry=scorer.geometry
+        for partition,provider in scorer.providers.items():
+            original=provider.get
+            def observed(owner,ids,*,epoch=0,_original=original,_partition=partition):
+                batch=_original(ids,epoch=epoch);started=time.perf_counter()
+                payload=dict(graph=batch.graph.to_dict(),source_patches=batch.source_patches,
+                    target_patches=batch.target_patches,source_index=batch.source_index,
+                    graph_observation_index=batch.graph_observation_index,indices=batch.indices)
+                row=dict(partition=_partition,epoch=epoch,ordered_indices=list(ids),
+                    content_sha256=self.digest(payload),source_shape=list(batch.source_patches.shape),
+                    target_shape=list(batch.target_patches.shape),
+                    both_view_graphs=int(batch.graph.num_graphs),
+                    local_nodes=sum(store.num_nodes for store in batch.graph.node_stores),
+                    local_edges=sum(store.num_edges for store in batch.graph.edge_stores))
+                if batch.indices.tolist()!=list(ids) or row['both_view_graphs']!=2*len(ids):
+                    raise ValueError('Observed native batch lost actual ordered indices/two views')
+                with self.lock:self.local.append(row);self.seconds+=time.perf_counter()-started
+                return batch
+            self.references.append((provider,original,'get' in vars(provider)))
+            provider.get=MethodType(observed,provider)
+        observer=self
+        class GeometryObserver:
+            def __getattr__(self,name):return getattr(observer.original_geometry,name)
+            def __call__(self,plan,provider=None):
+                value=observer.original_geometry(plan,provider);started=time.perf_counter()
+                graph,prototype,audit=value
+                row=dict(case_id=plan.case_id,record_ids=list(plan.record_ids),
+                    content_sha256=observer.digest((graph.to_dict(),prototype.to_dict())))
+                with observer.lock:
+                    observer.upper.append(row);observer.seconds+=time.perf_counter()-started
+                return value
+        self.geometry=GeometryObserver();scorer.geometry=self.geometry
+
+    def proof(self,plans,*,epoch,physical_candidate_chunk):
+        if not plans or type(physical_candidate_chunk)is not int or physical_candidate_chunk<1:
+            raise ValueError('Complete plans and explicit native candidate chunk required')
+        partition=plans[0].partition;provider=self.scorer.providers[partition]
+        if any(plan.partition!=partition for plan in plans):
+            raise ValueError('Probe plans must use one unchanged partition')
+        lookup={row['id']:i for i,row in enumerate(provider.ds.rows)}
+        expected=[lookup[record_id] for plan in plans for record_id in plan.record_ids]
+        observed=[index for row in self.local for index in row['ordered_indices']]
+        schedule=[expected[start:start+physical_candidate_chunk]
+            for start in range(0,len(expected),physical_candidate_chunk)]
+        if (observed!=expected or any(row['partition']!=partition or row['epoch']!=epoch
+                for row in self.local) or [row['ordered_indices'] for row in self.local]!=schedule):
+            raise ValueError('Actual CPU tensor proof does not cover complete ordered native candidates')
+        if [(row['case_id'],row['record_ids']) for row in self.upper]!=[
+            (plan.case_id,list(plan.record_ids)) for plan in plans]:
+            raise ValueError('Actual CPU upper proof does not cover complete patient graphs')
+        content=dict(local_chunks=self.local,upper_graphs=self.upper)
+        return dict(format='v24_actual_full_CPU_input_tensor_proof_v1',complete=True,
+            every_actual_value_hashed=True,hash_memoization=False,ordered_records=len(expected),
+            both_sampled_views=True,epoch=epoch,physical_candidate_chunk=physical_candidate_chunk,
+            observed_native_chunks=len(self.local),expected_native_chunks=len(schedule),
+            observed_upper_graphs=len(self.upper),expected_upper_graphs=len(plans),
+            content=content,content_sha256=self.digest(content),
+            observation_wall_seconds=self.seconds,
+            observation_overhead_included_in_total_step_seconds=True,
+            no_raw_CT_or_input_tensor_files_written=True)
+
+    def close(self):
+        if self.scorer.geometry is not self.geometry:raise ValueError('Probe geometry observer changed')
+        self.scorer.geometry=self.original_geometry
+        for provider,original,had_instance in self.references:
+            if had_instance:provider.get=original
+            else:del provider.get
+
+
+def _sha(path):
+    value=hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for block in iter(lambda:stream.read(1024**2),b''):value.update(block)
+    return value.hexdigest()
+
+
+def current_runtime_provenance(source_code):
+    """Only memory reclamation bytes may differ from the preserved deployment."""
+    from tools.v24_memory_reclamation_gate import memory_runtime_provenance
+    return memory_runtime_provenance(source_code)
+
+
+def load_current_input_runtime(source_code, proof):
+    # The candidate and preserved input adapter are byte-identical. Its imports
+    # resolve the actually selected memory module, not a fabricated source hash.
+    if current_runtime_provenance(source_code)!=proof:
+        raise ValueError('Preserved memory-only provenance changed')
+    from hiercp_v1x import v24_input_runtime
+    if _sha(v24_input_runtime.__file__)!=proof['input_adapter_sha256']:
+        raise ValueError('Exact unchanged input adapter required')
+    return v24_input_runtime
+
+
+def main(argv=None):
+    options,remaining=parse_probe_options(argv)
+    configure_debug_environment(options.debug_deterministic_numerics)
+    if not options.debug_deterministic_numerics:
+        raise ValueError('Explicit strict DEBUG kernel policy required for memory-only parity')
+    from tools.v24_memory_reclamation_gate import route_memory_runtime
+    selected_memory_proof=route_memory_runtime(options.source_code,options.variant)
+    from tools.run_v24_all_p import parse,validate_config
+    args=parse(remaining)
+    if args.mode!='train':raise ValueError('Full original training config required for diagnostic')
+    os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID';os.environ['CUDA_VISIBLE_DEVICES']=str(args.gpu)
+    for name in ('OMP_NUM_THREADS','MKL_NUM_THREADS','OPENBLAS_NUM_THREADS','NUMEXPR_NUM_THREADS'):
+        os.environ[name]='1'
+    import psutil
+    process=psutil.Process()
+    if len(process.cpu_affinity())!=4:raise ValueError('Original four logical CPU IDs required')
+    import torch
+    torch.set_num_threads(1)
+    from tools.run_v24_memory_reclamation_continuation import admit
+    admission=admit(args,options.source_output,options.source_code,options.source_interruption_proof)
+    from hiercp_v1x.v24_training_continuation import inspect_continuation
+    source=inspect_continuation(args.output,options.source_code)
+    if source['latest']['status'] not in ('PAUSED','RUNNING'):
+        raise ValueError('Exact admitted paused or interrupted snapshot required for diagnostic')
+    if source['latest']['status']=='RUNNING' and options.source_interruption_proof is None:
+        raise ValueError('Interrupted source requires explicit verified interruption proof')
+    owner=json.loads((args.output/'training/training_identity.json').read_text())
+    saved=torch.load(args.output/'training/checkpoint_latest.pt',map_location='cpu',weights_only=False)
+    calibration=json.loads((args.output/'calibration.json').read_text())
+    physical=calibration['selected_physical_patient_batch'];chunk=calibration['selected_physical_candidate_batch']
+    trial=[row for row in calibration['trials'] if row.get('accepted')
+           and row['physical_patient_batch']==physical and row['physical_candidate_batch']==chunk]
+    if len(trial)!=1 or tuple(trial[0]['case_ids'])!=CASES or physical!=4 or chunk!=64:
+        raise ValueError('Original measured maximum-cost full128 diagnostic batch differs')
+    config=validate_config(json.loads(args.config.read_text()),args.gpu,args.stunet_checkpoint)
+    current_control_proof=(current_runtime_provenance(options.source_code)
+        if options.variant in ('current-control','optimized') else None)
+    from hiercp_v1x import v24_hash_runtime as hashes
+    hash_receipt=hashes.install() if options.variant in ('current-control','optimized') else None
+    from hiercp_v1x import v24_factory,v24_memory_runtime as memory,v24_prefetch_runtime as prefetch
+    from hiercp_v1x.v24_preparation_runtime import install_runtime
+    install_runtime(v24_factory);memory.install_memory_runtime(v24_factory)
+    prefetch_receipt=prefetch.install_runtime(memory) if options.variant in ('current-control','optimized') else None
+    input_runtime=None;input_runtime_receipt=None
+    if options.variant=='optimized':
+        from hiercp_v1x import v24_input_runtime as input_runtime
+        input_runtime_receipt=input_runtime.install_runtime(pin_final_outputs=True)
+    elif options.variant=='current-control':
+        input_runtime=load_current_input_runtime(options.source_code,current_control_proof)
+        input_runtime_receipt=input_runtime.install_runtime(pin_final_outputs=True)
+    if not torch.cuda.is_available() or torch.cuda.device_count()!=1:
+        raise RuntimeError('Real singleton CUDA required, no fallback')
+    properties=torch.cuda.get_device_properties(0);free,total=torch.cuda.mem_get_info()
+    if 'A6000' not in properties.name or free<=40*2**30:
+        raise ValueError('Original40GiB free A6000 budget required')
+    torch.cuda.set_per_process_memory_fraction(40*2**30/total)
+    from hiercp_v1x.historical_evaluation import ResourceBudget
+    from hiercp_v1x.u_bridge_training import capture_rng,restore_rng,digest,gradient_receipt,_groups
+    from hiercp_v1x.v24_training import optimizer_groups,_plans,_positive_indices,patient_balanced_objective
+    budget=ResourceBudget(40*2**30,64*2**30)
+    options.probe_output.mkdir(parents=True,exist_ok=False)
+    net,scorer,population,training_config,contract,close=v24_factory.build_runtime(args,config,budget)
+    observer=None;debug_numerics=None
+    try:
+        # The original factory has just reset cudnn/precision config. Apply the
+        # explicit DEBUG policy now, before the actual diagnostic forward.
+        debug_numerics=configure_debug_numerics(torch,options.debug_deterministic_numerics)
+        memory.bind_memory_runtime(scorer)
+        if options.variant in ('current-control','optimized'):prefetch.bind(scorer)
+        if input_runtime is not None:input_runtime_receipt=input_runtime.bind(scorer)
+        net.load_state_dict(saved['model'],strict=True);net.train()
+        scorer.physical_candidate_batch=chunk
+        optimizer=torch.optim.AdamW(optimizer_groups(net,training_config['training']))
+        optimizer.load_state_dict(saved['optimizer'])
+        scaler=torch.amp.GradScaler('cuda',enabled=training_config['training']['amp'])
+        scaler.load_state_dict(saved['scaler'])
+        restore_rng(saved['rank_rng'][0])
+        before_model=digest(net.state_dict());before_rng=digest(capture_rng())
+        before_optimizer=digest(optimizer.state_dict());before_scaler=digest(scaler.state_dict())
+        expected=source['latest']['numerical_state_sha256']
+        if (before_model!=expected['model'] or before_optimizer!=expected['optimizer']
+                or before_scaler!=expected['scaler'] or before_rng!=digest(saved['rank_rng'][0])):
+            raise ValueError('Actual model/optimizer/scaler/RNG must exactly match preserved checkpoint')
+        trainable=[parameter for parameter in net.parameters() if parameter.requires_grad]
+        optimizer_parameters=[parameter for group in optimizer.param_groups for parameter in group['params']]
+        if (len(trainable)!=537 or len(optimizer_parameters)!=len(trainable)
+                or len({id(parameter) for parameter in optimizer_parameters})!=len(trainable)
+                or {id(parameter) for parameter in optimizer_parameters}!={id(parameter) for parameter in trainable}):
+            raise ValueError('Actual complete GPU6 all537 trainable parameters must enter optimizer exactly once')
+        before_providers={key:provider.profile() for key,provider in scorer.providers.items()}
+        plans=_plans(population,list(CASES),128)
+        if len(plans)!=4 or any(plan.active_u_count!=128 for plan in plans):
+            raise ValueError('Complete actual four-patient allP+128U plans required')
+        observer=InputTensorObserver(scorer,hashes.tensor_digest)
+        optimizer.zero_grad(set_to_none=True);torch.cuda.reset_peak_memory_stats()
+        started=time.perf_counter()
+        # Epoch1 matches the original full128 maximum-cost calibration's seeds.
+        result=scorer(plans,epoch=1,training=True)
+        loss,terms=patient_balanced_objective(result.scores,[_positive_indices(plan) for plan in plans],result.consistency)
+        if not bool(torch.isfinite(loss)):raise FloatingPointError('Nonfinite native diagnostic loss')
+        scaler.scale(loss).backward();scaler.unscale_(optimizer);torch.cuda.synchronize()
+        seconds=time.perf_counter()-started
+        gradient=gradient_receipt(net,_groups(net))
+        if not gradient['finite'] or gradient['missing']:
+            raise FloatingPointError('Native diagnostic gradient nonfinite or disconnected: '+repr(gradient))
+        budget.check()
+        if digest(optimizer.state_dict())!=before_optimizer or digest(scaler.state_dict())!=before_scaler:
+            raise ValueError('DEBUG probe must preserve persisted optimizer/scaler state')
+        input_proof=observer.proof(plans,epoch=1,physical_candidate_chunk=chunk)
+        actual_flags=numerical_flags(torch)
+        if actual_flags!=debug_numerics['actual_forward_flags']:
+            raise ValueError('Explicit DEBUG numerical kernel policy changed during native forward')
+        tensors=dict(scores=tuple(score.detach().cpu() for score in result.scores),
+            consistency=result.consistency.detach().cpu(),loss=loss.detach().cpu(),
+            gradients={name:parameter.grad.detach().cpu() for name,parameter in net.named_parameters()
+                if parameter.requires_grad})
+        tensor_file=options.probe_output/'numerical_tensors.pt'
+        with tensor_file.open('xb') as stream:torch.save(tensors,stream)
+        proof=dict(format='v24_actual_full128_memory_reclamation_probe_DEBUG_v1',debug=True,diagnostic='actual_full128_forward_loss_backward_no_optimizer_update',
+            variant=options.variant,source_checkpoint=source['latest'],
+            probe_source_sha256=_sha(__file__),
+            original_training_identity_sha256=owner['identity_sha256'],
+            initial_model_sha256=before_model,initial_RNG_sha256=before_rng,
+            output_sha256=digest(tuple(score.detach().cpu() for score in result.scores)),
+            loss=float(loss.detach()),gradient_sha256=digest({name:parameter.grad.detach().cpu()
+                for name,parameter in net.named_parameters() if parameter.requires_grad}),
+            after_forward_model_sha256=digest(net.state_dict()),after_RNG_sha256=digest(capture_rng()),
+            case_ids=list(CASES),active_U=128,all_P_included=True,
+            physical_patient_batch=physical,physical_candidate_chunk=chunk,gradient_accumulation=1,
+            total_ranking_train_patients=65,actual_probe_patients=4,production_patient_subset_used=False,
+            production_optimizer_updates=0,production_calibration_repeats=3,diagnostic_batches=1,
+            seconds=seconds,workload=result.workload,gradient=gradient,
+            peak_CUDA_bytes=torch.cuda.max_memory_allocated(),RSS_bytes=process.memory_info().rss,
+            CPU_affinity=process.cpu_affinity(),GPU=properties.name,
+            provider_profiles_before=before_providers,
+            provider_profiles_after={key:provider.profile() for key,provider in scorer.providers.items()},
+            hash_runtime=hash_receipt,prefetch_runtime=prefetch_receipt,
+            input_runtime=input_runtime_receipt,
+            comparison_memory_runtime_provenance=current_control_proof,
+            memory_runtime_source_sha256=_sha(memory.__file__),
+            memory_runtime_module_path=str(Path(memory.__file__).resolve()),
+            memory_runtime=memory.bind_memory_runtime(scorer),
+            actual_memory_module_selection=selected_memory_proof,
+            memory_only_execution_change=True,
+            memory_performance_pressure_claimed=False,
+            trainable_parameter_schema={name:dict(shape=list(parameter.shape),dtype=str(parameter.dtype),numel=parameter.numel())
+                for name,parameter in net.named_parameters() if parameter.requires_grad},
+            original_named_trainable_parameter_count=len(trainable),
+            optimizer_contains_all_trainable_parameters_exactly_once=True,
+            initial_optimizer_sha256=before_optimizer,after_optimizer_sha256=digest(optimizer.state_dict()),
+            initial_scaler_sha256=before_scaler,after_scaler_sha256=digest(scaler.state_dict()),
+            input_runtime_profile=input_runtime.profile() if input_runtime is not None else None,
+            debug_numerics=debug_numerics,input_tensor_proof=input_proof,
+            input_tensor_proof_sha256=input_proof['content_sha256'],
+            ordered_CPU_input_sha256=input_proof['content_sha256'],
+            numerical_tensor_file=dict(path=str(tensor_file),raw_sha256=_sha(tensor_file),
+                content_sha256=digest(tensors),size=tensor_file.stat().st_size,
+                all_named_trainable_gradients=len(tensors['gradients']),no_model_update=True,
+                server_only=True,no_raw_CT=True),
+            model_contract=contract,full_training_or_evaluation_completion_claimed=False)
+        if inspect_continuation(args.output,options.source_code)!=source:
+            raise ValueError('Diagnostic changed the exact preserved continuation snapshot')
+        with (options.probe_output/'result.json').open('x') as stream:json.dump(proof,stream,indent=2,allow_nan=False)
+        print(json.dumps(dict(variant=options.variant,seconds=seconds,loss=proof['loss'],
+            result=str(options.probe_output/'result.json'),peak_CUDA_bytes=proof['peak_CUDA_bytes'],
+            exposed_CPU_wait=result.workload.get('CPU_timing',{}).get('cpu_input_exposed_wait_seconds'))),flush=True)
+    except Exception as error:
+        with (options.probe_output/'failure.json').open('x') as stream:
+            json.dump(dict(debug=True,variant=options.variant,error_type=type(error).__name__,
+                error=str(error),debug_numerics=debug_numerics,
+                unsupported_operator_fallback=False,production_optimizer_updates=0,
+                source_checkpoint=source['latest']),stream,indent=2,allow_nan=False)
+        raise
+    finally:
+        try:
+            if observer is not None:observer.close()
+        finally:close()
+
+
+if __name__=='__main__':main()

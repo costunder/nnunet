@@ -6,9 +6,11 @@ optimizer update, production stop or whole-epoch speed measurement.
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import stat
+import struct
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -81,6 +83,18 @@ def _equal_leaves(left, right, path='root', counts=None):
             raise ValueError('Actual NumPy bytes differ: ' + path)
         counts['numpy_arrays'] += 1
         counts['tensor_bytes'] += left.nbytes
+    elif isinstance(left,np.generic) or isinstance(right,np.generic):
+        if type(left) is not type(right) or left.dtype!=right.dtype or left.dtype.hasobject:
+            raise ValueError('NumPy scalar dtype differs or object data present: '+path)
+        if np.issubdtype(left.dtype,np.inexact) and (not np.isfinite(left) or not np.isfinite(right)):
+            raise ValueError('Nonfinite NumPy scalar leaf: '+path)
+        if left.tobytes()!=right.tobytes():
+            raise ValueError('Actual NumPy scalar bytes differ: '+path)
+    elif isinstance(left,float) or isinstance(right,float):
+        if type(left) is not type(right) or not math.isfinite(left) or not math.isfinite(right):
+            raise ValueError('Python float scalar type differs or Nonfinite value: '+path)
+        if struct.pack('!d',left)!=struct.pack('!d',right):
+            raise ValueError('Actual Python float scalar bytes differ: '+path)
     elif isinstance(left, dict) or isinstance(right, dict):
         if type(left) is not type(right) or left.keys() != right.keys():
             raise ValueError('Dictionary schema differs: ' + path)
@@ -188,10 +202,16 @@ def _actual_batch_contract(report, numerical):
         raise ValueError('Original native deep supervision weights and exact zero-weight head mapping required')
 
 
+def _scientific_source_contract(source, expected_names):
+    if set(source['source_files_sha256'])!=set(expected_names):
+        raise ValueError('Exact complete original scientific source file set required')
+
+
 def admit(baseline_path, optimized_path, output):
     import torch
     from tools.probe_v24_native_execution_cuda_debug import _hash_cpu_tensors
     from hiercp_v1x import v24_native_execution_runtime as runtime
+    from hiercp_v1x import v24_nnunet_cp as pipeline
     output = Path(output).absolute()
     if output.exists():
         raise FileExistsError('Fresh DEBUG admission output required; no overwrite')
@@ -236,13 +256,19 @@ def admit(baseline_path, optimized_path, output):
         raise ValueError('Actual source checkpoint stat differs from loaded probe source')
     saved = torch.load(checkpoint_proof['path'],map_location='cpu',weights_only=False)
     _recheck(checkpoint_proof)
-    _equal_leaves(saved['network_weights'],numericals[0]['initial_model'],'actual_source_checkpoint_weights')
+    if not isinstance(saved['network_weights'],dict) or saved['network_weights'].keys()!=numericals[0]['initial_model'].keys():
+        raise ValueError('Original checkpoint network state mapping keys differ from actual initialized model')
+    # Native Module.state_dict() is OrderedDict; the probe deliberately owns
+    # independent plain-dict CPU clones. Canonicalize only this source binding,
+    # preserving strict paired artifact container schemas everywhere else.
+    _equal_leaves(dict(saved['network_weights']),numericals[0]['initial_model'],'actual_source_checkpoint_weights')
     if (saved['current_epoch'] != left['source_epoch'] or saved['trainer_name'] != left['actual_loaded_checkpoint_binding']['trainer_name']
             or _hash_cpu_tensors(saved['optimizer_state']) != left['initial_optimizer_sha256']
             or saved['grad_scaler_state'] != left['initial_scaler']):
         raise ValueError('Actual source checkpoint optimizer/scaler/epoch proof differs')
     del saved
     source = left['original_source_proof']
+    _scientific_source_contract(source,pipeline.FILES)
     for name,digest in source['source_files_sha256'].items():
         relative = Path(name)
         if relative.is_absolute() or '..' in relative.parts:

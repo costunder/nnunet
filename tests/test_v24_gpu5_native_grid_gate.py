@@ -96,6 +96,43 @@ class NativeGridObservedEnvelopeCPUUnit(unittest.TestCase):
         for policy in native.POLICIES:
             with self.subTest(policy=policy), self.assertRaises(native.NativeGradientEnvelopeError): self.compare(policy)
 
+    def test_native_support_global_max_is_explicit_and_keeps_tensor_failures_visible(self):
+        first, second = 'CPU_UNIT_parameter_0', 'CPU_UNIT_parameter_1'
+        for values in self.values:
+            values['gradients'][first] = torch.zeros(1)
+            values['gradients'][second] = torch.zeros(1)
+        self.values[1]['gradients'][first] = torch.tensor([2.])
+        self.values[1]['gradients'][second] = torch.tensor([.1])
+        self.values[2]['gradients'][second] = torch.tensor([.2])
+        result = self.compare('native-support-global-max')
+        evidence = result['gradient_envelope']
+        self.assertEqual(evidence['global_original_repeat_max_absolute_difference'], 2.)
+        self.assertFalse(evidence['per_tensor_envelope_guaranteed'])
+        self.assertEqual(evidence['per_tensor_max_RMS_failed_tensors'], 1)
+        self.values[2]['gradients'][second] = torch.tensor([3.])
+        with self.assertRaises(native.NativeGradientEnvelopeError): self.compare('native-support-global-max')
+
+    def test_native_support_global_max_rejects_new_variable_parameter(self):
+        self.values[1]['gradients']['CPU_UNIT_parameter_0'] = torch.tensor([2.])
+        self.values[2]['gradients']['CPU_UNIT_parameter_1'] = torch.tensor([.01])
+        with self.assertRaises(native.NativeGradientEnvelopeError): self.compare('native-support-global-max')
+
+    def test_preserved_memory_selection_requires_actual_probe_contracts(self):
+        selection=dict(actual_contract={'CPU_UNIT_source':'old_allocator'})
+        for row in self.all_rows:
+            row['provider_profiles_after']={'train':dict(memory_runtime=dict(
+                contract=selection['actual_contract'],RSS_limit_bytes=64*2**30,profile=dict(strict_failures=0)))}
+        self.persist()
+        with patch.object(gate,'_PRESERVED_MEMORY_SELECTION',None), patch(
+                'tools.v24_memory_reclamation_gate.route_memory_runtime',return_value=selection):
+            self.assertEqual(gate.select_preserved_probed_memory(self.fixture.root,self.all_paths),selection)
+            self.all_rows[2]['provider_profiles_after']['train']['memory_runtime']['contract']={'CPU_UNIT_source':'unmeasured_allocator'}
+            self.persist()
+            with self.assertRaisesRegex(ValueError,'actually measured'):
+                gate.select_preserved_probed_memory(self.fixture.root,self.all_paths)
+        with self.assertRaisesRegex(ValueError,'distinct'):
+            gate.select_preserved_probed_memory(self.fixture.root,[self.paths[0]]*3)
+
     def test_forward_loss_and_consistency_never_use_gradient_envelope(self):
         saved = copy.deepcopy(self.values[2])
         for name in ('loss', 'consistency'):

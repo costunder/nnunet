@@ -1,0 +1,106 @@
+GPU6 RSS 메모리 회수 묶음 실행 개선 — 2026-10-10
+
+이 변경은 비활성 입력 캐시를 정리하는 실행 정책만 수정한다. 모델, loss,
+graph/data/sampling 계약, physical batch 4, candidate chunk 64, full128 입력,
+40 epoch와 원형 4 CPU/RAM 64 GiB 제한은 유지한다. 반복 캐시 정리 중 새
+tensor/patch/workspace를 만들거나 메모리 한도를 늘리지 않는다.
+
+실제 병목 근거
+
+원형 source818 GPU6 production epoch12 full_validation의 liver_17/19/22/25
+배치는 총 191.43693686136976초, 입력 get 190.97614763258025초,
+노출 CPU wait 186.61042402405292초였다. 동일 구간의 인접 production
+profile 누적 카운터 차이는 pressure_events +3, allocator_releases +121,
+view_evictions +118, gc_collected +2283, malloc_trim_calls +121,
+released_cache_logical_bytes +1,343,615,440이었다.
+pressure_reclaim_seconds 증가는 155.5029098689556초였고
+pressure_lock_wait_seconds 증가는 0.000003269873559474945초였다.
+회수 비용이 실제 이 구간의 큰 병목임을 확인했다. GC, host allocator,
+malloc_trim 각각의 시간은 이전 profile에 없었으므로 각 비용을 추측하여
+분배하지 않는다. 새 runtime은 이 세 단계와 전체 회수 시간을 기록한다.
+
+이 근거는 checkpoint/pickle/tensor를 원격 역직렬화하지 않고 기존 JSON
+profile과 로그만 읽어 저장한 다음 파일에서 추출했다.
+outputs/v24_20261010/optimizer_pipeline_readonly_1791626097300293500.json
+outputs/v24_20261010/gpu6_pressure_existing_1791626180919453600.json
+당시 GPU6는 RTX A6000 46068 MiB, CPU affinity 32–35, RSS 64 GiB 제한이다.
+실제 RSS 최대 관측값은 53,848,989,696 bytes, strict 실패는 0이었다.
+
+알고리즘과 보호 조건
+
+1. 기존 soft trigger와 목표 RSS 계산을 유지한다. limit 64 GiB/resident
+   32 GiB일 때 trigger 48 GiB, target 47 GiB다. 압력이 처음 감지되면
+   기존 gc.collect, 비활성 pinned host cache release, malloc_trim을 한 번
+   그대로 실행한다. GC를 끄거나 hard limit 검사를 건너뛰지 않는다.
+2. 실제 RSS가 target을 초과하면 fresh RSS-target을 필요한 정리량으로
+   사용한다. 기존 view→record 순서와 각 provider의 원형 LRU/protection
+   규칙으로 캐시 소유권을 제거한다. 한 provider round 전체를 기존
+   순서로 끝내며, ledger에서 감소한 실제 소유 bytes만 누적한다.
+3. 누적 logical bytes가 필요한 정리량에 도달하거나 그 category의
+   비활성 entry가 소진되면 allocator 회수를 한 번 수행한다. 실제 RSS를
+   다시 읽고 여전히 target보다 크면 같은 category에서 반복한다.
+   logical bytes를 실제 RSS 감소로 간주하지 않는다. 고정 eviction
+   개수, collection cap, graph/sample cap을 추가하지 않는다.
+4. 외부 raw/geometry 캐시도 기존 제거 순서와 nonblocking lock 방식으로
+   같은 경계만 적용한다. 잠금을 얻지 못하고 제거할 entry가 없으면
+   반복을 끝내며, spin이나 lock 대기를 새로 만들지 않는다.
+5. 모든 경로의 마지막 실제 RSS strict guard는 유지한다. zero logical
+   bytes/shared storage는 유한한 inactive cache를 정리한 뒤 실제 회수와
+   RSS 재확인을 거친다. active/live owner 때문에 RSS가 64 GiB를 넘으면
+   기존 MemoryError를 명시적으로 발생시킨다. 오류를 숨기지 않는다.
+
+보호 중인 record/view, live 반환 입력, sampling/augmentation RNG,
+CUDA stream/event가 보유한 host block은 제거하지 않는다. 비활성 캐시의
+정리 개수와 residency 일정은 달라질 수 있으나 원형 재구성 경로를
+유지한다. 실제 수치 동등성은 전체 입력과 전체 named gradient gate로
+별도 확인해야 하며 CPU 정책 테스트만으로 이를 완료했다고 주장하지 않는다.
+
+확인 상태와 적용 조건
+
+구현 파일은 hiercp_v1x/v24_memory_runtime.py이며 기존 public API와
+bind/install 경로를 유지했다. frozen v24_input_runtime 및 기존 shared
+performance probe/continuation은 수정하지 않았다. FORMAT은
+v24_exact_input_lifetime_RSS_reclamation_runtime_v2다.
+
+CPU DEBUG memory 단위 테스트 22개가 통과했다. 실제 GT-free fixture의
+protected entry/live 반환 tensor/RNG/재구성 동등성을 확인했고, 정책
+fixture에서 provider 순서, view→record 순서, logical/RSS 불일치,
+zero-byte alias, 외부 lock 실패와 strict overflow, 원형 예외 전파를
+검증했다. 정책 fixture는 실제 production 입력으로 보고하지 않는다.
+공유 입력/source-chunk/prefetch/hash/preparation/기존 strict gate를 포함한
+통합 회귀 검사 127개도 39.651초에 통과했다. 단위 테스트의 실제 fixture는
+CPU DEBUG 검증이며 전체 CUDA 학습 완료나 throughput 측정이 아니다.
+
+새 counter는 allocator_release_wall_seconds, gc_wall_seconds,
+inactive_host_release_wall_seconds, malloc_trim_wall_seconds,
+provider_coalescing_batches, provider_coalesced_evictions,
+provider_coalesced_logical_bytes, external_coalescing_batches,
+external_coalesced_logical_bytes다. 기존 receipt.profile에 누적값으로
+기록하며 모델 연산에 영향을 주는 설정은 추가하지 않았다.
+
+production 실행은 기존 결과를 덮어쓰지 않는 별도 원형/candidate DEBUG
+full128 probe에서 전체 입력/출력/loss/all537 gradients/model/RNG와
+checkpoint optimizer/scaler 상태를 검증한 뒤 root가 적용을 조율한다.
+새 후보의 실제 throughput 개선, production optimizer 진행, 전체 학습과
+전체 평가는 이 문서 작성 시점에 완료하지 않았다. 기존 input reuse
+개선의 strict gate 및 production 업데이트 증거를 새 memory 개선의
+검증 결과로 재사용하지 않는다.
+
+아래 미체크 항목은 새 memory 후보의 실제 full128 CUDA numerical gate와
+production optimizer update 증거가 아직 필요하다는 의미다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

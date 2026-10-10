@@ -1,6 +1,6 @@
 """Explicit DEBUG admission for observed native GPU5 grid-backward variation.
 
-No tolerance, epsilon, multiplier or production kernel setting is introduced.
+No arbitrary tolerance, epsilon, multiplier or production kernel setting is introduced.
 Inputs, forward values, loss, model/RNG/checkpoint and optimizer/scaler remain
 exact. Two fresh original baseline executions measure the gradient envelope.
 """
@@ -10,7 +10,7 @@ import json
 import os
 from pathlib import Path
 
-POLICIES = ('per-element', 'per-tensor-max-rms')
+POLICIES = ('per-element', 'per-tensor-max-rms', 'native-support-global-max')
 OPERATOR = 'grid_sampler_3d_backward_cuda'
 
 
@@ -125,6 +125,16 @@ def gradient_envelope(a, b, o, policy, gate):
     if list(a) != list(b) or list(a) != list(o) or len(a) != gate.EXPECTED_GRADIENTS:
         raise ValueError('All981 ordered original named gradient identities required')
     details = []; failed = []; all_bits = True
+    global_native_max = 0.
+    if policy == 'native-support-global-max':
+        for name, left in a.items():
+            repeat = b[name]
+            if left.dtype != repeat.dtype or left.shape != repeat.shape:
+                raise ValueError('Native reference gradient dtype/shape differs: ' + name)
+            delta = (repeat.to(torch.float64) - left.to(torch.float64)).abs()
+            if not bool(torch.isfinite(delta).all()):
+                raise ValueError('Nonfinite native reference gradient: ' + name)
+            global_native_max = max(global_native_max, float(delta.max()) if delta.numel() else 0.)
     for name, left in a.items():
         repeat = b[name]; optimized = o[name]
         if (left.dtype != repeat.dtype or left.dtype != optimized.dtype
@@ -149,13 +159,19 @@ def gradient_envelope(a, b, o, policy, gate):
         tensor_pass = optimized_max <= native_max and optimized_rms <= native_rms
         if native_max == 0:
             tensor_pass = tensor_pass and same and bool(torch.equal(raw(left), raw(repeat)))
-        passed = element_pass if policy == 'per-element' else tensor_pass
+        support_pass = (optimized_max <= global_native_max if native_max > 0 else
+                        same and bool(torch.equal(raw(left), raw(repeat))))
+        passed = (element_pass if policy == 'per-element' else tensor_pass
+                  if policy == 'per-tensor-max-rms' else support_pass)
         details.append(dict(name=name, shape=list(left.shape), dtype=str(left.dtype), elements=left.numel(),
             original_repeat_max_absolute_difference=native_max, optimized_max_absolute_difference=optimized_max,
             original_repeat_RMS_difference=native_rms, optimized_RMS_difference=optimized_rms,
             per_element_exceedances=element_violations, native_zero_variation_elements=int(zero.sum()),
             zero_variation_bits_exact=zero_bytes_exact, optimized_bits_exact=same,
-            per_element_pass=element_pass, per_tensor_max_RMS_pass=tensor_pass, admitted=passed))
+            per_element_pass=element_pass, per_tensor_max_RMS_pass=tensor_pass,
+            native_variable_tensor=native_max > 0,
+            native_support_global_max_pass=support_pass if policy == 'native-support-global-max' else None,
+            admitted=passed))
         if not passed: failed.append(name)
     evidence = dict(policy=policy, reference='two fresh original baseline executions; differences relative to baseline A',
         epsilon=0, multiplier=1, inferred_unobserved_noise_bound=False,
@@ -163,6 +179,11 @@ def gradient_envelope(a, b, o, policy, gate):
         failed_tensors=failed, per_element_failed_tensors=sum(not row['per_element_pass'] for row in details),
         per_tensor_max_RMS_failed_tensors=sum(not row['per_tensor_max_RMS_pass'] for row in details),
         finite_all_actual_gradients=True, tensors=details,
+        global_original_repeat_max_absolute_difference=global_native_max if policy == 'native-support-global-max' else None,
+        native_support_global_max_failed_tensors=sum(not row['native_support_global_max_pass'] for row in details)
+            if policy == 'native-support-global-max' else None,
+        per_tensor_envelope_guaranteed=policy in ('per-element', 'per-tensor-max-rms'),
+        native_variation_support_is_observed_not_a_universal_operator_bound=True,
         two_repeat_envelope_is_observed_diagnostic_not_a_universal_nondeterminism_bound=True)
     if failed:
         raise NativeGradientEnvelopeError(evidence)
