@@ -267,6 +267,21 @@ class ViewerTest(unittest.TestCase):
         self.assertIn('stage e4 U7',terminal.bars[3].desc)
         self.assertIn('full128 e4 U128',terminal.bars[3].desc)
 
+    def test_tty_read_error_names_the_actual_file_and_parse_reason(self):
+        import io
+        stream=io.StringIO();terminal=watch.TerminalView(stream)
+        self.addCleanup(terminal.close)
+        path='/DEBUG_viewer_fixture/training/full_validation_epoch_015.json'
+        reason='JSONDecodeError: Expecting value: line 1 column 1 (char 0)'
+        terminal.render(dict(GPU=5,status='READ_ERROR',stage='full_validation',
+            stage_label='전체 validation',reports={},snapshot_fresh=False,
+            last_valid_snapshot_preserved=True,read_problem=dict(path=path,detail=reason)))
+        self.assertIn(path,terminal.bars[2].desc)
+        self.assertIn(reason,terminal.bars[2].desc)
+        self.assertIn('최근 정상 기록 보존',terminal.bars[2].desc)
+        self.assertIn(path,stream.getvalue())
+        self.assertIn(reason,stream.getvalue())
+
     def test_tty_renderer_explicitly_overrides_disabled_environment(self):
         import io, os
         with patch.dict(os.environ, {'TQDM_DISABLE':'1'}):

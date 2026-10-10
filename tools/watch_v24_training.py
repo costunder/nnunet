@@ -495,6 +495,9 @@ class TerminalView:
         if s.get('read_problem'):
             info.append('표시 기록 읽기 재시도; 최근 정상 기록 보존' if s.get('last_valid_snapshot_preserved')
                         else '완성된 표시 기록 대기')
+            if s['status'] == 'READ_ERROR':
+                problem = s['read_problem']
+                info.append('파일 '+problem['path']+' | 원인 '+problem['detail'])
         if s.get('loss') is not None:
             info.append(f"last train loss {s['loss']:.5f} upd{s['optimizer_updates']}")
         if s.get('RSS_GiB') is not None:
