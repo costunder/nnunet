@@ -20,12 +20,16 @@ from tests import test_v24_provider as fixture
 def installed(*,pin=True):
     original={key:memory._GET.__globals__[key] for key in ('materialize_pair','collate')}
     before=runtime._PIN_OUTPUTS
+    parallel=memory.MemorySafeInputProvider._parallel
+    own_parallel='_parallel' in vars(memory.MemorySafeInputProvider)
     try:
         with patch.object(torch.cuda,'is_initialized',return_value=False):
             runtime.install_runtime(pin_final_outputs=pin)
         yield
     finally:
         memory._GET.__globals__.update(original);runtime._PIN_OUTPUTS=before
+        if own_parallel:memory.MemorySafeInputProvider._parallel=parallel
+        else:del memory.MemorySafeInputProvider._parallel
 
 
 class OriginalInputRuntimeDebug(unittest.TestCase):

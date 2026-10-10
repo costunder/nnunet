@@ -25,7 +25,7 @@ _INTERRUPTION_KEYS={'format','source_output','source_code','GPU','uid','job','wo
 
 
 def compare_probes(baseline,optimized,checkpoint_sha256):
-    if (baseline.get('variant')!='baseline' or optimized.get('variant')!='optimized'
+    if (baseline.get('variant') not in ('baseline','current-control') or optimized.get('variant')!='optimized'
             or any(row.get('debug') is not True or row.get('production_optimizer_updates')!=0
                    or row.get('active_U')!=128 or row.get('all_P_included') is not True
                    or row.get('physical_patient_batch')!=4 or row.get('diagnostic_batches')!=1
@@ -65,12 +65,119 @@ def compare_probes(baseline,optimized,checkpoint_sha256):
         raise ValueError('Native diagnostic belongs to a different exact checkpoint')
     if any(row['gradient']['missing'] or not row['gradient']['finite'] for row in (baseline,optimized)):
         raise ValueError('Native gradients must be connected and finite')
+    incremental=baseline['variant']=='current-control';tensor_comparison=None
+    if incremental:
+        if chunk!=64:raise ValueError('Original GPU6 complete candidate chunk64 required')
+        provenance=baseline.get('comparison_current_runtime_provenance')
+        if (not isinstance(provenance,dict)
+                or provenance.get('format')!='v24_incremental_current_runtime_provenance_v1'
+                or provenance!=optimized.get('comparison_current_runtime_provenance')
+                or provenance.get('control_adapter_source_preserved') is not True
+                or baseline.get('input_runtime',{}).get('contract',{}).get('runtime_source_sha256')!=provenance.get('input_adapter_sha256')):
+            raise ValueError('Explicit preserved current-runtime provenance required for incremental comparison')
+        root=Path(__file__).resolve().parents[1]
+        if (optimized.get('input_runtime',{}).get('contract',{}).get('runtime_source_sha256')
+                !=_sha(root/'hiercp_v1x/v24_input_runtime.py')
+                or any(row.get('probe_source_sha256')!=_sha(root/'tools/run_v24_performance_probe.py')
+                    for row in (baseline,optimized))
+                or baseline.get('source_checkpoint')!=optimized.get('source_checkpoint')
+                or not baseline.get('model_contract')
+                or baseline['model_contract']!=optimized.get('model_contract')):
+            raise ValueError('Exact deployed candidate input/probe source and model/checkpoint proof required')
+        for key in ('initial_optimizer_sha256','after_optimizer_sha256','initial_scaler_sha256','after_scaler_sha256'):
+            if not isinstance(baseline.get(key),str) or len(baseline[key])!=64 or baseline[key]!=optimized.get(key):
+                raise ValueError('Actual optimizer/scaler state parity differs')
+        for row in (baseline,optimized):
+            expected=row.get('source_checkpoint',{}).get('numerical_state_sha256',{})
+            if (set(expected)!={'model','optimizer','scheduler','scaler','rank_rng','shuffle_generator'}
+                    or row.get('source_checkpoint',{}).get('optimizer_parameter_tensors')!=537
+                    or row.get('original_named_trainable_parameter_count')!=537
+                    or row.get('optimizer_contains_all_trainable_parameters_exactly_once') is not True
+                    or row.get('gradient',{}).get('trainable_parameter_tensors')!=537
+                    or row.get('gradient',{}).get('gradient_present')!=537
+                    or row['initial_model_sha256']!=expected['model']):
+                raise ValueError('Actual complete GPU6 model/optimizer/all537 gradient checkpoint proof required')
+            for name in ('optimizer','scaler'):
+                if (row['initial_'+name+'_sha256']!=row['after_'+name+'_sha256']
+                        or row['initial_'+name+'_sha256']!=expected[name]):
+                    raise ValueError('DEBUG persisted '+name+' state changed or differs from checkpoint')
+        profile=optimized.get('input_runtime_profile',{})
+        if any(profile.get(name)!=0 for name in ('source_live_chunks','source_cache_live_entries',
+                'source_cache_live_key_bytes','source_cache_live_result_bytes',
+                'source_cache_live_tree_visible_array_bytes')):
+            raise ValueError('Pure source chunk cache was not completely released')
+        tensor_comparison=compare_numerical_tensor_files(baseline,optimized,expected_gradients=537)
     return dict(status='ACTUAL_FULL128_OUTPUT_LOSS_GRADIENT_MODEL_RNG_EXACT_PASS',
         checkpoint_sha256=checkpoint_sha256,baseline_seconds=baseline['seconds'],
         optimized_seconds=optimized['seconds'],debug_single_batch_timing=True,
+        baseline_variant=baseline['variant'],incremental_previous_deployed_runtime=incremental,
+        numerical_tensor_comparison=tensor_comparison,
         ordered_CPU_input_sha256=baseline['ordered_CPU_input_sha256'],
         explicit_DEBUG_deterministic_kernels=True,production_numerical_policy_changed=False,
         full_training_completion_claimed=False)
+
+
+def compare_numerical_tensor_files(baseline,optimized,*,expected_gradients):
+    """Validate all stored scores/loss/consistency and every named gradient."""
+    import torch
+    from hiercp_v1x.u_bridge_training import digest
+    documents=[];proofs=[]
+    for row in (baseline,optimized):
+        proof=row.get('numerical_tensor_file',{});path=Path(proof.get('path',''))
+        if (not path.is_absolute() or path.is_symlink() or not path.is_file()
+                or proof.get('all_named_trainable_gradients')!=expected_gradients
+                or proof.get('no_model_update') is not True or proof.get('size')!=path.stat().st_size
+                or proof.get('raw_sha256')!=_sha(path)):
+            raise ValueError('Complete exact native numerical tensor artifact required')
+        before=path.stat();documents.append(torch.load(path,map_location='cpu',weights_only=True));after=path.stat()
+        if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)!=(
+                after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns) or proof['raw_sha256']!=_sha(path):
+            raise ValueError('Native numerical tensor artifact changed during comparison')
+        actual=documents[-1]
+        if (not isinstance(actual,dict) or set(actual)!={'scores','consistency','loss','gradients'}
+                or type(actual['scores']) is not tuple or len(actual['scores'])!=4
+                or not isinstance(actual['gradients'],dict) or len(actual['gradients'])!=expected_gradients
+                or any(type(name)is not str for name in actual['gradients'])):
+            raise ValueError('Complete four native score arrays and all named gradients required')
+        leaves=(*actual['scores'],actual['consistency'],actual['loss'],*actual['gradients'].values())
+        if any(type(value)is not torch.Tensor or value.device.type!='cpu' or value.layout!=torch.strided
+                or not bool(torch.isfinite(value).all()) for value in leaves):
+            raise ValueError('Actual native numerical artifacts must contain finite CPU tensors')
+        upper=row['input_tensor_proof']['content']['upper_graphs']
+        if (any(score.ndim!=1 or score.numel()!=len(graph.get('record_ids',[]))
+                for score,graph in zip(actual['scores'],upper))
+                or sum(score.numel() for score in actual['scores'])!=524):
+            raise ValueError('Actual score tensors must cover all524 ordered native candidates')
+        if (actual['loss'].numel()!=1 or float(actual['loss'])!=row.get('loss')
+                or digest(actual)!=proof.get('content_sha256')
+                or digest(actual['scores'])!=row.get('output_sha256')
+                or digest(actual['gradients'])!=row.get('gradient_sha256')):
+            raise ValueError('Actual numerical artifact values differ from probe receipt')
+        proofs.append(proof)
+    left,right=documents
+    if (set(left)!=set(right) or set(left)!={'scores','consistency','loss','gradients'}
+            or not isinstance(left['gradients'],dict) or not isinstance(right['gradients'],dict)
+            or len(left['gradients'])!=expected_gradients or set(left['gradients'])!=set(right['gradients'])):
+        raise ValueError('Complete score/loss/consistency and all named gradient schema required')
+    tensors=0
+    def equal(a,b):
+        nonlocal tensors
+        if isinstance(a,torch.Tensor):
+            if (not isinstance(b,torch.Tensor) or a.dtype!=b.dtype or a.shape!=b.shape
+                    or not torch.equal(a.detach().contiguous().reshape(-1).view(torch.uint8),
+                        b.detach().contiguous().reshape(-1).view(torch.uint8))):
+                raise ValueError('Actual native numerical tensor bits differ')
+            tensors+=1
+        elif isinstance(a,dict):
+            if not isinstance(b,dict) or set(a)!=set(b):raise ValueError('Native numerical tensor keys differ')
+            for key in a:equal(a[key],b[key])
+        elif isinstance(a,(tuple,list)):
+            if type(a)is not type(b) or len(a)!=len(b):raise ValueError('Native numerical tensor sequence differs')
+            for x,y in zip(a,b):equal(x,y)
+        else:raise TypeError('Unsupported native numerical artifact type')
+    equal(left,right)
+    return dict(all_tensors_bitwise_equal=True,all_named_trainable_gradients=expected_gradients,
+        tensor_count=tensors,maximum_numerical_difference=0,artifact_raw_SHA_verified=True)
 
 
 def _sha(path):
@@ -210,7 +317,7 @@ def _publish(path,value):
 
 def runtime_identity():
     from hiercp_v1x import v24_hash_runtime,v24_prefetch_runtime,v24_input_runtime
-    files=(Path(__file__).resolve(),Path(v24_hash_runtime.__file__).resolve(),
+    files=(Path(__file__).resolve(),ROOT/'tools/run_v24_performance_probe.py',Path(v24_hash_runtime.__file__).resolve(),
            Path(v24_prefetch_runtime.__file__).resolve(),Path(v24_input_runtime.__file__).resolve())
     return dict(files_sha256={str(path):_sha(path) for path in files},
         hash_contract=v24_hash_runtime.runtime_contract(),

@@ -3,6 +3,7 @@ import copy
 import json
 from pathlib import Path
 import time
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -161,6 +162,7 @@ class InterruptedSourceAdmissionDebug(unittest.TestCase):
             performance.prepare(self.args,self.old,self.code)
         self.assertFalse(self.args.output.exists())
 
+
     def test_normal_PAUSED_source_still_works_without_interruption(self):
         saved=copy.deepcopy(self.fixture.latest);saved['state']['status']='PAUSED'
         original_fixture._save(self.old/'training/checkpoint_latest.pt',saved)
@@ -223,6 +225,93 @@ class InterruptedSourceAdmissionDebug(unittest.TestCase):
         (self.old/'training/checkpoint_best.pt').rename(self.old/'training/actual_best_preserved.pt')
         with self.assertRaises(ValueError):self.prepare()
         self.assertFalse(self.args.output.exists())
+
+
+class IncrementalCurrentProbeDebug(NativeProbeAdmissionUnit):
+    """Synthetic CPU artifact metadata verifies the strict gate, never a model."""
+    def setUp(self):
+        super().setUp()
+        import torch
+        from hiercp_v1x.u_bridge_training import digest
+        self.directory=tempfile.TemporaryDirectory(prefix='v24_incremental_tensor_GATE_CPU_DEBUG_')
+        self.root=Path(self.directory.name)
+        provenance=dict(format='v24_incremental_current_runtime_provenance_v1',source_code='preserved-source',
+            input_adapter_sha256='2'*64,control_adapter_source_preserved=True)
+        self.baseline.update(variant='current-control',comparison_current_runtime_provenance=provenance,
+            input_runtime=dict(contract=dict(runtime_source_sha256='2'*64)))
+        self.optimized['comparison_current_runtime_provenance']=copy.deepcopy(provenance)
+        document=dict(scores=tuple(torch.arange(131,dtype=torch.float32) for _ in range(4)),
+            consistency=torch.tensor(.25),loss=torch.tensor(1.25),
+            gradients={f'CPU_GATE_fixture_parameter_{i}':torch.tensor([float(i)]) for i in range(537)})
+        document['scores'][0][0]=-0.
+        for row,name in ((self.baseline,'baseline.pt'),(self.optimized,'optimized.pt')):
+            row.update(initial_optimizer_sha256='3'*64,after_optimizer_sha256='3'*64,
+                initial_scaler_sha256='4'*64,after_scaler_sha256='4'*64,
+                probe_source_sha256=performance._sha(performance.ROOT/'tools/run_v24_performance_probe.py'),
+                model_contract=dict(DEBUG_CPU_GATE_fixture=True),
+                original_named_trainable_parameter_count=537,
+                optimizer_contains_all_trainable_parameters_exactly_once=True,
+                output_sha256=digest(document['scores']),gradient_sha256=digest(document['gradients']))
+            row['source_checkpoint'].update(optimizer_parameter_tensors=537,numerical_state_sha256=
+                dict(model=row['initial_model_sha256'],optimizer='3'*64,scaler='4'*64,
+                    scheduler='5'*64,rank_rng='6'*64,shuffle_generator='7'*64))
+            row['gradient'].update(trainable_parameter_tensors=537,gradient_present=537)
+            row['input_tensor_proof']['content']['upper_graphs']=[dict(record_ids=[str(i) for i in range(131)]) for _ in range(4)]
+            path=self.root/name
+            with path.open('xb') as stream:torch.save(document,stream)
+            row['numerical_tensor_file']=dict(path=str(path),raw_sha256=performance._sha(path),
+                size=path.stat().st_size,content_sha256=digest(document),all_named_trainable_gradients=537,no_model_update=True)
+        self.optimized['input_runtime']=dict(contract=dict(runtime_source_sha256=
+            performance._sha(performance.ROOT/'hiercp_v1x/v24_input_runtime.py')))
+        self.optimized['input_runtime_profile']={name:0 for name in ('source_live_chunks',
+            'source_cache_live_entries','source_cache_live_key_bytes','source_cache_live_result_bytes',
+            'source_cache_live_tree_visible_array_bytes')}
+
+    def tearDown(self):self.directory.cleanup()
+
+    def test_deployed_runtime_pass_reports_incremental_and_all537_bitwise(self):
+        result=compare_probes(self.baseline,self.optimized,'actual-snapshot')
+        self.assertTrue(result['incremental_previous_deployed_runtime'])
+        self.assertEqual(result['numerical_tensor_comparison']['all_named_trainable_gradients'],537)
+        self.assertTrue(result['numerical_tensor_comparison']['all_tensors_bitwise_equal'])
+
+    def test_original_chunk32_requires_all17_chunks(self):
+        for row in (self.baseline,self.optimized):
+            row['physical_candidate_chunk']=32
+            row['input_tensor_proof'].update(physical_candidate_chunk=32,observed_native_chunks=17,
+                expected_native_chunks=17,content=dict(local_chunks=[{} for _ in range(17)],
+                    upper_graphs=row['input_tensor_proof']['content']['upper_graphs']))
+        with self.assertRaisesRegex(ValueError,'GPU6 complete candidate chunk64'):
+            compare_probes(self.baseline,self.optimized,'actual-snapshot')
+
+    def test_stale_input_probe_sources_or_checkpoint_binding_are_rejected(self):
+        for mutate in (lambda row:row['input_runtime']['contract'].update(runtime_source_sha256='0'*64),
+                       lambda row:row.update(probe_source_sha256='0'*64),
+                       lambda row:row['source_checkpoint']['numerical_state_sha256'].update(scaler='9'*64),
+                       lambda row:row['gradient'].update(gradient_present=536)):
+            changed=copy.deepcopy(self.optimized);mutate(changed)
+            with self.assertRaises(ValueError):compare_probes(self.baseline,changed,'actual-snapshot')
+
+    def test_sign_bit_gradient_counts_source_lifetime_and_optimizer_update_are_rejected(self):
+        import torch
+        for key,value in (('initial_optimizer_sha256','5'*64),('after_optimizer_sha256','5'*64),
+                          ('initial_scaler_sha256','6'*64)):
+            changed=copy.deepcopy(self.optimized);changed[key]=value
+            with self.assertRaisesRegex(ValueError,'optimizer/scaler'):
+                compare_probes(self.baseline,changed,'actual-snapshot')
+        changed=copy.deepcopy(self.optimized);changed['input_runtime_profile']['source_cache_live_result_bytes']=4
+        with self.assertRaisesRegex(ValueError,'completely released'):
+            compare_probes(self.baseline,changed,'actual-snapshot')
+        changed=copy.deepcopy(self.optimized);changed['numerical_tensor_file']['all_named_trainable_gradients']=536
+        with self.assertRaisesRegex(ValueError,'numerical tensor artifact'):
+            compare_probes(self.baseline,changed,'actual-snapshot')
+        artifact=self.optimized['numerical_tensor_file'];path=Path(artifact['path'])
+        document=torch.load(path,weights_only=True);document['scores'][0][0]=0.
+        # Same float equality, different sign bit: exact parity must fail.
+        with path.open('wb') as stream:torch.save(document,stream)
+        artifact.update(raw_sha256=performance._sha(path),size=path.stat().st_size)
+        with self.assertRaisesRegex(ValueError,'values differ'):
+            compare_probes(self.baseline,self.optimized,'actual-snapshot')
 
 
 if __name__=='__main__':unittest.main()

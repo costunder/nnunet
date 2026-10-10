@@ -1,12 +1,14 @@
 """Exact input execution: pair-local attributes/radius and pinned collation.
 
 No neural features or epoch views are cached here. Attribute reuse lasts only
-for the two views of one record and returns independent storage on every hit.
+for a pair or complete donor tables in one input chunk and returns independent storage on every hit.
 The original sampler, collator, offsets, input validation and RNG run intact.
 """
 from __future__ import annotations
 
 import builtins
+from collections.abc import Mapping
+from concurrent.futures import Future
 import copy
 import hashlib
 import inspect
@@ -29,10 +31,12 @@ from . import v24_inputs as inputs
 from . import v24_memory_runtime as memory
 from . import transition_v1_local as local
 
-FORMAT='v24_exact_pair_local_attributes_radius_and_pinned_collate_runtime_v2'
+FORMAT='v24_exact_chunk_source_attributes_radius_and_pinned_collate_runtime_v3'
 _PAIR=inputs.materialize_pair
 _COLLATE=inputs.collate
 _LOCAL_COLLATE=local.collate
+_BASE_PARALLEL=memory._ORIGINAL_PROVIDER._parallel
+_BASE_PARALLEL_CODE=_BASE_PARALLEL.__code__
 _PYG_FROM_LIST=_Batch.from_data_list.__func__
 _ORIGINAL_CODES={function:function.__code__ for function in
     (_PAIR,_COLLATE,_LOCAL_COLLATE,_PYG_COLLATE,_PYG_LEAF,_PYG_FROM_LIST)}
@@ -62,6 +66,18 @@ _STATS=dict(materialize_calls=0,attribute_calls=0,attribute_memo_hits=0,
     radius_live_pairs=0,radius_live_result_bytes=0,radius_live_key_bytes=0,
     radius_live_tree_visible_array_bytes=0,radius_peak_live_result_bytes=0,
     radius_peak_live_key_bytes=0,radius_peak_live_tree_visible_array_bytes=0)
+_STATS.update(source_chunks_created=0,source_chunks_closed=0,source_live_chunks=0,
+    source_cache_calls=0,source_cache_hits=0,source_cache_misses=0,
+    source_cache_wait_seconds=0.,source_cache_compute_seconds=0.,
+    source_cache_snapshot_seconds=0.,source_cache_copy_seconds=0.,
+    source_cache_hash_seconds=0.,source_cache_failures=0,
+    source_cache_live_entries=0,source_cache_peak_live_entries=0,
+    source_cache_live_key_bytes=0,source_cache_peak_live_key_bytes=0,
+    source_cache_live_result_bytes=0,source_cache_peak_live_result_bytes=0,
+    source_cache_live_tree_visible_array_bytes=0,source_cache_peak_live_tree_visible_array_bytes=0,
+    source_attribute_calls=0,source_attribute_hits=0,source_attribute_misses=0,
+    source_radius_calls=0,source_radius_hits=0,source_radius_misses=0,
+    source_tree_calls=0,source_tree_hits=0,source_tree_misses=0)
 
 
 def _sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -82,6 +98,9 @@ def _guard_originals():
     if any(memory._ORIGINAL_PROVIDER._stat(path)!=proof
             for path,proof in _ORIGINAL_SOURCE_STATS.items()):
         raise ValueError('Original input or PyG source changed')
+    if (_BASE_PARALLEL.__code__ is not _BASE_PARALLEL_CODE
+            or memory._ORIGINAL_PROVIDER._parallel is not _BASE_PARALLEL):
+        raise ValueError('Original ordered parallel materialization changed')
     from scipy.spatial import cKDTree
     if (cKDTree is not _SCIPY_TREE or _SCIPY_TREE_MODULE.cKDTree is not _SCIPY_TREE
             or _SCIPY_TREE.query_ball_point is not _SCIPY_TREE_QUERY
@@ -222,12 +241,17 @@ def _attribute_key(bound):
     return value.digest()
 
 
-def _attribute_reuse(original):
+def _attribute_reuse(original,source_reuse=None):
     table={};signature=inspect.signature(original)
     def attributes(*args,**kwargs):
         started=time.perf_counter();bound=signature.bind(*args,**kwargs);bound.apply_defaults()
         key=_attribute_key(bound);hashed=time.perf_counter();_bump(attribute_calls=1,
             attribute_key_hash_seconds=hashed-started)
+        if key is not None and source_reuse is not None and source_reuse.attributes_admitted(bound):
+            result,hit=source_reuse.resolve('attribute',key,lambda:original(*args,**kwargs))
+            _bump(**({'attribute_memo_hits':1,'attribute_reused_output_bytes':result.nbytes}
+                if hit else {'attribute_memo_misses':1}))
+            return result
         if key is not None and key in table:
             result=table[key].copy(order='C');finished=time.perf_counter()
             _bump(attribute_memo_hits=1,attribute_reused_output_bytes=result.nbytes,
@@ -249,12 +273,138 @@ def _array_key(value):
     return digest.digest()
 
 
+def _source_memory(**changes):
+    with _LOCK:
+        for kind,value in changes.items():
+            name='source_cache_live_'+kind;_STATS[name]+=value
+            peak='source_cache_peak_live_'+kind
+            _STATS[peak]=max(_STATS[peak],_STATS[name])
+
+
+class _ChunkSourceReuse:
+    """Pure full donor tables only, shared for one ordered materialization call.
+
+    The original source/target sampling and RNG still execute for every view.
+    Target attributes, sampled context subsets, views and neural features never
+    enter this table. Every admitted key still hashes its actual complete input.
+    """
+    def __init__(self,records,*,RSS_guard=None):
+        self._lock=threading.Lock();self._entries={};self._closed=False
+        self._sizes=dict(entries=0,key_bytes=0,result_bytes=0,tree_visible_array_bytes=0)
+        self._features=set();self._positions=set();self._attribute_positions=set();self._RSS_guard=RSS_guard
+        started=time.perf_counter()
+        for record in records:
+            source=record.get('source_local') if isinstance(record,Mapping) else None
+            nodes=source.get('nodes') if isinstance(source,Mapping) else None
+            if not isinstance(nodes,Mapping):continue
+            for node in nodes.values():
+                if not isinstance(node,Mapping):continue
+                for name,target in (('x',self._features),('pos_mm',self._positions),('pos',self._attribute_positions)):
+                    # Unadmitted/malformed tables still reach the original pair
+                    # validator. Cache eligibility never becomes a new schema.
+                    value=node.get(name)
+                    if isinstance(value,torch.Tensor):
+                        if value.device.type!='cpu' or value.layout!=torch.strided:continue
+                        value=value.detach().numpy()
+                    if not isinstance(value,np.ndarray) or value.dtype.kind not in 'biuf':continue
+                    target.add(_array_key(np.asarray(value,dtype=np.float32)))
+        self._sizes['key_bytes']=sum(len(key) for table in
+            (self._features,self._positions,self._attribute_positions) for key in table)
+        _source_memory(key_bytes=self._sizes['key_bytes'])
+        _bump(source_chunks_created=1,source_live_chunks=1,
+            source_cache_hash_seconds=time.perf_counter()-started)
+
+    def attributes_admitted(self,bound):
+        started=time.perf_counter()
+        admitted=all(_array_key(bound.arguments[name]) in self._features
+            for name in ('source_features','destination_features'))
+        if admitted:
+            admitted=all(_array_key(bound.arguments[name]) in self._attribute_positions
+                for name in ('source_positions','destination_positions'))
+        _bump(source_cache_hash_seconds=time.perf_counter()-started)
+        return admitted
+
+    def radius_admitted(self,full_key):return full_key is not None and full_key in self._positions
+
+    def resolve(self,kind,key,compute):
+        namespaced=(kind,key);identity=threading.get_ident()
+        with self._lock:
+            if self._closed:raise RuntimeError('Chunk source reuse already released')
+            entry=self._entries.get(namespaced)
+            hit=entry is not None
+            if not hit:
+                entry=(Future(),identity);self._entries[namespaced]=entry
+                self._sizes['entries']+=1;self._sizes['key_bytes']+=len(key)
+                _source_memory(entries=1,key_bytes=len(key))
+            elif entry[1]==identity and not entry[0].done():
+                raise RuntimeError('Recursive identical source computation refused')
+        _bump(source_cache_calls=1,**{'source_'+kind+'_calls':1,
+            'source_cache_hits' if hit else 'source_cache_misses':1,
+            'source_'+kind+('_hits' if hit else '_misses'):1})
+        future=entry[0];started=time.perf_counter()
+        if not hit:
+            try:
+                result=compute();computed=time.perf_counter()
+                if self._RSS_guard is not None:self._RSS_guard()
+                snapshot=result.copy(order='C') if isinstance(result,np.ndarray) else result
+                sizes=(dict(result_bytes=snapshot.nbytes) if isinstance(snapshot,np.ndarray) else
+                    dict(tree_visible_array_bytes=int(snapshot.data.nbytes)+int(snapshot.indices.nbytes)))
+                with self._lock:
+                    for name,count in sizes.items():self._sizes[name]+=count
+                    _source_memory(**sizes)
+                if self._RSS_guard is not None:self._RSS_guard()
+                future.set_result(snapshot)
+                _bump(source_cache_compute_seconds=computed-started,
+                    source_cache_snapshot_seconds=time.perf_counter()-computed)
+                return result,False
+            except BaseException as error:
+                # A failing original computation is delivered to every waiter;
+                # no retry, empty output, approximation or CPU fallback occurs.
+                future.set_exception(error);_bump(source_cache_failures=1)
+                raise
+        snapshot=future.result();ready=time.perf_counter()
+        result=snapshot.copy(order='C') if isinstance(snapshot,np.ndarray) else snapshot
+        _bump(source_cache_wait_seconds=ready-started,
+            source_cache_copy_seconds=time.perf_counter()-ready)
+        return result,True
+
+    def close(self):
+        with self._lock:
+            if self._closed:return
+            if any(not future.done() for future,_ in self._entries.values()):
+                raise RuntimeError('Original materialization workers must finish before chunk release')
+            self._entries.clear();self._features.clear();self._positions.clear();self._attribute_positions.clear();self._closed=True
+            _source_memory(**{name:-count for name,count in self._sizes.items()})
+            self._sizes={name:0 for name in self._sizes};self._RSS_guard=None
+        _bump(source_chunks_closed=1,source_live_chunks=-1)
+
+
+def _parallel(self,function,items):
+    # The private original get has exactly this sampling lambda. Its ordered
+    # executor, exception/finally wait and record-loading call stay unchanged.
+    if (not isinstance(function,FunctionType)
+            or function.__globals__ is not memory._GET.__globals__
+            or function.__code__.co_names!=('materialize_pair',)):
+        return _BASE_PARALLEL(self,function,items)
+    if function.__globals__.get('materialize_pair') is not materialize_pair:
+        raise ValueError('Admitted chunk materializer changed')
+    def RSS_guard():
+        if self.coordinator._rss()>self.rss_bytes:
+            raise MemoryError('Complete pure source workspace exceeds unchanged shared RSS; no data reduction')
+    reuse=_ChunkSourceReuse([item[2] for item in items],RSS_guard=RSS_guard)
+    try:
+        namespace=dict(function.__globals__)
+        namespace['materialize_pair']=lambda record,*,epoch:_materialize_pair(record,epoch=epoch,source_reuse=reuse)
+        return _BASE_PARALLEL(self,_clone(function,namespace),items)
+    finally:reuse.close()
+
+
 class _PairRadius:
     """One pair only; original tree/query/unique code and context RNG intact."""
-    def __init__(self,original,tree_class):
+    def __init__(self,original,tree_class,source_reuse=None):
         self._results={};self._trees={};self._closed=False
         self._result_bytes=0;self._key_bytes=0;self._tree_visible_array_bytes=0
-        self._signature=inspect.signature(original);self._tree_class=tree_class
+        self._signature=inspect.signature(original);self._tree_class=tree_class;self._source_reuse=source_reuse
         namespace=dict(original.__globals__);namespace['cKDTree']=self._tree
         self.original=_clone(original,namespace)
         _bump(radius_live_pairs=1)
@@ -266,6 +416,14 @@ class _PairRadius:
         started=time.perf_counter();key=_array_key(data);hashed=time.perf_counter()
         _bump(radius_tree_calls=1,radius_tree_key_hash_seconds=hashed-started,
             radius_tree_input_bytes_hashed=data.nbytes if isinstance(data,np.ndarray) else 0)
+        if self._source_reuse is not None and self._source_reuse.radius_admitted(key):
+            def construct():
+                result=self._tree_class(np.array(data,copy=True,order='C'),*args,**kwargs)
+                _bump(radius_tree_builds=1,radius_tree_build_seconds=time.perf_counter()-hashed)
+                return result
+            result,hit=self._source_reuse.resolve('tree',key,construct)
+            if hit:_bump(radius_tree_hits=1)
+            return result
         if key is not None and key in self._trees:
             _bump(radius_tree_hits=1);return self._trees[key]
         # A float64 source may otherwise alias tree.data. Own an exact snapshot
@@ -296,6 +454,11 @@ class _PairRadius:
         hashed=time.perf_counter()
         _bump(radius_calls=1,radius_key_hash_seconds=hashed-started,
             radius_input_bytes_hashed=sum(value.nbytes for value in (full,query) if isinstance(value,np.ndarray)))
+        if key is not None and self._source_reuse is not None and self._source_reuse.radius_admitted(full_key):
+            result,hit=self._source_reuse.resolve('radius',key,lambda:self.original(*args,**kwargs))
+            _bump(**({'radius_memo_hits':1,'radius_reused_output_bytes':result.nbytes}
+                if hit else {'radius_memo_misses':1,'radius_original_compute_seconds':time.perf_counter()-hashed}))
+            return result
         if key is not None and key in self._results:
             result=self._results[key].copy(order='C')
             _bump(radius_memo_hits=1,radius_reused_output_bytes=result.nbytes,
@@ -315,6 +478,7 @@ class _PairRadius:
         if not self._closed:
             self._results.clear();self._trees.clear();self._closed=True
             self.original=None  # Break the private function->bound factory cycle.
+            self._source_reuse=None
             _radius_memory(result_bytes=-self._result_bytes,key_bytes=-self._key_bytes,
                 tree_visible_array_bytes=-self._tree_visible_array_bytes)
             self._result_bytes=self._key_bytes=self._tree_visible_array_bytes=0
@@ -322,13 +486,17 @@ class _PairRadius:
 
 
 def materialize_pair(record,*,epoch):
+    return _materialize_pair(record,epoch=epoch)
+
+
+def _materialize_pair(record,*,epoch,source_reuse=None):
     admitted=_sampler()
-    radius=_PairRadius(admitted['radius'],_SCIPY_TREE)
+    radius=_PairRadius(admitted['radius'],_SCIPY_TREE,source_reuse)
     started=time.perf_counter()
     try:
         namespace=dict(admitted['select_context'].__globals__);namespace['_radius_neighbor_ids']=radius
         select=_clone(admitted['select_context'],namespace)
-        build=_private_sampling_chain(admitted['build'],_attribute_reuse(admitted['attributes']),select)
+        build=_private_sampling_chain(admitted['build'],_attribute_reuse(admitted['attributes'],source_reuse),select)
         pair_namespace=_private_import(_PAIR,{('hiercp.sample',('build_local_view',),0):
             SimpleNamespace(build_local_view=build)})
         return _clone(_PAIR,pair_namespace)(record,epoch=epoch)
@@ -424,9 +592,9 @@ def runtime_contract():
         original_collator_and_PyG_code_preserved=True,
         PyG_leaf_code_sha256=hashlib.sha256(pyg_leaf.__code__.co_code).hexdigest(),
         PyG_from_list_code_sha256=hashlib.sha256(Batch.from_data_list.__func__.__code__.co_code).hexdigest(),
-        attribute_memo_scope='two views of one record only; discarded before return',
+        attribute_memo_scope='pair local plus complete static donor tables within one native chunk; all released before collate',
         attribute_memo_key='all exact argument bytes, dtype, shape, chunk size and overrides',
-        radius_memo_scope='two views of one record only; explicitly released before return or exception',
+        radius_memo_scope='pair local plus full donor coordinates within one native chunk; explicitly released before collate or exception',
         radius_memo_key='full/query exact bytes, dtype, shape and IEEE754 float radius',
         original_context_selection_and_radius_code_preserved=True,
         original_context_RNG_and_balanced_indices_executed=True,
@@ -435,6 +603,10 @@ def runtime_contract():
         original_cKDTree_constructor_kwargs={'compact_nodes':True,'balanced_tree':True},
         radius_memory_counters='key/result bytes and exposed tree data/indices only; C++ heap covered by original RSS guard',
         memo_hits_return_independent_C_order_storage=True,
+        source_chunk_single_flight=True,source_cache_full_donor_tables_only=True,
+        source_cache_target_attributes_and_sampled_context_subsets=False,
+        source_cache_original_worker_count_order_exception_wait_preserved=True,
+        source_cache_RSS_guard='unchanged declared process RSS limit checked on every new pure result/snapshot',
         all_edges_nodes_sampling_seeds_metadata_and_exceptions_preserved=True,
         pinned_final_outputs=_PIN_OUTPUTS,no_epoch_or_neural_cache=True,
         workers_data_model_or_batch_changed=False,shared_RSS_limit_changed=False)
@@ -445,11 +617,14 @@ def install_runtime(*,pin_final_outputs=True):
     _guard_originals()
     if type(pin_final_outputs)is not bool:raise TypeError('Explicit original pin policy required')
     if torch.cuda.is_initialized():raise RuntimeError('Input runtime requires a fresh pre-CUDA process')
+    if memory.MemorySafeInputProvider._parallel not in (_BASE_PARALLEL,_parallel):
+        raise ValueError('Foreign parallel materialization replacement refused')
     replacements={'materialize_pair':(_PAIR,materialize_pair),'collate':(_COLLATE,collate)}
     for key,(original,replacement) in replacements.items():
         if memory._GET.__globals__.get(key) not in (original,replacement):
             raise ValueError('Foreign original input helper refused: '+key)
     for key,(_,replacement) in replacements.items():memory._GET.__globals__[key]=replacement
+    memory.MemorySafeInputProvider._parallel=_parallel
     _PIN_OUTPUTS=pin_final_outputs
     return runtime_contract()
 

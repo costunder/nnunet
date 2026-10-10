@@ -10,6 +10,7 @@ import copy
 import os
 from pathlib import Path
 import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -238,6 +239,31 @@ class SourceOrdering(unittest.TestCase):
         self.assertNotIn('optimizer.step',calls);self.assertNotIn('scaler.step',calls)
         self.assertNotIn('native_scientific_equivalence_passed',source)
         self.assertIn('ordered_CPU_input_sha256',source)
+
+
+class CurrentDeployedRuntimeDebug(unittest.TestCase):
+    """CPU source admission fixture only; no native execution speed claim."""
+    def test_current_control_option_is_explicit_and_preserved_sources_are_bound(self):
+        options,remaining=probe.parse_probe_options(['--variant','current-control','--source-output','source',
+            '--source-code','code','--probe-output','probe','--debug-performance-probe'])
+        self.assertEqual(options.variant,'current-control');self.assertEqual(remaining,[])
+        from hiercp_v1x import v24_memory_runtime as memory
+        names=tuple(memory._SCIENCE_NAMES)+('v24_hash_runtime.py','v24_prefetch_runtime.py',
+            'v24_memory_runtime.py','v24_input_runtime.py')
+        with tempfile.TemporaryDirectory(prefix='v24_current_adapter_CPU_DEBUG_') as directory:
+            root=Path(directory);package=root/'hiercp_v1x';package.mkdir()
+            for name in names:(package/name).write_bytes((probe.ROOT/'hiercp_v1x'/name).read_bytes())
+            proof=probe.current_runtime_provenance(root)
+            module=probe.load_current_input_runtime(root,proof)
+            self.assertEqual(proof['input_adapter_sha256'],probe._sha(module.__file__))
+            self.assertIsNot(module.materialize_pair, __import__('hiercp_v1x.v24_input_runtime',
+                fromlist=['materialize_pair']).materialize_pair)
+            (package/'v24_input_runtime.py').write_text('# changed preserved adapter\n')
+            with self.assertRaisesRegex(ValueError,'provenance changed'):
+                probe.load_current_input_runtime(root,proof)
+            (package/'v24_prefetch_runtime.py').write_text('# changed baseline execution\n')
+            with self.assertRaisesRegex(ValueError,'unchanged scientific'):
+                probe.current_runtime_provenance(root)
 
 
 if __name__=='__main__':unittest.main()

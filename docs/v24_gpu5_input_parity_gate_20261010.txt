@@ -1,0 +1,77 @@
+GPU5 입력 실행 최적화 적용용 수치 동일성 검사 (2026-10-10)
+
+구현 범위
+GPU5 전용 run_v24_gpu5_performance_probe.py와 continuation.py를 추가했다.
+기존 GPU6와 공유하는 hash/prefetch/input adapter는 이 작업에서 수정하지 않았다.
+새 공유 입력 runtime이 준비되면 동일 API로 적용하며, source SHA를 prepare receipt에 고정한다.
+원형 scientific CLI/model/sampling/loss/config 파일 및 실행 중인 Python 프로세스를 변경하지 않았다.
+physical patient4, candidate chunk32, accumulation1, 40epoch, 전체65 train/21 validation,
+모든P와 stage별 전체U 및 full128 BEST 선택 계약을 유지한다.
+
+실제 적용 조건
+본 작업 소유 GPU5 프로세스의 정확한 PID/create_time/argv/소유권을 확인한 후,
+원형 STOP_AFTER_BATCH 저장 경계에서 PAUSED가 기록되고 CUDA가 비워진 경우에만 새 namespace를 준비한다.
+prepare는 원형 checkpoint exact-copy inspector를 사용한다. latest/BEST/model/AdamW/
+scheduler/scaler/RNG/shuffle state/history/curriculum/partial cursor와 원형 calibration을 그대로 승계한다.
+현재 원형 source output은 experiment_gpu5_exact_recovery_1791620958225425000,
+source code는 code_f22da14b6b91이며 f255 원형 scientific/runtime source와 동일한 복구 실행이다.
+기존 결과나 원본 상태를 덮어쓰지 않고 신호로 강제 종료하지 않는다.
+
+GPU5 native DEBUG probe와 gate
+원형 full CNN+GAT 모델과 같은 exact checkpoint를 사용한다.
+원형 maximum-cost 환자 liver_6/liver_129/liver_123/liver_69 네 명의 모든P+128U,
+524개 후보,1048개 sampled views,17개 chunk32와4개 upper graph의 모든 실제 CPU tensor를 해시한다.
+이 네 환자는 기존 physical batch calibration stress case이며 최종 학습 subset이 아니다.
+baseline/optimized 모두 명시적인 DEBUG deterministic kernel policy를 사용한다.
+production precision/kernel 설정은 그대로 유지하며 미지원 연산은 명시적인 오류로 처리한다.
+매 실제981 named trainable parameter가 AdamW에 한 번씩 포함되는지 확인한다.
+실제 forward/loss/backward 후981 gradients 모두 finite/connected이어야 한다.
+실제 loaded model/AdamW/scaler/RNG가 source checkpoint의 저장 값과 같아야 한다.
+optimizer update는0이며 검사 전후 persisted AdamW/scaler hash가 같아야 한다.
+보존한 checkpoint의6개 numerical state와 전체진행상태를 probe 종료 후 다시 검증한다.
+gate는 score524/loss/consistency와 모든981 gradients를 서버의 실제 tensor 파일에서 읽어
+shape/dtype를 확인한 뒤 uint8 표현을 비교한다. signed zero 차이도 거부한다.
+입력·output·loss·gradient·model·RNG·model contract·원형 checkpoint가 모두 같아야 train을 허용한다.
+gate/probe 자체 source 파일을 원형 training wrapper의 private globals clone을 통해
+기존 forward source guard에 추가한다. shared code object/global namespace와 원형학습코드는 변경하지 않는다.
+검사한 optimized input adapter의 SHA가 현재 prepare/train에서 admitted된 source SHA와 같아야 한다.
+optimized source chunk의 live chunk/entry/key/result/tree-visible bytes가 모두0이어야 적용한다.
+
+현재 확인된 자원
+outputs/v24_optimizer_20261010/resources_1791623181296792400.json의 읽기 관측에서
+GPU5는 RTX A6000(46068MiB), CPU42–45 네 개, RAM64GiB 계약을 사용한다.
+해당 시점 child RSS44.68GiB, GPU memory6641MiB, GPU point utilization0%였다.
+서버 전체 RAM1007.52GiB/available881.64GiB는 GPU5에 새로 할당된 용량이 아니다.
+namespace 스토리지 free22.55GiB이며 배포/검사/분리결과 쓰기에서 기존10GiB free guard를 유지한다.
+단일 point sample이므로 steady-state throughput/병목시간비율이나 peak로 표현하지 않는다.
+
+완료 및 미검증
+구현과3개 파일 AST 정적 검사 완료.
+신규 CPU UNIT12/12 통과(3.883초): 실제 tensor-file 값 변조,gradient 누락,
+원형 scheduler/optimizer/scaler 상태 변경, 다른GPU/chunk/검사source,
+불완전524 score/chunk coverage,파일 경로 바꿔치기,shape와signed zero 차이를 거부했다.
+측정한 input adapter source 변경,chunk live 계수 잔존 및누락을 거부했다.
+private training clone은 동일 code object이며 공유source/global/document를 변경하지 않고
+GPU5 own source guard를 추가함을 확인했다.
+CPU UNIT은 명시적인 synthetic fixture이며 실제 모델 성능이나 임상 예측 결과가 아니다.
+Windows sandbox에서 strict canonical-path 읽기가 거부돼, workspace 임시 fixture만 쓰는
+CPU UNIT을 automatic reviewer가 허용한 unsandboxed 실행으로 검증했다. 관리자 권한을 사용하지 않았다.
+실제 GPU5 full128 probe, steady-state 개선 측정, 새 runtime 학습 재개는 이 문서 작성 시 아직 미실행이다.
+전체40epoch 학습 완료 또는 전체test 평가 완료를 주장하지 않는다.
+신규 runtime의 최종 적용과 native 결과는 루트 담당자가 안전 경계와 배포를 조율하여 별도로 기록한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 원형 실측 calibration과4worker를 승계한다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 루트 담당자의 읽기 관측을 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이 작업에서 OOM은 발생하지 않았다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다. synthetic fixture는 CPU UNIT로만 분리했다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 실제GPU5 검사에서981개 전부 검증해야 적용한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

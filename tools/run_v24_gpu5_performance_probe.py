@@ -1,14 +1,14 @@
-"""DEBUG: one actual full128 calibrated physical batch parity and timing probe.
+"""GPU5 DEBUG: complete native full128 numerical/performance probe.
 
-The complete production40epoch/calibration3repeat configuration is untouched.
-This explicit diagnostic uses the same four maximum-cost native patients,
-all their P+128U and real forward/loss/backward, with zero optimizer updates.
+Runs the original full CNN+GAT, physical patient batch4 and candidate chunk32,
+allP+128U in both views for all four original calibration stress patients.
+No optimizer updates; unchanged original checkpoint, AdamW, scaler and RNG
+are verified before admitting the execution-only hash/prefetch/input adapters.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -25,7 +25,7 @@ CASES=('liver_6','liver_129','liver_123','liver_69')
 
 def parse_probe_options(argv):
     parser=argparse.ArgumentParser(description=__doc__,add_help=False)
-    parser.add_argument('--variant',choices=('baseline','current-control','optimized'),required=True)
+    parser.add_argument('--variant',choices=('baseline','optimized'),required=True)
     parser.add_argument('--source-output',type=Path,required=True)
     parser.add_argument('--source-code',type=Path,required=True)
     parser.add_argument('--source-interruption-proof',type=Path)
@@ -159,49 +159,13 @@ def _sha(path):
     return value.hexdigest()
 
 
-def current_runtime_provenance(source_code):
-    """Tie incremental timing to the exact previously deployed input adapter.
-
-    Hash/prefetch/memory/scientific bytes must match this execution tree. Only
-    the input adapter is allowed to differ, and its old bytes are loaded by the
-    explicit current-control variant. No production numerical flags change.
-    """
-    source=Path(source_code).resolve(strict=True)
-    from hiercp_v1x import v24_memory_runtime as memory
-    unchanged=tuple(memory._SCIENCE_NAMES)+('v24_hash_runtime.py','v24_prefetch_runtime.py',
-        'v24_memory_runtime.py')
-    proofs={}
-    for name in unchanged:
-        old=source/'hiercp_v1x'/name;current=ROOT/'hiercp_v1x'/name
-        if old.is_symlink() or _sha(old)!=_sha(current):
-            raise ValueError('Current-control requires unchanged scientific/memory/hash/prefetch bytes: '+name)
-        proofs[name]=_sha(old)
-    adapter=source/'hiercp_v1x/v24_input_runtime.py'
-    if adapter.is_symlink() or not adapter.is_file():raise ValueError('Exact current input runtime source required')
-    return dict(format='v24_incremental_current_runtime_provenance_v1',
-        source_code=str(source),input_adapter_path=str(adapter),input_adapter_sha256=_sha(adapter),
-        unchanged_source_sha256=proofs,control_adapter_source_preserved=True,
-        comparison_scope='previous deployed exact input adapter versus new donor chunk reuse')
-
-
-def load_current_input_runtime(source_code,proof):
-    actual=current_runtime_provenance(source_code)
-    if proof!=actual:raise ValueError('Preserved current adapter provenance changed')
-    spec=importlib.util.spec_from_file_location('hiercp_v1x._DEBUG_preserved_current_input_runtime',
-        proof['input_adapter_path'])
-    if spec is None or spec.loader is None:raise ValueError('Preserved current adapter cannot be loaded')
-    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    if _sha(module.__file__)!=proof['input_adapter_sha256']:
-        raise ValueError('Preserved current input runtime bytes changed during import')
-    return module
-
-
 def main(argv=None):
     options,remaining=parse_probe_options(argv)
     configure_debug_environment(options.debug_deterministic_numerics)
     from tools.run_v24_all_p import parse,validate_config
     args=parse(remaining)
-    if args.mode!='train':raise ValueError('Full original training config required for diagnostic')
+    if args.mode!='train' or args.gpu!=5:
+        raise ValueError('Original GPU5 full training config required for diagnostic')
     os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID';os.environ['CUDA_VISIBLE_DEVICES']=str(args.gpu)
     for name in ('OMP_NUM_THREADS','MKL_NUM_THREADS','OPENBLAS_NUM_THREADS','NUMEXPR_NUM_THREADS'):
         os.environ[name]='1'
@@ -210,7 +174,7 @@ def main(argv=None):
     if len(process.cpu_affinity())!=4:raise ValueError('Original four logical CPU IDs required')
     import torch
     torch.set_num_threads(1)
-    from tools.run_v24_performance_continuation import admit
+    from tools.run_v24_gpu5_performance_continuation import admit
     admission=admit(args,options.source_output,options.source_code,options.source_interruption_proof)
     from hiercp_v1x.v24_training_continuation import inspect_continuation
     source=inspect_continuation(args.output,options.source_code)
@@ -224,23 +188,18 @@ def main(argv=None):
     physical=calibration['selected_physical_patient_batch'];chunk=calibration['selected_physical_candidate_batch']
     trial=[row for row in calibration['trials'] if row.get('accepted')
            and row['physical_patient_batch']==physical and row['physical_candidate_batch']==chunk]
-    if len(trial)!=1 or tuple(trial[0]['case_ids'])!=CASES or physical!=4 or chunk!=64:
+    if len(trial)!=1 or tuple(trial[0]['case_ids'])!=CASES or physical!=4 or chunk!=32:
         raise ValueError('Original measured maximum-cost full128 diagnostic batch differs')
     config=validate_config(json.loads(args.config.read_text()),args.gpu,args.stunet_checkpoint)
-    current_control_proof=(current_runtime_provenance(options.source_code)
-        if options.variant in ('current-control','optimized') else None)
     from hiercp_v1x import v24_hash_runtime as hashes
-    hash_receipt=hashes.install() if options.variant in ('current-control','optimized') else None
+    hash_receipt=hashes.install() if options.variant=='optimized' else None
     from hiercp_v1x import v24_factory,v24_memory_runtime as memory,v24_prefetch_runtime as prefetch
     from hiercp_v1x.v24_preparation_runtime import install_runtime
     install_runtime(v24_factory);memory.install_memory_runtime(v24_factory)
-    prefetch_receipt=prefetch.install_runtime(memory) if options.variant in ('current-control','optimized') else None
+    prefetch_receipt=prefetch.install_runtime(memory) if options.variant=='optimized' else None
     input_runtime=None;input_runtime_receipt=None
     if options.variant=='optimized':
         from hiercp_v1x import v24_input_runtime as input_runtime
-        input_runtime_receipt=input_runtime.install_runtime(pin_final_outputs=True)
-    elif options.variant=='current-control':
-        input_runtime=load_current_input_runtime(options.source_code,current_control_proof)
         input_runtime_receipt=input_runtime.install_runtime(pin_final_outputs=True)
     if not torch.cuda.is_available() or torch.cuda.device_count()!=1:
         raise RuntimeError('Real singleton CUDA required, no fallback')
@@ -260,27 +219,28 @@ def main(argv=None):
         # explicit DEBUG policy now, before the actual diagnostic forward.
         debug_numerics=configure_debug_numerics(torch,options.debug_deterministic_numerics)
         memory.bind_memory_runtime(scorer)
-        if options.variant in ('current-control','optimized'):prefetch.bind(scorer)
+        if options.variant=='optimized':prefetch.bind(scorer)
         if input_runtime is not None:input_runtime_receipt=input_runtime.bind(scorer)
         net.load_state_dict(saved['model'],strict=True);net.train()
         scorer.physical_candidate_batch=chunk
         optimizer=torch.optim.AdamW(optimizer_groups(net,training_config['training']))
         optimizer.load_state_dict(saved['optimizer'])
+        expected_parameters={id(value) for value in net.parameters() if value.requires_grad}
+        optimizer_parameters=[id(value) for group in optimizer.param_groups for value in group['params']]
+        if (len(expected_parameters)!=981 or set(optimizer_parameters)!=expected_parameters
+                or len(optimizer_parameters)!=len(expected_parameters)):
+            raise ValueError('Every original981 trainable parameter must occur exactly once in AdamW')
+        initial_optimizer_sha256=digest(optimizer.state_dict())
         scaler=torch.amp.GradScaler('cuda',enabled=training_config['training']['amp'])
         scaler.load_state_dict(saved['scaler'])
+        initial_scaler_sha256=digest(scaler.state_dict())
         restore_rng(saved['rank_rng'][0])
         before_model=digest(net.state_dict());before_rng=digest(capture_rng())
-        before_optimizer=digest(optimizer.state_dict());before_scaler=digest(scaler.state_dict())
-        expected=source['latest']['numerical_state_sha256']
-        if (before_model!=expected['model'] or before_optimizer!=expected['optimizer']
-                or before_scaler!=expected['scaler'] or before_rng!=digest(saved['rank_rng'][0])):
-            raise ValueError('Actual model/optimizer/scaler/RNG must exactly match preserved checkpoint')
-        trainable=[parameter for parameter in net.parameters() if parameter.requires_grad]
-        optimizer_parameters=[parameter for group in optimizer.param_groups for parameter in group['params']]
-        if (len(trainable)!=537 or len(optimizer_parameters)!=len(trainable)
-                or len({id(parameter) for parameter in optimizer_parameters})!=len(trainable)
-                or {id(parameter) for parameter in optimizer_parameters}!={id(parameter) for parameter in trainable}):
-            raise ValueError('Actual complete GPU6 all537 trainable parameters must enter optimizer exactly once')
+        if (before_model!=source['latest']['numerical_state_sha256']['model']
+                or initial_optimizer_sha256!=source['latest']['numerical_state_sha256']['optimizer']
+                or initial_scaler_sha256!=source['latest']['numerical_state_sha256']['scaler']
+                or before_rng!=digest(saved['rank_rng'][0])):
+            raise ValueError('Actual loaded model/AdamW/scaler/RNG must equal the original checkpoint values')
         before_providers={key:provider.profile() for key,provider in scorer.providers.items()}
         plans=_plans(population,list(CASES),128)
         if len(plans)!=4 or any(plan.active_u_count!=128 for plan in plans):
@@ -295,11 +255,16 @@ def main(argv=None):
         scaler.scale(loss).backward();scaler.unscale_(optimizer);torch.cuda.synchronize()
         seconds=time.perf_counter()-started
         gradient=gradient_receipt(net,_groups(net))
+        if gradient['trainable_parameter_tensors']!=981 or gradient['gradient_present']!=981:
+            raise ValueError('All981 original GPU5 named trainable gradients are required')
+        after_optimizer_sha256=digest(optimizer.state_dict())
+        after_scaler_sha256=digest(scaler.state_dict())
+        if (initial_optimizer_sha256!=after_optimizer_sha256
+                or initial_scaler_sha256!=after_scaler_sha256):
+            raise ValueError('DEBUG probe changed persisted AdamW or scaler state without authorization')
         if not gradient['finite'] or gradient['missing']:
             raise FloatingPointError('Native diagnostic gradient nonfinite or disconnected: '+repr(gradient))
         budget.check()
-        if digest(optimizer.state_dict())!=before_optimizer or digest(scaler.state_dict())!=before_scaler:
-            raise ValueError('DEBUG probe must preserve persisted optimizer/scaler state')
         input_proof=observer.proof(plans,epoch=1,physical_candidate_chunk=chunk)
         actual_flags=numerical_flags(torch)
         if actual_flags!=debug_numerics['actual_forward_flags']:
@@ -312,9 +277,15 @@ def main(argv=None):
         with tensor_file.open('xb') as stream:torch.save(tensors,stream)
         proof=dict(debug=True,diagnostic='actual_full128_forward_loss_backward_no_optimizer_update',
             variant=options.variant,source_checkpoint=source['latest'],
-            probe_source_sha256=_sha(__file__),
             original_training_identity_sha256=owner['identity_sha256'],
             initial_model_sha256=before_model,initial_RNG_sha256=before_rng,
+            GPU_arm=5,original_named_trainable_parameter_count=981,
+            initial_optimizer_sha256=initial_optimizer_sha256,
+            after_optimizer_sha256=after_optimizer_sha256,
+            initial_scaler_sha256=initial_scaler_sha256,after_scaler_sha256=after_scaler_sha256,
+            optimizer_contains_all_trainable_parameters_exactly_once=True,
+            scheduler_and_shuffle_state_unchanged=True,
+            GPU5_probe_source_sha256=_sha(__file__),
             output_sha256=digest(tuple(score.detach().cpu() for score in result.scores)),
             loss=float(loss.detach()),gradient_sha256=digest({name:parameter.grad.detach().cpu()
                 for name,parameter in net.named_parameters() if parameter.requires_grad}),
@@ -330,11 +301,6 @@ def main(argv=None):
             provider_profiles_after={key:provider.profile() for key,provider in scorer.providers.items()},
             hash_runtime=hash_receipt,prefetch_runtime=prefetch_receipt,
             input_runtime=input_runtime_receipt,
-            comparison_current_runtime_provenance=current_control_proof,
-            original_named_trainable_parameter_count=len(trainable),
-            optimizer_contains_all_trainable_parameters_exactly_once=True,
-            initial_optimizer_sha256=before_optimizer,after_optimizer_sha256=digest(optimizer.state_dict()),
-            initial_scaler_sha256=before_scaler,after_scaler_sha256=digest(scaler.state_dict()),
             input_runtime_profile=input_runtime.profile() if input_runtime is not None else None,
             debug_numerics=debug_numerics,input_tensor_proof=input_proof,
             input_tensor_proof_sha256=input_proof['content_sha256'],

@@ -1,0 +1,75 @@
+v2.4 한 입력 청크의 원형 donor 계산 공유 (2026-10-10)
+
+구현 범위
+기존 GPU6은 한 후보의 두 view 안에서만 반경 탐색과 edge attribute를 재사용했다.
+동일 donor의 완전한 source tables가 여러 후보에서 반복되어도 후보 간에는 다시 계산했다.
+새 v24_input_runtime v3은 원형 provider.get의 materialize용 ordered _parallel 호출 한 번에
+한정하여 완전한 donor source table의 순수 계산을 네 worker가 공유한다.
+record load, original sampler 및 context RNG, 두 view의 seed, edge topology/순서,
+원형 collate/PyG offsets, epoch, physical patient4와 GPU5/6 candidate chunk32/64를 유지한다.
+
+source x/pos/pos_mm의 dtype/shape/실제 bytes에 해당하는 완전한 table만 admission한다.
+source attribute의 모든 인자, edge index, override, work tile을 매 호출 정확히 해시한다.
+radius는 전체 full/query coordinates와 float radius bytes를 매 호출 정확히 해시한다.
+_select_context와 _balanced_indices는 모든 view에서 원래대로 실행한다.
+선택된 context view, neural feature, RNG 상태 또는 epoch 결과를 캐시하지 않는다.
+Target 고유 table과 source context feature subset은 공유 attribute admission에 포함하지 않는다.
+이 policy는 캐시할 순수 계산만 지정하며 노드/엣지/후보/데이터를 제한하거나 버리지 않는다.
+
+동시 실행과 메모리
+single-flight Future는 동일 순수 계산을 한 worker만 실행하고 나머지 worker에 결과/원형 오류를 전달한다.
+worker나 input executor를 추가하지 않으며 원형 four-worker ordered executor의 finally cancel+wait를 유지한다.
+ndarray snapshot은 private copy로 보관하고 모든 hit에서 독립 C-order copy를 반환한다.
+tree는 owned source snapshot을 이용하며 원형 query만 readonly로 호출한다.
+새 result/snapshot마다 실제 RSS를 기존 declared limit과 확인한다. CPU4/RAM64GiB/GPU40GiB 한도를 높이지 않는다.
+원형 protected cache, _room, RSS pressure reclamation과 post-finally hard check를 계속 실행한다.
+모든 worker의 완료/실패를 기다린 뒤 finally에서 scope tables, trees, references를 collate 전에 해제한다.
+live entries, key/result/tree-visible bytes, peak 값, hash/compute/copy/wait 시간 및 실패 수를 기록한다.
+tree-visible bytes는 C++ heap 전체 추정치가 아니며 전체 실제 메모리는 RSS guard가 검사한다.
+
+검증 기준
+GPU6 신규 --variant current-control은 보존된 source-code의 실제 기존 adapter bytes를 private import한다.
+기존 source4aff와 신규코드의 scientific/memory/hash/prefetch files가 동일한지도 확인한다.
+단순 원형 baseline과의 총개선 대신 현재 배포된 adapter와 새 공유계산의 증분 비교를 할 수 있다.
+원형 physical4/chunk64, 최대부하 네 환자의 모든P+128U=524후보/1048view를 유지한다.
+모든 실제 CPU input, 네 upper graph, scores/consistency/loss, 모든537 named gradient,
+initial/after model과 RNG를 같게 요구한다. 이 DEBUG는 optimizer update0이며 production numerics를 변경하지 않는다.
+실제 loaded model/optimizer/scaler/RNG는 원형 checkpoint에 묶고 모든537 trainable parameter가
+optimizer에 정확히 한 번 들어 있는지 확인한다. persisted optimizer/scaler는 전후 불변이어야 한다.
+별도 numerical_tensors.pt의 raw SHA, size, 실제 content/output/gradient SHA, finite 값,
+네 score의 전체524 coverage와 receipt loss를 확인한 뒤 모든 tensor의 uint8 bits를 대조한다.
+optimized adapter 및 probe 자체 SHA를 현재 source에 묶어 stale probe 재사용을 거부한다.
+production admission에는 원형 여섯 checkpoint state와 BEST/cursor/history 보존도 계속 필요하다.
+
+로컬 검증 결과
+2026-10-10 CPU DEBUG 단위검사80/80 통과(28.083초).
+원형 실제 CPU graph fixtures에서 모든 값/metadata/순서/RNG/epoch별 parity,
+four-worker one-compute/독립 output snapshot, 모든 waiter's original error 전달,
+recursive same-key 거부, unfinished-worker release 거부, RSS 오류/회수,
+train view cache 없음과 모든 live scope/bytes 원복을 확인했다.
+보존 source/probe 변경, 누락 gradient, 남은 cache, optimizer/scaler 변경,
+실제 artifact/receipt 불일치 및 signed-zero bit 변경을 거부하는 gate도 확인했다.
+이 CPU 테스트는 실제 native CUDA 성능이나 전체 학습/평가가 아니다.
+서버의 실제 current-control/optimized full128 수치와 시간 측정 및 production 적용은 별도 증거가 필요하다.
+이 문서 작성 단계에서는 새 코드를 서버 학습에 적용하거나 프로세스를 종료하지 않았다.
+
+구현 파일 SHA256
+hiercp_v1x/v24_input_runtime.py: d80d44c0cfa9baac45199a23f50335e3c580b54c4762df720a0ec25811046c87
+tools/run_v24_performance_probe.py: fd4e00f5aeeac167fce3838635b6db9a10f575ceafff073dc803acbddf4c57b4
+tools/run_v24_performance_continuation.py: 92b12b6600819f56ed9c759eb7ce764bad5d0f664d5affc0d319077f6dac2a54
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 원형 physical4/chunk32 또는64와 four workers 유지.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. root의 실제 GPU6 A6000/CPU32-35/RAM64GiB 증거를 전달받음.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 신규 실행에 OOM 관측 없음.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다. 작은 CPU fixture는 UNIT 목적만 사용.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 원형 경로는 유지하고 실제 all537 strict probe 구현.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다. 새 source의 전체 서버 검증/적용은 root가 별도 진행.
