@@ -40,7 +40,30 @@ GPU1 nnUNet 재개는 원래 nnUNet checkpoint가 저장한 범위만 복구 가
 producer/consumer 겹침,1future 제한, Torch/NumPy 값·layout·변조 감지 및 원형 SHA 동일성.
 8개 중단 복구 검사는 실제 checkpoint fixture를 사용하여 원형6종 상태·partial evaluation cursor·BEST의
 정확한 byte 복사, 기존 RUNNING 보존, PID 재사용·부족한 snapshot·변경된 checkpoint/proof·잘못된 소유권 거부를 검증했다.
-정적 검사 통과. 서버 실제검사·적용 결과는 수행 후 기록한다.
+정적 검사 통과.
+첫 실제 full128 DEBUG의 hash/prefetch 수정만으로는 성능이 개선되지 않았다:
+원형76.566초→수정77.150초, loss0.0132737085→0.0132711269로 strict parity gate가 실패했다.
+해당 production 학습은 시작하지 않았고 optimizer update는0이었다.
+초기/종료 model·RNG는 같았지만 output/gradient가 달라 원형 CUDA 비결정성 여부를 별도 원형 control로 확인한다.
+새 DEBUG 비교만 명시적으로 deterministic kernels를 사용하며 production 수치 설정을 변경하지 않는다.
+매 실제 local graph/patch/index/두view와 upper graph/prototype 전체 tensor를 해시하고,
+9개 native chunks·4개 upper graphs·524후보·1048뷰의 순서와 실제 값이 동일해야 재개한다.
+미지원 deterministic 연산은 명시적 실패로 남기며 fallback이나 tolerance 완화는 하지 않는다.
+
+별도 CPU cProfile DEBUG는 동일4환자/524후보/1048뷰 전체로 수행했다.
+입력 생성52.730초, collate8.736초였으며 peak RSS11.86GiB였다.
+4 worker 누적 CPU시간 기준 radius/context 탐색56.804초, edge attribute41.550초,
+hash4.799초, collate torch.cat 자체6.687초였다. 중첩시간이므로 합산하지 않는다.
+pin 전후9개 chunks의 전체 CPU tensor 해시는 동일했다.
+이는 neural forward/backward가 없는 CPU profile이며 native throughput 결과로 제출하지 않는다.
+
+새 v24_input_runtime은 한 candidate의 두 sampled views 안에서 인자가 완전히 같은 edge attribute만
+exact-key로 재사용하고 별도 C-order copy를 반환한다. epoch 사이와 모델 출력을 캐시하지 않는다.
+원형 bounded/empty-context wrapper와 PyG collator의 실행 코드를 private clone하여
+원형 sampling/RNG/offset/metadata를 유지하고 final CPU cat/stack destination을 바로 pinned memory에 할당한다.
+일반 CPU tensor가 아닌 layout/gradient/out 입력은 원형 cat/stack 규칙을 그대로 사용한다.
+원형 source 파일은 변경하지 않으며 다른 identity/source의 실행을 거부한다.
+통합 CPU DEBUG 단위검사85/85 통과(28.878초); 실제 GPU 수치·속도 및 production 재개 결과는 다음에 기록한다.
 별도 DEBUG 성능 probe는 기존 최대부하 liver_6/liver_129/liver_123/liver_69의 모든P+128U,
 physical4와 실제 동일 모델·checkpoint로 forward/loss/backward를 수행하고 optimizer update는0이다.
 수정 전후 output/loss/모든gradient/model buffer/RNG가 정확히 같아야 production resume을 허용한다.

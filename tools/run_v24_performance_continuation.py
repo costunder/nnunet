@@ -33,9 +33,29 @@ def compare_probes(baseline,optimized,checkpoint_sha256):
         raise ValueError('Actual complete full128 diagnostic proof required')
     keys=('original_training_identity_sha256','initial_model_sha256','initial_RNG_sha256',
           'output_sha256','loss','gradient_sha256','after_forward_model_sha256','after_RNG_sha256',
-          'case_ids','physical_candidate_chunk')
+          'case_ids','physical_candidate_chunk','debug_numerics','ordered_CPU_input_sha256')
     if any(baseline.get(key)!=optimized.get(key) for key in keys):
         raise ValueError('Actual native output/loss/gradient/model/RNG parity differs')
+    for row in (baseline,optimized):
+        policy=row.get('debug_numerics',{})
+        flags=policy.get('actual_forward_flags',{})
+        proof=row.get('input_tensor_proof',{})
+        if (policy.get('debug_deterministic_numerics') is not True
+                or flags.get('deterministic_algorithms') is not True
+                or flags.get('deterministic_warn_only') is not False
+                or flags.get('CUBLAS_WORKSPACE_CONFIG')!=':4096:8'
+                or policy.get('production_config_modified') is not False
+                or policy.get('unsupported_operator_fallback') is not False
+                or proof.get('complete') is not True or proof.get('every_actual_value_hashed') is not True
+                or proof.get('both_sampled_views') is not True or proof.get('ordered_records')!=524
+                or proof.get('observed_native_chunks')!=9 or proof.get('expected_native_chunks')!=9
+                or proof.get('observed_upper_graphs')!=4 or proof.get('expected_upper_graphs')!=4
+                or len(proof.get('content',{}).get('local_chunks',[]))!=9
+                or len(proof.get('content',{}).get('upper_graphs',[]))!=4
+                or row.get('ordered_CPU_input_sha256')!=proof.get('content_sha256')
+                or not isinstance(proof.get('content_sha256'),str)
+                or len(proof['content_sha256'])!=64):
+            raise ValueError('Strict DEBUG kernels and complete actual CPU tensor proof required')
     if any(row['source_checkpoint']['raw_sha256']!=checkpoint_sha256 for row in (baseline,optimized)):
         raise ValueError('Native diagnostic belongs to a different exact checkpoint')
     if any(row['gradient']['missing'] or not row['gradient']['finite'] for row in (baseline,optimized)):
@@ -43,6 +63,8 @@ def compare_probes(baseline,optimized,checkpoint_sha256):
     return dict(status='ACTUAL_FULL128_OUTPUT_LOSS_GRADIENT_MODEL_RNG_EXACT_PASS',
         checkpoint_sha256=checkpoint_sha256,baseline_seconds=baseline['seconds'],
         optimized_seconds=optimized['seconds'],debug_single_batch_timing=True,
+        ordered_CPU_input_sha256=baseline['ordered_CPU_input_sha256'],
+        explicit_DEBUG_deterministic_kernels=True,production_numerical_policy_changed=False,
         full_training_completion_claimed=False)
 
 
@@ -182,12 +204,13 @@ def _publish(path,value):
 
 
 def runtime_identity():
-    from hiercp_v1x import v24_hash_runtime,v24_prefetch_runtime
+    from hiercp_v1x import v24_hash_runtime,v24_prefetch_runtime,v24_input_runtime
     files=(Path(__file__).resolve(),Path(v24_hash_runtime.__file__).resolve(),
-           Path(v24_prefetch_runtime.__file__).resolve())
+           Path(v24_prefetch_runtime.__file__).resolve(),Path(v24_input_runtime.__file__).resolve())
     return dict(files_sha256={str(path):_sha(path) for path in files},
         hash_contract=v24_hash_runtime.runtime_contract(),
         prefetch_contract=v24_prefetch_runtime.runtime_contract(),
+        input_contract=v24_input_runtime.runtime_contract(),
         model_sampling_loss_and_batch_unchanged=True,original_strict_resume=True)
 
 
@@ -257,6 +280,8 @@ def train(args,source_output,source_code,probe_baseline,probe_optimized,source_i
     install_runtime(v24_factory)
     memory.install_memory_runtime(v24_factory)
     installed_prefetch=prefetch.install_runtime(memory)
+    from hiercp_v1x import v24_input_runtime as input_runtime
+    installed_input=input_runtime.install_runtime(pin_final_outputs=True)
     calls=[]
     def bind(build):
         def bounded_build(*positional,**keywords):
@@ -267,6 +292,7 @@ def train(args,source_output,source_code,probe_baseline,probe_optimized,source_i
                 before_model=digest(net.state_dict());before_rng=digest(capture_rng())
                 bound_memory=memory.bind_memory_runtime(scorer)
                 bound_prefetch=prefetch.bind(scorer)
+                bound_input=input_runtime.bind(scorer)
                 inputs=scorer.geometry.memory_guard.__self__
                 for path in document['runtime']['files_sha256']:
                     item=Path(path);proof=inputs.geometry._file_identity(item)
@@ -278,6 +304,7 @@ def train(args,source_output,source_code,probe_baseline,probe_optimized,source_i
                 if digest(net.state_dict())!=before_model or digest(capture_rng())!=before_rng:
                     raise ValueError('CPU performance binding changed actual model or RNG')
                 row=dict(hash_runtime=installed_hash,prefetch_runtime=installed_prefetch,
+                    input_runtime=installed_input,input_binding=bound_input,
                     memory_binding=bound_memory,prefetch_binding=bound_prefetch,
                     model_and_RNG_unchanged=True,model_contract=model_contract,
                     original_training_identity_unchanged=True)

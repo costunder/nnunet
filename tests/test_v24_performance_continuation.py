@@ -20,6 +20,14 @@ class NativeProbeAdmissionUnit(unittest.TestCase):
             after_forward_model_sha256='model2',after_RNG_sha256='rng2',
             case_ids=['liver_6','liver_129','liver_123','liver_69'],physical_candidate_chunk=64,
             source_checkpoint=dict(raw_sha256='actual-snapshot'),
+            debug_numerics=dict(debug_deterministic_numerics=True,production_config_modified=False,
+                unsupported_operator_fallback=False,actual_forward_flags=dict(deterministic_algorithms=True,
+                deterministic_warn_only=False,CUBLAS_WORKSPACE_CONFIG=':4096:8')),
+            ordered_CPU_input_sha256='1'*64,
+            input_tensor_proof=dict(complete=True,every_actual_value_hashed=True,both_sampled_views=True,
+                ordered_records=524,content_sha256='1'*64,observed_native_chunks=9,expected_native_chunks=9,
+                observed_upper_graphs=4,expected_upper_graphs=4,
+                content=dict(local_chunks=[{} for _ in range(9)],upper_graphs=[{} for _ in range(4)])),
             gradient=dict(missing=[],finite=True),seconds=65.)
         self.optimized=copy.deepcopy(self.baseline);self.optimized.update(variant='optimized',seconds=30.)
 
@@ -34,6 +42,23 @@ class NativeProbeAdmissionUnit(unittest.TestCase):
             changed=copy.deepcopy(self.optimized);changed[key]='different'
             with self.subTest(key=key),self.assertRaises(ValueError):
                 compare_probes(self.baseline,changed,'actual-snapshot')
+
+    def test_unmeasured_inputs_or_relaxed_debug_kernels_never_admit(self):
+        for changed_field,value in (('complete',False),('ordered_records',523),
+                                    ('every_actual_value_hashed',False),('both_sampled_views',False),
+                                    ('observed_native_chunks',8),('expected_native_chunks',8),
+                                    ('observed_upper_graphs',3),('expected_upper_graphs',3),
+                                    ('content',dict(local_chunks=[{} for _ in range(8)],upper_graphs=[{} for _ in range(4)]))):
+            changed=copy.deepcopy(self.optimized);changed['input_tensor_proof'][changed_field]=value
+            with self.subTest(field=changed_field),self.assertRaisesRegex(ValueError,'CPU tensor proof'):
+                compare_probes(self.baseline,changed,'actual-snapshot')
+        for key,value in (('deterministic_algorithms',False),('deterministic_warn_only',True),
+                          ('CUBLAS_WORKSPACE_CONFIG',None)):
+            baseline=copy.deepcopy(self.baseline);optimized=copy.deepcopy(self.optimized)
+            baseline['debug_numerics']['actual_forward_flags'][key]=value
+            optimized['debug_numerics']['actual_forward_flags'][key]=value
+            with self.subTest(field=key),self.assertRaisesRegex(ValueError,'Strict DEBUG'):
+                compare_probes(baseline,optimized,'actual-snapshot')
 
     def test_wrong_snapshot_scope_or_missing_gradient_is_rejected(self):
         for patch in ({'active_U':23},{'all_P_included':False},{'physical_patient_batch':2},
