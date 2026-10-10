@@ -1,0 +1,48 @@
+v2.4 전체 upper 입력 재사용 및 자원 사용 점검 (2026-10-10)
+
+문제와 실측
+GPU5/6은 U7에서 U23으로 확장할 때, 완료된 전체128U 그래프가 있어도 CT/EDT/region을 재구성했다.
+실제 40초 시계열에서 GPU5/6은 upper 준비 중 GPU 사용률0%, 평균 CPU1.31/0.97개였다.
+각 작업의 CPU affinity는4개, RAM 한도는64GiB이다. 물리 디스크 읽기는0으로 페이지 캐시에서 읽었다.
+GPU6은 약3980초에38/86개를 완료했다. 따라서 이 구간은 STU-Net GPU 연산보다 CPU 준비가 병목이다.
+같은 관측에서 GPU1 nnU-Net은 GPU 평균77.2%, CPU 최소3.00/4개, epoch111 88.78초였다.
+GPU1의 physical batch2는 역사적 BasicCP 비교 조건이며 속도 최적값이라고 주장하지 않는다.
+
+수정 범위
+새 v24_upper_reuse 모듈과 별도 CPU CLI는 이미 검증된 full128 그래프의 실제 후보 ID를 매핑한다.
+donor/region/liver 및 선택된 candidate의 원래 raw 값·position·meta를 재사용한다.
+candidate KNN은 현재 후보 집합에서 원형 함수로 다시 계산하고, prototype도 원형 builder로 다시 만든다.
+원형 geometry의 입력 binding·파일 검증·tensor digest·atomic exclusive publication을 유지한다.
+원형 모델/학습/입력 scientific source 및 실행 중인 Python 클래스는 변경하지 않는다.
+현재 학습을 멈추거나 checkpoint를 다시 초기화하지 않고, 별도 helper가 아직 없는 입력 파일만 준비한다.
+기존 파일이 있으면 원형 검증으로 읽고, 경쟁 publisher와 tensor가 다르면 명시적 오류로 중단한다.
+
+실험 계약
+전체65 ranking train 환자의527P, 전체21 validation 환자의135P를 유지한다.
+모든 P 및 stage별 전체 U를 유지하며, 후보·노드·엣지·레이어·해상도를 축소하지 않는다.
+L0/L1/L2 깊이3/2/2, hidden128, heads4, 두5x48x48x48 view, 총40epoch 계약을 유지한다.
+GPU5/6 physical patient4, candidate chunk32/64, accumulation1, effective patient4를 유지한다.
+helper는 GPU5의 CPU4–7 안에서 nice10으로 실행하며 helper+기존GPU5 프로세스 트리 RAM 합계를64GiB 안에서 검사한다.
+CUDA는 비활성화한다. 추가 GPU 또는 전체 서버 CPU/RAM을 할당하지 않는다.
+
+검증과 적용 상태
+구현 완료. 최종 신규 CPU 단위 테스트15/15 통과(5.821초).
+앞선 신규13개+기존GT차단·병렬준비 통합38개도 통과(21.110초). 정적 diff 검사 통과.
+실제86환자 기존U7·완료U23 bit-exact 비교 및 전체9단계 준비 결과는 서버 검증 후 기록한다.
+실제 전체40epoch 학습 완료 또는 독립 test 평가 완료를 이 작업의 결과로 주장하지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 기존 학습의 연결은 보존하고 입력만 재사용한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
