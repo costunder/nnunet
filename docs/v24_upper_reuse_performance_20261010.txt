@@ -28,7 +28,36 @@ CUDA는 비활성화한다. 추가 GPU 또는 전체 서버 CPU/RAM을 할당하
 검증과 적용 상태
 구현 완료. 최종 신규 CPU 단위 테스트15/15 통과(5.821초).
 앞선 신규13개+기존GT차단·병렬준비 통합38개도 통과(21.110초). 정적 diff 검사 통과.
-실제86환자 기존U7·완료U23 bit-exact 비교 및 전체9단계 준비 결과는 서버 검증 후 기록한다.
+실제 서버 U7 전체86명과 기존 U23 44명의 graph/prototype tensor·순서·audit bit-exact 비교 통과(19.894초).
+검증 metadata tuple/JSON list 비교가 최초 prepare에서 명시적 오류로 중단됐고, 캐시 발행 전이었다.
+persisted JSON 값·순서 비교로 수정했으며 동일성·변경값·불완전 평가 거부 회귀3개 통과.
+전체9단계 U7/23/39/55/71/87/103/119/128에서 각각86명 complete/admit 완료(합계164.501초).
+U23 기존46명 외 누락분 준비·전체검증12.951초. 나머지 신규 단계16.611~22.169초.
+새 입력556개를 원형 exclusive publisher로 준비했다. 기존128/U7 및 기존U23 입력은 덮어쓰지 않았다.
+helper 관측 peak RSS0.741GiB, helper+GPU5 기존트리 관측 peak56.67GiB로 공유64GiB 안이었다.
+위 RSS peak는 원형 cache guard 지점에서의 실제 측정값으로 모든 순간의 연속 peak라고 주장하지 않는다.
+학습 프로세스 신호/종료/재초기화0, helper 자체 optimizer update0, 원형 numerical source 그대로 유지.
+실행 source0edb7b9 bit-exact 검증 /0991d73 JSON guard 수정 후 전체준비이며 두 release 모두 GitHub·서버 동기화.
+준비 receipt: /var/tmp/aicompetition06_v24_20261010/upper_reuse_prepare_0991d73796b0_1791613704546060878/result.json
+실행 중 old cold builder의 in-flight 환자는 원형 계산을 완료한 다음 캐시를 읽는다.
+준비 후43.52초 실제 관측: GPU5 epoch5/U23 4→8/65, update69→70; GPU6 24→36/65, update74→77.
+GPU1/5/6 NVML11점(4초간격) GPU사용률 표본평균79.0/58.73/4.45%, CPU3.207/1.162/1.704코어(각4코어).
+RAM 범위는 GPU1 11.17~12.22GiB, GPU5 36.71~36.98GiB, GPU6 34.18~36.32GiB였다.
+GPU5 최신physical4 배치36.719초, CPUget10.211초/노출입력대기3.083초(8.4%).
+GPU6 최신physical4 배치11.679초, CPUget9.690초/pin0.577초/노출입력대기4.287초(36.7%).
+GPU5 finite gradient981/981, GPU6 537/537이며 missing0: 실제 backward·optimizer 업데이트 확인.
+GPU사용률은 이 구간 표본평균으로 연속kernel점유율 또는 전체학습 평균이라고 해석하지 않는다.
+준비 병목은 해결됐으나 GPU6 입력공급 개선은 남아 있다. 전체자원활용 최적화 완료를 주장하지 않는다.
+로컬 실측: outputs/v24_20261010/post_upper_reuse_resources_1791613983625311200.json
+
+추가 병목과 해석
+GPU6 직전 epoch4 train17배치 합계66.571초 중 exposed CPU wait49.483초(74.3%)였다.
+full validation CPU 준비247.03초는 producer overlap을 포함하며 전부 GPU idle 시간이라고 해석하지 않는다.
+코드상 next-chunk provider가 coordinator.lock을 잡으면 budget.check→trim도 같은 lock을 기다리는 경로가 있다.
+현재 실행에서 이 lock의 기여 시간은 아직 계측하지 않았으며, 완료 캐시 준비가 이 경로까지 수정했다고 주장하지 않는다.
+provider의32GiB LRU eviction은 별도 통계이므로 memory-runtime eviction0만 보고 cache warm을 주장하지 않는다.
+모델/batch/epoch/자원 계약을 유지한 다음 개선 후보는 잠금 대기 계측, exact input hash의 복사 감소,
+fixed29 train probe CPU 입력 재사용이다. 이 작업에서는 현재 학습 Python의 동작을 임의 교체하지 않았다.
 실제 전체40epoch 학습 완료 또는 독립 test 평가 완료를 이 작업의 결과로 주장하지 않는다.
 
 ## 작업 완료 체크리스트
