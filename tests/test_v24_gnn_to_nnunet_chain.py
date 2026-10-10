@@ -476,7 +476,10 @@ class CompletedArmFixture(unittest.TestCase):
             scores_reused=False, learned_upper_reused=False,
             budget=dict(new_writable_bytes_estimate=2 * 2**30, checkpoint_reserve_bytes=10 * 2**30,
                 required_free_bytes=12 * 2**30, minimum_runtime_free_bytes=10 * 2**30),
+            checkpoint_coordination=dict(format='original_native_final_publication_flock_global7_v1',
+                global_peak_checkpoint_slots=7, per_arm_peak_checkpoint_slots=3, optimizer_work_locked=False),
             aggregate_budget=dict(required_free_bytes=int(16.5 * 2**30), growth_margin_bytes=2**29,
+                global_peak_checkpoint_slots=7,
                 arms={'gpu' + str(gpu): dict(root=str(self.target))}))
         self.storage_path = self.root / 'DEBUG_static_storage_admission.json'; self.write_json(self.storage_path, self.storage_document)
         self.request.update(chain_root=str(self.target), storage_profile=chain.READONLY_PROFILE,
@@ -599,6 +602,63 @@ class CompletedArmFixture(unittest.TestCase):
             aggregate.side_effect = OSError('DEBUG aggregate remaining writes do not fit')
             with self.assertRaisesRegex(OSError, 'aggregate remaining writes'):
                 chain.resources(self.request, initial=False, stage_index=3)
+
+    def test_static_train_stage_requires_actual_successful_own_final_hook(self):
+        from hiercp_v1x import v24_readonly_native_storage as core
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        from tools import run_v24_readonly_nnunet_cp as entry
+        self.make_static_handoff(); native = self.target / 'native'; native.mkdir(parents=True)
+        source = ('class nnUNetTrainer:\n'
+            '    def save_checkpoint(self, filename): return filename\n'
+            '    def on_train_end(self): return self.save_checkpoint("DEBUG_final")\n'
+            '    def on_epoch_end(self): return None\n')
+        installed = self.root / 'DEBUG_installed_trainer.py'; installed.write_text(source)
+        private_runtime = native / 'private_runtime'
+        private = private_runtime / 'nnunetv2/training/nnUNetTrainer/nnUNetTrainer.py'
+        private.parent.mkdir(parents=True);private.write_text(source)
+        coordination = dict(self.storage_document['checkpoint_coordination'],
+            lock_file=dict(path=str(self.target / 'final.lock'), sha256='a' * 64),
+            folds={'gpu5': str(native / 'fold_0')})
+        publication = dict(source=core.proof(installed), compiled_methods=static._compiled_methods(installed))
+        self.storage_document.update(checkpoint_coordination=coordination, checkpoint_publication_proof=publication)
+        self.write_json(self.storage_path, self.storage_document)
+        self.request.update(storage_admission_sha256=chain.sha(self.storage_path), storage_admission_stat=chain._file_stat(self.storage_path))
+        native_path = native / 'native.json';self.write_json(native_path, dict(private_runtime=str(private_runtime)))
+        checkpoint = native / 'checkpoint_final.pth'; checkpoint.write_bytes(b'DEBUG only, no training was performed')
+        self.write_json(native / 'training_complete_DEBUG.json', dict(epochs=250, checkpoint=str(checkpoint), checkpoint_sha256=chain.sha(checkpoint)))
+        active = dict(format=entry.COORDINATION, active=True, coordination_active=True,
+            global_peak_checkpoint_slots=7, per_arm_peak_checkpoint_slots=3, lock_file=coordination['lock_file'],
+            original_on_train_end_code_preserved=True, original_on_train_end_called_once_per_completion=True,
+            original_on_train_end_called_once_under_flock=True, successful_original_on_train_end_calls=1,
+            bound_native_fold=coordination['folds']['gpu5'], optimizer_work_locked=False,
+            save_checkpoint_unchanged=True, on_epoch_end_unchanged=True, retention_changed=False,
+            failure_blocks_next_final=True, repeated_final_rejected=True, private_checkpoint_source=core.proof(private),
+            actual_private_compiled_methods=static._compiled_methods(private), expected_private_compiled_methods=static._compiled_methods(private),
+            admitted_source_compiled_methods=publication['compiled_methods'])
+        worker_path = native / 'readonly_storage_training_worker_DEBUG.json'
+        worker = dict(format='v24_readonly_native_worker_v1', status='COMPLETE', worker='train', physical_batch=2,
+            native_epochs=250, storage_admission_sha256=self.request['storage_admission_sha256'],
+            checkpoint_coordination=coordination, native=str(native_path), native_sha256=chain.sha(native_path),
+            adapters=dict(checkpoint_coordination=active))
+        self.write_json(worker_path, worker)
+        runtime_sources = {}
+        for name in (*entry.FILES, entry.EXTENSION_FILE):
+            path = self.code / name;path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():path.write_text('# DEBUG immutable runtime witness\n')
+            runtime_sources[name] = chain.sha(path); self.request['code_files'][name] = runtime_sources[name]
+        receipt_path = self.target / 'readonly_storage_train.json'
+        receipt = dict(format='v24_readonly_native_stage_v1', status='COMPLETE', action='train', storage_profile=chain.READONLY_PROFILE,
+            storage_admission=str(self.storage_path), storage_admission_sha256=self.request['storage_admission_sha256'],
+            storage_extension=chain.STATIC_EXTENSION, cached_inputs_written=False, model_data_scale_preserved=True,
+            runtime_sources_sha256=runtime_sources, checkpoint_coordination=coordination,
+            launches=[dict(readonly_worker_receipt=dict(path=str(worker_path), sha256=chain.sha(worker_path)))])
+        self.write_json(receipt_path, receipt)
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), self.static_mock():
+            chain.stage_proof(self.request, 'train')
+            active['successful_original_on_train_end_calls'] = 0;self.write_json(worker_path, worker)
+            receipt['launches'][0]['readonly_worker_receipt']['sha256'] = chain.sha(worker_path);self.write_json(receipt_path, receipt)
+            with self.assertRaisesRegex(ValueError, 'single original final'):
+                chain.stage_proof(self.request, 'train')
 
     def test_gpu4_exact_continuation_full_completion_preserves_old_bytes_and_native_contract(self):
         self.make_continuation()

@@ -36,6 +36,8 @@ CHECKPOINT_SOURCE = 'training/nnUNetTrainer/nnUNetTrainer.py'
 _BINDINGS = {}
 _ORIGINAL_CHECK = None
 _READER_ORIGINALS = None
+_CHECKPOINT_BINDINGS = {}
+COORDINATION = 'original_native_final_publication_flock_global7_v1'
 
 
 class _UnaccountedHardlink(OSError):
@@ -105,9 +107,9 @@ def _old_base(path):
     return document, file_proof, copy.deepcopy(adapter)
 
 
-def _compiled_methods(path):
+def _compiled_methods(path, *, filename=None):
     source = core.regular(path).read_text(encoding='utf8')
-    compiled = compile(source, str(path), 'exec', dont_inherit=True)
+    compiled = compile(source, str(path) if filename is None else str(filename), 'exec', dont_inherit=True)
     classes = [code for code in compiled.co_consts
                if isinstance(code, types.CodeType) and code.co_name == 'nnUNetTrainer']
     if len(classes) != 1:
@@ -299,18 +301,38 @@ def build_admission(base_admission_path, *, arm_roots, checkpoint_paths, checkpo
     components['private_small_bank_artifacts_bytes'] -= reused
     components['explicit_additional_fresh_outputs_bytes'] = 3 * checkpoint_max_bytes + 16*2**20 + 64*2**20
     writable = sum(components.values())
-    aggregate_required = 3*writable + RESERVE + growth_margin_bytes
+    global_peak=3*(writable-3*checkpoint_max_bytes)+7*checkpoint_max_bytes
+    aggregate_required = global_peak + RESERVE + growth_margin_bytes
     available = shutil.disk_usage(next(iter(roots.values()))['existing_parent']).free
     if available < aggregate_required:
         raise OSError('Complete three-arm original native writes plus10GiB reserve/growth do not fit')
+    parents={str(Path(row['root']).parent) for row in roots.values()}
+    if len(parents)!=1:raise ValueError('Final-publication coordination requires one own sibling-arm namespace')
+    group=core.regular(next(iter(parents)),directory=True);lock=group/'native_final_publication.lock'
+    try:
+        descriptor=os.open(lock,os.O_RDWR|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600)
+    except FileExistsError:
+        core.regular(lock)
+    else:os.close(descriptor)
+    if _lock_mode(lock)!=0o600 or lock.stat().st_nlink!=1 or lock.stat().st_size!=0:
+        raise ValueError('Exact own empty0600 native final-publication lock required')
+    from . import v24_nnunet_cp as pipeline
+    fold_relative=('native/nnUNet_results/'+base['baseline']['dataset_name']+'/'+pipeline.TRAINER+'__'
+                   +base['baseline']['plans_name']+'__'+base['baseline']['configuration']+'/fold_0')
+    coordination=dict(format=COORDINATION,group_root=str(group),lock_file=core.proof(lock),mode=0o600,
+        global_peak_checkpoint_slots=7,per_arm_peak_checkpoint_slots=3,
+        original_final_before_latest_removal=True,optimizer_work_locked=False,retention_changed=False,
+        failure_blocks_next_final=True,repeated_final_rejected=True,
+        folds={arm:str(Path(row['root'])/fold_relative) for arm,row in roots.items()},adapter_source=core.proof(__file__))
     document.update(storage_extension=EXTENSION, static_operator_adapter_source=core.proof(__file__),
         base_admission_proof=base_proof, base_adapter_source=old_adapter,
-        checkpoint_publication_proof=checkpoint, adapter_source=core.proof(core.__file__),
+        checkpoint_publication_proof=checkpoint,checkpoint_coordination=coordination, adapter_source=core.proof(core.__file__),
         static_operator_roles=list(OPERATOR_ROLES), static_operator_arrays_reused=840,
         donors_reused=False, selected_candidates_reused=False, static_operator_value_bytes_verified=True,
         aggregate_budget=dict(arms=roots,per_arm_new_writable_bytes={arm:writable for arm in roots},
             initial_allocated_bytes={arm:_allocated_bytes(value['root']) for arm,value in roots.items()},
-            all_three_new_writable_bytes=3*writable,minimum_runtime_free_bytes=RESERVE+growth_margin_bytes,
+            all_three_uncoordinated_new_writable_bytes=3*writable,all_three_new_writable_bytes=global_peak,
+            global_peak_checkpoint_slots=7,minimum_runtime_free_bytes=RESERVE+growth_margin_bytes,
             growth_margin_bytes=growth_margin_bytes,required_free_bytes=aggregate_required,
             initial_available_free_bytes=available,initial_admitted_at=time.time()),
         budget=dict(base['budget'], measured_components=components,new_writable_bytes_estimate=writable,
@@ -375,6 +397,8 @@ def verify_admission(document, *, full_hash=False):
     components['explicit_additional_fresh_outputs_bytes'] = 3*checkpoint['checkpoint_max_bytes'] + 80*2**20
     budget = document['budget']; aggregate = document['aggregate_budget']; writable = sum(components.values())
     roots = _arm_roots({arm:value['root'] for arm,value in aggregate['arms'].items()})
+    coordination=document['checkpoint_coordination'];_coordination_guard(document)
+    peak=3*(writable-3*checkpoint['checkpoint_max_bytes'])+7*checkpoint['checkpoint_max_bytes']
     recorded_roots={arm:{key:value for key,value in row.items()} for arm,row in aggregate['arms'].items()}
     if (count != 840 or components['private_small_bank_artifacts_bytes'] < 0
             or budget['measured_components'] != components or budget['new_writable_bytes_estimate'] != writable
@@ -386,12 +410,13 @@ def verify_admission(document, *, full_hash=False):
                    or not Path(row['root']).is_relative_to(Path(row['existing_parent']))
                    for arm,row in recorded_roots.items())
             or aggregate['per_arm_new_writable_bytes'] != {arm:writable for arm in roots}
-            or aggregate['all_three_new_writable_bytes'] != 3*writable
+            or aggregate['all_three_uncoordinated_new_writable_bytes'] != 3*writable
+            or aggregate['all_three_new_writable_bytes'] != peak or aggregate['global_peak_checkpoint_slots']!=7
             or set(aggregate['initial_allocated_bytes'])!=set(roots)
             or any(type(value)is not int or value<0 for value in aggregate['initial_allocated_bytes'].values())
             or type(aggregate['growth_margin_bytes']) is not int or aggregate['growth_margin_bytes'] < GROWTH_MARGIN
             or aggregate['minimum_runtime_free_bytes'] != RESERVE+aggregate['growth_margin_bytes']
-            or aggregate['required_free_bytes'] != 3*writable+RESERVE+aggregate['growth_margin_bytes']
+            or aggregate['required_free_bytes'] != peak+RESERVE+aggregate['growth_margin_bytes']
             or aggregate['initial_available_free_bytes'] < aggregate['required_free_bytes']):
         raise ValueError('Explicit original three-arm write budget/reserve/growth proof differs')
     return document
@@ -415,7 +440,7 @@ def check_aggregate_disk(admission,chain_root,*,preparation=True):
             provision=aggregate['per_arm_new_writable_bytes'][arm]
             if delta>provision:raise OSError('Actual own-arm writes exceed the measured full native provision: '+arm)
             written[arm]=delta;remaining[arm]=provision-delta
-        required=sum(remaining.values())+floor
+        required=max(0,aggregate['all_three_new_writable_bytes']-sum(written.values()))+floor
     else:required=floor
     # Concurrent writes after an earlier inode measurement make this later
     # free-space reading conservative. Sampling before the scan is unsafe.
@@ -518,6 +543,7 @@ def prepare_native(bank_path, output, admission_path, pipeline):
             value=copy.deepcopy(value);value.update(storage_extension=EXTENSION,
                 static_operator_adapter_sha256=document['static_operator_adapter_source']['sha256'],
                 checkpoint_publication_proof=copy.deepcopy(document['checkpoint_publication_proof']),
+                checkpoint_coordination=copy.deepcopy(document['checkpoint_coordination']),
                 static_operator_byte_exact_reuse=True)
         return publisher(path,value)
     return core._clone(original,dict(publish_json=publish_json))(bank_path,output,admission_path,pipeline)
@@ -601,10 +627,123 @@ def verify_private_checkpoint_publication(admission,private_runtime,trainer_clas
     expected=_compiled_methods(path);actual={}
     for name in CHECKPOINT_METHODS:
         method=getattr(trainer_class,name)
+        bound=_CHECKPOINT_BINDINGS.get(trainer_class)
+        if name=='on_train_end' and bound is not None:
+            if method is not bound['wrapper'] or method.__code__ is not bound['wrapper_code']:
+                raise ValueError('Coordinated original on_train_end wrapper changed')
+            method=bound['original']
         if Path(inspect.getsourcefile(method)).resolve() != path.resolve():
             raise ValueError('Actual native checkpoint method must inherit the admitted private source')
         actual[name]=core.code_fingerprint(method.__code__)
     if actual != expected:raise ValueError('Actual private checkpoint compiled methods changed')
+    admitted=_compiled_methods(path,filename=publication['source']['path'])
+    if admitted!=publication['compiled_methods']:
+        raise ValueError('Verified private checkpoint bytes differ at the admitted source filename')
     return dict(storage_extension=EXTENSION,private_checkpoint_source=core.proof(path),
-        actual_private_compiled_methods=actual,peak_checkpoint_slots=3,completed_checkpoint_slots=2,
+        actual_private_compiled_methods=actual,expected_private_compiled_methods=expected,
+        admitted_source_compiled_methods=admitted,code_fingerprint_format=core.CODE_FINGERPRINT,
+        peak_checkpoint_slots=3,completed_checkpoint_slots=2,
         retention_changed=False,trainer_constructor_called=False)
+
+
+def _lock_mode(path):
+    return stat_module.S_IMODE(Path(path).stat().st_mode)
+
+
+def _coordination_guard(document):
+    value=document['checkpoint_coordination'];roots=document['aggregate_budget']['arms']
+    from . import v24_nnunet_cp as pipeline
+    relative=('native/nnUNet_results/'+document['baseline']['dataset_name']+'/'+pipeline.TRAINER+'__'
+              +document['baseline']['plans_name']+'__'+document['baseline']['configuration']+'/fold_0')
+    group=core.regular(value['group_root'],directory=True);lock=core.guard(value['lock_file'],full_hash=True)
+    if (value.get('format')!=COORDINATION or value.get('mode')!=0o600
+            or lock!=group/'native_final_publication.lock' or lock.stat().st_nlink!=1 or lock.stat().st_size!=0
+            or _lock_mode(lock)!=0o600
+            or value.get('global_peak_checkpoint_slots')!=7 or value.get('per_arm_peak_checkpoint_slots')!=3
+            or value.get('optimizer_work_locked')is not False or value.get('retention_changed')is not False
+            or value.get('original_final_before_latest_removal')is not True
+            or value.get('failure_blocks_next_final')is not True or value.get('repeated_final_rejected')is not True
+            or value.get('folds')!={arm:str(Path(row['root'])/relative) for arm,row in roots.items()}
+            or any(Path(row['root']).parent!=group for row in roots.values())
+            or value['adapter_source']!=document['static_operator_adapter_source']):
+        raise ValueError('Explicit original native final-publication global7 coordination proof required')
+    return lock
+
+
+def install_checkpoint_adapters(admission,private_runtime,trainer_class):
+    """Serialize only original on_train_end, including its original latest removal."""
+    import fcntl
+    document=verify_admission(admission);lock=_coordination_guard(document)
+    proof=verify_private_checkpoint_publication(document,private_runtime,trainer_class)
+    existing=_CHECKPOINT_BINDINGS.get(trainer_class)
+    if existing is not None:
+        if existing['coordination']!=document['checkpoint_coordination']:
+            raise ValueError('Native trainer final-publication coordination already differs')
+        return existing['proof']
+    original=trainer_class.on_train_end;original_code=original.__code__
+    untouched={name:getattr(trainer_class,name) for name in ('save_checkpoint','on_epoch_end')}
+    if hasattr(trainer_class,'train_step'):untouched['train_step']=trainer_class.train_step
+    untouched_codes={name:function.__code__ for name,function in untouched.items()}
+    private_source=proof['private_checkpoint_source'];coordination=copy.deepcopy(document['checkpoint_coordination'])
+    bound_fold=None;completed=False
+    def guard():
+        core.guard(private_source)
+        _coordination_guard(document)
+        if original.__code__ is not original_code or any(getattr(trainer_class,name)is not function
+                or function.__code__ is not untouched_codes[name] for name,function in untouched.items()):
+            raise ValueError('Original native checkpoint/optimizer method changed during coordination')
+        if trainer_class.on_train_end is not on_train_end or on_train_end.__code__ is not wrapper_code:
+            raise ValueError('Native final-publication wrapper changed')
+    def on_train_end(self):
+        nonlocal bound_fold,completed
+        guard();folder=core.regular(Path(self.output_folder).absolute(),directory=True)
+        matches=[arm for arm,path in coordination['folds'].items() if Path(path)==folder]
+        if len(matches)!=1:raise ValueError('Native final publication must use its exact admitted own fold')
+        descriptor=os.open(lock,os.O_RDWR|getattr(os,'O_NOFOLLOW',0))
+        try:
+            opened=os.fstat(descriptor)
+            if (opened.st_dev,opened.st_ino)!=(lock.stat().st_dev,lock.stat().st_ino):
+                raise ValueError('Native final-publication lock inode changed')
+            with os.fdopen(descriptor,'rb',closefd=False) as stream:
+                fcntl.flock(stream.fileno(),fcntl.LOCK_EX)
+                try:
+                    guard()
+                    if completed or result['successful_original_on_train_end_calls']!=0:
+                        raise ValueError('Original native final publication cannot be repeated')
+                    if bound_fold is not None and bound_fold!=str(folder):
+                        raise ValueError('One native trainer class must retain its admitted own fold')
+                    bound_fold=str(folder)
+                    if (folder/'checkpoint_final.pth').is_symlink():
+                        raise ValueError('Native checkpoint publication cannot use a symlink')
+                    if (folder/'checkpoint_final.pth').exists():
+                        raise ValueError('Fresh native final publication cannot be repeated')
+                    for arm,path in coordination['folds'].items():
+                        candidate=Path(path)
+                        if candidate.is_symlink():raise ValueError('Native checkpoint fold cannot use a symlink')
+                        if candidate.exists():
+                            core.regular(candidate,directory=True)
+                            for name in ('checkpoint_final.pth','checkpoint_latest.pth','checkpoint_best.pth'):
+                                checkpoint=candidate/name
+                                if checkpoint.is_symlink():raise ValueError('Native checkpoint publication cannot use a symlink')
+                                if checkpoint.exists():core.regular(checkpoint)
+                            if (candidate/'checkpoint_final.pth').exists() and (candidate/'checkpoint_latest.pth').exists():
+                                core.regular(candidate/'checkpoint_final.pth');core.regular(candidate/'checkpoint_latest.pth')
+                                raise RuntimeError('Previous original final publication failed before latest removal; global7 preserved: '+arm)
+                    answer=original(self)
+                    completed=True;result['successful_original_on_train_end_calls']=1
+                    result['bound_native_fold']=bound_fold
+                    return answer
+                finally:fcntl.flock(stream.fileno(),fcntl.LOCK_UN)
+        finally:os.close(descriptor)
+    wrapper_code=on_train_end.__code__;trainer_class.on_train_end=on_train_end
+    result=dict(proof,coordination=COORDINATION,format=COORDINATION,active=True,coordination_active=True,
+        successful_original_on_train_end_calls=0,bound_native_fold=None,
+        lock_file=copy.deepcopy(coordination['lock_file']),
+        original_on_train_end_code_preserved=True,original_on_train_end_called_once_under_flock=True,
+        original_on_train_end_called_once_per_completion=True,
+        optimizer_work_locked=False,save_checkpoint_unchanged=True,on_epoch_end_unchanged=True,
+        global_peak_checkpoint_slots=7,per_arm_peak_checkpoint_slots=3,
+        failure_blocks_next_final=True,repeated_final_rejected=True)
+    _CHECKPOINT_BINDINGS[trainer_class]=dict(wrapper=on_train_end,wrapper_code=wrapper_code,
+        original=original,coordination=coordination,proof=result)
+    return result

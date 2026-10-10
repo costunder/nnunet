@@ -10,6 +10,8 @@ from pathlib import Path
 import os
 import sys
 import tempfile
+import threading
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -78,7 +80,12 @@ class StaticOperatorStorageCPUUnit(unittest.TestCase):
             path=self.root/'UNIT_complete_native'/name;path.parent.mkdir(exist_ok=True);path.write_bytes(b'UNIT_checkpoint_size_only')
             self.samples.append(path)
         self.base=self.fixture.admission();self.base_path=self.root/'UNIT_base_admission.json';core.publish_json(self.base_path,self.base)
+        (self.root/'UNIT_group').mkdir()
         self.arms={arm:str(self.root/'UNIT_group'/arm) for arm in ('gpu4','gpu5','gpu6')}
+        if os.name=='nt':
+            # Windows cannot express POSIX0600; Linux production checks remain strict.
+            lock_mode=patch.object(extension,'_lock_mode',return_value=0o600)
+            lock_mode.start();self.addCleanup(lock_mode.stop)
         self.original_check=raw.LosslessRawBankStore._check
         self.original_codes=extension._reader_codes(raw)
         self.addCleanup(self.restore)
@@ -114,7 +121,11 @@ class StaticOperatorStorageCPUUnit(unittest.TestCase):
         self.assertEqual(sum(len(row['static_operator_arrays']) for row in document['raw_cases'].values()),840)
         self.assertEqual(document['checkpoint_publication_proof']['peak_checkpoint_slots'],3)
         self.assertEqual(document['budget']['native_checkpoint_slots'],3)
-        self.assertEqual(document['aggregate_budget']['required_free_bytes'],3*document['budget']['new_writable_bytes_estimate']+10*2**30+512*2**20)
+        expected=3*document['budget']['new_writable_bytes_estimate']-2*819243768+10*2**30+512*2**20
+        self.assertEqual(document['aggregate_budget']['required_free_bytes'],expected)
+        self.assertEqual(document['checkpoint_coordination']['global_peak_checkpoint_slots'],7)
+        self.assertEqual(document['aggregate_budget']['all_three_uncoordinated_new_writable_bytes']-
+                         document['aggregate_budget']['all_three_new_writable_bytes'],2*819243768)
         rows=document['raw_cases'][self.fixture.train[0]]['static_operator_arrays']
         self.assertTrue(any(row['npy_header']['fortran_order'] for row in rows.values()))
         self.assertTrue(all(row['spec']['dtype']==np.dtype('float64').str for row in rows.values()))
@@ -269,6 +280,7 @@ class AggregateAllocationCPUUnit(unittest.TestCase):
         for path in arms.values():path.mkdir()
         budget=dict(arms={arm:dict(root=str(path),filesystem_device=path.stat().st_dev) for arm,path in arms.items()},
                     initial_allocated_bytes={arm:0 for arm in arms},per_arm_new_writable_bytes={arm:1024 for arm in arms},
+                    all_three_new_writable_bytes=3*1024,
                     minimum_runtime_free_bytes=10*2**30+512*2**20)
         document=dict(aggregate_budget=budget);calls=[]
         def allocation(path):calls.append(str(path));return 0
@@ -278,6 +290,176 @@ class AggregateAllocationCPUUnit(unittest.TestCase):
         with patch.object(extension,'verify_admission',return_value=document),patch.object(extension,'_allocated_bytes',side_effect=allocation),patch.object(extension.shutil,'disk_usage',side_effect=usage):
             result=extension.check_aggregate_disk(document,arms['gpu4'])
         self.assertEqual(result['required_free_bytes'],budget['minimum_runtime_free_bytes']+3*1024)
+
+
+class CheckpointCoordinationCPUUnit(unittest.TestCase):
+    """Small DEBUG file publications; no model or production weights are loaded."""
+    def setUp(self):
+        from hiercp_v1x import v24_nnunet_cp as pipeline
+        temporary=tempfile.TemporaryDirectory(prefix='static_checkpoint_CPU_UNIT_',dir=core.ROOT/'outputs')
+        self.addCleanup(temporary.cleanup);self.root=Path(temporary.name).resolve()
+        group=self.root/'UNIT_group';group.mkdir();arms={arm:group/arm for arm in ('gpu4','gpu5','gpu6')}
+        baseline=dict(dataset_name='Dataset_UNIT',plans_name='UNITplans',configuration='UNITconfig')
+        relative='native/nnUNet_results/Dataset_UNIT/'+pipeline.TRAINER+'__UNITplans__UNITconfig/fold_0'
+        self.folds={arm:root/relative for arm,root in arms.items()}
+        for path in self.folds.values():
+            path.mkdir(parents=True);(path/'checkpoint_latest.pth').write_bytes(b'CPU_UNIT_latest')
+            (path/'checkpoint_best.pth').write_bytes(b'CPU_UNIT_best')
+        lock=group/'native_final_publication.lock';descriptor=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_RDWR,0o600);os.close(descriptor)
+        self.private=self.root/'UNIT_private_runtime';source=self.private/'nnunetv2'/extension.CHECKPOINT_SOURCE
+        source.parent.mkdir(parents=True);source.write_text(CHECKPOINT_SOURCE+'    def train_step(self, batch):\n        return batch\n',encoding='utf8')
+        admitted_source=self.root/'UNIT_installed_source'/'nnUNetTrainer.py'
+        admitted_source.parent.mkdir();admitted_source.write_bytes(source.read_bytes())
+        spec=importlib.util.spec_from_file_location('UNIT_final_publication_'+str(time.time_ns()),source)
+        module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
+        self.addCleanup(lambda:sys.modules.pop(spec.name,None))
+        self.calls=[];self.save_hook=None
+        def save(checkpoint,filename):
+            self.calls.append(str(filename));Path(filename).write_bytes(b'CPU_UNIT_final')
+            if self.save_hook is not None:self.save_hook(filename)
+        module.torch=SimpleNamespace(save=save);module.join=os.path.join;module.isfile=os.path.isfile;module.os=os
+        self.trainers={arm:type('UNITFrozenTrainer_'+arm,(module.nnUNetTrainer,),{}) for arm in self.folds}
+        self.trainer=self.trainers['gpu4']
+        for trainer in self.trainers.values():self.addCleanup(lambda trainer=trainer:extension._CHECKPOINT_BINDINGS.pop(trainer,None))
+        helper=core.proof(extension.__file__)
+        self.document=dict(baseline=baseline,static_operator_adapter_source=helper,
+            checkpoint_publication_proof=dict(source=core.proof(admitted_source),compiled_methods=extension._compiled_methods(admitted_source)),
+            aggregate_budget=dict(arms={arm:dict(root=str(root)) for arm,root in arms.items()}),
+            checkpoint_coordination=dict(format=extension.COORDINATION,group_root=str(group),lock_file=core.proof(lock),mode=0o600,
+                global_peak_checkpoint_slots=7,per_arm_peak_checkpoint_slots=3,original_final_before_latest_removal=True,
+                optimizer_work_locked=False,retention_changed=False,failure_blocks_next_final=True,repeated_final_rejected=True,
+                folds={arm:str(path) for arm,path in self.folds.items()},adapter_source=helper))
+        verifier=patch.object(extension,'verify_admission',return_value=self.document);verifier.start();self.addCleanup(verifier.stop)
+        if os.name=='nt':
+            mode=patch.object(extension,'_lock_mode',return_value=0o600);mode.start();self.addCleanup(mode.stop)
+        try:import fcntl
+        except ImportError:
+            # Explicit Windows-only DEBUG substitute; production uses actual flock.
+            mutex=threading.Lock()
+            def flock(descriptor,operation):
+                if operation==1:mutex.acquire()
+                else:mutex.release()
+            substitute=SimpleNamespace(LOCK_EX=1,LOCK_UN=2,flock=flock)
+            mocked=patch.dict(sys.modules,{'fcntl':substitute});mocked.start();self.addCleanup(mocked.stop)
+
+    def install(self,arm='gpu4'):return extension.install_checkpoint_adapters(self.document,self.private,self.trainers[arm])
+
+    def instance(self,arm):
+        value=self.trainers[arm]();value.output_folder=str(self.folds[arm]);return value
+
+    def test_original_final_publications_mutually_exclusive_and_global_seven(self):
+        before={name:getattr(self.trainer,name) for name in ('save_checkpoint','on_epoch_end','train_step')}
+        original=self.trainer.on_train_end
+        for arm in self.folds:self.install(arm)
+        active=0;maximum=0;peaks=[];mutex=threading.Lock();errors=[]
+        def save_hook(filename):
+            nonlocal active,maximum
+            with mutex:
+                active+=1;maximum=max(maximum,active)
+                peaks.append(sum(len(list(path.glob('checkpoint_*.pth'))) for path in self.folds.values()))
+            time.sleep(.025)
+            with mutex:active-=1
+        self.save_hook=save_hook
+        def finish(arm):
+            try:self.instance(arm).on_train_end()
+            except Exception as error:errors.append(error)
+        threads=[threading.Thread(target=finish,args=(arm,)) for arm in self.folds]
+        for thread in threads:thread.start()
+        for thread in threads:thread.join(5)
+        self.assertFalse(any(thread.is_alive() for thread in threads));self.assertFalse(errors)
+        self.assertEqual(maximum,1);self.assertEqual(max(peaks),7);self.assertEqual(len(self.calls),3)
+        self.assertTrue(all(not (path/'checkpoint_latest.pth').exists() for path in self.folds.values()))
+        self.assertTrue(all(getattr(self.trainer,name)is method for name,method in before.items()))
+        self.assertIs(extension._CHECKPOINT_BINDINGS[self.trainer]['original'],original)
+        self.assertEqual(extension.verify_private_checkpoint_publication(self.document,self.private,self.trainer)['peak_checkpoint_slots'],3)
+        for arm,trainer in self.trainers.items():
+            proof=extension._CHECKPOINT_BINDINGS[trainer]['proof']
+            self.assertEqual(proof['successful_original_on_train_end_calls'],1)
+            self.assertEqual(proof['bound_native_fold'],str(self.folds[arm]))
+
+    def test_private_and_admitted_filenames_have_separate_strict_code_proofs(self):
+        proof=extension.verify_private_checkpoint_publication(self.document,self.private,self.trainer)
+        self.assertEqual(proof['actual_private_compiled_methods'],proof['expected_private_compiled_methods'])
+        self.assertEqual(proof['admitted_source_compiled_methods'],self.document['checkpoint_publication_proof']['compiled_methods'])
+        self.assertNotEqual(proof['actual_private_compiled_methods'],proof['admitted_source_compiled_methods'])
+        self.document['checkpoint_publication_proof']['compiled_methods']['on_train_end']='0'*64
+        with self.assertRaisesRegex(ValueError,'admitted source filename'):
+            extension.verify_private_checkpoint_publication(self.document,self.private,self.trainer)
+
+    def test_optimizer_work_is_not_locked_and_install_is_idempotent(self):
+        first=self.install();self.assertIs(self.install(),first)
+        entered=threading.Event();release=threading.Event();errors=[]
+        def save_hook(filename):entered.set();release.wait(3)
+        self.save_hook=save_hook
+        def finish():
+            try:self.instance('gpu4').on_train_end()
+            except Exception as error:errors.append(error)
+        thread=threading.Thread(target=finish);thread.start()
+        try:
+            self.assertTrue(entered.wait(3));batch=object()
+            self.assertIs(self.instance('gpu5').train_step(batch),batch)
+            self.assertFalse(first['optimizer_work_locked'])
+        finally:release.set();thread.join(5)
+        self.assertFalse(errors)
+
+    def test_partial_original_final_failure_blocks_next_arm_without_cleanup(self):
+        self.install();self.install('gpu5')
+        def fail(filename):raise RuntimeError('CPU_UNIT_original_failure_after_final_save')
+        self.save_hook=fail
+        with self.assertRaisesRegex(RuntimeError,'original_failure'):self.instance('gpu4').on_train_end()
+        self.save_hook=None
+        with self.assertRaisesRegex(RuntimeError,'failed before latest removal'):self.instance('gpu5').on_train_end()
+        self.assertTrue((self.folds['gpu4']/'checkpoint_final.pth').exists())
+        self.assertTrue((self.folds['gpu4']/'checkpoint_latest.pth').exists())
+        self.assertFalse((self.folds['gpu5']/'checkpoint_final.pth').exists());self.assertEqual(len(self.calls),1)
+        self.assertEqual(extension._CHECKPOINT_BINDINGS[self.trainer]['proof']['successful_original_on_train_end_calls'],0)
+
+    def test_repeated_final_and_outside_group_refused_before_original_call(self):
+        self.install();outside=self.root/'UNIT_unadmitted';outside.mkdir();value=self.instance('gpu4');value.output_folder=str(outside)
+        with self.assertRaisesRegex(ValueError,'exact admitted'):value.on_train_end()
+        self.assertFalse(self.calls);self.instance('gpu4').on_train_end()
+        with self.assertRaisesRegex(ValueError,'cannot be repeated'):self.instance('gpu4').on_train_end()
+        self.assertEqual(len(self.calls),1)
+
+    def test_one_trainer_class_cannot_switch_native_folds_after_failed_call(self):
+        self.install()
+        def fail(filename):raise RuntimeError('CPU_UNIT_failed')
+        self.save_hook=fail;value=self.instance('gpu4')
+        with self.assertRaisesRegex(RuntimeError,'CPU_UNIT_failed'):value.on_train_end()
+        self.save_hook=None;value.output_folder=str(self.folds['gpu5'])
+        with self.assertRaisesRegex(ValueError,'retain its admitted own fold'):value.on_train_end()
+        self.assertEqual(len(self.calls),1)
+
+    def test_original_and_wrapper_code_identity_guards(self):
+        self.install();binding=extension._CHECKPOINT_BINDINGS[self.trainer];original=binding['original'];code=original.__code__
+        try:
+            original.__code__=code.replace()
+            with self.assertRaisesRegex(ValueError,'method changed'):self.instance('gpu4').on_train_end()
+        finally:original.__code__=code
+        wrapper=binding['wrapper'];code=wrapper.__code__
+        try:
+            wrapper.__code__=code.replace()
+            with self.assertRaisesRegex(ValueError,'wrapper changed'):self.instance('gpu4').on_train_end()
+        finally:wrapper.__code__=code
+        method=self.trainer.train_step;code=method.__code__
+        try:
+            method.__code__=code.replace()
+            with self.assertRaisesRegex(ValueError,'method changed'):self.instance('gpu4').on_train_end()
+        finally:method.__code__=code
+        self.assertFalse(self.calls)
+
+    def test_forged_group_and_changed_lock_rejected(self):
+        self.document['checkpoint_coordination']['folds']['gpu5']=str(self.root/'UNIT_wrong')
+        with self.assertRaisesRegex(ValueError,'global7'):self.install()
+        self.document['checkpoint_coordination']['folds']['gpu5']=str(self.folds['gpu5'])
+        Path(self.document['checkpoint_coordination']['lock_file']['path']).write_bytes(b'CPU_UNIT_changed')
+        with self.assertRaisesRegex(ValueError,'source changed'):self.install()
+
+    @unittest.skipIf(os.name=='nt','POSIX symlink proof runs on the Linux deployment test suite')
+    def test_broken_checkpoint_symlink_rejected_without_write(self):
+        self.install();final=self.folds['gpu5']/'checkpoint_final.pth';final.symlink_to(self.root/'UNIT_missing')
+        with self.assertRaisesRegex(ValueError,'symlink'):self.instance('gpu4').on_train_end()
+        self.assertFalse(self.calls)
 
 
 if __name__=='__main__':unittest.main()

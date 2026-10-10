@@ -168,6 +168,11 @@ def _readonly_storage(request):
         if (type(request.get('min_free_disk_GiB')) not in (int, float)
                 or not math.isfinite(request['min_free_disk_GiB'])
                 or type(aggregate.get('required_free_bytes')) is not int
+                or aggregate.get('global_peak_checkpoint_slots') != 7
+                or document.get('checkpoint_coordination', {}).get('format') != 'original_native_final_publication_flock_global7_v1'
+                or document['checkpoint_coordination'].get('global_peak_checkpoint_slots') != 7
+                or document['checkpoint_coordination'].get('per_arm_peak_checkpoint_slots') != 3
+                or document['checkpoint_coordination'].get('optimizer_work_locked') is not False
                 or request['min_free_disk_GiB'] * 2**30 < aggregate['required_free_bytes']
                 or aggregate.get('arms', {}).get('gpu' + str(request['GPU_arm']), {}).get('root') != request['chain_root']
                 or STATIC_HELPER not in request.get('code_files', {})):
@@ -879,7 +884,7 @@ def stage_proof(request, action):
         raise ValueError('Unknown chain stage')
     proof = dict(path=str(path), sha256=sha(path), action=action)
     if request.get('storage_profile') == READONLY_PROFILE:
-        _readonly_storage(request)
+        storage_document = _readonly_storage(request)
         receipt = root / ('readonly_storage_' + action.replace('-', '_') + '.json')
         declared = read(receipt)
         if (declared.get('format') != 'v24_readonly_native_stage_v1' or declared.get('action') != action
@@ -907,6 +912,33 @@ def stage_proof(request, action):
             raise ValueError('Bank/native metadata does not declare its actual read-only cache profile')
         if action in ('prepare-current-bank', 'prepare-native') and value.get('storage_extension') != request.get('storage_extension'):
             raise ValueError('Bank/native metadata does not declare its actual static-operator extension')
+        if request.get('storage_extension') == STATIC_EXTENSION:
+            coordination = storage_document['checkpoint_coordination']
+            if declared.get('checkpoint_coordination') != coordination:
+                raise ValueError('Actual stage must retain the admitted original global7 final-publication coordination')
+            if action == 'prepare-native' and (value.get('checkpoint_coordination') != coordination
+                    or value.get('checkpoint_publication_proof') != storage_document['checkpoint_publication_proof']):
+                raise ValueError('Actual native metadata must seal its admitted original final-publication source and lock')
+            if action == 'train':
+                launches = declared.get('launches')
+                if not isinstance(launches, list) or len(launches) != 1:
+                    raise ValueError('One actual full native worker with original final-publication proof required')
+                worker_receipt = launches[0].get('readonly_worker_receipt', {})
+                worker_path = owned(worker_receipt.get('path')); _inside(worker_path, root / 'native')
+                if sha(worker_path) != worker_receipt.get('sha256'):
+                    raise ValueError('Actual final-publication worker completion proof changed')
+                worker = read(worker_path)
+                if (worker.get('format') != 'v24_readonly_native_worker_v1' or worker.get('status') != 'COMPLETE'
+                        or worker.get('worker') != 'train' or worker.get('physical_batch') != 2 or worker.get('native_epochs') != 250
+                        or worker.get('storage_admission_sha256') != request['storage_admission_sha256']
+                        or worker.get('checkpoint_coordination') != coordination
+                        or worker.get('native') != str(root / 'native/native.json')
+                        or worker.get('native_sha256') != sha(root / 'native/native.json')):
+                    raise ValueError('Actual full native training worker final-publication binding differs')
+                from tools.run_v24_readonly_nnunet_cp import validate_checkpoint_coordination
+                validate_checkpoint_coordination(worker.get('adapters', {}).get('checkpoint_coordination'), storage_document, completed=True,
+                    expected_fold=coordination['folds']['gpu' + str(request['GPU_arm'])],
+                    private_runtime=read(root / 'native/native.json')['private_runtime'])
         proof['storage_receipt'] = dict(path=str(receipt), sha256=sha(receipt))
     return proof
 

@@ -85,10 +85,14 @@ class ReadonlyEntryTest(unittest.TestCase):
     def test_static_native_binding_checks_all105_roles_and_original_checkpoint_methods(self):
         from hiercp_v1x import v24_readonly_static_operator_storage as static
         checksum = 'e' * 64
+        document, _ = self.coordination_fixture()
+        self.admission.write_text(json.dumps(document))
         native = dict(format='DEBUG_current_full_model', physical_GPU=6, root=str(self.root / 'native'),
             bank=str(self.root / 'bank/index.json'), private_runtime=str(self.root / 'private_runtime'),
             storage_profile=entry.PROFILE, storage_extension=entry.EXTENSION,
-            storage_admission=str(self.admission), storage_admission_sha256=checksum)
+            storage_admission=str(self.admission), storage_admission_sha256=checksum,
+            checkpoint_coordination=document['checkpoint_coordination'],
+            checkpoint_publication_proof=document['checkpoint_publication_proof'])
         bank = dict(physical_GPU=6, storage_profile=entry.PROFILE, storage_extension=entry.EXTENSION,
             storage_admission_sha256=checksum, baseline=dict(dataset_name='full131', data_identifier='original_fullres'))
         pipeline = SimpleNamespace(read=lambda path: native if Path(path) == self.native else bank,
@@ -112,6 +116,94 @@ class ReadonlyEntryTest(unittest.TestCase):
             native.pop('storage_extension')
             with self.assertRaisesRegex(ValueError, 'own-arm read-only'):
                 entry._bind_native(pipeline, core, args, checksum)
+
+    def coordination_fixture(self):
+        from hiercp_v1x import v24_readonly_native_storage as core
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        source = ('class nnUNetTrainer:\n'
+            '    def save_checkpoint(self, filename): return filename\n'
+            '    def on_train_end(self): return self.save_checkpoint("DEBUG_final")\n'
+            '    def on_epoch_end(self): return None\n')
+        installed = self.root / 'DEBUG_installed_trainer.py'; installed.write_text(source)
+        private = self.root / 'private_runtime/nnunetv2/training/nnUNetTrainer/nnUNetTrainer.py'
+        private.parent.mkdir(parents=True, exist_ok=True); private.write_text(source)
+        fold = str(self.root / 'native/fold_0')
+        coordination = dict(format=entry.COORDINATION, global_peak_checkpoint_slots=7, per_arm_peak_checkpoint_slots=3,
+            optimizer_work_locked=False, lock_file=dict(path=str(self.root / 'final.lock'), sha256='a' * 64),
+            folds={'gpu6': fold})
+        publication = dict(source=core.proof(installed), compiled_methods=static._compiled_methods(installed))
+        document = dict(checkpoint_coordination=coordination, checkpoint_publication_proof=publication)
+        proof = dict(format=entry.COORDINATION, active=True, coordination_active=True,
+            global_peak_checkpoint_slots=7, per_arm_peak_checkpoint_slots=3, lock_file=coordination['lock_file'],
+            original_on_train_end_code_preserved=True, original_on_train_end_called_once_per_completion=True,
+            original_on_train_end_called_once_under_flock=True, successful_original_on_train_end_calls=0, bound_native_fold=None,
+            optimizer_work_locked=False, save_checkpoint_unchanged=True, on_epoch_end_unchanged=True,
+            retention_changed=False, failure_blocks_next_final=True, repeated_final_rejected=True,
+            private_checkpoint_source=core.proof(private), actual_private_compiled_methods=static._compiled_methods(private),
+            expected_private_compiled_methods=static._compiled_methods(private), admitted_source_compiled_methods=publication['compiled_methods'])
+        return document, proof
+
+    def test_final_coordination_requires_exact_lock_source_and_one_completed_own_fold(self):
+        document, proof = self.coordination_fixture(); fold = document['checkpoint_coordination']['folds']['gpu6']
+        private_runtime = self.root / 'private_runtime'
+        self.assertNotEqual(proof['actual_private_compiled_methods'], document['checkpoint_publication_proof']['compiled_methods'])
+        entry.validate_checkpoint_coordination(proof, document, completed=False, expected_fold=fold, private_runtime=private_runtime)
+        with self.assertRaisesRegex(ValueError, 'single original final'):
+            entry.validate_checkpoint_coordination(proof, document, completed=True, expected_fold=fold, private_runtime=private_runtime)
+        proof.update(successful_original_on_train_end_calls=1, bound_native_fold=fold)
+        entry.validate_checkpoint_coordination(proof, document, completed=True, expected_fold=fold, private_runtime=private_runtime)
+        mutations = [dict(lock_file=dict(sha256='d' * 64)), dict(global_peak_checkpoint_slots=9),
+            dict(optimizer_work_locked=True), dict(successful_original_on_train_end_calls=2),
+            dict(bound_native_fold='other GPU fold'), dict(admitted_source_compiled_methods={})]
+        for mutation in mutations:
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'single original final'):
+                entry.validate_checkpoint_coordination(dict(proof, **mutation), document, completed=True, expected_fold=fold,
+                    private_runtime=private_runtime)
+        with self.assertRaisesRegex(ValueError, 'compiled methods differ'):
+            entry.validate_checkpoint_coordination(dict(proof, actual_private_compiled_methods={}), document, completed=True,
+                expected_fold=fold, private_runtime=private_runtime)
+
+    def test_only_actual_training_worker_installs_coordination_before_original_entry(self):
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        from hiercp_v1x import v24_native_crop_runtime as crop
+        document, proof = self.coordination_fixture(); self.admission.write_text(json.dumps(document))
+        native = dict(root=str(self.root), private_runtime=str(self.root / 'private_runtime'), physical_GPU=6,
+            storage_extension=entry.EXTENSION, checkpoint_coordination=document['checkpoint_coordination'])
+        adapters = {}; bank = dict(baseline=dict(epochs=250, physical_batch=2))
+        pipeline = SimpleNamespace(TRAINER='original_full250_trainer', PLANS='original_full_plans',
+            admit_native=unittest.mock.Mock(), new_json=unittest.mock.Mock())
+        args = SimpleNamespace(native=self.native, storage_admission=self.admission, readonly_worker='train', physical_batch=None,
+            training_args=['730', '3d_fullres', '0', '-tr', pipeline.TRAINER, '-p', pipeline.PLANS])
+        trainer = object(); events = []
+        def install(*args):events.append('install');return proof
+        def run():
+            self.assertEqual(events, ['install']);events.append('original_full250_entry')
+            proof.update(successful_original_on_train_end_calls=1, bound_native_fold=document['checkpoint_coordination']['folds']['gpu6'])
+            return 'original_result'
+        with patch.object(entry, '_bind_native', return_value=(native, bank, adapters)), \
+                patch.object(entry.importlib, 'import_module', return_value=SimpleNamespace(original_full250_trainer=trainer)), \
+                patch.object(static, 'install_checkpoint_adapters', side_effect=install) as activation, \
+                patch.object(crop, 'run_training_entry', side_effect=run), patch.object(entry.sys, 'argv', []):
+            self.assertEqual(entry.worker(args, pipeline, object(), 'e' * 64, lambda: None), 'original_result')
+        activation.assert_called_once_with(self.admission, native['private_runtime'], trainer)
+        receipt = pipeline.new_json.call_args.args[1]
+        self.assertEqual(receipt['adapters']['checkpoint_coordination']['successful_original_on_train_end_calls'], 1)
+        self.assertEqual(receipt['physical_batch'], 2);self.assertEqual(receipt['native_epochs'], 250)
+
+    def test_calibration_worker_never_activates_final_coordination(self):
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        from hiercp_v1x import v24_native_calibration_runtime as runtime
+        document, _ = self.coordination_fixture()
+        native = dict(storage_extension=entry.EXTENSION, checkpoint_coordination=document['checkpoint_coordination'])
+        pipeline = SimpleNamespace(admit_native=unittest.mock.Mock(), new_json=unittest.mock.Mock())
+        args = SimpleNamespace(native=self.native, storage_admission=self.admission, readonly_worker='calibrate',
+            physical_batch=2, worker_output=self.root)
+        with patch.object(entry, '_bind_native', return_value=(native, {}, {})), \
+                patch.object(static, 'install_checkpoint_adapters') as activation, \
+                patch.object(runtime, '_calibrate_native_worker', return_value='actual clone calibration'):
+            entry.worker(args, pipeline, object(), 'e' * 64, lambda: None)
+        activation.assert_not_called()
+        self.assertNotIn('checkpoint_coordination', pipeline.new_json.call_args.args[1]['adapters'])
 
     def test_redirect_installs_adapter_in_both_original_physical_clone_workers(self):
         for batch in ('2', '4'):

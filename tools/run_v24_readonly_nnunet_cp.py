@@ -20,6 +20,7 @@ sys.dont_write_bytecode = True
 
 PROFILE = 'reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly'
 EXTENSION = 'reuse_full105_exact_static_raw_case_operators_readonly_v1'
+COORDINATION = 'original_native_final_publication_flock_global7_v1'
 EXTENSION_FILE = 'hiercp_v1x/v24_readonly_static_operator_storage.py'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 CHECKSUM_ENV = 'V24_READONLY_STORAGE_ADMISSION_SHA256'
@@ -120,6 +121,40 @@ def runtime_files(document):
     return (*FILES, EXTENSION_FILE) if document.get('storage_extension') == EXTENSION else FILES
 
 
+def validate_checkpoint_coordination(proof, document, *, completed, expected_fold, private_runtime):
+    """Require the actual original final hook, with no optimizer serialization."""
+    admitted = document['checkpoint_coordination']
+    publication = document['checkpoint_publication_proof']
+    if (not isinstance(proof, dict) or proof.get('format') != COORDINATION or proof.get('active') is not True
+            or proof.get('coordination_active') is not True
+            or proof.get('global_peak_checkpoint_slots') != 7 or proof.get('per_arm_peak_checkpoint_slots') != 3
+            or proof.get('lock_file') != admitted['lock_file']
+            or proof.get('original_on_train_end_code_preserved') is not True
+            or proof.get('original_on_train_end_called_once_per_completion') is not True
+            or proof.get('original_on_train_end_called_once_under_flock') is not True
+            or proof.get('successful_original_on_train_end_calls') != (1 if completed else 0)
+            or expected_fold not in admitted['folds'].values()
+            or proof.get('bound_native_fold') != (expected_fold if completed else None)
+            or proof.get('optimizer_work_locked') is not False
+            or proof.get('save_checkpoint_unchanged') is not True or proof.get('on_epoch_end_unchanged') is not True
+            or proof.get('retention_changed') is not False
+            or proof.get('failure_blocks_next_final') is not True or proof.get('repeated_final_rejected') is not True
+            or proof.get('private_checkpoint_source', {}).get('sha256') != publication['source']['sha256']
+            or proof.get('admitted_source_compiled_methods') != publication['compiled_methods']):
+        raise ValueError('Actual single original final publication under the admitted global7 lock is required')
+    from hiercp_v1x import v24_readonly_native_storage as core
+    from hiercp_v1x import v24_readonly_static_operator_storage as static
+    private_source = core.guard(proof['private_checkpoint_source'], full_hash=True)
+    expected_path = Path(private_runtime) / 'nnunetv2/training/nnUNetTrainer/nnUNetTrainer.py'
+    if private_source != expected_path:
+        raise ValueError('Actual final-publication proof must bind the exact private native trainer source')
+    methods = static._compiled_methods(private_source)
+    if (proof.get('actual_private_compiled_methods') != methods
+            or proof.get('expected_private_compiled_methods') != methods):
+        raise ValueError('Actual private final-publication compiled methods differ at their exact private filename')
+    return proof
+
+
 @contextmanager
 def runtime_scope(pipeline, storage, admission_path, guard, *, write_root, reserve_bytes, extension=None):
     """Adapt storage only inside this dedicated process and restore its namespace."""
@@ -175,6 +210,11 @@ def _bind_native(pipeline, storage, args, checksum):
         from hiercp_v1x import v24_readonly_static_operator_storage as static
         if bank.get('storage_extension') != EXTENSION:
             raise ValueError('Native and bank must declare the same full-static-array extension')
+        document = json.loads(Path(args.storage_admission).read_text(encoding='utf8'))
+        if (not isinstance(document.get('checkpoint_coordination'), dict)
+                or native.get('checkpoint_coordination') != document['checkpoint_coordination']
+                or native.get('checkpoint_publication_proof') != document.get('checkpoint_publication_proof')):
+            raise ValueError('Native must seal its exact admitted original global7 final-publication coordination')
         trainer = getattr(importlib.import_module('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_FrozenV23CP'), pipeline.TRAINER)
         adapters = dict(raw_store=static.install_runtime_adapters(args.storage_admission, Path(native['bank']).parent),
             preprocessed=storage.install_dataset_adapter(args.storage_admission, private),
@@ -210,9 +250,21 @@ def worker(args, pipeline, storage, checksum, guard):
         expected = ['730', '3d_fullres', '0', '-tr', pipeline.TRAINER, '-p', pipeline.PLANS]
         if args.training_args != expected or bank['baseline']['epochs'] != 250 or bank['baseline']['physical_batch'] != 2:
             raise ValueError('Original fresh full250/physicalB2 Dataset730 native CLI tail required')
+        if native.get('storage_extension') == EXTENSION:
+            from hiercp_v1x import v24_readonly_static_operator_storage as static
+            trainer = getattr(importlib.import_module('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_FrozenV23CP'), pipeline.TRAINER)
+            document = json.loads(Path(args.storage_admission).read_text(encoding='utf8'))
+            adapters['checkpoint_coordination'] = static.install_checkpoint_adapters(args.storage_admission,
+                native['private_runtime'], trainer)
+            fold = document['checkpoint_coordination']['folds']['gpu' + str(native['physical_GPU'])]
+            validate_checkpoint_coordination(adapters['checkpoint_coordination'], document, completed=False, expected_fold=fold,
+                private_runtime=native['private_runtime'])
         from hiercp_v1x.v24_native_crop_runtime import run_training_entry
         sys.argv = [str(Path(native['private_runtime']) / 'nnunetv2/run/run_training.py'), *expected]
         result = run_training_entry()
+        if native.get('storage_extension') == EXTENSION:
+            validate_checkpoint_coordination(adapters['checkpoint_coordination'], document, completed=True, expected_fold=fold,
+                private_runtime=native['private_runtime'])
         receipt = Path(native['root']) / ('readonly_storage_training_worker_' + str(time.time_ns()) + '.json')
     guard()
     pipeline.new_json(receipt, dict(format='v24_readonly_native_worker_v1', status='COMPLETE',
@@ -220,6 +272,7 @@ def worker(args, pipeline, storage, checksum, guard):
         storage_admission_sha256=checksum, native=str(args.native), native_sha256=_sha(args.native),
         adapters=adapters, cached_inputs_written=False, model_data_scale_preserved=True,
         storage_extension=native.get('storage_extension'),
+        checkpoint_coordination=native.get('checkpoint_coordination'),
         physical_batch=args.physical_batch if args.readonly_worker == 'calibrate' else 2,
         native_epochs=250, completed_at=time.time()))
     return result
@@ -314,6 +367,15 @@ def main(args):
                         or declared.get('cached_inputs_written') is not False
                         or not isinstance(declared.get('adapters'), dict)):
                     raise ValueError('Actual native child lacks its admitted read-only cache/runtime proof')
+                if extension is not None:
+                    if declared.get('checkpoint_coordination') != document['checkpoint_coordination']:
+                        raise ValueError('Actual native child final-publication admission differs')
+                    if kind == 'train':
+                        validate_checkpoint_coordination(declared['adapters'].get('checkpoint_coordination'), document, completed=True,
+                            expected_fold=document['checkpoint_coordination']['folds']['gpu' + str(args.gpu)],
+                            private_runtime=native['private_runtime'])
+                    elif declared['adapters'].get('checkpoint_coordination') is not None:
+                        raise ValueError('Native clone calibration must not activate final-publication coordination')
             for launch, path in zip(launches, worker_paths):
                 launch['readonly_worker_receipt'] = dict(path=str(path), sha256=_sha(path))
         guard()
@@ -325,6 +387,7 @@ def main(args):
         storage_profile=PROFILE, storage_admission=str(args.storage_admission), storage_admission_sha256=checksum,
         cached_inputs_written=False, model_data_scale_preserved=True, scores_reused=False, learned_upper_reused=False,
         storage_extension=document.get('storage_extension'),
+        checkpoint_coordination=document.get('checkpoint_coordination'),
         runtime_sources_sha256={name: _sha(ROOT / name) for name in runtime_files(document)}, launches=launches,
         native_epochs=250, native_physical_batch=2, cp_probability=.5, completed_at=time.time())
     pipeline.new_json(_chain_root(args) / ('readonly_storage_' + args.action.replace('-', '_') + '.json'), proof)
