@@ -135,6 +135,50 @@ class NativeFreshCLITransportDebug(unittest.TestCase):
     def test_gpu_assignment_is_guarded_before_any_pipeline_or_model_call(self):
         with self.assertRaisesRegex(ValueError, 'GPU1'):
             runtime.calibrate_native('nonexistent-native.json', gpu=5)
+        with self.assertRaisesRegex(ValueError, 'GPU1'):
+            runtime.train_native('nonexistent-native.json', gpu=5)
+
+    def test_original_fresh_training_argument_tail_is_preserved(self):
+        command = [sys.executable, '-B', '-m', 'nnunetv2.run.run_training',
+            '730', '3d_fullres', '0', '-tr', 'ActualPinnedTrainer', '-p', 'ActualPinnedPlans']
+        original = command.copy()
+        actual = runtime._replace_training_command(command, sys.executable,
+            trainer='ActualPinnedTrainer', plans='ActualPinnedPlans')
+        self.assertEqual(command, original)
+        self.assertEqual(actual[:2], original[:2])
+        self.assertEqual(actual[2:4], ['-c', runtime.TRAIN_COMMAND])
+        self.assertEqual(actual[4:], original[4:])
+
+    def test_training_resume_foreign_dataset_or_changed_flags_are_refused(self):
+        command = [sys.executable, '-B', '-m', 'nnunetv2.run.run_training',
+            '730', '3d_fullres', '0', '-tr', 'ActualPinnedTrainer', '-p', 'ActualPinnedPlans']
+        variants = [tuple(command), command + ['--c'], command + ['--val'], command[:-2],
+            ['different-python', *command[1:]]]
+        for index, value in ((1, '-u'), (2, '-c'), (3, 'foreign.entry'),
+                (4, '731'), (5, '2d'), (6, '1'), (8, 'ForeignTrainer'), (10, 'ForeignPlans')):
+            modified = command.copy(); modified[index] = value; variants.append(modified)
+        for value in variants:
+            with self.subTest(command=value), self.assertRaises(ValueError):
+                runtime._replace_training_command(value, sys.executable,
+                    trainer='ActualPinnedTrainer', plans='ActualPinnedPlans')
+
+    def test_crop_install_precedes_unchanged_clone_worker_and_source_is_bound(self):
+        import ast
+        import inspect
+        source = inspect.getsource(runtime._calibrate_native_worker)
+        tree = ast.parse(source)
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
+        install = [node for node in calls if isinstance(node.func, ast.Attribute)
+            and node.func.attr == 'install_crop_protocol']
+        original = [node for node in calls if isinstance(node.func, ast.Name)
+            and node.func.id == 'worker']
+        self.assertEqual(len(install), 1)
+        self.assertEqual(len(original), 1)
+        self.assertLess(install[0].lineno, original[0].lineno)
+        metadata = inspect.getsource(runtime._metadata)
+        for key in ('crop_runtime_module_sha256', 'crop_runtime_contract',
+                'continuation_CLI_sha256', 'original_training_function_sha256'):
+            self.assertIn(key, metadata)
 
     def test_receipt_publication_refuses_overwriting_existing_proof(self):
         with unit_directory() as directory:

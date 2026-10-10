@@ -1,8 +1,10 @@
-"""Fresh native CLI flag transport for isolated GPU1 calibration clones.
+"""Fresh native CLI flag and crop transport for the existing GPU1 native arm.
 
 The pinned CP pipeline, private nnU-Net package, plans, arrays and model code
-are unchanged. Only a private worker's plans reader adds the fresh CLI's
-``continue_training=False`` to a deep copy of the exact plans document.
+are unchanged. A private clone plans reader adds the fresh CLI's
+``continue_training=False`` to a deep copy of the exact plans document. The
+separately admitted crop runtime connects the lossless baseline segmentation
+protocol to the original paste method in calibration and full training.
 """
 from __future__ import annotations
 
@@ -25,6 +27,8 @@ ORIGINAL_WORKER_COMMAND = ('from hiercp_v1x.v24_nnunet_cp import _calibrate_nati
     'import sys; _calibrate_native_worker(sys.argv[1],int(sys.argv[2]),sys.argv[3])')
 WORKER_COMMAND = ('from hiercp_v1x.v24_native_calibration_runtime import _calibrate_native_worker; '
     'import sys; _calibrate_native_worker(sys.argv[1],int(sys.argv[2]),sys.argv[3])')
+TRAIN_COMMAND = ('from hiercp_v1x.v24_native_crop_runtime import run_training_entry; '
+    'run_training_entry()')
 
 
 def _sha(path):
@@ -103,6 +107,7 @@ def _prove_fresh_cli(trainer_source, cli_source):
 
 
 def _metadata(pipeline, native_path):
+    from . import v24_native_crop_runtime as crop_runtime
     native_path = Path(native_path).resolve(strict=True)
     native = pipeline.read(native_path)
     bank = pipeline.read(native['bank'])
@@ -128,8 +133,14 @@ def _metadata(pipeline, native_path):
         private_trainer_path=str(trainer), private_trainer_sha256=_sha(trainer),
         private_CLI_path=str(cli), private_CLI_sha256=_sha(cli),
         wrapper_module_path=str(Path(__file__).resolve()), wrapper_module_sha256=_sha(__file__),
+        crop_runtime_module_path=str(Path(crop_runtime.__file__).resolve()),
+        crop_runtime_module_sha256=_sha(crop_runtime.__file__),
+        crop_runtime_contract=crop_runtime.crop_protocol_contract(),
+        continuation_CLI_path=str(pipeline.ROOT / 'tools/run_v24_native_continuation.py'),
+        continuation_CLI_sha256=_sha(pipeline.ROOT / 'tools/run_v24_native_continuation.py'),
         original_calibration_function_sha256=_function_sha(pipeline.calibrate_native),
-        original_worker_function_sha256=_function_sha(pipeline._calibrate_native_worker))
+        original_worker_function_sha256=_function_sha(pipeline._calibrate_native_worker),
+        original_training_function_sha256=_function_sha(pipeline.train))
     return native, bank, proof
 
 
@@ -150,7 +161,8 @@ def _plans_reader(original_read, plans_path):
 
 
 def _replace_worker_command(command, native_path, executable):
-    if (not isinstance(command, list) or len(command) != 7 or command[0] != executable
+    if (not isinstance(command, list) or len(command) != 7
+            or any(not isinstance(item, str) for item in command) or command[0] != executable
             or command[1:4] != ['-B', '-c', ORIGINAL_WORKER_COMMAND]
             or Path(command[4]).resolve(strict=True) != Path(native_path).resolve(strict=True)
             or not command[5].isdigit() or int(command[5]) <= 0):
@@ -160,9 +172,18 @@ def _replace_worker_command(command, native_path, executable):
     return result
 
 
+def _replace_training_command(command, executable, *, trainer, plans):
+    expected = [executable, '-B', '-m', 'nnunetv2.run.run_training',
+        '730', '3d_fullres', '0', '-tr', trainer, '-p', plans]
+    if not isinstance(command, list) or command != expected:
+        raise ValueError('Only the exact fresh original native training CLI command may be redirected')
+    return [*command[:2], '-c', TRAIN_COMMAND, *command[4:]]
+
+
 def _calibrate_native_worker(native_path, physical_batch, output):
     """Called only by the isolated clone command; model/step code stays original."""
     from . import v24_nnunet_cp as pipeline
+    from . import v24_native_crop_runtime as crop_runtime
     native, bank, proof = _metadata(pipeline, native_path)
     output = Path(output).resolve(strict=True)
     if (not output.is_relative_to(Path(native['root']).resolve())
@@ -172,6 +193,8 @@ def _calibrate_native_worker(native_path, physical_batch, output):
     runtime_receipt = output / WORKER_RECEIPT
     if runtime_receipt.exists():
         raise FileExistsError('Existing native runtime clone proof is immutable')
+    if crop_runtime.install_crop_protocol() != proof['crop_runtime_contract']:
+        raise ValueError('Installed crop protocol differs from the admitted exact parent source')
     reader, count = _plans_reader(pipeline.read, proof['plans_path'])
     original = pipeline._calibrate_native_worker
     worker = _function(original, {'read': reader})
@@ -185,7 +208,7 @@ def _calibrate_native_worker(native_path, physical_batch, output):
         proof=proof, trial_path=str(trial), trial_sha256=_sha(trial),
         continue_training_value=False, in_memory_plans_only=True,
         original_worker_code_preserved=True, globals_replaced=['read'],
-        plans_file_unchanged=True, production_optimizer_updates=0)
+        plans_file_unchanged=True, crop_protocol_installed=True, production_optimizer_updates=0)
     _publish(runtime_receipt, value)
     return result
 
@@ -268,9 +291,62 @@ def admit_runtime_receipt(native_path):
                 or worker.get('proof') != proof or worker.get('physical_batch') != row['physical_batch']
                 or worker.get('continue_training_value') is not False
                 or worker.get('in_memory_plans_only') is not True or worker.get('plans_file_unchanged') is not True
+                or worker.get('crop_protocol_installed') is not True
                 or worker.get('original_worker_code_preserved') is not True
                 or worker.get('globals_replaced') != ['read'] or worker.get('production_optimizer_updates') != 0
                 or trial not in reports or worker['trial_sha256'] != reports[trial]['sha256']
                 or _sha(trial) != worker['trial_sha256']):
             raise ValueError('Actual native trial is not bound to the fresh in-memory flag proof')
     return path
+
+
+def train_native(native_path, *, gpu=1):
+    """Run the unchanged full native trainer through the admitted crop entry point.
+
+    This is the original fresh training path. Existing outputs are still refused
+    by the original pipeline; resume is not silently selected by this wrapper.
+    """
+    if gpu != 1:
+        raise ValueError('This existing native downstream arm is assigned GPU1')
+    from . import v24_nnunet_cp as pipeline
+    runtime_receipt = Path(admit_runtime_receipt(native_path)).resolve(strict=True)
+    native, bank, proof = _metadata(pipeline, native_path)
+    root = Path(native['root']).resolve(strict=True)
+    original = pipeline.train
+    launches = []
+    def popen(command, *args, **kwargs):
+        actual = _replace_training_command(command, pipeline.sys.executable,
+            trainer=pipeline.TRAINER, plans=pipeline.PLANS)
+        stamp = str(time.time_ns())
+        binding_path = root / ('production_runtime_binding_' + stamp + '.json')
+        binding = dict(format=FORMAT, status='ADMITTED_BEFORE_CHILD_LAUNCH', debug=False,
+            proof=proof, native_calibration_runtime_path=str(runtime_receipt),
+            native_calibration_runtime_sha256=_sha(runtime_receipt),
+            calibration_path=str(root / 'calibration.json'),
+            calibration_sha256=_sha(root / 'calibration.json'), GPU=1,
+            original_command=command.copy(), actual_command=actual.copy(),
+            original_training_code_preserved=True, globals_replaced=['subprocess'],
+            original_CLI_argument_tail_preserved=actual[4:] == command[4:],
+            fresh_CLI_default_continue_training=False, plans_file_unchanged=True,
+            crop_protocol_child_entrypoint=True, model_or_data_equations_changed=False,
+            existing_native_source_files_changed=False, epochs=250,
+            physical_batch=bank['baseline']['physical_batch'], cp_probability=.5,
+            created_at=time.time())
+        _publish(binding_path, binding)
+        child = pipeline.subprocess.Popen(actual, *args, **kwargs)
+        launches.append(dict(binding_path=str(binding_path), binding_sha256=_sha(binding_path),
+            original_command=command.copy(), actual_command=actual.copy(), child_PID=child.pid))
+        return child
+    proxy = SimpleNamespace(Popen=popen, PIPE=pipeline.subprocess.PIPE, STDOUT=pipeline.subprocess.STDOUT)
+    checkpoint = _function(original, {'subprocess': proxy})(native_path, gpu=gpu, resume=False)
+    if len(launches) != 1 or _metadata(pipeline, native_path)[2] != proof:
+        raise ValueError('One completed original fresh training child and unchanged source/inputs required')
+    checkpoint = Path(checkpoint).resolve(strict=True)
+    complete = root / ('production_runtime_complete_' + str(time.time_ns()) + '.json')
+    _publish(complete, dict(format=FORMAT, status='COMPLETE', debug=False, proof=proof,
+        launches=launches, checkpoint_path=str(checkpoint), checkpoint_sha256=_sha(checkpoint),
+        native_calibration_runtime_path=str(runtime_receipt),
+        native_calibration_runtime_sha256=_sha(runtime_receipt), epochs=250, GPU=1,
+        original_training_code_preserved=True, model_or_data_equations_changed=False,
+        existing_native_source_files_changed=False, completed_at=time.time()))
+    return checkpoint

@@ -21,8 +21,6 @@ def main(argv=None):
     if args.mode=='calibrate':
         print(runtime.calibrate_native(args.native,gpu=args.gpu),flush=True)
     else:
-        runtime.admit_runtime_receipt(args.native)
-        from hiercp_v1x import v24_nnunet_cp as pipeline
-        print(pipeline.train(args.native,gpu=args.gpu),flush=True)
+        print(runtime.train_native(args.native,gpu=args.gpu),flush=True)
 
 if __name__=='__main__': main()

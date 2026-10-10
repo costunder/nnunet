@@ -117,6 +117,9 @@ GPU5 준비 작업의 실제20초 관측에서4개 affinity 중 평균1코어만
 불변 region과 source cache는 기존 raw8GiB 합계 및 process64GiB RSS 관리 범위를 공유한다. 데이터 포함량 제한이 아니다.
 MobaXterm 로그에는 U 범위, 완료 환자 수, 실제 경과 시간이 기록되며 모든86개 단계 환자를 처리한다.
 새 adapter의 단위·동등성 검증과 실제 서버 DEBUG 속도 측정은 각각 실행 증거에 별도 기록한다.
+같은 실제 liver_1 DEBUG 비교에서 U7 준비145.08초→79.42초(45.25% 감소), U12825.09초→21.13초(15.78% 감소)를 측정했다.
+두 범위의 전체P/전체U graph와 prototype tensor의 dtype/shape/값 및 감사 정보가 정확히 일치했다. 최대RSS15.78GiB였다.
+이 값은 한 환자 CPU DEBUG 측정이며 전체 환자의 처리량이나 학습 성능으로 해석하지 않는다.
 
 GPU1 기존 native 준비의 안전한 연결
 전체105 CP bank와131 preprocessing/GT 복사가 완료된 뒤 CUDA calibration에서 continue_training KeyError가 확인됐다.
@@ -126,6 +129,14 @@ GPU1 기존 native 준비의 안전한 연결
 기존 plans/private runtime/CP bank/복사 배열과8개 원형 CP source 파일을 덮어쓰지 않고 이전 실패 로그도 보존한다.
 새 adapter/CLI/원형 private constructor 및 CLI의 AST/원형 함수/실제 trial과 calibration SHA를 별도 receipt로 검증한다.
 clone의 실제 full128 loss/backward/update/CP 검증 후에만250 epoch native production을 시작한다.
+이후 실제 부모 CP 로더가 완전한 native baseline_seg를 ndarray로만 인정하여 무손실 crop proxy를 거부하는 오류를 확인했다.
+별도 v24_native_crop_runtime은 FrozenV23Loader에만 부모 paste method의 입력 인정 predicate1개를 메모리에서 재정의한다.
+원형 ndarray 또는 실제 검증된 ROOT LosslessRawBankStore가 baseline_seg로 등록한 exact _CropArray만 인정한다.
+전체 shape/int16 dtype/원형 baseline crop equality/CP support 및 감사 계산은 그대로 유지하며 전체 volume decode를 수행하지 않는다.
+원형 NPY와 실제 무손실 codec의 padded crop 및 intensity jitter별 CT/seg/support/audit 값과 RNG 보존을 CPU DEBUG에서 비교한다.
+실제 private trainer/parent/ROOT storage SHA와 method AST를 결속하며 기존8 CP source/private package/plans/기존 결과를 변경하지 않는다.
+동일 protocol을 calibration 및 fresh native training subprocess에 적용한다. 원형 CLI argument tail과250 epoch 설정은 유지한다.
+CPU 검사 통과와 실제 CUDA calibration 및250 epoch 전체 학습 완료는 각각 구분하여 실행 증거에 기록한다.
 
 작업 완료 체크리스트
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
