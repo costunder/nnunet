@@ -104,6 +104,29 @@ CP 원본 파일의 SHA/stat은 worker 생성 전에 한 번 검증하여 부모
 이 방식은 epoch마다 전체 큰 배열을 반복해서 SHA 읽기하는 병목을 줄이며 RNG/CP 정책/epoch별 worker seed는 바꾸지 않는다.
 최종 실행 상태/commit/PID/로그/peak VRAM은 outputs/v24_20261010의 실행 증거에 별도로 기록한다.
 
+CPU 준비 병목과 값 보존 수정
+GPU5 준비 작업의 실제20초 관측에서4개 affinity 중 평균1코어만 사용했다.
+실제 liver_1의 전체P11+U7 cold upper 생성145.08초 중6회 whole-volume EDT가97.38초(67.12%)였다.
+같은 환자의 전체P+U128 warm upper는25.09초였다. 이 DEBUG는 실제 입력과 원래 그래프를 사용하며 학습 성능 결과가 아니다.
+상위 그래프는 local prepared donor를 사용하지 않는데도 원래 _donor가 그것을 생성하며 약28.47초의 EDT를 추가했다.
+새 v24_preparation_runtime 실행 adapter는 상위 그래프에서 실제 사용하는 원래 donor source만 준비하고,
+같은 불변 organ/spacing에 대한 원형 EDT 결과를 region 생성과 원형 validation 조건에서 재사용한다.
+원형 CT/organ/region/graph 수치 코드5파일과 cache source fingerprint를 유지하여 기존14102 입력 및 완료 upper를 그대로 검증해 읽는다.
+실제 실행 adapter 및 CLI의 SHA는 별도 execution request/receipt와 source file guard로 결속하며 원형 실행과 같다고 숨기지 않는다.
+환자별 region in-flight lock을 사용하여 다른 환자의 region 생성이 공통 LRU lock 밖에서 진행되도록 한다.
+불변 region과 source cache는 기존 raw8GiB 합계 및 process64GiB RSS 관리 범위를 공유한다. 데이터 포함량 제한이 아니다.
+MobaXterm 로그에는 U 범위, 완료 환자 수, 실제 경과 시간이 기록되며 모든86개 단계 환자를 처리한다.
+새 adapter의 단위·동등성 검증과 실제 서버 DEBUG 속도 측정은 각각 실행 증거에 별도 기록한다.
+
+GPU1 기존 native 준비의 안전한 연결
+전체105 CP bank와131 preprocessing/GT 복사가 완료된 뒤 CUDA calibration에서 continue_training KeyError가 확인됐다.
+설치된 nnU-Net의 실제 run_training CLI는 fresh 실행 시 plans의 메모리 사본에 continue_training=False를 넣지만,
+직접 구성한 calibration clone이 이 필드를 전달하지 않았던 원인이다. 실제 constructor에서 이 값은 MetaLogger 계속 기록 여부에만 쓰인다.
+별도 native calibration runtime은 원형 clone의 code object를 유지하며 정확한 plans 파일을 읽는 경로에서만 deep copy에 False를 전달한다.
+기존 plans/private runtime/CP bank/복사 배열과8개 원형 CP source 파일을 덮어쓰지 않고 이전 실패 로그도 보존한다.
+새 adapter/CLI/원형 private constructor 및 CLI의 AST/원형 함수/실제 trial과 calibration SHA를 별도 receipt로 검증한다.
+clone의 실제 full128 loss/backward/update/CP 검증 후에만250 epoch native production을 시작한다.
+
 작업 완료 체크리스트
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
 - [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.

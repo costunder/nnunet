@@ -15,6 +15,7 @@ ROOT=Path(__file__).resolve().parents[1]
 FILES=('hiercp_v1x/v24_training.py','hiercp_v1x/v24_targets.py','hiercp_v1x/v24_factory.py',
     'hiercp_v1x/v24_provider.py','hiercp_v1x/v24_inputs.py','hiercp_v1x/v24_model.py',
     'hiercp_v1x/v24_geometry.py','hiercp_v1x/v24_stunet.py','tools/run_v24_all_p.py',
+    'hiercp_v1x/v24_preparation_runtime.py',
     'hiercp_v1x/v23_training.py','hiercp_v1x/u_bridge_training.py',
     'hiercp_v1x/transition_v1_local.py','hiercp_v1x/transition_v1_empty_context.py',
     'hiercp_v1x/v23_data.py','hiercp_v22/storage.py')
@@ -94,6 +95,9 @@ def main(argv=None):
     if str(ROOT)not in sys.path: sys.path.insert(0,str(ROOT))
     import psutil
     import torch
+    from hiercp_v1x import v24_factory
+    from hiercp_v1x.v24_preparation_runtime import install_runtime
+    CPU_preparation_runtime=install_runtime(v24_factory)
     from hiercp_v1x.v24_factory import V24NativeInputs,build_runtime
     from hiercp_v1x.v24_targets import validate_policy
     runtime=config['v24_runtime']; coverage=validate_policy(runtime['curriculum'])
@@ -125,6 +129,8 @@ def main(argv=None):
                 local_index=str(index),local_index_sha256=sha(index),initial_upper=initial,full_upper=full,
                 population=inputs.population.manifest(),curriculum=coverage,
                 recipient_GT_used_in_forward=False,actual_CPU_only=True,neural_model_created=False,
+                CPU_preparation_runtime=CPU_preparation_runtime,
+                CPU_preparation_profile=inputs.preparation_runtime_receipt(),
                 production_optimizer_updates=0,old_canonical_cache_reused=False))
         finally: inputs.close()
         return
@@ -145,7 +151,8 @@ def main(argv=None):
             available_RAM_bytes=psutil.virtual_memory().available,model_contract=model_contract,
             graph_config=training_config['graph'],population=population.manifest(),workers=runtime['workers'],
             precision_AMP=training_config['training']['amp'],seed=42,epochs=40,curriculum=coverage,
-            fresh_model_optimizer=True,trained_v23_weights_loaded=False,debug=False))
+            fresh_model_optimizer=True,trained_v23_weights_loaded=False,debug=False,
+            CPU_preparation_runtime=CPU_preparation_runtime))
         if args.mode=='calibrate':
             if args.resume is not None: raise ValueError('Fresh model calibration refuses legacy/resume weights')
             report=calibrate_training_batches(net,scorer,population,training_config,budget=budget,model_contract=model_contract)
