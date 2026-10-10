@@ -25,6 +25,11 @@ sys.dont_write_bytecode = True
 
 FORMAT = 'v24_completed_gnn_to_native_chain_request_v1'
 CURRENT_FORMAT = 'v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1'
+CONTINUATION_PIPELINE_FORMAT = 'v24_GPU4_exact_saved_state_continuation_pipeline_v1'
+CONTINUATION_FORMAT = 'v24_GPU4_exact_saved_state_continuation_v1'
+CONTINUATION_RECEIPT = 'GPU4_exact_continuation.json'
+CONTINUATION_FILES = ('tools/run_v24_gpu4_exact_continuation.py', 'tools/run_v24_gpu4_pipeline.py')
+NUMERICAL_STATES = ('model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'shuffle_generator')
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
 PARAMETER_TENSORS = {4: 537, 5: 981, 6: 537}
@@ -311,6 +316,9 @@ def _validate_gpu4_pipeline_inputs(request, pipeline):
             or sha(request['stunet_checkpoint']) != request['stunet_checkpoint_sha256']):
         raise ValueError('GPU4 actual immutable full source configuration/SHA required before waiting')
     validate_config(config, 4, request['stunet_checkpoint'])
+    if pipeline.get('format') == CONTINUATION_PIPELINE_FORMAT:
+        _validate_gpu4_continuation_pipeline(request, pipeline, config_path)
+        return
     stages = pipeline.get('stages', [])
     if tuple(stage.get('name') for stage in stages) != ('prepare_inputs', 'calibrate', 'train'):
         raise ValueError('GPU4 requires its exact fresh prepare_inputs/calibrate/train pipeline')
@@ -338,6 +346,185 @@ def _validate_gpu4_pipeline_inputs(request, pipeline):
             raise ValueError('GPU4 fresh stage changed full source inputs/config/GPU/CPU or added an unapproved option')
 
 
+def _file_stat(path):
+    value = owned(path).stat()
+    return [value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns]
+
+
+def _validate_gpu4_continuation_pipeline(request, pipeline, config_path):
+    """Bind a new execution overlay to one untouched failed scientific source."""
+    if (request.get('recovery') is not None
+            or pipeline.get('code') != request['code'] or pipeline.get('commit') != request['commit']
+            or pipeline.get('execution_code') != request['code'] or pipeline.get('execution_commit') != request['commit']
+            or pipeline.get('source_code') != request['source_code']
+            or pipeline.get('source_commit') != request['source_commit']
+            or not _checksum(pipeline.get('latest_checkpoint_sha256'))
+            or type(pipeline.get('durable_optimizer_updates')) is not int
+            or pipeline['durable_optimizer_updates'] != 1):
+        raise ValueError('GPU4 exact continuation requires its new overlay, original science and durable update1; no claim recovery')
+    files = pipeline.get('execution_files')
+    if (not isinstance(files, dict) or set(files) != set(CONTINUATION_FILES)
+            or any(not _checksum(value) or request['code_files'].get(name) != value
+                   or sha(Path(request['code']) / name) != value for name, value in files.items())):
+        raise ValueError('GPU4 continuation exact new execution source SHA manifest differs')
+    previous = owned(pipeline['source_output'], directory=True)
+    destination = Path(request['source_output'])
+    if (previous == destination or previous in destination.parents or destination in previous.parents
+            or previous == Path(request['chain_root']) or previous in Path(request['chain_root']).parents):
+        raise ValueError('GPU4 continuation requires a fresh disjoint source and new source claim')
+    previous_job = owned(pipeline['source_job'], directory=True)
+    previous_request = read(previous_job / 'request.json')
+    previous_status = read(previous_job / 'status.json')
+    if (previous_status.get('request') != previous_request or previous_status.get('status') != 'FAILED'
+            or previous_status.get('stage') != 'train' or previous_request.get('GPU') != 4
+            or previous_request.get('GPU_uuid') != request['GPU_UUID']
+            or previous_request.get('code') != request['source_code']
+            or previous_request.get('commit') != request['source_commit']
+            or previous_request.get('production_output') != str(previous)
+            or previous_request.get('gnn_config') != pipeline['gnn_config']
+            or previous_request.get('source_config') != str(config_path)
+            or previous_request.get('source_config_sha256') != pipeline['source_config_sha256']
+            or previous_request.get('CPU_affinity') != request['CPU_affinity']
+            or tuple(previous_request.get(key) for key in ('epochs', 'physical_patient_batch', 'candidate_chunk')) != (40, 4, 64)):
+        raise ValueError('GPU4 continuation original failed full source/config/job binding differs')
+    for name in ('worker', 'child'):
+        pid, birth = previous_status.get(name + '_pid'), previous_status.get(name + '_create_time')
+        if (type(pid) is not int or type(birth) not in (int, float)
+                or process_witness(pid, birth) is not None):
+            raise ValueError('GPU4 continuation original exact worker/child must be absent; no overlapping source')
+    stages = pipeline.get('stages', [])
+    if tuple(stage.get('name') for stage in stages) != ('prepare_continuation', 'train'):
+        raise ValueError('GPU4 continuation requires exact prepare_continuation/train stages')
+    old_trains = [stage for stage in previous_request.get('stages', []) if stage.get('name') == 'train']
+    if len(old_trains) != 1 or previous_request['stages'][-1] != old_trains[0]:
+        raise ValueError('GPU4 continuation requires one original final science train command')
+    old_command = old_trains[0].get('command', [])
+    if old_command[:4] != [request['python'], '-B', '-u', str(Path(request['source_code']) / 'tools/run_v24_gpu4_all_u.py')]:
+        raise ValueError('GPU4 continuation original scientific runner command differs')
+    entry = str(owned(Path(request['code']) / CONTINUATION_FILES[0]))
+    for stage, action in zip(stages, ('prepare', 'train')):
+        command = stage.get('command')
+        if (not isinstance(command, list) or any(not isinstance(arg, str) or '\x00' in arg for arg in command)
+                or command[:4] != [request['python'], '-B', '-u', entry] or len(command[4:]) % 2):
+            raise ValueError('GPU4 continuation exact overlay argument array required')
+        options = {}
+        for flag, value in zip(command[4::2], command[5::2]):
+            if not flag.startswith('--') or flag in options:
+                raise ValueError('GPU4 continuation repeated/invalid source option')
+            options[flag] = value
+        native = str(owned(options['--native-experiment'], directory=True))
+        science = {'--mode': 'train', '--config': str(config_path), '--native-experiment': native,
+            '--inventory': request['inventory'], '--input-cache': request['input_cache'],
+            '--output': request['source_output'], '--gpu': '4', '--stunet-checkpoint': request['stunet_checkpoint'],
+            '--cpu-affinity': ','.join(str(core) for core in request['CPU_affinity'])}
+        expected = dict(science, **{'--action': action, '--source-output': str(previous),
+            '--source-code': request['source_code'], '--source-job': str(previous_job)})
+        original_science = dict(science, **{'--output': str(previous)})
+        old_pairs = old_command[4:]
+        if len(old_pairs) % 2 or len(set(old_pairs[::2])) != len(old_pairs[::2]):
+            raise ValueError('GPU4 continuation original scientific arguments are invalid')
+        if options != expected or dict(zip(old_pairs[::2], old_pairs[1::2])) != original_science:
+            raise ValueError('GPU4 continuation changed original science/GPU/full128/B4/CPU or supplied resume/extra flags')
+
+
+def _validate_gpu4_continuation_receipt(request, pipeline):
+    """Inspect immutable small proofs; final actual checkpoint proof belongs to pin."""
+    destination = Path(request['source_output'])
+    document = read(destination / CONTINUATION_RECEIPT)
+    source = document.get('source', {})
+    previous = Path(pipeline['source_output'])
+    previous_job = Path(pipeline['source_job'])
+    flags = ('scientific_request_unchanged', 'checkpoint_identity_and_content_unchanged',
+             'six_numerical_states_unchanged', 'curriculum_history_and_partial_cursors_unchanged')
+    if (document.get('format') != CONTINUATION_FORMAT or document.get('status') != 'PREPARED_EXACT_SAVED_STATE'
+            or document.get('destination') != str(destination)
+            or document.get('source_code') != request['source_code'] or document.get('source_commit') != request['source_commit']
+            or document.get('execution_code') != request['code'] or document.get('execution_commit') != request['commit']
+            or document.get('execution_files_sha256') != pipeline['execution_files']
+            or document.get('original_files_modified') is not False
+            or type(document.get('production_optimizer_updates_performed')) is not int
+            or document['production_optimizer_updates_performed'] != 0
+            or any(document.get(key) is not True for key in flags)
+            or source.get('source_output') != str(previous) or source.get('source_code') != request['source_code']
+            or source.get('source_commit') != request['source_commit'] or source.get('BEST', 'missing') is not None):
+        raise ValueError('GPU4 continuation actual unchanged saved-state/source/overlay receipt required')
+    for relative, raw_key in (('request.json', 'request_raw_sha256'), ('calibration.json', 'calibration_raw_sha256'),
+                              ('training/training_identity.json', 'training_identity_raw_sha256')):
+        checksum = sha(previous / relative)
+        copied = document.get('copied_files', {}).get(relative, {})
+        if (source.get(raw_key) != checksum or sha(destination / relative) != checksum
+                or copied.get('sha256') != checksum or copied.get('source') != str(previous / relative)
+                or copied.get('source_stat') != _file_stat(previous / relative)
+                or copied.get('bytes') != (previous / relative).stat().st_size):
+            raise ValueError('GPU4 continuation original/copied immutable metadata bytes changed: ' + relative)
+    scientific = read(previous / 'request.json')
+    owner = read(previous / 'training/training_identity.json')
+    files = source.get('source_files_sha256')
+    if (source.get('request_sha256') != scientific.get('request_sha256')
+            or source.get('training_identity_sha256') != owner.get('identity_sha256')
+            or scientific.get('config') != pipeline['gnn_config']
+            or not isinstance(files, dict) or files != scientific.get('source')
+            or any(request['source_files'].get(name) != value or not _checksum(value) for name, value in files.items())):
+        raise ValueError('GPU4 continuation original scientific identity/source SHA proof differs')
+    latest = source.get('latest', {})
+    numerical = latest.get('numerical_state_sha256')
+    if (latest.get('path') != str(previous / 'training/checkpoint_latest.pt')
+            or latest.get('source_stat') != _file_stat(previous / 'training/checkpoint_latest.pt')
+            or latest.get('raw_sha256') != pipeline['latest_checkpoint_sha256']
+            or latest.get('identity_sha256') != owner.get('identity_sha256')
+            or latest.get('updates') != pipeline['durable_optimizer_updates']
+            or latest.get('epoch') != 1 or latest.get('phase') != 'training' or latest.get('status') != 'RUNNING'
+            or latest.get('active_u') != 128 or latest.get('train_position') != 4
+            or latest.get('optimizer_parameter_tensors') != 537 or latest.get('history_epochs') != []
+            or latest.get('best', 'missing') is not None
+            or not isinstance(numerical, dict) or set(numerical) != set(NUMERICAL_STATES)
+            or any(not _checksum(value) for value in numerical.values())
+            or any(not _checksum(latest.get(key)) for key in ('content_sha256', 'state_sha256', 'curriculum_sha256'))):
+        raise ValueError('GPU4 continuation exact durable update1/U128/537/all six numerical states required')
+    copied_latest = document.get('copied_files', {}).get('training/checkpoint_latest.pt', {})
+    if (copied_latest.get('sha256') != latest['raw_sha256']
+            or copied_latest.get('source') != latest['path'] or copied_latest.get('source_stat') != latest['source_stat']
+            or copied_latest.get('bytes') != latest['source_stat'][2]):
+        raise ValueError('GPU4 continuation exact original checkpoint copy proof differs')
+    previous_status = read(previous_job / 'status.json')
+    job = source.get('source_job', {})
+    if (job.get('path') != str(previous_job) or job.get('status') != 'FAILED' or job.get('stage') != 'train'
+            or job.get('quota_failure_verified') is not True
+            or job.get('request_sha256') != sha(previous_job / 'request.json')
+            or job.get('status_sha256') != sha(previous_job / 'status.json')
+            or job.get('status_stat') != _file_stat(previous_job / 'status.json')):
+        raise ValueError('GPU4 continuation failed original job proof changed')
+    for name in ('worker', 'child'):
+        expected = dict(pid=previous_status[name + '_pid'], create_time=previous_status[name + '_create_time'], absent=True)
+        if job.get('processes', {}).get(name) != expected:
+            raise ValueError('GPU4 continuation original worker/child absence proof differs')
+    if (not isinstance(document.get('derived_logs'), dict) or not isinstance(document.get('original_full_logs'), dict)
+            or set(document['derived_logs']) != set(document['original_full_logs'])):
+        raise ValueError('GPU4 continuation requires actual saved-boundary/full-original log lineage')
+    for name, row in document['derived_logs'].items():
+        lineage = document['original_full_logs'].get(name, {})
+        path = destination / row.get('lineage_path', '')
+        _inside(path, destination / 'source_lineage/training')
+        if (row.get('path') != 'training/' + name or row.get('boundary_updates') != 1 or row.get('boundary_epoch') != 1
+                or not _checksum(row.get('sha256')) or row.get('source_sha256') != lineage.get('sha256')
+                or lineage.get('source') != str(previous / 'training' / name)
+                or sha(path) != lineage.get('sha256') or sha(previous / 'training' / name) != lineage.get('sha256')):
+            raise ValueError('GPU4 continuation durable boundary/full log lineage differs')
+    if not isinstance(document.get('excluded_partial_files'), list):
+        raise ValueError('GPU4 continuation requires preserved partial-checkpoint inventory')
+    actual_partial = {str(path) for path in (previous / 'training').iterdir()
+                      if path.name.startswith('checkpoint_latest.pt.') and path.suffix == '.tmp'}
+    declared_partial = []
+    for row in document['excluded_partial_files']:
+        path = owned(row['path'])
+        if (str(path) not in actual_partial or row.get('stat') != _file_stat(path)
+                or not _checksum(row.get('sha256')) or (destination / 'training' / path.name).exists()):
+            raise ValueError('GPU4 continuation original partial checkpoint must remain preserved and excluded')
+        declared_partial.append(str(path))
+    if len(declared_partial) != len(set(declared_partial)) or set(declared_partial) != actual_partial:
+        raise ValueError('GPU4 continuation partial-checkpoint inventory differs')
+
+
 def inspect_source(request):
     status = read(request['source_job']['status'])
     job = request['source_job']
@@ -346,11 +533,15 @@ def inspect_source(request):
         raise ValueError('Registered original worker request changed')
     pipeline = read(pipeline_request_path)
     gpu = request['GPU_arm']
+    continuation = pipeline.get('format') == CONTINUATION_PIPELINE_FORMAT
+    if continuation and gpu != 4:
+        raise ValueError('Exact saved-state continuation is explicitly GPU4 only')
+    code_key, commit_key = ('code', 'commit') if continuation else ('source_code', 'source_commit')
     scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu in (4, 5) else (
         'original_total_epochs', 'original_patient_batch', 'original_candidate_chunk')
     if (status.get('request') != pipeline or pipeline.get('GPU') != gpu
-            or pipeline.get('GPU_uuid') != request['GPU_UUID'] or pipeline.get('code') != request['source_code']
-            or pipeline.get('commit') != request['source_commit'] or pipeline.get('production_output') != request['source_output']
+            or pipeline.get('GPU_uuid') != request['GPU_UUID'] or pipeline.get('code') != request[code_key]
+            or pipeline.get('commit') != request[commit_key] or pipeline.get('production_output') != request['source_output']
             or pipeline.get('CPU_affinity') != request['CPU_affinity'] or pipeline.get('RAM_GiB') != 64
             or tuple(pipeline.get(name) for name in scale_fields) != (40, 4, 32 if gpu == 5 else 64)):
         raise ValueError('Registered GNN worker request does not match the exact full own-arm contract')
@@ -363,8 +554,9 @@ def inspect_source(request):
         raise ValueError('One actual final train command required in original worker request')
     worker = process_witness(job['worker_pid'], job['worker_create_time'], job['worker_command'])
     child = None
-    if gpu == 4 and status.get('stage') not in ('prepare_inputs', 'calibrate', 'train'):
-        raise ValueError('GPU4 source is not in one of its exact declared fresh stages')
+    allowed_stages = ('prepare_continuation', 'train') if continuation else ('prepare_inputs', 'calibrate', 'train')
+    if gpu == 4 and status.get('stage') not in allowed_stages:
+        raise ValueError('GPU4 source is not in one of its exact declared stages')
     if status.get('child_pid') is not None:
         # A pipeline may still be in a preceding DEBUG admission stage at first
         # registration. Bind the exact live child to its actual declared stage.
@@ -380,7 +572,12 @@ def inspect_source(request):
         metadata = [Path(request['source_output']) / name for name in
                     ('request.json', 'calibration.json', 'training/training_identity.json')]
         missing = [path for path in metadata if not path.exists()]
-        if missing:
+        receipt_missing = continuation and not (Path(request['source_output']) / CONTINUATION_RECEIPT).exists()
+        if continuation and not receipt_missing:
+            _validate_gpu4_continuation_receipt(request, pipeline)
+        if receipt_missing and status.get('stage') != 'prepare_continuation':
+            raise FileNotFoundError('GPU4 continuation train requires its real prepared saved-state receipt')
+        if missing or receipt_missing:
             # Existing malformed artifacts are real errors, even while another
             # required artifact has not been published. No synthetic identity
             # or calibration is substituted during fresh preparation.
@@ -412,7 +609,8 @@ def inspect_source(request):
                     or not _checksum(owner.get('identity_sha256'))):
                 raise ValueError('Published GPU4 training ownership lacks its actual complete source binding')
             if status.get('status') == 'COMPLETE':
-                raise FileNotFoundError('Completed GPU4 source is missing required real metadata: ' + str(missing[0]))
+                missing_path = missing[0] if missing else Path(request['source_output']) / CONTINUATION_RECEIPT
+                raise FileNotFoundError('Completed GPU4 source is missing required real metadata: ' + str(missing_path))
             source_completion(request, status, worker, child)
             if status.get('status') != 'RUNNING' or worker is None or worker['status'] == 'zombie':
                 raise RuntimeError('GPU4 missing metadata may wait only for its exact live RUNNING source worker')

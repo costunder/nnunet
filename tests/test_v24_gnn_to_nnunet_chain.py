@@ -264,6 +264,265 @@ class CompletedArmFixture(unittest.TestCase):
         status.update(status='RUNNING', stage=stage, stages_completed=[])
         self.write_json(self.job / 'status.json', status)
 
+    def make_continuation(self, *, prepared=True):
+        """DEBUG-only durable update1 fixtures, never model/checkpoint results."""
+        self.request = self.make_request(4); self.write_completion(4)
+        self.previous_source, self.previous_job = self.source, self.job
+        previous_pipeline = chain.read(self.job / 'request.json')
+        scientific = chain.read(self.source / 'request.json')
+        scientific['source'] = {key: value for key, value in self.request['source_files'].items()
+                                if not key.startswith('config/')}
+        scientific['request_sha256'] = chain.hashlib.sha256(json.dumps(
+            {key: value for key, value in scientific.items() if key != 'request_sha256'},
+            sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        calibration = chain.read(self.source / 'calibration.json'); calibration['request_sha256'] = scientific['request_sha256']
+        owner = chain.read(self.source / 'training/training_identity.json')
+        owner['binding']['identity'] = scientific
+        owner['binding']['config'] = copy.deepcopy(scientific['config'])
+        owner['binding']['config']['v24_runtime']['batch_calibration'] = calibration
+        for relative, value in (('request.json', scientific), ('calibration.json', calibration),
+                                ('training/training_identity.json', owner)):
+            self.write_json(self.source / relative, value)
+        latest = self.source / 'training/checkpoint_latest.pt'; latest.write_bytes(b'DEBUG saved-state proof fixture, not torch checkpoint')
+        partial = self.source / 'training/checkpoint_latest.pt.DEBUG.tmp'; partial.write_bytes(b'DEBUG uncommitted bytes')
+        old_log = self.source / 'training/update_timing.jsonl'
+        old_log.write_bytes(b'{"update":1,"epoch":1}\n{"update":2,"epoch":1}\n')
+        previous_status = chain.read(self.job / 'status.json')
+        previous_status.update(status='FAILED', worker_pid=777, worker_create_time=70., child_pid=888, child_create_time=80.)
+        self.write_json(self.job / 'status.json', previous_status)
+        self.previous_bytes = {str(path): path.read_bytes() for path in (self.job / 'request.json', self.job / 'status.json',
+            latest, partial, self.source / 'request.json', self.source / 'training/training_identity.json')}
+        self.source = self.root / 'continued_gnn'; (self.source / 'training').mkdir(parents=True)
+        (self.source / 'source_lineage/training').mkdir(parents=True)
+        self.job = self.root / 'new_owned_source_job'; self.job.mkdir()
+        for name in chain.CONTINUATION_FILES:
+            (self.code / name).write_text('# DEBUG exact continuation execution witness\n')
+        self.request['code_files'].update({name: chain.sha(self.code / name) for name in chain.CONTINUATION_FILES})
+        self.request['source_output'] = str(self.source)
+        self.request['source_claim_path'] = str(self.claim_root / (chain.hashlib.sha256(str(self.source).encode()).hexdigest() + '.json'))
+        for row in self.request['stages']:
+            row['command'] = [arg.replace(str(self.previous_source), str(self.source)) for arg in row['command']]
+        pipeline = copy.deepcopy(previous_pipeline)
+        pipeline.update(format=chain.CONTINUATION_PIPELINE_FORMAT, code=str(self.code), commit=self.request['commit'],
+            execution_code=str(self.code), execution_commit=self.request['commit'],
+            execution_files={name: chain.sha(self.code / name) for name in chain.CONTINUATION_FILES},
+            source_code=str(self.source_code), source_commit=self.request['source_commit'],
+            source_output=str(self.previous_source), source_job=str(self.previous_job), production_output=str(self.source),
+            latest_checkpoint_sha256=chain.sha(latest), durable_optimizer_updates=1)
+        pipeline['stages'] = []
+        for name, action in (('prepare_continuation', 'prepare'), ('train', 'train')):
+            science_args = [arg.replace(str(self.previous_source), str(self.source))
+                            for arg in previous_pipeline['stages'][-1]['command'][4:]]
+            command = [str(self.python), '-B', '-u', str(self.code / chain.CONTINUATION_FILES[0]), '--action', action,
+                '--source-output', str(self.previous_source), '--source-code', str(self.source_code),
+                '--source-job', str(self.previous_job), *science_args]
+            pipeline['stages'].append(dict(name=name, command=command))
+        self.write_json(self.job / 'request.json', pipeline)
+        new_status = dict(request=pipeline, worker_pid=123, worker_create_time=10., actual_CPU_affinity=self.request['CPU_affinity'],
+            child_pid=456, child_create_time=11., stage='train', stages_completed=['prepare_continuation', 'train'], status='COMPLETE')
+        self.write_json(self.job / 'status.json', new_status)
+        self.request['source_job'] = dict(status=str(self.job / 'status.json'), worker_pid=123, worker_create_time=10.,
+            worker_command=[str(self.python), '-B', '-u', str(self.code / 'tools/run_v24_gpu4_pipeline.py'), str(self.job / 'request.json')],
+            training_stage='train', pipeline_request_sha256=chain.sha(self.job / 'request.json'))
+        copied = {}
+        for relative in ('request.json', 'calibration.json', 'training/training_identity.json', 'training/checkpoint_latest.pt'):
+            path = self.previous_source / relative
+            (self.source / relative).write_bytes(path.read_bytes())
+            copied[relative] = dict(source=str(path), source_stat=chain._file_stat(path), sha256=chain.sha(path), bytes=path.stat().st_size)
+        self.receipt['checkpoint'] = str(self.source / 'training/checkpoint_latest.pt')
+        self.write_json(self.source / 'training/invocations.jsonl', self.receipt)
+        lineage = self.source / 'source_lineage/training/update_timing.jsonl'; lineage.write_bytes(old_log.read_bytes())
+        active = self.source / 'training/update_timing.jsonl'; active.write_bytes(b'{"update":1,"epoch":1}\n')
+        source_latest = dict(path=str(latest), source_stat=chain._file_stat(latest), raw_sha256=chain.sha(latest),
+            content_sha256='1' * 64, identity_sha256=owner['identity_sha256'],
+            numerical_state_sha256={key: '2' * 64 for key in chain.NUMERICAL_STATES}, state_sha256='3' * 64,
+            curriculum_sha256='4' * 64, epoch=1, phase='training', status='RUNNING', updates=1, history_epochs=[],
+            active_u=128, train_position=4, evaluation_position=0, best=None, optimizer_parameter_tensors=537)
+        old_job = dict(path=str(self.previous_job), status='FAILED', stage='train',
+            status_sha256=chain.sha(self.previous_job / 'status.json'), status_stat=chain._file_stat(self.previous_job / 'status.json'),
+            request_sha256=chain.sha(self.previous_job / 'request.json'), quota_failure_verified=True,
+            processes={name: dict(pid=previous_status[name + '_pid'], create_time=previous_status[name + '_create_time'], absent=True)
+                       for name in ('worker', 'child')})
+        proof = dict(source_output=str(self.previous_source), source_code=str(self.source_code), source_commit=self.request['source_commit'],
+            request_sha256=scientific['request_sha256'], request_raw_sha256=chain.sha(self.previous_source / 'request.json'),
+            training_identity_sha256=owner['identity_sha256'], training_identity_raw_sha256=chain.sha(self.previous_source / 'training/training_identity.json'),
+            calibration_raw_sha256=chain.sha(self.previous_source / 'calibration.json'), source_files_sha256=scientific['source'],
+            latest=source_latest, BEST=None, source_job=old_job)
+        self.continuation_document = dict(format=chain.CONTINUATION_FORMAT, status='PREPARED_EXACT_SAVED_STATE', source=proof,
+            destination=str(self.source), source_code=str(self.source_code), source_commit=self.request['source_commit'],
+            execution_code=str(self.code), execution_commit=self.request['commit'], execution_files_sha256=pipeline['execution_files'],
+            copied_files=copied, scientific_request_unchanged=True, checkpoint_identity_and_content_unchanged=True,
+            six_numerical_states_unchanged=True, curriculum_history_and_partial_cursors_unchanged=True,
+            original_files_modified=False, production_optimizer_updates_performed=0,
+            derived_logs={'update_timing.jsonl': dict(path='training/update_timing.jsonl',
+                lineage_path='source_lineage/training/update_timing.jsonl', boundary_updates=1, boundary_epoch=1,
+                sha256=chain.sha(active), source_sha256=chain.sha(lineage), rows_kept=1, rows_excluded=1)},
+            original_full_logs={'update_timing.jsonl': dict(source=str(old_log), source_stat=chain._file_stat(old_log),
+                sha256=chain.sha(old_log), bytes=old_log.stat().st_size)},
+            excluded_partial_files=[dict(path=str(partial), stat=chain._file_stat(partial), sha256=chain.sha(partial))])
+        if prepared:
+            self.write_json(self.source / chain.CONTINUATION_RECEIPT, self.continuation_document)
+        return pipeline
+
+    def inspect_continuation(self, *, live=False, old_live=False):
+        def witness(pid, birth, command=None):
+            if pid in (777, 888):
+                return dict(pid=pid, status='running') if old_live else None
+            return dict(pid=pid, status='running') if live else None
+        with patch.object(chain, 'process_witness', side_effect=witness), patch('psutil.Process') as process:
+            process.return_value.ppid.return_value = 123
+            return chain.inspect_source(self.request)
+
+    def resign_continuation_pipeline(self, pipeline):
+        self.write_json(self.job / 'request.json', pipeline)
+        status = chain.read(self.job / 'status.json'); status['request'] = pipeline
+        self.write_json(self.job / 'status.json', status)
+        self.request['source_job']['pipeline_request_sha256'] = chain.sha(self.job / 'request.json')
+
+    def test_gpu4_exact_continuation_full_completion_preserves_old_bytes_and_native_contract(self):
+        self.make_continuation()
+        chain.validate_request(self.request)
+        actual = self.inspect_continuation()
+        self.assertEqual(actual['invocation']['optimizer_updates'], 680)
+        self.assertEqual(actual['invocation']['connected_parameter_tensors'], 537)
+        self.assertEqual(actual['invocation']['completed_epochs'], 40)
+        for path, value in self.previous_bytes.items():
+            self.assertEqual(Path(path).read_bytes(), value)
+        self.assertNotEqual(self.request['source_claim_path'], str(self.claim_root / (
+            chain.hashlib.sha256(str(self.previous_source).encode()).hexdigest() + '.json')))
+        self.assertNotIn('recovery', self.request)
+        self.assertEqual([row['action'] for row in self.request['stages']], list(chain.ACTIONS))
+
+    def test_gpu4_continuation_prepare_waits_only_for_exact_live_source_before_receipt(self):
+        self.make_continuation(prepared=False)
+        for relative in ('request.json', 'calibration.json', 'training/training_identity.json'):
+            (self.source / relative).unlink()
+        self.gpu4_live_status('prepare_continuation')
+        self.assertIsNone(self.inspect_continuation(live=True))
+        with self.assertRaisesRegex(RuntimeError, 'disappeared'):
+            self.inspect_continuation()
+        status = chain.read(self.job / 'status.json'); status['status'] = 'COMPLETE'
+        self.write_json(self.job / 'status.json', status)
+        with self.assertRaisesRegex(FileNotFoundError, 'required real metadata'):
+            self.inspect_continuation()
+
+    def test_gpu4_continuation_train_requires_prepared_receipt_and_malformed_prepare_fails(self):
+        self.make_continuation(prepared=False); self.gpu4_live_status('train')
+        with self.assertRaisesRegex(FileNotFoundError, 'saved-state receipt'):
+            self.inspect_continuation(live=True)
+        self.gpu4_live_status('prepare_continuation')
+        (self.source / chain.CONTINUATION_RECEIPT).write_text('{bad DEBUG receipt', encoding='utf8')
+        with self.assertRaises(json.JSONDecodeError):
+            self.inspect_continuation(live=True)
+
+    def test_gpu4_continuation_old_worker_or_changed_original_source_is_rejected(self):
+        self.make_continuation()
+        with self.assertRaisesRegex(ValueError, 'must be absent'):
+            self.inspect_continuation(old_live=True)
+        (self.previous_source / 'training/checkpoint_latest.pt').write_bytes(b'Changed DEBUG original checkpoint')
+        with self.assertRaisesRegex(ValueError, 'durable update1'):
+            self.inspect_continuation()
+
+    def test_gpu4_continuation_overlay_wrong_source_resume_and_missing_file_fail(self):
+        pipeline = self.make_continuation()
+        for mutation in ('resume', 'source', 'file', 'update', 'stages'):
+            changed = copy.deepcopy(pipeline)
+            if mutation == 'resume':changed['stages'][-1]['command'] += ['--resume', 'DEBUG_unapproved']
+            elif mutation == 'source':changed['source_code'] = str(self.code)
+            elif mutation == 'file':changed['execution_files'].pop(chain.CONTINUATION_FILES[0])
+            elif mutation == 'update':changed['durable_optimizer_updates'] = 2
+            else:changed['stages'][0]['name'] = 'calibrate'
+            self.resign_continuation_pipeline(changed)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                self.inspect_continuation()
+
+    def test_gpu4_continuation_no_state_proof_replay_or_changed_copy_is_admitted(self):
+        self.make_continuation()
+        for mutation in ('states', 'updates', 'U7', 'destination', 'identity', 'execution'):
+            changed = copy.deepcopy(self.continuation_document)
+            if mutation == 'states':changed['source']['latest']['numerical_state_sha256'].pop('rank_rng')
+            elif mutation == 'updates':changed['source']['latest']['updates'] = 2
+            elif mutation == 'U7':changed['source']['latest']['active_u'] = 7
+            elif mutation == 'destination':changed['destination'] = str(self.previous_source)
+            elif mutation == 'identity':changed['source']['training_identity_raw_sha256'] = '0' * 64
+            else:changed['execution_files_sha256'] = {}
+            self.write_json(self.source / chain.CONTINUATION_RECEIPT, changed)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                self.inspect_continuation()
+        self.write_json(self.source / chain.CONTINUATION_RECEIPT, self.continuation_document)
+        (self.source / 'calibration.json').write_text('{}', encoding='utf8')
+        with self.assertRaisesRegex(ValueError, 'metadata bytes changed'):
+            self.inspect_continuation()
+
+    def test_gpu4_continuation_active_logs_can_advance_but_original_lineage_stays_complete(self):
+        self.make_continuation()
+        with (self.source / 'training/update_timing.jsonl').open('ab') as stream:
+            stream.write(b'{"update":2,"epoch":1}\n')
+        self.assertIsNotNone(self.inspect_continuation())
+        (self.source / 'source_lineage/training/update_timing.jsonl').write_bytes(b'corrupt DEBUG archived lineage')
+        with self.assertRaisesRegex(ValueError, 'log lineage differs'):
+            self.inspect_continuation()
+
+    def test_gpu4_continuation_partial_checkpoint_cannot_be_copied_or_omitted(self):
+        self.make_continuation()
+        changed = copy.deepcopy(self.continuation_document); changed['excluded_partial_files'] = []
+        self.write_json(self.source / chain.CONTINUATION_RECEIPT, changed)
+        with self.assertRaisesRegex(ValueError, 'partial-checkpoint inventory'):
+            self.inspect_continuation()
+        self.write_json(self.source / chain.CONTINUATION_RECEIPT, self.continuation_document)
+        original = Path(self.continuation_document['excluded_partial_files'][0]['path'])
+        (self.source / 'training' / original.name).write_bytes(original.read_bytes())
+        with self.assertRaisesRegex(ValueError, 'preserved and excluded'):
+            self.inspect_continuation()
+
+    def test_actual_standalone_continuation_cli_keeps_old_science_and_new_execution_distinct(self):
+        pipeline = self.make_continuation()
+        project = chain.PROJECT_ROOT
+        commit = subprocess.check_output(['git', '-c', 'safe.directory=' + str(project), '-C', str(project),
+            'rev-parse', 'HEAD'], text=True).strip()
+        self.request.update(code=str(project), commit=commit, source_code=str(project), source_commit=commit, python=sys.executable)
+        names = ('tools/watch_v24_gnn_to_nnunet.py', 'tools/run_v24_nnunet_cp.py', *chain.CONTINUATION_FILES)
+        self.request['code_files'] = {name: chain.sha(project / name) for name in names}
+        config_name = 'config/v24_gpu4_STUNetS_all_U_GT_blind.json'
+        config_path = project / config_name
+        self.request['source_files'] = {name: chain.sha(project / name) for name in
+            (config_name, 'tools/run_v24_gpu4_all_u.py')}
+        for row in self.request['stages']:
+            row['command'][0] = sys.executable; row['command'][3] = str(project / 'tools/run_v24_nnunet_cp.py')
+            if '--source-code' in row['command']:
+                row['command'][row['command'].index('--source-code') + 1] = str(project)
+        previous = chain.read(self.previous_job / 'request.json')
+        previous.update(code=str(project), commit=commit, source_config=str(config_path), source_config_sha256=chain.sha(config_path))
+        old_command = previous['stages'][-1]['command']
+        old_command[0] = sys.executable; old_command[3] = str(project / 'tools/run_v24_gpu4_all_u.py')
+        old_command[old_command.index('--config') + 1] = str(config_path)
+        self.write_json(self.previous_job / 'request.json', previous)
+        previous_status = chain.read(self.previous_job / 'status.json')
+        previous_status.update(request=previous, worker_pid=999999997, child_pid=999999998)
+        self.write_json(self.previous_job / 'status.json', previous_status)
+        pipeline.update(code=str(project), commit=commit, execution_code=str(project), execution_commit=commit,
+            source_code=str(project), source_commit=commit, source_config=str(config_path), source_config_sha256=chain.sha(config_path),
+            execution_files={name: chain.sha(project / name) for name in chain.CONTINUATION_FILES})
+        for row in pipeline['stages']:
+            command = row['command']; command[0] = sys.executable; command[3] = str(project / chain.CONTINUATION_FILES[0])
+            command[command.index('--source-code') + 1] = str(project)
+            command[command.index('--config') + 1] = str(config_path)
+        self.resign_continuation_pipeline(pipeline)
+        request_path = self.root / 'standalone_continuation.json'; self.write_json(request_path, self.request)
+        env = os.environ.copy(); env.pop('PYTHONPATH', None)
+        count = int(env.get('GIT_CONFIG_COUNT', '0'))
+        env.update(GIT_CONFIG_COUNT=str(count + 1))
+        env['GIT_CONFIG_KEY_' + str(count)] = 'safe.directory'; env['GIT_CONFIG_VALUE_' + str(count)] = str(project)
+        result = subprocess.run([sys.executable, '-B', str(project / 'tools/watch_v24_gnn_to_nnunet.py'),
+            '--request', str(request_path), '--check'], cwd=self.root, env=env, text=True,
+            encoding='utf8', capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        value = json.loads(result.stdout)
+        self.assertEqual(value['status'], 'REQUEST_ADMITTED')
+        self.assertFalse(value['server_files_written']); self.assertFalse(value['GPU_child_started'])
+        self.assertFalse(value['GNN_checkpoint_loaded'])
+        self.assertFalse((self.target / 'launch.lease.json').exists())
+
     def inspect_live_gpu4(self, worker_status='running'):
         with patch.object(chain, 'process_witness', side_effect=[
                 dict(pid=123, status=worker_status), dict(pid=456, status='running')]) as witness, \
