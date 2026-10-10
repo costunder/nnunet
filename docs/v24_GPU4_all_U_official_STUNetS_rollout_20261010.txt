@@ -1,0 +1,131 @@
+GPU4 전체 U128 GNN 및 GPU4/5/6 nnU-Net 자동 연결 기록 (2026-10-11)
+
+현재 확인한 결과
+- GPU4는 공식 STU-Net-S 초기 가중치와 첫 epoch부터 고정 전체 U128을 사용하는 독립 실험이다.
+- /home NFS의 계정 quota 초과로 update2 checkpoint 저장에 실패했다. 마지막 정상 update1의 모델/AdamW/scheduler/scaler/RNG/shuffle을 원본 scientific CLI로 복원했다.
+- 새 결과 경로에서 epoch3/U128/update51의 실제 checkpoint 저장을 CPU 읽기 전용으로 확인했다. AdamW537개 state와 전체128U 및 원본 설정을 검증했다.
+- GNN 전체40epoch/680update/B4/chunk64/seed42 및 모델/그래프/전체 데이터 규모를 유지한다.
+- GPU4/5/6 모두 기존 GNN 완료를 기다리는 자동 연결 등록과 후속 읽기 전용 재확인을 완료했다. 현재 상태는 WAITING_FOR_FULL_GNN이다.
+- 각 GPU의 전체 GNN이 완료되면 해당 실험의 BEST 고정 → 전체105명 CP bank 생성 → native 준비 → 별도 calibration → 새 nnU-Net250epoch 학습 순서로 실행한다.
+- 세 GNN 원본 worker와 학습 child를 유지했다. 자동 연결 대기 프로세스는 CUDA를 초기화하지 않고 CPU에서 상태를 확인한다.
+- 수정·검증·등록은 완료했으며 세 GNN의 전체 학습과 이후 native 전체 학습 및 최종 평가는 아직 완료하지 않았다.
+
+과학 계약과 실제 데이터
+- 설정: config/v24_gpu4_STUNetS_all_U_GT_blind.json
+- 공식 L0: /var/tmp/aicompetition06_v24_20261010/assets/small_ep4k.model
+- 공식 SHA256: f440f401bf4cac1d1d6f7c4635542ef057193a5f96c0b3c661a6179afeab7be6
+- GPU6이 사용한 동일한 공식 초기 가중치이다. GPU6에서 학습한 checkpoint를 가져오지 않았다.
+- 모델 전체/trainable parameter13,331,792, trainable tensor537개. STU-Net-S 전체6개 encoder stage, channels16/32/64/128/256/256, 공식60개 tensor strict load, encoder fine-tuning lr1e-4.
+- L1/L2 hidden128, attention heads4, patient layers2, prototype layers2, dropout0.1. GPU6과 동일한 전체 그래프·해상도·sampling·수용 영역 계약이다.
+- physical patient batch4, gradient accumulation1, 단일 GPU4, effective batch4. candidate chunk64는 전체128U를 분할해 계산하는 단위이다.
+- 전체 inventory14,102개 record. inner train84명(P527/U10,752), inner validation21명(P135/U2,688).
+- train84명 중 P가 있는65명 전체에 ranking loss 적용, epoch당17update/전체680update. zero-P19명도 원본 inventory 및 후속 전체 CP bank에 보존한다.
+- validation21명 전체/allP/U128/view29로 BEST를 선택한다. 전체 CP105명에는 zero-P24명(train19/validation5)이 모두 포함된다.
+- 최종 native는 train105/validation26, physical batch2, patch128³, CP확률0.5, 새 모델 가중치, 250epoch를 유지한다.
+- GPU5/6 기존 모델과 U curriculum은 변경하지 않았다. GPU4의 고정 전체 U128만 별도 비교 실험으로 실행한다.
+
+실제 batch 측정
+- 전체128U와 실제 최대 graph workload 환자에서 B4/B8 × chunk32/64/128의6개 조합을 각각3회 측정했다.
+- 모든 조합에서537개 trainable tensor의 finite backward를 확인했다. production 모델과 RNG를 보존했다.
+- B4/chunk32 mean36.041298s, B4/chunk64 mean32.111629s, B4/chunk128 mean33.509883s.
+- B8/chunk32 mean107.158243s, B8/chunk64 mean102.254999s, B8/chunk128 mean97.968254s.
+- 실제 throughput winner B4/chunk64이며 peak CUDA9,820,486,656bytes(약9.15GiB)이다. 작은 모델이나 데이터로 fallback하지 않았다.
+- 복구 시 이 검증된 원본 calibration과 initial model SHA를 정확히 재사용했다.
+- 실제 복구 checkpoint 확인 시 학습 child RSS41,165,209,600bytes, CUDA19,864MiB였다. calibration peak와 실제 장기 실행 점유량은 별도 측정이다.
+- native B2/B4 calibration은 별도 DEBUG clone에서 수행하도록 연결했다. production physical batch2와 전체 학습 계약을 유지한다.
+
+저장 오류와 복구
+- 원본 /home은 NFS ece-nfs3:/DATA/home이다. 글로벌 여유 공간이 커도 사용자 quota 때문에 OSError Errno122가 발생했다.
+- 원본 checkpoint_latest.pt:160,774,498bytes, SHA68f48c92bcc0d5f0175e23322d76088fefb359b7bb49a437ef7661e19d30a34f.
+- 정상 checkpoint는 epoch1/phase training/update1/U128/train_position4, AdamW537개 모두 step1, 전체 모델 tensor finite이다.
+- update2 계산 로그와105,906,176bytes의 미완료 .tmp를 원본 경로에 보존했다. 새 현행 로그에는 update1까지 저장된 사건만 복사하고 원본 전체 로그는 source_lineage에 별도로 보존했다.
+- 모델/optimizer/scheduler/scaler/rank RNG/shuffle 및 curriculum/history/cursor의 정확한 저장 상태를 복사·재검증했다. 저장되지 않은 update2부터 같은 상태로 재계산한다. CUDA 수치의 후속 bitwise 동일성을 주장하지 않는다.
+- 새 저장 경로는 계정이 직접 쓸 수 있는 /var/tmp의 별도 ext4이다. GNN rolling checkpoint와10GiB reserve를 유지한다. 기존 결과와 실패 기록을 삭제하거나 덮어쓰지 않았다.
+- 사용자 승인 후 /data/aicompetition06_v24_20261011 새 전용 폴더 생성만 시도했으나 sudo -n이 password required로 실패했고 폴더는 생성되지 않았다. 관리자 설정이나 권한을 우회하지 않았다.
+- 추가 관리자 작업 없이 기존 접근 가능한 경로에서 전체 캐시를 읽기 전용으로 재사용하는 명시적 storage profile을 구현·검증하고 세 native 자동 연결을 등록했다.
+
+전체 데이터 재사용과 저장 예산
+- 기본 profile: reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly
+- 확장 profile: reuse_full105_exact_static_raw_case_operators_readonly_v1
+- 기존 GPU1 complete bank의 전체105명 CTfloat64/segint16와 전체131명 Blosc2 전처리를 원본 read-only reader로 재사용한다. native train105/validation26 coverage를 모두 검증했다.
+- 추가로 전체105명 ×8개 정적 raw operator =840개 NPY의 원본 SHA/stat를 검증했다. 실제 두 case에서는 원래 prepare 재실행 결과와 dtype/shape/serialized layout/strides/전체 byte 동등성을 비교했다. 최종 전체105명 준비에도 case별 원래 계산과 동등성 검사를 적용한다.
+- 원본 불변 데이터74,594,972,278bytes(약69.47GiB)를 중복 복사하지 않는다. 각 GPU의 학습된 score, 후보 선택, donor, zero-P upper 및 실험별 메타데이터는 해당 실험에서 새로 계산한다.
+- 각 native 실험의 plans/splits/fingerprint/전체 GT와 실행 결과는 별도 경로에 둔다. source hardlink나 symlink로 쓰기 권한을 공유하지 않는다.
+- 기존 full-copy160GiB profile은 유지하고, 명시적인 전체 캐시 재사용 profile의 실제 쓰기량을 별도로 산정했다. 학습 데이터나 epoch를 줄여 admission을 통과시키지 않았다.
+- 원래 nnU-Net best/latest/final 보관과 원래 on_train_end 호출을 유지한다. 최종 checkpoint 저장 구간만 전용 flock으로 조정하여 세 실험의 전체 동시 저장 슬롯을7개(각2개+최종 저장1개)로 관리한다.
+- GNN/nnU-Net 학습과 optimizer update는 이 저장 lock으로 직렬화하지 않는다. 각 실험 최대3개 checkpoint 쓰기 예산은 별도로 유지한다.
+- 최종 저장 조정 profile: original_native_final_publication_flock_global7_v1
+- 등록 시 전체 추가 쓰기 peak6,126,028,659bytes와10GiB reserve/512MiB 성장 여유를 포함한 필요 여유 공간17,400,317,811bytes(약16.21GiB)를 검증했다.
+- 등록 후 실제 여유 공간18,107,613,184bytes, 남은 요구량17,400,207,219bytes, runtime 최소 여유11,274,289,152bytes를 재확인했다. 새 파일의 실제 allocated bytes만 남은 예산에서 차감한다.
+- 단계별 저장 검증과 runtime 여유 검사를 유지한다. 원본 변경, 모호한 checkpoint 보관 상태, 예산 부족은 명확한 오류로 보고하며 결과 삭제나 작은 모델 fallback으로 우회하지 않는다.
+
+Git 및 서버 실행
+- 원본 과학 코드 commit:2c8d594552ca115a4411a89a055121ab23ba268f
+- 복구 execution commit:8496f20cedd17408e0c643e7c9bcb0a410f3d11f
+- 복구 코드: /var/tmp/aicompetition06_v24_20261010/code_8496f20cedd1
+- GitHub: https://github.com/costunder/nnunet/tree/codex/v24-cpu-pipeline
+- 승인된 기존 저장소에 코드 commit70dfc2b305271f392a7a58a46785900a28a75249까지 push했고, 동일 commit의 불변 서버 checkout을 검증했다. 데이터·가중치·checkpoint는 push하지 않았다.
+- 세 native supervisor 코드: /var/tmp/aicompetition06_v24_20261010/code_70dfc2b30527
+- GPU4 GNN은 검증된 복구 execution8496을 유지하고 GPU5/6 GNN은 기존 b558 실행 코드와 원본 request 설정을 유지한다.
+- 이 작업 기록은 별도 문서 commit으로 추가한다. 실행 중인 GNN과 supervisor는 위에 기록한 검증된 코드 commit을 유지한다.
+- 새 결과 parent: /var/tmp/aicompetition06_v24_20261010/GPU4_exact_continuation_20261011_1791646551374150800
+- 새 GNN: 위 parent/gnn
+- 새 job root: /var/tmp/aicompetition06_v24_20261010/run_GPU4_exact_continuation_1791646551374150800/gpu4
+- worker1357226/create1791646554.2, train child1357270/create1791646561.29.
+- GPU4 RTX A6000, 총49,140MiB, UUID GPU-7ca3aca5-d312-62db-4928-c96f6ae41081, MIG 없음.
+- CPU affinity0–3/four workers/Torch thread1/nice10/RSS64GiB/CUDA40GiB. native RSS48GiB.
+- 기존 GPU5 worker1240177/create1791628518.53, GPU6 worker1239673/create1791628462.49 그대로 유지했다. GPU6 PBS129443.ECE-util1을 빌리거나 변경하지 않았다.
+- 기존 GPU4 failed worker/child와 watcher는 모두 자연 종료됐다. 기존 결과·claim·실패 기록은 보존했다.
+
+세 native 자동 연결 등록
+- group: /var/tmp/aicompetition06_v24_20261010/GPU456_full_readonly_native_1791651784025210900
+- GPU4 supervisor1395872/create1791652007.14, CPU0–3.
+- GPU5 supervisor1395896/create1791652010.14, CPU42–45.
+- GPU6 supervisor1395917/create1791652012.75, CPU32–35.
+- 세 supervisor 모두 CUDA_VISIBLE_DEVICES가 비어 있고 child가 없으며, 등록 후 다음 poll에서 원본 RUNNING/train 상태를 다시 읽었다.
+- 이 작업에서 직접 생성했던 기존 GPU5 CPU 대기 프로세스1259128/create1791630897.34와 GPU6 CPU 대기 프로세스1259132/create1791630897.42만 새 profile의 대기 프로세스로 교체했다.
+- 교체 전 exact PID/birth/UID/argv, CUDA 미사용, child 없음, GNN 대기 상태를 확인하고 대상과 이유를 사용자에게 보고했다. 두 프로세스에만 안전한 SIGTERM을 전달했다. GNN/SSH/부모 shell/PBS에는 신호를 보내지 않았다.
+- GPU5/6 기존 claim/request/status/registration은 그대로 보존하고 handoff proof와 lease를 별도 파일에 추가했다. GPU4는 새 source claim을 생성했다.
+- 등록 후 읽기 전용 재확인: GPU4 epoch4/update68/U128, GPU5 epoch18/update306/U71, GPU6 epoch30/update505/U128. 로그 기준 진행값이며 전체 학습 완료가 아니다. GPU4 저장 checkpoint epoch3/update51 확인과 구분한다.
+- GPU1 기존 전체 학습 결과와 별도 실행 중인 BEST validation 및 checkpoint 사본을 보존했다. 이 사본의 실제 사용 공간을 저장 예산에 반영했다.
+
+검증과 미완료 범위
+- 복구 코드·native watcher continuation branch 구현 및 AST/diff 검사 완료.
+- 최신 실제 서버 nnunet Python3.10 환경 CPU 검사262개 통과(57.855s). CUDA 미초기화, 전체 학습 테스트가 아니다.
+- 실제 전체105/131/840 source proof 검증 완료. 실제 두 case의 CT/seg128³ crop과8개 전체 operator를 원본과 byte 단위로 비교했다.
+- 원래 raw prepare 함수를 실제 두 case에 다시 실행하여 전체 CT/seg와8개 전체 operator의 동등성을 검증했다. DEBUG case 실행과 production 전체105명 준비를 구분했다.
+- 실제 private nnU-Net class의 do_split/get_tr_and_val_datasets를 실행하고105/26 train/validation reader를 검증했다. private/source code fingerprint와 최종 저장 adapter validator도 실제 class에서 검증했다.
+- DEBUG 검증의 production optimizer update는0이며 CUDA를 사용하지 않았다. 이 검사로 전체 native 학습이나 최종 성능 검증을 완료했다고 주장하지 않는다.
+- 로컬 sandbox WinError5 경로/hardlink 제한은 정상 권한에서 같은 검사를 다시 실행해 통과했다. 사용자 Python 환경을 변경하지 않았다.
+- GPU5 viewer의 JSON 읽기 오류를 수정했다. 갱신 중인 JSON의 일시적인 불완전 읽기와 학습 프로세스 실패를 구분하며 GPU5 GNN RUNNING을 재확인했다.
+- 전체 학습: GPU4/5/6 GNN 실제 데이터로 진행 중, 전체40epoch 미완료.
+- 전체 nnU-Net 학습: 아직 시작하지 않음. 전체 CP와 native250epoch 학습을 위한 자동 연결 등록은 완료했다.
+- 전체 최종 평가: 아직 수행하지 않음. calibration clone 및 CPU fixture를 최종 성능 결과로 취급하지 않는다.
+- 미래 전체 실행의 성능과 모든 병목 해결을 CPU 검사만으로 보장하지 않는다. 실제 단계별 resource/학습 상태를 로그로 검증한다.
+
+검증 자료(로컬 outputs는 Git에 올리지 않음)
+- outputs/v24_gpu4_20261010/continuation_readback_1791650206874353000.json
+- outputs/v24_gpu4_20261010/static_native_preflight_70dfc2b30527_1791651701543240600.json
+- outputs/v24_gpu4_20261010/static_native_admission_70dfc2b30527_1791651784025210900.json
+- outputs/v24_gpu4_20261010/static_native_real_debug_70dfc2b30527_1791651809106515000.json
+- outputs/v24_gpu4_20261010/static_native_register_70dfc2b30527_1791652000779883200.json
+- outputs/v24_gpu4_20261010/static_native_registered_readback_1791652146721114000.json
+
+GPU4 화면 실행 명령
+/home/aicompetition06/.conda/envs/nnunet/bin/python3.10 -B /var/tmp/aicompetition06_v24_20261010/GPU4_exact_continuation_20261011_1791646551374150800/view_gpu4.py
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
