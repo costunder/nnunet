@@ -41,13 +41,19 @@ RNG 동일, 기존 수명 문제 재현/해결, 사용 중 batch가 진짜 제�
 이어받기 CPU 검사 13/13 통과: 최신/BEST 원본과 여섯 수치 상태의 바이트 보존,
 GPU5/GPU6의 부분 validation cursor, 실제 BEST 전체128 보고서/점수 대조,
 변조·중복 환자·불완전 physical cursor 거부, 원형 main code/private import 연결.
-진행 화면 검사 15/15 통과: 4줄 tqdm 렌더링, 실제 NumPy scalar Dice 출력,
+진행 화면 검사 18/18 통과: 4줄 tqdm 렌더링, 실제 NumPy scalar Dice 출력,
 새 실행의 상태와 기존 PAUSED/실패 구분, 정확한 부분 cursor/JSONL offset 처리,
 숫자 epoch 선택, 안정적인 로그 링크 재연결, 학습/Torch import 없음.
 GPU1 RAM도 CLI 래퍼와 실제 trainer의 소유권을 확인한 process tree 합계로 표시한다.
 서버 Torch2.6.0+cu118 환경의 별도 CPU 검사 40/40 통과(CUDA 비활성화/CPU8–11).
 실제 GPU5/6 최신/BEST 복사와 strict resume admission이 통과하여 전체 U128
 validation을 이어서 실행했다. 최종 40epoch 완료는 아직 확인되지 않았다.
+GPU6은 실패했던 epoch4 전체128 validation을 실제 완료했다(MRR0.3683521125,
+top1 0.2960904575). 회수 로그의 마지막 RSS는 48.5→38.1GiB였고,
+검증 중 관측 최고 RSS50.85GiB/strict failure0이었다. GPU5도 epoch1 전체128
+validation을 완료하고 epoch2의 실제 optimizer 업데이트를 수행했다.
+U 확장 후 준비 중인 그래프는 실제 N/86을 따로 표시하며, 다음 epoch의 U는
+기록된 curriculum_transition.next_active_u에서 읽는다.
 이는 전체 40epoch 학습 완료나 전체 성능 검증을 뜻하지 않는다.
 실제 GPU5/6 재개와 전체 U128 validation의 RAM 측정 결과는 별도 실행 receipt/로그에 남긴다.
 

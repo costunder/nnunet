@@ -43,6 +43,27 @@ class ViewerTest(unittest.TestCase):
         s = watch.Viewer().snapshot(self.root)
         self.assertEqual((s['stage'],s['progress']['done'],s['epoch']), ('prepare_inputs',2,None))
 
+    def test_partial_upper_preparation_inside_training_has_own_bar(self):
+        self.lines(self.train/'curve.jsonl',[dict(epoch=4)])
+        (self.root/'console.log').write_text('V24 UPPER PREPARE completed=2/86 active_U=23 elapsed_seconds=5\n',encoding='utf8')
+        s=watch.Viewer().snapshot(self.root)
+        self.assertEqual((s['stage'],s['epoch'],s['active_U']),('upper_prepare',5,23))
+        self.assertEqual(s['progress'],dict(done=2,total=86,unit='upper 환자'))
+
+    def test_completed_upper_preparation_restores_derived_training_phase(self):
+        self.lines(self.train/'curve.jsonl',[dict(epoch=4)])
+        (self.root/'console.log').write_text('V24 UPPER PREPARE completed=2/86 active_U=23 elapsed_seconds=5\nV24 UPPER PREPARE completed=86/86 active_U=23 elapsed_seconds=100\n',encoding='utf8')
+        s=watch.Viewer().snapshot(self.root)
+        self.assertEqual((s['stage'],s['epoch'],s['progress']['done'],s['progress']['total']),('training',5,0,65))
+
+    def test_new_epoch_uses_recorded_curriculum_U_before_first_new_update(self):
+        self.lines(self.train/'update_timing.jsonl',[dict(status='OPTIMIZER_UPDATED',epoch=4,update=68,
+            active_u=7,case_ids=['t0','t1','t2','t3'],loss=.7)])
+        self.lines(self.train/'curve.jsonl',[dict(epoch=4,curriculum_transition=dict(previous_active_u=7,next_active_u=23))])
+        s=watch.Viewer().snapshot(self.root)
+        self.assertEqual((s['stage'],s['epoch'],s['active_U'],s['progress']['done']),('training',5,23,0))
+        self.assertNotEqual(s['stage'],'upper_prepare')
+
     def test_partial_line_is_not_counted_twice(self):
         path = self.train/'update_timing.jsonl'
         row = dict(status='OPTIMIZER_UPDATED', epoch=1, update=1, active_u=7, case_ids=['t0','t1','t2','t3'], loss=.7)

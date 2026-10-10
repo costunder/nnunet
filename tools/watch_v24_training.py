@@ -17,6 +17,7 @@ PHASES = ('initial_full_validation', 'train_probe', 'stage_validation', 'full_va
 LABELS = dict(training='학습', initial_full_validation='초기 전체 validation',
     train_probe='train 범위 평가', stage_validation='단계 validation',
     full_validation='전체 validation', epoch_completion='epoch 정리',
+    upper_prepare='U 후보 그래프 준비',
     prepare_inputs='CPU 전처리', shared_input_wait='공유 전처리 대기', calibrate='batch 실측')
 LABELS.update(prepare_continuation='체크포인트 이어받기 준비', calibrate_native='nnUNet batch 실측',
     prepare_bank='CP bank 준비', materialize_bank='CP bank 저장', prepare_native='nnUNet 입력 준비',
@@ -191,6 +192,11 @@ class Viewer:
             elif binding:
                 phase, epoch, phase_source = 'initial_full_validation', 1, 'execution_contract_before_first_batch'
         active_u = latest_update.get('active_u') if latest_update else baseline.get('active_u')
+        if phase == 'training' and events['curve']:
+            curve = events['curve'][-1]
+            if (epoch == curve['epoch']+1 and (latest_update is None or latest_update['epoch'] != epoch)
+                    and curve.get('next_active_u') is not None):
+                active_u = curve['next_active_u']
         progress = None
         if phase == 'training' and epoch is not None:
             rows = [r for r in fresh_updates if r['epoch'] == epoch]
@@ -212,6 +218,15 @@ class Viewer:
                 if canonical:
                     done, total = map(int, canonical.groups())
                     progress = dict(done=done, total=total, unit='canonical 기록'); break
+        if pipeline_stage == 'train' and request.get('GPU') in (5, 6):
+            for line in reversed(log_tail(root/'console.log')):
+                match = re.search(r'UPPER PREPARE completed=(\d+)/(\d+) active_U=(\d+)', line)
+                if match:
+                    done, total, prepared_u = map(int, match.groups())
+                    if done < total:
+                        phase, phase_source, active_u = 'upper_prepare', 'unfinished console upper preparation', prepared_u
+                        progress = dict(done=done, total=total, unit='upper 환자')
+                    break
         effective_status = status.get('status', 'UNKNOWN')
         if effective_status not in ('RUNNING', 'FAILED', 'PREPARING', 'WAITING_FOR_SHARED_CPU_INPUT') and last_invocation.get('status') == 'PAUSED':
             effective_status = 'PAUSED'
@@ -252,7 +267,8 @@ class Viewer:
             result['post_continuation'] = fresh
             return result
         if name == 'curve':
-            return dict(epoch=row['epoch'], post_continuation=fresh)
+            return dict(epoch=row['epoch'], next_active_u=row.get('curriculum_transition', {}).get('next_active_u'),
+                post_continuation=fresh)
         return dict({key: row.get(key) for key in ('status', 'full_training', 'completed_epochs', 'error')}, post_continuation=fresh)
 
     @staticmethod
