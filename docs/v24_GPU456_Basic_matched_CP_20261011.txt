@@ -34,8 +34,10 @@ Frozen scoring uses each GPU arm's actual own full40-complete BEST and its
 complete original CNN/STU model, full P context, physical patient B4 capacity,
 measured candidate chunks GPU5=32/GPU4,6=64, CPU4 and RAM64GiB.
 The inference-only self-source adapter binds the original selected lesion.
-Other recipient lesions do not enter local/upper learned inputs; CPU tests
-prove exact input invariance when other lesion GT changes. Historical CP
+Other recipient lesion GT masks and occupancy features are excluded from the
+local/upper inputs; the original observed-P coordinate context is retained.
+CPU tests prove exact input invariance when other lesion GT masks change
+while the original inventory/P coordinates remain fixed. Historical CP
 eligibility is reused offline and is not presented as GT-blind generation.
 Original inner-train84 prototype scope and all GNN training stay unchanged.
 
@@ -60,13 +62,59 @@ provenance is not established by its summary alone; a final BEST comparison
 must retain/prove the actual Basic checkpoint used for the same 26 patients.
 
 Actual server CPU preflight:
-237 tests passed in 62.974s on code e6b4ef42364dddd2eeafe4ccc348d3d3e7b4307a.
+238 tests passed in 63.523s on final code
+f29f08e1e7ac6bb629e58b890ab264782c059fee.
 All642 original native bank entries were loaded and every original payload
 array was compared exactly; full81/82176 coverage and source SHA were proved.
 No CUDA was initialized and no production optimizer update occurred.
-Receipt: outputs/v24_gpu4_20261010/matched_basic_preflight_e6b4ef42364d_1791654993807936400.json
+Receipt: outputs/v24_gpu4_20261010/matched_basic_preflight_f29f08e1e7ac_1791655486570376500.json
 The final source binding additionally rejects another completed model on the
 same GPU and requires the overlay pin to equal the chain's actual own BEST.
+Actual installed historical-source clone compilation also passed. The original
+three mutable CP counters are distinguished from four loader/epoch metadata
+fields; the original AMP step instruction bytes and calculations are retained.
+
+Actual historical loader CPU DEBUG passed with the complete 105 training and
+26 validation readers. Four physical B2/128-cube training batches and one
+ordinary validation batch were generated. The unchanged CP0.5 sampling drew
+one actual paste event without forcing it. All642 source files and the index
+retained SHA/stat identity. CPU4-7 RSS was 799,895,552 bytes; measured batch
+phase was 1.262s. Private DEBUG metadata and annotation copies are separate.
+This checks the historical loader/crop/paste API with its original real scores;
+it does not claim current-GNN scoring, standard DA transforms, model forward,
+CUDA optimizer updates or full training/evaluation.
+Receipt: outputs/v24_gpu4_20261010/actual_historical_CP_loader_CPU_debug_1791655538274314100.json
+
+Actual registration and readback completed on code
+f29f08e1e7ac6bb629e58b890ab264782c059fee, pushed to
+https://github.com/costunder/nnunet.git branch codex/v24-cpu-pipeline.
+Immutable server code: /var/tmp/aicompetition06_v24_20261010/code_f29f08e1e7ac
+New chain group:
+/var/tmp/aicompetition06_v24_20261010/GPU456_matched_Basic_CP_1791655734433840800
+Only the verified task-owned CPU waiters 1407155/1407207/1407278 were closed
+with individual SIGTERM after reporting their identities and purpose.
+No GNN worker received a signal. Old results and all source payloads remain.
+New waiters: GPU4=1428784, GPU5=1428911, GPU6=1429085.
+Readback proved all three WAITING_FOR_FULL_GNN with no stage child, original
+source worker identity unchanged (1357226/1240177/1239673), matched own-source
+selection/642 sources/128 candidates/CP0.5/preprocessed paste and BEST policy.
+Each arm's exclusive source claim, previous BEST/storage history and new
+CP-parity handoff proof/lease were verified. Actual free bytes were
+17,686,224,896; source preprocessing and bank remain read-only.
+The next automatic stages are own full40 BEST pin, full642 scores, native
+preparation, actual B2/B4 clone calibration, and full250 nnU-Net/BEST validation.
+No production scoring, native epoch or final evaluation has yet run for
+this newly matched profile. Registration is not a completed training result.
+Receipts:
+outputs/v24_gpu4_20261010/matched_basic_admission_f29f08e1e7ac_1791655734433840800.json
+outputs/v24_gpu4_20261010/matched_basic_register_f29f08e1e7ac_1791655831166948000.json
+outputs/v24_gpu4_20261010/matched_basic_readback_f29f08e1e7ac_1791655887541260100.json
+
+Existing GPU4/5/6 viewers still show their original running GNN jobs; they
+were preserved and do not automatically discover this native chain.
+Each new arm's controller state is group/gpuN/status.json and watcher.log.
+Stage logs are group/gpuN/<stage>.log, including train.log once native starts.
+The other thread's GPU3 CP monitor was inspected read-only and preserved.
 
 ## 작업 완료 체크리스트
 
