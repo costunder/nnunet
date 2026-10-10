@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -30,6 +31,9 @@ CONTINUATION_FORMAT = 'v24_GPU4_exact_saved_state_continuation_v1'
 CONTINUATION_RECEIPT = 'GPU4_exact_continuation.json'
 CONTINUATION_FILES = ('tools/run_v24_gpu4_exact_continuation.py', 'tools/run_v24_gpu4_pipeline.py')
 NUMERICAL_STATES = ('model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'shuffle_generator')
+READONLY_PROFILE = 'reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly'
+READONLY_ENTRY = 'tools/run_v24_readonly_nnunet_cp.py'
+READONLY_HELPER = 'hiercp_v1x/v24_readonly_native_storage.py'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
 AFFINITIES = {5: [42, 43, 44, 45], 6: [32, 33, 34, 35]}
 PARAMETER_TENSORS = {4: 537, 5: 981, 6: 537}
@@ -131,18 +135,66 @@ def command_options(command, *, python, entry, action):
     return options
 
 
+def _readonly_storage(request):
+    profile = request.get('storage_profile')
+    if profile is None:
+        if any(key in request for key in ('storage_admission', 'storage_admission_sha256', 'storage_admission_stat',
+                                          'source_execution_code', 'source_execution_commit', 'source_execution_files')):
+            raise ValueError('Explicit reviewed read-only storage profile required for storage/execution overrides')
+        return None
+    if profile != READONLY_PROFILE or request.get('GPU_arm') != 4 or request.get('recovery') is not None:
+        raise ValueError('The immutable full-cache storage profile explicitly belongs to a fresh GPU4 chain')
+    path = owned(request['storage_admission'])
+    if (not _checksum(request.get('storage_admission_sha256'))
+            or sha(path) != request['storage_admission_sha256']
+            or _file_stat(path) != request.get('storage_admission_stat')):
+        raise ValueError('Reviewed full-cache storage admission SHA/stat changed')
+    from hiercp_v1x.v24_readonly_native_storage import verify_admission
+    document = read(path)
+    verify_admission(document, full_hash=False)
+    budget = document.get('budget', {})
+    estimate, reserve, required = (budget.get(key) for key in
+        ('new_writable_bytes_estimate', 'checkpoint_reserve_bytes', 'required_free_bytes'))
+    if (document.get('format') != 'v24_native_immutable_full_cache_storage_v1'
+            or document.get('profile') != READONLY_PROFILE
+            or document.get('model_data_scale_preserved') is not True or document.get('debug') is not False
+            or document.get('scores_reused') is not False or document.get('learned_upper_reused') is not False
+            or document.get('inventory', {}).get('path') != request['inventory']
+            or document['inventory'].get('sha256') != sha(request['inventory'])
+            or document.get('baseline', {}).get('preprocessed') != request['baseline_preprocessed']
+            or type(estimate) is not int or estimate < 0 or type(reserve) is not int or reserve != 10 * 2**30
+            or type(required) is not int or required != estimate + reserve
+            or budget.get('minimum_runtime_free_bytes') != 10 * 2**30
+            or type(request.get('min_free_disk_GiB')) not in (int, float)
+            or not math.isfinite(request['min_free_disk_GiB']) or request['min_free_disk_GiB'] * 2**30 < required
+            or type(request.get('minimum_runtime_free_disk_GiB', 10)) not in (int, float)
+            or not math.isfinite(request.get('minimum_runtime_free_disk_GiB', 10))
+            or request.get('minimum_runtime_free_disk_GiB', 10) * 2**30 < budget['minimum_runtime_free_bytes']):
+        raise ValueError('Read-only full105/full131 storage and actual new-write budget plus10GiB reserve required')
+    if any(name not in request.get('code_files', {}) for name in (READONLY_ENTRY, READONLY_HELPER)):
+        raise ValueError('The actual read-only native entry/helper must be SHA pinned')
+    return document
+
+
+def _source_execution(request):
+    if request.get('storage_profile') == READONLY_PROFILE:
+        return request['source_execution_code'], request['source_execution_commit'], request['source_execution_files']
+    return request['code'], request['commit'], request['code_files']
+
+
 def validate_request(request, *, fresh=True):
     gpu = request.get('GPU_arm')
     if (request.get('format') != FORMAT or type(gpu) is not int or gpu not in (4, 5, 6)
             or not _assigned_cpu_contract(gpu, request.get('CPU_affinity'))
             or request.get('scoring_RAM_GiB') != 64 or request.get('native_RAM_GiB') != 48
-            or request.get('min_free_disk_GiB', 0) < 160
+            or (request.get('storage_profile') is None and request.get('min_free_disk_GiB', 0) < 160)
             or request.get('minimum_runtime_free_disk_GiB', 10) < 10
             or not isinstance(request.get('GPU_UUID'), str) or not request['GPU_UUID'].startswith('GPU-')):
         raise ValueError('Explicitly assigned GPU4/5/6 four-CPU/full RAM/disk contract required')
     chain = owned(request['chain_root'], directory=True, must_exist=False)
     owned(chain.parent, directory=True)
     source = owned(request['source_output'], directory=True)
+    storage = _readonly_storage(request)
     if chain == source or chain in source.parents or source in chain.parents:
         raise ValueError('Fresh chain output must not overlap a GNN source experiment')
     claim_path = source.parent / 'gnn_native_chain_claims_20261010' / (hashlib.sha256(str(source).encode()).hexdigest() + '.json')
@@ -150,12 +202,15 @@ def validate_request(request, *, fresh=True):
         raise ValueError('One globally derived exclusive claim is required for each completed GNN source')
     owned(claim_path.parent, directory=True)
     owned(claim_path, must_exist=False)
-    for key in ('code', 'source_code'):
+    code_fields = [('code', 'commit', 'code_files'), ('source_code', 'source_commit', 'source_files')]
+    if storage is not None:
+        code_fields.append(('source_execution_code', 'source_execution_commit', 'source_execution_files'))
+    for key, commit_key, files_key in code_fields:
         owned(request[key], directory=True)
-        commit = request.get('commit' if key == 'code' else 'source_commit')
+        commit = request.get(commit_key)
         if not isinstance(commit, str) or len(commit) != 40 or set(commit) - set('0123456789abcdef'):
             raise ValueError('Pinned full Git commit required: ' + key)
-        files = request.get('code_files' if key == 'code' else 'source_files')
+        files = request.get(files_key)
         if not isinstance(files, dict) or not files:
             raise ValueError('Actual immutable source SHA witnesses required: ' + key)
         for name, checksum in files.items():
@@ -203,9 +258,11 @@ def validate_request(request, *, fresh=True):
     stages = request.get('stages')
     if not isinstance(stages, list) or tuple(row.get('action') for row in stages) != ACTIONS:
         raise ValueError('Exactly pin, complete bank, native preparation, calibration, full train required')
-    entry = str(Path(request['code']) / 'tools/run_v24_nnunet_cp.py')
+    entry = str(Path(request['code']) / (READONLY_ENTRY if storage is not None else 'tools/run_v24_nnunet_cp.py'))
     pin, bank, native = str(chain / 'pin.json'), str(chain / 'bank/index.json'), str(chain / 'native/native.json')
     common = {'--gpu': str(gpu)}
+    if storage is not None:
+        common['--storage-admission'] = request['storage_admission']
     expected = [dict(common, **{'--source-output': request['source_output'], '--source-code': request['source_code'],
                 '--inventory': request['inventory'], '--input-cache': request['input_cache'], '--output': pin}),
         dict(common, **{'--pin': pin, '--inventory': request['inventory'], '--baseline-preprocessed': request['baseline_preprocessed'],
@@ -233,7 +290,10 @@ def validate_request(request, *, fresh=True):
 
 
 def verify_code(request):
-    for root_key, files_key, commit_key in (('code', 'code_files', 'commit'), ('source_code', 'source_files', 'source_commit')):
+    fields = [('code', 'code_files', 'commit'), ('source_code', 'source_files', 'source_commit')]
+    if request.get('storage_profile') == READONLY_PROFILE:
+        fields.append(('source_execution_code', 'source_execution_files', 'source_execution_commit'))
+    for root_key, files_key, commit_key in fields:
         code = owned(request[root_key], directory=True)
         actual = subprocess.check_output(['git', '-C', str(code), 'rev-parse', 'HEAD'], text=True).strip()
         if actual != request[commit_key]:
@@ -353,9 +413,10 @@ def _file_stat(path):
 
 def _validate_gpu4_continuation_pipeline(request, pipeline, config_path):
     """Bind a new execution overlay to one untouched failed scientific source."""
+    execution_code, execution_commit, execution_files = _source_execution(request)
     if (request.get('recovery') is not None
-            or pipeline.get('code') != request['code'] or pipeline.get('commit') != request['commit']
-            or pipeline.get('execution_code') != request['code'] or pipeline.get('execution_commit') != request['commit']
+            or pipeline.get('code') != execution_code or pipeline.get('commit') != execution_commit
+            or pipeline.get('execution_code') != execution_code or pipeline.get('execution_commit') != execution_commit
             or pipeline.get('source_code') != request['source_code']
             or pipeline.get('source_commit') != request['source_commit']
             or not _checksum(pipeline.get('latest_checkpoint_sha256'))
@@ -364,9 +425,13 @@ def _validate_gpu4_continuation_pipeline(request, pipeline, config_path):
         raise ValueError('GPU4 exact continuation requires its new overlay, original science and durable update1; no claim recovery')
     files = pipeline.get('execution_files')
     if (not isinstance(files, dict) or set(files) != set(CONTINUATION_FILES)
-            or any(not _checksum(value) or request['code_files'].get(name) != value
-                   or sha(Path(request['code']) / name) != value for name, value in files.items())):
+            or any(not _checksum(value) or execution_files.get(name) != value
+                   or sha(Path(execution_code) / name) != value for name, value in files.items())):
         raise ValueError('GPU4 continuation exact new execution source SHA manifest differs')
+    if request.get('storage_profile') == READONLY_PROFILE:
+        if (execution_files != files or subprocess.check_output(
+                ['git', '-C', execution_code, 'rev-parse', 'HEAD'], text=True).strip() != execution_commit):
+            raise ValueError('Original separately pinned live continuation execution checkout changed')
     previous = owned(pipeline['source_output'], directory=True)
     destination = Path(request['source_output'])
     if (previous == destination or previous in destination.parents or destination in previous.parents
@@ -401,7 +466,7 @@ def _validate_gpu4_continuation_pipeline(request, pipeline, config_path):
     old_command = old_trains[0].get('command', [])
     if old_command[:4] != [request['python'], '-B', '-u', str(Path(request['source_code']) / 'tools/run_v24_gpu4_all_u.py')]:
         raise ValueError('GPU4 continuation original scientific runner command differs')
-    entry = str(owned(Path(request['code']) / CONTINUATION_FILES[0]))
+    entry = str(owned(Path(execution_code) / CONTINUATION_FILES[0]))
     for stage, action in zip(stages, ('prepare', 'train')):
         command = stage.get('command')
         if (not isinstance(command, list) or any(not isinstance(arg, str) or '\x00' in arg for arg in command)
@@ -436,10 +501,11 @@ def _validate_gpu4_continuation_receipt(request, pipeline):
     previous_job = Path(pipeline['source_job'])
     flags = ('scientific_request_unchanged', 'checkpoint_identity_and_content_unchanged',
              'six_numerical_states_unchanged', 'curriculum_history_and_partial_cursors_unchanged')
+    execution_code, execution_commit, _ = _source_execution(request)
     if (document.get('format') != CONTINUATION_FORMAT or document.get('status') != 'PREPARED_EXACT_SAVED_STATE'
             or document.get('destination') != str(destination)
             or document.get('source_code') != request['source_code'] or document.get('source_commit') != request['source_commit']
-            or document.get('execution_code') != request['code'] or document.get('execution_commit') != request['commit']
+            or document.get('execution_code') != execution_code or document.get('execution_commit') != execution_commit
             or document.get('execution_files_sha256') != pipeline['execution_files']
             or document.get('original_files_modified') is not False
             or type(document.get('production_optimizer_updates_performed')) is not int
@@ -526,6 +592,7 @@ def _validate_gpu4_continuation_receipt(request, pipeline):
 
 
 def inspect_source(request):
+    _readonly_storage(request)
     status = read(request['source_job']['status'])
     job = request['source_job']
     pipeline_request_path = job['worker_command'][-1]
@@ -536,12 +603,16 @@ def inspect_source(request):
     continuation = pipeline.get('format') == CONTINUATION_PIPELINE_FORMAT
     if continuation and gpu != 4:
         raise ValueError('Exact saved-state continuation is explicitly GPU4 only')
-    code_key, commit_key = ('code', 'commit') if continuation else ('source_code', 'source_commit')
+    execution_code, execution_commit, _ = _source_execution(request)
+    expected_code, expected_commit = ((execution_code, execution_commit) if continuation else
+        (request['source_code'], request['source_commit']))
+    if request.get('storage_profile') == READONLY_PROFILE and not continuation:
+        raise ValueError('Read-only GPU4 chain requires its explicitly pinned exact saved-state source pipeline')
     scale_fields = ('epochs', 'physical_patient_batch', 'candidate_chunk') if gpu in (4, 5) else (
         'original_total_epochs', 'original_patient_batch', 'original_candidate_chunk')
     if (status.get('request') != pipeline or pipeline.get('GPU') != gpu
-            or pipeline.get('GPU_uuid') != request['GPU_UUID'] or pipeline.get('code') != request[code_key]
-            or pipeline.get('commit') != request[commit_key] or pipeline.get('production_output') != request['source_output']
+            or pipeline.get('GPU_uuid') != request['GPU_UUID'] or pipeline.get('code') != expected_code
+            or pipeline.get('commit') != expected_commit or pipeline.get('production_output') != request['source_output']
             or pipeline.get('CPU_affinity') != request['CPU_affinity'] or pipeline.get('RAM_GiB') != 64
             or tuple(pipeline.get(name) for name in scale_fields) != (40, 4, 32 if gpu == 5 else 64)):
         raise ValueError('Registered GNN worker request does not match the exact full own-arm contract')
@@ -697,6 +768,7 @@ def scheduler_proof(request, *, stage_index=0):
 
 
 def resources(request, *, initial=False, stage_index=0):
+    _readonly_storage(request)
     import psutil
     affinity = psutil.Process().cpu_affinity()
     if affinity != request['CPU_affinity']:
@@ -768,7 +840,32 @@ def stage_proof(request, action):
             raise ValueError('Actual final native checkpoint checksum differs')
     else:
         raise ValueError('Unknown chain stage')
-    return dict(path=str(path), sha256=sha(path), action=action)
+    proof = dict(path=str(path), sha256=sha(path), action=action)
+    if request.get('storage_profile') == READONLY_PROFILE:
+        _readonly_storage(request)
+        receipt = root / ('readonly_storage_' + action.replace('-', '_') + '.json')
+        declared = read(receipt)
+        if (declared.get('format') != 'v24_readonly_native_stage_v1' or declared.get('action') != action
+                or declared.get('storage_profile') != READONLY_PROFILE or declared.get('status') != 'COMPLETE'
+                or declared.get('storage_admission') != request['storage_admission']
+                or declared.get('storage_admission_sha256') != request['storage_admission_sha256']
+                or declared.get('cached_inputs_written') is not False
+                or declared.get('model_data_scale_preserved') is not True):
+            raise ValueError('Explicit read-only stage/cache/admission completion proof differs')
+        runtime_files = (READONLY_ENTRY, READONLY_HELPER, 'hiercp_v1x/v24_native_calibration_runtime.py',
+                         'hiercp_v1x/v24_native_crop_runtime.py', 'hiercp_v1x/v24_native_gradient_runtime.py')
+        sources = declared.get('runtime_sources_sha256')
+        if (not isinstance(sources, dict) or set(sources) != set(runtime_files)
+                or any(request['code_files'].get(name) != checksum or sha(Path(request['code']) / name) != checksum
+                       for name, checksum in sources.items())):
+            raise ValueError('Actual read-only stage runtime source proof differs')
+        if action in ('prepare-current-bank', 'prepare-native') and (
+                value.get('storage_profile') != READONLY_PROFILE
+                or value.get('storage_admission') != request['storage_admission']
+                or value.get('storage_admission_sha256') != request['storage_admission_sha256']):
+            raise ValueError('Bank/native metadata does not declare its actual read-only cache profile')
+        proof['storage_receipt'] = dict(path=str(receipt), sha256=sha(receipt))
+    return proof
 
 
 def publish(root, status):
@@ -904,6 +1001,9 @@ def run_stage(request, stage, status, request_path, request_checksum):
                VECLIB_MAXIMUM_THREADS='1', PYTHONDONTWRITEBYTECODE='1',
                V24_ARM_RSS_GIB=str(request['scoring_RAM_GiB'] if stage['action'] == 'prepare-current-bank' else request['native_RAM_GiB']))
     env['CUDA_VISIBLE_DEVICES'] = str(request['GPU_arm'])
+    if request.get('storage_profile') == READONLY_PROFILE:
+        _readonly_storage(request)
+        env['V24_READONLY_STORAGE_ADMISSION_SHA256'] = request['storage_admission_sha256']
     status.update(status='RUNNING', stage=stage['name'], stage_started=time.time(), command=stage['command'])
     publish(root, status)
     print(json.dumps(dict(stage=stage['name'], command=stage['command'])), flush=True)

@@ -379,6 +379,70 @@ class CompletedArmFixture(unittest.TestCase):
         self.write_json(self.job / 'status.json', status)
         self.request['source_job']['pipeline_request_sha256'] = chain.sha(self.job / 'request.json')
 
+    def make_readonly_continuation(self):
+        self.make_continuation()
+        execution_code = self.code
+        self.code = self.root / 'new_native_runtime'; self.code.mkdir()
+        for name in ('tools/watch_v24_gnn_to_nnunet.py', 'tools/run_v24_nnunet_cp.py', chain.READONLY_ENTRY, chain.READONLY_HELPER):
+            path = self.code / name; path.parent.mkdir(exist_ok=True)
+            path.write_text('# DEBUG new native runtime distinct from live execution\n', encoding='utf8')
+        self.storage_document = dict(format='v24_native_immutable_full_cache_storage_v1', profile=chain.READONLY_PROFILE,
+            inventory=dict(path=str(self.inventory), sha256=chain.sha(self.inventory)),
+            baseline=dict(preprocessed=str(self.preprocessed)), model_data_scale_preserved=True, debug=False,
+            scores_reused=False, learned_upper_reused=False,
+            budget=dict(new_writable_bytes_estimate=2 * 2**30, checkpoint_reserve_bytes=10 * 2**30,
+                required_free_bytes=12 * 2**30, minimum_runtime_free_bytes=10 * 2**30, reused_readonly_bytes=69 * 2**30))
+        self.storage_path = self.root / 'DEBUG_storage_admission.json'; self.write_json(self.storage_path, self.storage_document)
+        pipeline = chain.read(self.job / 'request.json')
+        self.request.update(code=str(self.code), commit='c' * 40,
+            code_files={name: chain.sha(self.code / name) for name in
+                ('tools/watch_v24_gnn_to_nnunet.py', 'tools/run_v24_nnunet_cp.py', chain.READONLY_ENTRY, chain.READONLY_HELPER)},
+            source_execution_code=str(execution_code), source_execution_commit=pipeline['execution_commit'],
+            source_execution_files=pipeline['execution_files'], storage_profile=chain.READONLY_PROFILE,
+            storage_admission=str(self.storage_path), storage_admission_sha256=chain.sha(self.storage_path),
+            storage_admission_stat=chain._file_stat(self.storage_path), min_free_disk_GiB=12)
+        for row in self.request['stages']:
+            row['command'][3] = str(self.code / chain.READONLY_ENTRY)
+            row['command'] += ['--storage-admission', str(self.storage_path)]
+
+    def test_readonly_profile_uses_measured_write_floor_and_separate_live_execution(self):
+        self.make_readonly_continuation()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission') as admission, \
+                patch.object(chain.subprocess, 'check_output', return_value='a' * 40):
+            chain.validate_request(self.request)
+            completed = self.inspect_continuation()
+        self.assertEqual(completed['invocation']['optimizer_updates'], 680)
+        self.assertEqual(self.request['min_free_disk_GiB'], 12)
+        self.assertNotEqual(self.request['code'], self.request['source_execution_code'])
+        self.assertNotEqual(self.request['commit'], self.request['source_execution_commit'])
+        self.assertTrue(admission.called)
+        self.assertEqual(admission.call_args.kwargs, {'full_hash': False})
+
+    def test_readonly_profile_cannot_weaken_full_copy_or_replace_live_execution(self):
+        self.make_readonly_continuation()
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), \
+                patch.object(chain.subprocess, 'check_output', return_value='a' * 40):
+            with self.assertRaisesRegex(ValueError, 'new-write budget'):
+                chain.validate_request(dict(self.request, min_free_disk_GiB=11))
+            changed = dict(self.request, source_execution_code=self.request['code'])
+            with self.assertRaisesRegex(ValueError, 'own-arm contract'):
+                chain.inspect_source(changed)
+            changed = dict(self.request); changed.pop('storage_profile')
+            with self.assertRaises(ValueError):
+                chain.validate_request(changed)
+        legacy = self.make_request(4)
+        with self.assertRaisesRegex(ValueError, 'full RAM/disk'):
+            chain.validate_request(dict(legacy, min_free_disk_GiB=12))
+
+    def test_readonly_admission_sha_is_checked_on_every_source_poll(self):
+        self.make_readonly_continuation(); self.gpu4_live_status('train')
+        with patch('hiercp_v1x.v24_readonly_native_storage.verify_admission'), \
+                patch.object(chain.subprocess, 'check_output', return_value='a' * 40):
+            self.assertIsNone(self.inspect_continuation(live=True))
+            self.write_json(self.storage_path, dict(self.storage_document, scores_reused=True))
+            with self.assertRaisesRegex(ValueError, 'admission SHA/stat changed'):
+                self.inspect_continuation(live=True)
+
     def test_gpu4_exact_continuation_full_completion_preserves_old_bytes_and_native_contract(self):
         self.make_continuation()
         chain.validate_request(self.request)
