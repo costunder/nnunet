@@ -14,7 +14,9 @@ from tools import watch_v24_gnn_to_nnunet as chain
 
 class CompletedArmFixture(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='DEBUG_gnn_chain_', dir=Path(__file__).absolute().parents[1] / 'outputs')
+        temporary_parent = Path(__file__).absolute().parents[1] / 'outputs'
+        temporary_parent.mkdir(exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(prefix='DEBUG_gnn_chain_', dir=temporary_parent)
         self.root = Path(self.temp.name)
         self.code = self.root / 'candidate'; self.code.mkdir()
         self.source_code = self.root / 'source_code'; self.source_code.mkdir()

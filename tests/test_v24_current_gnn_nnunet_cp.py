@@ -36,6 +36,7 @@ def save_checkpoint(path,value):
 
 class CurrentOwnArmAdmission(unittest.TestCase):
     def setUp(self):
+        (cp.ROOT/'outputs').mkdir(exist_ok=True)
         self.temporary=tempfile.TemporaryDirectory(prefix='v24_chain_CPU_UNIT_',dir=cp.ROOT/'outputs')
         self.addCleanup(self.temporary.cleanup)
         self.root=Path(self.temporary.name)
