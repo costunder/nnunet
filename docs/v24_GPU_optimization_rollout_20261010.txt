@@ -1,0 +1,199 @@
+2026-10-10 GPU1/5/6 성능 개선 적용 기록
+
+GPU5/6 개선 코드 b558을 실제 적용하고 optimizer update를 확인했다.
+GPU1은 측정상 작은 cache 이득 때문에 live 원형 학습을 유지했다.
+전체 모델, 데이터, 그래프 규칙, 입력 해상도, epoch와 physical batch를 유지했다.
+원형 checkpoint/BEST/history/cursor/RNG/optimizer/scaler/scheduler와 실패 기록을 보존했다.
+DEBUG 성공과 전체 학습/평가 완료를 구분한다. 모든 병목 제거를 주장하지 않는다.
+
+확인한 자원과 원형 실행 계약
+서버 ece-a6gpu6, NVIDIA RTX A6000 GPU1/5/6 각 46068MiB, MIG 없음.
+호스트 CPU96/RAM1007.5GiB는 호스트 총량으로 실제 실험 할당과 구분한다.
+GPU1: CPU38-41/RAM48GiB, native B2/128^3/250epoch/105train+26validation,
+      train augmentation4 + validation2 producers, original AMP/pin/nonblocking.
+GPU5: CPU42-45/RAM64GiB, CNN+GAT B4 patients/chunk32/40epoch,
+      ranking65train+21validation, 전체P+원형curriculum U(최대128)/fixed128 validation,
+      981 trainable parameter tensors.
+GPU6: CPU32-35/RAM64GiB, STUNetS+GNN B4 patients/chunk64/40epoch,
+      ranking65train+21validation, 전체P+원형curriculum U(최대128)/fixed128 validation,
+      537 trainable parameter tensors.
+실제 total=trainable parameters: GPU5 9,752,804/GPU6 13,331,792.
+두 GNN hidden128/head4/L0-local3/L1-patient2/L2-prototype2/dropout0.1 유지.
+GPU5 CNN base12/feature32. GPU6 STUNetS encoder6stages/channel16,32,64,128,256,256/depth1씩 유지.
+실제 GPU5/6 local patch5channels x48^3, effective patient batch4=physical4 xaccum1 xworld1,
+원형 tail rebalancing(3/2 patients)/전체65환자/epoch17updates/40epoch680updates 유지.
+두 arm workers4/Torch1thread/AMP/fusedAdamW/prefetch1/persistent/pin/nonblocking,
+resident cache32GiB/raw8GiB/geometry8GiB 설정을 유지했다.
+GPU6 PBS129443.ECE-util1: R/6CPU/128GB/1GPU. GPU1/5는 기존 승인된 direct SSH 실행.
+세 독립 arm은 별도 GPU/CPU affinity/출력 경로에서 병렬 실행한다.
+원형 inner-train84 중 zero-P19도 inventory에 보존하며 ranking loss의 정의된 분모만65다.
+전체 inner-validation21을 forward하는 기존 계약을 유지했다.
+physical batch 후보를 실제 측정했으며 이번 수정은 원형 선택 값을 변경하지 않는다.
+precision/kernel/신경망 연산/seed/curriculum을 변경하지 않았다.
+드라이버/CUDA/서비스/SSH/셸 시작 파일/네트워크를 변경하거나 종료 신호를 보내지 않았다.
+
+GPU6 donor graph 입력 재사용: 실제 적용 확인
+같은 native chunk의 donor edge attribute/radius/cKDTree를 공유하고 chunk 끝에 해제한다.
+확률 sampling, neural feature, 원형 worker 순서/독립 output copy/오류 전달을 유지한다.
+full128 DEBUG B4/chunk64/524후보/1048view에서 71.462876 -> 64.873168초(9.221% 감소),
+노출 CPU wait57.098073 -> 49.703053초(12.951% 감소).
+실제 입력/scores/loss/537 named gradient/model/RNG tensor byte와 checkpoint6 state를 검사했다.
+DEBUG update0이며 단일 batch 시간으로 전체 학습 개선율을 주장하지 않는다.
+818 코드로 원형 update187부터 실제 학습 update221까지 재개했다.
+실제537 gradient 모두 present/finite, cache created=closed/live0, RSS 최대50.152GiB/64GiB.
+
+GPU6 메모리 회수 병목: 원인과 수정
+실제 epoch12/full_validation/U128/liver17,19,22,25 batch:
+B4/523후보/1046views/2,357,508nodes/184,840,504edges,
+전체191.43694초/get190.97615초/wait186.61042초,
+메모리 회수155.50291초, allocator release121회/eviction118회/GC2283objects.
+누적 회수568.15697초/allocator426회/eviction396회.
+lock wait는 batch3.27microseconds로 주된 원인이 아니었다.
+
+매 cache entry 제거 후 gc/host release/malloc_trim을 반복한 구현을 수정했다.
+실제 RSS와 원형 target의 차이만큼 ledger bytes를 모아 해제한 뒤 allocator를 한 번 호출한다.
+그 뒤 실제 RSS를 다시 확인하고 여전히 높으면 계속 회수한다.
+원형48GiB trigger/47GiB target/64GiB hard limit/initial collection,
+view->record eviction 순서와 protected inputs, 원형 오류를 유지했다.
+고정 cap, GC 비활성화, 한도 상승, 모델/데이터 축소를 추가하지 않았다.
+회수 전에 inactive cache를 더 제거할 수 있다는 residency tradeoff를 명시한다.
+
+전용 fullCUDA 비교는 실제 old818 allocator와 새 allocator를 각각 선택한다.
+동일 scientific/hash/prefetch/input bytes, full128/524후보/1048view/537gradient bitwise,
+실제 checkpoint6states/model/RNG/optimizer membership/source SHA를 검사한다.
+DEBUG에서 pressure가 발생하지 않으면 그 시간으로 회수 speedup을 주장하지 않는다.
+저장된 원형은 epoch13/update221/stage_validation/cursor4이며 old source raw SHA:
+ebca7e2c95e64c654b0f1911b339f7cd7caa4440120ead931045387dab3e6165.
+새 b558 workflow: prepare -> old memory CUDA probe -> new memory CUDA probe -> train.
+새 출력:
+/var/tmp/aicompetition06_v24_20261010/experiment_gpu6_optimizer_b5581f624448_1791628370120572500
+실제 fullCUDA gate PASS: 원형/개선형543 actual tensors(537gradients 포함) byte exact,
+최대 차이0. 입력/출력/loss/model/RNG와 원형221 checkpoint6states 일치.
+원형64.002590초/개선66.738874초, 두 DEBUG 모두 pressure0이다.
+따라서 이 cold DEBUG 시간은 회수 개선 측정으로 사용하지 않는다.
+실제 train 재개 PID1241654/create1791628678.84/CPU32-35 확인.
+실제 같은 ordered liver17/19/22/25/full128/523후보/1046views/
+2,357,508nodes/184,840,504edges/chunk64 batch 관측:
+epoch12 원형191.43694초 -> epoch13 수정판42.95294초(관측77.56% 감소),
+get190.97615 ->42.02437초/wait186.61042 ->39.91788초,
+forward 회수155.50291 ->2.90563초(관측98.13% 감소).
+old interval pressure3/release121/eviction118 -> new1/release1/eviction0.
+new GC1.05891초/host release1.52375초/malloc0.31985초.
+새 구간은 initial allocator release만으로 충분했고 coalesced eviction ledger는0이다.
+재개 후 cache/epoch/model 상태가 달라 이 관측을 수정만의 인과 효과로 단정하지 않는다.
+전체 학습 처리량 개선율이나 실제 eviction coalescing path 효과 측정으로 제출하지 않는다.
+실제 hard64GiB/strict failure0, max observed49.044GiB 유지.
+실제 production epoch14/U55 update221->230(새9updates) 확인.
+update225 기준 B4/chunk64/537gradient 모두 present/finite/missing[],
+step11.229825초/loss0.004661(동일원형 step 비교가 아니므로 개선율 주장 없음).
+원형 epoch13 full128 validation6batches/21patients 모두 완료.
+최근 실제 update225-230 모두537gradient present/finite/missing[],
+source/radius cache created=closed/live chunk/entries/key/result/tree bytes 모두0.
+새 process 누적 pressure6/allocator release6/회수12.932057초,
+GC7.302517초/host release4.659582초/malloc0.908764초,
+hard64GiB/strict failure0/max observed49.293411GiB 유지.
+이 관측까지 coalesced eviction ledger0으로, 실제 inactive eviction을 합친 경로는 미관측이다.
+해당 경로는 분리된 CPU 단위 검사에서 검증했고 실제 전체 CUDA 비교는 수치 일치했다.
+task-generated Moba 로그 링크를 새 actual train 로그로 연결하고 old 로그를 보존했다.
+
+GPU5 입력 재사용: 실제 CUDA 비교와 제한된 원형 변동 검증
+full128 B4/chunk32/524후보/1048view, 동일 checkpoint136의 원형2회/개선1회:
+362.703358초 / 360.346627초 / 337.443568초(첫 원형 대비6.97% 단축).
+DEBUG input hashing/수치 정책 포함, 단일 batch이며 production steady throughput이 아니다.
+실제 입력/forward/loss0.318462997674942/model/RNG/checkpoint/optimizer/scaler는 같았다.
+981gradient 모두 present/finite, 957개 byte exact.
+원형 CUDA grid_sampler_3d_backward_cuda 반복에서도 변동한24개 tensor만 개선형에서 변동했다.
+관측 전체 최대 차이는 원형과 개선형 모두0.0003662109375였다.
+
+최초 per-tensor-max-rms 기준은12개 tensor를 거부했고 실패 JSON/actual artifact를 보존했다.
+실패 뒤 명시한 native-support-global-max 기준은 원형에서 변동한 tensor에만,
+관측 원형 전역 최대 차이 이하를 허용한다. 임의 epsilon/multiplier는 없다.
+나머지957개 gradient byte exact와 입력/forward/loss/model/RNG exact는 계속 요구한다.
+tensor별 max/RMS/상대오차 상한, 모든 gradient bitwise equality,
+미래의 보편적 CUDA noise bound나 동일한 미래 학습 trajectory를 보장하지 않는다.
+신경망 kernel/precision/연산을 유지하는 순수 CPU input cache/prefetch 변경에 한정한다.
+원형 checkpoint136 six states/BEST/cursor/history와 실제3개 CUDA artifact SHA를 재검증했다.
+GPU5에는 CUDA에서 비교한 old0340 allocator(f0cd0a23...)를 선택하며
+GPU6 새 회수 코드(50072feb...)를 함께 적용하지 않는다.
+새 b558 출력:
+/var/tmp/aicompetition06_v24_20261010/experiment_gpu5_measured_resume_1791628409535468800
+실제 production 재개 확인: epoch9/update136->137 OPTIMIZER_UPDATED.
+원형 curriculum U39/B4/166후보/332views/chunk32, 981gradient 모두 present/finite/missing[].
+실제 update step34.0738초, 노출 CPU wait1.22445초(동일원형 비교가 없어 개선율 주장 없음).
+sourcecache63 created=closed/live chunk/entries/key/result/tree bytes0/cache failure0,
+prefetch63 get/failure0/strict memory failure0, actualRSS41.39GiB/64GiB.
+실제 child1240438/create1791628534.23/CPU42-45와 원형 memoryf0cd 선택을 검사했다.
+old 원형 checkpoint136 bytes1707...은 보존됐다.
+task-generated Moba 로그 링크를 새 actual train 로그로 연결하고 old 로그를 보존했다.
+
+원형 allocator 선택과 해시 경로 연결 오류 수정
+첫3eb 새 경로는 원형 memory module의 실제 경로를 hash guard가 거부해 시작 전에 실패했다.
+GPU5/6 CUDA probe/optimizer update0, 원형과 준비 copy checkpoint bytes/logs는 동일했다.
+실패한 job/PID/log/status/result를 보존했다.
+새 b558 cold routing은 실제 owned selected memory path/SHA/stat를 원형 guard에 결합하고,
+후보 파일 witness도 보존하며 원형 private-get AST/provider/input 검사 그대로 실행한다.
+hash 구현 파일/code/digest 계산은 변경하지 않았다.
+old/new hash receipt의 실제 선택 memorySHA 두 필드 외 모든 필드는 같아야 한다.
+실패 시 source metadata와 canonical module을 복구하고 명시적 오류를 전파한다.
+실제 서버에서 원형+개선형 route->hash->memory->prefetch->input 설치를 각각 검증했다.
+실제 CPU tensor digest/RNG exact, CUDA 미초기화, 모델/입력cache/optimizer update0.
+
+GPU1: 실측 결과와 적용 범위
+health snapshot 시점 live 원형 c7 코드의 epoch197/250 확인. B2/full128/105+26/CP0.5 그대로다.
+최근20 완료 epoch 평균89.645초, train84.179초+validation4.434초.
+최근100 native step 평균0.31037초. 원형 calibration input wait17-39microseconds.
+20.87초 샘플 GPU 평균75.2%(40-100), VRAM7.56GiB,
+CPU3.23/4 cores, RAM11.37/48GiB, disk read0.
+live next(loader) 전체 timing은 별도 계측하지 않았으므로 완전한 로더 분석으로 표현하지 않는다.
+
+CP event 안에서 같은 native crop을 다시 decoding하지 않도록 구현했다.
+actual native codec unit28/28, 3case x3jitter x3repeat27pairs:
+output/seg/support/audit/RNG byte exact, decode1/hit1/access2/closed event live0.
+CP paste 평균134.067 ->133.495ms(0.43%), median151.506 ->147.885ms(2.39%).
+작은 CPU event 개선만 검증했고 전체 epoch 개선은 입증하지 못했다.
+따라서 live GPU1은 재시작/hotpatch하지 않고 원형 학습을 유지한다.
+full native CUDA gate는 실행하지 않았다. 디스크2개 artifact 예상8GiB+10GiB floor와
+다른 arm의 checkpoint reserve, 낮은 측정 효익을 고려해 held 상태다.
+GPU1 신규 cache의 전체 CUDA gradient 검증/운영 적용 완료를 주장하지 않는다.
+
+검사와 증거
+메모리 coalescing unit22/22, 관련 통합 unit127/127 PASS(중복 집계하지 않음).
+전용 memory gate/routing14/14, 기존 hash/GPU5 native29/29 PASS.
+GPU1 actual codec28/28, native execution admission15/15 PASS.
+AST/git diff --check와 두 독립 코드 검토 PASS.
+로컬 native codec 의존성 skip은 실제 서버 unit으로 구분해 검증했다.
+구현/정적/단위/DEBUG 검증과 실제 학습 재개를 위 항목에서 구분했다.
+전체 학습과 전체 최종 평가는 진행 중이며 완료 결과로 제출하지 않았다.
+Runtime commit b5581f6244480a66299f84a5c79200c52e9edd49는 immutable 서버 배포와 local SHA 일치.
+GitHub push는 하지 않았다. GPU1 live code는 원형 c7이다.
+
+주요 증거(로컬 저장소 기준)
+outputs/v24_optimizer_20261010/GPU1_final_health_1791628048966201200.json
+outputs/v24_20261010/gpu6_pressure_existing_1791626180919453600.json
+outputs/v24_optimizer_20261010/failed_memory_routing_preservation_1791628138089744300.json
+outputs/v24_optimizer_20261010/selected_memory_hash_remote_readonly_DEBUG_1791628437086141000.json
+outputs/v24_optimizer_20261010/measured_review_gpu5_1791628437142005600.json
+outputs/v24_optimizer_20261010/measured_launch_gpu5_1791628518790649100.json
+outputs/v24_20261010/gpu5_measured_resume_readonly_1791628751747293500.json
+outputs/v24_optimizer_20261010/launch_gpu6_1791628462846075900.json
+outputs/v24_optimizer_20261010/GPU6_memory_rollout_snapshot_1791628712322759200.json
+outputs/v24_optimizer_20261010/GPU6_matched_full128_pressure_observation_1791628941847257900.json
+outputs/v24_optimizer_20261010/GPU6_memory_rollout_final_readonly_proof_1791629159010352800.json
+outputs/v24_20261010/deployment_b5581f624448_1791628361021301400.json
+outputs/v24_20261010/actual_model_execution_contracts_1791629147837978000.json
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 적용한 GPU5/6 실제 gradient/optimizer update 확인; GPU1 새 cache는 미적용/fullCUDA held로 구분한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
