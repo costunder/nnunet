@@ -7,6 +7,7 @@ local CPU environment has no Blosc2; actual server decoder admission is separate
 import copy
 import inspect
 import json
+import marshal
 from pathlib import Path
 import tempfile
 import textwrap
@@ -63,6 +64,43 @@ class UnitDatasetBlosc2:
     @staticmethod
     def unpack_dataset(folder,overwrite_existing=False,num_processes=1,verify=True):
         pass
+
+
+class CanonicalCodeFingerprintUnit(unittest.TestCase):
+    """Pure CPU regressions for immutable code identity and serialization."""
+    def test_reference_topology_and_extra_references_keep_same_fingerprint(self):
+        code=(lambda:None).__code__
+        shared=''.join(['UNIT non-interned code constant ']*40)
+        distinct=shared.encode().decode()
+        aliased=code.replace(co_consts=(None,shared,shared))
+        separate=code.replace(co_consts=(None,shared,distinct))
+        self.assertEqual(aliased.co_consts,separate.co_consts)
+        self.assertIsNot(separate.co_consts[1],separate.co_consts[2])
+        self.assertNotEqual(marshal.dumps(aliased),marshal.dumps(separate))
+        expected=ro.code_fingerprint(aliased)
+        self.assertEqual(expected,ro.code_fingerprint(separate))
+        extra_references=[separate,separate.co_consts,list(separate.co_consts)]
+        self.assertEqual(expected,ro.code_fingerprint(extra_references[0]))
+        self.assertEqual(expected,ro.code_fingerprint(separate.replace()))
+
+    def test_constants_bytecode_and_nested_code_changes_are_detected(self):
+        add=(lambda value:value+1).__code__;subtract=(lambda value:value-1).__code__
+        expected=ro.code_fingerprint(add)
+        self.assertNotEqual(expected,ro.code_fingerprint(add.replace(co_consts=(None,2))))
+        self.assertNotEqual(expected,ro.code_fingerprint(add.replace(co_code=subtract.co_code)))
+        nested=add.replace(co_consts=(None,add))
+        changed=nested.replace(co_consts=(None,add.replace(co_consts=(None,2))))
+        self.assertNotEqual(ro.code_fingerprint(nested),ro.code_fingerprint(changed))
+
+    def test_constant_type_bits_and_order_are_preserved_without_fallback(self):
+        code=(lambda:None).__code__
+        negative=code.replace(co_consts=(None,(-0.0,complex(-0.0,1),frozenset(('a','b')),Ellipsis)))
+        positive=code.replace(co_consts=(None,(0.0,complex(-0.0,1),frozenset(('b','a')),Ellipsis)))
+        self.assertNotEqual(ro.code_fingerprint(negative),ro.code_fingerprint(positive))
+        reordered=negative.replace(co_consts=(None,(-0.0,complex(-0.0,1),frozenset(('b','a')),Ellipsis)))
+        self.assertEqual(ro.code_fingerprint(negative),ro.code_fingerprint(reordered))
+        with self.assertRaisesRegex(TypeError,'Unsupported actual immutable'):
+            ro.code_fingerprint(code.replace(co_consts=(None,{})))
 
 
 class ReadonlyNativeStorageUnit(unittest.TestCase):
@@ -282,6 +320,7 @@ class ReadonlyNativeStorageUnit(unittest.TestCase):
         self.assertEqual(module.infer_dataset_class(self.root/'UNIT_other'),'UNIT_unmodified_other_profile')
         self.assertEqual(result['full_preprocessed_cases'],131)
         self.assertTrue(result['actual_private_class_and_bytecode_verified'])
+        self.assertEqual(result['code_fingerprint_format'],ro.CODE_FINGERPRINT)
         self.assertEqual(set(cls.get_identifiers(str(private))),set(self.train+self.val))
         self.assertEqual(set(cls(str(private),None).identifiers),set(self.train+self.val))
 
@@ -298,6 +337,11 @@ class ReadonlyNativeStorageUnit(unittest.TestCase):
     def test_private_dataset_source_and_original_bytecode_mutation_rejected(self):
         document=self.admission();private,module,_,_=self.dataset(document);data=module.nnUNetDatasetBlosc2(str(private),self.train)
         original=ro._DATASET_ORIGINALS['load'];saved=original.__code__
+        equivalent=saved.replace();self.assertEqual(ro.code_fingerprint(saved),ro.code_fingerprint(equivalent))
+        original.__code__=equivalent
+        try:
+            with self.assertRaisesRegex(ValueError,'bytecode changed'):data.load_case(self.train[0])
+        finally:original.__code__=saved
         original.__code__=(lambda self,identifier:None).__code__
         try:
             with self.assertRaisesRegex(ValueError,'bytecode changed'):data.load_case(self.train[0])

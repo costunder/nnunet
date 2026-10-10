@@ -13,10 +13,10 @@ import copy
 import hashlib
 import inspect
 import json
-import marshal
 import os
 from pathlib import Path, PurePosixPath
 import shutil
+import struct
 import time
 import textwrap
 import types
@@ -26,6 +26,7 @@ import numpy as np
 
 FORMAT='v24_native_immutable_full_cache_storage_v1'
 PROFILE='reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly'
+CODE_FINGERPRINT='v24_canonical_recursive_code_fields_v1'
 RECEIPT='readonly_storage.json'
 ROOT=Path(__file__).resolve().parents[1]
 RESERVE=10*2**30
@@ -464,6 +465,35 @@ def _prove_blosc_reader(cls):
         raise ValueError('Original Blosc2 unpack_dataset must be the established no-op')
 
 
+def _code_value(value):
+    """Preserve code field values without marshal's reference/intern bookkeeping."""
+    if isinstance(value,types.CodeType):
+        fields={name:_code_value(getattr(value,name)) for name in dir(value)
+            if name.startswith('co_') and not callable(getattr(value,name))}
+        return dict(type='code',fields=fields)
+    if value is None:return dict(type='None')
+    if value is Ellipsis:return dict(type='Ellipsis')
+    if type(value)is bool:return dict(type='bool',value=value)
+    if type(value)is int:return dict(type='int',value=str(value))
+    if type(value)is str:return dict(type='str',value=value)
+    if type(value)is bytes:return dict(type='bytes',value=value.hex())
+    if type(value)is float:return dict(type='float64_bits',value=struct.pack('>d',value).hex())
+    if type(value)is complex:return dict(type='complex128_bits',value=struct.pack('>dd',value.real,value.imag).hex())
+    if type(value)is tuple:return dict(type='tuple',value=[_code_value(item) for item in value])
+    if type(value)is frozenset:
+        values=[_code_value(item) for item in value]
+        values.sort(key=lambda item:json.dumps(item,sort_keys=True,separators=(',',':'),allow_nan=False))
+        return dict(type='frozenset',value=values)
+    raise TypeError('Unsupported actual immutable code constant/field: '+type(value).__name__)
+
+
+def code_fingerprint(code):
+    if not isinstance(code,types.CodeType):raise TypeError('Actual original code object required')
+    encoded=json.dumps(dict(format=CODE_FINGERPRINT,code=_code_value(code)),sort_keys=True,
+        separators=(',',':'),allow_nan=False).encode('utf8')
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _dataset_source_proof(cls,module,document,folder):
     """Bind the actual private class and compiled methods to admitted source bytes."""
     name='training/dataloading/nnunet_dataset.py'
@@ -485,12 +515,12 @@ def _dataset_source_proof(cls,module,document,folder):
         owner=function.__qualname__.rsplit('.',1)[0].split('.')[-1]
         owners=[code for code in compiled.co_consts if isinstance(code,types.CodeType) and code.co_name==owner]
         codes={} if len(owners)!=1 else {code.co_name:code for code in owners[0].co_consts if isinstance(code,types.CodeType)}
-        if name not in codes or marshal.dumps(actual)!=marshal.dumps(codes[name]):
+        if name not in codes or code_fingerprint(actual)!=code_fingerprint(codes[name]):
             raise ValueError('Actual private dataset compiled method differs from original source: '+name)
-        hashes[name]=hashlib.sha256(marshal.dumps(actual)).hexdigest()
+        hashes[name]=code_fingerprint(actual)
     return dict(private_dataset_source=str(path),original_dataset_source_sha256=admitted['sha256'],
         private_dataset_file=proof(path),original_compiled_function_sha256=hashes,
-        actual_private_class_and_bytecode_verified=True)
+        code_fingerprint_format=CODE_FINGERPRINT,actual_private_class_and_bytecode_verified=True)
 
 
 def install_dataset_adapter(admission,private_data_folder,*,dataset_module=None,trainer_module=None):
@@ -512,12 +542,15 @@ def install_dataset_adapter(admission,private_data_folder,*,dataset_module=None,
         source_proof=_dataset_source_proof(cls,dataset_module,document,folder)
         originals=dict(cls=cls,init=cls.__init__,load=cls.load_case,unpack=cls.unpack_dataset,
             identifiers=cls.get_identifiers,infer=dataset_module.infer_dataset_class)
+        originals['code_objects']={role:originals[role].__code__ for role in ('init','load','unpack','identifiers')}
         originals['source_proof']=source_proof
         _DATASET_ORIGINALS=originals
         def dataset_guard():
             guard(source_proof['private_dataset_file'])
             for role,name in (('init','__init__'),('load','load_case'),('unpack','unpack_dataset'),('identifiers','get_identifiers')):
-                if hashlib.sha256(marshal.dumps(originals[role].__code__)).hexdigest()!=source_proof['original_compiled_function_sha256'][name]:
+                actual=originals[role].__code__
+                if (actual is not originals['code_objects'][role]
+                        or code_fingerprint(actual)!=source_proof['original_compiled_function_sha256'][name]):
                     raise ValueError('Admitted original native reader bytecode changed: '+name)
         def init(self,folder,identifiers=None,folder_with_segs_from_previous_stage=None):
             bound=_DATASET_BINDINGS.get(str(Path(folder).resolve()))
