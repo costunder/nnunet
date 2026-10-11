@@ -53,13 +53,109 @@ paste를 유지하고, nnU-Net 평가는 checkpoint_best.pth를 사용한다.
   최종 평가 완료로 표현하지 않는다.
 - 기존 학습/실패 결과와 별도 폴더를 사용하며 GPU4/5 제어기를 변경하지 않는다.
 
+두 번째 실제 GPU6 실행에서 확인한 실패
+- import 순서를 수정한 commit 6868b3b389619926614fe07349f54ba1b0df8e12를
+  GitHub에 push하고, /dev/shm의 별도 DEBUG 체크아웃에 배포했다.
+- 원본 스냅샷 활성화와 실제 전체 모델의 GPU6 적재는 통과했다.
+- full642 스케줄의 첫 batch를 실제 데이터로 준비하다 14:49 KST에 실패했다.
+  source donor의 context 좌표가 (0, 3)이어서 원본 필수 노드 검사가 거부했다.
+  EmptyCanonicalNodeError: V22 context coordinates are invalid: (0, 3).
+- 첫 batch: liver_117/component002, liver_108/component001,
+  liver_46/component001, liver_93/component002. 실제 642 source 전체 스케줄은
+  inner_train 521/131 batch, inner_val 121/31 batch이며 누락/중복 없이 구성된다.
+- Basic CP의 합법적인 source 위치가 원본 GNN의 donor context 조건까지
+  만족하는지는 별도 확인이 필요하다. 현재 원본 정책은 target만 전체 context
+  부재를 허용하며 source context는 필수다. 병변 삭제/노드 생성/반경 변경으로
+  오류를 우회하지 않았다.
+- 실패 worker PID 1753695와 scoring child PID 1753726은 오류를 기록하고
+  종료했다. 기존 결과와 실패 로그를 보존했고 신호를 보내지 않았다.
+- 보존 경로: 위 GPU6 DEBUG arm의 retry_1791697372197454500 및
+  bank_retry_1791697372197454500. 채점 완료 source는 0개, overlay는 없다.
+
+실제 첫 B4의 원본 source mask/ROI CPU 진단
+- 실패 source: liver_46/component001. 원본 10 mm ROI [37,39,27]과 일치,
+  병변 298 voxel 전체 보존, 병변에서 ROI 경계까지 각 축 최소 12 mm.
+- 2–10 mm annulus 안의 실제 간 조직은 2,334 voxel이며 organ depth는
+  전부 1–3 mm이다. 깊이 >4 mm 조건의 semantic context는 실제로 0 voxel.
+- 실제 liver surface는 4,744 voxel, canonical surface node는 173개이다.
+  source context 부재는 ROI truncation/빈 organ mask가 원인이 아니다.
+- 같은 batch의 나머지 원본 source는 기존 검사를 통과했다:
+  liver_117/c2 context 9,636 voxel/382 nodes,
+  liver_108/c1 context 2,151 voxel/127 nodes,
+  liver_93/c2 context 17,120 voxel/601 nodes.
+- 원본 validator를 그대로 호출해 실제 거부를 재현했다. donor policy,
+  원본 데이터, canonical 좌표 및 CUDA를 변경하지 않은 CPU DEBUG 진단이다.
+- 서버 증거: 위 GPU6 DEBUG arm의
+  SOURCE_CONTEXT_CPU_DEBUG_1791698599705168746.json.
+  SHA 5dfca8ef5d26b4e13af969495100032ca5f4b1f04fe6878d0c8219b325ef6004.
+- 기존 checkpoint의 source empty-shell token을 사용해 이 실제 부재를 표현하는
+  추론 전용 제안 모듈을 별도로 준비한다. 현재 production 진입점은 이를
+  import/활성화하지 않는다. 기존 source-mandatory 계약의 변경이므로
+  사용자 승인 전에는 실제 GPU6 scoring에 적용하지 않는다.
+
+기존 BEST의 source empty-shell token 실측
+- 원본 constructor는 source/target c0/c1/c2를 모두 zero로 초기화한다.
+- 실제 GPU6 BEST에서 source c0/c2는 각각 128차원 모두 nonzero:
+  L2 norm 0.0109663941 / 0.0105910758. 이 둘의 학습 변화는 확인된다.
+- source c1은 128차원 모두 초기 zero 그대로다. 모든 source empty token이
+  학습됐다고 주장할 수 없다. 전체 source context 부재 허용은 이 기존
+  미학습 c1 token도 사용하게 하는, 학습에서 보지 않은 입력 상태의 추론이다.
+- source 전체 부재를 처리하는 제안은 실제 CUDA 및 정확도를 검증하지 않았다.
+  새로운 zero embedding/parameter를 추가하는 fallback은 사용하지 않는다.
+
+미활성화된 source 부재 처리 제안의 검증 범위
+- hiercp_v1x/v24_matched_source_absence.py는 기존 source 필수 계약에 대한
+  추론 전용 opt-in 제안이다. Production 호출부는 이를 import하지 않는다.
+- 원본 context2..10mm/depth>4mm 및 실제 nonempty liver surface를 증명하고,
+  모든 원본 context가 실제로 없는 경우만 별도 provenance로 표시한다.
+  기존 source/후보/ROI/node와 parameter를 줄이거나 추가하지 않는다.
+- 9 CPU UNIT tests PASS. 명시적 synthetic UNIT geometry에서 원본 archive의
+  실제 canonical source/target 구성, sampling 및 공식 STU-S 전체 6단계
+  encoder의 12개 출력 경로를 확인했다. 네 가지 source/target 부재 조합,
+  present-context 삭제 거부, CT/geometry/node 변조 거부, 원본 target proof
+  보존, no-grad/eval 경계 및 기존 parameter/token identity를 검증했다.
+- 위 UNIT 검사는 실제 환자 CUDA 추론, 실제 GPU6 BEST의 신규 입력 정확도,
+  전체 642개 source의 채점 완료 또는 새 GNN 학습 완료의 증거가 아니다.
+- AGENTS.md의 기존 실험 계약 변경 승인 규칙에 따라 실제 적용은 보류한다.
+
+독립 historical ExactArgmax nnU-Net 실제 CUDA DEBUG 결과
+- 15:05:25 KST 완료. 별도 full native fresh model/optimizer로 B2/B4를
+  각각 4 update 수행했다. GNN 현재 BEST나 overlay는 사용하지 않았다.
+- 전체 모델 ResidualEncoderUNet 102,350,575 trainable parameters,
+  입력 [B,1,128,128,128], 전체 105 train/26 validation/131 readonly data,
+  원본 642 source/128 positions/자기 환자 source/전처리 paste/CP 확률0.5.
+  후보는 수정하지 않은 역사적 원래 score의 argmax이다.
+- B2: 실제 CP 1/8 samples; peak allocated/reserved 6.475/7.258 GiB;
+  CUDA forward/backward/optimizer 중앙값 0.31813 s; process+workers RAM5.974 GiB.
+- B4: 실제 CP 4/16 samples; peak allocated/reserved 11.613/13.422 GiB;
+  CUDA forward/backward/optimizer 중앙값 0.57094 s; process+workers RAM6.556 GiB.
+- 8개 실제 loss는 모두 finite, encoder224/decoder38 gradient tensor는
+  finite, 양쪽 optimizer parameter 변화 확인. AMP overflow0.
+- 원본 deep-supervision 마지막 head의 native loss weight0과 gradient 없는
+  2개 parameter를 그대로 기록했다. 원래 loss 가중치를 변경하지 않았다.
+- DataLoader worker4, CPU32–35, GPU6 A6000 실제 사용. Production batch2,
+  effective batch2/accumulation1 및 250 epoch 설정은 변경하지 않았다.
+- 최종 training/evaluation은 실행하지 않았다. 위 결과는 native 부분의
+  독립 CUDA DEBUG이며 current-GNN full642 matched 연결의 성공은 아니다.
+- 서버 기록: 위 GPU6 DEBUG arm의
+  historical_Basic_native_DEBUG_1791698683102954700/complete_DEBUG.json.
+  SHA e4fa3a5e45e826536378317f6f2da434ab908fdb6a04c1684eaf66d6a3dfe8ff.
+- 원본 bank/642 source witness/admission/code의 보존을 재확인했다.
+  DEBUG 신규 allocated3,334,144B. 이후 aggregate preparation guard PASS:
+  free17,398,833,152B / required17,396,049,779B / margin2,783,373B.
+  GPU6은 이후 idle, 기존 GPU4/5 제어기를 변경하거나 종료하지 않았다.
+
 현재 확인 범위
 - 구현 및 정적 검사: 완료.
 - 원본 CLI 호환 단위 검사: 19개 통과.
 - 첫 pin 복구 검사: 15개 통과; 기존 matched 15개와 기존 chain 69개 통과.
 - 실제 GPU6 완료 BEST의 CPU 검사: 통과.
-- 실제 CUDA full642 scoring: 아직 완료 여부를 확인하지 않음.
-- 실제 nnU-Net full batch gradient calibration: 아직 완료 여부를 확인하지 않음.
+- import 활성화 회귀 검사: CPU 18개 통과. 실제 import 실패도 수정 후 통과.
+- 실제 CUDA full642 scoring: donor source context 검사에서 실패, 채점 0개.
+- 실제 nnU-Net matched full batch gradient calibration: 미실행.
+- 별도의 역사적 Basic full native DEBUG B2/B4 검증: 실제 CUDA 통과. 이 검증은
+  현재 GPU6 BEST의 overlay를 사용하지 않으며 matched 연결 성공의 증거로
+  제출하지 않는다.
 - 새 matched nnU-Net 전체 250 epoch 학습/평가: 미실행.
 
 자원
@@ -82,6 +178,6 @@ paste를 유지하고, nnU-Net 평가는 checkpoint_best.pth를 사용한다.
 - [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
 - [x] 디버그 설정과 최종 설정을 분리했다.
 - [x] dummy, placeholder, random fallback을 사용하지 않았다.
-- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
 - [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
 - [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
