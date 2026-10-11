@@ -290,7 +290,7 @@ def install(runtime, *, approved_profile=False):
     validate = scope._patched(raw_coordinates, _validator_transform, 4)
     original_sets = spatial.canonical_coordinate_sets
     new_sets = scope._patched(original_sets, _canonical_transform, 1)
-    original_prepare, original_build, original_view = local.prepare_local_source, local.build_local_graph, sample.build_local_view
+    original_prepare, original_build, bounded_view = local.prepare_local_source, local.build_local_graph, sample.build_local_view
     registry, lock = {}, threading.RLock()
 
     @functools.wraps(original_coordinates)
@@ -365,11 +365,13 @@ def install(runtime, *, approved_profile=False):
         finally:
             _LAST.reset(token)
 
-    @functools.wraps(original_view)
+    @functools.wraps(bounded_view)
     def view(source_local, target_local, config, *, seed):
         _scope(config, runtime)
         source_proof, target_proof = (_check_local(branch, profile) for branch in (source_local, target_local))
-        graph = original_view(source_local, target_local, config, seed=seed)
+        # The runtime traverses and privately clones this explicitly named
+        # bounded_view branch to re-audit every original attribute leaf.
+        graph = bounded_view(source_local, target_local, config, seed=seed)
         graph[GRAPH_KEY] = profile
         graph.v24_context_depth1_geometry_sha256 = [source_proof["geometry_sha256"], target_proof["geometry_sha256"]]
         return graph
@@ -377,7 +379,7 @@ def install(runtime, *, approved_profile=False):
     target_adapter.geometry_proof = scope._patched(target_adapter.geometry_proof, _target_proof_transform, 2)
     target_adapter.validate_local_proof = scope._patched(target_adapter.validate_local_proof, _target_validator_transform, 1)
     for original, replacement in ((original_coordinates, coordinates), (original_sets, canonical),
-                                   (original_prepare, prepare), (original_build, build), (original_view, view)):
+                                   (original_prepare, prepare), (original_build, build), (bounded_view, view)):
         scope._rebind(original, replacement)
     from .v24_stunet import STUNetL0Encoder
     original_forward = STUNetL0Encoder.forward_graph

@@ -138,6 +138,34 @@ assert proof['typed_overlap_voxels']>0 and proof['minimum_liver_depth_exclusive_
 assert np.array_equal(built.source_patch,prepared.source_patch)
 view=sample.build_local_view(built.source_local,built.target_local,config,seed=42)
 assert view[profile.GRAPH_KEY]==selected['contract_sha256']
+# Exercise the actual scoring runtime, including its exact wrapper traversal,
+# private edge-attribute/radius clones and original two-view materializer.
+from hiercp_v1x import v24_input_runtime as input_runtime
+from hiercp_v1x import v24_inputs
+chain=input_runtime._sampling_proof(sample.build_local_view,sample._edge_attributes)
+assert len(chain)>=4 and any('_edge_attributes' in function.__code__.co_names for function,*_ in chain)
+admitted=input_runtime._sampler()
+assert admitted['build'] is sample.build_local_view and admitted['chain']==chain
+record=dict(format=v24_inputs.LOCAL_FORMAT,case_id=thin.paths.case_id,donor_case_id=thin.paths.case_id,
+ component_id=int(source.component_id),observation_id='UNIT_depth1_actual_materializer',seed=42,
+ graph_config=config.to_dict(),source_patch=torch.from_numpy(built.source_patch.astype(np.float16)),
+ target_patch=torch.from_numpy(built.target_patch.astype(np.float16)),source_local=built.source_local,
+ target_local=built.target_local,recipient_GT_used_in_forward=False,P_U_labels_in_forward=False)
+record['tensor_sha256']=v24_inputs.tensor_digest({key:record[key] for key in
+ ('source_patch','target_patch','source_local','target_local')})
+ordinary=v24_inputs.materialize_pair(record,epoch=0)
+private=input_runtime._materialize_pair(record,epoch=0)
+for first,second in zip(ordinary[0],private[0]):
+ assert first[profile.GRAPH_KEY]==second[profile.GRAPH_KEY]==selected['contract_sha256']
+ for role in schema.LOCAL_NODE_TYPES:
+  for key,value in first[role].items():assert torch.equal(value,second[role][key]),(role,key)
+ for edge in schema.LOCAL_EDGE_TYPES:
+  for key,value in first[edge].items():assert torch.equal(value,second[edge][key]),(edge,key)
+for first,second in zip(ordinary[1:],private[1:]):assert torch.equal(first,second)
+assert input_runtime._sampler()['chain']==chain
+try:input_runtime._sampling_proof(lambda *args,**kwargs:None,sample._edge_attributes)
+except ValueError as error:assert 'Original sampling attribute branch changed' in str(error)
+else:raise AssertionError('Foreign wrapper admission was weakened')
 # Grids2.5/4mm may choose different representatives, even in an overlapping
 # mask. Directly validate one real shared voxel as two distinct typed roles.
 fields=local._patch_fields(thin,source.anchor_center,spatial.exact_source_footprint(source),thin_organ,
