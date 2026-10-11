@@ -26,6 +26,11 @@ PIN_FORMAT = 'v24_selected_historical_v23_best_v1'
 CURRENT_PIN_FORMAT = 'v24_completed_single_arm_GT_blind_best_v1'
 CURRENT_FORMAT = 'v24_frozen_current_GT_blind_GNN_native_nnunet_CP_v1'
 CURRENT_SCORE_FORMAT = 'v24_frozen_current_GT_blind_GNN_complete105_P_plus128U_scores_v1'
+COMPLETED_SOURCE_CLI_SHA256 = {
+    # Actual GPU5/6 training CLI, before the separate GPU4 all-U API was added.
+    'f61a5da0edfea661b7436b977520c80bc55df7d7ed51c8ef60fb616163c4959f': (5, 6),
+    '8d529c6f8708cdf0d40eaec95922c7ef2754cc4c677c459339b1a91fcfdecf27': (4, 5, 6),
+}
 TRAINER = 'nnUNetTrainer_250epochs_FrozenV23CP'
 PLANS = 'nnUNetResEncUNetMPlans'
 PARAMETERS = 10434532
@@ -215,21 +220,57 @@ def _finite_checkpoint(value):
         raise FloatingPointError('Nonfinite completed GNN checkpoint scalar')
 
 
+def _completed_source_cli(code, source, gpu):
+    """Admit the recorded CLI while retaining every scientific source check.
+
+    Adding GPU4 support changed the downstream CLI bytes after GPU5/6 began.
+    Configuration admission must therefore use the checksum-bound original
+    CLI, rather than require a later command-line wrapper to be byte-identical.
+    The two complete reviewed CLI sources are explicit; unknown edits fail.
+    """
+    from types import ModuleType
+    from tools import run_v24_all_p as ambient_cli
+    name = 'tools/run_v24_all_p.py'
+    checksum = source.get(name) if isinstance(source, dict) else None
+    if (gpu not in COMPLETED_SOURCE_CLI_SHA256.get(checksum, ())
+            or gpu not in COMPLETED_SOURCE_CLI_SHA256.get(sha(ambient_cli.ROOT / name), ())):
+        raise ValueError('Actual immutable completed v24 request/source/ownership required: unreviewed source CLI SHA')
+    path = code / name
+    if path.is_symlink() or not path.is_file():
+        raise ValueError('Actual immutable completed v24 request/source/ownership required: original CLI is not regular')
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != checksum:
+        raise ValueError('Actual immutable completed v24 request/source/ownership required: original CLI changed')
+    module = ModuleType('_v24_completed_source_cli_' + checksum[:12])
+    module.__file__ = str(path)
+    # Compile immutable bytes directly: no imports from the source checkout,
+    # __pycache__ writes, global module replacement, or model construction.
+    exec(compile(raw, str(path), 'exec', dont_inherit=True), module.__dict__)
+    if module.ROOT != code or module.FILES != ambient_cli.FILES:
+        raise ValueError('Actual immutable completed v24 request/source/ownership required: original CLI manifest differs')
+    names = (module.FILES if checksum == 'f61a5da0edfea661b7436b977520c80bc55df7d7ed51c8ef60fb616163c4959f'
+             else module.execution_source_files(gpu))
+    if set(source) != set(names) or any(
+            sha(code / relative) != value
+            or (relative != name and sha(ambient_cli.ROOT / relative) != value)
+            for relative, value in source.items()):
+        raise ValueError('Actual immutable completed v24 request/source/ownership required: scientific source differs')
+    return module
+
+
 def _inspect_completed_current(source_output, source_code, inventory, *, gpu, input_cache,
                                stunet_checkpoint=None):
     """Read actual COMPLETE/latest/BEST states without constructing a model or CUDA."""
-    from tools import run_v24_all_p as cli
     from .v24_training_continuation import _checkpoint
     from .u_bridge_training import digest
     from .v23_training import best_selection_key
     from .contracts import canonical_hash
     output=Path(source_output).resolve(strict=True);code=Path(source_code).resolve(strict=True)
     request=read(output/'request.json');owner=read(output/'training/training_identity.json')
+    cli = _completed_source_cli(code, request.get('source'), gpu)
     declared={key:value for key,value in request.items() if key!='request_sha256'}
     if (request.get('format')!='v24_full_native_GT_free_execution_request_v1'
             or request.get('request_sha256')!=hashlib.sha256(json.dumps(declared,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-            or set(request.get('source',{}))!=set(cli.execution_source_files(gpu))
-            or any(sha(code/name)!=checksum or sha(cli.ROOT/name)!=checksum for name,checksum in request['source'].items())
             or request.get('physical_GPU')!=gpu or request.get('inventory_sha256')!=sha(inventory)
             or Path(request['inventory']).resolve(strict=True)!=Path(inventory).resolve(strict=True)
             or Path(request['input_cache']).resolve(strict=True)!=Path(input_cache).resolve(strict=True)

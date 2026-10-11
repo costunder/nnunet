@@ -5,11 +5,12 @@ They never replace production CUDA/full-population evidence.
 """
 import copy
 import contextlib
+import hashlib
 import io
 import json
 import shutil
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import tempfile
 import unittest
 
@@ -21,6 +22,50 @@ from hiercp_v1x.u_bridge_training import digest
 from hiercp_v1x.contracts import canonical_hash
 from tools import run_v24_all_p as cli
 from tools.run_v24_nnunet_cp import parse
+
+
+def historical_gpu56_cli_bytes():
+    """Reconstruct the exact archived CLI and prove its actual Git blob SHA.
+
+    This CPU UNIT fixture reverses only the separately reviewed GPU4 CLI diff.
+    The resulting full 11,215-byte source must match b5581f624448; no substitute
+    source, invented checkpoint result, or source-check bypass is accepted.
+    """
+    raw = Path(cli.__file__).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == '8d529c6f8708cdf0d40eaec95922c7ef2754cc4c677c459339b1a91fcfdecf27'
+    changes = (
+        (b"GPU4_EXECUTION_FILES=('tools/run_v24_gpu4_all_u.py',\n"
+         b"    'hiercp_v1x/v24_memory_runtime.py','hiercp_v1x/v24_hash_runtime.py',\n"
+         b"    'hiercp_v1x/v24_prefetch_runtime.py','hiercp_v1x/v24_input_runtime.py')\n\n\n"
+         b"def execution_source_files(gpu):\n"
+         b'    """Bind GPU4\'s fresh optimized runner without changing GPU5/6 identities."""\n'
+         b"    if gpu not in (4,5,6):\n"
+         b"        raise ValueError('Explicit physical GPU4,5or6 required for execution source binding')\n"
+         b"    return FILES+GPU4_EXECUTION_FILES if gpu==4 else FILES\n", b''),
+        (b'Fresh shared GT-free input namespace for GPU4/5/6', b'Fresh shared GT-free input namespace for GPU5/6'),
+        (b"choices=(4,5,6),required=True", b"choices=(5,6),required=True"),
+        (b'singleGPU4,5or6 contract required', b'singleGPU5or6 contract required'),
+        (b"    if (gpu not in (4,5,6) or (gpu==5 and config['encoder']!='original_CNN_GAT')\n"
+         b"            or (gpu in (4,6) and config['encoder']!='official_pretrained_STU_Net_S')):\n"
+         b"        raise ValueError('GPU5 original CNN/GAT; GPU4/6 official pretrained STU-Net-S, same other contract')\n"
+         b"    if gpu in (4,6) and stunet_checkpoint is None:\n",
+         b"    if (gpu==5 and config['encoder']!='original_CNN_GAT') or (gpu==6 and config['encoder']!='official_pretrained_STU_Net_S'):\n"
+         b"        raise ValueError('GPU5 original CNN/GAT; GPU6 official pretrained STU-Net-S, same other contract')\n"
+         b"    if gpu==6 and stunet_checkpoint is None:\n"),
+        (b"    if gpu==4:\n"
+         b"        if (runtime.get('all_U_from_epoch_one')is not True\n"
+         b"                or runtime['curriculum']['initial_u']!=128\n"
+         b"                or runtime['curriculum']['total_u']!=128\n"
+         b"                or runtime['curriculum']['total_epochs']!=40):\n"
+         b"            raise ValueError('GPU4 requires every native128U from epoch one through all40epochs')\n", b''),
+        (b'for name in execution_source_files(args.gpu)', b'for name in FILES'),
+    )
+    for current, original in changes:
+        assert raw.count(current) == 1
+        raw = raw.replace(current, original, 1)
+    assert len(raw) == 11215
+    assert hashlib.sha256(raw).hexdigest() == 'f61a5da0edfea661b7436b977520c80bc55df7d7ed51c8ef60fb616163c4959f'
+    return raw
 
 
 def write_json(path,value):
@@ -47,7 +92,7 @@ class CurrentOwnArmAdmission(unittest.TestCase):
         for name in cli.FILES:
             target=self.code/name;target.parent.mkdir(parents=True,exist_ok=True)
             shutil.copy2(cp.ROOT/name,target)
-        self.gpu=5;self.stu=None
+        self.gpu=5;self.stu=None;self.source_cli_bytes=None
         self.make_fixture()
 
     def make_fixture(self):
@@ -60,7 +105,14 @@ class CurrentOwnArmAdmission(unittest.TestCase):
         config=json.loads(config_path.read_text(encoding='utf8'))
         args=SimpleNamespace(config=config_path,native_experiment=self.root/'UNIT_native',inventory=self.inventory,
             input_cache=self.cache,gpu=gpu,stunet_checkpoint=self.stu)
-        self.request=cli.request(args,config)
+        source_cli = cli
+        if self.source_cli_bytes is not None:
+            source_path = self.code/'tools/run_v24_all_p.py'
+            source_path.write_bytes(self.source_cli_bytes)
+            source_cli = ModuleType('_UNIT_archived_GPU56_cli')
+            source_cli.__file__ = str(source_path)
+            exec(compile(self.source_cli_bytes,str(source_path),'exec',dont_inherit=True),source_cli.__dict__)
+        self.request=source_cli.request(args,config)
         contract=dict(recipient_GT_used_in_forward=False,trained_v23_weights_loaded=False,
             parameters=7,trainable_parameters=7,encoder='original_CNN_GAT' if gpu==5 else 'official_pretrained_STU_Net_S')
         calibration=dict(request_sha256=self.request['request_sha256'],physical_GPU=gpu,
@@ -132,6 +184,63 @@ class CurrentOwnArmAdmission(unittest.TestCase):
         self.assertEqual(pin['model_contract']['encoder'],'official_pretrained_STU_Net_S')
         self.stu.write_bytes(b'changed asset')
         with self.assertRaisesRegex(ValueError,'STU checkpoint'):self.inspect()
+
+    def test_actual_archived_gpu56_cli_loads_with_later_gpu4_cli_and_same_best(self):
+        self.source_cli_bytes=historical_gpu56_cli_bytes()
+        for gpu in (5,6):
+            self.gpu=gpu
+            self.stu=None if gpu==5 else self.root/'UNIT_official_asset.model'
+            if self.stu is not None:self.stu.write_bytes(b'CPU UNIT provenance only')
+            self.make_fixture()
+            with self.subTest(gpu=gpu):
+                original_path=self.code/'tools/run_v24_all_p.py'
+                self.assertNotEqual(cp.sha(original_path),cp.sha(cli.ROOT/'tools/run_v24_all_p.py'))
+                pin=self.inspect()
+                self.assertEqual(pin['source_files_sha256']['tools/run_v24_all_p.py'],
+                    'f61a5da0edfea661b7436b977520c80bc55df7d7ed51c8ef60fb616163c4959f')
+                self.assertEqual(pin['selected']['best_model_sha256'],digest(self.best['model']))
+                admitted=cp._completed_source_cli(self.code,self.request['source'],gpu)
+                self.assertEqual(admitted.ROOT,self.code.resolve())
+                self.assertFalse(hasattr(admitted,'execution_source_files'))
+                with self.assertRaisesRegex(ValueError,'whole-population'):
+                    admitted.validate_config(dict(self.request['config'],epochs=39),gpu,self.stu)
+                self.assertFalse((self.code/'tools/__pycache__').exists())
+
+    def test_unreviewed_self_consistent_cli_is_not_admitted(self):
+        self.source_cli_bytes=historical_gpu56_cli_bytes()+b'\n# CPU UNIT unreviewed edit\n'
+        self.make_fixture()
+        with self.assertRaisesRegex(ValueError,'unreviewed source CLI SHA'):self.inspect()
+
+    def test_original_cli_tamper_after_signed_request_is_not_admitted(self):
+        self.source_cli_bytes=historical_gpu56_cli_bytes();self.make_fixture()
+        path=self.code/'tools/run_v24_all_p.py'
+        path.write_bytes(path.read_bytes()+b'\n# CPU UNIT subsequent edit\n')
+        with self.assertRaisesRegex(ValueError,'original CLI changed'):self.inspect()
+
+    def test_archived_cli_does_not_relax_scientific_source_checks(self):
+        self.source_cli_bytes=historical_gpu56_cli_bytes();self.make_fixture()
+        path=self.code/'hiercp_v1x/v24_model.py'
+        path.write_bytes(path.read_bytes()+b'\n# CPU UNIT changed neural source\n')
+        with self.assertRaisesRegex(ValueError,'scientific source differs'):self.inspect()
+        self.request['source']['hiercp_v1x/v24_model.py']=cp.sha(path)
+        with self.assertRaisesRegex(ValueError,'scientific source differs'):
+            cp._completed_source_cli(self.code,self.request['source'],self.gpu)
+
+    def test_archived_cli_requires_every_original_scientific_manifest_member(self):
+        self.source_cli_bytes=historical_gpu56_cli_bytes();self.make_fixture()
+        source=copy.deepcopy(self.request['source']);source.pop('hiercp_v1x/v24_model.py')
+        with self.assertRaisesRegex(ValueError,'scientific source differs'):
+            cp._completed_source_cli(self.code,source,self.gpu)
+        with self.assertRaisesRegex(ValueError,'unreviewed source CLI SHA'):
+            cp._completed_source_cli(self.code,self.request['source'],4)
+
+    def test_unreviewed_ambient_cli_is_refused_without_loading_original(self):
+        self.source_cli_bytes=historical_gpu56_cli_bytes();self.make_fixture()
+        ambient=self.root/'UNIT_unreviewed_ambient';(ambient/'tools').mkdir(parents=True)
+        (ambient/'tools/run_v24_all_p.py').write_bytes(Path(cli.__file__).read_bytes()+b'\n# UNIT edit\n')
+        from unittest.mock import patch
+        with patch.object(cli,'ROOT',ambient),self.assertRaisesRegex(ValueError,'unreviewed source CLI SHA'):
+            self.inspect()
 
     def test_fresh_gpu4_actual_all128_best_has_its_own_stu_and_execution_manifest(self):
         self.gpu=4;self.stu=self.root/'UNIT_official_asset.model';self.stu.write_bytes(b'CPU UNIT provenance only')

@@ -385,7 +385,10 @@ def validate_request(request, *, fresh=True):
             owned(path)
     if request.get('recovery') is not None:
         _validate_recovery(request)
-    if request.get('cp_parity_handoff') is not None:
+    if request.get('matched_cli_handoff') is not None:
+        from hiercp_v1x.v24_matched_cli_recovery import validate
+        validate(request)
+    elif request.get('cp_parity_handoff') is not None:
         _validate_cp_parity_handoff(request)
     elif request.get('evaluation_handoff') is not None:
         _validate_evaluation_handoff(request)
@@ -1410,6 +1413,9 @@ def _validate_cp_parity_handoff(request):
 
 def verify_source_claim(request, request_checksum):
     path = request['source_claim_path']
+    if request.get('matched_cli_handoff') is not None:
+        from hiercp_v1x.v24_matched_cli_recovery import verify_source_claim as verify_matched_cli_claim
+        return verify_matched_cli_claim(request, request_checksum)
     if request.get('cp_parity_handoff') is not None:
         proof, _ = _validate_cp_parity_handoff(request)
         handoff = request['cp_parity_handoff']
