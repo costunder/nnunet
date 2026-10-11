@@ -1,0 +1,53 @@
+# GPU5 v2.4 사용자 승인 조기 종료 — 2026-10-12
+
+사용자가 “현재 epoch 완료 후 조기 종료하고 BEST로 전환”을 선택했다.
+승인 당시 GPU5는 epoch27의 전체 U128 validation을 진행 중이었다.
+epoch27의 train·train probe·stage validation·full128 validation과 curve 저장이 모두 끝난 뒤에만 정지한다.
+실제 PAUSED checkpoint가 history27, update459, 다음 epoch28의 train cursor0인 경우에만 후속 작업을 허용한다.
+
+기존 40epoch/680update 완료 계약은 보존한다. 이번 경로는 별도의 EARLY_STOPPED 계약이며
+full_training=False, original_planned_epochs=40, completed_epochs=27을 기록한다.
+정지 관찰기가 경계를 놓치거나 다음 epoch update가 발생하면 성공으로 취급하지 않고 원인을 기록한다.
+
+BEST 선택은 epoch1~27의 자기 full128 validation에서 MRR, top1, -pairloss 순으로 비교한다.
+epoch26까지 확인한 BEST는 e17/update289, MRR0.24062122201607186, top1 0.17436531322620033이다.
+이 수치는 최종 선택 확정이 아니다. epoch27의 실제 검증이 끝나면 다시 선택한다.
+
+후속 실험은 원래 patient-source 선택과 paste 경로를 유지한 CP642×128 전체 채점,
+nnU-Net250epoch/physical batch2/effective batch2/patch128³/CP0.5/train105/validation26이다.
+nnU-Net 평가는 checkpoint_best.pth로 전체26명을 수행한다.
+간 깊이 >1mm 추론 profile은 기존 GPU4·5·6에 승인된 profile을 그대로 사용한다.
+이 profile의 context inner2mm~outer10mm는 v2.4 후속 채점 설정이다.
+v2.5 계획의 종양 거리 >0~10mm로 변경한 실험으로 표시하지 않는다.
+
+학습량 비교에 반드시 남길 항목: 계획40, 실제27, optimizer459,
+각 epoch 실제 학습 U, U128로 학습한 epoch 수, full128 validation27회,
+BEST epoch/update 및 pin SHA, 조기 종료 승인·실제 PAUSED 증거.
+full128 validation을 수행했다는 이유로 U128 학습을 수행했다고 기록하지 않는다.
+승인 당시 실제 학습 U119, 진행 뷰어의 U128은 full validation U였다.
+
+공통 UI schema2의 GNN9행/CP8행 디자인을 재사용한다.
+기존 full40 경로와 GPU4·6 controller·viewer를 변경하지 않는다.
+기존 GPU5 CPU 대기 controller는 정확한 PID·생성시각·계정·전체 명령과
+child 부재를 확인한 후에만 개별 해제하고 기존 입력·결과는 보존한다.
+
+구현: v24_early_stop_gnn / v24_early_stop_downstream / watch_v24_early_stop_pipeline.
+검증: 별도 CPU 단위 테스트와 서버 nnunet 환경 검사.
+실제 전체 CP·nnU-Net 학습·BEST 평가 완료 여부는 실행 영수증으로 별도 보고한다.
+이 문서는 학습 또는 평가 완료 결과가 아니다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 기존 측정 B4 GNN/B2 native 유지.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 실제 GPU5 프로세스와 RAM 기록 확인.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 변경에 OOM 없음.
+- [x] 디버그 설정과 최종 설정을 분리했다. CPU UNIT은 실제 전체 실행 완료가 아니다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 기존981 tensors 연결을 검증.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. GNN epoch 축소는 사용자의 명시적 승인.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
