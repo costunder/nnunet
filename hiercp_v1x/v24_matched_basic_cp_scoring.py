@@ -311,6 +311,31 @@ class MatchedInputProvider:
 def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed,
         input_cache, source_bank, output, gpu, stunet_checkpoint=None):
     """Production: full642 sources/82176 CP queries; frozen own completed BEST."""
+    return _score_matched_basic_bank(pin_path=pin_path, inventory_path=inventory_path,
+        baseline_preprocessed=baseline_preprocessed, input_cache=input_cache,
+        source_bank=source_bank, output=output, gpu=gpu, stunet_checkpoint=stunet_checkpoint)
+
+
+def debug_context_depth1_first_batch(*, pin_path, inventory_path, baseline_preprocessed,
+        input_cache, source_bank, output, gpu, deadline_guard, stunet_checkpoint=None):
+    """Separate DEBUG: first disjoint B4, every original P and128 CP per source.
+
+    No complete overlay is published. The original BEST retains its depth4
+    training identity; depth1 is an explicit changed inference input profile.
+    """
+    if gpu != 6 or not callable(deadline_guard):
+        raise ValueError('GPU6 DEBUG requires a live allocation/deadline guard')
+    return _score_matched_basic_bank(pin_path=pin_path, inventory_path=inventory_path,
+        baseline_preprocessed=baseline_preprocessed, input_cache=input_cache,
+        source_bank=source_bank, output=output, gpu=gpu, stunet_checkpoint=stunet_checkpoint,
+        depth1_debug=True, deadline_guard=deadline_guard)
+
+
+def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed,
+        input_cache, source_bank, output, gpu, stunet_checkpoint=None,
+        depth1_debug=False, deadline_guard=None):
+    if depth1_debug:
+        deadline_guard()
     from tools.local_cnn_device import select
     select(gpu)
     import numpy as np
@@ -357,7 +382,27 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
     root.mkdir(parents=True)
     args = SimpleNamespace(native_experiment=Path(request['native_experiment']), inventory=Path(inventory_path),
         input_cache=Path(input_cache), stunet_checkpoint=stunet_checkpoint)
-    budget = ResourceBudget(40 * 2**30, 64 * 2**30)
+    class GuardedBudget(ResourceBudget):
+        def check(self):
+            if deadline_guard is not None:
+                deadline_guard()
+            return super().check()
+    budget = GuardedBudget(40 * 2**30, 64 * 2**30)
+    budget.check()
+    module_to = torch.nn.Module.to
+    def guarded_module_to(module, *values, **keywords):
+        deadline_guard()
+        return module_to(module, *values, **keywords)
+    if depth1_debug:
+        factory = v24_factory.build_runtime
+        def guarded_factory(*values, **keywords):
+            try:
+                torch.nn.Module.to = guarded_module_to
+                return factory(*values, **keywords)
+            finally:
+                torch.nn.Module.to = module_to
+                v24_factory.build_runtime = factory
+        v24_factory.build_runtime = guarded_factory
     net, trained_scorer, population, config, contract, close = v24_factory.build_runtime(args, request['config'], budget)
     # build_runtime activates the original snapshot before any hiercp import.
     # Importing these helpers earlier preloads the ambient package and makes
@@ -383,6 +428,21 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
         if chunk != (32 if gpu == 5 else 64):
             raise ValueError('Original measured full-model local candidate batch differs')
         inputs = trained_scorer.geometry.memory_guard.__self__
+        inference_profile = None
+        if depth1_debug:
+            from . import v24_context_depth1, transition_v1_local
+            runtime = transition_v1_local._runtime(expected_snapshot_root=inputs.bundle.source,
+                scope_contract=inputs.bundle.scope['contract_sha256'])
+            inference_profile = v24_context_depth1.install(runtime, approved_profile=True)
+            # Check the lease immediately before each actual dense CUDA call.
+            # Source and target CNN maps are encoded through this same path.
+            encode = net.local_encoder._encode_dense
+            def guarded_encode(*values, **keywords):
+                deadline_guard()
+                result = encode(*values, **keywords)
+                deadline_guard()
+                return result
+            net.local_encoder._encode_dense = guarded_encode
         local, upper, admission = matched_builders(meta['split']['outer_train'])
         # Read existing proven CT/organ/prototype inputs. Every matched local and
         # upper graph is freshly built; old ranking128 geometry is never reused.
@@ -419,6 +479,8 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
             'hiercp_v1x/v24_input_runtime.py', 'hiercp_v1x/v24_hash_runtime.py',
             'hiercp_v1x/v23_training.py', 'hiercp_v1x/v24_geometry.py', 'hiercp_v1x/v24_inputs.py'}
         source_checksums = {name: _sha(ROOT / name) for name in source_names}
+        if depth1_debug:
+            source_checksums['hiercp_v1x/v24_context_depth1.py'] = _sha(ROOT / 'hiercp_v1x/v24_context_depth1.py')
         cp_contract = dict(eligible_patients=81, total_sources=642, candidates_per_source=128,
             total_scored_candidates=82176, donor_policy='same_patient',
             source_selection='same_as_historical_Basic', candidate_payload_preserved=True,
@@ -436,7 +498,9 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
             original128_CPvalid_positions=True, source_policy='original patient source uniform schedule',
             original_paste_contract='historical preprocessed source patch', physical_patient_batch=4,
             physical_candidate_batch=chunk, CPU_workers=4, RSS_bytes=64 * 2**30,
-            CUDA_bytes=40 * 2**30, original_parameter_count=pin_parameters(pin), debug=False))
+            CUDA_bytes=40 * 2**30, original_parameter_count=pin_parameters(pin), debug=depth1_debug,
+            training_context_depth_exclusive_mm=4., inference_profile=inference_profile,
+            requested_DEBUG_sources=(4 if depth1_debug else None), full_training_executed=False))
         initial_rng = capture_rng()
         rows = {}
         import pickle
@@ -467,6 +531,7 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
                     collection_bytes += retained
                 return collection
         def prepare_source(item):
+            budget.check()
             case_id, relative = item
             plan = plans[relative]
             raw = inputs._case(case_id)
@@ -481,6 +546,12 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
             source.v24_mask_sha256 = array_digest(source.full_mask)
             prepared = prepare_donor(raw['donor_case'], source, config=inputs.graph_config,
                 seed=inputs.config['seed'], ct_clip=inputs.ct_clip)
+            if depth1_debug:
+                print(json.dumps(dict(phase='depth1_actual_source_prepared_CPU_DEBUG',
+                    debug=True, case_id=case_id, source_component=int(source.component_id),
+                    canonical_source_counts=prepared.canonical_counts,
+                    geometry=getattr(prepared, 'v24_context_depth1_geometry', None),
+                    inference_profile=inference_profile, source_context_required=True)), flush=True)
             # This batch contains distinct real patients. Build their independent
             # complete region volumes outside the raw-cache publication lock.
             # The original cache eviction policy and exact region seed stay.
@@ -524,12 +595,21 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
                 raw_source_identity='exact same numbered 6-connected raw label2 component',
                 original_non_score_arrays_sha256=source_proof['entries'][relative]['non_score_arrays_sha256'],
                 properties_sha256=properties_sha, preprocessed_CT_stat_identity=list(_stat(data_path)),
-                original_candidate_order_and_mapping_verified=True)
+                original_candidate_order_and_mapping_verified=True,
+                canonical_source_counts=copy.deepcopy(prepared.canonical_counts),
+                source_context_geometry=copy.deepcopy(getattr(prepared, 'v24_context_depth1_geometry', None)),
+                inference_profile=copy.deepcopy(inference_profile))
+            budget.check()
             return plan, (raw, source, prepared, regions, binding), graphs
         with ThreadPoolExecutor(max_workers=4, thread_name_prefix='v24_matched_geometry') as executor:
             for partition in ('inner_train', 'inner_val'):
                 schedule = source_batches(metadata['entries_by_case'], meta['split'][partition])
+                if depth1_debug:
+                    # Explicit separate DEBUG profile; production coverage and
+                    # all per-source queries remain unchanged above and below.
+                    schedule = schedule[:1] if partition == 'inner_train' else []
                 for batch in schedule:
+                    budget.check()
                     guard_source_bank(source_proof)
                     inputs.guard_source()
                     began = time.perf_counter()
@@ -571,9 +651,12 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
                     print(json.dumps(dict(phase='matched_Basic_current_BEST_scores', GPU=gpu,
                         completed_sources=len(rows), total_sources=642, complete_CP_positions=len(rows) * 128,
                         actual_patient_batch=len(batch), physical_capacity=4,
-                        seconds=time.perf_counter() - began, production_optimizer_updates=0)), flush=True)
+                        seconds=time.perf_counter() - began, production_optimizer_updates=0,
+                        debug=depth1_debug, inference_profile=inference_profile)), flush=True)
         guard_source_bank(source_proof)
-        if len(rows) != 642 or set(rows) != set(source_proof['entries']):
+        expected_debug = {entry for _, entry in source_batches(metadata['entries_by_case'], meta['split']['inner_train'])[0]}
+        expected_entries = expected_debug if depth1_debug else set(source_proof['entries'])
+        if set(rows) != expected_entries or len(rows) != (4 if depth1_debug else 642):
             raise ValueError('Full historical642 source coverage required; no subset')
         if digest(capture_rng()) != digest(initial_rng) or digest(net.state_dict()) != pin['selected']['best_model_sha256']:
             raise ValueError('Frozen current BEST model or original RNG changed')
@@ -583,6 +666,22 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
                 input_cache=input_cache, stunet_checkpoint=stunet_checkpoint) != pin:
             raise ValueError('Actual completed own-arm BEST provenance changed')
         from .contracts import canonical_hash
+        if depth1_debug:
+            debug_receipt = dict(format='v24_context_depth1_first_B4_actual_CUDA_DEBUG_v1', debug=True,
+                status='DEBUG_COMPLETE', complete_overlay=False, inference_profile=inference_profile,
+                training_context_depth_exclusive_mm=4., model_sha256=pin['selected']['best_model_sha256'],
+                model_and_RNG_unchanged=True, source_bank=source_proof, entries=rows,
+                actual_sources=4, original_total_sources=642, original_CP_candidates_per_source=128,
+                scored_CP_positions=512, all_original_P_per_source_scored=True,
+                peak_allocated_CUDA_bytes=torch.cuda.max_memory_allocated(),
+                peak_reserved_CUDA_bytes=torch.cuda.max_memory_reserved(),
+                physical_patient_batch=4, physical_candidate_batch=chunk, CPU_workers=4,
+                production_optimizer_updates=0, full_training_executed=False,
+                full_evaluation_executed=False, scoring_sources_sha256=source_checksums)
+            debug_receipt['content_sha256'] = canonical_hash(debug_receipt)
+            path = root / 'complete_DEBUG.json'
+            _sealed_json(path, debug_receipt)
+            return path
         overlay = dict(format=FORMAT, complete=True, debug=False, source_bank=source_proof,
             split=copy.deepcopy(meta['split']), cp_contract=cp_contract,
             pin=pin, pin_sha256=_sha(pin_path), model_sha256=pin['selected']['best_model_sha256'],

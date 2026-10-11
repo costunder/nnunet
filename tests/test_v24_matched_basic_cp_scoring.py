@@ -38,7 +38,7 @@ class ActualOriginalScoringBootstrapDEBUG(unittest.TestCase):
 
             v24_factory.build_runtime = activate_without_constructing_model
             production = ast.parse(inspect.getsource(
-                matched.score_current_matched_basic_bank)).body[0]
+                matched._score_matched_basic_bank)).body[0]
             body = []
             activations = 0
             for statement in production.body:
