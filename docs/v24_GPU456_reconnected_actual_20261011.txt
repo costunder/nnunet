@@ -126,6 +126,18 @@ measure_native_lossless_zip_CPU_DEBUG_1791706188057740200.log
 inspect_active_cgroup_limits_READONLY_1791706629101516800.log
 GPU456_final_environment_readonly_1791706896106812100.json
 
+GPU6 기존 조회 명령의 표시 문제:
+/var/tmp/aicompetition06_v24_20261010/view_gpu6.py는 JSON 복구 wrapper를 통해
+moba_logs_1791577549684365800/gpu6.log에 고정되어 있었다. 이 로그는 완료된
+이전 GNN을 표시한다. epoch41/40은40epoch 종료 뒤 저장된 다음 epoch cursor이고,
+새로운41번째 학습을 수행한 증거가 아니다. 기존 명령만으로 현재 CP 채점을 볼 수
+없었다. 18:06:40 KST 조회에서는 실제 GPU6 PID1810829/birth1791704184.96가
+nnunet 환경으로 계속 실행 중이며96/642 병변/12288 CP 점수를 확인했다.
+새 tools/watch_v24_matched_cp_scoring.py는 해당 scoring registration/request와
+현재 console의 완성된 progress 기록을 읽고 현재 CP 단계의 진행률을 표시한다.
+기존 viewer와 이전 GNN 로그, 학습 결과는 덮어쓰지 않는다.
+증거: inspect_GPU6_viewer_and_scoring_READONLY_1791709598584122200.log
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
