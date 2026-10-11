@@ -137,6 +137,14 @@ nnunet 환경으로 계속 실행 중이며96/642 병변/12288 CP 점수를 확�
 현재 console의 완성된 progress 기록을 읽고 현재 CP 단계의 진행률을 표시한다.
 기존 viewer와 이전 GNN 로그, 학습 결과는 덮어쓰지 않는다.
 증거: inspect_GPU6_viewer_and_scoring_READONLY_1791709598584122200.log
+새 뷰어 CPU DEBUG4개와 AST/diff 검사가 통과했다. 18:12:30 KST에 Git 커밋
+910cccd0853c9ac6d0b25090765353e40956f21b의 정확한 viewer 바이트를 새 폴더에
+복사하고 /var/tmp/aicompetition06_v24_20261010/view_gpu6_current.py를 새로
+작성했다. nnunet Python의 실제 --once --json 및 읽기 쉬운 --once 출력에서
+104/642 병변,13312/82176 CP, 동일PID/birth/argv 생존을 확인했다.
+원래 view_gpu6.py SHA는 그대로였고 학습 프로세스와 결과를 변경하지 않았다.
+표시 단계는 CP 후보 채점이며 후속 nnU-Net은 저장공간 대기임을 명시한다.
+설치 증거: install_GPU6_current_scoring_viewer_1791709944750975300.log
 
 ## 작업 완료 체크리스트
 
