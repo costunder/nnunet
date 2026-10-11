@@ -7,6 +7,40 @@
   },
   "entries": [
     {
+      "id": "v3.0",
+      "folder": "v3.0",
+      "title": "v2.5 기반 전체 혈관 문맥",
+      "status": "implemented; UNIT and DEBUG are separate from unrun production training/evaluation",
+      "runner": "tools/run_v30.py",
+      "modules": [
+        "hiercp_v1x/v30_model.py",
+        "hiercp_v1x/v30_scorer.py",
+        "hiercp_v1x/v30_training.py"
+      ],
+      "configs": [
+        "config/v30.json"
+      ],
+      "notes": [
+        "versions/v3.0/README.md"
+      ]
+    },
+    {
+      "id": "v2.5",
+      "folder": "v2.5",
+      "title": "동일 문맥과 적응형 커리큘럼 확정 설계",
+      "status": "confirmed plan; implementation shared by v3.0; independent full training unrun",
+      "runner": null,
+      "modules": [
+        "hiercp_v1x/v25_context.py",
+        "hiercp_v1x/v25_targets.py"
+      ],
+      "configs": [],
+      "notes": [
+        "docs/v25_adaptive_context_curriculum_plan_20261011.txt",
+        "versions/v2.5/README.md"
+      ]
+    },
+    {
       "id": "v1",
       "folder": "v1",
       "title": "보존 v1 실행",

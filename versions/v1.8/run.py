@@ -5,4 +5,4 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 if __name__ == '__main__':
-    runpy.run_path(str(ROOT / 'tools/run_v18_u_bridge.py'), run_name='__main__')
+    runpy.run_path(str(ROOT / 'versions/run.py'))['launch']('v1.8', sys.argv[1:])

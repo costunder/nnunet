@@ -1,0 +1,261 @@
+v2.5 확정 실험 계획 — context 경계와 적응형 후보 누적
+기록일: 2026-10-11 KST
+상태: 사용자와 합의한 설계/실행 준비 계획. v2.5 코드 구현, 실제 CUDA 검증,
+GNN 전체 학습, CP 전체 채점, nnU-Net 학습/평가는 아직 실행하지 않았다.
+
+1. 목적과 변경 범위
+
+종양 가까운 비종양 context를 포함한 동일한 STU-Net 기반 모델에서
+초기 U 수와 증가량에 따른 학습 차이를 비교한다. 비교군은 네 개 모두 수행한다.
+증가량 +n은 후보를 추가하는 크기다. 증가 시점은 고정 epoch 간격이 아니라
+현재 후보의 숙련/과적합 신호와 전체 후보 학습을 보장하는 기한으로 결정한다.
+
+v2.4 대비 context는 liver depth >4mm에서 >1mm, tumor distance >=2mm에서
+>0mm로 변경한다. 현재 v2.4 depth1 추론 보정은 여전히 distance >=2mm이므로
+새 v2.5 학습 정의와 다르다. 기존 depth4 BEST를 새 조건의 학습 결과로 재표기하지 않는다.
+기존 v2.4 실행, 결과, 체크포인트, 캐시와 분리된 버전/출력/geometry namespace를 사용한다.
+
+2. 공통 context 정의
+
+context = organ & ~tumor_footprint
+context &= (outside_tumor_mm > 0.0) & (outside_tumor_mm <= 10.0)
+context &= (liver_depth_mm > 1.0)
+
+- 깊이 정확히1mm는 제외, 종양 거리 정확히0mm는 제외, 거리10mm는 포함.
+- source와 target, GNN 학습/검증/후속 CP 채점에 같은 정의를 적용한다.
+- spacing-aware voxel-center EDT를 사용한다. 연속 표면까지의 subvoxel 거리로 주장하지 않는다.
+- 기존 surface role은 organ & ~footprint & 0<liver_depth<=3mm를 유지한다.
+  깊이1~3mm는 context/surface의 서로 다른 typed role에 중복 포함될 수 있다.
+- 기존 canonical grid, physical sampling, 해상도, node/edge 생성 및 관계 규칙을 유지한다.
+  ROI의 모든 voxel이 그래프 node가 된다는 뜻은 아니다. 새 cap/subset을 추가하지 않는다.
+- mask 생성뿐 아니라 실제 canonical context node 수와 source/target feature 경로를 확인한다.
+  유효 context 부재/빈 source는 명시적인 진단 대상이며 임의0/empty-token fallback으로 숨기지 않는다.
+- 새 context 정의와 검사기가 같은 경계를 검사해야 한다. 생성기만 고치고 기존 depth4/2mm
+  assertion이나 캐시 admission을 남기는 구현은 금지한다.
+- 새 context policy/hash를 geometry/cache/model/score 메타데이터에 결속한다.
+
+3. 네 비교군
+
+| Arm | 초기 U | 증가량 | 전체 일정 | 역할 |
+|---|---:|---:|---|---|
+| A: adaptive_U8_step8 | 8 | 8 | 8,16,24,...,128 | 작은 후보군/작은 증가 |
+| B: adaptive_U16_step16 | 16 | 16 | 16,32,48,...,128 | 중간 후보군/중간 증가 |
+| C: adaptive_U32_step32 | 32 | 32 | 32,64,96,128 | 큰 후보군/큰 증가 |
+| D: full_U128 | 128 | 해당 없음 | 첫 epoch부터128 유지 | 전체 후보 시작 기준 |
+
+모든 arm은 같은 native U128 bank, 좌표, 순서, seed42를 사용한다.
+A/B/C는 동일 후보 순서의 nested prefix이며 기존 U를 제거하지 않고 모두 반복한다.
+D도 같은128개 전체를 사용한다. hard-score 또는 score-stratified 재정렬은 넣지 않는다.
+현재 비교는 초기 U/증가량 일정의 비교이며 encoder와 loss 비교를 동시에 섞지 않는다.
+v2.4는 U7/+16이었고, 이번 B는 U16/+16이다.
+
+4. 공통 모델/학습/데이터 계약
+
+- 네 arm 모두 같은 공식 STU-Net-S small_ep4k.model 초기 가중치 사용.
+  SHA256: f440f401bf4cac1d1d6f7c4635542ef057193a5f96c0b3c661a6179afeab7be6
+- 기존 GPU6의 학습된 체크포인트에서 시작하지 않는다. 새 GNN/optimizer로 시작한다.
+  STU 이외 초기 파라미터도 동일 seed/초기 model-state SHA로 네 arm에 결속한다.
+- STU 전체6개 encoder stage, channels16/32/64/128/256/256, 공식60개 tensor strict load.
+  encoder 전부 fine-tune하며, decoder는 기존 STU encoder arm처럼 구성하지 않는다.
+- L1/L2 각각2층, hidden128, attention heads4, dropout0.1과 기존 전체 모델 유지.
+  현 STU arm 전체/trainable13,331,792 parameter/537 tensor가 보존 기준이다.
+  새 구현에서 실제 parameter/optimizer/gradient 수를 출력해 확인한다.
+- 원래 full-FOV dense CT48^3, 두 view, 입력 정규화와 stride padding/physical readout 유지.
+- 기존 recipient 종양 lesion node/relation/count 입력 제거 계약 유지.
+  donor annotation/organ mask는 허용된 입력이며 모든 종류의 GT가 제거됐다고 주장하지 않는다.
+  P/U 정답은 loss/평가용, inner-train prototype/support 범위와 query 제외 규칙 유지.
+- 전체131case, outer train/validation105/26, GNN inner train/validation84/21 유지.
+- GNN inner-train P527은 첫 epoch부터 전부 사용. P 있는65명에 ranking loss를 적용한다.
+  zero-P19명은 전체 inventory에 보존하고 정의되지 않는 ranking-loss 분모에서만 제외.
+- inner-validation21명/P135는 전부 forward. zero-P5명은 ranking metric 분모에서만 제외.
+  전체 P662/U13,440, 총14,102 record를 유지한다.
+- 기존 전체 목표함수 유지. 핵심 P-U softplus pair loss는 P 평균 후 환자 평균이며,
+  다른 P를 negative로 사용하지 않는다. 두-view consistency weight0.1 유지.
+- AdamW LR1e-4, 기존 scheduler/optimizer 세부 설정, seed42, 총40epoch 유지.
+- physical patient batch4, accumulation1, independent single-GPU process: effective batch4.
+  모든65 ranking 환자를 epoch마다1회 처리: epoch당17 update, 총680 update.
+- epoch별 환자 순열과 허용된 입력 view/후보 RNG 계약은 네 arm에 동일하게 결속하고 기록한다.
+  dropout 등 CUDA 연산의 bitwise 동일성까지 보장했다고 주장하지 않는다.
+- 조기 종료, 일부 arm 생략, 모델/그래프/데이터/해상도/epoch 축소 없음.
+  초기 seed42 비교이며 여러 seed의 통계적 우월성으로 표현하지 않는다.
+
+5. 적응형 확장 판정 — A/B/C 공통
+
+단계 최소2epoch, 단계 최대4epoch를 유지한다.
+학습이 빨라도 train loss만으로 확장하지 않고 고정 view29에서 실제 성능을 확인한다.
+매 완료 epoch에 train65명 전체와 해당 active-U의 validation21명 전체를 평가한다.
+두 지표는 같은 active-U에서 비교한다. full128 validation은 BEST 선택용이며
+커리큘럼 판정에는 현재 단계 validation만 사용한다.
+
+다음 중 하나가 성립하면 다음 epoch부터 정확히 해당 arm의+n을 추가한다.
+
+a. validation_mastery
+   stage validation MRR>=0.80 AND top1>=0.70을2회 연속 충족.
+   충분히 학습했으면 과적합 발생까지 기다리지 않고 확장한다.
+
+b. train_mastery_overfit_plateau
+   train probe MRR>=0.90 AND top1>=0.85
+   AND train MRR-stage-val MRR>=0.10
+   AND stage validation 개선폭0.005 초과의 개선 없이2회 정체.
+   train 성능이 높은데 validation이 정체되는 과적합/일반화 격차 신호다.
+   train loss가 낮다는 이유만으로 과적합이라고 기록하지 않는다.
+
+c. stage_max4_deadline
+   해당 단계4epoch 완료. 기존 단계별 최대 체류 기한이다.
+
+d. remaining_budget_deadline
+   남은 단계 최소 학습량과 전체 U128 최소8epoch를 보장하기 위한 기한이다.
+
+모든 확장은 최소2epoch 조건을 만족해야 한다.
+validation streak/plateau reference/counter는 단계 확장 시 초기화한다.
+동시에 여러 사유가 충족되면 기존 우선순위 a>b>기한으로 대표 사유를 정하고,
+각 gate의 실제 true/false도 함께 기록해 다른 충족 사유를 보존한다.
+coverage 기한은 숙련 또는 과적합 성공으로 표시하지 않는다.
+D는 확장 없이40epoch 전체128U 반복이며 공통 probe/full128 평가를 적용한다.
+
+6. 40epoch 안에서 U128을 보장하는 예산 기한
+
+목표: 늦어도 epoch33부터 전체 U128을 실제 학습해 epoch33~40 최소8epoch 반복.
+기존 v2.4의 max4만으로 A를 설정하면 최초 전체128이 최악 epoch61이며 기존 validator가
+거부한다. v2.5에는 별도의 remaining-budget 정책과 사전 일정 검증이 필요하다.
+
+현재 U를u, arm 증가량을n, 남은 확장 횟수를r=ceil((128-u)/n)로 둔다.
+u<128인 현재 단계를 끝낼 가장 늦은 완료 epoch는 다음과 같다.
+
+latest_current_stage_end = 33 - 1 - 2*(r-1) = 32 - 2*(r-1)
+
+완료 epoch e가 이 기한에 도달했고 stage_epochs>=2이면,
+다음 epoch에 u+n으로 확장한다. 이후 남은 nonfull 단계도 각각 최소2epoch를 보장한다.
+현재 단계 최대4epoch 기한과 이 예산 기한 중 먼저 도달하는 조건을 적용한다.
+단계에 도달했을 때 최소2epoch를 배정해도 기한을 넘는 상태는 사전 admission 오류로
+보고한다. 여러 단계 건너뛰기/일부 U 누락/학습량 축소로 맞추지 않는다.
+128 이후에는 전체 반복을40epoch 끝까지 유지한다.
+
+| Arm | 최초 전체 U128 epoch 범위 | 전체128 반복 epoch 범위 |
+|---|---:|---:|
+| A: U8/+8 | 31~33 | 8~10 |
+| B: U16/+16 | 15~29 | 12~26 |
+| C: U32/+32 | 7~13 | 28~34 |
+| D: U128 | 1 | 40 |
+
+위 범위는 최소2/최대4 및 예산 기한의 산술 범위이며 실제 학습 완료 결과가 아니다.
+A는 nonfull15단계의 최소30epoch에 더할 여유가2epoch뿐이다.
+기존 plateau2 과적합 판정은 단계 최초 reference 이후 빨라도3번째epoch에 가능하므로
+A의 상당수 전환은 숙련 또는 기한이 결정한다. 모든 단계에서 과적합을 기다리는 실험으로
+표현하지 않는다. B/C도 동일 gate를 적용하되 기다릴 수 있는 단계 수가 다르다.
+모두40epoch/680update지만 전체128 노출량, 총P-U pair 수, GPU 시간은 달라진다.
+이는 후보 일정 비교의 일부이며 동일 계산량 비교라고 주장하지 않는다.
+
+7. 평가와 기록
+
+- 매 epoch 별도 full128 validation: 같은21명/allP135/fixed128U/view29.
+- BEST 선택: per-P patient-macro MRR 우선, 동률 top1, 그 다음 낮은 pair loss.
+  작은 active-U의 train/stage validation 점수로 BEST를 선택하지 않는다.
+- 전체40epoch를 완료한 뒤 해당 arm의 실제 저장 BEST를 고정해 후속 채점한다.
+- 기록: epoch/update/active-U, stage 체류 epoch, train/stage-val/full128 지표,
+  train-val gap, streak/plateau, gate별 판정, 확장 전후 U, 대표 확장 사유.
+- 후보 bank/order/geometry/context/source/model/checkpoint SHA와 split 일치 증거.
+- U128 최초 학습 epoch, full128 반복 epoch/update, U별 노출량,
+  전체 실제 P-U pair 수, train/probe/validation/cache/저장 시간을 분리.
+- physical/effective batch, node/edge 통계, allocated/reserved peak VRAM,
+  steady RSS/CPU/GPU 활용, H2D/forward/backward/step time/처리량 기록.
+- BEST 선정 epoch/update와 마지막 epoch 결과를 구분하고 GNN 순위 지표를
+  nnU-Net segmentation 개선 결과로 표시하지 않는다.
+
+8. 후속 CP와 nnU-Net — 네 arm 모두 같은 Basic 비교 조건
+
+각 arm의 전체40 완료/actual CUDA/680update/실제 gradient 및 optimizer 증거 확인
+→ 자신의 BEST 고정
+→ 새 v2.5 context로 전체642 source x128 CP 후보=82,176개 채점
+→ 독립 score overlay 및 native 준비/실측 calibration
+→ 독립 nnU-Net250epoch 학습
+→ checkpoint_best.pth로 동일26명 평가.
+
+- 역사적 Basic bank 그대로: 자기 환자 병변, CP 가능81명/전체642 source,
+  source마다 동일한 기존 CP-valid128 위치. 전체105명 train 유지.
+- 매 방문 병변 선택은 기존 source 목록에서 무작위. 환자당 고정 외부 donor1개로 바꾸지 않는다.
+- Basic은 선택 병변의128곳 중 무작위, 제안 arm은 그128곳 중 자신의 GNN argmax.
+- CP0.5, 최대 병변 직경20mm/coverage0.85, HU scale0.95~1.05/shift-5~5,
+  원래 RNG/일반 증강/정규화된 전처리 공간 paste를 유지한다.
+- GNN ranking native U128과 후속 Basic CP-valid128은 서로 다른 후보 계약이다.
+  후속 점수는 Basic source별128곳에 다시 계산하고 ranking 은행으로 대체하지 않는다.
+- own-source adapter에서 선택 source annotation은 허용, 다른 recipient lesion mask/occupancy
+  입력 제외. 기존 observed-P 좌표 문맥과 offline CP 자격 은행은 보존된다.
+  따라서 주석과 완전히 독립적인 임상 후보 생성이라고 주장하지 않는다.
+- 기존 native 모델/ResEncM, patch128^3, production physical B2/accumulation1,
+  전체250epoch,105 train/26 validation 및 일반 증강을 통일한다.
+- B2/B4 별도 CUDA 측정으로 원래B2 통과를 확인하고 실제 VRAM/처리량을 기록한다.
+  다른 batch를 적용해 비교조건이 달라지게 하지 않는다.
+- 예측/평가는 반드시 checkpoint_best.pth 사용. final checkpoint 평가로 대체하지 않는다.
+  BEST 경로/SHA와26개 실제 prediction/원래 metric 구현의 일치를 증명한다.
+- Basic 기준도 실제 사용 BEST provenance를 확인하고 같은26명/metric으로 비교한다.
+  소형 병변 기준(기존10mm 구간)과 donor 자격20mm를 구분한다.
+- 네 arm의 전체/소형 종양 segmentation·검출 metric은 기존 평가 정의를 동일하게 사용.
+  outer26은 validation으로 사용하므로 독립 test 성능으로 부르지 않는다.
+- 각 arm 후속 파이프라인은 GNN 완료 후 자동 연결하는 실행 준비 대상으로 명시한다.
+  현재 v2.5 watcher/controller가 구현 또는 등록됐다고 표시하지 않는다.
+
+9. 구현/실행 준비 순서와 admission
+
+1) 별도 v2.5 profile과 geometry/생성/검사/cache 경계 구현.
+   네 arm의 닫힌 실험 계약과 같은 초기 model-state/후보순서 manifest 생성.
+2) 별도 remaining-budget validator/확장/기록 구현.
+   경계값0/1/10mm, 잘못된 기존캐시 재사용, 정확히+n,
+   stage 최소2/max4, mastery/overfit/각deadline, full33/40/680 보존 검사.
+3) 실제 데이터의 전체 source/target context node/edge coverage 검사.
+   geometry 정의/후보순서/전체P/recipient GT 입력 불변성 검증.
+4) 별도 DEBUG CUDA에서 전체 모델·실제 full128 worst workload의 B4/B8,
+   candidate chunk32/64/128을 반복 측정. 기존의 B4/chunk64는 측정 출발점이다.
+   넓어진 context의 실제 메모리/처리량을 새로 확인하며 v2.4 실측을 v2.5 실측으로 전재하지 않는다.
+   optimizer537 tensor/feature gradient/loss/파라미터변화를 실데이터로 확인.
+5) v2.5 전체geometry/cache/scoring/네native output 예산을 정확한 byte로 산정.
+   네 arm용 checkpoint 보유와 shared lease 정책을 새로 검증한다.
+   기존3arm global7-slot 저장 admission을 네 arm에 그대로 적합하다고 주장하지 않는다.
+6) 사용 가능한 GPU/CPU/RAM/저장공간/실제 자원 조건을 실행 직전 읽기 확인.
+   네 arm은 독립process. 충분한 자원이면 동시에, 적으면 준비된 동일profile로 순차 wave 진행.
+   물리GPU 번호는 아직 지정하지 않았고, 현재v2.4 worker/스케줄러/세션을 변경하지 않는다.
+7) 전체40epoch/680update 본학습 및 stage/full128 기록.
+8) 전체후보 CP채점/native250/BEST26 평가. 단계별 checksum/admission/완료증거 확인.
+9) 네 arm의 공통 full128 BEST 및 matched Basic 후속 metric 비교표 작성.
+
+숨겨진 subset/임의 early break/0점 metric/작은 모델 또는 CPU fallback은 사용하지 않는다.
+DEBUG의 제한된 검사와 본학습/전체평가는 다른 profile/출력에서 구분한다.
+오류 시 정확한 파일/단계/원인/복구 방법을 기록하고 임의 sample skip 없이 실패를 보고한다.
+
+10. 설계 근거와 현재 완료 범위
+
+설계 근거:
+- config/v24_gpu6_STUNetS_GT_blind.json
+- config/v24_gpu4_STUNetS_all_U_GT_blind.json
+- hiercp_v1x/v24_targets.py
+- hiercp/spatial.py
+- hiercp_v1x/v24_context_depth1.py
+- docs/v24_three_independent_experiments_20261010.txt
+- docs/v24_GPU4_all_U_official_STUNetS_rollout_20261010.txt
+- docs/v24_GPU456_Basic_matched_CP_20261011.txt
+- docs/four_arm_native_hard_full128_20261009.txt
+- docs/v23_independent_targets_20261009.txt
+
+구현 완료: 이 계획 문서/Notion 기록만 완료. v2.5 실행 코드 구현은 미완료.
+정적 확인: 기존 계약/경계/커리큘럼 코드와 일정 산술 대조.
+단위 테스트/smoke/CUDA benchmark: v2.5 모델 대상으로 아직 수행하지 않음.
+전체 GNN 학습/CP채점/nnU-Net 학습/전체 평가: v2.5는 아직 수행하지 않음.
+실제 데이터 실행: 이번 계획 작성에서는 신규 실행하지 않음.
+기존 학습/결과/자동 연결은 수정하지 않음. 추가 GPU/관리자권한 요청이나 서버 신호 전송 없음.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 기존 실측 근거와 네독립arm 자원 계획을 대조했으며 v2.5 새측정은 실행 전 항목이다.
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 이번 계획 작성에서는 신규 서버 조회/측정을 하지 않았다.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 작업에는 모델 실행/OOM이 없으며 실행 전 조사 순서를 계획했다.
+- [x] 디버그 설정과 최종 설정을 분리했다. 계획의 검증과 전체 실행 단계/출력을 구분했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. v2.5 실제 경로 검증은 구현 후 수행할 항목이다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 설계 값과 미실행 범위를 구분했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
+

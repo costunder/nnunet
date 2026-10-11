@@ -48,7 +48,7 @@
 
 | 내용 | 위치 |
 | --- | --- |
-| HierCP v1x REVIEW | [열기](../../exports/HierCP_v1x_REVIEW_20261003/) |
+| HierCP v1x REVIEW | `exports/HierCP_v1x_REVIEW_20261003/` — 현재 로컬에 없음 |
 
 </details>
 

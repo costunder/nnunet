@@ -60,6 +60,19 @@ class VersionLayoutTests(unittest.TestCase):
     def test_short_aliases_reach_repo(self):
         for row in dispatch.entries():
             if not row['runner']: continue
+            if row.get('kind') == 'shell':
+                # Shell entries expose server.sh, rather than a Python alias.
+                # Inspect dispatch using a mocked subprocess; no job starts.
+                with patch.dict(dispatch.os.environ, {}, clear=True):
+                    with patch.object(dispatch.subprocess, 'run') as launcher:
+                        dispatch.launch(row['id'], [])
+                args, kwargs = launcher.call_args
+                self.assertEqual(args[0], ['bash', str((ROOT/row['runner']).resolve())])
+                self.assertEqual(kwargs['cwd'], ROOT)
+                self.assertTrue(kwargs['check'])
+                for key, value in row.get('fixed_env', {}).items():
+                    self.assertEqual(kwargs['env'][key], value)
+                continue
             name='eval.py' if row['id'].endswith('/eval') else 'run.py'
             path=ROOT/'versions'/row['folder']/name
             observed=[]
