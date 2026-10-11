@@ -1,0 +1,87 @@
+GPU6 실제 CUDA 연결 검증 — 2026-10-11
+
+사용자 요구: GPU6에서 실제 동작을 먼저 검증하고, 검증 전에는 GPU4/5 대기
+제어기를 교체하지 않는다. Basic과 동일한 자기 환자 병변/원래 후보/전처리
+paste를 유지하고, nnU-Net 평가는 checkpoint_best.pth를 사용한다.
+
+확인된 기존 실패
+- GPU6 GNN: 전체 40 epoch, 680 optimizer update 완료.
+- BEST: epoch 12, update 204. 모델 parameter 수 13,331,792.
+- 후속 matched chain: pin_current_gnn 단계에서 실패; nnU-Net은 시작되지 않음.
+- 실패 이유: 기존 GPU5/6 원본 CLI와 GPU4 지원이 추가된 후속 CLI의 SHA를
+  동일하게 요구했다. 학습 과학 모듈 또는 BEST 자체의 불일치는 아니었다.
+- 원본 completed request에 기록된, 정확한 SHA로 허용된 원본 CLI를 사용해
+  설정을 검증하도록 수정했다. 다른 과학 모듈은 원본/현재/manifest의 SHA
+  일치 검사를 유지하며 알 수 없는 CLI 변경도 거부한다.
+- 변경 코드 commit: c63b19f0f54e4741045d65bcec4da146fb9c1887.
+  GitHub codex/v24-cpu-pipeline 및 서버 code_c63b19f0f54e와 동일함을 확인.
+- 실제 completed GPU6 BEST의 수정 후 CPU pin 검사: 통과.
+  BEST 파일 SHA: 9a153e48ffe3dffd6107b1d23149e34999d5c6daa6f1efda6fbb13f6d4d51e6c.
+  /var/tmp/aicompetition06_v24_20261010/
+  GPU6_completed_BEST_pin_CPU_DEBUG_1791696187509242630.json.
+
+첫 실제 CUDA 실행에서 확인한 추가 실패
+- 14:35 KST에 별도 DEBUG GPU6 worker PID 1749967, scoring child PID
+  1749978을 시작했다. 두 프로세스는 오류를 로그로 남기고 종료했으며
+  신호로 종료하지 않았다. 기존 GPU4/5 제어기는 변경하지 않았다.
+- 실제 scoring bootstrap 오류: Original-source activation must precede
+  hiercp imports. build_runtime이 원본 스냅샷을 활성화하기 전에 source,
+  stable_case_seed, REGION_CACHE_SEED_SALT가 hiercp를 미리 import했다.
+- 세 import를 원본 스냅샷 활성화 뒤로 이동했다. 모델 수식/원본 선택/
+  source 642개/후보 128개/물리 batch/입력 크기/학습 epoch는 변경하지 않았다.
+- 실패 기록 보존 폴더:
+  /var/tmp/aicompetition06_v24_20261010/
+  GPU6_matched_FULL642_CUDA_DEBUG_1791696786035138400/gpu6.
+- 코드를 여러 벌 복사해 학습 디스크의 여유를 소모하지 않도록 다음 DEBUG
+  코드 체크아웃은 별도 /dev/shm의 현재 계정 전용 디렉터리에 저장한다.
+  /dev/shm은 읽기 검사 결과 별도 filesystem이고 약 499 GiB가 남았다.
+  기존 마운트/권한/설정은 변경하지 않는다. 전체 코드 약 80 MiB만 RAM에
+  저장하며 실제 데이터, 원본 모델, 학습 결과는 기존 영구 경로에 둔다.
+  이 코드 작업공간은 DEBUG용이며 GitHub/commit/배치 기록을 보존한다.
+
+실제 CUDA 검증 계약
+- GNN: 실제 완료된 GPU6 BEST, 전체 모델 및 전체 observed-P 문맥.
+- 기존 Basic bank: CP 가능 환자 81명, 총 642개 자기 환자 병변.
+- 각 병변의 원래 CP 조건을 통과한 128개 후보를 모두 채점: 총 82,176개.
+- GNN scoring physical patient batch 4, candidate chunk 64, CPU worker 4.
+- 모델/원본 bank/RNG 보존 검사 후 전체 642개일 때만 overlay를 완료로 게시.
+- nnU-Net: 실제 역사적 full105 train/full26 validation loader 및 원래 전체
+  모델, 128×128×128 patch, CP 확률 0.5, production 250 epoch/batch 2 유지.
+- 분리된 DEBUG calibration에서 physical batch 2와 4를 각각 4회 측정하고
+  forward/loss/backward/optimizer update, 유한 gradient, encoder/decoder
+  변화 및 실제 CP 적용을 검사한다. DEBUG optimizer update는 최종 학습이나
+  최종 평가 완료로 표현하지 않는다.
+- 기존 학습/실패 결과와 별도 폴더를 사용하며 GPU4/5 제어기를 변경하지 않는다.
+
+현재 확인 범위
+- 구현 및 정적 검사: 완료.
+- 원본 CLI 호환 단위 검사: 19개 통과.
+- 첫 pin 복구 검사: 15개 통과; 기존 matched 15개와 기존 chain 69개 통과.
+- 실제 GPU6 완료 BEST의 CPU 검사: 통과.
+- 실제 CUDA full642 scoring: 아직 완료 여부를 확인하지 않음.
+- 실제 nnU-Net full batch gradient calibration: 아직 완료 여부를 확인하지 않음.
+- 새 matched nnU-Net 전체 250 epoch 학습/평가: 미실행.
+
+자원
+- 물리 GPU6: RTX A6000, UUID GPU-e2ad7465-3573-504b-3913-4277bd99b2ed.
+- 현재 PBS 129443.ECE-util1: 1 GPU / 6 CPU / 128 GiB, CPU affinity 32–37.
+- 검증 프로세스: CPU 32–35, GNN CUDA 40 GiB / RSS 64 GiB 제한 및 원래
+  native process+children RSS 48 GiB 제한 유지.
+- 현재 PBS 만료: 2026-10-11 16:00:55 KST. 최종 250 epoch 학습을 현재
+  남은 시간 안에 완료할 수 있다고 주장하지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

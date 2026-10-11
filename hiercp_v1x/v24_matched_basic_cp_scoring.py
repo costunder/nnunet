@@ -324,9 +324,6 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
     from .v24_training import V24Scorer
     from .v24_inputs import prepare_donor, immutable_array, array_digest
     from .v24_geometry import build_recipient_regions
-    from hiercp_v22.data import sources
-    from hiercp.common import stable_case_seed
-    from hiercp.region import REGION_CACHE_SEED_SALT
     pin, request = admit_pin(pin_path, inventory_path)
     if pin.get('format') != CURRENT_PIN_FORMAT:
         raise ValueError('Only completed current full40 own-arm BEST is allowed')
@@ -362,6 +359,12 @@ def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_prepr
         input_cache=Path(input_cache), stunet_checkpoint=stunet_checkpoint)
     budget = ResourceBudget(40 * 2**30, 64 * 2**30)
     net, trained_scorer, population, config, contract, close = v24_factory.build_runtime(args, request['config'], budget)
+    # build_runtime activates the original snapshot before any hiercp import.
+    # Importing these helpers earlier preloads the ambient package and makes
+    # original-source activation refuse the first actual CUDA scoring run.
+    from hiercp_v22.data import sources
+    from hiercp.common import stable_case_seed
+    from hiercp.region import REGION_CACHE_SEED_SALT
     providers = {}
     try:
         if contract != pin['model_contract'] or population.manifest() != pin['population']:

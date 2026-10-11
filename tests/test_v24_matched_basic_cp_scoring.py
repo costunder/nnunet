@@ -1,12 +1,107 @@
 """DEBUG contract/real original CPU admission tests; no clinical training claim."""
 import copy
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import textwrap
 from types import SimpleNamespace
 import unittest
+from zipfile import ZipFile
 
 import numpy as np
 
 from hiercp_v1x import v24_matched_basic_cp_scoring as matched
+
+
+class ActualOriginalScoringBootstrapDEBUG(unittest.TestCase):
+    """Fresh-process production imports and real archived-source activation.
+
+    Only model/data construction is replaced by the actual source activator;
+    this is a CPU bootstrap check, without scoring or synthetic clinical data.
+    """
+    def test_production_imports_activate_original_before_helpers(self):
+        root = Path(__file__).resolve().parents[1]
+        code = textwrap.dedent('''
+            import ast
+            import copy
+            import inspect
+            from pathlib import Path
+            import sys
+            from hiercp_v1x import v24_matched_basic_cp_scoring as matched
+            from hiercp_v1x import v24_factory
+            from hiercp_v1x.scope_probe_support import activate_original
+
+            def activate_without_constructing_model(args, config, budget):
+                activate_original(Path(sys.argv[1]))
+                return (None,) * 6
+
+            v24_factory.build_runtime = activate_without_constructing_model
+            production = ast.parse(inspect.getsource(
+                matched.score_current_matched_basic_bank)).body[0]
+            body = []
+            activations = 0
+            for statement in production.body:
+                if isinstance(statement, (ast.Import, ast.ImportFrom)):
+                    body.append(copy.deepcopy(statement))
+                elif (isinstance(statement, ast.Assign)
+                        and isinstance(statement.value, ast.Call)
+                        and isinstance(statement.value.func, ast.Attribute)
+                        and isinstance(statement.value.func.value, ast.Name)
+                        and statement.value.func.value.id == 'v24_factory'
+                        and statement.value.func.attr == 'build_runtime'):
+                    body.append(copy.deepcopy(statement))
+                    activations += 1
+            assert activations == 1, 'Actual production factory activation required'
+            if sys.argv[2] == 'original_failure_control':
+                # Reproduce the exact old import sequence in a separate process.
+                helpers = [statement for statement in body
+                    if isinstance(statement, ast.ImportFrom)
+                    and statement.module in ('hiercp_v22.data', 'hiercp.common', 'hiercp.region')]
+                assert len(helpers) == 3
+                body = helpers + body
+            body.append(ast.Return(value=ast.Call(func=ast.Name(id='locals', ctx=ast.Load()),
+                args=[], keywords=[])))
+            function = ast.FunctionDef(name='actual_production_bootstrap_DEBUG',
+                args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[],
+                    kw_defaults=[], defaults=[]), body=body, decorator_list=[])
+            module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+            scope = dict(matched.__dict__, args=None, request={'config': {}}, budget=None)
+            exec(compile(module, inspect.getsourcefile(matched), 'exec'), scope)
+            actual = scope['actual_production_bootstrap_DEBUG']()
+            import hiercp.common
+            import hiercp.region
+            snapshot = Path(sys.argv[1]).resolve()
+            assert Path(hiercp.common.__file__).resolve().is_relative_to(snapshot)
+            assert Path(hiercp.region.__file__).resolve().is_relative_to(snapshot)
+            assert actual['stable_case_seed'] is hiercp.common.stable_case_seed
+            assert actual['REGION_CACHE_SEED_SALT'] == hiercp.region.REGION_CACHE_SEED_SALT
+            from hiercp_v22.data import sources
+            assert actual['sources'] is sources
+            print('ACTUAL_PRODUCTION_IMPORT_BOOTSTRAP_PASS')
+        ''')
+        with tempfile.TemporaryDirectory(prefix='v24_scoring_import_DEBUG_', dir=root / 'outputs') as folder:
+            snapshot = Path(folder)
+            with ZipFile(root / 'versions/v1/pipeline_v1_source.zip') as archive:
+                for name in archive.namelist():
+                    if not ((name.startswith('hiercp/') and name.endswith('.py'))
+                            or name == 'config/train.json'):
+                        continue
+                    relative = Path(name)
+                    if relative.is_absolute() or '..' in relative.parts or ':' in name or '\\' in name:
+                        raise ValueError('Unsafe pinned original archive path')
+                    target = snapshot / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(archive.read(name))
+            result = subprocess.run([sys.executable, '-X', 'utf8', '-B', '-c', code,
+                str(snapshot), 'production'], cwd=root, capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('ACTUAL_PRODUCTION_IMPORT_BOOTSTRAP_PASS', result.stdout)
+            control = subprocess.run([sys.executable, '-X', 'utf8', '-B', '-c', code,
+                str(snapshot), 'original_failure_control'], cwd=root,
+                capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(control.returncode, 0)
+            self.assertIn('Original-source activation must precede hiercp imports', control.stderr)
 
 
 def payload_DEBUG():
