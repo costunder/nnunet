@@ -214,6 +214,46 @@ def _target_validator_transform(node):
     return count
 
 
+def validate_batch(batch, *, graph_count, node_types, profile, scope_contract):
+    """Bind mixed disjoint STU inputs to the fresh profile and actual role counts."""
+    import torch
+    markers = batch.get(GRAPH_KEY)
+    scopes = batch.get("v1x_bounded_scope_contract")
+    if (not isinstance(markers, (list, tuple)) or len(markers) != graph_count
+            or any(value != profile for value in markers)
+            or not isinstance(scopes, (list, tuple)) or len(scopes) != graph_count
+            or any(value != scope_contract for value in scopes)):
+        raise ValueError("STU graph batch is missing fresh depth1 profile or original10mm ownership")
+    canonical = batch.get("canonical_counts")
+    if (not isinstance(canonical, torch.Tensor) or canonical.dtype != torch.long
+            or canonical.shape != (graph_count, len(node_types)) or bool(torch.any(canonical < 0))):
+        raise ValueError("Complete per-graph canonical role counts are required for depth1 inference")
+    from .transition_v1_empty_context import GRAPH_PROOF_KEY
+    target = batch.get(GRAPH_PROOF_KEY)
+    if not isinstance(target, torch.Tensor) or target.dtype != torch.long or target.shape != (graph_count, 4):
+        raise ValueError("Depth1 target-only semantic-absence rows must match each disjoint graph")
+    absent = target[:, 0] == 1
+    if (bool(torch.any((target[:, 0] != 0) & ~absent))
+            or not bool(torch.all(absent[:, None] | (target[:, 1:] == -1)))):
+        raise ValueError("Depth1 target absence proof flag is malformed")
+    for index, role in enumerate(node_types):
+        owners = batch[role].batch
+        if owners.dtype != torch.long or owners.ndim != 1 or bool(torch.any(owners < 0)):
+            raise ValueError("Actual semantic nodes require nonnegative disjoint ownership")
+        counts = torch.bincount(owners, minlength=graph_count)
+        if counts.shape != (graph_count,) or bool(torch.any(counts > canonical[:, index])):
+            raise ValueError("Depth1 sampled ownership/count differs from complete canonical graph")
+        if role == "target_context":
+            if not bool(torch.all((counts == 0) == absent)) or not bool(torch.all((canonical[:, index] == 0) == absent)):
+                raise ValueError("Depth1 target context omission differs from proven semantic absence")
+        elif role == "target_liver_surface":
+            if not bool(torch.all(~absent | ((counts > 0) & (canonical[:, index] == target[:, 3])
+                    & (target[:, 1] == 0) & (target[:, 2] >= target[:, 3])))):
+                raise ValueError("Depth1 absent target context has no actual retained liver surface")
+        elif role != "source_liver_surface" and bool(torch.any(counts == 0)):
+            raise ValueError("Depth1 original mandatory role is missing: " + role)
+
+
 def install(runtime, *, approved_profile=False):
     """Install once in a fresh original-snapshot process after the D adapter.
 
@@ -339,5 +379,19 @@ def install(runtime, *, approved_profile=False):
     for original, replacement in ((original_coordinates, coordinates), (original_sets, canonical),
                                    (original_prepare, prepare), (original_build, build), (original_view, view)):
         scope._rebind(original, replacement)
+    from .v24_stunet import STUNetL0Encoder
+    original_forward = STUNetL0Encoder.forward_graph
+    @functools.wraps(original_forward)
+    def forward(self, batch, source_map, target_map):
+        import torch
+        if self.training or torch.is_grad_enabled():
+            raise ValueError("Depth1 completed-BEST profile is explicit eval/no-grad inference only")
+        count = int(target_map.shape[0])
+        if int(source_map.shape[0]) != count:
+            raise ValueError("Depth1 source/target feature pyramids must have matching disjoint ownership")
+        validate_batch(batch, graph_count=count, node_types=tuple(runtime["schema"].LOCAL_NODE_TYPES),
+                       profile=profile, scope_contract=runtime["scope"]["contract_sha256"])
+        return original_forward(self, batch, source_map, target_map)
+    STUNetL0Encoder.forward_graph = forward
     _INSTALLED = dict(selected, snapshot=str(runtime["snapshot"]), scope_contract=runtime["scope"]["contract_sha256"])
     return copy.deepcopy(_INSTALLED)
