@@ -7,7 +7,8 @@ import hashlib,json,os,subprocess,time
 from pathlib import Path
 P=PAYLOAD
 assert os.getuid()==41833
-base=Path('/var/tmp/aicompetition06_v24_20261010');code=Path(P['code'])
+base=Path('/var/tmp/aicompetition06_v24_20261010');code=Path(P.get('viewer_code',P['code']))
+files=P.get('viewer_files',P['code_files']);viewer_commit=P.get('viewer_commit',P['commit'])
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def read(p):return json.loads(Path(p).read_text())
 def create(p,raw):
@@ -27,15 +28,15 @@ names=('view_training.py',*aliases[4],*aliases[5])
 previous={name:owned(base/name).read_bytes() for name in names}
 assert all(hashlib.sha256(raw).hexdigest()==expected[name] for name,raw in previous.items())
 preserved={name:sha(base/name) for name in ('view_gpu6.py','view_gpu6_current.py','view_gpu6_auto.py')}
-assert all(sha(code/name)==digest for name,digest in P['code_files'].items())
-target=base/('GPU45_NATIVE_PRESTART_UI_'+P['commit'][:12]);assert not target.exists(),'Unknown installation outcome; inspect exact backup rather than replace'
+assert all(sha(code/name)==digest for name,digest in files.items())
+target=base/('GPU45_NATIVE_PRESTART_UI_'+viewer_commit[:12]);assert not target.exists(),'Unknown installation outcome; inspect exact backup rather than replace'
 target.mkdir(mode=0o700)
 for name,raw in previous.items():create(target/'previous_UI_launchers'/name,raw)
 wrappers={}
 for row in P['arms']:
  gpu=row['GPU'];request=Path(row['request']);assert sha(request)==row['request_sha256']
- args=['--request',str(request),'--renderer',str(code/'tools/watch_v24_training.py'),'--renderer-sha',P['code_files']['tools/watch_v24_training.py']]
- body='import hashlib,sys\nfrom pathlib import Path\nCODE='+repr(str(code))+'\nFILES='+repr(P['code_files'])+'\n'
+ args=['--request',str(request),'--renderer',str(code/'tools/watch_v24_training.py'),'--renderer-sha',files['tools/watch_v24_training.py']]
+ body='import hashlib,sys\nfrom pathlib import Path\nCODE='+repr(str(code))+'\nFILES='+repr(files)+'\n'
  body+='for name,expected in FILES.items():\n if hashlib.sha256((Path(CODE)/name).read_bytes()).hexdigest()!=expected:raise ValueError("Pinned native prestart viewer changed: "+name)\n'
  body+='sys.path.insert(0,CODE)\nfrom tools.watch_v24_native_prestart_guard import main\nmain('+repr(args)+'+sys.argv[1:])\n'
  wrapper=target/('view_gpu'+str(gpu)+'.py');compile(body,str(wrapper),'exec');create(wrapper,body.encode());wrappers[gpu]=wrapper
@@ -68,7 +69,7 @@ for gpu in (4,5,6):
 for gpu,nameset in aliases.items():
  for name in nameset:assert readview(base/name)['GPU']==gpu
 assert all(sha(base/name)==digest for name,digest in preserved.items())
-result=dict(status='GPU45_FIXED_NATIVE_PRESTART_UI2_VERIFIED',at=time.time(),commit=P['commit'],target=str(target),views=views,
+result=dict(status='GPU45_FIXED_NATIVE_PRESTART_UI2_VERIFIED',at=time.time(),commit=viewer_commit,controller_commit=P['commit'],controller_code=P['code'],viewer_code=str(code),target=str(target),views=views,
  launchers_backed_up_and_retargeted=changes,GPU6_aliases_unchanged=True,jobs_started=False,signals_sent=False)
 create(target/'installation_verified.json',(json.dumps(result,ensure_ascii=False,indent=2)+'\n').encode())
 print(json.dumps(result,ensure_ascii=False),flush=True)
@@ -77,9 +78,14 @@ print(json.dumps(result,ensure_ascii=False),flush=True)
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  parser.add_argument('--registration',type=Path,required=True);parser.add_argument('--ssh-helper-dir',type=Path,required=True)
+ parser.add_argument('--viewer-code-proof',type=Path)
  args=parser.parse_args();payload=json.loads(args.registration.read_text(encoding='utf8'));payload['python']='/home/aicompetition06/.conda/envs/nnunet/bin/python3.10'
+ if args.viewer_code_proof:
+  viewer=json.loads(args.viewer_code_proof.read_text(encoding='utf8'))
+  assert viewer['status']=='GPU45_NATIVE_PRESTART_VIEW_CODE_VERIFIED' and viewer['controller_commit']==payload['commit'] and viewer['controller_code']==payload['code']
+  payload.update(viewer_code=viewer['code'],viewer_files=viewer['code_files'],viewer_commit=viewer['commit'])
  helper=args.ssh_helper_dir.resolve(strict=True);script='PAYLOAD='+repr(payload)+'\n'+REMOTE
- prepared=helper/('install_GPU45_native_prestart_UI_'+payload['commit'][:12]+'_PREPARED.py')
+ prepared=helper/('install_GPU45_native_prestart_UI_'+payload.get('viewer_commit',payload['commit'])[:12]+'_PREPARED.py')
  if prepared.exists():assert prepared.read_text(encoding='utf8')==script
  else:prepared.write_text(script,encoding='utf8')
  spec=importlib.util.spec_from_file_location('remote_once',helper/'remote_once.py');remote=importlib.util.module_from_spec(spec);spec.loader.exec_module(remote)

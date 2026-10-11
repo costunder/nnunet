@@ -107,9 +107,9 @@ class Viewer:
         request=pipeline.read(self.path,required=True)
         original_path=proof(request['original_request']);original=pipeline.read(original_path,required=True)
         if request['GPU_arm']==4:
-            self.base=pipeline.PipelineViewer(renderer,None,original['scoring_root'],None,gnn_root=original['source_output'],gpu=4)
+            self.base=pipeline.PipelineViewer(renderer,Path(original['source_output']).parent,original['scoring_root'],None)
         else:
-            self.base=early_view.Viewer(original_path,original_path.parent.parent/'pause_guardian',original['source_output'],renderer)
+            self.base=early_view.Viewer(original_path,original_path.parent.parent/'pause_guardian',Path(original['source_output']).parent,renderer)
     def snapshot(self):
         try:
             value=guard_snapshot(self.base.snapshot(),self.renderer,self.path)

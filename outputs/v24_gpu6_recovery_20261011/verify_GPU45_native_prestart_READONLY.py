@@ -26,9 +26,11 @@ for row in P['arms']:
  reg=chain.read(root/'registration.json');state=chain.read(root/'status.json')
  supervisor=exact(reg);assert supervisor['alive']
  scorer=exact(request['scoring_actor']);old=exact(request['predecessor_actor'])
- view=subprocess.run([request['python'],'-B',str(Path(P['code'])/'tools/watch_v24_native_prestart_guard.py'),
-  '--request',str(root/'request.json'),'--renderer',str(Path(P['code'])/'tools/watch_v24_training.py'),
-  '--renderer-sha',P['code_files']['tools/watch_v24_training.py'],'--once','--json'],capture_output=True,text=True,timeout=45)
+ viewer_code=Path(P.get('viewer_code',P['code']));viewer_files=P.get('viewer_files',P['code_files'])
+ assert all(chain.sha(viewer_code/name)==digest for name,digest in viewer_files.items())
+ view=subprocess.run([request['python'],'-B',str(viewer_code/'tools/watch_v24_native_prestart_guard.py'),
+  '--request',str(root/'request.json'),'--renderer',str(viewer_code/'tools/watch_v24_training.py'),
+  '--renderer-sha',viewer_files['tools/watch_v24_training.py'],'--once','--json'],capture_output=True,text=True,timeout=45)
  assert view.returncode==0,view.stderr
  viewer=json.loads(view.stdout);assert viewer.get('snapshot_fresh') is True and viewer['status'] not in ('READ_ERROR','READ_PENDING'),viewer
  native=Path(request['resource_contract']['chain_root'])/'native'
@@ -43,7 +45,12 @@ print(json.dumps(dict(status='GPU45_FIXED_NATIVE_PRESTART_VERIFIED_READONLY',at=
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  parser.add_argument('--registration',type=Path,required=True);parser.add_argument('--ssh-helper-dir',type=Path,required=True)
+ parser.add_argument('--viewer-code-proof',type=Path)
  args=parser.parse_args();payload=json.loads(args.registration.read_text(encoding='utf8'));helper=args.ssh_helper_dir.resolve(strict=True)
+ if args.viewer_code_proof:
+  viewer=json.loads(args.viewer_code_proof.read_text(encoding='utf8'))
+  assert viewer['status']=='GPU45_NATIVE_PRESTART_VIEW_CODE_VERIFIED' and viewer['controller_commit']==payload['commit'] and viewer['controller_code']==payload['code']
+  payload.update(viewer_code=viewer['code'],viewer_files=viewer['code_files'],viewer_commit=viewer['commit'])
  spec=importlib.util.spec_from_file_location('remote_once',helper/'remote_once.py');remote=importlib.util.module_from_spec(spec);spec.loader.exec_module(remote)
  result=json.loads(remote.run('PAYLOAD='+repr(payload)+'\n'+REMOTE,120))
  receipt=helper/('GPU45_NATIVE_PRESTART_ACTUAL_VERIFIED_'+str(time.time_ns())+'.json')

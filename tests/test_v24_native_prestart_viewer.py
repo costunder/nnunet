@@ -15,6 +15,8 @@ from unittest.mock import Mock, patch
 
 from tools import watch_v24_native_prestart_guard as viewer
 from tools import watch_v24_training as renderer
+from tests.test_watch_v24_gpu_pipeline import direct_fixture
+from tests.test_watch_v24_matched_cp_scoring import event, scoring_fixture
 
 
 class NativePrestartViewerCPU_DEBUG(unittest.TestCase):
@@ -115,6 +117,88 @@ class NativePrestartViewerCPU_DEBUG(unittest.TestCase):
         self.os_processes[123]['command'] = self.native_command
         self.publish_all()
 
+    def direct_integration(self):
+        """Actual renderer, DirectSource, PipelineViewer and sealed CP readers."""
+        arm = self.root / 'gpu4'
+        direct_request, _ = direct_fixture(arm, gpu=4, completed=True)
+        score = self.root / 'score_integration_DEBUG'
+        _, registration = scoring_fixture(score, 4, arm / 'gnn', direct_request['source_code'])
+        self.write(score / 'own_best_pin.json', dict(format='v24_completed_single_arm_GT_blind_best_v1',
+            physical_GPU=4, source_output=str(arm / 'gnn'), source_code=direct_request['source_code'],
+            full_training=True, debug=False, completed_epochs=40, optimizer_updates=680))
+        (score / 'console.log').write_text(json.dumps(event(4, 611)) + '\n', encoding='utf8')
+        self.source = arm / 'gnn'
+        self.resource.update(source_output=str(self.source), source_code=direct_request['source_code'], scoring_root=str(score))
+        self.state.update(source_output=str(self.source), child_pid=registration['pid'],
+            child_create_time=registration['create_time'], command=registration['command'])
+        self.request['scoring_actor'] = dict(pid=registration['pid'], create_time=registration['create_time'],
+            command=registration['command'], UID=41833)
+        self.os_processes.pop(123)
+        self.os_processes[registration['pid']] = dict(birth=registration['create_time'], command=registration['command'], UID=41833)
+        self.publish_all()
+        renderer_path = Path(viewer.__file__).parent / 'watch_v24_training.py'
+        actual_renderer = viewer.direct.load_renderer(renderer_path, viewer.direct.sha(renderer_path))
+        return viewer.Viewer(actual_renderer, self.path)
+
+    def early_direct_integration(self):
+        """Actual paused direct source, guardian, early pin and old CP reader."""
+        arm = self.root / 'gpu5'
+        direct_request, direct_reg = direct_fixture(arm, gpu=5, completed=False)
+        self.source = arm / 'gnn'
+        cursor_path = self.source / 'training_continuation.json'
+        receipt_path = self.source / 'interrupted_gnn_continuation.json'
+        cursor = viewer.pipeline.read(cursor_path)
+        cursor['source']['latest'].update(epoch=28, phase='training', updates=459,
+            history_epochs=list(range(1, 28)), active_u=128)
+        self.write(cursor_path, cursor)
+        receipt = viewer.pipeline.read(receipt_path)
+        receipt['source'] = cursor['source']
+        receipt['viewer_cursor']['sha256'] = viewer.direct.sha(cursor_path)
+        self.write(receipt_path, receipt)
+        direct_request.update(checkpoint_epoch=28, checkpoint_phase='training', checkpoint_updates=459)
+        self.write(arm / 'direct_training_request.json', direct_request)
+        direct_reg.update(resumed_epoch=28, resumed_phase='training', resumed_updates=459,
+            request_sha256=viewer.direct.sha(arm / 'direct_training_request.json'))
+        self.write(arm / 'direct_training_registration.json', direct_reg)
+        self.write(self.source / 'training/execution_contract.json', dict(epochs=40))
+        (self.source / 'training/invocations.jsonl').write_text(json.dumps(dict(status='PAUSED', debug=False,
+            completed_epochs=27, optimizer_updates=459, actual_CUDA=True)) + '\n', encoding='utf8')
+        self.resource.update(GPU_arm=5, chain_root=str(self.root / 'group/gpu5'), python=self.request['python'],
+            source_output=str(self.source), source_code=direct_request['source_code'])
+        auth_path = self.root / 'authorization.json'
+        self.write(auth_path, dict(user_authorized=True, target_epoch=27, source_output=str(self.source)))
+        auth = dict(path=str(auth_path), stat=viewer.pipeline._file_stat(auth_path), sha256=viewer.direct.sha(auth_path))
+        self.original = dict(format=viewer.early_view.REQUEST, GPU_arm=5, full_GNN_training=False, debug=False,
+            target_epoch=27, original_planned_epochs=40, source_output=str(self.source), source_code=direct_request['source_code'],
+            source_entries=642, CP_positions=82176, native_epochs=250, native_physical_batch=2,
+            full_native_evaluation_cases=26, controller_root=str(self.old_path.parent), code=str(self.root / 'old_early_code_DEBUG'),
+            resource_contract=self.resource, authorization=auth, scoring_root=str(self.root / 'early_score_DEBUG'),
+            pin_path=str(self.old_path.parent / 'own_early_stop_best_pin.json'),
+            stages=[dict(name='pin_early_stopped', command=['DEBUG_pin']), dict(name='score', command=self.score_command),
+                dict(name='train', command=self.native_command)])
+        self.request['GPU_arm'] = self.state['GPU_arm'] = 5
+        self.state['source_output'] = str(self.source)
+        self.publish_all()
+        old_digest = viewer.direct.sha(self.old_path)
+        old_command = [self.request['python'], '-B', '-u',
+            str(Path(self.original['code']) / 'tools/run_v24_early_stop_downstream.py'), 'watch', '--request', str(self.old_path)]
+        self.write(self.old_path.parent / 'lease.json', dict(pid=888, create_time=.5, command=old_command,
+            UID=41833, request_sha256=old_digest))
+        self.write(self.old_path.parent / 'status.json', dict(format=viewer.early_view.STATUS, GPU_arm=5,
+            request_sha256=old_digest, full_GNN_training=False, authorized_stop_epoch=27, source_output=str(self.source),
+            supervisor_pid=888, supervisor_create_time=.5, status='RUNNING', stage='score', child_pid=123,
+            child_create_time=2., command=self.score_command, stages_completed=['pin_early_stopped']))
+        self.write(self.root / 'pause_guardian/receipt.json', dict(status='VERIFIED_PAUSED_AT_EPOCH_BOUNDARY', verified=True,
+            completed_epochs=27, optimizer_updates=459, source_output=str(self.source), authorization=auth))
+        pin_path = Path(self.original['pin_path'])
+        self.write(pin_path, dict(format=viewer.early_view.PIN, physical_GPU=5, full_training=False, completed_epochs=27,
+            optimizer_updates=459, source_output=str(self.source), source_code=direct_request['source_code']))
+        self.write(self.old_path.parent / 'stage_pin_early_stopped.json', dict(output=str(pin_path), output_sha256=viewer.direct.sha(pin_path)))
+        (self.old_path.parent / 'score.log').write_text(json.dumps(event(5, 611)) + '\n', encoding='utf8')
+        renderer_path = Path(viewer.__file__).parent / 'watch_v24_training.py'
+        actual_renderer = viewer.direct.load_renderer(renderer_path, viewer.direct.sha(renderer_path))
+        return viewer.Viewer(actual_renderer, self.path)
+
     def completion(self):
         self.train()
         self.state.update(status='COMPLETE', full_native_training_completed=True, full_native_evaluation_completed=True)
@@ -178,6 +262,63 @@ class NativePrestartViewerCPU_DEBUG(unittest.TestCase):
         self.assertFalse(result['full_native_training'])
         self.assertFalse(result['native']['native_training_started'])
         self.log.assert_not_called()
+
+    def test_real_GPU4_constructor_reads_direct_full40_and_CP_without_GPU6_projection(self):
+        instance = self.direct_integration()
+        self.assertIsInstance(instance.base.source, viewer.direct.DirectSource)
+        self.assertFalse(instance.base.completed_source)
+        self.assertIsNone(instance.base.native_root)
+        self.assertEqual(instance.base.source.root, self.source.parent)
+        result = instance.snapshot()
+        self.assertTrue(result['snapshot_fresh'], result.get('read_problem'))
+        self.assertEqual(result['GPU'], 4)
+        self.assertEqual(result['status'], 'SCORING_PROCESS_ALIVE')
+        self.assertEqual(result['active_stage'], 'scoring')
+        self.assertEqual((result['gnn']['epoch'], result['gnn']['completed_epochs'], result['gnn']['optimizer_updates']), (40, 40, 680))
+        self.assertTrue(result['gnn']['full_training_completed'])
+        self.assertEqual(result['gnn']['direct_arm_root'], str(self.source.parent))
+        self.assertEqual((result['scoring']['source_done'], result['scoring']['CP_done']), (611, 78208))
+        self.assertTrue(result['native']['controller_alive'])
+        self.assertFalse(result['native']['native_training_started'])
+        self.assertFalse(result['full_native_training'])
+        with self.assertRaisesRegex(ValueError, 'completed GPU6'):
+            viewer.pipeline.CompletedGNNSource(instance.renderer, self.source, self.resource['scoring_root'], 4)
+
+    def test_real_GPU4_direct_source_cannot_claim_completion_from_dead_actor_and_PAUSED(self):
+        instance = self.direct_integration()
+        (self.source / 'training/invocations.jsonl').write_text(json.dumps(dict(status='PAUSED', debug=False)) + '\n', encoding='utf8')
+        result = instance.snapshot()
+        self.assertFalse(result['snapshot_fresh'])
+        self.assertEqual(result['status'], 'READ_ERROR')
+        self.assertIn('full40', result['read_problem']['detail'])
+        self.assertFalse(result['full_native_training'])
+        self.assertFalse(result['full_native_evaluation'])
+
+    def test_real_GPU5_constructor_reads_exact_direct_PAUSED_27_and_retained_CP_after_old_parent_exit(self):
+        instance = self.early_direct_integration()
+        self.assertIsInstance(instance.base, viewer.early_view.Viewer)
+        self.assertIsInstance(instance.base.source, viewer.direct.DirectSource)
+        self.assertEqual(instance.base.source.root, self.source.parent)
+        self.assertEqual(instance.base.source.output, self.source)
+        self.assertNotEqual(instance.base.source.output, self.source / 'gnn')
+        old = instance.base.snapshot()
+        self.assertTrue(old['snapshot_fresh'], old.get('read_problem'))
+        self.assertEqual(old['status'], 'EXITED_WITHOUT_COMPLETION')
+        self.assertFalse(old['native']['controller_alive'])
+        self.assertTrue(old['native']['child_alive'])
+        result = instance.snapshot()
+        self.assertTrue(result['snapshot_fresh'], result.get('read_problem'))
+        self.assertEqual(result['GPU'], 5)
+        self.assertEqual(result['status'], 'SCORING_PROCESS_ALIVE')
+        self.assertEqual(result['gnn']['status'], 'EARLY_STOPPED')
+        self.assertEqual((result['gnn']['completed_epochs'], result['gnn']['epochs'], result['gnn']['optimizer_updates']), (27, 40, 459))
+        self.assertFalse(result['gnn']['full_training_completed'])
+        self.assertEqual((result['scoring']['source_done'], result['scoring']['CP_done']), (611, 78208))
+        self.assertTrue(result['native']['controller_alive'])
+        self.assertTrue(result['native']['child_alive'])
+        self.assertNotIn('read_problem', result)
+        self.assertFalse(result['full_native_training'])
+        self.assertFalse(result['full_native_evaluation'])
 
     def test_own_GPU5_preserves_actual_early27_without_full40_projection(self):
         self.gpu5_early()
