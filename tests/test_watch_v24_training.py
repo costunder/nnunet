@@ -250,7 +250,7 @@ class ViewerTest(unittest.TestCase):
             '2026-10-10 13:50:16.767042: Pseudo dice [np.float32(0.9322), np.float64(0.6782)]'])
         self.assertEqual(n['pseudo_dice'],[.9322,.6782])
 
-    def test_compact_four_row_tty_renderer(self):
+    def test_common_sixteen_row_renderer_preserves_actual_progress_and_both_U_reports(self):
         import io
         stream=io.StringIO(); terminal=watch.TerminalView(stream)
         self.addCleanup(terminal.close)
@@ -259,15 +259,19 @@ class ViewerTest(unittest.TestCase):
         snapshot=dict(GPU=5,status='RUNNING',epoch=4,epochs=40,completed_epochs=3,
             active_U=128,stage='full_validation',stage_label='전체 validation',
             progress=dict(done=8,total=21),loss=.7,optimizer_updates=68,RSS_GiB=48,RAM_limit_GiB=64,
-            reports=dict(stage_validation=report,full_validation=dict(report,active_u=128)))
+            reports=dict(stage_validation=report,full_validation=dict(report,active_u=128)),snapshot_fresh=True)
         terminal.render(snapshot)
-        self.assertEqual(len(terminal.bars),4)
-        self.assertEqual((terminal.bars[1].n,terminal.bars[1].total),(8,21))
-        self.assertTrue(all(len(bar.desc)<=100 for bar in terminal.bars))
-        self.assertIn('stage e4 U7',terminal.bars[3].desc)
-        self.assertIn('full128 e4 U128',terminal.bars[3].desc)
+        shown=stream.getvalue()
+        self.assertEqual(len(shown.splitlines()),16)
+        self.assertIn('GPU5',shown)
+        self.assertIn('RUNNING',shown)
+        self.assertIn('8/21',shown.replace(' ',''))
+        self.assertRegex(shown,r'(?:epoch|e)\s*4\s+U\s*7\b')
+        self.assertRegex(shown,r'(?:epoch|e)\s*4\s+U\s*128\b')
+        self.assertIn('MRR 0.4000 top1 0.3000',shown)
+        self.assertNotIn('\x1b[',shown)
 
-    def test_tty_read_error_names_the_actual_file_and_parse_reason(self):
+    def test_common_read_error_names_actual_file_parse_reason_and_stale_values(self):
         import io
         stream=io.StringIO();terminal=watch.TerminalView(stream)
         self.addCleanup(terminal.close)
@@ -276,23 +280,28 @@ class ViewerTest(unittest.TestCase):
         terminal.render(dict(GPU=5,status='READ_ERROR',stage='full_validation',
             stage_label='전체 validation',reports={},snapshot_fresh=False,
             last_valid_snapshot_preserved=True,read_problem=dict(path=path,detail=reason)))
-        self.assertIn(path,terminal.bars[2].desc)
-        self.assertIn(reason,terminal.bars[2].desc)
-        self.assertIn('최근 정상 기록 보존',terminal.bars[2].desc)
-        self.assertIn(path,stream.getvalue())
-        self.assertIn(reason,stream.getvalue())
+        shown=stream.getvalue()
+        self.assertEqual(len(shown.splitlines()),16)
+        self.assertIn('READ_ERROR',shown)
+        self.assertIn(path,shown)
+        self.assertIn(reason,shown)
+        self.assertIn('새 기록이 아님',shown)
+        self.assertNotIn('RUNNING',shown)
 
-    def test_tty_renderer_explicitly_overrides_disabled_environment(self):
+    def test_common_renderer_ignores_tqdm_disabled_environment(self):
         import io, os
         with patch.dict(os.environ, {'TQDM_DISABLE':'1'}):
             stream=io.StringIO();terminal=watch.TerminalView(stream)
             try:
                 terminal.render(dict(GPU=6,status='RUNNING',epoch=4,epochs=40,
                     completed_epochs=3,stage='full_validation',stage_label='전체 validation',
-                    active_U=128,progress=dict(done=0,total=21),reports={}))
-                self.assertTrue(all(bar.disable is False for bar in terminal.bars))
-                self.assertIn('\r',stream.getvalue())
-                self.assertIn('GPU6 RUNNING',stream.getvalue())
+                    active_U=128,progress=dict(done=0,total=21),reports={},snapshot_fresh=True))
+                shown=stream.getvalue()
+                self.assertEqual(len(shown.splitlines()),16)
+                self.assertIn('GPU6',shown)
+                self.assertIn('RUNNING',shown)
+                self.assertIn('0/21',shown.replace(' ',''))
+                self.assertNotIn('\x1b[',shown)
             finally:terminal.close()
 
     def test_rss_sums_verified_arm_tree_and_excludes_other_uid(self):

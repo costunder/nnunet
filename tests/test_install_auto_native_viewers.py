@@ -82,6 +82,11 @@ class FreshAutoViewerCPU_DEBUG(unittest.TestCase):
             helper.install(prepared)
         self.assertEqual(originals, {name: Path(name).read_bytes() for name in originals})
         self.assertFalse(result['jobs_started'])
+        launcher = Path(result['launcher']['path'])
+        compile(launcher.read_bytes(), str(launcher), 'exec')
+        self.assertEqual(launcher.name, 'view_training.py')
+        self.assertIn(b"choices=(4, 5, 6)", launcher.read_bytes())
+        self.assertIn(b"BOUND['arms'][str(options.gpu)]", launcher.read_bytes())
 
     def test_module_SHA_change_prevents_any_output(self):
         module = Path(self.config['code_root']) / helper.MODULES[0]

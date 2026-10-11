@@ -21,7 +21,8 @@ import stat
 
 FORMAT = 'v24_auto_native_pipeline_viewer_install_request_v1'
 MODULES = ('tools/watch_v24_gpu_pipeline.py', 'tools/watch_v24_direct_gnn_training.py',
-    'tools/watch_v24_matched_cp_scoring.py', 'tools/watch_v24_training.py')
+    'tools/watch_v24_matched_cp_scoring.py', 'tools/watch_v24_training.py',
+    'tools/training_monitor_adapter.py', 'tools/training_monitor_ui.py', 'tools/__init__.py')
 
 
 def sha(data):
@@ -77,7 +78,7 @@ def validate(config):
         raise FileExistsError('Fresh viewer_directory already exists; preserve it: ' + str(target))
     hashes = config.get('modules_sha256')
     if not isinstance(hashes, dict) or set(hashes) != set(MODULES):
-        raise ValueError('All four immutable viewer module SHA256 bindings required')
+        raise ValueError('All shared UI and immutable viewer module SHA256 bindings required')
     for name in MODULES:
         module = path(str(code / name))
         before = identity(module)
@@ -134,7 +135,7 @@ def validate(config):
                     or declared.get('scoring_root') != str(score)):
                 raise ValueError(str(native) + ': actual registered native controller source differs')
         fixed.extend(['--renderer', str(code / MODULES[3]), '--renderer-sha', hashes[MODULES[3]],
-            '--scoring-root', str(score), '--native-root', str(native)])
+            '--scoring-root', str(score), '--native-root', str(native), '--experiment-version', 'v2.4'])
         prepared[number] = dict(args=fixed, current_gnn=str(source), source_code=source_code,
             scoring_root=str(score), native_root=str(native))
         protected.extend([source, Path(source_code), score, native])
@@ -209,10 +210,25 @@ def install(prepared):
             created.append(dict(GPU=int(number), path=str(filename), sha256=sha(filename.read_bytes()),
                 command=[prepared['python'], '-B', str(filename)], current_gnn=arm['current_gnn'],
                 scoring_root=arm['scoring_root'], native_root=arm['native_root']))
+        launcher_path = target / 'view_training.py'
+        script = wrapper(prepared, prepared['arms']['4'])
+        payload = dict(code_root=prepared['code_root'], modules_sha256=prepared['modules_sha256'],
+            arms={number: dict(args=arm['args']) for number, arm in prepared['arms'].items()})
+        # One stable user command, with an explicit arm rather than inference.
+        first = script.index('BOUND = json.loads(')
+        end = script.index('\ncode = ', first)
+        script = script[:first] + 'BOUND = json.loads(' + repr(json.dumps(payload, ensure_ascii=False)) + ')' + script[end:]
+        script = script.replace("parser.add_argument('--once', action='store_true')",
+            "parser.add_argument('--gpu', type=int, choices=(4, 5, 6), required=True)\nparser.add_argument('--once', action='store_true')")
+        script = script.replace("args = BOUND['args'] +", "args = BOUND['arms'][str(options.gpu)]['args'] +")
+        compile(script, str(launcher_path), 'exec')
+        with launcher_path.open('x', encoding='utf8', newline='\n') as stream:
+            stream.write(script); stream.flush(); os.fsync(stream.fileno())
     except (OSError, ValueError, SyntaxError) as error:
         raise RuntimeError('Fresh viewer installation incomplete; no files overwritten/deleted. '
             'Preserved directory: ' + str(target) + '; created=' + repr(created) + '; cause=' + str(error)) from error
     return dict(format='v24_auto_native_pipeline_viewers_installed_v1', created=created,
+        launcher=dict(path=str(launcher_path), sha256=sha(launcher_path.read_bytes())),
         old_files_written=False, jobs_started=False, signals_sent=False)
 
 

@@ -17,8 +17,13 @@ import time
 
 import psutil
 
+if __package__ in (None, ''):
+    sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
+
 from tools import watch_v24_direct_gnn_training as direct
 from tools import watch_v24_matched_cp_scoring as scoring
+from tools import training_monitor_adapter as monitor_adapter
+from tools import training_monitor_ui as monitor_ui
 
 
 DEFAULT_NATIVE_PENDING = '실제 nnU-Net 후속 controller가 등록되지 않았습니다. nnU-Net 시작 전입니다.'
@@ -291,6 +296,8 @@ def native_snapshot(root, output, gpu, renderer, source_code):
         native_pending_reason=state.get('waiting_reason') or state.get('error'),
         stage_log=state.get('stage_log'), stages_completed=state.get('stages_completed'),
         snapshot_source='sealed native request/registration/status and current exact process identity')
+    if child['alive']:
+        value.update(RSS_GiB=child.get('RSS_GiB'), process_status=child.get('process_status'))
     if training:
         log_path = input_path(root / (stage['name'] + '.log'))
         if state.get('stage_log') != str(log_path):
@@ -402,38 +409,9 @@ class PipelineViewer:
         return value
 
 
-def display(value, renderer):
-    gnn = value.get('gnn')
-    if value['active_stage'] == 'gnn' and gnn:
-        lines = [renderer.text_snapshot(gnn)]
-    else:
-        lines = [f"GPU{value.get('GPU') or '?'} | 현재 파이프라인 {value['status']}"]
-        if gnn:
-            lines.append('GNN: ' + ('전체40epoch/680update 완료 확인' if gnn.get('full_training_completed') else gnn['status']))
-        if value.get('scoring'):
-            lines.append(scoring.display(value['scoring'], include_native=value['active_stage'] != 'native'))
-        native = value.get('native')
-        if native:
-            lines.append('nnU-Net controller: ' + native['status'] + ' | 단계 ' + str(native.get('stage')))
-            if native.get('native_training_started'):
-                lines.append('현재 등록된 nnU-Net 학습 프로세스 실행 중')
-            elif native.get('full_native_training'):
-                lines.append('전체250 nnU-Net 학습 및 자기 BEST 전체26 validation 완료 metadata 확인')
-            elif native.get('native_controller_completion_reported'):
-                lines.append('nnU-Net controller 완료 기록 있음; 전체 학습/BEST 평가 증명 확인은 별도입니다.')
-            else:
-                lines.append('nnU-Net 본학습 실행 중으로 확인되지 않았습니다.')
-            if native.get('epoch') is not None:
-                lines.append(f"nnU-Net epoch {native['epoch']}/{native['epochs']} | 실제 console: {native['native_metrics']}")
-    if value.get('last_valid_snapshot_preserved'):
-        lines.append('최근 정상 표시 보존 (' + str(value.get('last_confirmed_status')) + '); 수치는 새 기록이 아님')
-    if value.get('read_problem'):
-        lines.append('표시 기록 읽기 재시도: ' + value['read_problem']['detail'])
-    native = value.get('native')
-    if not native or not native.get('native_training_started') and not native.get('full_native_training'):
-        label = 'nnU-Net 증명 확인: ' if native and native.get('native_controller_completion_reported') else 'nnU-Net 시작 전/대기 이유: '
-        lines.append(label + str(value['native_pending_reason']))
-    return '\n'.join(lines)
+def display(value, renderer=None, *, experiment_version=None):
+    # Source validation remains version-specific; the screen never is.
+    return monitor_ui.render(monitor_adapter.from_pipeline(value, experiment_version=experiment_version))
 
 
 def main(argv=None):
@@ -451,6 +429,7 @@ def main(argv=None):
     parser.add_argument('--json', action='store_true')
     parser.add_argument('--interval', type=float, default=2.)
     parser.add_argument('--no-clear', action='store_true')
+    parser.add_argument('--experiment-version', help='Scientific version label; does not change the UI schema')
     args = parser.parse_args(argv)
     if not math.isfinite(args.interval) or args.interval <= 0:
         parser.error('--interval must be finite and positive')
@@ -468,19 +447,30 @@ def main(argv=None):
     renderer = direct.load_renderer(args.renderer, args.renderer_sha)
     viewer = PipelineViewer(renderer, args.arm_root, args.scoring_root, args.native_root, args.native_pending_reason,
         gnn_root=args.gnn_root, gpu=args.gpu)
+    terminal = monitor_ui.TerminalView(sys.stdout) if sys.stdout.isatty() and not (args.no_clear or args.once or args.json) else None
+    previous = None
     try:
         while True:
             value = viewer.snapshot()
             if args.json:
+                value.update(ui_schema_version=1, experiment_version=args.experiment_version)
                 print(json.dumps(value, ensure_ascii=False, allow_nan=False)); return
-            if sys.stdout.isatty() and not args.no_clear:
-                print('\033[2J\033[H', end='')
-            print(display(value, renderer), flush=True)
+            model = monitor_adapter.from_pipeline(value, experiment_version=args.experiment_version)
+            if terminal:
+                terminal.render(model)
+            else:
+                shown = monitor_ui.render(model)
+                if shown != previous:
+                    print(shown, flush=True)
+                    previous = shown
             if args.once:
                 return
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print('\n진행 뷰어만 종료했습니다. 학습/scoring 작업은 계속됩니다.', flush=True)
+    finally:
+        if terminal:
+            terminal.close()
 
 
 if __name__ == '__main__':

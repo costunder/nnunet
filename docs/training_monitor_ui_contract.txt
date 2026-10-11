@@ -1,0 +1,87 @@
+# 공통 학습 모니터 UI 계약
+
+UI schema version: 1
+상태: 공통 renderer/adapter 및 기존 GNN·CP·pipeline 뷰어 연결 구현 완료. Windows CPU 회귀 검사 92개 통과. 실제 서버 설치와 화면 검증은 진행 중이다.
+
+## 적용 범위와 변경 원칙
+
+모든 실험과 학습 버전은 같은 화면 레이아웃을 사용한다. 과학적 버전(v1, v2.3, v2.4 등), encoder, curriculum, 실행 경로가 바뀌어도 UI schema version은 자동으로 바뀌지 않는다.
+
+공통 renderer는 tools/training_monitor_ui.py, 입력 해석과 source 연결은 tools/training_monitor_adapter.py를 사용한다. 새 실험이나 로그 형식은 adapter에서 공통 UI schema 1로 변환한다. 버전별 renderer, 버전별 행 배치, 별도 레이아웃을 만들지 않는다.
+
+레이아웃 변경은 명시적인 사용자 UI 변경 요청을 근거로 한다. 승인된 UI 계약을 변경하면 UI schema version을 올리고 변경한 행과 의미를 기록한다. 과학적 설정 변경을 UI 변경의 근거로 사용하지 않는다.
+
+## 고정 16행
+
+화면과 텍스트 로그는 아래 순서와 행 수를 유지한다. 해당 단계가 아직 없거나 값이 확인되지 않아도 행을 제거하거나 다른 단계의 행으로 바꾸지 않는다. 긴 설명은 같은 행에서 구분해 표시하고 화면 폭 때문에 임의로 새로운 논리 행을 추가하지 않는다.
+
+01. HEADER: GPU, 실험 이름 또는 식별자, 과학적 버전, UI schema version
+02. STATE: 현재 파이프라인 단계와 실제 관찰 상태
+03. GNN EPOCH/U/UPDATE: 현재 epoch/목표 epoch, active U, 실제 optimizer update
+04. GNN PHASE PROGRESS: training, train probe, stage validation, full validation 등 실제 phase와 확인된 진행량
+05. GNN LOSS: 실제 관측 loss와 측정 optimizer update 출처
+06. GNN STAGE VAL: 최근 성공한 stage validation의 metric, epoch, 평가 U
+07. GNN FULL VAL: 최근 성공한 full validation의 metric, epoch, 평가 U
+08. CP SOURCES: 완료된 CP source 수/전체 source 수
+09. CP POSITIONS: 완료된 CP 후보 위치 수/전체 위치 수
+10. NNUNET EPOCH/TRAIN/EVAL: 실제 epoch/목표 epoch, 본학습 상태, BEST 평가 상태
+11. NNUNET LOSS: 실제 train loss와 validation loss, 해당 epoch 출처
+12. NNUNET PSEUDO DICE: 실제 pseudo Dice와 epoch 출처
+13. RESOURCES: 확인한 프로세스 RSS, RAM 한도, 측정 범위와 프로세스 상태
+14. SPEED/LOG AGE: 실제 batch 시간, console 파일이 마지막으로 갱신된 후 경과 시간
+15. AUTO/WAIT REASON: 실제 후속 controller 등록 여부와 확인된 대기 사유
+16. WARNINGS/ERROR: 부분 기록 읽기, 오래된 snapshot, 실제 실패 및 경고
+
+한 행에 둘 이상의 값이 있어도 순서를 유지한다. GNN phase가 CP scoring 또는 nnU-Net으로 넘어가면 기존 GNN 행에는 확인된 완료 정보 또는 마지막 성공한 값을 출처와 함께 유지한다. 아직 시작하지 않은 단계에는 '-'와 상태 설명을 표시한다.
+
+## 값과 provenance
+
+미확인 값은 '-'로 표시한다. 누락된 metric, 아직 실행하지 않은 epoch, 메모리 측정 실패를 0으로 대체하지 않는다. 실제 기록에서 확인한 유효한 0은 표시할 수 있으며 미확인 값과 구분한다.
+
+최근 성공한 metric과 현재 진행 중인 metric을 구분한다. 이전 epoch 값을 유지할 때에는 '최근 완료 e24/U128'처럼 실제 epoch와 평가 U를 함께 표시한다. 현재 active U가 달라도 이전 full validation의 U를 현재 U로 바꾸지 않는다. stage/full validation, first-P/per-P, macro/micro metric을 서로 바꾸거나 합쳐 표시하지 않는다.
+
+GNN UPDATE는 실제 optimizer update 수이다. epoch별 batch 수 또는 단순 로그 행 수를 update 완료 수로 사용하지 않는다. CP SOURCES와 CP POSITIONS도 완료된 실제 progress/receipt를 사용하며, 초기값이나 일부 score 파일만으로 전체 완료를 추정하지 않는다. 분모는 해당 실행의 봉인된 실제 요청을 사용한다.
+
+RAM은 실제 현재 측정과 과거 측정을 구분한다. PID RSS, 프로세스 트리 RSS 합계, 과거 peak RSS, 시스템 가용 RAM 중 어느 값인지 라벨을 붙인다. 과거 peak를 현재 사용량으로 표시하지 않는다. GPU/VRAM과 CPU도 실제 측정 시점 및 범위가 확인된 값만 표시한다.
+
+속도는 실제 측정 단위를 유지한다. source/s, position/s, samples/s, batch seconds를 서로 바꾸거나 CUDA kernel 시간으로 해석하지 않는다. 현재 CP 로그 나이는 console 파일 mtime 이후 경과 시간이며 최근 batch 완료 시각이나 정체 확정 시간이 아니다. 이번 읽기 성공(snapshot_fresh)은 파일을 정상적으로 읽었다는 뜻이며 학습 진전 여부와 다르다.
+
+## 읽기 오류와 상태 구분
+
+새 JSON 파일이 아직 비었거나 부분적으로 출판 중이면 READ_PENDING과 재시도 상태를 명시한다. 정상 snapshot이 이미 있으면 마지막 정상 값은 보존하되 '이전 snapshot, 새 관측 아님'으로 표시한다. 같은 파일 identity의 손상 상태가 안정적으로 지속되면 READ_ERROR로 표시한다. 정상 metric을 가짜 0으로 바꾸거나 읽기 오류를 숨기지 않는다.
+
+프로세스 존재 여부는 실제 등록 PID, 생성 시각, 전체 argv, UID 및 source/request 결속을 검사한 결과를 사용한다. process sleeping은 CPU 입력 준비, I/O, CUDA 대기 등의 관찰 상태일 수 있다. sleeping만으로 학습 중단 또는 정체를 확정하지 않는다. 반대로 종료된 프로세스를 RUNNING으로 표시하지 않는다.
+
+GNN 전체 완료, CP 전체 채점 완료, nnU-Net 본학습 완료, nnU-Net BEST 평가 완료는 별개의 상태이다. GNN의 전체 epoch/update 완료를 nnU-Net 완료로 표시하지 않는다. calibration과 smoke/debug 실행도 본학습 완료로 표시하지 않는다.
+
+nnU-Net 본학습 완료는 실제 전체 목표 epoch 완료 증거가 있어야 한다. BEST 평가는 자기 실행의 checkpoint_best.pth를 실제로 읽고 정해진 전체 validation case를 평가한 증거로 표시한다. checkpoint_final.pth를 BEST 대신 평가하거나 checkpoint 파일 존재만으로 평가 완료를 주장하지 않는다. metadata만 검증한 viewer는 큰 checkpoint/prediction bytes의 재검증 여부와 검증 범위를 JSON에서 명시한다.
+
+후속 작업은 실제 controller request/registration/status로 등록 여부를 표시한다. 계획만 있는 자동 연결을 등록 완료로 표시하지 않는다. GNN, CP, storage, GPU, allocation 중 무엇을 기다리는지 실제 사유를 AUTO/WAIT REASON에 표시한다. 저장공간 required_free_bytes에 reserve가 이미 포함된 경우 다시 더하지 않는다.
+
+## 읽기 전용 경계와 로그 계약
+
+UI와 adapter는 관찰 도구이다. 학습을 시작하거나 재개하지 않고, CUDA 작업이나 checkpoint model load를 시작하지 않으며, 프로세스에 신호를 보내지 않는다. 요청, checkpoint, score, 학습 결과, 기존 viewer 또는 실험 결과 파일을 생성·교체·수정하지 않는다.
+
+한 번의 텍스트 snapshot은 항상 16개 논리 행을 위 순서로 출력한다. 공통 라벨, 상태 의미, 값의 출처 규칙을 화면과 --once 출력에서 동일하게 사용한다. --json은 공통 schema version, 현재 과학적 버전, source/provenance, fresh/stale 여부, 실제 상태, 대기 사유, 읽기 오류를 보존한다. JSON의 추가 증거 필드를 사용자 화면의 새로운 행이나 버전별 레이아웃으로 연결하지 않는다.
+
+구현, 단위 테스트, 실제 서버 smoke 검증을 각각 기록한다. UI smoke 성공은 전체 학습 또는 전체 평가 성공을 의미하지 않는다. 공통 화면은 현재 GNN/CP/native watcher에 연결했고, 실제 서버 배포 완료는 아래 증거가 추가된 후에만 주장한다.
+
+검증: Windows CPU 92개 PASS. 버전/단계별 16행 동일성, 실제 0과 미기록 구분, READ_ERROR의 상단 상태 우선, epoch/U 출처, pseudo Dice와 BEST 평가 구분, Unicode 표시폭, TTY 반복 갱신/크기 변경/커서 복구, 기존 뷰어의 검증 경로 및 새 wrapper 설치를 확인했다. 실제 GPU 학습이나 전체 평가는 이 UI 검사에서 시작하지 않았다.
+
+실제 실행 명령은 새 공통 진입점 view_training.py --gpu 4|5|6으로 통일한다. 기존 실행 중인 코드와 뷰어는 보존하고 새 display-only release에 모듈 SHA를 봉인한다. 실험 버전이 바뀌면 header 값과 검증 adapter를 갱신하며 레이아웃을 새로 만들지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. 이 문서 작업에서는 실행 설정을 변경하지 않았다.
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 공통 UI의 실제 서버 검증은 진행 중이다.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이 문서 작업에서는 OOM 실행을 하지 않았다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 이 읽기 전용 UI는 학습 모듈이 아니며 학습 경로를 변경하지 않는다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 이번 변경은 공통 UI 계약 문서 작성이다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

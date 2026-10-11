@@ -15,6 +15,9 @@ from pathlib import Path
 import sys
 import time
 
+if __package__ in (None, ''):
+    sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
+
 import psutil
 
 PHASE = 'matched_Basic_current_BEST_scores'
@@ -144,28 +147,10 @@ def snapshot(root):
         GNN_completion_evidence_reverified=False, full_native_training=False, full_native_evaluation=False, **process)
 
 
-def display(value, include_native=True):
-    done = '?' if value.get('source_done') is None else str(value['source_done'])
-    positions = '?' if value.get('CP_done') is None else str(value['CP_done'])
-    gpu = value.get('GPU', '?')
-    lines = [f"GPU{gpu} | CP 후보 채점 | {value['status']}",
-        f"source {done}/642 | CP 후보 {positions}/82176 (source당 전체128)",
-        f'입력: GPU{gpu} GNN BEST | 현재 단계: CP 후보 채점']
-    if include_native:
-        lines.append('후속 nnU-Net: 아직 시작 전(저장공간 대기)')
-    if value.get('last_valid_snapshot_preserved'):
-        lines.append('최근 정상 표시 보존 (' + str(value.get('last_confirmed_status')) + '); 수치는 새 기록이 아님')
-    if include_native and value.get('native_pending_reason'):
-        lines.append('nnU-Net 대기 이유: ' + str(value['native_pending_reason']))
-    if value.get('last_batch_seconds') is not None:
-        lines.append(f"최근 실제 batch {value['last_batch_seconds']:.1f}초 | console 갱신 {value['seconds_since_console_write']:.0f}초 전")
-    if value.get('RSS_GiB') is not None:
-        lines.append(f"프로세스 {value['process_status']} | RAM {value['RSS_GiB']:.2f} GiB")
-    if value.get('partial_console_line_pending'):
-        lines.append('console 마지막 줄 기록 중; 완료된 줄만 표시')
-    if value.get('detail') and value['status'] != 'SCORING_COMPLETE_NATIVE_STORAGE_PENDING':
-        lines.append(str(value['detail']))
-    return '\n'.join(lines)
+def display(value, include_native=True, *, experiment_version=None):
+    from tools import training_monitor_adapter, training_monitor_ui
+    return training_monitor_ui.render(training_monitor_adapter.from_scoring(value, include_native=include_native,
+        experiment_version=experiment_version))
 
 
 class ScoringViewer:
@@ -209,6 +194,7 @@ def main(argv=None):
     parser.add_argument('--json', action='store_true')
     parser.add_argument('--interval', type=float, default=2.)
     parser.add_argument('--no-clear', action='store_true')
+    parser.add_argument('--experiment-version', help='Scientific version label; UI schema stays fixed')
     args = parser.parse_args(argv)
     if not math.isfinite(args.interval) or args.interval <= 0:
         parser.error('--interval must be finite and positive')
@@ -217,19 +203,30 @@ def main(argv=None):
             or hasattr(os, 'getuid') and root.stat().st_uid != os.getuid()):
         parser.error('Owned scoring root without symlink aliases required')
     viewer = ScoringViewer()
+    from tools import training_monitor_adapter, training_monitor_ui
+    terminal = training_monitor_ui.TerminalView(sys.stdout) if sys.stdout.isatty() and not (args.no_clear or args.once or args.json) else None
+    previous = None
     try:
         while True:
             value = viewer.snapshot(root)
             if args.json:
+                value.update(ui_schema_version=1, experiment_version=args.experiment_version)
                 print(json.dumps(value, ensure_ascii=False)); return
-            if sys.stdout.isatty() and not args.no_clear:
-                print('\033[2J\033[H', end='')
-            print(display(value), flush=True)
+            if terminal:
+                terminal.render(training_monitor_adapter.from_scoring(value, experiment_version=args.experiment_version))
+            else:
+                shown = display(value, experiment_version=args.experiment_version)
+                if shown != previous:
+                    print(shown, flush=True)
+                    previous = shown
             if args.once:
                 return
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print('\n진행 뷰어만 종료했습니다. 학습/scoring 작업은 계속됩니다.', flush=True)
+    finally:
+        if terminal:
+            terminal.close()
 
 
 if __name__ == '__main__':
