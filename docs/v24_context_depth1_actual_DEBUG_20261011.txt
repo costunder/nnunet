@@ -1,0 +1,182 @@
+GPU6 context 간 깊이 >1mm 적용 — 실제 DEBUG 검증 보고서
+기준일: 2026-10-11, Asia/Seoul
+실제 CUDA 판정: 최초 first-B4 실행은 입력 provenance 오류로 실패.
+수정 후 CPU 통합 검사는 통과했으나 CUDA 재실행은 할당 시간 부족으로 미실시.
+
+현재 판정
+사용자가 요청한 변경은 context의 간 깊이 조건만 >4mm에서 >1mm로
+바꾸는 것이다. 별도 GPU6 first-B4 DEBUG에 적용했다. 실제 병변 4개의
+source context 생성은 확인했다. CUDA 점수 계산 성공, 전체642개
+채점 완료, nnU-Net 학습 또는 평가 완료를 주장하지 않는다.
+
+정확한 입력 정의
+- 변경 전 context: 간 조직 AND 종양 footprint 밖 AND 종양 거리
+  2mm 이상/10mm 이하 AND 실제 간 경계까지 깊이 >4mm.
+- 이번 context: 같은 조건에서 간 깊이만 엄격히 >1mm.
+- 간 깊이 정확히 1mm인 복셀은 포함하지 않는다.
+- 종양 거리의 하한은 기존 2mm를 유지했다. 사용자가 언급한 종양 거리
+  1mm는 이번 적용 범위에 포함하지 않았다.
+- 전체 종양 footprint와 10mm ROI margin, dense view 5x48x48x48,
+  원래 canonical grid, graph sampling, edge 규칙과 CT 처리를 유지했다.
+- 간 surface 역할은 기존 0<간 깊이<=3mm를 유지한다.
+- 따라서 1<깊이<=3mm인 실제 조직은 context와 surface semantic mask에
+  함께 들어갈 수 있다. 각 역할의 원래 grid를 적용해 서로 다른 typed
+  node로 사용한다. 서로 다른 grid 간격 때문에 두 역할의 모든 canonical
+  좌표가 항상 같다는 뜻은 아니다. 가짜 좌표나 대체 조직을 추가하지 않는다.
+- Source context는 계속 필수다. 빈 source context를 기존 토큰으로
+  통과시키는 앞선 제안은 이번 구현에 설치하지 않았다.
+- 기존 target-only context absence 정책은 새 >1mm semantic mask를
+  재검사하고 실제 surface가 남아 있을 때만 인정한다.
+
+기존 실패와 실제 source 준비의 현재 확인 범위
+기존 >4mm 조건에서는 liver_46/component001의 종양 거리 2..10mm 안에
+조건을 만족하는 context 복셀이 0개여서 모델 forward 이전에 거부됐다.
+전체 raw organ depth를 사용한 실제 마스크 검사로 확인된 실패이며,
+CT 누락이나 ROI에서 종양이 잘려 나간 문제가 아니었다.
+
+이번 실제 DEBUG의 CPU source 준비 로그에서 현재 확인한 값:
+- liver_46/component001: >1mm context 실제 복셀 1,007개,
+  canonical source_context node 168개. 기존 >4mm의 context 복셀은 0개.
+- liver_117/component002: canonical source_context node 641개.
+- liver_108/component001: canonical source_context node 444개.
+- liver_93/component002: 실제 context 복셀23,164개,
+  canonical source_context node774개.
+
+위 값은 실제 source의 CPU geometry 준비 결과다. 이 결과만으로 실제
+CUDA forward나 후보 점수 계산이 완료됐다고 해석하지 않는다.
+
+코드와 체크포인트 보존
+- 최초 실행 코드 commit: 767eda8dfd7b42cff5a129c1841a9c6f810a0fb3.
+- 입력 provenance 수정 코드 commit:
+  6bf0419677e03fc63cabb3bd0c1e463746490445.
+- 수정 commit을 기존 승인 저장소/브랜치에 push하고 새 서버 RAM
+  checkout에 배포했다. GitHub/Git/서버 commit과 파일 SHA를 확인했다.
+- 신규 opt-in profile: hiercp_v1x/v24_context_depth1.py.
+- 별도 DEBUG 진입점:
+  hiercp_v1x/v24_matched_basic_cp_scoring.py의
+  debug_context_depth1_first_batch.
+- 기존 production 진입점은 full642 계약과 기존 기본 context 정의를
+  유지한다. 이번 DEBUG는 complete score overlay를 발행하지 않는다.
+- 완료된 GPU6 GNN의 원래 BEST를 strict하게 불러오고 eval/no-grad로
+  추론한다. 원래 source 코드, checkpoint, Basic bank와 기존 결과를
+  덮어쓰지 않는다.
+- 실제 BEST 파일 SHA256:
+  9a153e48ffe3dffd6107b1d23149e34999d5c6daa6f1efda6fbb13f6d4d51e6c.
+- 전체 GNN parameter 수: 13,331,792.
+- 원래 BEST는 depth>4mm context 정의로 학습된 모델이다. 이번 depth1
+  적용은 입력 정의가 바뀐 추론이며, depth1로 재학습한 모델이라고
+  표시하지 않는다. CUDA completion receipt가 없으므로 모델 state/
+  원래 RNG 불변의 최종 CUDA 판정은 미검증이다.
+
+검증 절차와 실제 실행 규모
+- CPU UNIT 검사 5개 통과: strict >1mm 경계, 2..10mm annulus 보존,
+  실제 원본 builder/sampling 및 공식 STU encoder 경로, 잘못된 geometry
+  또는 기존 profile source 입력 거부를 포함한다.
+- 기존 regression 검사 33개 통과.
+- 원본 소스 활성화 import-order bootstrap 검사 1개 통과.
+- 실제 실행에서 sampling wrapper closure가 원래 provenance 순회에
+  인식되지 않는 오류가 발견됐다. 기존 검증을 완화하지 않고 새
+  wrapper의 원본 호출 경로를 기존 bounded_view closure로 연결했다.
+  v24_input_runtime.py는 변경하지 않았다.
+- 수정 후 CPU UNIT5개를 다시 실행해 통과했다(8.289초).
+  실제 _sampling_proof/_sampler/_materialize_pair를 포함하며, 원래
+  materialization과 두 graph view의 노드/엣지/CT가 정확히 일치한다.
+  외부 wrapper를 거부하는 부정 검사도 유지했다.
+- 위 CPU 검사들은 실제 환자 CUDA 채점 또는 전체 학습 완료가 아니다.
+- 실제 DEBUG는 기존 첫 번째 disjoint source B4를 사용한다.
+  liver_117/c2, liver_108/c1, liver_46/c1, liver_93/c2.
+- 각 source의 원래 모든 observed P와 원래 Basic CP 후보 128개를
+  함께 처리하도록 요청했다. 기대 CP 점수 수는4x128=512개지만 첫
+  local chunk materialization에서 오류가 발생해 실제 점수는 생성되지 않았다.
+- 원래 source 전체 계약은 81명/642개 source/각128개 후보,
+  총82,176개 위치다. 이번 DEBUG는 명시적인 4-source 실행이며 전체
+  642개 검증 결과로 사용하지 않는다.
+- Physical patient batch 4, physical candidate chunk 64, CPU worker 4.
+- GPU6의 원래 measured candidate chunk 64와 전체 모델을 유지한다.
+  DEBUG에는 optimizer update가 없으므로 gradient accumulation과
+  effective optimizer batch는 해당 없음이다.
+- 실제 STU forward 직전에 profile/10mm scope/역할별 canonical 및
+  sampled node 수/target absence/eval-no-grad 조건을 검사한다.
+- 완료 판정은 4개 source 모두 128개 유한 점수, 모든 P 유지,
+  원래 BEST model state와 RNG 불변, 원본 source provenance 불변을
+  확인한 별도 complete_DEBUG.json으로만 한다.
+
+실행 자원과 할당 종료 보호
+- 물리 GPU6: NVIDIA RTX A6000, 전체 VRAM 46,068MiB.
+- GPU UUID: GPU-e2ad7465-3573-504b-3913-4277bd99b2ed.
+- 소유 PBS job: 129443.ECE-util1, 원래 GPU 한 개/CPU 6개/RAM128GiB
+  할당. DEBUG는 CPU affinity 32,33,34,35와 worker4를 사용한다.
+- 코드와 작은 DEBUG 증거는 별도 /dev/shm namespace에 저장하며,
+  실제 데이터와 원래 checkpoint는 읽기 전용으로 기존 경로를 쓴다.
+- CUDA budget 40GiB, process RSS budget 64GiB. Peak VRAM, 최종 RAM,
+  처리시간과 실제 후보 처리량의 CUDA 완료 측정치는 없다.
+  최초 실행 중 관측 GPU 메모리는331MiB로 CUDA 초기화 단계였다.
+  관측 RSS 최대는21,068,193,792bytes(약19.62GiB)이며 true peak는
+  별도 측정하지 않았다. 첫 실행 시작에서 실패까지 약265.83초다.
+- 원래 할당 종료: 2026-10-11 16:00:55 KST.
+- 이번 별도 first-B4 DEBUG의 최대 수명은 900초다.
+- 할당 종료까지 180초 미만이면 신규 CUDA 작업을 거부한다.
+- 최초 PBS owner/R 상태/GPU UUID/idle/메모리와 이후 주기적 자원 검사를
+  수행하고, source 준비 및 CUDA chunk와 dense encode 전후에 guard를
+  적용한다. 기존 full642 production 시작 guard를 낮추지 않았다.
+- 종료180초 전인15:57:55부터 새 CUDA 작업을 거부하는 원래 guard를
+  유지했다. 실패한 first-B4 준비가265.83초 걸렸으므로 남은 시간에
+  동일한 재실행을 시작하지 않았다. 새로운 GPU 할당은 제출하지 않았다.
+- GPU4/5 기존 제어기와 할당은 변경하지 않았다. 세션 종료 명령이나
+  프로세스 종료 신호를 보내지 않는다.
+
+현재 실제 DEBUG 증거 위치
+/dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/
+depth1_GPU6_CUDA_DEBUG_1791701258212150800
+
+코드 checkout:
+/dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/
+code_767eda8dfd7b
+
+로컬 상태 확인 기록:
+outputs/v24_gpu6_recovery_20261011/
+inspect_depth1_GPU6_CUDA_DEBUG_1791701293834966400.log
+
+최초 실제 실패와4개 source geometry 확인:
+outputs/v24_gpu6_recovery_20261011/
+inspect_depth1_progress_compact_1791701530844035700.log
+
+실패 단계: v24_input_runtime._sampler → _sampling_proof.
+실패 오류: ValueError: Original sampling attribute branch changed.
+failed_DEBUG.json 판정: ACTUAL_CUDA_DEBUG_FAILED.
+worker는 예외를 명시적으로 기록하고 스스로 반환했으며 신호를 보내지 않았다.
+
+수정 배포 checkout:
+/dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/code_6bf0419677e0
+
+별도로 준비한 actual local64 L0 CUDA DEBUG 스크립트는 AST 검사만 했고
+서버에서 실행하지 않았다. 이 준비를 CUDA 성공 증거로 사용하지 않는다.
+
+남은 검증과 한계
+- 수정 코드로 실제 first-B4 CUDA 점수512개/모델 state/RNG 검증: 미실시.
+- 전체642개 source의 depth1 geometry 및 82,176개 CP 후보 채점: 미완료.
+- depth1 입력 정의로 GNN 재학습: 실행하지 않음.
+- 기존 depth4 BEST에 depth1 입력을 제공했을 때의 ranking 정확도와
+  최종 segmentation 정확도 개선 여부: 미검증.
+- 이번 current BEST depth1 점수를 사용한 nnU-Net 전체 학습/평가:
+  실행하지 않음. 별도로 통과했던 historical Basic native DEBUG와
+  이번 current BEST scoring 검증을 혼동하지 않는다.
+- nnU-Net 후속 최종 평가 checkpoint 계약은 checkpoint_best.pth이며,
+  이번 실행에서 평가가 수행됐다는 뜻은 아니다.
+- GPU4/5에 depth1을 적용하거나 자동 후속 제어기를 변경하지 않았다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다. (이번 4-source DEBUG는 명시적으로 분리했으며 final 계약을 축소하지 않았다.)
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. (B4/기존 measured candidate64/worker4; CUDA 점수 계산은 실패 후 재검증하지 못했다.)
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. (초기 자원과 실행 중 RSS/GPU 관측 완료; 최종 CUDA 처리량은 미측정.)
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (N/A: 이번 실패는 OOM이 아닌 sampling provenance 오류였으며 모델 축소는 적용하지 않았다.)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다. (UNIT synthetic geometry는 명시했으며 실제 DEBUG는 실제 데이터다.)
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (N/A: 이번 작업은 frozen BEST 추론으로 loss/backward/optimizer를 실행하지 않는다. 수정 후 실제 CUDA forward는 아직 미검증이다.)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
