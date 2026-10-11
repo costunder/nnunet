@@ -51,6 +51,38 @@ GPU4·6 controller와 표시용 alias는 변경되지 않았다.
 기존 공통 명령은 새 경로를 따라간다:
 /home/aicompetition06/.conda/envs/nnunet/bin/python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_training.py --gpu 5
 
+## 첫 CP batch 확인 및 표시 보정
+
+2026-10-12 03:42 KST에 실제 epoch27/optimizer459 종료와
+VERIFIED_PAUSED_AT_EPOCH_BOUNDARY 및 EARLY_STOPPED를 확인했다.
+epoch27 full128 MRR=0.20918475304657547, top1=0.15622158792521695이다.
+새 controller는 자기 BEST pin 검증을 완료하고 실제 score child를 실행했다.
+
+첫 batch 완료 전에는 CP 카운터와 batch 시간에 측정값이 없었다.
+프로세스 status=sleeping만으로 정지 여부를 판단하지 않는다.
+8.09초 샘플 동안 CPU seconds=221.25→249.73, RSS=13.79→19.73GiB를 확인했다.
+이는 초기 CPU 처리가 진행된 증거이며, 그 시점의 GPU 채점 완료를 의미하지 않는다.
+후속 샘플에서는 GPU5 VRAM2343MiB/utilization18%도 관찰했다.
+
+Git89f1714e034a의 별도 표시 전용 release를 배포했다.
+SCORING_STARTUP은 아직 bank/request.json이 없는 초기 구간이다.
+FIRST_BATCH_PENDING은 해당 파일 생성이 관측됐지만 첫 완료 이벤트가 없는 상태다.
+두 상태 모두 source/position/batch 시간은 미확인으로 유지한다.
+실제 비어 있지 않은 score.log의 mtime로 로그 경과를 첫 batch와 독립해서 표시한다.
+유효 완료 이벤트가 생기면 기존 SCORING_PROCESS_ALIVE와 실측 카운터를 표시한다.
+UI schema2의 GNN9행/CP8행 및 기존 nnU-Net 표시 형식을 보존한다.
+
+Windows 및 서버 nnunet 환경에서 관련 CPU44개가 각각 통과했다.
+2026-10-12 03:51 KST 실제 source8/642, position1024/82176,
+최근 batch207.5702초, CP child RSS31.07GiB, 오류 없음으로 확인했다.
+이 수치는 실제 전체 CP 진행 중인 기록이며 전체642 채점 완료 결과가 아니다.
+nnU-Net 전체250 학습과 BEST26 평가는 아직 시작 전이다.
+
+표시용 alias4개는 직전 SHA 확인 후 새 폴더에 원본을 백업하고 연결했다.
+기존 controller request/authorization/registration/lease와 동결된 과학 코드의 SHA/stat가 동일함을 확인했다.
+GPU4·6 표시 alias 및 controller identity도 동일했다.
+학습 재시작이나 신호 전송 없이 기존 viewer 명령으로 새 표시를 확인할 수 있다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
