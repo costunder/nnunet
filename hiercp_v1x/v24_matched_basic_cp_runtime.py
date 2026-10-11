@@ -284,6 +284,8 @@ def runtime_observation(*, trainer_module=None):
 
 def install_native_runtime(native_path, *, training=False):
     """Install immutable full131 reader and historical CP; calibration is separate."""
+    from .v24_matched_basic_cp_pipeline import early_stage_guard
+    access = early_stage_guard(stage_action='train' if training else 'calibrate-native')
     path = _regular(native_path)
     native = json.loads(path.read_text(encoding='utf8'))
     overlay_path = _regular(native['overlay'])
@@ -323,12 +325,17 @@ def install_native_runtime(native_path, *, training=False):
         raise ValueError('Matched trainer alias must inherit original historical exact argmax trainer')
     result = dict(overlay=overlay_proof, preprocessed=readonly, training=bool(training))
     if training:
-        from . import v24_readonly_static_operator_storage as static
-        result['checkpoint_coordination'] = static.install_checkpoint_adapters(original_admission, private, cls)
         from .v24_native_best_eval_runtime import install_best_evaluation_guard
         result['BEST_evaluation'] = install_best_evaluation_guard()
+        if access is not None:
+            from .v24_direct_gpu_access import install_native_step_guards
+            result['direct_GPU_access'] = install_native_step_guards(cls, access)
+        from . import v24_readonly_static_operator_storage as static
+        result['checkpoint_coordination'] = static.install_checkpoint_adapters(original_admission, private, cls)
         original_start, original_epoch = cls.on_train_start, cls.on_train_epoch_start
         def start(self):
+            if access is not None:
+                access()
             from .v24_nnunet_cp import require_project_budget, snapshot
             if not self.was_initialized:
                 self.initialize()
@@ -362,6 +369,8 @@ def install_native_runtime(native_path, *, training=False):
                 model_weights_fresh=True, debug=False, full_training_complete=False))
             return started
         def epoch(self):
+            if access is not None:
+                access()
             from .v24_nnunet_cp import require_project_budget
             require_project_budget()
             _guard_binding(binding)
@@ -372,6 +381,8 @@ def install_native_runtime(native_path, *, training=False):
 
 
 def run_training_entry():
+    from .v24_matched_basic_cp_pipeline import early_stage_guard
+    early_stage_guard(stage_action='train')
     if sys.argv[1:].count('--val_best') != 1:
         raise ValueError('Matched CP nnU-Net evaluation requires exact BEST; no FINAL fallback')
     native_path = os.environ['V24_MATCHED_NATIVE']

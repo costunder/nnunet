@@ -1,0 +1,143 @@
+2026-10-11 GPU4/5/6 재접속 후 실제 재개 기록
+
+확인 시각: GPU4/5 2026-10-11 17:07:51 KST, GPU6 17:13:57 KST.
+전체 학습 완료 보고가 아니다.
+
+최종 읽기 전용 조회17:21:37 KST: 세 PID/birth/등록된 전체 argv/UID41833와
+/proc/exe가 모두 일치했다. GPU4 epoch32/update544/U128, GPU5 epoch25/
+update413/U103으로 추가 진행했다. 두 학습 모두 실제 gradient finite=True,
+missing=[]이며 오류가 없었다. GPU6은48/642 source,6144/82176 CP 점수와
+실제 score JSON48개를 확인했다. 세 worker를 변경하거나 재시작하지 않았다.
+
+세 프로세스의 실제 실행 파일은 모두 다음 nnunet conda 환경의 Python이다.
+/home/aicompetition06/.conda/envs/nnunet/bin/python3.10
+셸 프롬프트의 (base) 표시와 무관하게 이 절대 경로로 실행했다.
+
+GPU4: PID1822676 / birth1791705670.41. 저장된 epoch31, phase full_validation,
+update527, train_position65, evaluation_position4에서 엄격한 재개를 요청했다.
+GPU5: PID1822677 / birth1791705670.42. 저장된 epoch24, phase full_validation,
+update408, attempts410, train_position65, evaluation_position8에서 재개했다.
+각 GPU의 실제 CUDA compute PID와 UUID, 전체 runtime binding을 확인했다.
+GPU4 UUID GPU-7ca3aca5-d312-62db-4928-c96f6ae41081 / CUDA474MiB.
+GPU5 UUID GPU-e41d3421-8819-0a49-4a97-6c4518a54f5f / CUDA1924MiB.
+이는 초기 로딩 시점의 메모리이며 steady-state 또는 peak VRAM이 아니다.
+새 validation 완료 행을 확인했다. GPU4는 저장된 cursor4 뒤의 다음4명,
+GPU5는 cursor8 뒤의 다음8명을 실제로 평가하고 latest를 새로 저장했다.
+각 full validation은 원래 규칙대로128U를 평가한다. 남은 validation을 전부 마친 뒤
+GPU4는 epoch32/update528와529, GPU5는 epoch25/update409와410을 새로 수행했다.
+원래 OPTIMIZER_UPDATED 기록은 finite loss, backward, missing==[]/finite gradient,
+gradient clipping 및 scaler.step 후에 기록된다. 새 실행의 loss/backward/update 경로가
+실제로 이어졌으며 전체40epoch 완료와는 구분한다.
+
+GPU4/5 새 결과 경로:
+/var/tmp/aicompetition06_v24_20261010/GPU45_interrupted_exact_CPU_prepared_20261011_1791705559311834000/gpu4/gnn
+/var/tmp/aicompetition06_v24_20261010/GPU45_interrupted_exact_CPU_prepared_20261011_1791705559311834000/gpu5/gnn
+
+재개 실행 코드: bda74f1e1be69a0b36034d1b418eb1d709f13d0e.
+GitHub costunder/nnunet의 codex/v24-cpu-pipeline과 서버에 같은 커밋을 확인했다.
+원래 과학 설정과 코드: GPU4 code_2c8d594552ca, GPU5 code_b5581f624448.
+GPU4는 공식 STU-Net S 초기 가중치, 첫 epoch부터 전체128U 설정을 유지한다.
+GPU5는 원래 CNN 설정과 원래 U curriculum 및 실측 memory runtime을 유지한다.
+40epoch, 전체65 train/21 inner validation, physical patient batch4,
+candidate chunk GPU4=64/GPU5=32, worker4를 보존했다.
+원본 latest/BEST의 bytes 및 모델, optimizer, scheduler, scaler, rank_rng,
+shuffle_generator의 여섯 저장 상태를 CPU에서 원본 reader로 검증했다.
+초기 모델 및 RNG와 원래 CLI 코드도 actual runtime binding에서 검증했다.
+GPU4 CPU affinity0..3, GPU5=42..45. 모델·그래프·데이터 규모를 줄이지 않았다.
+
+GPU4/5는 사용자가 명시적으로 요청한 이전의 물리 GPU 번호 직접 지정 방식이다.
+PBS GPU4/5 예약을 소유했다고 기록하지 않는다(PBS_owned_reservation=False).
+PBS129528.ECE-util1의 실제 bash PID1796834/birth1791702220.05는 현재 할당 셸의
+수명 증거로만 사용하며 GPU4/5 예약 증거로 사용하지 않는다.
+초기 유휴 GPU/40GiB 이상 여유, UUID/UID/PID/birth/argv, CPU/CVD,
+request/proof/guard SHA를 검사한다. 이후30초마다 외부 CUDA PID를 검사하고,
+충돌 또는 수명 종료 전에는 예외로 다음 연산을 중단한다. 신호를 보내지 않는다.
+
+17:17:10 KST의 실제 cgroup 조회에서 할당 bash는 PBS129528의128GiB memory
+cgroup에 있었지만 세 background worker는 /system.slice/ssh.service에 있었다.
+따라서 background worker가 PBS128GiB memory 제한 안에 있다고 주장하지 않는다.
+직접 실행 guard의 할당 셸 수명 검사와 실제 cgroup 소속은 구분한다.
+host available RAM902,456,406,016B, worker RSS는 GPU4=48,698,286,080B,
+GPU5=48,537,477,120B, GPU6 약35.98GB였다. cgroup이나 서비스 설정은 바꾸지 않았다.
+
+첫 직접 재개 시도(이전 그룹1791704709850730400)는 CUDA gate 이전에 실패했다.
+entry가 CPU 준비용 CUDA_VISIBLE_DEVICES=''를 학습에서도 유지한 채 dependency를
+먼저 읽었다. bda74f1은 train의 GPU 지정을 모든 과학 코드 import 전에 수행하고,
+실제 guard를 먼저 확인한다. prepare는 계속 CVDempty/noCUDA로 분리했다.
+CPU 준비/학습 import 순서 및 parser 일치 검증3개가 통과했다.
+전체 interrupted continuation CPU 검사18개도23.441초에 통과했다.
+기존 실패 로그와 결과 경로는 보존했다. 원본 CLI의 CUDA gate를 약화하지 않았다.
+이전의 정확한 CUDA availability query 호출 함수는 추적하지 않았으므로 단정하지 않는다.
+
+GPU6: PID1810829 / birth1791704184.96, 16:36:25 KST 시작.
+code_56c4542f4eb9의 전체642 own-source/82176 CP 후보 위치 CUDA 채점이다.
+GNN은 기존 전체40epoch/680updates 완료 모델의 자신의 BEST를 사용한다.
+17:13:57 KST의 실제 로그에서는36/642 source와4608/82176 CP
+점수가 저장됐다. GPU6 UUID GPU-e2ad7465-3573-504b-3913-4277bd99b2ed,
+CPU32..35, physical patient batch4/candidate chunk64, inference optimizer update0.
+90분 또는900초 DEBUG 제한을 전체 채점에 적용하지 않았다.
+
+별도 실제 CUDA DEBUG는 first batch4/512 CP를400.9523초에 통과했다.
+peak allocated6,035,616,768B, reserved8,965,324,800B이며 full642 완료 증거가 아니다.
+context의 간 깊이 조건만 >4mm에서 >1mm로 바꾸고 종양거리2..10mm,
+ROI10mm, 간 표면 깊이<=3mm, typed role overlap과 실제 context 필수를 유지했다.
+원래 BEST는 깊이>4mm로 학습됐으므로 이 채점 입력 분포의 변경을 명시한다.
+empty-source token 또는 임의값 fallback은 사용하지 않는다.
+
+nnU-Net 본학습/전체 평가는 아직 시작하지 않았다. GPU6 채점도 전체 완료 전이다.
+자동 연결에 사용할 CP 계약은 Basic과 같은 본인81명/총642병변/병변당128CP,
+매 방문 자신의 병변 uniform 선택, CP probability0.5, 전처리 공간 patch paste이다.
+GNN argmax 위치 선택만 비교 요인으로 둔다. native full105 train/26 validation,
+250epochs/B2/128^3를 유지하고 평가 checkpoint_best.pth를 사용한다.
+checkpoint_final.pth는 전체 학습 완료 증거로만 사용한다.
+
+실제 저장소 제한: /home의 NFS df 여유는 많지만 UID41833의16MiB DEBUG 쓰기는
+Errno122 Disk quota exceeded로 실패했다. /var/tmp와/tmp는 같은 ext4이다.
+새 GPU4/5 복사 후 여유15,179,063,296B. 기존 전체3native global7 checkpoint
+피크6,126,028,659B와10GiB+512MiB 여유를 합한17,400,317,811B 계약은 충족되지
+않는다. /dev/shm은 RAM이므로 최종 checkpoint의 durable 경로로 제시하지 않는다.
+이미 승인된 /data/aicompetition06_v24_20261011 생성은 sudo-n이 password required로
+실패했으며 폴더 생성이나 관리자 변경을 완료하지 않았다. 비밀번호를 요청하지 않았다.
+storage admission이나 GNN 이후 nnU-Net 자동 실행을 완료됐다고 보고하지 않는다.
+추가 CPU DEBUG에서 기존 실제 native checkpoint819,243,768B 전체 ZIP 멤버530개를
+읽어 무손실 ZIP level1 크기만 계산했다:763,046,271B(원본의93.14%),23.388초.
+CPU37 한 개, RSS25.4MB, 원본 SHA/stat 유지, checkpoint/weight 쓰기0, CUDA0이다.
+이 절약량만으로 현재 전체3native 여유 부족이 해결되지 않는다. 압축 checkpoint
+loader 및 미래 checkpoint 최대 크기는 검증하지 않았고 저장 형식을 적용하지 않았다.
+
+후속 연결 구현은 원래 중단된 GNN 상태와 새 실행을 별도로 증명하고, 전체40epoch/
+680update 완료 및 해당 실행의 BEST를 확인한 뒤 native 단계로 넘기도록 준비했다.
+새 native direct guard와 기존 GPU6 경로의 CPU 검사59개, 중단된 GNN 연결 및
+CP 관련 CPU 검사106개가 통과했다. 실제 후속 CUDA 또는 전체 nnU-Net 검사와는
+구분한다. 현재 저장공간 계약이 부족하여 새 자동 연결 등록은 완료하지 않았다.
+
+증거는 로컬 outputs/v24_gpu6_recovery_20261011 아래에 보존한다:
+GPU45_exact_CPU_preparation_1791705559311834000.json
+GPU45_direct_launch_1791705666101545200.json
+GPU45_direct_resume_readonly_1791705728221678300.json
+GPU45_direct_resume_readonly_1791705791160471900.json
+GPU45_direct_resume_readonly_1791706069265769900.json
+inspect_full642_live_1791705550694845700.log
+inspect_full642_live_1791706435989073500.log
+storage_exact_failed_duplicates_READONLY_1791705279095520800.json
+check_owned_storage_quota_DEBUG_1791703634557744600.log
+prepare_previously_approved_data_directory_1791703793859442500.log
+measure_native_lossless_zip_CPU_DEBUG_1791706188057740200.log
+inspect_active_cgroup_limits_READONLY_1791706629101516800.log
+GPU456_final_environment_readonly_1791706896106812100.json
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

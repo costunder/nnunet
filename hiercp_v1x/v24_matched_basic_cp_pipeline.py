@@ -28,7 +28,7 @@ PLANS = 'nnUNetResEncUNetMPlans'
 HISTORICAL_TRAINER_SHA = 'a3df56435fedff46fbc42a502596fdade2632d0211ea412630dba1555f32567d'
 FILES = ('tools/run_v24_matched_basic_cp.py', 'hiercp_v1x/v24_matched_basic_cp_pipeline.py',
          'hiercp_v1x/v24_matched_basic_cp_scoring.py', 'hiercp_v1x/v24_matched_basic_cp_runtime.py',
-         'hiercp_v1x/v24_context_depth1.py',
+         'hiercp_v1x/v24_context_depth1.py', 'hiercp_v1x/v24_direct_gpu_access.py',
          'hiercp_v1x/v24_matched_native_gradient.py', 'hiercp_v1x/v24_native_gradient_runtime.py',
          'hiercp_v1x/v24_native_calibration_runtime.py',
          'hiercp_v1x/v24_native_best_eval_runtime.py', 'hiercp_v1x/v24_readonly_native_storage.py',
@@ -200,6 +200,60 @@ def validate_native_scoring_profile(native, overlay):
         raise ValueError('Native CP must retain its exact depth1 scoring input and original GNN training identity')
 
 
+_DIRECT_STAGE_GUARDS = {}
+
+
+def _context_controller(*, gpu, chain_root):
+    from .v24_readonly_native_storage import regular
+    path = regular(os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST'])
+    checksum = os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST_SHA256']
+    request = read(path)
+    if (not _checksum(checksum) or sha(path) != checksum
+            or request.get('context_depth1') is not True
+            or request.get('GPU_arm') != gpu or request.get('chain_root') != str(Path(chain_root).absolute())
+            or path.parent != Path(chain_root).absolute()):
+        raise ValueError('Production depth1 requires this exact sealed own-arm controller request')
+    return path, checksum, request
+
+
+def early_stage_guard(*, stage_action, gpu=None, chain_root=None):
+    """Pin honest direct access and choose exact CVD before scientific imports.
+
+    Only the new explicit GPU4/5 profile takes this branch. An existing owned
+    PBS GPU6 controller retains its original scheduler admission.
+    """
+    if 'V24_CONTEXT_DEPTH1_CHAIN_REQUEST' not in os.environ:
+        return None
+    declared = read(os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST'])
+    gpu = declared.get('GPU_arm') if gpu is None else gpu
+    chain_root = declared.get('chain_root') if chain_root is None else chain_root
+    path, checksum, request = _context_controller(gpu=gpu, chain_root=chain_root)
+    if request.get('scheduler') is not None:
+        if request.get('direct_GPU_access') is not None:
+            raise ValueError('Owned PBS and honest existing direct access cannot be mixed')
+        return None
+    if request.get('direct_GPU_access') is None:
+        return None
+    from . import v24_direct_gpu_access as direct
+    validated = direct.validate_controller_request(request)
+    key = (str(path), checksum, stage_action)
+    existing = _DIRECT_STAGE_GUARDS.get(key)
+    if existing is not None:
+        existing()
+        return existing
+    check = direct.make_guard(validated['proof_path'], gpu, request['CPU_affinity'], stage_action=stage_action)
+    # UUID visibility is independent of CUDA enumeration order and already
+    # proven to identify the original physical index before any torch import.
+    os.environ['CUDA_VISIBLE_DEVICES'] = request['GPU_UUID']
+    check()
+    def guard():
+        if sha(path) != checksum:
+            raise ValueError('Sealed direct downstream controller request changed')
+        return check()
+    _DIRECT_STAGE_GUARDS[key] = guard
+    return guard
+
+
 def scoring_deadline_guard(*, gpu, chain_root):
     """Bind depth1 production CUDA chunks to this sealed controller allocation.
 
@@ -209,17 +263,12 @@ def scoring_deadline_guard(*, gpu, chain_root):
     from .v24_readonly_native_storage import regular
     import psutil
     from tools.watch_v24_gnn_to_nnunet import scheduler_proof
-    path = regular(os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST'])
-    checksum = os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST_SHA256']
-    request = read(path)
-    if (not _checksum(checksum) or sha(path) != checksum
-            or request.get('context_depth1') is not True
-            or request.get('GPU_arm') != gpu or request.get('chain_root') != str(Path(chain_root).absolute())
-            or path.parent != Path(chain_root).absolute()):
-        raise ValueError('Production depth1 requires this exact sealed own-arm controller request')
+    path, checksum, request = _context_controller(gpu=gpu, chain_root=chain_root)
     scheduler = request.get('scheduler')
     direct = request.get('context_depth1_direct_allocation_proof')
     if scheduler is None:
+        if request.get('direct_GPU_access') is not None:
+            return early_stage_guard(stage_action='prepare-current-bank', gpu=gpu, chain_root=chain_root)
         if (not isinstance(direct, dict) or direct.get('format') != 'v24_context_depth1_direct_allocation_v1'
                 or direct.get('GPU_arm') != gpu or direct.get('GPU_UUID') != request.get('GPU_UUID')
                 or direct.get('CPU_affinity') != request.get('CPU_affinity')
@@ -386,6 +435,7 @@ def environment(native, native_path):
 
 def calibration_worker(native_path, physical_batch, output):
     """DEBUG: four actual complete clone updates, with the unchanged full CP loader."""
+    access = early_stage_guard(stage_action='calibrate-native')
     from tools.local_cnn_device import select
     from . import v24_nnunet_cp as original
     native, overlay, admission = _guard_native(native_path)
@@ -407,6 +457,8 @@ def calibration_worker(native_path, physical_batch, output):
     plans_sha = sha(plans_path)
     plans['continue_training'] = False
     trainer = cls(plans, '3d_fullres', 0, read(pre/'dataset.json'), torch.device('cuda'))
+    if access is not None:
+        access()
     trainer.initialize()
     if trainer.num_epochs != 250 or trainer.batch_size != 2 or trainer.configuration_manager.patch_size != [128]*3:
         raise ValueError('Original complete historical native model/plans changed')
@@ -423,6 +475,8 @@ def calibration_worker(native_path, physical_batch, output):
     cp_events = 0
     try:
         for iteration in range(4):
+            if access is not None:
+                access()
             started = time.perf_counter()
             batch = next(loaders[0])
             loading = time.perf_counter() - started
@@ -435,6 +489,8 @@ def calibration_worker(native_path, physical_batch, output):
             torch.cuda.synchronize()
             torch.cuda.reset_peak_memory_stats()
             started = time.perf_counter()
+            if access is not None:
+                access()
             result, gradient = step(trainer, batch, parameters, before)
             torch.cuda.synchronize()
             elapsed = time.perf_counter()-started
@@ -518,6 +574,7 @@ def validate_calibration(native_path):
 
 
 def calibrate_native(native_path, *, gpu):
+    early_stage_guard(stage_action='calibrate-native', gpu=gpu)
     native, overlay, admission = _guard_native(native_path)
     if native['physical_GPU'] != gpu:
         raise ValueError('Calibration belongs to another arm')
@@ -547,6 +604,7 @@ def calibrate_native(native_path, *, gpu):
 
 
 def train(native_path, *, gpu):
+    early_stage_guard(stage_action='train', gpu=gpu)
     from . import v24_native_best_eval_runtime as best
     native, overlay, admission = _guard_native(native_path)
     if native['physical_GPU'] != gpu:

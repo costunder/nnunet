@@ -151,6 +151,182 @@ class CompletedArmFixture(unittest.TestCase):
             source_output=request['source_output'], GPU_arm=request['GPU_arm'], chain_root=request['chain_root'],
             request_sha256=chain.sha(request_path)))
 
+    def make_interrupted_direct(self, gpu=5):
+        """Closed CPU DEBUG direct registration; no GPU/model execution."""
+        from tests.test_v24_current_gnn_nnunet_cp import interrupted_metadata_fixture
+        self.source = self.root / ('DEBUG_direct_gpu' + str(gpu)) / 'gnn'
+        (self.source / 'training').mkdir(parents=True)
+        self.request = self.make_request(gpu); self.write_completion(gpu)
+        scientific = chain.read(self.source / 'request.json')
+        config_path = self.source_code / ('config/DEBUG_direct_gpu' + str(gpu) + '.json')
+        config_path.parent.mkdir(exist_ok=True); self.write_json(config_path, scientific['config'])
+        scientific.update(source=self.request['source_files'], native_experiment=str(self.preprocessed),
+            config_file_sha256=chain.sha(config_path))
+        scientific.pop('request_sha256')
+        scientific['request_sha256'] = chain.hashlib.sha256(json.dumps(scientific, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        calibration = chain.read(self.source / 'calibration.json'); calibration['request_sha256'] = scientific['request_sha256']
+        owner = chain.read(self.source / 'training/training_identity.json'); owner['binding']['identity'] = scientific
+        owner['binding']['config'] = copy.deepcopy(scientific['config'])
+        owner['binding']['config']['v24_runtime']['batch_calibration'] = calibration
+        for relative, value in (('request.json', scientific), ('calibration.json', calibration), ('training/training_identity.json', owner)):
+            self.write_json(self.source / relative, value)
+        document, proof = interrupted_metadata_fixture(self.root, self.source, self.source_code, scientific, owner, gpu)
+        self.direct_document = document; self.direct_proof = proof
+        execution = document['execution_code']; arm = self.source.parent
+        original = ['--mode', 'train', '--inventory', str(self.inventory), '--input-cache', str(self.cache),
+            '--gpu', str(gpu), '--cpu-affinity', ','.join(map(str, self.request['CPU_affinity'])),
+            '--native-experiment', scientific['native_experiment'], '--config', str(config_path)]
+        if gpu == 4:
+            original += ['--stunet-checkpoint', str(self.stunet)]
+        latest = document['source']['latest']
+        direct = dict(format='v24_existing_direct_GPU_exact_continuation_request_v1', GPU_arm=gpu,
+            code=execution, commit='f' * 40, source_output=document['source']['source_output'], source_code=str(self.source_code),
+            output=str(self.source), CPU_affinity=self.request['CPU_affinity'], GPU_UUID=self.request['GPU_UUID'],
+            original_args=original, original_epochs=40, physical_patient_batch=4,
+            physical_candidate_batch=64 if gpu == 4 else 32, full_original_population=True, debug=False,
+            six_saved_states_unchanged=True, BEST_unchanged=True, saved_checkpoint=latest['raw_sha256'],
+            checkpoint_epoch=latest['epoch'], checkpoint_phase=latest['phase'], checkpoint_updates=latest['updates'],
+            PBS_owned_reservation=False, other_PBS_reservations_known_not_owned=True,
+            execution_mode='previous_explicit_direct_physical_GPU_number', nnunet_evaluation_checkpoint='checkpoint_best.pth')
+        request_path = arm / 'direct_training_request.json'; self.write_json(request_path, direct)
+        guard = arm.parent / 'direct_GPU45_access_guard.py'; guard.write_bytes(b'# CPU DEBUG honest direct guard witness, never executed\n')
+        access_path = arm / 'direct_GPU_access_proof.json'
+        access = dict(format='v24_existing_direct_GPU_availability_guard_v1', GPU_arm=gpu,
+            CPU_affinity=self.request['CPU_affinity'], GPU_UUID=self.request['GPU_UUID'], UID=41833,
+            PBS_owned_reservation=False, other_PBS_reservations_known_not_owned=True,
+            explicit_existing_direct_execution_requested=True, guard_sha256=chain.sha(guard),
+            request=dict(path=str(request_path), sha256=chain.sha(request_path)),
+            host_container_lifetime={'role': 'host_container_lifetime_only_not_GPU45_PBS_allocation'})
+        self.write_json(access_path, access)
+        command = [str(self.python), '-B', '-u', str(Path(execution) / 'tools/run_v24_interrupted_gnn_continuation.py'),
+            '--action', 'train', '--source-output', document['source']['source_output'], '--source-code', str(self.source_code),
+            '--interruption-proof', document['source']['interruption']['attachment']['path'],
+            '--allocation-guard-module', str(guard), '--allocation-guard-sha256', chain.sha(guard),
+            '--allocation-proof', str(access_path), '--allocation-proof-sha256', chain.sha(access_path), *original, '--output', str(self.source)]
+        registered = dict(format='v24_existing_direct_GPU_exact_continuation_registration_v1', GPU_arm=gpu,
+            root=str(arm), output=str(self.source), CPU_affinity=self.request['CPU_affinity'], pid=123, create_time=10.,
+            command=command, python=str(self.python), conda_environment='nnunet', signals_sent=False, old_results_written=False,
+            six_saved_states_unchanged=True, request_sha256=chain.sha(request_path), PBS_owned_reservation=False,
+            source_checkpoint_sha256=latest['raw_sha256'], resumed_epoch=latest['epoch'], resumed_phase=latest['phase'],
+            resumed_updates=latest['updates'], guard_sha256=chain.sha(guard), proof_sha256=chain.sha(access_path))
+        registration_path = arm / 'direct_training_registration.json'; self.write_json(registration_path, registered)
+        lease_path = arm / 'direct_training_launch.lease.json'
+        self.write_json(lease_path, dict(GPU_arm=gpu, request_sha256=chain.sha(request_path), command=command, source_checkpoint=latest['raw_sha256']))
+        self.request.update(storage_profile=chain.MATCHED_BASIC_PROFILE, context_depth1=True,
+            source_execution_code=execution, source_execution_commit='f' * 40,
+            source_execution_files={name: row['sha256'] for name, row in document['execution_files'].items()},
+            source_job=dict(format=chain.INTERRUPTED_JOB, registration=proof(registration_path), request=proof(request_path),
+                receipt=proof(self.source / 'interrupted_gnn_continuation.json'), launch_lease=proof(lease_path),
+                worker_pid=123, worker_create_time=10., worker_command=command, training_stage='train',
+                pipeline_request_sha256=chain.sha(request_path)))
+        return self.request
+
+    def test_direct_interrupted_gpu5_binds_old_science_and_separate_execution(self):
+        request = self.make_interrupted_direct()
+        registered, document = chain._validate_interrupted_direct(request)
+        self.assertEqual(registered['pid'], 123)
+        self.assertEqual(document['source']['latest']['updates'], 408)
+        self.assertNotEqual(request['source_code'], request['source_execution_code'])
+        self.assertFalse(registered['PBS_owned_reservation'])
+
+    def test_direct_interrupted_gpu4_accepts_actual_epoch31_partial_full128(self):
+        request = self.make_interrupted_direct(4)
+        _, document = chain._validate_interrupted_direct(request)
+        self.assertEqual(document['source']['latest']['epoch'], 31)
+        self.assertEqual(document['source']['latest']['optimizer_parameter_tensors'], 537)
+
+    def test_direct_live_gnn_waits_without_checkpoint_load_or_gpu_probe(self):
+        request = self.make_interrupted_direct()
+        with patch.object(chain, '_readonly_storage'), patch.object(chain, 'process_witness', return_value={'pid':123, 'status':'running'}), \
+                patch('psutil.Process') as process:
+            process.return_value.cpu_affinity.return_value = request['CPU_affinity']
+            self.assertIsNone(chain.inspect_source(request))
+
+    def test_direct_full_training_completion_has_no_invented_cli_exit_receipt(self):
+        request = self.make_interrupted_direct()
+        with patch.object(chain, '_readonly_storage'), patch.object(chain, 'process_witness', return_value=None):
+            completion = chain.inspect_source(request)
+        self.assertEqual(completion['invocation']['optimizer_updates'], 680)
+        self.assertFalse(completion['CLI_exit_status_observed'])
+        self.assertEqual(completion['interrupted_provenance_sha256'], request['source_job']['receipt']['sha256'])
+        self.assertFalse((self.source / 'training_complete.json').exists())
+
+    def test_direct_gone_pid_without_real_complete_invocation_is_rejected(self):
+        request = self.make_interrupted_direct()
+        receipt = dict(self.receipt, status='RUNNING', full_training=False, completed_epochs=24, optimizer_updates=408)
+        self.write_json(self.source / 'training/invocations.jsonl', receipt)
+        with patch.object(chain, '_readonly_storage'), patch.object(chain, 'process_witness', return_value=None):
+            with self.assertRaises((ValueError, RuntimeError)):
+                chain.inspect_source(request)
+
+    def test_direct_source_and_execution_retargeting_and_pbs_claim_rejected(self):
+        request = self.make_interrupted_direct()
+        for change in (dict(source_execution_commit='e' * 40), dict(scheduler={'fake':'PBS'}),
+                dict(CPU_affinity=[4,5,6,7]), dict(source_files={}), dict(cp_parity_handoff={'old':'claim'})):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                chain._validate_interrupted_direct(dict(request, **change))
+
+    def test_direct_registration_full_argv_and_initial_log_prefix_are_sealed(self):
+        request = self.make_interrupted_direct()
+        with (self.source / 'training/update_timing.jsonl').open('ab') as stream:
+            stream.write(b'{"DEBUG":"legitimate later update"}\n')
+        chain._validate_interrupted_direct(request)
+        registration = Path(request['source_job']['registration']['path'])
+        value = chain.read(registration); value['command'].append('--changed'); self.write_json(registration, value)
+        request['source_job']['registration'] = self.direct_proof(registration)
+        with self.assertRaisesRegex(ValueError, 'binding differs'):
+            chain._validate_interrupted_direct(request)
+
+    def test_direct_downstream_guard_is_distinct_pinned_and_checked_before_child(self):
+        request = self.make_interrupted_direct()
+        with self.assertRaisesRegex(ValueError, 'guard must be SHA pinned'):
+            chain._validate_downstream_direct(request)
+        with patch.object(chain, '_validate_downstream_direct', side_effect=ValueError('DEBUG native proof refused')), \
+                patch.object(chain.subprocess, 'Popen') as launch:
+            with self.assertRaisesRegex(ValueError, 'native proof refused'):
+                chain.run_stage(request, request['stages'][0], {}, self.root / 'DEBUG_request.json', 'a' * 64)
+        launch.assert_not_called()
+
+    def test_direct_storage_capacity_wait_does_not_hide_overspending(self):
+        from hiercp_v1x import v24_matched_basic_cp_pipeline as pipeline
+        request = self.make_interrupted_direct()
+        self.target.mkdir()
+        def device(command):
+            return '5,GPU-5,49140,49100,Disabled' if '--id=5' in command else ''
+        with patch.object(chain, '_readonly_storage', return_value={}), patch.object(chain, '_run', side_effect=device), \
+                patch('psutil.Process') as process, patch.object(pipeline, 'check_aggregate_disk') as storage:
+            process.return_value.cpu_affinity.return_value = request['CPU_affinity']
+            storage.side_effect = OSError('Complete remaining three-arm writes plus10GiB/growth reserve do not fit')
+            with self.assertRaises(chain.NativeStorageUnavailable):
+                chain.resources(request, initial=True)
+            storage.side_effect = OSError('Actual own-arm writes exceed the measured full native provision: gpu5')
+            with self.assertRaises(OSError):
+                chain.resources(request, initial=True)
+
+    def test_storage_wait_status_has_no_child_and_retries_original_stage(self):
+        request_path = self.root / 'registered_request.json'; self.write_json(request_path, self.request)
+        self.write_claim(request_path)
+        events = []; notices = []
+        def check(*args, **kwargs):
+            if not events:
+                events.append('capacity_wait')
+                raise chain.NativeStorageUnavailable('DEBUG full storage does not fit')
+            return {}
+        def complete(request, stage, status, *args):
+            events.append(stage['action']); status['stages_completed'].append(stage['name'])
+        def record(root, status):
+            notices.append(copy.deepcopy(status))
+        with patch.object(chain, 'verify_code'), patch.object(chain, 'inspect_source', return_value={'full':True}), \
+                patch.object(chain, 'resources', side_effect=check), patch.object(chain, 'run_stage', side_effect=complete), \
+                patch.object(chain, 'publish', side_effect=record), patch.object(chain.time, 'sleep'), patch('psutil.Process') as process:
+            process.return_value.cpu_affinity.return_value = self.request['CPU_affinity']
+            process.return_value.create_time.return_value = 100.
+            chain.run(request_path)
+        waiting = [row for row in notices if row['status'] == 'WAITING_FOR_NATIVE_STORAGE']
+        self.assertEqual(len(waiting), 1); self.assertIsNone(waiting[0]['stage'])
+        self.assertFalse(waiting[0]['stages_completed']); self.assertNotIn('child_pid', waiting[0])
+        self.assertEqual(events, ['capacity_wait', *chain.ACTIONS])
+
     def write_native_best_completion(self, native):
         """DEBUG checksum/provenance fixture, never a model or real inference."""
         from hiercp_v1x import v24_nnunet_cp as pipeline

@@ -8,11 +8,13 @@ import contextlib
 import hashlib
 import io
 import json
+import pickle
 import shutil
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import torch
 
@@ -77,6 +79,86 @@ def save_checkpoint(path,value):
     value=copy.deepcopy(value)
     value['content_sha256']=digest({key:item for key,item in value.items() if key!='content_sha256'})
     torch.save(value,path)
+
+
+def interrupted_metadata_fixture(root, output, code, request, owner, gpu):
+    """CPU DEBUG sealed metadata, never a training/model completion claim.
+
+    Opaque checkpoint bytes exercise only the metadata verifier's immutable
+    witnesses. The actual pin tests separately load their real tiny tensors.
+    """
+    original = root / 'DEBUG_interrupted_original'; (original / 'training').mkdir(parents=True)
+    execution = root / 'DEBUG_execution_overlay'
+    for name in cp.INTERRUPTED_EXECUTION_FILES:
+        target = execution / name; target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b'# CPU DEBUG execution identity; never executed\n')
+    def proof(path):
+        value = path.stat()
+        return dict(path=str(path), stat=[value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns], sha256=cp.sha(path))
+    for relative in ('request.json', 'calibration.json', 'training/training_identity.json'):
+        target = original / relative; target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((output / relative).read_bytes())
+    checkpoint = original / 'training/checkpoint_latest.pt'; checkpoint.write_bytes(b'DEBUG opaque initial checkpoint; metadata-only verifier')
+    best = original / 'training/checkpoint_best.pt'; best.write_bytes(b'DEBUG opaque own BEST; metadata-only verifier')
+    stop = original / 'training/STOP_AFTER_BATCH'; stop.write_bytes(b'DEBUG historical stop preserved')
+    partial = original / 'training/checkpoint_latest.pt.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tmp'; partial.write_bytes(b'DEBUG uncommitted old checkpoint')
+    old_log = original / 'training/update_timing.jsonl'; old_log.write_bytes(b'{"update":408,"DEBUG":true}\n{"update":409,"DEBUG":true}\n')
+    prefix = old_log.read_bytes().splitlines(keepends=True)[0]
+    lineage = output / 'source_lineage/training/update_timing.jsonl'; lineage.parent.mkdir(parents=True, exist_ok=True)
+    lineage.write_bytes(old_log.read_bytes())
+    active = output / 'training/update_timing.jsonl'; active.write_bytes(prefix)
+    cursor = output / 'training_continuation.json'; write_json(cursor, {'DEBUG': 'immutable viewer boundary'})
+    job = root / 'DEBUG_old_source_job'; job.mkdir()
+    write_json(job / 'status.json', {'DEBUG': 'unchanged interrupted status'})
+    write_json(job / 'request.json', {'DEBUG': 'unchanged original worker request'})
+    epoch, updates, position = (31, 527, 4) if gpu == 4 else (24, 408, 8)
+    latest = dict(path=str(checkpoint), source_stat=proof(checkpoint)['stat'], raw_sha256=cp.sha(checkpoint),
+        epoch=epoch, updates=updates, phase='full_validation', status='RUNNING', history_epochs=list(range(1, epoch)),
+        identity_sha256=owner['identity_sha256'], optimizer_parameter_tensors=537 if gpu == 4 else 981,
+        train_position=65, evaluation_position=position, active_u=128,
+        numerical_state_sha256={name: hashlib.sha256(('DEBUG ' + name).encode()).hexdigest()
+            for name in ('model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'shuffle_generator')},
+        best={'DEBUG': 'original own selection'})
+    best_proof = dict(path=str(best), source_stat=proof(best)['stat'], raw_sha256=cp.sha(best), best=latest['best'])
+    inventory = {path.name: proof(path) for path in (original / 'training').iterdir()}
+    checkpoint_proof = proof(checkpoint)
+    witness = dict(format='v24_interrupted_owned_GNN_source_witness_v1', GPU_arm=gpu, source_output=str(original),
+        source_code=str(code), source_job=str(job), status_file=proof(job / 'status.json'), pipeline_request_file=proof(job / 'request.json'),
+        checkpoint=checkpoint_proof, training_inventory=inventory, worker={'absent': True}, child={'absent': True},
+        observations=[dict(time_ns=1_000_000_000, worker_absent=True, child_absent=True, checkpoint=checkpoint_proof),
+            dict(time_ns=2_000_000_000, worker_absent=True, child_absent=True, checkpoint=checkpoint_proof)], detected_ns=3_000_000_000)
+    witness_path = root / 'DEBUG_original_interruption.json'; write_json(witness_path, witness)
+    reader = code / 'hiercp_v1x/v24_training_continuation.py'
+    if not reader.exists():
+        reader.parent.mkdir(parents=True, exist_ok=True); reader.write_bytes(b'# DEBUG strict reader witness, never executed\n')
+    memory = None
+    if gpu == 5:
+        path = root / 'DEBUG_preserved_memory.py'; path.write_bytes(b'# DEBUG admitted memory route\n')
+        receipt = root / 'DEBUG_memory_receipt.json'; write_json(receipt, {'DEBUG': True})
+        item = proof(path)
+        memory = dict(receipt=proof(receipt), selection=dict(variant='current-control', actual_module_path=str(path),
+            actual_module_sha256=cp.sha(path), source_provenance={'source_file_proofs':[
+                dict(path=item['path'], stat=item['stat'], raw_sha256=item['sha256'])]}))
+    document = dict(format=cp.INTERRUPTED_FORMAT, status='PREPARED_EXACT_SAVED_STATE', destination=str(output),
+        source=dict(source_output=str(original), source_code=str(code), GPU_arm=gpu,
+            source_files={name: proof(code / name) for name in request['source']}, checkpoint_reader=proof(reader),
+            request=proof(original / 'request.json'), calibration=proof(original / 'calibration.json'),
+            training_identity=proof(original / 'training/training_identity.json'), training_identity_sha256=owner['identity_sha256'],
+            latest=latest, BEST=best_proof, interruption=dict(attachment=proof(witness_path), witness=witness,
+                original_workers_absent=True, original_job_status_preserved=True, no_process_signals=True), preserved_memory=memory),
+        execution_code=str(execution), execution_files={name: proof(execution / name) for name in cp.INTERRUPTED_EXECUTION_FILES},
+        copied_files={relative: proof(original / relative) for relative in ('request.json', 'calibration.json', 'training/training_identity.json',
+            'training/checkpoint_latest.pt', 'training/checkpoint_best.pt')},
+        original_root_inventory={name: proof(original / name) for name in ('request.json', 'calibration.json')},
+        original_full_logs_and_reports={'update_timing.jsonl': proof(old_log)},
+        derived_logs={'update_timing.jsonl': dict(path='training/update_timing.jsonl', lineage_path='source_lineage/training/update_timing.jsonl',
+            boundary_epoch=epoch, boundary_updates=updates, boundary_train_position=65, boundary_evaluation_position=position,
+            bytes=len(prefix), sha256=hashlib.sha256(prefix).hexdigest(), source_sha256=cp.sha(old_log))},
+        archived_only=[dict(source=proof(path), reason='DEBUG preserved excluded artifact') for path in (stop, partial)],
+        viewer_cursor=proof(cursor), original_files_modified=False, production_optimizer_updates_performed=0,
+        scientific_request_unchanged=True, six_numerical_states_unchanged=True, curriculum_history_and_partial_cursors_unchanged=True)
+    write_json(output / cp.INTERRUPTED_RECEIPT, document)
+    return document, proof
 
 
 class CurrentOwnArmAdmission(unittest.TestCase):
@@ -166,6 +248,111 @@ class CurrentOwnArmAdmission(unittest.TestCase):
     def inspect(self):
         return cp._inspect_completed_current(self.output,self.code,self.inventory,gpu=self.gpu,
             input_cache=self.cache,stunet_checkpoint=self.stu)
+
+    def interrupted(self):
+        return interrupted_metadata_fixture(self.root, self.output, self.code, self.request, self.owner, self.gpu)
+
+    def test_interrupted_pin_keeps_original_science_new_execution_and_actual_best(self):
+        document, _ = self.interrupted()
+        pin = self.inspect()
+        self.assertEqual(pin['selected']['best_model_sha256'], digest(self.best['model']))
+        provenance = pin['interrupted_saved_state_provenance']
+        self.assertEqual(provenance['execution_code'], document['execution_code'])
+        self.assertEqual(provenance['original_source']['latest']['updates'], 408)
+        self.assertEqual(provenance['receipt_sha256'], cp.sha(self.output / cp.INTERRUPTED_RECEIPT))
+        self.assertNotEqual(provenance['execution_code'], str(self.code))
+
+    def test_metadata_lineage_allows_appended_active_log_and_new_checkpoint_bytes(self):
+        document, _ = self.interrupted()
+        with (self.output / 'training/update_timing.jsonl').open('ab') as stream:
+            stream.write(b'{"DEBUG":"new actual update append"}\n')
+        (self.output / 'training/checkpoint_latest.pt').write_bytes(b'DEBUG evolving new checkpoint bytes')
+        (self.output / 'training/checkpoint_best.pt').write_bytes(b'DEBUG evolving own winner bytes')
+        self.assertEqual(cp.inspect_interrupted_provenance(self.output, self.code, gpu=5), document)
+        # Metadata admission never substitutes for the real CPU six-state pin.
+        with self.assertRaises((RuntimeError, pickle.UnpicklingError)):
+            self.inspect()
+
+    def test_interrupted_original_checkpoint_and_excluded_tmp_are_immutable(self):
+        document, _ = self.interrupted()
+        path = Path(document['archived_only'][1]['source']['path'])
+        path.write_bytes(path.read_bytes() + b'changed')
+        with self.assertRaisesRegex(ValueError, 'SHA/stat changed'):
+            cp.inspect_interrupted_provenance(self.output, self.code, gpu=5)
+
+    def test_interrupted_active_prefix_lineage_and_execution_tampering_rejected(self):
+        document, _ = self.interrupted()
+        active = self.output / 'training/update_timing.jsonl'
+        old = active.read_bytes(); active.write_bytes(b'x' + old[1:])
+        with self.assertRaisesRegex(ValueError, 'active log prefix'):
+            cp.inspect_interrupted_provenance(self.output, self.code, gpu=5)
+        active.write_bytes(old)
+        execution = Path(document['execution_files'][cp.INTERRUPTED_EXECUTION_FILES[0]]['path'])
+        execution.write_bytes(execution.read_bytes() + b'changed')
+        with self.assertRaisesRegex(ValueError, 'SHA/stat changed'):
+            cp.inspect_interrupted_provenance(self.output, self.code, gpu=5)
+
+    def test_interrupted_gpu4_arbitrary_epoch31_requires_all128_full537(self):
+        self.gpu = 4; self.stu = self.root / 'UNIT_official_asset.model'; self.stu.write_bytes(b'CPU UNIT asset only')
+        self.make_fixture(); document, _ = self.interrupted()
+        proof = cp.inspect_interrupted_provenance(self.output, self.code, gpu=4)
+        self.assertEqual((proof['source']['latest']['epoch'], proof['source']['latest']['updates']), (31, 527))
+        document['source']['latest']['active_u'] = 7
+        write_json(self.output / cp.INTERRUPTED_RECEIPT, document)
+        with self.assertRaisesRegex(ValueError, 'full-model six-state'):
+            cp.inspect_interrupted_provenance(self.output, self.code, gpu=4)
+
+    def test_interrupted_inventory_and_two_observations_must_remain_complete(self):
+        document, proof = self.interrupted()
+        witness = document['source']['interruption']['witness']
+        witness['observations'][1]['time_ns'] = witness['observations'][0]['time_ns'] + 10
+        path = Path(document['source']['interruption']['attachment']['path']); write_json(path, witness)
+        document['source']['interruption']['attachment'] = proof(path)
+        write_json(self.output / cp.INTERRUPTED_RECEIPT, document)
+        with self.assertRaisesRegex(ValueError, 'two stable'):
+            cp.inspect_interrupted_provenance(self.output, self.code, gpu=5)
+
+    def test_interrupted_file_cache_hashes_full_bytes_once_and_rechecks_each_stat(self):
+        document, proof = self.interrupted()
+        path = Path(document['source']['latest']['path']); witness = proof(path)
+        cp._INTERRUPTED_FILE_VERIFIED.pop(str(path), None)
+        with patch.object(cp, 'sha', wraps=cp.sha) as checksum:
+            for _ in range(3):
+                self.assertEqual(cp._interrupted_file(witness), path)
+        self.assertEqual(checksum.call_count, 1)
+        path.write_bytes(path.read_bytes() + b'DEBUG mutation')
+        with self.assertRaisesRegex(ValueError, 'SHA/stat changed'):
+            cp._interrupted_file(witness)
+        self.assertNotIn(str(path), cp._INTERRUPTED_FILE_VERIFIED)
+        renewed = proof(path)
+        with patch.object(cp, 'sha', wraps=cp.sha) as checksum:
+            cp._interrupted_file(renewed); cp._interrupted_file(renewed)
+        self.assertEqual(checksum.call_count, 1)
+
+    def test_interrupted_file_cache_new_sha_or_missing_source_cannot_reuse_old_digest(self):
+        document, proof = self.interrupted()
+        path = Path(document['source']['latest']['path']); witness = proof(path)
+        cp._interrupted_file(witness)
+        altered = dict(witness, sha256='0' * 64)
+        with patch.object(cp, 'sha', wraps=cp.sha) as checksum:
+            with self.assertRaisesRegex(ValueError, 'SHA/stat changed'):
+                cp._interrupted_file(altered)
+        self.assertEqual(checksum.call_count, 1)
+        self.assertNotIn(str(path), cp._INTERRUPTED_FILE_VERIFIED)
+        real_checksum = cp.sha
+        def mutate_after_hash(target):
+            value = real_checksum(target)
+            Path(target).write_bytes(Path(target).read_bytes() + b'DEBUG changed during hash')
+            return value
+        with patch.object(cp, 'sha', side_effect=mutate_after_hash):
+            with self.assertRaisesRegex(ValueError, 'changed during admission'):
+                cp._interrupted_file(witness)
+        self.assertNotIn(str(path), cp._INTERRUPTED_FILE_VERIFIED)
+        cp._interrupted_file(proof(path))
+        path.unlink()  # This test-owned opaque DEBUG fixture only.
+        with self.assertRaisesRegex(ValueError, 'regular interrupted-source'):
+            cp._interrupted_file(witness)
+        self.assertNotIn(str(path), cp._INTERRUPTED_FILE_VERIFIED)
 
     def test_actual_own_best_not_last_and_all_six_numerical_states_bound(self):
         pin=self.inspect()

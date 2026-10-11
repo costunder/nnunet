@@ -220,6 +220,169 @@ def _finite_checkpoint(value):
         raise FloatingPointError('Nonfinite completed GNN checkpoint scalar')
 
 
+INTERRUPTED_FORMAT = 'v24_interrupted_exact_saved_GNN_continuation_v1'
+INTERRUPTED_RECEIPT = 'interrupted_gnn_continuation.json'
+INTERRUPTED_EXECUTION_FILES = ('hiercp_v1x/v24_interrupted_gnn_continuation.py', 'tools/run_v24_interrupted_gnn_continuation.py')
+_INTERRUPTED_FILE_VERIFIED = {}
+
+
+def _interrupted_file(proof):
+    """Read-only closed file witness; no checkpoint load, model or CUDA import."""
+    if not isinstance(proof, dict) or set(proof) != {'path', 'stat', 'sha256'}:
+        raise ValueError('Closed interrupted-source file witness required')
+    path = Path(proof['path'])
+    cache_path = str(path)
+    if (not path.is_absolute() or '..' in path.parts or not path.is_file()
+            or any(part.is_symlink() for part in (path, *path.parents))
+            or hasattr(os, 'getuid') and path.stat().st_uid != os.getuid()):
+        _INTERRUPTED_FILE_VERIFIED.pop(cache_path, None)
+        raise ValueError('Owned regular interrupted-source file required')
+    value = path.stat(); before = [value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns]
+    if (before != proof['stat'] or not isinstance(proof['sha256'], str) or len(proof['sha256']) != 64
+            or set(proof['sha256']) - set('0123456789abcdef')):
+        _INTERRUPTED_FILE_VERIFIED.pop(cache_path, None)
+        raise ValueError('Immutable interrupted-source SHA/stat changed: ' + str(path))
+    key = (tuple(before), proof['sha256'])
+    if _INTERRUPTED_FILE_VERIFIED.get(cache_path) != key:
+        # First admission reads every byte. Later CPU polls still check the
+        # complete inode/size/mtime/ctime tuple before and after admission.
+        # A different proof or source mutation invalidates this path's cache.
+        _INTERRUPTED_FILE_VERIFIED.pop(cache_path, None)
+        if sha(path) != proof['sha256']:
+            raise ValueError('Immutable interrupted-source SHA/stat changed: ' + str(path))
+    try:
+        value = path.stat()
+    except OSError:
+        _INTERRUPTED_FILE_VERIFIED.pop(cache_path, None)
+        raise
+    if before != [value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns]:
+        _INTERRUPTED_FILE_VERIFIED.pop(cache_path, None)
+        raise ValueError('Interrupted-source file changed during admission')
+    _INTERRUPTED_FILE_VERIFIED[cache_path] = key
+    return path
+
+
+def inspect_interrupted_provenance(output, code, *, gpu):
+    """Verify saved-boundary lineage while new checkpoints/logs legitimately grow."""
+    output, code = Path(output).absolute(), Path(code).absolute()
+    path = output / INTERRUPTED_RECEIPT
+    document = read(path); source = document.get('source', {})
+    if (gpu not in (4, 5) or document.get('format') != INTERRUPTED_FORMAT
+            or document.get('status') != 'PREPARED_EXACT_SAVED_STATE' or document.get('destination') != str(output)
+            or source.get('source_code') != str(code) or source.get('GPU_arm') != gpu
+            or source.get('source_output') == str(output) or document.get('original_files_modified') is not False
+            or document.get('production_optimizer_updates_performed') != 0
+            or any(document.get(key) is not True for key in ('scientific_request_unchanged', 'six_numerical_states_unchanged',
+                'curriculum_history_and_partial_cursors_unchanged'))
+            or set(document.get('execution_files', {})) != set(INTERRUPTED_EXECUTION_FILES)):
+        raise ValueError('Explicit exact interrupted GPU4/5 saved-state lineage required')
+    original = Path(source['source_output'])
+    if output.is_relative_to(original) or original.is_relative_to(output):
+        raise ValueError('Interrupted continuation must preserve a disjoint original result')
+    request = read(output / 'request.json'); owner = read(output / 'training/training_identity.json')
+    for key, relative in (('request', 'request.json'), ('calibration', 'calibration.json'), ('training_identity', 'training/training_identity.json')):
+        proof = source[key]
+        if (_interrupted_file(proof) != original / relative or sha(output / relative) != proof['sha256']):
+            raise ValueError('Exact original interrupted scientific metadata changed: ' + relative)
+    if (request.get('physical_GPU') != gpu or owner.get('identity_sha256') != source.get('training_identity_sha256')
+            or owner.get('binding', {}).get('identity') != request
+            or {name: row.get('sha256') for name, row in source.get('source_files', {}).items()} != request.get('source')):
+        raise ValueError('Interrupted original scientific identity/source manifest differs')
+    for name, proof in source['source_files'].items():
+        if Path(name).is_absolute() or '..' in Path(name).parts or _interrupted_file(proof) != code / name:
+            raise ValueError('Original interrupted scientific source path differs')
+    if _interrupted_file(source['checkpoint_reader']) != code / 'hiercp_v1x/v24_training_continuation.py':
+        raise ValueError('Original strict six-state checkpoint reader must remain pinned')
+    execution = Path(document['execution_code'])
+    for name, proof in document['execution_files'].items():
+        if _interrupted_file(proof) != execution / name:
+            raise ValueError('Interrupted continuation execution overlay changed')
+    latest = source['latest']; epoch, updates = latest.get('epoch'), latest.get('updates')
+    if (type(epoch) is not int or not 1 <= epoch <= 41 or type(updates) is not int
+            or not 17 * (epoch - 1) <= updates <= min(680, 17 * epoch)
+            or latest.get('history_epochs') != list(range(1, epoch))
+            or latest.get('phase') not in ('initial_full_validation', 'training', 'train_probe', 'stage_validation', 'full_validation', 'epoch_completion')
+            or latest.get('status') not in ('RUNNING', 'PAUSED') or latest.get('identity_sha256') != owner['identity_sha256']
+            or latest.get('optimizer_parameter_tensors') != (537 if gpu == 4 else 981)
+            or set(latest.get('numerical_state_sha256', {})) != {'model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'shuffle_generator'}
+            or any(not isinstance(value, str) or len(value) != 64 or set(value) - set('0123456789abcdef')
+                   for value in latest['numerical_state_sha256'].values())
+            or gpu == 4 and latest.get('active_u') != 128):
+        raise ValueError('Actual arbitrary-epoch full-model six-state saved boundary required')
+    if _interrupted_file(dict(path=latest['path'], stat=latest['source_stat'], sha256=latest['raw_sha256'])) != original / 'training/checkpoint_latest.pt':
+        raise ValueError('Original interrupted latest checkpoint path differs')
+    best = source.get('BEST')
+    if best is not None:
+        if _interrupted_file(dict(path=best['path'], stat=best['source_stat'], sha256=best['raw_sha256'])) != original / 'training/checkpoint_best.pt':
+            raise ValueError('Original interrupted own BEST checkpoint path differs')
+        if best.get('best') != latest.get('best'):
+            raise ValueError('Preserved interrupted own-arm BEST differs from the saved selection')
+    interruption = source['interruption']; witness = interruption['witness']
+    if (_interrupted_file(interruption['attachment']) != Path(interruption['attachment']['path'])
+            or read(interruption['attachment']['path']) != witness or interruption.get('original_workers_absent') is not True
+            or interruption.get('original_job_status_preserved') is not True or interruption.get('no_process_signals') is not True
+            or witness.get('format') != 'v24_interrupted_owned_GNN_source_witness_v1'
+            or witness.get('source_output') != str(original) or witness.get('source_code') != str(code) or witness.get('GPU_arm') != gpu):
+        raise ValueError('Actual immutable original interruption witness required')
+    observations = witness.get('observations')
+    if (not isinstance(observations, list) or len(observations) != 2
+            or any(row.get('worker_absent') is not True or row.get('child_absent') is not True
+                or row.get('checkpoint') != witness['checkpoint'] or type(row.get('time_ns')) is not int for row in observations)
+            or observations[1]['time_ns'] - observations[0]['time_ns'] < 1_000_000_000
+            or type(witness.get('detected_ns')) is not int or witness['detected_ns'] < observations[1]['time_ns']
+            or any(witness.get(key, {}).get('absent') is not True for key in ('worker', 'child'))
+            or witness.get('checkpoint') != {'path': latest['path'], 'stat': latest['source_stat'], 'sha256': latest['raw_sha256']}):
+        raise ValueError('Actual two stable absent-worker original checkpoint observations required')
+    for key in ('status_file', 'pipeline_request_file', 'checkpoint'):
+        _interrupted_file(witness[key])
+    inventory = witness['training_inventory']
+    if set(inventory) != {path.name for path in (original / 'training').iterdir() if path.is_file()}:
+        raise ValueError('Original interrupted full training inventory changed')
+    for name, proof in inventory.items():
+        if _interrupted_file(proof) != original / 'training' / name:
+            raise ValueError('Original interrupted training inventory path differs')
+    for relative, proof in document['copied_files'].items():
+        if Path(relative).is_absolute() or '..' in Path(relative).parts or _interrupted_file(proof) != original / relative:
+            raise ValueError('Exact original canonical interrupted copy path required')
+        if relative not in ('training/checkpoint_latest.pt', 'training/checkpoint_best.pt') and sha(output / relative) != proof['sha256']:
+            raise ValueError('Copied immutable interrupted metadata/report changed')
+    for name, proof in document['original_full_logs_and_reports'].items():
+        if _interrupted_file(proof) != original / 'training' / name:
+            raise ValueError('Original interrupted full log/report path differs')
+        if sha(output / 'source_lineage/training' / name) != proof['sha256']:
+            raise ValueError('Full unabridged interrupted log/report lineage changed')
+    for name, row in document['derived_logs'].items():
+        if (row.get('boundary_epoch') != epoch or row.get('boundary_updates') != updates
+                or row.get('boundary_train_position') != latest['train_position']
+                or row.get('boundary_evaluation_position') != latest['evaluation_position']
+                or row.get('path') != 'training/' + name or row.get('lineage_path') != 'source_lineage/training/' + name
+                or sha(output / row['lineage_path']) != row['source_sha256']):
+            raise ValueError('Exact saved-boundary active log lineage required')
+        with (output / row['path']).open('rb') as stream:
+            prefix = stream.read(row['bytes'])
+        if len(prefix) != row['bytes'] or hashlib.sha256(prefix).hexdigest() != row['sha256']:
+            raise ValueError('Original checkpoint-aligned active log prefix changed')
+    for name, proof in document['original_root_inventory'].items():
+        if _interrupted_file(proof) != original / name:
+            raise ValueError('Original interrupted root metadata path differs')
+    _interrupted_file(document['viewer_cursor'])
+    for row in document['archived_only']:
+        _interrupted_file(row['source'])
+    selected = source.get('preserved_memory')
+    if gpu == 5:
+        if not isinstance(selected, dict) or selected.get('selection', {}).get('variant') != 'current-control':
+            raise ValueError('Original admitted GPU5 memory route must remain exact')
+        _interrupted_file(selected['receipt'])
+        value = selected['selection']
+        if sha(value['actual_module_path']) != value['actual_module_sha256']:
+            raise ValueError('Original GPU5 preserved memory runtime changed')
+        for proof in value['source_provenance']['source_file_proofs']:
+            _interrupted_file(dict(path=proof['path'], stat=proof['stat'], sha256=proof['raw_sha256']))
+    elif selected is not None:
+        raise ValueError('GPU4 must retain its original optimized source runtime')
+    return document
+
+
 def _completed_source_cli(code, source, gpu):
     """Admit the recorded CLI while retaining every scientific source check.
 
@@ -267,6 +430,9 @@ def _inspect_completed_current(source_output, source_code, inventory, *, gpu, in
     from .contracts import canonical_hash
     output=Path(source_output).resolve(strict=True);code=Path(source_code).resolve(strict=True)
     request=read(output/'request.json');owner=read(output/'training/training_identity.json')
+    interrupted = None
+    if (output / INTERRUPTED_RECEIPT).exists():
+        interrupted = inspect_interrupted_provenance(output, code, gpu=gpu)
     cli = _completed_source_cli(code, request.get('source'), gpu)
     declared={key:value for key,value in request.items() if key!='request_sha256'}
     if (request.get('format')!='v24_full_native_GT_free_execution_request_v1'
@@ -349,6 +515,10 @@ def _inspect_completed_current(source_output, source_code, inventory, *, gpu, in
         admitted_source_experiment=str(output),admitted_source_request_sha256=request['request_sha256'])
     if gpu==4:
         value['training_U_policy']=dict(all_U_from_epoch_one=True,initial_u=128,total_u=128,total_epochs=40)
+    if interrupted is not None:
+        value['interrupted_saved_state_provenance'] = dict(receipt=str(output / INTERRUPTED_RECEIPT),
+            receipt_sha256=sha(output / INTERRUPTED_RECEIPT), original_source=interrupted['source'],
+            execution_code=interrupted['execution_code'], execution_files=interrupted['execution_files'])
     value['pin_sha256']=canonical_hash(value)
     del latest,best
     return validate_current_pin(value)

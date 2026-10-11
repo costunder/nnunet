@@ -45,6 +45,8 @@ def parse(argv=None):
 
 def main(args):
     from hiercp_v1x import v24_matched_basic_cp_pipeline as pipeline
+    action = {'clone-debug-worker': 'calibrate-native', 'train': 'train'}.get(args.action, args.action)
+    pipeline.early_stage_guard(stage_action=action, gpu=args.gpu)
     if args.action == 'clone-debug-worker':
         return pipeline.calibration_worker(args.native,args.physical_batch,args.output)
     from hiercp_v1x import v24_nnunet_cp as original

@@ -30,6 +30,7 @@ CONTINUATION_PIPELINE_FORMAT = 'v24_GPU4_exact_saved_state_continuation_pipeline
 CONTINUATION_FORMAT = 'v24_GPU4_exact_saved_state_continuation_v1'
 CONTINUATION_RECEIPT = 'GPU4_exact_continuation.json'
 CONTINUATION_FILES = ('tools/run_v24_gpu4_exact_continuation.py', 'tools/run_v24_gpu4_pipeline.py')
+INTERRUPTED_JOB = 'v24_interrupted_direct_GNN_source_job_v1'
 NUMERICAL_STATES = ('model', 'optimizer', 'scheduler', 'scaler', 'rank_rng', 'shuffle_generator')
 READONLY_PROFILE = 'reuse_full105_static_raw_CTseg_and_full131_Blosc2_readonly'
 READONLY_ENTRY = 'tools/run_v24_readonly_nnunet_cp.py'
@@ -43,6 +44,7 @@ MATCHED_BASIC_PROFILE = 'reuse_historical_Basic642_scores_only_and_full131_Blosc
 MATCHED_BASIC_ENTRY = 'tools/run_v24_matched_basic_cp.py'
 MATCHED_BASIC_SCORING = 'hiercp_v1x/v24_matched_basic_cp_scoring.py'
 MATCHED_BASIC_PIPELINE = 'hiercp_v1x/v24_matched_basic_cp_pipeline.py'
+DIRECT_ACCESS_HELPER = 'hiercp_v1x/v24_direct_gpu_access.py'
 CP_PARITY_HANDOFF_PROOF = 'v24_historical_Basic642_CP_parity_supersession_proof_v1'
 CP_PARITY_HANDOFF_LEASE = 'v24_historical_Basic642_CP_parity_supersession_lease_v1'
 ACTIONS = ('pin-current-gnn', 'prepare-current-bank', 'prepare-native', 'calibrate-native', 'train')
@@ -57,6 +59,10 @@ class AllocationUnavailable(RuntimeError):
 
 class AssignedGPUUnavailable(RuntimeError):
     """The assigned device is occupied; leave all existing applications alone."""
+
+
+class NativeStorageUnavailable(RuntimeError):
+    """The full admitted native writes do not fit yet; wait without a child."""
 
 
 def owned(path, *, directory=False, must_exist=True):
@@ -109,6 +115,10 @@ def _assigned_cpu_contract(gpu, affinity):
     return (gpu == 4 and isinstance(affinity, list) and len(affinity) == 4
             and all(type(core) is int and core >= 0 for core in affinity)
             and affinity == sorted(set(affinity)))
+
+
+def _interrupted_direct(request):
+    return request.get('source_job', {}).get('format') == INTERRUPTED_JOB
 
 
 def _gpu4_full_u(runtime):
@@ -231,7 +241,7 @@ def _readonly_storage(request):
 def _matched_storage(request):
     """Admit a scores-only Basic overlay without relabeling the old raw bank."""
     if (request.get('GPU_arm') not in (4, 5, 6) or request.get('recovery') is not None
-            or request.get('cp_parity_handoff') is None):
+            or request.get('cp_parity_handoff') is None and not _interrupted_direct(request)):
         raise ValueError('Matched Basic CP requires its explicit own-arm prelaunch parity handoff')
     path = owned(request['storage_admission'])
     if (not _checksum(request.get('storage_admission_sha256'))
@@ -268,7 +278,7 @@ def _matched_storage(request):
     required_files = (MATCHED_BASIC_ENTRY, MATCHED_BASIC_PIPELINE, MATCHED_BASIC_SCORING, BEST_EVALUATION_HELPER)
     if any(name not in request.get('code_files', {}) for name in required_files):
         raise ValueError('Actual matched scoring/native API and BEST evaluation helpers must be SHA pinned')
-    if request['GPU_arm'] in (5, 6) and (
+    if request['GPU_arm'] in (5, 6) and not _interrupted_direct(request) and (
             request.get('source_execution_code') != request['source_code']
             or request.get('source_execution_commit') != request['source_commit']
             or request.get('source_execution_files') != request['source_files']
@@ -283,10 +293,21 @@ def _source_execution(request):
     return request['code'], request['commit'], request['code_files']
 
 
+def _validate_downstream_direct(request):
+    if not _interrupted_direct(request):
+        return None
+    from hiercp_v1x import v24_direct_gpu_access as direct
+    if (request.get('code_files', {}).get(DIRECT_ACCESS_HELPER) != sha(direct.__file__)
+            or sha(Path(request['code']) / DIRECT_ACCESS_HELPER) != sha(direct.__file__)):
+        raise ValueError('Actual tracked downstream honest direct guard must be SHA pinned')
+    return direct.validate_controller_request(request)
+
+
 def validate_request(request, *, fresh=True):
     gpu = request.get('GPU_arm')
     continuation = request.get('context_allocation_continuation')
-    if request.get('context_depth1') is not None and (request.get('context_depth1') is not True or continuation is None):
+    if request.get('context_depth1') is not None and (request.get('context_depth1') is not True
+            or continuation is None and not _interrupted_direct(request)):
         raise ValueError('Depth1 profile requires its explicit immutable context/allocation continuation')
     rebound = False
     if continuation is not None:
@@ -356,13 +377,18 @@ def validate_request(request, *, fresh=True):
     elif request.get('stunet_checkpoint') is not None or request.get('scheduler') is not None:
         raise ValueError('GPU5 must retain its own CNN source and direct owned reservation')
     job = request.get('source_job', {})
-    owned(job['status'])
+    if _interrupted_direct(request):
+        _validate_interrupted_direct(request)
+        _validate_downstream_direct(request)
+    else:
+        owned(job['status'])
     if (type(job.get('worker_pid')) is not int or job['worker_pid'] <= 0
             or not isinstance(job.get('worker_create_time'), (float, int))
             or not isinstance(job.get('worker_command'), list) or not job['worker_command']
             or job.get('training_stage') != 'train' or not _checksum(job.get('pipeline_request_sha256'))):
         raise ValueError('Exact original owned worker identity and final train stage required')
-    owned(job['worker_command'][-1])
+    if not _interrupted_direct(request):
+        owned(job['worker_command'][-1])
     stages = request.get('stages')
     if not isinstance(stages, list) or tuple(row.get('action') for row in stages) != ACTIONS:
         raise ValueError('Exactly pin, complete bank, native preparation, calibration, full train required')
@@ -453,7 +479,8 @@ def source_completion(request, status, worker, child):
             or status.get('actual_CPU_affinity') != request['CPU_affinity']):
         raise ValueError('Source worker ownership/CPU proof differs')
     source = Path(request['source_output'])
-    for marker in (source / 'training/STOP_AFTER_BATCH', Path(job['status']).parent / 'STOP_BEFORE_NEXT_STAGE'):
+    job_root = source.parent if _interrupted_direct(request) else Path(job['status']).parent
+    for marker in (source / 'training/STOP_AFTER_BATCH', job_root / 'STOP_BEFORE_NEXT_STAGE'):
         if marker.exists():
             raise RuntimeError('GNN has a cooperative pause marker; downstream was not started: ' + str(marker))
     outcome = status.get('status')
@@ -718,8 +745,130 @@ def _validate_gpu4_continuation_receipt(request, pipeline):
         raise ValueError('GPU4 continuation partial-checkpoint inventory differs')
 
 
+def _validate_interrupted_direct(request):
+    """CPU-only sealed direct PID/argv and saved-state lineage, no fake status."""
+    from hiercp_v1x import v24_nnunet_cp as native
+    job = request['source_job']; gpu = request['GPU_arm']; output = Path(request['source_output'])
+    if (gpu not in (4, 5) or request.get('storage_profile') != MATCHED_BASIC_PROFILE
+            or request.get('context_depth1') is not True or request.get('scheduler') is not None
+            or any(request.get(key) is not None for key in ('recovery', 'storage_handoff', 'cp_parity_handoff',
+                'evaluation_handoff', 'matched_cli_handoff', 'context_allocation_continuation'))
+            or set(job) != {'format', 'registration', 'request', 'receipt', 'launch_lease', 'worker_pid',
+                'worker_create_time', 'worker_command', 'training_stage', 'pipeline_request_sha256'}):
+        raise ValueError('Fresh full matched642/depth1 own-source direct GPU4/5 continuation required')
+    root = output.parent
+    for key, path in (('registration', root / 'direct_training_registration.json'),
+                      ('request', root / 'direct_training_request.json'),
+                      ('receipt', output / native.INTERRUPTED_RECEIPT),
+                      ('launch_lease', root / 'direct_training_launch.lease.json')):
+        if native._interrupted_file(job[key]) != path:
+            raise ValueError('Exact direct continuation registration/request/lease/receipt path required')
+    document = native.inspect_interrupted_provenance(output, request['source_code'], gpu=gpu)
+    registered, direct, lease = (read(job[key]['path']) for key in ('registration', 'request', 'launch_lease'))
+    execution_code, execution_commit, execution_files = _source_execution(request)
+    if (document['execution_code'] != execution_code or direct.get('code') != execution_code
+            or direct.get('commit') != execution_commit
+            or {name: proof['sha256'] for name, proof in document['execution_files'].items()} != execution_files
+            or direct.get('format') != 'v24_existing_direct_GPU_exact_continuation_request_v1'
+            or registered.get('format') != 'v24_existing_direct_GPU_exact_continuation_registration_v1'
+            or direct.get('GPU_arm') != gpu or registered.get('GPU_arm') != gpu
+            or direct.get('output') != str(output) or registered.get('output') != str(output)
+            or registered.get('root') != str(root) or direct.get('source_output') != document['source']['source_output']
+            or direct.get('source_code') != request['source_code']
+            or direct.get('CPU_affinity') != request['CPU_affinity'] or registered.get('CPU_affinity') != request['CPU_affinity']
+            or direct.get('GPU_UUID') != request['GPU_UUID'] or direct.get('original_epochs') != 40
+            or direct.get('physical_patient_batch') != 4 or direct.get('physical_candidate_batch') != (64 if gpu == 4 else 32)
+            or direct.get('full_original_population') is not True or direct.get('debug') is not False
+            or direct.get('six_saved_states_unchanged') is not True or direct.get('BEST_unchanged') is not True
+            or direct.get('PBS_owned_reservation') is not False or registered.get('PBS_owned_reservation') is not False
+            or direct.get('other_PBS_reservations_known_not_owned') is not True
+            or direct.get('execution_mode') != 'previous_explicit_direct_physical_GPU_number'
+            or direct.get('nnunet_evaluation_checkpoint') != 'checkpoint_best.pth'
+            or direct.get('saved_checkpoint') != document['source']['latest']['raw_sha256']
+            or registered.get('source_checkpoint_sha256') != direct['saved_checkpoint']
+            or direct.get('checkpoint_epoch') != document['source']['latest']['epoch']
+            or direct.get('checkpoint_phase') != document['source']['latest']['phase']
+            or direct.get('checkpoint_updates') != document['source']['latest']['updates']
+            or registered.get('resumed_epoch') != direct['checkpoint_epoch']
+            or registered.get('resumed_phase') != direct['checkpoint_phase']
+            or registered.get('resumed_updates') != direct['checkpoint_updates']
+            or registered.get('pid') != job['worker_pid'] or registered.get('create_time') != job['worker_create_time']
+            or registered.get('command') != job['worker_command'] or registered.get('python') != request['python']
+            or registered.get('conda_environment') != 'nnunet' or registered.get('signals_sent') is not False
+            or registered.get('old_results_written') is not False or registered.get('six_saved_states_unchanged') is not True
+            or registered.get('request_sha256') != job['request']['sha256']
+            or job['pipeline_request_sha256'] != job['request']['sha256'] or job['training_stage'] != 'train'):
+        raise ValueError('Sealed honest direct execution/original full science/assigned GPU binding differs')
+    if any(request['source_files'].get(name) != proof['sha256'] for name, proof in document['source']['source_files'].items()):
+        raise ValueError('Native request must retain the exact original interrupted scientific source manifest')
+    original = direct['original_args']
+    if not isinstance(original, list) or len(original) % 2:
+        raise ValueError('Exact original train argument pairs required')
+    options = dict(zip(original[::2], original[1::2]))
+    scientific = read(output / 'request.json')
+    required = {'--mode': 'train', '--inventory': request['inventory'], '--input-cache': request['input_cache'],
+                '--gpu': str(gpu), '--cpu-affinity': ','.join(str(value) for value in request['CPU_affinity']),
+                '--native-experiment': scientific['native_experiment']}
+    if gpu == 4:
+        required['--stunet-checkpoint'] = request['stunet_checkpoint']
+    if (len(options) * 2 != len(original) or set(options) != set(required) | {'--config'}
+            or any(options.get(key) != value for key, value in required.items())
+            or read(options['--config']) != scientific['config']
+            or sha(options['--config']) != scientific['config_file_sha256']):
+        raise ValueError('Interrupted direct argv changed original full scientific config/assets/inputs')
+    guard_path = root.parent / 'direct_GPU45_access_guard.py'; access_path = root / 'direct_GPU_access_proof.json'
+    guard_checksum, access_checksum = sha(guard_path), sha(access_path); access = read(access_path)
+    command = [request['python'], '-B', '-u', str(Path(execution_code) / 'tools/run_v24_interrupted_gnn_continuation.py'),
+        '--action', 'train', '--source-output', document['source']['source_output'], '--source-code', request['source_code'],
+        '--interruption-proof', document['source']['interruption']['attachment']['path'],
+        '--allocation-guard-module', str(guard_path), '--allocation-guard-sha256', guard_checksum,
+        '--allocation-proof', str(access_path), '--allocation-proof-sha256', access_checksum, *original, '--output', str(output)]
+    if (registered['command'] != command or registered.get('guard_sha256') != guard_checksum
+            or registered.get('proof_sha256') != access_checksum or lease.get('command') != command
+            or lease.get('GPU_arm') != gpu or lease.get('request_sha256') != job['request']['sha256']
+            or lease.get('source_checkpoint') != direct['saved_checkpoint']
+            or access.get('format') != 'v24_existing_direct_GPU_availability_guard_v1' or access.get('GPU_arm') != gpu
+            or access.get('GPU_UUID') != request['GPU_UUID'] or access.get('CPU_affinity') != request['CPU_affinity']
+            or access.get('UID') != 41833 or access.get('PBS_owned_reservation') is not False
+            or access.get('other_PBS_reservations_known_not_owned') is not True
+            or access.get('explicit_existing_direct_execution_requested') is not True
+            or access.get('guard_sha256') != guard_checksum
+            or access.get('request') != {'path': job['request']['path'], 'sha256': job['request']['sha256']}
+            or access.get('host_container_lifetime', {}).get('role') != 'host_container_lifetime_only_not_GPU45_PBS_allocation'):
+        raise ValueError('Exact honest direct access guard/request/proof/launch argv required; no PBS ownership claim')
+    validate_source_metadata(request)
+    return registered, document
+
+
+def _inspect_interrupted_direct(request):
+    registered, document = _validate_interrupted_direct(request)
+    job = request['source_job']; source = Path(request['source_output'])
+    witness = process_witness(job['worker_pid'], job['worker_create_time'], job['worker_command'])
+    if (source / 'training/STOP_AFTER_BATCH').exists():
+        raise RuntimeError('Interrupted continuation has a cooperative stop marker; downstream was not started')
+    if witness is not None and witness['status'] != 'zombie':
+        import psutil
+        process = psutil.Process(witness['pid'])
+        if process.cpu_affinity() != request['CPU_affinity']:
+            raise ValueError('Actual direct GNN CPU assignment changed')
+        return None
+    # This direct launcher has no exit-code reporter. Derive only the actual
+    # full-training result from the original COMPLETE invocation; the first
+    # pin child independently checks COMPLETE/latest, all40 epochs/six states
+    # and own BEST. Do not relabel this as an observed successful CLI return.
+    status = dict(worker_pid=job['worker_pid'], worker_create_time=job['worker_create_time'],
+        actual_CPU_affinity=request['CPU_affinity'], status='COMPLETE', stage='train', stages_completed=['train'])
+    value = source_completion(request, status, witness, None)
+    value['interrupted_provenance_sha256'] = job['receipt']['sha256']
+    value['CLI_exit_status_observed'] = False
+    value['completion_evidence'] = 'original full40/680 COMPLETE invocation; exact checkpoint/history/BEST admission delegated to pin-current-gnn'
+    return value
+
+
 def inspect_source(request):
     _readonly_storage(request)
+    if _interrupted_direct(request):
+        return _inspect_interrupted_direct(request)
     status = read(request['source_job']['status'])
     job = request['source_job']
     pipeline_request_path = job['worker_command'][-1]
@@ -918,7 +1067,15 @@ def resources(request, *, initial=False, stage_index=0):
     aggregate = None
     if request.get('storage_profile') == MATCHED_BASIC_PROFILE:
         from hiercp_v1x.v24_matched_basic_cp_pipeline import check_aggregate_disk
-        aggregate = check_aggregate_disk(storage, request['chain_root'], preparation=True)
+        try:
+            aggregate = check_aggregate_disk(storage, request['chain_root'], preparation=True)
+        except OSError as error:
+            # Capacity waits only for this explicit new direct-source route.
+            # Overspending, edited admissions and malformed inputs still fail.
+            if (_interrupted_direct(request)
+                    and str(error) == 'Complete remaining three-arm writes plus10GiB/growth reserve do not fit'):
+                raise NativeStorageUnavailable(str(error)) from error
+            raise
         minimum = aggregate['required_free_bytes'] / 2**30
     elif request.get('storage_extension') == STATIC_EXTENSION:
         from hiercp_v1x.v24_readonly_static_operator_storage import check_aggregate_disk
@@ -1434,6 +1591,7 @@ def _validate_cp_parity_handoff(request):
 
 
 def verify_source_claim(request, request_checksum):
+    _validate_downstream_direct(request)
     path = request['source_claim_path']
     if request.get('context_allocation_continuation') is not None:
         from hiercp_v1x.v24_matched_chain_continuation import verify_source_claim as verify_context_claim
@@ -1515,6 +1673,7 @@ def _tree_rss(process):
 def run_stage(request, stage, status, request_path, request_checksum):
     """Direct file output avoids a blocked stdout reader and preserves every log."""
     import psutil
+    _validate_downstream_direct(request)
     root = Path(request['chain_root'])
     env = os.environ.copy()
     env.update(OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', NUMEXPR_NUM_THREADS='1',
@@ -1601,9 +1760,10 @@ def run(request_path):
                 try:
                     status['resources'] = resources(request, initial=index == 0, stage_index=index)
                     break
-                except (AllocationUnavailable, AssignedGPUUnavailable) as error:
-                    status.update(status='WAITING_ALLOCATION' if isinstance(error, AllocationUnavailable)
-                                  else 'WAITING_FOR_ASSIGNED_GPU', waiting_reason=str(error), checked_at=time.time())
+                except (AllocationUnavailable, AssignedGPUUnavailable, NativeStorageUnavailable) as error:
+                    waiting = ('WAITING_FOR_NATIVE_STORAGE' if isinstance(error, NativeStorageUnavailable) else
+                        'WAITING_ALLOCATION' if isinstance(error, AllocationUnavailable) else 'WAITING_FOR_ASSIGNED_GPU')
+                    status.update(status=waiting, waiting_reason=str(error), checked_at=time.time())
                     publish(root, status)
                     time.sleep(POLL_SECONDS)
                     if (sha(request_path) != request_checksum or verify_source_claim(request, request_checksum) != source_claim_checksum
@@ -1630,7 +1790,9 @@ def main(args):
     if args.check:
         request = validate_request(read(args.request))
         verify_code(request)
-        if request['GPU_arm'] == 4:
+        if _interrupted_direct(request):
+            _validate_interrupted_direct(request)
+        elif request['GPU_arm'] == 4:
             _validate_gpu4_pipeline_inputs(request, read(request['source_job']['worker_command'][-1]))
         print(json.dumps(dict(status='REQUEST_ADMITTED', GPU_arm=request['GPU_arm'], server_files_written=False,
                               GPU_child_started=False, GNN_checkpoint_loaded=False)), flush=True)
