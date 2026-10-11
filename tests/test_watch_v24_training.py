@@ -250,7 +250,16 @@ class ViewerTest(unittest.TestCase):
             '2026-10-10 13:50:16.767042: Pseudo dice [np.float32(0.9322), np.float64(0.6782)]'])
         self.assertEqual(n['pseudo_dice'],[.9322,.6782])
 
-    def test_common_sixteen_row_renderer_preserves_actual_progress_and_both_U_reports(self):
+    def test_native_metadata_display_keeps_previous_formatter(self):
+        snapshot=dict(GPU=1,status='RUNNING',stage='nnunet_training',stage_label='nnUNet 학습',
+            epoch=182,epochs=250,reports={},native_metrics=dict(train_loss=-.7644,val_loss=-.7228,
+                pseudo_dice=[.9603,.7794]),snapshot_fresh=True)
+        shown=watch.text_snapshot(snapshot,experiment_version='v2.2')
+        self.assertEqual(shown,watch._legacy_native_text_snapshot(snapshot))
+        self.assertIn('train_loss -0.7644 | val_loss -0.7228 | pseudo_dice [0.9603, 0.7794]',shown)
+        self.assertNotIn('UI 2',shown)
+
+    def test_common_gnn_renderer_preserves_actual_progress_and_both_U_reports(self):
         import io
         stream=io.StringIO(); terminal=watch.TerminalView(stream)
         self.addCleanup(terminal.close)
@@ -262,7 +271,7 @@ class ViewerTest(unittest.TestCase):
             reports=dict(stage_validation=report,full_validation=dict(report,active_u=128)),snapshot_fresh=True)
         terminal.render(snapshot)
         shown=stream.getvalue()
-        self.assertEqual(len(shown.splitlines()),16)
+        self.assertEqual(len(shown.splitlines()),9)
         self.assertIn('GPU5',shown)
         self.assertIn('RUNNING',shown)
         self.assertIn('8/21',shown.replace(' ',''))
@@ -281,7 +290,7 @@ class ViewerTest(unittest.TestCase):
             stage_label='전체 validation',reports={},snapshot_fresh=False,
             last_valid_snapshot_preserved=True,read_problem=dict(path=path,detail=reason)))
         shown=stream.getvalue()
-        self.assertEqual(len(shown.splitlines()),16)
+        self.assertEqual(len(shown.splitlines()),9)
         self.assertIn('READ_ERROR',shown)
         self.assertIn(path,shown)
         self.assertIn(reason,shown)
@@ -297,7 +306,7 @@ class ViewerTest(unittest.TestCase):
                     completed_epochs=3,stage='full_validation',stage_label='전체 validation',
                     active_U=128,progress=dict(done=0,total=21),reports={},snapshot_fresh=True))
                 shown=stream.getvalue()
-                self.assertEqual(len(shown.splitlines()),16)
+                self.assertEqual(len(shown.splitlines()),9)
                 self.assertIn('GPU6',shown)
                 self.assertIn('RUNNING',shown)
                 self.assertIn('0/21',shown.replace(' ',''))

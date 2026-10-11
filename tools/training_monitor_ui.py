@@ -1,4 +1,4 @@
-"""Version-independent, read-only sixteen-row training monitor presentation.
+"""Version-independent, read-only GNN and CP monitor presentation.
 
 Adapters supply the normalized metadata dictionary; this module reads no job,
 file, model or environment variable and starts no process. Missing measurements
@@ -23,6 +23,11 @@ ROW_LABELS = ('실험', '상태', 'GNN 학습', 'GNN 진행', 'GNN loss',
     'CP 시간/로그', '대기/후속 controller', '경고/오류')
 ROWS = 16
 UI_VERSION = 1
+TASK_UI_VERSION = 2
+GNN_ROW_LABELS = ('실험/상태', 'GNN 학습', 'GNN 진행', 'GNN loss',
+    'GNN 단계검증', 'GNN 전체검증', 'RAM/프로세스', '대기/후속 controller', '경고/오류')
+CP_ROW_LABELS = ('실험/상태', 'CP source', 'CP 위치', 'CP 입력',
+    'RAM/프로세스', 'CP 시간/로그', '대기/후속 controller', '경고/오류')
 _ANSI = re.compile(r'\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[PX^_][^\x1b]*(?:\x1b\\)|[@-_])')
 _SOURCE_NAMES = {'current_process_tree': '현재 프로세스 트리',
     'live_process_tree': '현재 프로세스 트리', 'actual_process_tree': '현재 프로세스 트리',
@@ -178,6 +183,85 @@ def render(model, width=None):
     return '\n'.join(render_lines(model, width=width))
 
 
+def _progress_bar(done, total, unit=None):
+    """The bar and percentage use confirmed integer counts, never estimates."""
+    valid = (not isinstance(done, bool) and not isinstance(total, bool)
+        and isinstance(done, Real) and isinstance(total, Real)
+        and math.isfinite(done) and math.isfinite(total)
+        and 0 <= done <= total and total > 0
+        and int(done) == done and int(total) == total)
+    if valid:
+        filled = int(20 * done / total)
+        bar = '#' * filled + '-' * (20 - filled)
+    else:
+        bar = '?' * 20
+    return _fraction(done, total, unit) + ' [' + bar + ']'
+
+
+def _task_header(model, kind):
+    state = _section(model, 'state')
+    fresh = state.get('fresh')
+    reading = '읽기 성공' if fresh is True else '새 기록이 아님' if fresh is False else '읽기 상태 미기록'
+    value = ('GPU' + _count(model.get('gpu')) + ' | ' + kind + ' | '
+        + _text(state.get('status')) + ' | ' + reading
+        + ' | 버전 ' + _text(model.get('experiment_version')) + ' | UI ' + str(TASK_UI_VERSION))
+    if fresh is False:
+        value += ' | 마지막 확인 ' + _text(state.get('last_confirmed_status'))
+    return value
+
+
+def _typed_lines(labels, values, width):
+    lines = [label + ': ' + sanitize(value) for label, value in zip(labels, values)]
+    return lines if width is None else [truncate(line, width) for line in lines]
+
+
+def _row_value(lines, index):
+    return lines[index].partition(': ')[2]
+
+
+def render_gnn_lines(model, width=None):
+    """Nine fixed GNN rows, identical across experiment versions."""
+    base = render_lines(model)
+    gnn = _section(model, 'gnn')
+    progress = gnn.get('progress') or {}
+    values = [_task_header(model, 'GNN 학습'), _row_value(base, 2),
+        _text(gnn.get('phase_label')) + ' | ' + _progress_bar(
+            progress.get('done'), progress.get('total'), progress.get('unit')),
+        *(_row_value(base, index) for index in (4, 5, 6, 12, 14, 15))]
+    return _typed_lines(GNN_ROW_LABELS, values, width)
+
+
+def render_cp_lines(model, width=None):
+    """Eight fixed CP scoring rows; only actual downstream controller metadata."""
+    base = render_lines(model)
+    cp = _section(model, 'cp')
+    values = [_task_header(model, 'CP 후보 채점'),
+        _progress_bar(cp.get('source_done'), cp.get('source_total'))
+            + ' | ' + _text(cp.get('status')),
+        _progress_bar(cp.get('positions_done'), cp.get('positions_total')),
+        _text(cp.get('input_basis')),
+        *(_row_value(base, index) for index in (12, 13, 14, 15))]
+    return _typed_lines(CP_ROW_LABELS, values, width)
+
+
+def render_task_lines(model, width=None):
+    """Choose the typed GNN/CP layout; nnU-Net keeps its own console formatter."""
+    if not isinstance(model, Mapping):
+        raise ValueError('Normalized monitor model must be an object')
+    stage = _section(model, 'state').get('stage')
+    if isinstance(stage, str):
+        stage = sanitize(stage).lower()
+    if stage == 'gnn':
+        return render_gnn_lines(model, width=width)
+    if stage in ('scoring', 'cp', 'cp 후보 채점'):
+        return render_cp_lines(model, width=width)
+    raise ValueError('Task monitor supports only GNN/CP stages; keep the nnU-Net console for native: ' + _text(stage))
+
+
+def render_task(model, width=None):
+    return '\n'.join(render_task_lines(model, width=width))
+
+
 class TerminalView:
     """Redraw only this viewer's rows; close restores its cursor, not the stream.
 
@@ -185,10 +269,14 @@ class TerminalView:
     non-TTY streams print complete plain-text frames without cursor animation.
     No tqdm/environment toggle can change the schema or hide its state.
     """
-    def __init__(self, stream, size_provider=None):
+    def __init__(self, stream, size_provider=None, layout='full'):
+        if layout not in ('full', 'task'):
+            raise ValueError('Training monitor layout must be full or task')
         self.stream = stream
         self.size_provider = size_provider
+        self.layout = layout
         self._drawn = False
+        self._drawn_rows = 0
         self._cursor_hidden = False
         self._closed = False
         self._last_dimensions = None
@@ -211,22 +299,32 @@ class TerminalView:
             raise RuntimeError('Training monitor view is already closed')
         tty = bool(getattr(self.stream, 'isatty', lambda: False)())
         dimensions = self._size() if tty else None
-        animated = dimensions is not None and dimensions[0] >= 80 and dimensions[1] >= ROWS + 1
-        lines = render_lines(model, width=dimensions[0] - 1 if animated else None)
+        renderer = render_task_lines if self.layout == 'task' else render_lines
+        lines = renderer(model)
+        animated = dimensions is not None and dimensions[0] >= 80 and dimensions[1] >= len(lines) + 1
+        if animated:
+            lines = [truncate(line, dimensions[0] - 1) for line in lines]
         if dimensions != self._last_dimensions:
             self._drawn = False  # Resizing can reflow old rows; start a fresh region.
         if animated:
             if not self._cursor_hidden:
                 self.stream.write('\x1b[?25l'); self._cursor_hidden = True
             if self._drawn:
-                self.stream.write('\x1b[' + str(ROWS) + 'A\r')
+                self.stream.write('\x1b[' + str(self._drawn_rows) + 'A\r')
             for line in lines:
                 self.stream.write('\r\x1b[2K' + line + '\n')
+            if self._drawn and self._drawn_rows > len(lines):
+                surplus = self._drawn_rows - len(lines)
+                for _ in range(surplus):
+                    self.stream.write('\r\x1b[2K\n')
+                self.stream.write('\x1b[' + str(surplus) + 'A\r')
             self._drawn = True
+            self._drawn_rows = len(lines)
         else:
             if self._cursor_hidden:
                 self.stream.write('\x1b[?25h'); self._cursor_hidden = False
             self._drawn = False
+            self._drawn_rows = 0
             self.stream.write('\n'.join(lines) + '\n')
         self._last_dimensions = dimensions
         self.stream.flush()

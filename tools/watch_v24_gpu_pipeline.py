@@ -409,9 +409,27 @@ class PipelineViewer:
         return value
 
 
+def task_model(value, *, experiment_version=None):
+    model = monitor_adapter.from_pipeline(value, experiment_version=experiment_version)
+    # CP completion stays visible while its native successor prepares inputs.
+    if value.get('active_stage') == 'native':
+        model['state']['stage'] = 'CP 후보 채점'
+    elif model['state']['stage'] not in ('GNN', 'CP 후보 채점'):
+        model['state']['stage'] = 'GNN'  # First read failure: unknown values, visible error.
+    return model
+
+
 def display(value, renderer=None, *, experiment_version=None):
-    # Source validation remains version-specific; the screen never is.
-    return monitor_ui.render(monitor_adapter.from_pipeline(value, experiment_version=experiment_version))
+    native = value.get('native') or {}
+    if value.get('snapshot_fresh') and value.get('active_stage') == 'native' and native.get('native_training_started'):
+        # Native logging/formatting is already established; only GNN and CP
+        # screens are being standardized in response to this request.
+        metrics = native.get('native_metrics') or {}
+        return '\n'.join(['nnU-Net controller: '+str(native.get('status'))+' | 단계 '+str(native.get('stage')),
+            '현재 등록된 nnU-Net 학습/BEST 평가 작업 실행 중',
+            'nnU-Net epoch '+str(native.get('epoch'))+'/'+str(native.get('epochs')),
+            ' | '.join(str(key)+' '+str(metrics[key]) for key in ('train_loss','val_loss','pseudo_dice') if key in metrics)])
+    return monitor_ui.render_task(task_model(value, experiment_version=experiment_version))
 
 
 def main(argv=None):
@@ -447,19 +465,26 @@ def main(argv=None):
     renderer = direct.load_renderer(args.renderer, args.renderer_sha)
     viewer = PipelineViewer(renderer, args.arm_root, args.scoring_root, args.native_root, args.native_pending_reason,
         gnn_root=args.gnn_root, gpu=args.gpu)
-    terminal = monitor_ui.TerminalView(sys.stdout) if sys.stdout.isatty() and not (args.no_clear or args.once or args.json) else None
+    terminal = monitor_ui.TerminalView(sys.stdout, layout='task') if sys.stdout.isatty() and not (args.no_clear or args.once or args.json) else None
     previous = None
     try:
         while True:
             value = viewer.snapshot()
             if args.json:
-                value.update(ui_schema_version=1, experiment_version=args.experiment_version)
+                value.update(ui_schema_version=2, experiment_version=args.experiment_version)
                 print(json.dumps(value, ensure_ascii=False, allow_nan=False)); return
-            model = monitor_adapter.from_pipeline(value, experiment_version=args.experiment_version)
-            if terminal:
+            model = task_model(value, experiment_version=args.experiment_version)
+            native = value.get('native') or {}
+            if value.get('snapshot_fresh') and value.get('active_stage') == 'native' and native.get('native_training_started'):
+                if terminal:
+                    terminal.close(); terminal = None
+                shown = display(value, renderer, experiment_version=args.experiment_version)
+                if shown != previous:
+                    print(shown, flush=True); previous = shown
+            elif terminal:
                 terminal.render(model)
             else:
-                shown = monitor_ui.render(model)
+                shown = monitor_ui.render_task(model)
                 if shown != previous:
                     print(shown, flush=True)
                     previous = shown

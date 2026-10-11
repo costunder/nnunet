@@ -211,6 +211,14 @@ class CurrentPipelineCPU_DEBUG(unittest.TestCase):
         self.assertEqual(observed['status'], 'PAUSED')
         self.assertIsNone(observed['scoring'])
 
+    def test_first_metadata_failure_stays_visible_without_invented_progress(self):
+        value=self.viewer.failure('READ_ERROR','/actual/input.json: malformed')
+        shown=pipeline.display(value,self.renderer)
+        self.assertEqual(len(shown.splitlines()),9)
+        self.assertIn('READ_ERROR',shown)
+        self.assertIn('/actual/input.json: malformed',shown)
+        self.assertNotIn('RUNNING',shown)
+
     def test_dead_scoring_PID_without_receipt_is_not_CPU_pin_pending(self):
         self.score_alive = False
         observed = self.observed()

@@ -271,6 +271,94 @@ class FixedMonitorUI_CPU_DEBUG(unittest.TestCase):
         self.assertTrue(stream.getvalue().endswith('\x1b[?25h'))
         self.assertFalse(stream.closed)
 
+    def test_typed_layouts_keep_fixed_rows_across_versions_and_stage_aliases(self):
+        for version in ('v1 basic', 'v2.3', 'v2.4'):
+            for stage in ('gnn', 'GNN', 'scoring', 'CP 후보 채점'):
+                with self.subTest(version=version, stage=stage):
+                    model = measured_model()
+                    model['experiment_version'] = version
+                    model['state']['stage'] = stage
+                    is_gnn = stage.lower() == 'gnn'
+                    expected = ui.GNN_ROW_LABELS if is_gnn else ui.CP_ROW_LABELS
+                    lines = ui.render_task_lines(model)
+                    self.assertEqual(tuple(line.split(':', 1)[0] for line in lines), expected)
+                    self.assertEqual(len(lines), 9 if is_gnn else 8)
+                    self.assertIn('UI 2', lines[0])
+                    self.assertEqual(ui.render_task(model).splitlines(), lines)
+                    self.assertNotIn('nnU-Net loss', '\n'.join(lines))
+                    self.assertNotIn('pseudo Dice', '\n'.join(lines))
+                    self.assertIn('UI 1', ui.render_lines(model)[0])
+                    self.assertEqual(len(ui.render_lines(model)), 16)
+        model['state']['stage'] = 'native'
+        with self.assertRaisesRegex(ValueError, 'nnU-Net console'):
+            ui.render_task(model)
+
+    def test_typed_bars_use_measured_counts_and_unknowns_remain_unknown(self):
+        model = measured_model()
+        gnn = ui.render_gnn_lines(model)
+        self.assertIn('8/21 batch (38.1%) [#######-------------]', gnn[2])
+        self.assertIn('최근 완료 e4 U7 MRR 0.4000 top1 0.3000', gnn[4])
+        self.assertIn('최근 완료 e4 U128', gnn[5])
+        model['cp'].update(source_done=448, positions_done=57344)
+        cp = ui.render_cp_lines(model)
+        self.assertIn('448/642 (69.8%) [#############-------]', cp[1])
+        self.assertIn('57344/82176 (69.8%)', cp[2])
+        self.assertEqual(cp[3], 'CP 입력: 입력 계획: GPU5 GNN BEST')
+        model['cp'].update(source_done=None, positions_done=.5)
+        unknown = ui.render_cp_lines(model)
+        self.assertIn('-/642 [????????????????????]', unknown[1])
+        self.assertIn('미기록(계수 확인)', unknown[2])
+        self.assertNotIn('%', unknown[1] + unknown[2])
+        self.assertNotIn('0/642', unknown[1])
+
+    def test_cp_uses_one_actual_controller_reason_and_explicit_stale_error(self):
+        model = measured_model()
+        model['state'].update(stage='scoring', status='READ_ERROR', fresh=False, last_confirmed_status='SCORING_PROCESS_ALIVE')
+        model['cp']['native_pending_reason'] = 'obsolete nested storage message'
+        model['waiting_reason'] = 'actual controller: full642 scoring not complete'
+        model['native'].update(status='WAITING_FOR_FULL642_SCORING', stage=None, train_loss=-9)
+        model['error'] = '/real/score.json: JSONDecodeError\nExpecting value'
+        lines = ui.render_task_lines(model)
+        text = '\n'.join(lines)
+        self.assertEqual(text.count('actual controller: full642 scoring not complete'), 1)
+        self.assertNotIn('obsolete nested storage message', text)
+        self.assertIn('WAITING_FOR_FULL642_SCORING', lines[6])
+        self.assertIn('새 기록이 아님', lines[0])
+        self.assertIn('새 기록이 아님', lines[7])
+        self.assertIn('/real/score.json: JSONDecodeError Expecting value', lines[7])
+        self.assertNotIn('-9.000000', text)
+        self.assertNotIn('nnU-Net 학습', text)
+        model['waiting_reason'] = None
+        self.assertIn('상태 WAITING_FOR_FULL642_SCORING | 단계 - | 사유 -', ui.render_task_lines(model)[6])
+
+    def test_task_terminal_clears_previous_row_count_and_uses_actual_layout_height(self):
+        model = measured_model()
+        stream = TTYBuffer()
+        view = ui.TerminalView(stream, size_provider=lambda: (100, 24), layout='task')
+        self.assertEqual(len(view.render(model)), 9)
+        marker = len(stream.getvalue())
+        model['state']['stage'] = 'scoring'
+        self.assertEqual(len(view.render(model)), 8)
+        switched = stream.getvalue()[marker:]
+        self.assertTrue(switched.startswith('\x1b[9A\r'))
+        self.assertEqual(switched.count('\x1b[2K'), 9)
+        self.assertTrue(switched.endswith('\x1b[1A\r'))
+        marker = len(stream.getvalue())
+        view.render(model)
+        self.assertTrue(stream.getvalue()[marker:].startswith('\x1b[8A\r'))
+        view.close()
+        for stage, animated in (('scoring', True), ('gnn', False)):
+            with self.subTest(stage=stage):
+                model['state']['stage'] = stage
+                small = TTYBuffer()
+                with ui.TerminalView(small, size_provider=lambda: (100, 9), layout='task') as typed:
+                    lines = typed.render(model)
+                self.assertEqual('\x1b[?25l' in small.getvalue(), animated)
+                self.assertEqual(len(lines), 8 if animated else 9)
+        model['error'] = '한글 /real/report.json: ' + 'parse cause ' * 30
+        self.assertIn('parse cause ' * 20, ui.render_task(model))
+        self.assertTrue(all(ui.display_width(line) <= 80 for line in ui.render_task_lines(model, width=80)))
+
 
 if __name__ == '__main__':
     unittest.main()

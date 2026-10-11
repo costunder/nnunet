@@ -441,24 +441,130 @@ def native_epoch_total(request):
     return None
 
 
+def _legacy_native_text_snapshot(snapshot):
+    s = snapshot
+    header = f"GPU{s.get('GPU', '?')} | {s['status']} | {s.get('stage_label') or s['stage']}"
+    if s.get('epoch') is not None:
+        header += f" | epoch {s['epoch']}/{s.get('epochs') or '?'}"
+    if s.get('active_U') is not None:
+        header += f" | U{s['active_U']}"
+    p = s.get('progress')
+    if p:
+        header += f" | {p['done']}/{p['total'] or '?'} {p['unit']} 완료 기록"
+    details = []
+    if s.get('read_problem'):
+        problem = s['read_problem']
+        if s.get('last_valid_snapshot_preserved'):
+            details.append('최근 정상 표시 보존 ('+str(s.get('last_confirmed_status'))+'); 아래 수치는 새 기록이 아님')
+        details.append('표시 기록 읽기 재시도: '+problem['path']+' | '+problem['detail'])
+    if s.get('loss') is not None:
+        details.append(f"loss {s['loss']:.6f} (최근 train update {s['optimizer_updates']})")
+    if s.get('RSS_GiB') is not None:
+        details.append(f"RAM {s['RSS_GiB']:.2f}/{s.get('RAM_limit_GiB') or '?'}GiB ({s['RSS_source']})")
+    for phase, report in s.get('reports', {}).items():
+        metrics = report.get('metrics') or {}
+        mrr, top1 = metrics.get('per_P_patient_mrr'), metrics.get('per_P_patient_top1')
+        if mrr is not None and top1 is not None:
+            details.append(f"{LABELS[phase]} e{report['epoch']} U{report['active_u']}: MRR {mrr:.4f} top1 {top1:.4f}")
+    if s.get('calibration_progress'):
+        c = s['calibration_progress']
+        details.append(f"batch {c['patients']} chunk {c['chunk']}: repeat {c['repeats_completed']} 완료")
+    if s.get('native_metrics'):
+        native = s['native_metrics']
+        details.append(' | '.join(f'{key} {native[key]}' for key in ('train_loss', 'val_loss', 'pseudo_dice') if key in native))
+    if s.get('error'):
+        details.append('오류: '+s['error'])
+    if s['status'] == 'PIPELINE_FINISHED':
+        details.append('파이프라인 종료; 전체 학습 완료는 확인되지 않음')
+    return header+'\n'+'\n'.join(details)
+
+
+class _LegacyNativeTerminalView:
+    def __init__(self, stream):
+        from tqdm import tqdm
+        self.stream = stream
+        self.bars = [tqdm(total=None, position=i, leave=False, dynamic_ncols=True, file=stream, disable=False,
+            bar_format='{desc} |{bar}| {n_fmt}/{total_fmt}' if i < 2 else '{desc}') for i in range(4)]
+
+    def render(self, snapshot):
+        s = snapshot
+        top, current, detail, metrics = self.bars
+        top.set_description_str(f"GPU{s.get('GPU', '?')} {s['status']} epoch {s.get('epoch') or '?'}/{s.get('epochs') or '?'}", refresh=False)
+        top.total, top.n = snapshot.get('epochs'), snapshot.get('completed_epochs', 0)
+        p = snapshot.get('progress') or {}
+        current.total, current.n = p.get('total'), p.get('done', 0)
+        current.set_description_str((snapshot.get('stage_label') or snapshot['stage'])+(f" U{s['active_U']}" if s.get('active_U') is not None else ''), refresh=False)
+        info = []
+        if s.get('read_problem'):
+            info.append('표시 기록 읽기 재시도; 최근 정상 기록 보존' if s.get('last_valid_snapshot_preserved')
+                        else '완성된 표시 기록 대기')
+            if s['status'] == 'READ_ERROR':
+                problem = s['read_problem']
+                info.append('파일 '+problem['path']+' | 원인 '+problem['detail'])
+        if s.get('loss') is not None:
+            info.append(f"last train loss {s['loss']:.5f} upd{s['optimizer_updates']}")
+        if s.get('RSS_GiB') is not None:
+            info.append(f"RAM {s['RSS_GiB']:.1f}/{s.get('RAM_limit_GiB') or '?'}GiB")
+        if s.get('error'):
+            info.append(s['error'][:100])
+        if s.get('native_metrics'):
+            n = s['native_metrics']
+            info += [f'{key} {n[key]}' for key in ('train_loss', 'val_loss') if key in n]
+        detail.set_description_str(' | '.join(info) or '현재 단계 완료 기록 대기', refresh=False)
+        shown = []
+        reports = s.get('reports', {})
+        for name, label in (('stage_validation', 'stage'), ('full_validation' if 'full_validation' in reports else 'initial_full_validation', 'full128')):
+            report = reports.get(name)
+            if report and report.get('metrics'):
+                m = report['metrics']
+                if m.get('per_P_patient_mrr') is not None and m.get('per_P_patient_top1') is not None:
+                    shown.append(f"{label} e{report['epoch']} U{report['active_u']} MRR {m['per_P_patient_mrr']:.4f}/T1 {m['per_P_patient_top1']:.4f}")
+        if s.get('native_metrics', {}).get('pseudo_dice') is not None:
+            shown.append('pseudo Dice '+str(s['native_metrics']['pseudo_dice']))
+        metrics.set_description_str(' | '.join(shown) or '평가 metric 미기록', refresh=False)
+        for bar in self.bars:
+            bar.refresh()
+
+    def close(self):
+        for bar in reversed(self.bars):
+            bar.close()
+
 def text_snapshot(snapshot, *, experiment_version=None):
     from tools import training_monitor_adapter, training_monitor_ui
-    return training_monitor_ui.render(training_monitor_adapter.from_training(snapshot, experiment_version=experiment_version))
+    model = training_monitor_adapter.from_training(snapshot, experiment_version=experiment_version)
+    if model['state']['stage'] == 'nnU-Net':
+        return _legacy_native_text_snapshot(snapshot)
+    return training_monitor_ui.render_task(model)
 
 
 class TerminalView:
-    """Compatibility adapter; all versions share one immutable row layout."""
+    """Shared GNN layout; keep the existing native viewer unchanged."""
     def __init__(self, stream, size_provider=None, *, experiment_version=None):
         from tools.training_monitor_ui import TerminalView as CommonTerminalView
-        self.common = CommonTerminalView(stream, size_provider=size_provider)
+        self.stream, self.size_provider = stream, size_provider
+        self.common = CommonTerminalView(stream, size_provider=size_provider, layout='task')
+        self.native = None
         self.experiment_version = experiment_version
 
     def render(self, snapshot):
         from tools.training_monitor_adapter import from_training
-        self.common.render(from_training(snapshot, experiment_version=self.experiment_version))
+        model = from_training(snapshot, experiment_version=self.experiment_version)
+        if model['state']['stage'] == 'nnU-Net':
+            if self.native is None:
+                self.common.close()
+                self.native = _LegacyNativeTerminalView(self.stream)
+            self.native.render(snapshot)
+        else:
+            if self.native is not None:
+                self.native.close(); self.native = None
+                from tools.training_monitor_ui import TerminalView as CommonTerminalView
+                self.common = CommonTerminalView(self.stream, size_provider=self.size_provider, layout='task')
+            self.common.render(model)
 
     def close(self):
         self.common.close()
+        if self.native is not None:
+            self.native.close(); self.native = None
 
 
 def main(argv=None):
@@ -486,7 +592,7 @@ def main(argv=None):
             else:
                 snapshot = viewer.snapshot(root)
             if args.json:
-                snapshot.update(ui_schema_version=1, experiment_version=args.experiment_version)
+                snapshot.update(ui_schema_version=2, experiment_version=args.experiment_version)
                 print(json.dumps(snapshot, ensure_ascii=False)); return
             if terminal:
                 terminal.render(snapshot)

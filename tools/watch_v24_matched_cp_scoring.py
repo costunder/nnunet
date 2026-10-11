@@ -149,7 +149,7 @@ def snapshot(root):
 
 def display(value, include_native=True, *, experiment_version=None):
     from tools import training_monitor_adapter, training_monitor_ui
-    return training_monitor_ui.render(training_monitor_adapter.from_scoring(value, include_native=include_native,
+    return training_monitor_ui.render_task(training_monitor_adapter.from_scoring(value, include_native=include_native,
         experiment_version=experiment_version))
 
 
@@ -204,13 +204,13 @@ def main(argv=None):
         parser.error('Owned scoring root without symlink aliases required')
     viewer = ScoringViewer()
     from tools import training_monitor_adapter, training_monitor_ui
-    terminal = training_monitor_ui.TerminalView(sys.stdout) if sys.stdout.isatty() and not (args.no_clear or args.once or args.json) else None
+    terminal = training_monitor_ui.TerminalView(sys.stdout, layout='task') if sys.stdout.isatty() and not (args.no_clear or args.once or args.json) else None
     previous = None
     try:
         while True:
             value = viewer.snapshot(root)
             if args.json:
-                value.update(ui_schema_version=1, experiment_version=args.experiment_version)
+                value.update(ui_schema_version=2, experiment_version=args.experiment_version)
                 print(json.dumps(value, ensure_ascii=False)); return
             if terminal:
                 terminal.render(training_monitor_adapter.from_scoring(value, experiment_version=args.experiment_version))
