@@ -1,6 +1,7 @@
 """DEBUG CPU metadata tests for the additive early-stop display adapter."""
 import copy
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -67,13 +68,14 @@ class EarlyViewerDEBUG(unittest.TestCase):
         self.path = Path(temporary.name).absolute() / 'request.json'
         self.instance.path = self.path
         self.request['controller_root'] = str(self.path.parent)
+        self.request['scoring_root'] = str(self.path.parent / 'scoring')
         self.request['pin_path'] = str(self.path.parent / 'own_early_stop_best_pin.json')
         lease['command'][-1] = str(self.path)
         self.records.update({str(self.path):self.request, str(self.path.parent/'status.json'):self.state,
             str(self.path.parent/'lease.json'):lease})
         self.stop_receipt()
         self.state.update(stage='score', status='RUNNING', child_pid=123, child_create_time=2.,
-            command=['DEBUG-child', 'score'])
+            command=['DEBUG-child', 'score'], waiting_reason=None)
         pin = dict(format=viewer.PIN, physical_GPU=5, full_training=False, completed_epochs=27,
             optimizer_updates=459, source_output=str(self.source), source_code=self.request['source_code'])
         self.records[self.request['pin_path']] = pin
@@ -151,6 +153,70 @@ class EarlyViewerDEBUG(unittest.TestCase):
         self.assertFalse(result['full_native_training'])
         self.assertFalse(result['full_native_evaluation'])
         self.assertEqual(len(viewer.pipeline.display(result, experiment_version='v2.4').splitlines()), 8)
+
+    def test_cp_startup_reports_observed_log_age_without_invented_progress(self):
+        console = self.score_controller()
+        console.write_text('GPU selection | physical=5\n', encoding='utf8')
+        os.utime(console, (958, 958))
+        with patch.object(viewer.time, 'time', return_value=1000):
+            result = self.instance.snapshot()
+        self.assertEqual(result['status'], 'SCORING_STARTUP')
+        self.assertEqual(result['scoring']['status'], 'SCORING_STARTUP')
+        self.assertIsNone(result['scoring']['source_done'])
+        self.assertIsNone(result['scoring']['CP_done'])
+        self.assertIsNone(result['scoring']['last_batch_seconds'])
+        self.assertEqual(result['scoring']['seconds_since_console_write'], 42)
+        self.assertIn('입력·BEST 검증', result['native_pending_reason'])
+        self.assertEqual(result['native']['native_pending_reason'], result['native_pending_reason'])
+        shown = viewer.pipeline.display(result, experiment_version='v2.4')
+        self.assertEqual(len(shown.splitlines()), 8)
+        self.assertIn('SCORING_STARTUP', shown)
+        self.assertIn('채점 진행량 미확인', shown)
+
+    def test_cp_input_record_distinguishes_first_batch_pending(self):
+        console = self.score_controller()
+        bank_request = Path(self.request['scoring_root']) / 'bank/request.json'
+        bank_request.parent.mkdir(parents=True)
+        bank_request.write_text('{}', encoding='utf8')
+        console.write_text('GPU selection | physical=5\n', encoding='utf8')
+        os.utime(console, (958, 958))
+        with patch.object(viewer.time, 'time', return_value=1000):
+            result = self.instance.snapshot()
+        self.assertEqual(result['status'], 'FIRST_BATCH_PENDING')
+        self.assertEqual(result['scoring']['seconds_since_console_write'], 42)
+        self.assertIsNone(result['scoring']['source_done'])
+        self.assertIsNone(result['scoring']['CP_done'])
+        self.assertIn('request 파일 생성 확인', result['native_pending_reason'])
+        shown = viewer.pipeline.display(result, experiment_version='v2.4')
+        self.assertEqual(len(shown.splitlines()), 8)
+        self.assertIn('첫 batch 완료 기록 대기', shown)
+        console.write_text(json.dumps(self.score_event(4)) + '\n', encoding='utf8')
+        measured = self.instance.snapshot()
+        self.assertEqual(measured['status'], 'SCORING_PROCESS_ALIVE')
+        self.assertEqual((measured['scoring']['source_done'], measured['scoring']['CP_done']), (4, 512))
+        self.assertIsNone(measured['native_pending_reason'])
+
+    def test_cp_missing_or_empty_startup_log_has_no_measured_age(self):
+        console = self.score_controller()
+        for empty_file in (False, True):
+            with self.subTest(empty_file=empty_file):
+                if empty_file:
+                    console.write_bytes(b'')
+                result = self.instance.snapshot()
+                self.assertTrue(result['snapshot_fresh'])
+                self.assertEqual(result['status'], 'SCORING_STARTUP')
+                self.assertIsNone(result['scoring']['seconds_since_console_write'])
+                self.assertIsNone(result['scoring']['source_done'])
+
+    def test_failed_controller_has_priority_over_live_startup_child(self):
+        self.score_controller()
+        self.state.update(status='FAILED', error='DEBUG actual startup failure: BEST verification')
+        result = self.instance.snapshot()
+        self.assertEqual(result['status'], 'FAILED')
+        self.assertEqual(result['scoring']['status'], 'FAILED')
+        self.assertIn('BEST verification', result['native_pending_reason'])
+        self.assertIsNone(result['scoring']['source_done'])
+        self.assertIn('BEST verification', result['read_problem']['detail'])
 
     def test_cp_rejects_wrong_pin_sha_or_wrong_early_stop_update_count(self):
         console = self.score_controller()

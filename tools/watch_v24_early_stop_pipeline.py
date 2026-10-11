@@ -129,13 +129,32 @@ class Viewer:
             if pin_receipt.get('output') != str(pin_path) or pin_receipt.get('output_sha256') != direct.sha(pin_path):
                 raise ValueError('CPU-admitted early BEST pin completion witness differs')
         if stage_name == 'score' or 'score' in state.get('stages_completed', []):
-            events, partial = scoring.complete_events(self.path.parent / 'score.log', 5)
+            console = self.path.parent / 'score.log'
+            events, partial = scoring.complete_events(console, 5)
             last = events[-1] if events else None
             done = last['completed_sources'] if last else None
-            cp = dict(GPU=5, status='SCORING_PROCESS_ALIVE' if stage_name == 'score' and child['alive'] else label,
+            try:
+                console_stat = console.stat()
+            except FileNotFoundError:
+                console_age = None
+            else:
+                console_age = max(0, time.time() - console_stat.st_mtime) if console_stat.st_size else None
+            cp_status, startup_reason = label, None
+            if label == 'RUNNING' and stage_name == 'score' and child['alive']:
+                cp_status = 'SCORING_PROCESS_ALIVE'
+                if last is None:
+                    if (Path(request['scoring_root']) / 'bank/request.json').is_file():
+                        cp_status = 'FIRST_BATCH_PENDING'
+                        startup_reason = 'CP 입력 request 파일 생성 확인; 첫 batch 완료 기록 대기(완료 수 미확인)'
+                    else:
+                        cp_status = 'SCORING_STARTUP'
+                        startup_reason = '입력·BEST 검증 및 모델 준비 구간; CP batch 완료 기록이 아직 없어 채점 진행량 미확인'
+                    native['native_pending_reason'] = startup_reason
+                    value['native_pending_reason'] = startup_reason
+            cp = dict(GPU=5, status=cp_status,
                 source_done=done, source_total=642, CP_done=done * 128 if done is not None else None, CP_total=82176,
                 own_BEST_pin_verified=pin is not None, last_batch_seconds=last['seconds'] if last else None,
-                seconds_since_console_write=max(0, time.time() - (self.path.parent / 'score.log').stat().st_mtime) if last else None,
+                seconds_since_console_write=console_age, detail=startup_reason,
                 partial_console_line_pending=partial, RAM_limit_GiB=64, **child)
             if 'score' in state.get('stages_completed', []):
                 receipt = pipeline.read(self.path.parent / 'stage_score.json', required=True)
