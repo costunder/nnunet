@@ -6,6 +6,8 @@
 
 진행 화면을 수정하거나 새 실험에 연결할 때는 [GNN·CP 공통 화면 계약](docs/training_monitor_ui_contract.txt)과 [Notion 디자인 양식](https://app.notion.com/p/3eabea17210b81c8969dd61f2aef459e)의 '공통 진행 화면 디자인 — UI schema 2' 절을 먼저 읽습니다. GNN 9행·CP 8행은 기존 공통 renderer/adapter로 재사용하고, nnU-Net 기본 로그 형식은 유지합니다.
 
+학습 후 결과는 [nnU-Net 공통 결과 계약](docs/nnunet_result_report_contract.txt), [고정 템플릿](docs/nnunet_result_report_template.txt), [Result schema 1](config/nnunet_result_report_schema_v1.json)을 사용합니다. 학습 완료·BEST 전체 평가·병변 지표 산출을 구분하고, 전체 종양/소형 병변/Basic CP 비교를 같은 순서로 기록합니다. Notion의 'nnU-Net 학습·평가 결과 양식 — Result schema 1' 절에도 같은 규칙을 저장합니다.
+
 | 구분 | 위치 | 현재 확인된 상태 |
 | --- | --- | --- |
 | 원본 V1, 30mm | [v1](versions/v1/README.md) | 예전 서버 checkpoint와 보존 소스를 구분한다. 원본30mm 전체 P+128U 최종 평가 결과는 아직 확인되지 않았다. |

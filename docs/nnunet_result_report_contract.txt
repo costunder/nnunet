@@ -1,0 +1,113 @@
+# nnU-Net 학습·BEST 평가 결과 공통 양식
+
+Result schema version: 1 (nnunet_completed_result_layout_v1)
+Notion 재사용 기준: https://app.notion.com/p/3eabea17210b81c8969dd61f2aef459e 의 'nnU-Net 학습·평가 결과 양식 — Result schema 1' 절.
+적용: Basic CP, v1, v2.3, v2.4, v2.5 및 이후 실험. 같은 종류의 결과는 같은 절·표·행 순서로 기록한다.
+원본 학습 로그 형식은 docs/training_monitor_ui_contract.txt의 nnU-Net 기본 로그 유지 규칙을 따른다.
+복사 가능한 보고서: docs/nnunet_result_report_template.txt. 기계가 읽는 표시 계약: config/nnunet_result_report_schema_v1.json.
+
+## 재사용 원칙
+
+다음 결과 정리 작업 전에 이 문서, 템플릿과 JSON 표시 계약을 읽는다. 실험 버전이 바뀌어도 결과 양식을 새로 만들지 않는다. 입력 경로와 관측값만 연결하며 사용자 요청으로 디자인을 바꿀 때만 Result schema version을 올린다. UI schema 2와 Result schema 1은 각각 화면과 결과 문서의 규격이며 과학적 실험 버전과 별개다.
+
+기존 native validation/summary.json과 tools/online_eval_v2.py의 비교 결과 파일을 그대로 근거로 사용한다. 보고서 제작을 이유로 loss, BEST 선택, inference, metric, matching, bootstrap, 데이터 규모와 학습 설정을 변경하지 않는다. 템플릿의 꺾쇠 표시는 기입 위치이며 실제 성능값이 아니다.
+
+## 고정 절 순서
+
+01 완료 상태 및 BEST 출처
+02 실험 설정 및 GNN·CP 요약
+03 nnU-Net 학습 기록
+04 전체 종양 분할 성능
+05 전체 병변 검출 성능 — 고정 6개 기준
+06 크기별 검출 성능 — 고정 3구간 × 6개 기준
+07 Basic CP 대비 차이 및 통계
+08 원본 산출물·검증 범위·제한
+마지막에는 작업 완료 체크리스트를 둔다.
+
+각 표의 열과 행 순서는 JSON 표시 계약과 템플릿을 따른다. 없는 지표도 행/열을 지우지 않는다. 실험별 요약은 동일한 표에 한 실험당 한 행으로 누적하며 실험명에는 버전과 arm을 명시한다. 확정 결과와 중간 결과를 같은 완료 상태로 표시하지 않는다.
+
+## 01 완료 상태 및 BEST 출처
+
+학습 상태, 완료 epoch/목표 epoch, BEST 전체 예측·native 평가 상태, 추가 병변 metric 상태, 비교 적합성 상태를 별도 필드로 둔다. 모델 epoch와 평가 case 수는 실제 request/receipt/로그에서 읽으며 템플릿 기본값으로 대신하지 않는다. 현재 v2.4 계약은 train105/outer-validation26, nnU-Net250epoch이다.
+
+학습 완료는 원래 full250 완료 증거로 확인한다. checkpoint_final.pth는 전체 학습 완료 증거일 뿐 평가 모델로 쓰지 않는다. 예측·평가는 반드시 자기 실험의 checkpoint_best.pth를 실제 로드한 증거, SHA, BEST epoch의 원시 current_epoch 값, 원래 전체 validation case 목록과 prediction SHA, summary SHA를 연결한다. epoch의 0/1-based 표시를 임의 추정하지 않는다.
+
+현재 native 증거: training_complete_*.json, best_validation_complete.json. BEST receipt의 complete/original_checkpoint_load_called/original_full_validation_called와 checkpoint/cohort/예측 결속을 확인한다. 전체26 예측 완료와 별도 병변 지표 산출 완료는 서로 다른 상태이다. tools/online_eval_v2.py의 completion.json 및 출력 SHA가 있어야 그 추가 metric 보고를 완료로 표시한다.
+
+BEST 파일 존재, controller의 COMPLETE 문자열, 최신 epoch의 Pseudo dice, final checkpoint 존재만으로 BEST 전체 평가나 비교 완료를 선언하지 않는다. 기존 viewer의 completion_metadata_verified는 봉인된 metadata 결속 확인 범위이며 checkpoint/prediction 바이트 재검증과 구분한다.
+
+## 02 실험 설정 및 GNN·CP 요약
+
+실험 version/arm/run ID, seed, fold, split 식별자, GNN encoder·초기 가중치 출처·curriculum·context의 간 깊이와 종양 거리 경계, GNN BEST epoch 및 공통 full128 MRR/top1/pair loss를 같은 필드로 기록한다. GNN의 학습·추론 context가 다르면 두 값을 모두 기록한다.
+
+CP donor 출처·병변 자격·source 수·source별 후보 수·위치 선택·시도 확률·HU jitter·paste 공간·RNG 정책·실제 적용 횟수/시도 횟수와 적용률·bank/score overlay 식별자를 기록한다. 현재 matched Basic 계약의 자기 병변642개/CP 가능81명/동일128후보/CP0.5/전처리 paste를 과거 고정 donor 또는 raw-target paste와 섞지 않는다. 다른 실험의 수를 새 실험의 관측값으로 복사하지 않는다.
+
+nnU-Net trainer/plans/configuration/fold, train/validation 수, patch, physical batch, accumulation/effective batch, precision, 계획 epoch를 기록한다. Context·encoder·curriculum의 차이는 성능 해석에 필요한 비교 변수로 남긴다. 자기 arm BEST와 다른 arm BEST를 혼용하지 않는다.
+
+## 03 nnU-Net 학습 기록
+
+목표/완료 epoch, 시작·종료 시각, 실제 학습시간, 최근 train_loss/val_loss와 해당 epoch, BEST 선택 기준과 원시 epoch, 마지막 온라인 Pseudo dice, OnlineCP 적용/시도/적용률, peak VRAM·RSS·epoch time의 측정 범위를 고정 필드로 둔다. 실제 기록이 없으면 NA와 사유를 쓴다.
+
+현재 nnU-Net BEST 선택 기준은 native EMA Pseudo dice이며 GNN의 full128 ranking BEST 기준과 다르다. Pseudo dice 배열과 실제 class 순서를 보존한다. Pseudo dice와 BEST 선택에 쓰인 EMA 값은 학습 중 기록이다. 아래 full-volume BEST 평가 성능으로 대신하지 않는다. 전체 elapsed, 순수 train time와 준비/평가 시간을 구분한다. 마지막 epoch 성능을 BEST 성능이라고 표시하지 않는다.
+
+## 04 전체 종양 분할 성능
+
+고정 표 열: 실험, checkpoint, 평가 case 수, 전체 종양 Dice(case macro), 병변 평균 Dice, native 간 Dice, native 종양 Dice, metric 출처/집계.
+
+전체 종양 Dice는 online_eval_v2.py의 case_tumor_dice의 환자 평균, 병변 평균 Dice는 lesion_dice_quality의 전체 GT 병변 가중 평균이다. 일대일 Dice 최대 matching에서 unmatched GT 병변 Dice0을 포함하는 원래 정의와 empty-mask 처리를 유지한다. 병변 평균을 환자 평균의 평균으로 바꾸지 않는다. Native validation/summary.json의 label별 평균은 별도 열에 두고 위 metric과 같은 값으로 취급하지 않는다. Native label 의미는 dataset.json의 실제 mapping으로 확인한다.
+
+간 Dice는 소형암 개선의 대체 성능이 아니다. Metric의 cohort, 단위, 집계와 GT 정의가 다르면 같은 이름 아래 비교하지 않는다.
+
+## 05 전체 병변 검출 성능
+
+고정 기준 순서:
+1. legacy_any_overlap — Any overlap >0 voxel (legacy)
+2. dice_ge_0p10 — Lesion Dice >=0.10
+3. dice_ge_0p25 — Lesion Dice >=0.25
+4. dice_ge_0p50 — Lesion Dice >=0.50
+5. gtcov_ge_0p10 — GT coverage >=0.10
+6. iou_ge_0p10 — Lesion IoU >=0.10
+
+각 기준마다 실험, GT 수, TP/FP/FN, Recall, Precision, F1, FP/case를 같은 열로 기록한다. 6개 기준 전체를 항상 같은 순서로 표시하고 결과가 좋게 나온 기준만 선택하지 않는다. 이는 기존 sensitivity suite이며 사후 primary endpoint를 새로 선정하는 규칙이 아니다. Legacy matching과 나머지 기준의 threshold-valid Hungarian matching을 임의로 같게 만들지 않는다.
+
+## 06 크기별 검출 성능
+
+각 기준마다 같은 순서로 <=10mm, >10~<=20mm, >20mm를 기록한다. 직경은 GT 26-connectivity 연결 병변의 실제 mm^3 체적 V에서 구한 등가구 직경 d=(6V/pi)^(1/3)이다. GT 수, 검출수, 미검출수, Recall을 표시하며 원래 전체 validation cohort의 병변을 모두 포함한다. 현재 cohort는26명이며 기존 기록의 소형82개/전체172개 같은 병변 수를 상수로 넣지 않는다.
+
+소형암 대표 구간은 <=10mm이며 CP donor 자격 <=20mm와 구분한다. FP와 precision을 GT 크기 구간에 임의 배분하지 않는다. 현재 evaluator의 size-bin 산출물은 Recall 중심이며 소형 병변 Dice 또는 소형 precision이 실제 별도 계산되지 않았으면 NA로 표시한다.
+
+## 07 Basic CP 대비 차이 및 통계
+
+고정 열: 실험(version/arm/run ID), metric/criterion/size_bin, Basic 값, 실험 값, 실험-Basic 차이, 95% CI, patient-swap p, Wilcoxon p, 비교 상태, 근거/미검증 사유. 여러 arm을 누적해도 각 행의 실험 출처가 식별되어야 한다. Wilcoxon은 기존 전체 종양 Dice에서 산출하는 경우만 기록하고 나머지는 NA로 둔다.
+
+비교 전에 양쪽 split/case 목록·GT/spacing·BEST 예측 출처·metric 구현 SHA/집계·matching/empty-mask·native 학습 조건·CP 정책을 대조한다. 계획된 차이(encoder/curriculum/위치 선택 등)를 명시한다. BEST provenance가 미검증인 역사적 Basic 예측은 'HISTORICAL_REFERENCE / checkpoint linkage unverified'로 표시한다. 파일명이나 wrapper의 --checkpoint BEST 라벨만으로 원래 학습 checkpoint와의 결속을 확정하지 않는다.
+
+같은 cohort/metric으로 산술 차이를 계산할 수 있어도 실험 통제나 BEST 출처가 미검증이면 '완전한 matched BEST 비교'로 표시하지 않는다. 조건 불일치 상태에서는 matched-comparison 차이는 NA로 두며, 동일 평가 정의의 역사적 참고 차이는 별도 참고 표로 명시한다.
+
+Evaluator 원문의 prediction_origin_status를 그대로 보존하고 별도 자기 BEST receipt와 Basic BEST witness 검증 상태를 기록한다. 현재 online_eval_v2.py 원문은 prediction bytes 검증과 original training-checkpoint linkage 미검증을 구분한다. 원문 상태를 자체 판단으로 덮어쓰지 않는다. 실제 evaluator version/source SHA, evaluation_contract SHA, completion/output SHA와 GT/prediction/cohort 식별자를 기록한다. evaluate_v24_historical_metrics.py가 고정한 과거 evaluator SHA와 현재 evaluator는 다를 수 있으므로 같은 원래 평가의 exact replay라고 임의 표시하지 않는다.
+
+차이는 실험-Basic으로 통일한다. Dice/Recall/Precision/F1은 양수, FP/case는 음수가 개선 방향이다. 비율과 차이 원본은 0~1 척도이며 percentage point 표시를 쓸 때는 100배 변환한 별도 열과 단위를 명시한다. 화면은 소수4자리, FP/case는3자리, 저장 JSON/CSV는 원본 정밀도를 유지한다. CI와 p는 원래 patient-cluster bootstrap/patient-swap 결과만 사용하고 임의 생성하지 않는다. Undefined/inference unavailable은 NA와 사유·유효/무효 resample 수를 보존한다. 다중 기준의 p는 보정 여부와 사후 주평가지표를 선택하지 않았음을 함께 기록한다.
+
+## 08 원본 산출물·검증 범위·제한
+
+Native 근거: validation/summary.json, best_validation_complete.json, training_complete_*.json 및 관련 request/상태/로그.
+기존 추가 평가 산출물: summary.json, comparison.md, case_metrics.csv, case_detection_metrics.csv, lesion_detection_metrics.csv, prediction_detection_metrics.csv, criterion_summary.csv, size_recall_summary.csv, patient_cluster_statistics.csv, evaluation_started.json, completion.json. 파일 목록은 evaluator 실제 outputs를 기준으로 하며 생성되지 않은 파일을 생성됐다고 쓰지 않는다. 병변 평균 Dice와 matching의 결과는 summary.json의 lesion_dice_quality에서 읽는다.
+report는 이 템플릿의 표시 문서이며 원본 결과 파일을 덮어쓰거나 이름을 바꾸지 않는다. 새 보고서를 새 경로에 저장하고 근거 경로/SHA와 schema version을 기록한다. 중간 파일만 있으면 INCOMPLETE 상태를 유지한다.
+
+이번 작업 완료 범위: 결과 양식·복사 템플릿·JSON 표시 계약과 Notion 저장. 기존 평가 코드를 읽어 필드와 정의를 대조했다. 새 학습/예측/성능 평가/자동 controller 변경은 이번 양식 저장의 완료 증거가 아니다. 기존 controller의 BEST 전체 native 평가와 이 추가 metric 보고서를 구분하며 문서 저장만으로 추가 평가가 자동 실행됐다고 주장하지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. 이번 작업은 양식 저장이며 기존 설정의 기록 필드를 고정했다.
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 이번 작업에서 새 자원 측정은 하지 않았다.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 작업에 모델 실행/OOM은 없다.
+- [x] 디버그 설정과 최종 설정을 분리했다. 템플릿과 실제 결과를 구분한다.
+- [x] dummy, placeholder, random fallback을 실제 결과로 사용하지 않았다. 템플릿 기입 위치는 결과가 아니다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 이번 작업은 표시 계약이며 학습 경로를 수정하지 않았다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
