@@ -123,7 +123,11 @@ class ScoredNativeCPUUnit(unittest.TestCase):
         cache=chain.FileProofCache();proof=cache.capture(path)
         with patch.object(chain,'sha',wraps=chain.sha) as hashed:
             cache.verify(proof);cache.check();self.assertEqual(hashed.call_count,0)
+            before=path.stat()
             path.write_bytes(b'other')
+            # CPU UNIT deterministic metadata mutation even when tmpfs records
+            # two same-size writes within one coarse timestamp tick.
+            os.utime(path,ns=(before.st_atime_ns,before.st_mtime_ns+1_000_000))
             with self.assertRaisesRegex(ValueError,'identity'):cache.verify(proof)
         self.assertNotIn(str(path),cache.records)
 
