@@ -146,6 +146,18 @@ nnunet 환경으로 계속 실행 중이며96/642 병변/12288 CP 점수를 확�
 표시 단계는 CP 후보 채점이며 후속 nnU-Net은 저장공간 대기임을 명시한다.
 설치 증거: install_GPU6_current_scoring_viewer_1791709944750975300.log
 
+GPU5 기존 조회 명령도 중단 전 run_gpu5_measured_resume_1791628409535468800/
+gpu5에 고정되어 있었다. 실제 --json의 epoch24/update408/full_validation8/21은
+그 이전 경로의 기록이다. snapshot_fresh=True는 JSON을 읽었다는 뜻이며 현재
+재개한 학습 경로를 보고 있다는 보장이 아니다. 18:40:40 KST 읽기 전용 조회에서
+새 GPU5는 동일PID1822677/birth1791705670.42로 epoch25/update425/U103,
+GPU4는 동일PID1822676/birth1791705670.41로 epoch34/update578/U128이었다.
+두 실제 실행 파일은 nnunet 환경이고 오류가 없었다. 새 direct GNN 루트에는
+pipeline status.json이 없으므로 새 tools/watch_v24_direct_gnn_training.py는
+실제 request/registration/continuation과 프로세스 신원을 조회 화면에만 연결한다.
+상태 파일이나 기존 viewer, 학습 설정과 결과는 덮어쓰지 않는다.
+증거: GPU45_viewer_targets_readonly_1791711640815672900.json
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
