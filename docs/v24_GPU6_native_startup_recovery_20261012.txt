@@ -1,0 +1,92 @@
+GPU6 nnU-Net startup recovery — 2026-10-12 KST
+
+Failure and scope
+GPU6 finished its own GNN40/680 and all642 sources x128 CP positions (82176).
+The original native controller then failed before the first optimizer update:
+ImportError: cannot import name 'snapshot' from hiercp_v1x.v24_nnunet_cp.
+The module already supplies require_project_budget(), the genuine bounded
+project resource observer. The permanent runtime correction removes the
+nonexistent import and uses that observer for the actual configuration log.
+
+Original sealed code, scoring bank, request, FAILED status, calibration,
+training-start record and404-byte citation-only failed fold log are preserved.
+The original train fold contains no checkpoint or completed epoch at admission.
+An explicit zero-update adapter therefore starts the original native entry,
+using its existing native preparation and calibration, without weakening the
+normal fresh-fold guard or loading a nonexistent checkpoint.
+Within that new child process only, the missing observer name is bound to
+the original require_project_budget implementation. No original code is edited.
+
+The first adapter supervisor(5233b1dd1e10) failed before child creation because
+publish() tried to unlink a temporary path already consumed by os.replace.
+Its records remain intact. Its exact dead PID2108275/birth1791749288.96 lease
+was exclusively archived; no process was signaled. The state publication fix
+and real repeated-replace/exclusive-create regression tests are included.
+
+Implementation and validation
+Runtime, strict zero-update retry, startup/BEST completion checks and viewer
+adapter are implemented. Windows CPU DEBUG tests:50 passed(32.554 seconds).
+Server conda nnunet CPU DEBUG tests:50 passed(3.639 seconds).
+Static checks and independent adapter/deployment review completed.
+These tests do not constitute full training or full26-case evaluation.
+
+Actual GPU6 launch
+Deployed Git commit:dea813d273fe27e1e86267bb926f51bc220d11b3.
+Code:/dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/code_dea813d273fe
+Original arm:/var/tmp/aicompetition06_v24_20261010/GPU456_AUTO_NATIVE_20261011_1791730500000000000/gpu6
+Retry:original arm/NATIVE_STARTUP_RETRY_dea813d273fe
+Supervisor PID2110982/birth1791749717.83; child PID2111041/birth1791749726.39.
+Interpreter:/home/aicompetition06/.conda/envs/nnunet/bin/python3.10
+Request SHA256:6650a113806f6874a032003d09160c811092a2978fa5216c00e65a15c0e6382d
+Existing score overlay SHA256:5549623d7557bee128a33a0ccade14c71dfdc56225a01c6958c17b1fc4d7992d
+All16 original input witnesses retain their full stat and SHA256.
+
+The actual production on_train_start completed and configuration was written.
+Epoch0 started2026-10-12 05:15:46KST; learning rate0.01.
+Model:ResidualEncoderUNet,6 stages; channels32/64/128/256/320/320;
+encoder blocks1/3/4/6/6/6; decoder conv counts1/1/1/1/1.
+Parameters/trainable parameters:102350575/102350575.
+Patch:[128,128,128],3d_fullres, dataset730/fold0.
+Actual data:105train+26validation; complete original split, debug=false.
+Physical/effective batch:2/2; gradient accumulation1; data parallel workers1.
+Target:250epochs,250 train batches/epoch(500 samples),50 validation batches;
+source entries642, candidates128;
+OnlineCP hier_argmax, probability0.5; evaluation checkpoint_best.pth.
+Resource envelope:GPU6 RTX A6000, PBS129528, CPUs32-35, RAM48GiB,
+augmentation workers4/Torch threads1; original measured B2/B4 calibration reused.
+At05:16:50KST GPU utilization95%, VRAM7713MiB and child tree RSS7.26GiB;
+controller RUNNING/train, no resource violation. No hidden subset/cap added.
+First epoch actually completed05:17:15KST:train_loss0.0656, val_loss-0.0743,
+pseudo Dice0.7948/0.0, elapsed89.12seconds, OnlineCP applied193/500.
+Epoch1(second epoch) started05:17:17KST with learning rate0.00996.
+At05:18:10KST GPU utilization84%, VRAM7713MiB, child tree RSS9.02GiB;
+controller and child alive, no resource violation, completed_epochs1.
+Full250/BEST26 completion remains separately tracked.
+
+Stable viewer
+The prior GPU6 display launchers and common dispatcher are backed up under
+retry/viewers/previous_UI_launchers. GPU4/5 display aliases are byte-unchanged.
+Existing command now observes the actual retry and preserves the established
+nnU-Net display format:
+/home/aicompetition06/.conda/envs/nnunet/bin/python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_gpu6_current.py
+
+Limitations
+Full250-epoch training and full26-case BEST evaluation are running objectives,
+not completed results. The current change deploys the GPU6 retry; existing
+GPU4/5 frozen native controllers are not silently claimed to be patched.
+No dataset, weight, checkpoint or server key is included in Git code deployment.
+
+## 작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (이번 실패는 OOM이 아님.)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (원래 native 학습 경로와 실제 batch calibration 유지.)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
