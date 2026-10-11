@@ -106,6 +106,15 @@ def _stage_declaration(stage, path, gpu, CPU_affinity):
             or stage["format"] != STAGE_REQUEST_FORMAT):
         raise ValueError("New matched downstream stage declaration required; original GNN proof cannot be reused")
     request = stage["controller_request_declaration"]
+    if isinstance(request, dict) and request.get("format") == "v24_scored_bank_to_native_chain_request_v1":
+        from .v24_scored_native_chain import validate_declaration
+        validate_declaration(request)
+        if ("direct_GPU_access" in request or request.get("GPU_arm") != gpu
+                or request.get("CPU_affinity") != CPU_affinity
+                or Path(request["chain_root"]) != Path(path).parent
+                or Path(path).name != "direct_GPU_stage_request.json"):
+            raise ValueError("Exact new native-only direct stage declaration required")
+        return request
     if (not isinstance(request, dict) or "direct_GPU_access" in request or "context_depth1_direct_allocation_proof" in request
             or request.get("direct_mode") != DIRECT_MODE or request.get("PBS_owned_reservation") is not False
             or request.get("context_depth1") is not True or request.get("scheduler") is not None

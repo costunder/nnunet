@@ -1,0 +1,55 @@
+v2.4 GPU4/5/6 저장공간 복구 및 자동 후속 nnU-Net 연결
+
+목적
+- 각 GPU의 원래 전체 GNN BEST로 수행하는 full642/82176 CP 채점이 끝나면, 같은 GPU에서 원래 nnU-Net 학습 및 BEST 평가를 자동으로 이어간다.
+- 기존 실험 결과와 입력 데이터, 모델 규모, batch, epoch를 보존한다.
+
+저장공간 계산 및 실제 복구
+- 기존 aggregate 필요 용량 17,400,317,811 bytes에는 전체 3-arm peak writes 6,126,028,659 bytes와 reserve 11,274,289,152 bytes가 이미 포함돼 있다.
+- reserve는 10GiB + 512MiB이며, 필요 용량에 중복으로 더하지 않는다.
+- 로컬 무손실 tar 백업: outputs/v24_gpu6_recovery_20261011/inactive_input_cache_archive_1791730546799986300/verified_cache_copies.tar
+- 실제 서버의 비활성 input 복사본 1,045개, payload 4,201,641,306 bytes를 읽어 백업하고 파일별 SHA-256 및 크기 일치를 검증했다. 모든 복사본의 별도 원본 경로와 full stat/SHA를 기록했다.
+- 이후 공간 확보에 필요한 74개 임시 input 복사본만 개별 unlink했다. 회수 예정 allocated bytes 4,050,227,200; 회수 직후 실제 free 17,480,278,016 bytes.
+- 정리 대상은 별도 원본과 바이트가 같은 평가 입력 checkpoint, 실패한 준비 단계의 checkpoint/lineage 복사본, DEBUG tensor/cache 복사본이다. 원본 checkpoint, 실제 결과, raw CT, 전체 preprocessed 데이터, metadata와 Git 저장소는 유지했다.
+- 보호된 old raw_case cache 105개 및 native131, 840개 static operator witness는 삭제하거나 변경하지 않았다.
+- 새 저장 admission은 실제 free 17,477,709,824 bytes에서 전체 필요 용량 17,400,317,811 bytes 검사를 통과했다.
+- 새 namespace: /var/tmp/aicompetition06_v24_20261010/GPU456_AUTO_NATIVE_20261011_1791730500000000000
+- 실제 admission SHA-256: 959a390d4ec62c855fd0309f322b714d5e3e2d5419976e51f90783b83d381b47
+- 이후 CP 출력 증가 여유 확보를 위해 비활성 Git checkout의 validation 산출물 복사본 1,474개도 별도 로컬 tar 백업·크기/SHA/Git 원본 일치 검증했다. 그중 726개 중복 캐시만 개별 정리했고, 실제 free가 18,053,267,456 bytes로 늘었다. 코드, config, Git 객체, 활성 checkout 및 보존 원본은 변경하지 않았다.
+- original_readonly_admission의 모델/데이터 및 reserve/7-slot checkpoint 계약을 보존하고, 새 sibling arm roots와 publication lock만 바인딩했다.
+
+후속 실행 계약
+- GNN40epochs/680updates 및 arm별 원래 full model/BEST 유지.
+- GPU4: 공식 STU-Net L0, U128 시작, 기존 full642 depth1 scorer 결과 사용.
+- GPU5: 원래 CNN/GAT arm의 중단 재개된 GNN 전체 완료 후, 자기 BEST로 전체642/82176 채점.
+- GPU6: 자기 STU-Net GNN BEST와 이미 실행 중인 full642 depth1 scorer 결과 사용.
+- 간 깊이 >1mm 수정은 기존 v2.4 checkpoint의 inference 경로에 적용한 기존 승인 설정을 유지한다. v2.5 학습 설정 변경과 구분한다.
+- native: physical batch2, accumulation1/effective2, patch128³, CP probability0.5, train105/validation26,250epochs.
+- calibration B2/B4는 별도 실제 데이터 clone DEBUG이며 production 규모를 변경하지 않는다.
+- 평가 대상은 checkpoint_best.pth. FINAL은 full250 학습 완료 증명 용도로만 사용한다.
+- 이미 완료한 CP 채점을 재실행하거나 복사하지 않고 sealed 외부 score_overlay를 직접 연결한다.
+- CPU waiter는 CUDA를 초기화하지 않으며, 실제 완료 증명/저장공간/GPU availability/lifetime 확인 후 단계별 child를 생성한다.
+- GPU4/5는 사용자가 요청한 기존 direct 모드이며 GPU6 PBS 할당을 자신의 할당으로 표시하지 않는다.
+
+실행 증거 및 제한
+- 저장공간 복구와 실제 전체 admission 검증 완료.
+- 새 자동 controller와 viewer의 구현/검사/실제 등록 결과는 아래 runtime 기록에 추가한다.
+- 구현된 자동 controller/GPU5 waiter 및 viewer 설치 관련 CPU 테스트 50개 통과. 기존 storage/native/BEST 회귀 테스트 80개 통과(1개 기존 skip). Windows 제한 sandbox의 path-resolution 권한 오류는 같은 테스트를 허용된 실행 환경에서 재검증하여 해소했으며 production 경로 규칙을 약화하지 않았다.
+- 전체 GNN/CP/native 완료를 CPU 테스트 또는 smoke test 통과와 혼동하지 않는다.
+- 서버의 다른 작업에 따른 free 공간 변화와 할당 종료 시점은 실제 단계 시작 때 다시 확인한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

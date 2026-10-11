@@ -79,7 +79,14 @@ def main(args):
             stunet_checkpoint=args.stunet_checkpoint,context_depth1=args.context_depth1,deadline_guard=guard)
         pipeline.validate_profiled_overlay(result, full_hash=True, expected_depth1=args.context_depth1)
     elif args.action == 'prepare-native':
-        if args.bank != chain/'bank/score_overlay.json':
+        expected_bank = chain/'bank/score_overlay.json'
+        controller_path = os.environ.get('V24_CONTEXT_DEPTH1_CHAIN_REQUEST')
+        if controller_path:
+            controller = pipeline.read(controller_path)
+            if controller.get('format') == 'v24_scored_bank_to_native_chain_request_v1':
+                from hiercp_v1x.v24_scored_native_chain import external_overlay_for_stage
+                expected_bank = external_overlay_for_stage(controller)
+        if args.bank != expected_bank:
             raise ValueError('Full642 own-arm matched score overlay required')
         result = pipeline.prepare_native(args.bank,args.output,args.storage_admission,gpu=args.gpu)
     else:

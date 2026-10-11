@@ -100,16 +100,23 @@ class CurrentPipelineCPU_DEBUG(unittest.TestCase):
             completed_sources=642, completed_CP_positions=82176, full_native_training=False,
             full_native_evaluation=False, native_pending_reason='UNIT native capacity unavailable'))
 
-    def native(self, status='WAITING_FOR_NATIVE_STORAGE', *, child=False):
+    def native(self, status='WAITING_FOR_NATIVE_STORAGE', *, child=False, new=False):
         root = self.base / 'native'
         root.mkdir()
         command = ['UNIT_python', '-B', '-u', 'UNIT_native_worker', '--native', str(root / 'native/native.json'), '--gpu', '4']
         request = dict(chain_root=str(root), GPU_arm=4, source_output=str(self.arm / 'gnn'),
             source_code=self.direct_request['source_code'], stages=[dict(name='train', action='train', command=command)])
+        if new:
+            request.update(format=pipeline.NATIVE_REQUEST,
+                storage_admission=str(root.parent / 'storage_admission.json'),
+                storage_binding=str(root.parent / 'storage_binding.json'),
+                arm_roots=dict(gpu4=str(root), gpu5=str(root.parent / 'native5'), gpu6=str(root.parent / 'native6')))
         write_json(root / 'request.json', request)
         digest = hashlib.sha256((root / 'request.json').read_bytes()).hexdigest()
         self.native_reg = dict(pid=70003, create_time=300., root=str(root), request_sha256=digest,
             command=['UNIT_python', '-B', '-u', 'watch_v24_gnn_to_nnunet.py', '--request', str(root / 'request.json')])
+        if new:
+            self.native_reg['format'] = pipeline.NATIVE_REGISTRATION
         write_json(root / 'registration.json', self.native_reg)
         state = dict(format='v24_completed_gnn_to_native_chain_status_v1', GPU_arm=4,
             request_sha256=digest, source_output=str(self.arm / 'gnn'), supervisor_pid=70003,
@@ -117,11 +124,64 @@ class CurrentPipelineCPU_DEBUG(unittest.TestCase):
             waiting_reason='UNIT measured native reserve insufficient', child_pid=70004 if child else None,
             child_create_time=400. if child else None, command=command if child else None,
             stage_log=str(root / 'train.log') if child else None, stages_completed=[])
+        if new:
+            state['format'] = pipeline.NATIVE_STATUS
         write_json(root / 'status.json', state)
         if child:
             (root / 'train.log').write_text('Epoch 12\ntrain_loss -0.1\nval_loss -0.2\nPseudo dice [0.4]\n', encoding='utf8')
         self.viewer.native_root = root
         self.native_alive, self.native_child = True, child
+
+    def native_completion(self):
+        root = self.base / 'native'
+        request = pipeline.read(root / 'request.json')
+        admission_path = Path(request['storage_admission'])
+        write_json(admission_path, dict(format='v24_matched_Basic642_storage_admission_v1',
+            arm_roots=request['arm_roots']))
+        admission_sha = pipeline.checksum(admission_path)
+        storage = dict(path=str(admission_path), sha256=admission_sha, stat=pipeline._file_stat(admission_path))
+        write_json(Path(request['storage_binding']), dict(format='v24_scored_native_storage_ready_v1',
+            admission=storage, arm_roots=request['arm_roots'], model_data_scale_preserved=True))
+        native_root = root / 'native'
+        native_root.mkdir()
+        bank = self.score / 'bank'
+        bank.mkdir()
+        overlay = bank / 'score_overlay.json'
+        write_json(overlay, dict(pin=pipeline.read(self.score / 'own_best_pin.json')))
+        bank_sha = pipeline.checksum(overlay)
+        fold = native_root / 'nnUNet_results/UNIT_dataset/UNIT_trainer/fold_0'
+        fold.mkdir(parents=True)
+        cases = ['UNIT_val_' + str(i).zfill(3) for i in range(26)]
+        native = dict(format='v24_matched_Basic642_native_v1', root=str(native_root), physical_GPU=4,
+            bank=str(overlay), bank_sha256=bank_sha, epochs=250, train_cases=105, validation_cases=26, debug=False,
+            physical_batch=2, patch_size=[128] * 3, cp_probability=.5, source_entries=642, candidates_per_source=128,
+            storage_admission=str(admission_path), storage_admission_sha256=admission_sha,
+            split=dict(outer_val=cases), checkpoint_coordination=dict(folds=dict(gpu4=str(fold))))
+        write_json(native_root / 'native.json', native)
+        receipt_path = fold / 'best_validation_complete.json'
+        receipt = dict(format='v24_native_best_loaded_full26_validation_v1', checkpoint_name='checkpoint_best.pth',
+            checkpoint_path=str(fold / 'checkpoint_best.pth'), checkpoint_sha256='b' * 64, native_fold=str(fold),
+            bank_sha256=bank_sha, validation_cases=cases, complete=True, native_validation_returned_successfully=True,
+            original_checkpoint_load_called=True, original_full_validation_called=True, final_checkpoint_fallback=False,
+            GT_passed_to_predictor=False, CP_at_inference=False,
+            predictions_sha256={case:'c' * 64 for case in cases}, summary_sha256='d' * 64)
+        write_json(receipt_path, receipt)
+        complete_path = native_root / 'training_complete_UNIT_DEBUG.json'
+        complete = dict(format=native['format'], epochs=250, GPU=4, checkpoint=str(fold / 'checkpoint_final.pth'),
+            checkpoint_sha256='a' * 64, checkpoint_role='full250_training_completion_witness', bank_sha256=bank_sha,
+            evaluation_checkpoint_name='checkpoint_best.pth', evaluation_checkpoint_path=receipt['checkpoint_path'],
+            evaluation_checkpoint_sha256=receipt['checkpoint_sha256'], best_validation_receipt=str(receipt_path),
+            best_validation_receipt_sha256=pipeline.checksum(receipt_path))
+        write_json(complete_path, complete)
+        stage_path = root / 'matched_storage_train.json'
+        write_json(stage_path, dict(format='v24_matched_basic_native_stage_v1', status='COMPLETE', action='train',
+            storage_admission_sha256=admission_sha, model_data_scale_preserved=True, cached_inputs_written=False))
+        state = pipeline.read(root / 'status.json')
+        state.update(full_native_training_completed=True, full_native_evaluation_completed=True, storage=storage,
+            completion_proof=dict(action='train', physical_GPU=4, path=str(complete_path), sha256=pipeline.checksum(complete_path),
+                matched_stage_receipt=str(stage_path), matched_stage_receipt_sha256=pipeline.checksum(stage_path)))
+        write_json(root / 'status.json', state)
+        return complete_path, receipt_path
 
     def observed(self):
         with patch.object(pipeline.psutil, 'Process', side_effect=self.process):
@@ -237,6 +297,105 @@ class CurrentPipelineCPU_DEBUG(unittest.TestCase):
         write_json(self.base / 'native/status.json', state)
         self.assertEqual(self.observed()['status'], 'READ_ERROR')
 
+    def test_native_preregistration_is_legal_during_GNN_and_CP_wait(self):
+        self.native(status='WAITING_FOR_FULL_GNN', new=True)
+        self.gnn_alive = True
+        observed = self.observed()
+        self.assertEqual(observed['active_stage'], 'gnn')
+        self.assertEqual(observed['native']['status'], 'WAITING_FOR_FULL_GNN')
+        self.gnn_alive = False
+        self.pin()
+        (self.score / 'console.log').write_text(json.dumps(event(4, 20)) + '\n', encoding='utf8')
+        state = pipeline.read(self.base / 'native/status.json')
+        state['status'] = 'WAITING_FOR_FULL642_SCORING'
+        write_json(self.base / 'native/status.json', state)
+        observed = self.observed()
+        self.assertEqual(observed['active_stage'], 'scoring')
+        self.assertEqual(observed['scoring']['source_done'], 20)
+        self.assertEqual(observed['native']['status'], 'WAITING_FOR_FULL642_SCORING')
+        self.assertFalse(observed['native']['native_training_started'])
+
+    def test_native_running_before_full642_is_rejected(self):
+        self.pin()
+        (self.score / 'console.log').write_text(json.dumps(event(4, 20)) + '\n', encoding='utf8')
+        self.native(status='RUNNING', child=True, new=True)
+        observed = self.observed()
+        self.assertEqual(observed['status'], 'READ_ERROR')
+        self.assertIn('before confirmed full642', observed['read_problem']['detail'])
+
+    def test_metadata_publication_wait_keeps_current_CP_active(self):
+        self.pin()
+        (self.score / 'console.log').write_text(json.dumps(event(4, 20)) + '\n', encoding='utf8')
+        self.native(status='WAITING_METADATA_PUBLICATION', new=True)
+        observed = self.observed()
+        self.assertEqual(observed['active_stage'], 'scoring')
+        self.assertEqual(observed['native']['status'], 'WAITING_METADATA_PUBLICATION')
+        self.assertFalse(observed['native']['native_training_started'])
+
+    def test_late_storage_binding_requires_exact_admission_SHA_stat_and_arm(self):
+        self.complete_scoring()
+        self.native(status='COMPLETE', new=True)
+        self.native_completion()
+        self.assertTrue(self.observed()['full_native_training'])
+        request = pipeline.read(self.base / 'native/request.json')
+        path = Path(request['storage_binding'])
+        original = path.read_bytes()
+        binding = pipeline.read(path)
+        for changes in (dict(sha256='e' * 64), dict(stat=[0] * 5), dict(path=str(self.base / 'other_admission.json'))):
+            binding['admission'].update(changes)
+            write_json(path, binding)
+            self.assertEqual(self.observed()['status'], 'READ_ERROR')
+            path.write_bytes(original)
+            binding = pipeline.read(path)
+
+    def test_new_native_completion_requires_real_full250_and_BEST26_metadata(self):
+        self.complete_scoring()
+        self.native(status='COMPLETE', new=True)
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+        self.native_completion()
+        self.native_alive = False
+        observed = self.observed()
+        self.assertTrue(observed['full_native_training'])
+        self.assertTrue(observed['full_native_evaluation'])
+        self.assertTrue(observed['native']['completion_metadata_verified'])
+        self.assertIn('bytes not reread', observed['native']['completion_verification_scope'])
+
+    def test_new_native_completion_refuses_FINAL_evaluation_or_partial26(self):
+        self.complete_scoring()
+        self.native(status='COMPLETE', new=True)
+        complete_path, receipt_path = self.native_completion()
+        receipt = pipeline.read(receipt_path)
+        receipt['checkpoint_name'] = 'checkpoint_final.pth'
+        write_json(receipt_path, receipt)
+        complete = pipeline.read(complete_path)
+        complete['best_validation_receipt_sha256'] = pipeline.checksum(receipt_path)
+        write_json(complete_path, complete)
+        state = pipeline.read(self.base / 'native/status.json')
+        state['completion_proof']['sha256'] = pipeline.checksum(complete_path)
+        write_json(self.base / 'native/status.json', state)
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+        receipt['checkpoint_name'] = 'checkpoint_best.pth'
+        receipt['validation_cases'] = receipt['validation_cases'][:-1]
+        write_json(receipt_path, receipt)
+        complete['best_validation_receipt_sha256'] = pipeline.checksum(receipt_path)
+        write_json(complete_path, complete)
+        state['completion_proof']['sha256'] = pipeline.checksum(complete_path)
+        write_json(self.base / 'native/status.json', state)
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+
+    def test_malformed_native_split_is_visible_READ_ERROR_without_viewer_crash(self):
+        self.complete_scoring()
+        self.native(status='COMPLETE', new=True)
+        self.native_completion()
+        path = self.base / 'native/native/native.json'
+        record = pipeline.read(path)
+        record['split']['outer_val'][0] = {'bad': 'shape'}
+        write_json(path, record)
+        observed = self.observed()
+        self.assertEqual(observed['status'], 'READ_ERROR')
+        self.assertIn('BEST/full26', observed['read_problem']['detail'])
+        self.assertFalse(observed['full_native_training'])
+
     def test_CLI_json_is_one_snapshot_and_CtrlC_only_returns(self):
         args = ['--arm-root', str(self.arm), '--renderer', str(RENDERER), '--renderer-sha', direct.sha(RENDERER),
             '--scoring-root', str(self.score), '--no-clear']
@@ -247,6 +406,69 @@ class CurrentPipelineCPU_DEBUG(unittest.TestCase):
         with patch.object(pipeline.PipelineViewer, 'snapshot', side_effect=KeyboardInterrupt), patch('sys.stdout', new=io.StringIO()) as out:
             pipeline.main(args)
         self.assertIn('뷰어만 종료', out.getvalue())
+
+
+class CompletedGPU6PipelineCPU_DEBUG(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory(prefix='GPU6_pipeline_DEBUG_', dir=RENDERER.parents[1] / 'outputs')
+        self.addCleanup(self.folder.cleanup)
+        self.base = Path(self.folder.name)
+        self.output, self.score = self.base / 'completed_gnn', self.base / 'score'
+        (self.output / 'training').mkdir(parents=True)
+        self.invocation = dict(status='COMPLETE', full_training=True, debug=False, completed_epochs=40,
+            optimizer_updates=680, actual_CUDA=True, connected_parameter_tensors=537, expected_parameter_tensors=537)
+        (self.output / 'training/invocations.jsonl').write_text(json.dumps(self.invocation) + '\n', encoding='utf8')
+        self.request, self.registration = scoring_fixture(self.score, 6)
+        # The actual old GPU6 scoring request binds its source only through pin_path.
+        del self.request['source_output'], self.request['source_code']
+        write_json(self.score / 'request.json', self.request)
+        self.registration['request_sha256'] = pipeline.checksum(self.score / 'request.json')
+        write_json(self.score / 'registration.json', self.registration)
+        self.pin = dict(format='v24_completed_single_arm_GT_blind_best_v1', physical_GPU=6, source_output=str(self.output),
+            source_code=str(self.base / 'UNIT_scientific_code'), full_training=True, debug=False,
+            completed_epochs=40, optimizer_updates=680,
+            source_artifacts_sha256={'training/invocations.jsonl':pipeline.checksum(self.output / 'training/invocations.jsonl')})
+        write_json(self.score / 'own_best_pin.json', self.pin)
+        (self.score / 'console.log').write_text(json.dumps(event(6, 300)) + '\n', encoding='utf8')
+        self.renderer = direct.load_renderer(RENDERER, direct.sha(RENDERER))
+        self.viewer = pipeline.PipelineViewer(self.renderer, None, self.score, gnn_root=self.output, gpu=6)
+
+    def observed(self):
+        with patch.object(pipeline.psutil, 'Process', return_value=process_fixture(self.registration)):
+            return self.viewer.snapshot()
+
+    def test_actual_GPU6_completed_invocation_and_own_pin_connect_to_scoring(self):
+        observed = self.observed()
+        self.assertEqual(observed['GPU'], 6)
+        self.assertEqual(observed['gnn']['optimizer_updates'], 680)
+        self.assertEqual(observed['scoring']['source_done'], 300)
+        self.assertFalse(observed['full_native_training'])
+
+    def test_GPU6_source_hash_or_incomplete_invocation_cannot_claim_complete(self):
+        self.invocation['completed_epochs'] = 39
+        (self.output / 'training/invocations.jsonl').write_text(json.dumps(self.invocation) + '\n', encoding='utf8')
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+        self.invocation['completed_epochs'] = 40
+        (self.output / 'training/invocations.jsonl').write_text(json.dumps(self.invocation) + '\n ', encoding='utf8')
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+
+    def test_GPU6_pin_cannot_select_another_arm_or_source(self):
+        self.pin['physical_GPU'] = 4
+        write_json(self.score / 'own_best_pin.json', self.pin)
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+        self.pin['physical_GPU'] = 6
+        self.pin['source_output'] = str(self.base / 'different_gnn')
+        write_json(self.score / 'own_best_pin.json', self.pin)
+        self.assertEqual(self.observed()['status'], 'READ_ERROR')
+
+    def test_GPU6_cli_requires_explicit_arm_and_json_returns_actual_GPU(self):
+        args = ['--gnn-root', str(self.output), '--renderer', str(RENDERER), '--renderer-sha', direct.sha(RENDERER),
+            '--scoring-root', str(self.score), '--json']
+        with patch.object(pipeline.psutil, 'Process', return_value=process_fixture(self.registration)), patch('sys.stdout', new=io.StringIO()) as out:
+            pipeline.main(args + ['--gpu', '6'])
+        self.assertEqual(json.loads(out.getvalue())['GPU'], 6)
+        with patch('sys.stderr', new=io.StringIO()), self.assertRaises(SystemExit):
+            pipeline.main(args)
 
 
 if __name__ == '__main__':

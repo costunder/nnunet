@@ -228,6 +228,9 @@ def early_stage_guard(*, stage_action, gpu=None, chain_root=None):
     gpu = declared.get('GPU_arm') if gpu is None else gpu
     chain_root = declared.get('chain_root') if chain_root is None else chain_root
     path, checksum, request = _context_controller(gpu=gpu, chain_root=chain_root)
+    if request.get('format') == 'v24_scored_bank_to_native_chain_request_v1':
+        from .v24_scored_native_chain import early_stage_guard as external_native_guard
+        return external_native_guard(request, path, checksum, stage_action)
     if request.get('scheduler') is not None:
         if request.get('direct_GPU_access') is not None:
             raise ValueError('Owned PBS and honest existing direct access cannot be mixed')
@@ -637,6 +640,9 @@ def train(native_path, *, gpu):
 
 def stage_proof(request, action):
     """Evidence read by the unchanged resource-aware chain after each child."""
+    if request.get('format') == 'v24_scored_bank_to_native_chain_request_v1':
+        from .v24_scored_native_chain import native_stage_proof
+        return native_stage_proof(request, action)
     from . import v24_nnunet_cp as original
     from . import v24_matched_basic_cp_runtime as runtime
     root = Path(request['chain_root'])
