@@ -55,7 +55,28 @@ native readiness. No storage reserve, physical batch or experiment scope is cut.
 Validation
 51 CPU viewer/renderer tests passed, including actual completion transition,
 cross-arm/source rejection, dead actor, transient/persistent JSON and CtrlC.
-Worker CPU tests and actual deployment receipts are recorded separately.
+Worker13 + viewer/renderer51 =64 CPU tests passed. Boundary fixtures are test
+data only, not evidence of real training or scoring. Windows sandbox atomic
+link is mocked explicitly; the Linux production exclusive-link path is kept.
+
+Actual server deployment verification at 2026-10-11 23:31:30 KST
+Git code commit fa5627f5214dcfb9a2442d314fd25ac421100646 was pushed to
+costunder/nnunet codex/v24-cpu-pipeline and deployed as an exact fresh checkout.
+GPU4 worker PID1979501/birth1791728656.16, own UID41833, CPU0..3 and exact argv
+matched registration. It runs in /home/aicompetition06/.conda/envs/nnunet.
+Fresh scoring root:
+/var/tmp/aicompetition06_v24_20261010/GPU4_FULL642_depth1_scoring_20261011_1791730200000000000
+New viewer: /var/tmp/aicompetition06_v24_20261010/view_gpu4_pipeline.py
+Existing GNN viewers and original experimental results were not overwritten.
+Actual CPU own-BEST pin passed full40/680 admission. Selected BEST file SHA:
+6110f762a1294912502811a4e5e563f20a99f9c3038b64a39f15865f985e1553
+Actual first complete B4 CUDA scoring:4/642 sources,512/82,176 positions,
+375.0677 seconds. Both JSON and text viewer outputs switched to scoring and
+reported the same progress without errors. No failed.json existed. This is
+the first real batch only, not complete642 coverage or final model evaluation.
+GPU4 CUDA process used8,874MiB at snapshot (not peak); scoring RSS29.35GiB at
+JSON snapshot. Existing GPU5 PID1822677 and GPU6 PID1810829 continued alive.
+Receipt: outputs/v24_gpu6_recovery_20261011/GPU4_pipeline_actual_read_1791729090280264900.json
 Full CP scoring and full250-epoch nnU-Net/BEST26 evaluation are not complete.
 All nnU-Net evaluation must use checkpoint_best.pth.
 
