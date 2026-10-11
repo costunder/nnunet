@@ -3,6 +3,8 @@
 All 642 source payloads and their 128 ordered positions are preserved. Only
 scores change. Same-patient admission is explicit: it changes donor eligibility
 for downstream inference, never learned operators or the archived source files.
+Context is actual organ outside the footprint up to10mm, without inner-radius
+or liver-depth exclusion. This corrects inference inputs; the GNN stays frozen.
 """
 from __future__ import annotations
 import argparse, ast, copy, gc, hashlib, inspect, json, os, shutil, subprocess, sys, time, types
@@ -113,6 +115,9 @@ def score(args):
     del saved;gc.collect()
     if sum(p.numel()for p in net.parameters())!=10434532:raise ValueError('Original complete GNN required')
     net.eval().requires_grad_(False).cuda();handle=install_l0_edge_workspace(net,1024*2**20)
+    from v23_radius_context import install as install_radius_context
+    context_policy=install_radius_context(runtime)
+    print('CORRECTED_CONTEXT_POLICY '+json.dumps(context_policy),flush=True)
     # Use the exact trained local encoding implementation with an explicit real owner.
     encoder=SimpleNamespace(net=net,amp=bundle.config['training']['amp'],checkpoint_local_chunks=False)
     old=json.loads((args.bank/'index.json').read_text());bank_sha=sha(args.bank/'index.json')
@@ -137,6 +142,7 @@ def score(args):
         total_scored_candidates=642*128,scoring_only=True,training_executed=False,
         graph_admission='same actual patient source and target; original v2.3 neural equations',
         outer_validation_used=False,resources=budget(),debug=False,helper_sha256=sha(__file__),
+        context_policy=context_policy,
         geometry_helper_sha256=sha(Path(__file__).with_name('v23_matched_geometry.py')),
         geometry_CPU_workers=4,recipient_geometry_cache='immutable complete patient',distance_evaluation='exact queried EDT voxel'))
     from tqdm import tqdm
@@ -144,7 +150,7 @@ def score(args):
     finished=[];selected_batch=None;reused={}
     if args.reuse_output is not None:
         previous=json.loads((args.reuse_output/'scoring_request.json').read_text())
-        if previous['checkpoint_sha256']!=BEST_SHA or previous['source_bank_sha256']!=bank_sha or previous['model_config']!=bundle.config['model'] or previous['graph_config']!=bundle.config['graph']:
+        if previous.get('context_policy')!=context_policy or previous['checkpoint_sha256']!=BEST_SHA or previous['source_bank_sha256']!=bank_sha or previous['model_config']!=bundle.config['model'] or previous['graph_config']!=bundle.config['graph']:
             raise ValueError('Resume source/model/geometry contract differs')
         for receipt in sorted((args.reuse_output/'score_receipts').glob('*.json')):
             row=json.loads(receipt.read_text());relative=row['entry']
@@ -278,10 +284,11 @@ def score(args):
     if digest(net.state_dict())!=MODEL_SHA:raise ValueError('Frozen GNN weights changed')
     derived=copy.deepcopy(old);derived['checkpoint_sha256']=BEST_SHA
     derived['matched_cp_scoring']=dict(format='v23_best_on_unchanged_v1_bank_v1',source_bank=str(args.bank),source_bank_sha256=bank_sha,
-        checkpoint=str(args.checkpoint),model_sha256=MODEL_SHA,only_entry_field_changed='scores',entries=642)
+        checkpoint=str(args.checkpoint),model_sha256=MODEL_SHA,only_entry_field_changed='scores',entries=642,
+        context_policy=context_policy)
     write(target/'index.json',derived)
     write(args.output/'bank_complete.json',dict(entries=642,candidates=82176,all_non_score_payloads_equal=True,
-        source_bank_sha256=bank_sha,bank_index_sha256=sha(target/'index.json'),scores=finished))
+        source_bank_sha256=bank_sha,bank_index_sha256=sha(target/'index.json'),context_policy=context_policy,scores=finished))
 
 def train(args):
     """Run the installed historical trainer in an isolated copied runtime."""
