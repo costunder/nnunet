@@ -157,6 +157,15 @@ pipeline status.json이 없으므로 새 tools/watch_v24_direct_gnn_training.py�
 실제 request/registration/continuation과 프로세스 신원을 조회 화면에만 연결한다.
 상태 파일이나 기존 viewer, 학습 설정과 결과는 덮어쓰지 않는다.
 증거: GPU45_viewer_targets_readonly_1791711640815672900.json
+새 direct 조회기는 부분 JSON과 종료된 PID의 CPU DEBUG2개(0.021초), AST,
+diff 검사를 통과했다. 18:45:24 KST에 커밋c19a6bd8a3f96ee15dab87911090ff0017aa127e의
+renderer와 direct adapter를 새 viewer 폴더에 복사하고 view_gpu4_current.py 및
+view_gpu5_current.py를 새로 생성했다. nnunet Python의 실제 --once --json과
+읽기 쉬운 출력에서 GPU5 epoch25/update425/stage_validation U103 18/21,
+GPU4 epoch34/update578/full_validation U128 0/21을 확인했다. 두 프로세스의
+동일PID/birth/argv와 원래 viewer 보존을 확인했으며 Torch/CUDA/checkpoint를
+읽거나 초기화하지 않았다. GPU4의 원래 view_gpu4.py는 존재하지 않았다.
+설치 증거: install_GPU45_current_training_viewers_1791711918369004900.log
 
 ## 작업 완료 체크리스트
 
