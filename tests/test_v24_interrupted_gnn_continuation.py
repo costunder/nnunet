@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import copy
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -17,6 +19,7 @@ from hiercp_v1x import v24_interrupted_gnn_continuation as runtime
 from hiercp_v1x import v24_training_continuation as original
 from hiercp_v1x.u_bridge_training import digest
 from tools import run_v24_all_p as cli
+from tools import run_v24_interrupted_gnn_continuation as entry
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -286,6 +289,57 @@ class InterruptedGNNDebug(unittest.TestCase):
         wrong = copy.deepcopy(row); wrong['train']['cases'][0]['recalled_observed_P'][1] = 999
         with self.assertRaisesRegex(ValueError, 'Durable curve differs'):
             runtime.derive_checkpoint_log((json.dumps(wrong) + '\n').encode(), 'curve.jsonl', original_state)
+
+    def _entry_order(self, action, gpu):
+        events = []; expected = '' if action == 'prepare' else str(gpu)
+        def context():
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], expected)
+            events.append('context')
+        def guard():
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], expected)
+            events.append('guard_checked')
+        def allocation(*values):
+            self.assertEqual(values[-2:], (gpu, [0,1,2,3]))
+            guard()
+            return guard, {'DEBUG': 'metadata-only allocation mock'}
+        def load_science(path):
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], expected)
+            if action == 'train':
+                self.assertIn('guard_checked', events)
+            else:
+                self.assertNotIn('guard_checked', events)
+            # Models the first scientific dependency's irreversible device
+            # visibility query. The former empty-until-CLI order fails here.
+            events.append('scientific_dependency_first_visibility_query')
+            return SimpleNamespace(parse=lambda args: SimpleNamespace(gpu=gpu,cpu_affinity=[0,1,2,3])), object()
+        def prepare(args, **keywords):
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], '')
+            events.append('CPU_prepare'); return {'DEBUG': True, 'GPU_work_performed': False}
+        def train(args, **keywords):
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], str(gpu))
+            self.assertTrue(callable(keywords['allocation_guard']))
+            events.append('original_train_selected'); return 'DEBUG_no_training'
+        helper = SimpleNamespace(_context=context,load_allocation_guard=allocation,
+            load_science=load_science,prepare=prepare,train=train)
+        spec = SimpleNamespace(name='_CPU_DEBUG_entry_order_helper',loader=SimpleNamespace(exec_module=lambda module: None))
+        argv = ['--action',action,'--source-output',str(self.source),'--source-code',str(ROOT),
+                '--interruption-proof',str(self.witness_path),'--gpu',str(gpu),'--cpu-affinity','0,1,2,3']
+        if action == 'train':
+            argv += ['--allocation-guard-module',str(self.root/'DEBUG_guard.py'),'--allocation-guard-sha256','a'*64,
+                     '--allocation-proof',str(self.root/'DEBUG_allocation.json'),'--allocation-proof-sha256','b'*64]
+        with patch.dict(os.environ),patch.dict(runtime.sys.modules),patch.object(entry.importlib.util,'spec_from_file_location',return_value=spec),\
+                patch.object(entry.importlib.util,'module_from_spec',return_value=helper),contextlib.redirect_stdout(io.StringIO()):
+            entry.main(argv)
+        return events
+
+    def test_train_gpu4_visibility_and_first_live_guard_precede_scientific_import(self):
+        self.assertEqual(self._entry_order('train',4), ['context','guard_checked','scientific_dependency_first_visibility_query','original_train_selected'])
+
+    def test_train_gpu5_visibility_and_first_live_guard_precede_scientific_import(self):
+        self.assertEqual(self._entry_order('train',5), ['context','guard_checked','scientific_dependency_first_visibility_query','original_train_selected'])
+
+    def test_prepare_visibility_remains_empty_and_never_admits_GPU_guard(self):
+        self.assertEqual(self._entry_order('prepare',5), ['context','scientific_dependency_first_visibility_query','CPU_prepare'])
 
 
 if __name__ == '__main__':
