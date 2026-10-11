@@ -64,7 +64,7 @@ def debug_fields(*, shallow=False, spacing=(1., 1., 1.)):
     footprint[14:17, 14:17, 14:17] = True
     organ = np.ones_like(footprint)
     outside = ndi.distance_transform_edt(~footprint, sampling=spacing).astype(np.float32)
-    depth = np.full(footprint.shape, 1. if shallow else 8., np.float32)
+    depth = np.full(footprint.shape, 2. if shallow else 8., np.float32)
     depth[0:3] = 1.
     return types.SimpleNamespace(footprint=footprint, organ_mask=organ,
         outside_tumor_mm=outside, organ_depth=depth)
@@ -106,22 +106,39 @@ def installed_geometry():
 
 
 class RadiusContextDebug(unittest.TestCase):
-    def test_shallow_and_nearby_actual_voxels_are_included_under_upper_limit(self):
+    def test_shallow_and_nearby_actual_voxels_are_included_above_1mm_depth(self):
         geometry, config = patched_geometry(), debug_config()
         for spacing in ((1., 1., 1.), (.7, 1.3, 2.5)):
             fields = debug_fields(shallow=True, spacing=spacing)
             original = {key: value.copy() for key, value in vars(fields).items()}
             points = geometry.canonical_coordinate_sets(fields, config, spacing)
-            eligible = fields.organ_mask & ~fields.footprint & (fields.outside_tumor_mm <= 10.)
+            eligible = (fields.organ_mask & ~fields.footprint
+                        & (fields.outside_tumor_mm <= 10.) & (fields.organ_depth > 1.))
             expected = geometry.voxel_grid_coordinates(
                 np.argwhere(eligible), np.asarray(spacing, np.float32), 2.5)
             np.testing.assert_array_equal(points['context'], expected)
             distance = fields.outside_tumor_mm[tuple(points['context'].T)]
             self.assertTrue(np.any(distance < 2.))
             self.assertTrue(np.all(distance <= 10.))
+            self.assertTrue(np.all(fields.organ_depth[tuple(points['context'].T)] > 1.))
             self.assertTrue(np.all(fields.organ_depth[tuple(points['context'].T)] < 4.))
             for key, value in original.items():
                 np.testing.assert_array_equal(getattr(fields, key), value)
+
+    def test_builder_excludes_exact_1mm_and_includes_next_float32_depth(self):
+        geometry, config, fields = patched_geometry(), debug_config(), debug_fields(shallow=True)
+        fields.organ_depth.fill(1.)
+        exact_boundary = (10, 15, 15)
+        just_inside = (14, 10, 15)
+        ordinary_inside = (14, 15, 10)
+        fields.organ_depth[just_inside] = np.nextafter(np.float32(1.), np.float32(np.inf))
+        fields.organ_depth[ordinary_inside] = 2.
+        points = geometry.canonical_coordinate_sets(fields, config, (1., 1., 1.))
+        rows = {tuple(row) for row in points['context']}
+        self.assertNotIn(exact_boundary, rows)
+        self.assertEqual(rows, {just_inside, ordinary_inside})
+        geometry.validate_canonical_coordinates(fields, points, config)
+        self.assertEqual(config.context_inner_radius_mm, 2.)
 
     def test_all_noncontext_node_tables_and_discretisation_remain_exact(self):
         original, updated = archived_geometry(), patched_geometry()
@@ -145,7 +162,8 @@ class RadiusContextDebug(unittest.TestCase):
 
     def test_physical_upper_limit_nonorgan_and_tumor_membership_remain_checked(self):
         geometry, config = patched_geometry(), debug_config()
-        for violation in ('outside', 'negative_distance', 'nonorgan', 'footprint', 'out_of_bounds', 'empty'):
+        for violation in ('outside', 'negative_distance', 'nonorgan', 'footprint',
+                          'exact_1mm_depth', 'below_1mm_depth', 'out_of_bounds', 'empty'):
             with self.subTest(violation=violation):
                 fields = debug_fields(shallow=True)
                 points = geometry.canonical_coordinate_sets(fields, config, (1., 1., 1.))
@@ -159,6 +177,10 @@ class RadiusContextDebug(unittest.TestCase):
                     fields.organ_mask[tuple(coordinate)] = False
                 elif violation == 'footprint':
                     invalid['context'][0] = invalid['surface'][0]
+                elif violation == 'exact_1mm_depth':
+                    fields.organ_depth[tuple(coordinate)] = 1.
+                elif violation == 'below_1mm_depth':
+                    fields.organ_depth[tuple(coordinate)] = np.nextafter(np.float32(1.), np.float32(0.))
                 elif violation == 'out_of_bounds':
                     invalid['context'][0] = (-1, 0, 0)
                 else:
@@ -174,6 +196,7 @@ class RadiusContextDebug(unittest.TestCase):
         self.assertTrue(np.all(fields.organ_mask[indexes]))
         self.assertFalse(np.any(fields.footprint[indexes]))
         self.assertFalse(np.any(fields.outside_tumor_mm[indexes] > 10.))
+        self.assertTrue(np.all(fields.organ_depth[indexes] > 1.))
 
     def test_malformed_shapes_and_other_roles_are_still_rejected(self):
         geometry, config, fields = patched_geometry(), debug_config(), debug_fields(shallow=True)

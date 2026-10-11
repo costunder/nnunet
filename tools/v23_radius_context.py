@@ -1,7 +1,7 @@
 """User-corrected <=10mm real-tissue context for frozen BEST CP inference.
 
 The archived model configuration is retained as checkpoint history. Effective
-context eligibility has no inner-radius or organ-depth exclusion. Liver depth
+context eligibility has no inner-radius exclusion and requires organ depth>1mm. Liver depth
 remains an actual input feature, and the separate liver-surface role remains.
 Nodes in different semantic roles may share physical coordinates. No learned
 operator, parameter, tensor channel, sampling budget, or archived file changes.
@@ -14,16 +14,16 @@ import hashlib
 import inspect
 from pathlib import Path
 
-FORMAT = 'v23_matched_context_upper_radius_only_v1'
+FORMAT = 'v23_matched_context_upper10mm_depth_gt1mm_v1'
 _INSTALLED = None
 
 
 def identity():
     return dict(format=FORMAT, module_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         scope='source and target; every historical source and candidate',
-        eligibility='actual organ & outside complete donor footprint & tumor distance <=10mm',
+        eligibility='actual organ & outside complete donor footprint & tumor distance <=10mm & organ depth >1mm',
         effective_context_inner_radius_mm=0., effective_context_outer_radius_mm=10.,
-        organ_depth_exclusion=False, cross_role_coordinate_overlap=True,
+        organ_depth_exclusion=True, effective_minimum_organ_depth_mm=1., organ_depth_comparison='strictly greater than', cross_role_coordinate_overlap=True,
         same_role_duplicates_allowed=False, original_config_inner_radius_is_checkpoint_history=True,
         organ_depth_feature='unchanged actual depth',
         empty_context_fallback=False, GNN_weights='unchanged frozen BEST',
@@ -38,7 +38,7 @@ def _context_builder(node):
             expected = ast.parse('organ & ~footprint & (outside >= inner) & (outside <= outer) & (liver_depth > boundary_depth + separation)',mode='eval').body
             if ast.dump(child.value,include_attributes=False) != ast.dump(expected,include_attributes=False):
                 raise ValueError('Archived context selection expression differs')
-            child.value = ast.parse('organ & ~footprint & (outside <= outer)',mode='eval').body
+            child.value = ast.parse('organ & ~footprint & (outside <= outer) & (liver_depth > 1.0)',mode='eval').body
             count += 1
     return count
 
@@ -55,10 +55,14 @@ def _context_validator(node):
         def visit_If(self,child):
             depth = ast.parse('bool(np.any(liver_depth[tuple(context.T)] <= boundary + separation - 1e-4))',mode='eval').body
             overlap = ast.parse('any(tuple(int(v) for v in row) in context_rows for row in liver)',mode='eval').body
-            for key,expected in [('depth',depth),('overlap',overlap)]:
-                if ast.dump(child.test,include_attributes=False) == ast.dump(expected,include_attributes=False):
-                    counts[key] += 1
-                    return None
+            if ast.dump(child.test,include_attributes=False) == ast.dump(depth,include_attributes=False):
+                counts['depth'] += 1
+                child.test=ast.parse('bool(np.any(liver_depth[tuple(context.T)] <= 1.0))',mode='eval').body
+                child.body=[ast.parse("raise ValueError('Context nodes require actual organ depth strictly above1mm')").body[0]]
+                return self.generic_visit(child)
+            if ast.dump(child.test,include_attributes=False) == ast.dump(overlap,include_attributes=False):
+                counts['overlap'] += 1
+                return None
             return self.generic_visit(child)
     Correct().visit(node)
     if counts != dict(inner=1,depth=1,overlap=1):

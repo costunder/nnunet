@@ -3,8 +3,8 @@
 All 642 source payloads and their 128 ordered positions are preserved. Only
 scores change. Same-patient admission is explicit: it changes donor eligibility
 for downstream inference, never learned operators or the archived source files.
-Context is actual organ outside the footprint up to10mm, without inner-radius
-or liver-depth exclusion. This corrects inference inputs; the GNN stays frozen.
+Context is actual organ outside the footprint up to10mm, with depth>1mm and
+without inner-radius exclusion. This corrects inference inputs; the GNN stays frozen.
 """
 from __future__ import annotations
 import argparse, ast, copy, gc, hashlib, inspect, json, os, shutil, subprocess, sys, time, types
