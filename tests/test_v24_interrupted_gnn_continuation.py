@@ -268,6 +268,25 @@ class InterruptedGNNDebug(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'unfinished'):
                 runtime._validate_unfinished_latest(changed, 5)
 
+    def test_actual_integer_recall_keys_use_unchanged_original_JSON_publisher(self):
+        row = dict(epoch=1, train=dict(cases=[dict(recalled_observed_P={1:2,5:4,10:7})]),
+                   train_probe=dict(DEBUG=True), full_validation=dict(DEBUG=True))
+        state = dict(epoch=2, updates=17, train_position=0, evaluation_position=0,
+                     overflows=0, history=[row])
+        original_state = copy.deepcopy(state)
+        raw = (json.dumps(row) + '\n').encode()
+        active, proof = runtime.derive_checkpoint_log(raw, 'curve.jsonl', state)
+        self.assertEqual(active, raw)
+        self.assertEqual(state, original_state)
+        self.assertTrue(proof['original_publication_code_preserved'])
+        self.assertTrue(proof['full_saved_history_compared_via_original_JSON_publication'])
+        report = dict(epoch=1, phase='full_validation', cases=[dict(recalled_observed_P={1:2,5:4,10:7})])
+        state['history'][0]['full_validation'] = report
+        self.assertTrue(runtime._report_durable('full_validation_epoch_001.json', json.dumps(report).encode(), state))
+        wrong = copy.deepcopy(row); wrong['train']['cases'][0]['recalled_observed_P'][1] = 999
+        with self.assertRaisesRegex(ValueError, 'Durable curve differs'):
+            runtime.derive_checkpoint_log((json.dumps(wrong) + '\n').encode(), 'curve.jsonl', original_state)
+
 
 if __name__ == '__main__':
     unittest.main()

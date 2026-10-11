@@ -305,6 +305,43 @@ def _validate_unfinished_latest(latest, gpu):
         raise ValueError('Actual unfinished original full-model optimizer snapshot required')
 
 
+def _original_published_json(value):
+    """Run the unchanged sealed JSONL writer against a private memory-only sink.
+
+    Saved state keeps integer recall keys (1/5/10); the actual original JSON
+    publisher serializes these as strings. Compare the publisher's full output,
+    without modifying saved state or inventing a reduced reporting schema.
+    """
+    from hiercp_v1x.u_bridge_training import _append
+    class Sink:
+        def __init__(self):
+            self.content = ''
+        def __enter__(self):
+            return self
+        def __exit__(self, kind, error, traceback):
+            return False
+        def write(self, text):
+            self.content += text
+        def flush(self):
+            return None
+    sink = Sink()
+    class MemoryPath:
+        def open(self, mode, *, encoding):
+            if mode != 'a' or encoding != 'utf8':
+                raise ValueError('Exact original JSONL publisher mode required')
+            return sink
+    namespace = dict(_append.__globals__)
+    namespace['Path'] = lambda path: MemoryPath()
+    cloned = FunctionType(_append.__code__, namespace, _append.__name__, _append.__defaults__, _append.__closure__)
+    cloned.__kwdefaults__ = copy.deepcopy(_append.__kwdefaults__)
+    if cloned.__code__ is not _append.__code__:
+        raise ValueError('Actual sealed original publication code required')
+    cloned('private_in_memory_JSON_publication_DEBUG_sink', value)
+    if not sink.content.endswith('\n') or len(sink.content.splitlines()) != 1:
+        raise ValueError('Exactly one complete original JSONL publication required')
+    return json.loads(sink.content)
+
+
 def inspect_source(source_output, source_code, interruption_proof, *, cli=None, continuation=None):
     """CPU-only original strict six-state, BEST, source and absence admission."""
     if cli is None or continuation is None:
@@ -392,7 +429,7 @@ def derive_checkpoint_log(raw, name, state):
             if type(epoch) is not int:
                 raise ValueError('Original curve epoch required')
             keep = 1 <= epoch < state['epoch']
-            if keep and row != state['history'][epoch - 1]:
+            if keep and row != _original_published_json(state['history'][epoch - 1]):
                 raise ValueError('Durable curve differs from exact saved history')
         elif name == 'update_timing.jsonl':
             if type(epoch) is not int:
@@ -430,12 +467,14 @@ def derive_checkpoint_log(raw, name, state):
         else:
             excluded += 1
     result = b''.join(kept)
-    if name == 'curve.jsonl' and [json.loads(line) for line in kept] != state['history']:
+    if name == 'curve.jsonl' and [json.loads(line) for line in kept] != [_original_published_json(row) for row in state['history']]:
         raise ValueError('Complete saved epoch history must be represented exactly')
     return result, dict(boundary_epoch=state['epoch'], boundary_updates=state['updates'],
         boundary_train_position=state['train_position'], boundary_evaluation_position=state['evaluation_position'],
         rows_kept=len(kept), rows_archived_only=excluded, partial_rows_archived=partial,
-        bytes=len(result), sha256=hashlib.sha256(result).hexdigest())
+        bytes=len(result), sha256=hashlib.sha256(result).hexdigest(),
+        full_saved_history_compared_via_original_JSON_publication=name == 'curve.jsonl',
+        original_publication_code_preserved=True)
 
 
 def _report_durable(name, raw, state):
@@ -453,7 +492,7 @@ def _report_durable(name, raw, state):
         expected = (state.get('initial_validation') if phase == 'initial_full_validation'
             else state['history'][epoch - 1].get(phase) if epoch < state['epoch']
             else state.get('pending_epoch_completion', {}).get(phase, state.get(phase)))
-        if expected is None or row != expected:
+        if expected is None or row != _original_published_json(expected):
             raise ValueError('Durable report differs from exact saved history/phase')
     return keep
 
