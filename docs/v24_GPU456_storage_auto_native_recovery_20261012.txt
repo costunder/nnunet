@@ -33,7 +33,17 @@ v2.4 GPU4/5/6 저장공간 복구 및 자동 후속 nnU-Net 연결
 
 실행 증거 및 제한
 - 저장공간 복구와 실제 전체 admission 검증 완료.
-- 새 자동 controller와 viewer의 구현/검사/실제 등록 결과는 아래 runtime 기록에 추가한다.
+- 서버 immutable 실행 checkout: /dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/code_8bf2c496c512, commit 8bf2c496c5128d40c12d34d1540ef84485e6c096. 이전 checkout은 변경하지 않았다.
+- 새 Linux 서버 CPU 회귀 117개 모두 통과. 경로 문자열 serialization은 설치기에서 수정했으며, Linux tmpfs timestamp 차이에 대한 mutation 테스트만 결정적으로 수정했다. 운영 cache/SHA 정책은 변경하지 않았다.
+- 실제 readonly registration preflight에서 source/Git/executor/predecessor/sourceclaim/owned lease/전체 native storage를 검증한 후 제어기 등록 완료.
+- GPU4 native CPU controller PID2001544/birth1791731856.53, 상태 WAITING_FOR_FULL642_SCORING.
+- GPU5 native CPU controller PID2001549/birth1791731857.04, 상태 WAITING_FOR_FULL_GNN.
+- GPU6 native CPU controller PID2001553/birth1791731857.56, 상태 WAITING_FOR_FULL642_SCORING.
+- GPU5 GNN 완료 후 full642 scoring CPU waiter PID2001560 등록, 상태 WAITING_FOR_FULL_GNN.
+- 정확한 UID41833/PID/birth/전체 argv/arm별4CPU/CUDA_VISIBLE_DEVICES=''와 실제 상태를 다시 읽어 확인했다. 아직 어느 arm도 native 전체 학습 또는 평가 완료 상태가 아니다.
+- 실제 통합 뷰어 GPU4 CP48/642, GPU5 GNN27/40 update443, GPU6 CP444/642 상태를 관측했다. 이 수치는 2026-10-12 등록 직후 snapshot이며 계속 진행된다.
+- 최종 실제 free 18,051,469,312 bytes(약16.81GiB), 전체 원래 required 약16.21GiB 및 reserve10.5GiB 유지.
+- 새 통합 뷰어: /var/tmp/aicompetition06_v24_20261010/view_gpu4_auto.py, view_gpu5_auto.py, view_gpu6_auto.py. 같은 nnunet Python으로 실행하며 GNN/CP/native 상태를 자동 선택한다. 이전 viewer 파일은 유지했다.
 - 구현된 자동 controller/GPU5 waiter 및 viewer 설치 관련 CPU 테스트 50개 통과. 기존 storage/native/BEST 회귀 테스트 80개 통과(1개 기존 skip). Windows 제한 sandbox의 path-resolution 권한 오류는 같은 테스트를 허용된 실행 환경에서 재검증하여 해소했으며 production 경로 규칙을 약화하지 않았다.
 - 전체 GNN/CP/native 완료를 CPU 테스트 또는 smoke test 통과와 혼동하지 않는다.
 - 서버의 다른 작업에 따른 free 공간 변화와 할당 종료 시점은 실제 단계 시작 때 다시 확인한다.
