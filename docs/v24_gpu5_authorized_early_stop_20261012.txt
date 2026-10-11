@@ -36,6 +36,21 @@ child 부재를 확인한 후에만 개별 해제하고 기존 입력·결과는
 실제 전체 CP·nnU-Net 학습·BEST 평가 완료 여부는 실행 영수증으로 별도 보고한다.
 이 문서는 학습 또는 평가 완료 결과가 아니다.
 
+## 서버 배포 확인
+
+Git a350de1794d26daaef1d79528e06b454defd2330의 새 checkout을 배포했다.
+Windows 통합 CPU38개 및 서버 nnunet 환경 CPU38개가 통과했다.
+새 controller PID2061145는 WAITING_FOR_EARLY_STOP_RELEASE, child 없음으로 확인했다.
+정지 관찰기는 WAITING_COMPLETE_EPOCH_CURVE이며 GPU5 실제 GNN만 관찰한다.
+기존 child 없는 GPU5 CPU waiter PID2001549·2001560은 정확한 UID·birth·argv 확인 후 SIGTERM으로 개별 해제했다.
+보호 대상 request·registration·lease·claim의 SHA/stat는 해제 후에도 동일했다.
+GPU4·6 controller와 표시용 alias는 변경되지 않았다.
+
+2026-10-12 03:02 KST 확인: epoch27 full validation12/21, completed26, update459.
+실제 조기 종료·CP 전체 채점·nnU-Net 전체 학습·BEST 전체 평가 완료는 아직 확인하지 않았다.
+기존 공통 명령은 새 경로를 따라간다:
+/home/aicompetition06/.conda/envs/nnunet/bin/python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_training.py --gpu 5
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
