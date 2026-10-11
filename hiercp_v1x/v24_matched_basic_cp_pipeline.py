@@ -28,6 +28,7 @@ PLANS = 'nnUNetResEncUNetMPlans'
 HISTORICAL_TRAINER_SHA = 'a3df56435fedff46fbc42a502596fdade2632d0211ea412630dba1555f32567d'
 FILES = ('tools/run_v24_matched_basic_cp.py', 'hiercp_v1x/v24_matched_basic_cp_pipeline.py',
          'hiercp_v1x/v24_matched_basic_cp_scoring.py', 'hiercp_v1x/v24_matched_basic_cp_runtime.py',
+         'hiercp_v1x/v24_context_depth1.py',
          'hiercp_v1x/v24_matched_native_gradient.py', 'hiercp_v1x/v24_native_gradient_runtime.py',
          'hiercp_v1x/v24_native_calibration_runtime.py',
          'hiercp_v1x/v24_native_best_eval_runtime.py', 'hiercp_v1x/v24_readonly_native_storage.py',
@@ -93,12 +94,175 @@ def check_aggregate_disk(document, chain_root, *, preparation=True):
     return static.check_aggregate_disk(original, chain_root, preparation=preparation)
 
 
+def _canonical(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'),
+        ensure_ascii=False, allow_nan=False).encode('utf8')).hexdigest()
+
+
+def _checksum(value):
+    return isinstance(value, str) and len(value) == 64 and not set(value) - set('0123456789abcdef')
+
+
+def validate_scoring_profile(binding, *, expected_depth1=None):
+    """Additional sealed depth1 provenance on top of full Basic overlay admission.
+
+    The original runtime remains the authority for all642 sources/all128 scores
+    and original source/paste/BEST identity. Old overlays with no selected new
+    profile keep their original admission; they cannot carry mixed depth1 rows.
+    """
+    overlay = binding['overlay']
+    profile = overlay.get('inference_profile')
+    enabled = profile is not None
+    if expected_depth1 is not None and enabled is not expected_depth1:
+        raise ValueError('Score overlay differs from the explicitly selected context profile')
+    if not enabled:
+        if overlay.get('inference_profile_sha256') is not None or any(
+                row.get('input_binding', {}).get('inference_profile') is not None
+                or row.get('input_binding', {}).get('source_context_geometry') is not None
+                for row in overlay['entries'].values()):
+            raise ValueError('Original context overlay cannot contain mixed depth1 inputs')
+        return None
+    from .v24_context_depth1 import identity
+    expected = identity()
+    if (not isinstance(profile, dict) or set(profile) != set(expected) | {'snapshot', 'scope_contract'}
+            or any(profile.get(name) != value for name, value in expected.items())
+            or overlay.get('inference_profile_sha256') != expected['contract_sha256']
+            or overlay.get('training_context_depth_exclusive_mm') != 4.
+            or not isinstance(profile.get('snapshot'), str) or not Path(profile['snapshot']).is_absolute()
+            or profile.get('scope_contract') != overlay['pin']['model_contract']['scope_contract']
+            or overlay.get('scoring_sources_sha256', {}).get('hiercp_v1x/v24_context_depth1.py') != expected['module_sha256']):
+        raise ValueError('Depth1 overlay must retain original depth4 BEST training and exact new inference implementation')
+    if (len(overlay['entries']) != 642 or overlay.get('complete_sources') != 642
+            or overlay.get('complete_positions') != 82176 or overlay.get('debug') is not False):
+        raise ValueError('Depth1 production requires every642 source and82176 positions; DEBUG is not an overlay')
+    for name, row in overlay['entries'].items():
+        inputs = row.get('input_binding')
+        if not isinstance(inputs, dict) or inputs.get('inference_profile') != profile:
+            raise ValueError('Every source must bind the same depth1 inference profile: ' + name)
+        geometry = inputs.get('source_context_geometry')
+        counts = inputs.get('canonical_source_counts')
+        if (not isinstance(geometry, dict) or geometry.get('format') != expected['format']
+                or geometry.get('profile_sha256') != expected['contract_sha256']
+                or geometry.get('minimum_liver_depth_exclusive_mm') != 1.
+                or geometry.get('context_inner_radius_mm') != 2.
+                or geometry.get('context_outer_radius_mm') != 10.
+                or not isinstance(counts, dict)
+                or type(geometry.get('semantic_context_voxels')) is not int or geometry['semantic_context_voxels'] <= 0
+                or type(geometry.get('canonical_context_nodes')) is not int or geometry['canonical_context_nodes'] <= 0
+                or counts.get('source_context') != geometry['canonical_context_nodes']
+                or geometry['semantic_context_voxels'] < geometry['canonical_context_nodes']):
+            raise ValueError('Every depth1 source requires retained real context, without an empty-source fallback: ' + name)
+        for key in ('semantic_liver_surface_voxels', 'canonical_liver_surface_nodes', 'typed_overlap_voxels'):
+            if type(geometry.get(key)) is not int or geometry[key] < 0:
+                raise ValueError('Actual typed source surface/context counts required: ' + name)
+        if (geometry['canonical_liver_surface_nodes'] != counts.get('source_liver_surface')
+                or geometry['canonical_liver_surface_nodes'] > geometry['semantic_liver_surface_voxels']
+                or geometry['typed_overlap_voxels'] > min(geometry['semantic_context_voxels'], geometry['semantic_liver_surface_voxels'])
+                or set(geometry.get('full_fields_sha256', {})) != {'footprint', 'organ', 'outside', 'depth'}
+                or set(geometry.get('canonical_coordinate_sha256', {})) != {'surface', 'interior', 'context', 'liver_surface'}
+                or any(not _checksum(value) for value in geometry['full_fields_sha256'].values())
+                or any(not _checksum(value) for value in geometry['canonical_coordinate_sha256'].values())
+                or not _checksum(geometry.get('canonical_nodes_sha256'))
+                or not _checksum(geometry.get('dense_CT_patch_sha256'))):
+            raise ValueError('Depth1 source proof lost actual fields, original grids or dense CT evidence: ' + name)
+        source = geometry.get('source_identity', {})
+        shape, spacing = geometry.get('roi_shape'), geometry.get('spacing_mm')
+        if (source.get('case_id') != row['case_id'] or source.get('component_id') != row['source_component']
+                or inputs.get('donor_case_id') != row['case_id'] or inputs.get('donor_component') != row['source_component']
+                or not _checksum(source.get('full_source_mask_sha256'))
+                or geometry.get('geometry_sha256') != _canonical({key: value for key, value in geometry.items()
+                    if key not in ('geometry_sha256', 'canonical_nodes_sha256', 'source_identity')})
+                or row.get('all_original128_CP_scored') is not True or row.get('all_original_P_in_context') is not True
+                or inputs.get('original_candidate_order_and_mapping_verified') is not True
+                or row.get('model_sha256') != overlay['model_sha256']
+                or not isinstance(shape, list) or len(shape) != 3 or any(type(x) is not int or x < 1 for x in shape)
+                or not isinstance(spacing, list) or len(spacing) != 3
+                or any(type(x) not in (int, float) or not math.isfinite(x) or x <= 0 for x in spacing)):
+            raise ValueError('Depth1 geometry must retain exact same-patient source and every original P/128 CP: ' + name)
+    return copy.deepcopy(profile)
+
+
+def validate_profiled_overlay(path, *, full_hash=False, expected_depth1=None):
+    from . import v24_matched_basic_cp_runtime as runtime
+    binding = runtime.validate_overlay(path, full_hash=full_hash)
+    validate_scoring_profile(binding, expected_depth1=expected_depth1)
+    return binding
+
+
+def validate_native_scoring_profile(native, overlay):
+    """Retain the input profile and implementation seal into native training."""
+    inference = overlay.get('inference_profile')
+    if (native.get('inference_profile') != inference
+            or native.get('inference_profile_sha256') != overlay.get('inference_profile_sha256')
+            or (inference is not None and (native.get('GNN_training_context_depth_exclusive_mm') != 4.
+                or set(native.get('source_files_sha256', {})) != set(FILES)
+                or native['source_files_sha256'].get('hiercp_v1x/v24_context_depth1.py') != inference['module_sha256']))):
+        raise ValueError('Native CP must retain its exact depth1 scoring input and original GNN training identity')
+
+
+def scoring_deadline_guard(*, gpu, chain_root):
+    """Bind depth1 production CUDA chunks to this sealed controller allocation.
+
+    This is not the first-B4 DEBUG lifetime guard. No process is stopped and no
+    scheduler allocation is modified. Actual GPU/CPU assignments are retained.
+    """
+    from .v24_readonly_native_storage import regular
+    import psutil
+    from tools.watch_v24_gnn_to_nnunet import scheduler_proof
+    path = regular(os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST'])
+    checksum = os.environ['V24_CONTEXT_DEPTH1_CHAIN_REQUEST_SHA256']
+    request = read(path)
+    if (not _checksum(checksum) or sha(path) != checksum
+            or request.get('context_depth1') is not True
+            or request.get('GPU_arm') != gpu or request.get('chain_root') != str(Path(chain_root).absolute())
+            or path.parent != Path(chain_root).absolute()):
+        raise ValueError('Production depth1 requires this exact sealed own-arm controller request')
+    scheduler = request.get('scheduler')
+    direct = request.get('context_depth1_direct_allocation_proof')
+    if scheduler is None:
+        if (not isinstance(direct, dict) or direct.get('format') != 'v24_context_depth1_direct_allocation_v1'
+                or direct.get('GPU_arm') != gpu or direct.get('GPU_UUID') != request.get('GPU_UUID')
+                or direct.get('CPU_affinity') != request.get('CPU_affinity')
+                or direct.get('owner_uid') != os.getuid()
+                or direct.get('CUDA_VISIBLE_DEVICES') not in (str(gpu), request.get('GPU_UUID'))
+                or type(direct.get('expires_at_unix')) not in (int, float)
+                or not math.isfinite(direct['expires_at_unix'])):
+            raise ValueError('A direct arm requires an explicit proven owned allocation; no guessed PBS or GPU assignment')
+        expiry = direct['expires_at_unix']
+    else:
+        initial = scheduler_proof(request, stage_index=1)
+        expiry = initial['expires_at_unix']
+    if type(expiry) not in (int, float) or not math.isfinite(expiry):
+        raise ValueError('Finite owned allocation expiry required before any CUDA work')
+    monotonic_expiry = time.monotonic() + expiry - time.time()
+    last_external = float('-inf')
+    def guard():
+        nonlocal last_external
+        if min(expiry - time.time(), monotonic_expiry - time.monotonic()) < 180:
+            raise RuntimeError('Depth1 production refuses new CUDA work outside its owned allocation;180-second reserve')
+        if (psutil.Process().cpu_affinity() != request['CPU_affinity']
+                or os.environ.get('CUDA_VISIBLE_DEVICES') not in (str(gpu), request['GPU_UUID'])):
+            raise RuntimeError('Depth1 production CPU or CUDA assignment changed')
+        if time.monotonic() - last_external >= 30:
+            if sha(regular(path)) != checksum:
+                raise ValueError('Sealed depth1 controller request changed during scoring')
+            if scheduler is not None:
+                current = scheduler_proof(request, stage_index=1)
+                if abs(current['expires_at_unix'] - expiry) > 1:
+                    raise RuntimeError('Depth1 production allocation lifetime changed')
+            elif direct['owner_uid'] != os.getuid():
+                raise RuntimeError('Owned direct allocation identity changed')
+            last_external = time.monotonic()
+    guard()
+    return guard
+
+
 def _guard_native(native_path):
     from . import v24_matched_basic_cp_runtime as runtime
     from . import v24_readonly_native_storage as core
     native = read(core.regular(native_path))
     admission = verify_admission(native['storage_admission'])
-    overlay = runtime.validate_overlay(native['overlay'])
+    overlay = validate_profiled_overlay(native['overlay'])
     if (native.get('format') != NATIVE_FORMAT or native.get('storage_profile') != PROFILE
             or native.get('overlay_sha256') != sha(native['overlay'])
             or native.get('storage_admission_sha256') != sha(native['storage_admission'])
@@ -107,6 +271,7 @@ def _guard_native(native_path):
             or native.get('model_weights_fresh') is not True
             or native.get('pretrained_segmentation_used') is not False):
         raise ValueError('Sealed fresh matched own-arm full native runtime required')
+    validate_native_scoring_profile(native, overlay['overlay'])
     for name, checksum in native['source_files_sha256'].items():
         if sha(ROOT / name) != checksum:
             raise ValueError('Matched implementation changed: ' + name)
@@ -131,7 +296,7 @@ def prepare_native(overlay_path, output, admission_path, *, gpu):
     from . import v24_nnunet_cp as original
     original.require_project_budget()
     document = verify_admission(admission_path)
-    overlay = runtime.validate_overlay(overlay_path, full_hash=True)
+    overlay = validate_profiled_overlay(overlay_path, full_hash=True)
     output = Path(output).absolute()
     arm = Path(document['arm_roots']['gpu' + str(gpu)])
     if output != arm / 'native' or output.exists():
@@ -198,6 +363,9 @@ def prepare_native(overlay_path, output, admission_path, *, gpu):
         source_selection='unchanged historical uniform own-patient source RNG',
         location_selection='argmax of current own-arm GNN scores for selected source',
         evaluation_checkpoint='checkpoint_best.pth', debug=False)
+    native.update(inference_profile=copy.deepcopy(overlay['overlay'].get('inference_profile')),
+        inference_profile_sha256=overlay['overlay'].get('inference_profile_sha256'),
+        GNN_training_context_depth_exclusive_mm=overlay['overlay'].get('training_context_depth_exclusive_mm', 4.))
     publish(output / 'native.json', native)
     _guard_native(output / 'native.json')
     check_aggregate_disk(document, arm, preparation=False)
@@ -429,7 +597,7 @@ def stage_proof(request, action):
         raise ValueError('Wrong completed original GNN source/arm')
     if action != 'pin-current-gnn':
         path = root/'bank/score_overlay.json'
-        overlay_binding = runtime.validate_overlay(path)
+        overlay_binding = validate_profiled_overlay(path, expected_depth1=request.get('context_depth1'))
         if overlay_binding['overlay']['pin'] != pin:
             raise ValueError('Matched source scores must use the exact chain-pinned GNN BEST')
     if action in ('prepare-native','calibrate-native','train'):

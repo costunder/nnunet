@@ -100,6 +100,10 @@ kwargs={k:v for k,v in json.loads((snapshot/'config/train.json').read_text())['m
           'channels_last_3d','checkpoint_local_blocks','checkpoint_dense_encoder')}
 torch.manual_seed(42)
 original=model.LocalTumorContextPyGEncoder(**kwargs,layers=3)
+original.eval()
+cnn_state={name:value.detach().clone() for name,value in original.state_dict().items() if torch.is_tensor(value)}
+cnn_param_ids={name:id(value) for name,value in original.named_parameters()}
+original_cnn_forward=model.LocalTumorContextPyGEncoder.forward_graph
 encoder=STUNetL0Encoder(original,root/'work/pretrained_l0_latency_DEBUG_20261008/assets/small_ep4k.model').eval()
 state={name:value.detach().clone() for name,value in encoder.state_dict().items() if torch.is_tensor(value)}
 param_ids={name:id(value) for name,value in encoder.named_parameters()}
@@ -201,6 +205,38 @@ with torch.inference_mode():outputs=encoder(batch,source_patch,torch.zeros(2,dty
 assert len(outputs)==12
 for key,value in outputs.items():assert value.shape==(2,128) and torch.isfinite(value).all(),key
 for name,value in state.items():assert torch.equal(value,encoder.state_dict()[name]),name
+# The GPU5 original CNN/GAT L0 keeps its complete actual computation. Compare
+# the wrapped path to the captured D/scope method on the same full dense maps.
+with torch.inference_mode():
+ source_map,target_map=original.encode_dense_maps(source_patch,torch.zeros(2,dtype=torch.long),target_patches)
+ cnn_reference=original_cnn_forward(original,batch,source_map,target_map)
+ cnn_actual=original.forward_graph(batch,source_map,target_map)
+assert len(cnn_actual)==12 and cnn_actual.keys()==cnn_reference.keys()
+for key,value in cnn_actual.items():
+ assert value.shape==(2,128) and torch.isfinite(value).all(),key
+ assert torch.equal(value,cnn_reference[key]),key
+assert cnn_param_ids=={name:id(value) for name,value in original.named_parameters()}
+for name,value in cnn_state.items():assert torch.equal(value,original.state_dict()[name]),name
+# Every semantic role's ownership is checked before the original computation;
+# optional empty liver-surface roles retain their existing policy.
+for role in schema.LOCAL_NODE_TYPES:
+ altered=batch.clone();altered[role].batch[0]=2
+ with torch.inference_mode():
+  try:original.forward_graph(altered,source_map,target_map)
+  except ValueError as error:assert 'ownership/count differs' in str(error),(role,str(error))
+  else:raise AssertionError('Foreign owner admitted for '+role)
+altered=batch.clone();altered[profile.GRAPH_KEY]=['foreign','foreign']
+with torch.inference_mode():
+ try:original.forward_graph(altered,source_map,target_map)
+ except ValueError as error:assert 'missing fresh depth1 profile' in str(error)
+ else:raise AssertionError('Original CNN accepted a foreign profile')
+original.train()
+with torch.inference_mode():
+ try:original.forward_graph(batch,source_map,target_map)
+ except ValueError as error:assert 'eval/no-grad inference only' in str(error)
+ else:raise AssertionError('Training input policy was silently changed')
+original.eval()
+for name,value in cnn_state.items():assert torch.equal(value,original.state_dict()[name]),name
 assert original_sha=={str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in (snapshot/'hiercp').glob('*.py')}
 print('depth1 original/STU CPU UNIT PASS')
 '''

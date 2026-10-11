@@ -20,6 +20,8 @@ def parse(argv=None):
         parser.add_argument('--'+name,type=Path)
     parser.add_argument('--gpu',type=int,choices=(4,5,6))
     parser.add_argument('--physical-batch',type=int,choices=(2,4))
+    parser.add_argument('--context-depth1',action='store_true',
+        help='Explicit whole642 inference profile: only context liver depth changes to >1mm')
     args = parser.parse_args(argv)
     required = {'pin-current-gnn':('source_output','source_code','inventory','input_cache','output'),
         'prepare-current-bank':('pin','inventory','baseline_preprocessed','historical_basic_bank','input_cache','output'),
@@ -36,6 +38,8 @@ def parse(argv=None):
         parser.error('GPU4/6 require their original official STU weights; GPU5 uses its original CNN')
     if args.action != 'clone-debug-worker' and args.physical_batch is not None:
         parser.error('Production physical batch is fixed by historical plans; worker option is DEBUG only')
+    if args.context_depth1 and args.action != 'prepare-current-bank':
+        parser.error('--context-depth1 selects scoring only; later stages use the sealed overlay profile')
     return args
 
 
@@ -66,10 +70,12 @@ def main(args):
                 or args.pin != chain/'pin.json' or args.output != chain/'bank'):
             raise ValueError('Exact immutable historical source bank, full native preprocessing and own GNN pin required')
         from hiercp_v1x.v24_matched_basic_cp_scoring import score_current_matched_basic_bank
+        guard = pipeline.scoring_deadline_guard(gpu=args.gpu, chain_root=chain) if args.context_depth1 else None
         result = score_current_matched_basic_bank(pin_path=args.pin,inventory_path=args.inventory,
             baseline_preprocessed=args.baseline_preprocessed,input_cache=args.input_cache,
             source_bank=args.historical_basic_bank,output=args.output,gpu=args.gpu,
-            stunet_checkpoint=args.stunet_checkpoint)
+            stunet_checkpoint=args.stunet_checkpoint,context_depth1=args.context_depth1,deadline_guard=guard)
+        pipeline.validate_profiled_overlay(result, full_hash=True, expected_depth1=args.context_depth1)
     elif args.action == 'prepare-native':
         if args.bank != chain/'bank/score_overlay.json':
             raise ValueError('Full642 own-arm matched score overlay required')

@@ -309,11 +309,13 @@ class MatchedInputProvider:
 
 
 def score_current_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed,
-        input_cache, source_bank, output, gpu, stunet_checkpoint=None):
+        input_cache, source_bank, output, gpu, stunet_checkpoint=None,
+        context_depth1=False, deadline_guard=None):
     """Production: full642 sources/82176 CP queries; frozen own completed BEST."""
     return _score_matched_basic_bank(pin_path=pin_path, inventory_path=inventory_path,
         baseline_preprocessed=baseline_preprocessed, input_cache=input_cache,
-        source_bank=source_bank, output=output, gpu=gpu, stunet_checkpoint=stunet_checkpoint)
+        source_bank=source_bank, output=output, gpu=gpu, stunet_checkpoint=stunet_checkpoint,
+        depth1_context_profile=context_depth1, deadline_guard=deadline_guard)
 
 
 def debug_context_depth1_first_batch(*, pin_path, inventory_path, baseline_preprocessed,
@@ -328,13 +330,19 @@ def debug_context_depth1_first_batch(*, pin_path, inventory_path, baseline_prepr
     return _score_matched_basic_bank(pin_path=pin_path, inventory_path=inventory_path,
         baseline_preprocessed=baseline_preprocessed, input_cache=input_cache,
         source_bank=source_bank, output=output, gpu=gpu, stunet_checkpoint=stunet_checkpoint,
-        depth1_debug=True, deadline_guard=deadline_guard)
+        depth1_context_profile=True, depth1_debug=True, deadline_guard=deadline_guard)
 
 
 def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed,
         input_cache, source_bank, output, gpu, stunet_checkpoint=None,
-        depth1_debug=False, deadline_guard=None):
-    if depth1_debug:
+        depth1_context_profile=False, depth1_debug=False, deadline_guard=None):
+    if type(depth1_context_profile) is not bool or type(depth1_debug) is not bool:
+        raise ValueError('Explicit boolean inference profile and separate DEBUG selection required')
+    if depth1_debug and not depth1_context_profile:
+        raise ValueError('The separate first-B4 DEBUG requires its explicit depth1 profile')
+    if depth1_context_profile and not callable(deadline_guard):
+        raise ValueError('Depth1 CUDA scoring requires a live owned allocation/deadline guard')
+    if deadline_guard is not None:
         deadline_guard()
     from tools.local_cnn_device import select
     select(gpu)
@@ -393,7 +401,7 @@ def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed
     def guarded_module_to(module, *values, **keywords):
         deadline_guard()
         return module_to(module, *values, **keywords)
-    if depth1_debug:
+    if depth1_context_profile:
         factory = v24_factory.build_runtime
         def guarded_factory(*values, **keywords):
             try:
@@ -429,7 +437,7 @@ def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed
             raise ValueError('Original measured full-model local candidate batch differs')
         inputs = trained_scorer.geometry.memory_guard.__self__
         inference_profile = None
-        if depth1_debug:
+        if depth1_context_profile:
             from . import v24_context_depth1, transition_v1_local
             runtime = transition_v1_local._runtime(expected_snapshot_root=inputs.bundle.source,
                 scope_contract=inputs.bundle.scope['contract_sha256'])
@@ -479,7 +487,7 @@ def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed
             'hiercp_v1x/v24_input_runtime.py', 'hiercp_v1x/v24_hash_runtime.py',
             'hiercp_v1x/v23_training.py', 'hiercp_v1x/v24_geometry.py', 'hiercp_v1x/v24_inputs.py'}
         source_checksums = {name: _sha(ROOT / name) for name in source_names}
-        if depth1_debug:
+        if depth1_context_profile:
             source_checksums['hiercp_v1x/v24_context_depth1.py'] = _sha(ROOT / 'hiercp_v1x/v24_context_depth1.py')
         cp_contract = dict(eligible_patients=81, total_sources=642, candidates_per_source=128,
             total_scored_candidates=82176, donor_policy='same_patient',
@@ -500,6 +508,7 @@ def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed
             physical_candidate_batch=chunk, CPU_workers=4, RSS_bytes=64 * 2**30,
             CUDA_bytes=40 * 2**30, original_parameter_count=pin_parameters(pin), debug=depth1_debug,
             training_context_depth_exclusive_mm=4., inference_profile=inference_profile,
+            inference_profile_sha256=(None if inference_profile is None else inference_profile['contract_sha256']),
             requested_DEBUG_sources=(4 if depth1_debug else None), full_training_executed=False))
         initial_rng = capture_rng()
         rows = {}
@@ -690,7 +699,9 @@ def _score_matched_basic_bank(*, pin_path, inventory_path, baseline_preprocessed
             only_CP_field_changed='scores', original_non_score_payloads_preserved=True,
             original_source_schedule_and_paste_contract_preserved=True,
             full_P_context=True, recipient_GT_used_in_forward=False, production_optimizer_updates=0,
-            model_and_RNG_unchanged=True, scoring_sources_sha256=source_checksums)
+            model_and_RNG_unchanged=True, scoring_sources_sha256=source_checksums,
+            training_context_depth_exclusive_mm=4., inference_profile=inference_profile,
+            inference_profile_sha256=(None if inference_profile is None else inference_profile['contract_sha256']))
         overlay['content_sha256'] = canonical_hash(overlay)
         _sealed_json(root / 'score_overlay.json', overlay)
         return root / 'score_overlay.json'

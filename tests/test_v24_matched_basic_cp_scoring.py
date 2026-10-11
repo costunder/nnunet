@@ -7,11 +7,50 @@ import tempfile
 import textwrap
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
 import numpy as np
 
 from hiercp_v1x import v24_matched_basic_cp_scoring as matched
+
+
+class Depth1ProfileRoutingCPUUnit(unittest.TestCase):
+    """No model substitutes: verify which real execution contract is selected."""
+    def arguments(self):
+        return dict(pin_path='UNIT_pin', inventory_path='UNIT_inventory',
+            baseline_preprocessed='UNIT_pre', input_cache='UNIT_cache',
+            source_bank='UNIT_bank', output='UNIT_output', gpu=6)
+
+    def test_production_profile_does_not_select_first_batch_DEBUG(self):
+        guard = lambda: None
+        with patch.object(matched, '_score_matched_basic_bank') as score:
+            matched.score_current_matched_basic_bank(**self.arguments(),
+                context_depth1=True, deadline_guard=guard)
+        selected = score.call_args.kwargs
+        self.assertIs(selected['depth1_context_profile'], True)
+        self.assertNotIn('depth1_debug', selected)
+        self.assertIs(selected['deadline_guard'], guard)
+        with patch.object(matched, '_score_matched_basic_bank') as score:
+            matched.score_current_matched_basic_bank(**self.arguments())
+        self.assertIs(score.call_args.kwargs['depth1_context_profile'], False)
+        self.assertNotIn('depth1_debug', score.call_args.kwargs)
+
+    def test_DEBUG_explicitly_selects_separate_first_B4_contract(self):
+        guard = lambda: None
+        with patch.object(matched, '_score_matched_basic_bank') as score:
+            matched.debug_context_depth1_first_batch(**self.arguments(), deadline_guard=guard)
+        self.assertIs(score.call_args.kwargs['depth1_context_profile'], True)
+        self.assertIs(score.call_args.kwargs['depth1_debug'], True)
+        with self.assertRaises(ValueError):
+            matched.debug_context_depth1_first_batch(**dict(self.arguments(), gpu=5), deadline_guard=guard)
+
+    def test_unguarded_or_mixed_depth1_refuses_before_any_CUDA_import(self):
+        for flags in (dict(depth1_context_profile=True),
+                      dict(depth1_context_profile=False, depth1_debug=True),
+                      dict(depth1_context_profile=1)):
+            with self.subTest(flags=flags), self.assertRaises(ValueError):
+                matched._score_matched_basic_bank(**self.arguments(), **flags)
 
 
 class ActualOriginalScoringBootstrapDEBUG(unittest.TestCase):

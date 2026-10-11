@@ -136,6 +136,11 @@ def command_options(command, *, python, entry, action):
     if set(flags) != {'-B', '-u'} or len(flags) != 2 or args[:2] != [entry, action]:
         raise ValueError('Pinned unbuffered API entry/action required')
     args = args[2:]
+    profile = False
+    if args and args[-1] == '--context-depth1':
+        if action != 'prepare-current-bank' or Path(entry).name != Path(MATCHED_BASIC_ENTRY).name:
+            raise ValueError('Explicit context-depth1 flag belongs only to matched bank scoring')
+        args.pop(); profile = True
     if len(args) % 2:
         raise ValueError('Native stages accept only explicit flag/value pairs')
     options = {}
@@ -143,6 +148,8 @@ def command_options(command, *, python, entry, action):
         if not flag.startswith('--') or flag in options:
             raise ValueError('Duplicate or invalid native argument: ' + flag)
         options[flag] = value
+    if profile:
+        options['--context-depth1'] = True
     return options
 
 
@@ -278,6 +285,13 @@ def _source_execution(request):
 
 def validate_request(request, *, fresh=True):
     gpu = request.get('GPU_arm')
+    continuation = request.get('context_allocation_continuation')
+    if request.get('context_depth1') is not None and (request.get('context_depth1') is not True or continuation is None):
+        raise ValueError('Depth1 profile requires its explicit immutable context/allocation continuation')
+    rebound = False
+    if continuation is not None:
+        from hiercp_v1x.v24_matched_chain_continuation import validate_scheduler
+        rebound = validate_scheduler(request)
     if (request.get('format') != FORMAT or type(gpu) is not int or gpu not in (4, 5, 6)
             or not _assigned_cpu_contract(gpu, request.get('CPU_affinity'))
             or request.get('scoring_RAM_GiB') != 64 or request.get('native_RAM_GiB') != 48
@@ -332,7 +346,7 @@ def validate_request(request, *, fresh=True):
                     or not isinstance(scheduler.get('expires_at_unix'), (int, float))):
                 raise ValueError('GPU4 requires its own direct allocation or distinct owned PBS reservation')
         elif (not isinstance(scheduler, dict) or scheduler.get('state') != 'R'
-                or scheduler.get('job_id') != '129443.ECE-util1'
+                or scheduler.get('job_id') != ('129528.ECE-util1' if rebound else '129443.ECE-util1')
                 or scheduler.get('expected_owner') != 'aicompetition06'
                 or scheduler.get('expected_node') != 'ece-a6gpu6'
                 or scheduler.get('minimum_remaining_seconds', 0) < 28800
@@ -368,6 +382,8 @@ def validate_request(request, *, fresh=True):
         dict(common, **{'--native': native}), dict(common, **{'--native': native})]
     if request.get('storage_profile') == MATCHED_BASIC_PROFILE:
         expected[1]['--historical-basic-bank'] = request['historical_basic_bank']
+        if request.get('context_depth1') is True:
+            expected[1]['--context-depth1'] = True
     if gpu in (4, 6):
         for options in expected[:2]:
             options['--stunet-checkpoint'] = request['stunet_checkpoint']
@@ -385,7 +401,10 @@ def validate_request(request, *, fresh=True):
             owned(path)
     if request.get('recovery') is not None:
         _validate_recovery(request)
-    if request.get('matched_cli_handoff') is not None:
+    if continuation is not None:
+        from hiercp_v1x.v24_matched_chain_continuation import validate
+        validate(request)
+    elif request.get('matched_cli_handoff') is not None:
         from hiercp_v1x.v24_matched_cli_recovery import validate
         validate(request)
     elif request.get('cp_parity_handoff') is not None:
@@ -845,6 +864,9 @@ def scheduler_proof(request, *, stage_index=0):
     expected = request.get('scheduler')
     if expected is None:
         return None
+    if request.get('context_allocation_continuation') is not None:
+        from hiercp_v1x.v24_matched_chain_continuation import validate_scheduler
+        validate_scheduler(request)
     try:
         text = _run(['/opt/pbs/bin/qstat', '-f', expected['job_id']])
     except subprocess.CalledProcessError as error:
@@ -1413,6 +1435,9 @@ def _validate_cp_parity_handoff(request):
 
 def verify_source_claim(request, request_checksum):
     path = request['source_claim_path']
+    if request.get('context_allocation_continuation') is not None:
+        from hiercp_v1x.v24_matched_chain_continuation import verify_source_claim as verify_context_claim
+        return verify_context_claim(request, request_checksum)
     if request.get('matched_cli_handoff') is not None:
         from hiercp_v1x.v24_matched_cli_recovery import verify_source_claim as verify_matched_cli_claim
         return verify_matched_cli_claim(request, request_checksum)
@@ -1496,6 +1521,9 @@ def run_stage(request, stage, status, request_path, request_checksum):
                VECLIB_MAXIMUM_THREADS='1', PYTHONDONTWRITEBYTECODE='1',
                V24_ARM_RSS_GIB=str(request['scoring_RAM_GiB'] if stage['action'] == 'prepare-current-bank' else request['native_RAM_GiB']))
     env['CUDA_VISIBLE_DEVICES'] = str(request['GPU_arm'])
+    if request.get('context_depth1') is True:
+        env['V24_CONTEXT_DEPTH1_CHAIN_REQUEST'] = str(request_path)
+        env['V24_CONTEXT_DEPTH1_CHAIN_REQUEST_SHA256'] = request_checksum
     if request.get('storage_profile') in (READONLY_PROFILE, MATCHED_BASIC_PROFILE):
         _readonly_storage(request)
         env['V24_READONLY_STORAGE_ADMISSION_SHA256'] = request['storage_admission_sha256']

@@ -215,7 +215,7 @@ def _target_validator_transform(node):
 
 
 def validate_batch(batch, *, graph_count, node_types, profile, scope_contract):
-    """Bind mixed disjoint STU inputs to the fresh profile and actual role counts."""
+    """Bind mixed disjoint L0 inputs to the fresh profile and actual role counts."""
     import torch
     markers = batch.get(GRAPH_KEY)
     scopes = batch.get("v1x_bounded_scope_contract")
@@ -223,7 +223,7 @@ def validate_batch(batch, *, graph_count, node_types, profile, scope_contract):
             or any(value != profile for value in markers)
             or not isinstance(scopes, (list, tuple)) or len(scopes) != graph_count
             or any(value != scope_contract for value in scopes)):
-        raise ValueError("STU graph batch is missing fresh depth1 profile or original10mm ownership")
+        raise ValueError("L0 graph batch is missing fresh depth1 profile or original10mm ownership")
     canonical = batch.get("canonical_counts")
     if (not isinstance(canonical, torch.Tensor) or canonical.dtype != torch.long
             or canonical.shape != (graph_count, len(node_types)) or bool(torch.any(canonical < 0))):
@@ -382,18 +382,23 @@ def install(runtime, *, approved_profile=False):
                                    (original_prepare, prepare), (original_build, build), (bounded_view, view)):
         scope._rebind(original, replacement)
     from .v24_stunet import STUNetL0Encoder
-    original_forward = STUNetL0Encoder.forward_graph
-    @functools.wraps(original_forward)
-    def forward(self, batch, source_map, target_map):
-        import torch
-        if self.training or torch.is_grad_enabled():
-            raise ValueError("Depth1 completed-BEST profile is explicit eval/no-grad inference only")
-        count = int(target_map.shape[0])
-        if int(source_map.shape[0]) != count:
-            raise ValueError("Depth1 source/target feature pyramids must have matching disjoint ownership")
-        validate_batch(batch, graph_count=count, node_types=tuple(runtime["schema"].LOCAL_NODE_TYPES),
-                       profile=profile, scope_contract=runtime["scope"]["contract_sha256"])
-        return original_forward(self, batch, source_map, target_map)
-    STUNetL0Encoder.forward_graph = forward
+    def guarded_forward(original_forward):
+        # Keep each encoder's original computation, including the CNN's
+        # existing D/scope wrappers and all three message-passing layers.
+        @functools.wraps(original_forward)
+        def forward(self, batch, source_map, target_map):
+            import torch
+            if self.training or torch.is_grad_enabled():
+                raise ValueError("Depth1 completed-BEST profile is explicit eval/no-grad inference only")
+            count = int(target_map.shape[0])
+            if int(source_map.shape[0]) != count:
+                raise ValueError("Depth1 source/target dense maps must have matching disjoint ownership")
+            validate_batch(batch, graph_count=count, node_types=tuple(runtime["schema"].LOCAL_NODE_TYPES),
+                           profile=profile, scope_contract=runtime["scope"]["contract_sha256"])
+            return original_forward(self, batch, source_map, target_map)
+        return forward
+    STUNetL0Encoder.forward_graph = guarded_forward(STUNetL0Encoder.forward_graph)
+    original_class = runtime["model"].LocalTumorContextPyGEncoder
+    original_class.forward_graph = guarded_forward(original_class.forward_graph)
     _INSTALLED = dict(selected, snapshot=str(runtime["snapshot"]), scope_contract=runtime["scope"]["contract_sha256"])
     return copy.deepcopy(_INSTALLED)
