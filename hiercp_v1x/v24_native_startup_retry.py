@@ -107,7 +107,8 @@ def publish(path, value, *, replace=False):
         else:
             os.link(temporary, path)
     finally:
-        temporary.unlink()
+        if temporary.exists():
+            temporary.unlink()
 
 
 def _load_original(request):

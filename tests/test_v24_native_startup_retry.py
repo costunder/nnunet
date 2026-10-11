@@ -155,6 +155,25 @@ class RetryTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):retry.publish(lease,dict(request='second'))
         self.assertEqual(retry.read(lease),dict(request='first'))
 
+    def test_status_atomic_replace_persists_and_only_cleans_remaining_temp(self):
+        path=retry.seal_request(self.request); status=path.parent/'status.json'
+        originals={key:retry.digest(value['path']) for key,value in self.request['proofs'].items()}
+        for label in ('READY_FOR_NATIVE_STAGE','RUNNING','FAILED'):
+            retry.publish(status,dict(status=label,request_sha256=retry.digest(path)),replace=True)
+            self.assertEqual(retry.read(status)['status'],label)
+            self.assertEqual(list(path.parent.glob('.status.json.*.tmp')),[])
+        self.assertEqual(retry.read(path),self.request)
+        self.assertEqual({key:retry.digest(value['path']) for key,value in self.request['proofs'].items()},originals)
+
+    def test_exclusive_create_failure_preserves_lease_and_cleans_own_temp(self):
+        lease=self.arm/'native_startup_retry.lease.json'
+        retry.publish(lease,dict(request='first',supervisor_pid=100))
+        original=lease.read_bytes()
+        with self.assertRaises(FileExistsError):
+            retry.publish(lease,dict(request='second',supervisor_pid=999))
+        self.assertEqual(lease.read_bytes(),original)
+        self.assertEqual(list(self.arm.glob('.native_startup_retry.lease.json.*.tmp')),[])
+
     def test_binding_is_actual_resource_function_identity_and_rebinding_refused(self):
         original=types.SimpleNamespace(require_project_budget=Mock(return_value=dict(actual_process_and_children_RSS_bytes=45)))
         self.assertIs(retry.bind_snapshot(original),original.require_project_budget)
