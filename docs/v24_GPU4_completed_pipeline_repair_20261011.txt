@@ -1,0 +1,76 @@
+GPU4 completed GNN to full Basic-matched CP scoring: 2026-10-11
+
+Observed problem
+The resumed GPU4 GNN finished all40 epochs and680 optimizer updates, but the
+existing current viewer observed only GNN and showed TRAINING_COMPLETE with
+0/? next-progress. The old downstream controller was absent and its request
+still referenced the earlier, pre-reconnection output. No GPU4 CP scorer was
+running. GNN completion must not be presented as downstream completion.
+
+Actual completed source
+/var/tmp/aicompetition06_v24_20261010/GPU45_interrupted_exact_CPU_prepared_20261011_1791705559311834000/gpu4/gnn
+Original scientific code: /var/tmp/aicompetition06_v24_20261010/code_2c8d594552ca
+GNN BEST: epoch7/update119, fixed full128 MRR0.4925708774, top1 0.4432321207.
+Final epoch40 full128 MRR0.4590343262, top1 0.3850051942.
+Actual final invocation: full_training true, debug false, CUDA true,
+connected537/expected537 parameter tensors, full40/680 completion.
+
+Repair implementation
+tools/run_v24_completed_matched_scoring.py separately admits full frozen scoring
+without admitting native training. It verifies the exact Git checkout, source
+SHA/stat evidence, its fresh scoring-only request/proof/binding, exact own GPU
+and CPU access, and an independent container lifetime. On CPU it revalidates
+the completed current GNN and seals that arm's own BEST. Then it calls the
+existing scientific score_current_matched_basic_bank unchanged, with the
+previously authorized v2.4 inference context depth>1mm profile. This is not
+v2.5 training or its new tumor-distance profile.
+
+Scientific contract remains all81 eligible same-patient cases, all642 sources,
+all128 original feasible Basic CP positions per source (82,176 positions), full
+observed P context, own GNN BEST, B4 and GPU4 candidate chunk64, no optimization
+updates, no recipient GT in model forward. Model, source schedule, coordinates
+and original paste payloads are preserved. Failure publishes its exact stage
+and exception; no empty-context, smaller-model or CPU scoring fallback.
+
+tools/watch_v24_gpu_pipeline.py observes GNN -> CPU BEST pin -> full642 scoring
+and optional real native controller using source/arm/request/PID/birth/argv
+bindings. Scoring viewer supports sealed GPU4/5/6 requests and rejects event
+GPU mismatch. Missing/transient JSON is pending, persistent invalid data is a
+visible read error. CtrlC affects only the foreground viewer.
+
+Native status and resources
+GPU4 was an idle full RTX A6000 with49,140MiB at inspection. GPU5 andGPU6
+continued their own existing jobs. GPU4 uses the user's previously requested
+direct physical-device access with CPU0..3; no GPU4 PBS ownership claim is made.
+GPU6's PBS process is only an independent host/container lifetime witness.
+No other process is signalled and no allocation is changed.
+
+At inspection /var/tmp free13,436,145,664bytes. Original complete three-arm native
+budget17,400,317,811bytes plus10GiB+512MiB reserve requires28,674,606,963bytes.
+Home filesystem df free space does not prove the previously failing UID quota.
+The resumed native controller remains unregistered and training has not started.
+The viewer must show the exact pending reason rather than claiming automatic
+native readiness. No storage reserve, physical batch or experiment scope is cut.
+
+Validation
+51 CPU viewer/renderer tests passed, including actual completion transition,
+cross-arm/source rejection, dead actor, transient/persistent JSON and CtrlC.
+Worker CPU tests and actual deployment receipts are recorded separately.
+Full CP scoring and full250-epoch nnU-Net/BEST26 evaluation are not complete.
+All nnU-Net evaluation must use checkpoint_best.pth.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (이번 수정에서 OOM 발생 없음)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (기존 완료537 tensors; 새 scorer는 frozen inference)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
