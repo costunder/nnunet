@@ -1,13 +1,16 @@
 """CPU DEBUG score-overlay identity tests; no medical training/evaluation."""
 import copy
+from contextlib import ExitStack
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import types
 import unittest
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -264,6 +267,140 @@ class MatchedBasicOverlayCpuDebugTests(unittest.TestCase):
         try:
             with self.assertRaisesRegex(ValueError,'BEST'):runtime.run_training_entry()
         finally:sys.argv=original
+
+
+class MatchedNativeTrainingStartCpuDebugTests(unittest.TestCase):
+    """Execute the real training-only hooks with explicit CPU DEBUG dependencies."""
+    def setUp(self):
+        from hiercp_v1x import v24_matched_basic_cp_pipeline as pipeline
+        from hiercp_v1x import v24_nnunet_cp as resource
+        from hiercp_v1x import v24_readonly_native_storage as readonly
+        from hiercp_v1x import v24_readonly_static_operator_storage as static
+        from hiercp_v1x import v24_native_best_eval_runtime as best
+        from hiercp_v1x import v24_direct_gpu_access as direct
+        self.temp = tempfile.TemporaryDirectory(prefix='native_training_start_CPU_DEBUG_', dir=Path.cwd())
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        private = self.root/'private_DEBUG'
+        trainer_path = private/'nnunetv2/training/nnUNetTrainer/nnUNetTrainer_OnlinePairedCP.py'
+        trainer_path.parent.mkdir(parents=True)
+        trainer_path.write_text('# CPU DEBUG historical runtime dependency\n', encoding='utf8')
+        alias_path = trainer_path.with_name('nnUNetTrainer_FrozenV23CP.py')
+        alias_path.write_text('# CPU DEBUG alias dependency\n', encoding='utf8')
+        overlay_path, admission_path = self.root/'overlay_DEBUG.json', self.root/'admission_DEBUG.json'
+        _json(overlay_path, {'CPU_DEBUG_dependency': True})
+        _json(admission_path, {'CPU_DEBUG_dependency': True})
+        self.split = dict(outer_train=['DEBUG_train_%03d'%i for i in range(105)],
+                          outer_val=['DEBUG_val_%03d'%i for i in range(26)])
+        native = dict(root=str(self.root), overlay=str(overlay_path), overlay_sha256=runtime._sha(overlay_path),
+            bank=str(overlay_path), bank_sha256=runtime._sha(overlay_path), trainer=runtime.TRAINER,
+            physical_GPU=6, split=self.split, private_runtime=str(private),
+            baseline=dict(physical_batch=2, patch_size=[128]*3, epochs=250, cp_probability=.5, split=self.split),
+            storage_admission=str(admission_path), storage_admission_sha256=runtime._sha(admission_path),
+            private_data_folder=str(self.root/'readonly_data_DEBUG'),
+            private_trainer_sha256={path.name:runtime._sha(path) for path in (trainer_path,alias_path)})
+        self.native_path = self.root/'native_DEBUG.json'
+        _json(self.native_path, native)
+        self.binding = dict(overlay=dict(split=self.split, pin=dict(physical_GPU=6)))
+        self.original_start, self.original_epoch, self.initialize = Mock(return_value='DEBUG native started'), Mock(), Mock()
+        owner = self
+        class DebugOriginalTrainer:
+            def initialize(self):
+                owner.initialize();self.was_initialized=True
+            def on_train_start(self):
+                return owner.original_start(self)
+            def on_train_epoch_start(self):
+                return owner.original_epoch(self)
+            def do_split(self):
+                return owner.split['outer_train'], owner.split['outer_val']
+        class DebugMatchedTrainer(DebugOriginalTrainer):
+            pass
+        self.cls = DebugMatchedTrainer
+        self.module = types.ModuleType(runtime.MODULE)
+        self.module.__file__ = str(trainer_path)
+        self.module.nnUNetTrainer_250epochs_OnlineHierCPExactArgmax = DebugOriginalTrainer
+        alias = types.ModuleType('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_FrozenV23CP')
+        setattr(alias, runtime.TRAINER, self.cls)
+        dataset = types.ModuleType('nnunetv2.training.dataloading.nnunet_dataset')
+        dataset.infer_dataset_class = Mock()
+        dataloading = types.ModuleType('nnunetv2.training.dataloading')
+        dataloading.nnunet_dataset = dataset
+        self.stack = ExitStack();self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch.dict(sys.modules,
+            {'nnunetv2.training.dataloading':dataloading,
+             'nnunetv2.training.dataloading.nnunet_dataset':dataset}))
+        self.stack.enter_context(patch.dict(os.environ, nnUNet_n_proc_DA='4'))
+        self.access = Mock()
+        self.stage = self.stack.enter_context(patch.object(pipeline, 'early_stage_guard', return_value=self.access))
+        self.stack.enter_context(patch.object(runtime, 'validate_overlay', return_value=self.binding))
+        self.stack.enter_context(patch.object(runtime.importlib, 'import_module',
+            side_effect=lambda name:self.module if name==runtime.MODULE else alias))
+        self.dataset_adapter = self.stack.enter_context(patch.object(readonly, 'install_dataset_adapter', return_value={'DEBUG':True}))
+        self.overlay_adapter = self.stack.enter_context(patch.object(runtime, 'install_matched_overlay',
+            return_value=dict(source_entries=642, scored_candidates=82176, cp_probability=.5)))
+        self.best_adapter = self.stack.enter_context(patch.object(best, 'install_best_evaluation_guard', return_value={'BEST_required':True}))
+        self.direct_adapter = self.stack.enter_context(patch.object(direct, 'install_native_step_guards', return_value={'DEBUG':True}))
+        self.checkpoint_adapter = self.stack.enter_context(patch.object(static, 'install_checkpoint_adapters', return_value={'DEBUG':True}))
+        self.binding_guard = self.stack.enter_context(patch.object(runtime, '_guard_binding'))
+        self.stack.enter_context(patch.object(runtime, 'runtime_observation', return_value={'DEBUG_original_CP_observation':True}))
+        self.pre_resources = dict(actual_affinity=[32,33,34,35], actual_process_and_children_RSS_bytes=1234,
+            logical_CPU_cores=4, process_and_children_RSS_bytes=48*2**30,
+            host_available_resources_are_not_project_allocation=True)
+        self.post_resources = dict(self.pre_resources, actual_process_and_children_RSS_bytes=5678)
+        self.budget = self.stack.enter_context(patch.object(resource, 'require_project_budget',
+            side_effect=[self.pre_resources,self.post_resources,self.post_resources]))
+        self.publish = self.stack.enter_context(patch.object(readonly, 'publish_json'))
+        self.trainer = self.cls()
+        self.trainer.was_initialized=False
+        self.trainer.batch_size=2;self.trainer.num_epochs=250
+        self.trainer.configuration_manager=types.SimpleNamespace(patch_size=[128]*3)
+        self.trainer.online_policy='hier_argmax'
+        self.trainer.num_iterations_per_epoch=250;self.trainer.num_val_iterations_per_epoch=50
+        parameters = [types.SimpleNamespace(numel=lambda:16,requires_grad=True),
+                      types.SimpleNamespace(numel=lambda:32,requires_grad=False)]
+        self.trainer.network = types.SimpleNamespace(parameters=lambda:iter(parameters))
+
+    def test_full_training_start_executes_project_bounded_observation_and_preserves_contract(self):
+        proofs = runtime.install_native_runtime(self.native_path, training=True)
+        def original_start_after_budget(trainer):
+            self.budget.assert_called_once_with()
+            self.assertIs(trainer,self.trainer)
+            return 'DEBUG native started'
+        self.original_start.side_effect=original_start_after_budget
+        self.assertEqual(self.trainer.on_train_start(), 'DEBUG native started')
+        self.stage.assert_called_once_with(stage_action='train')
+        self.access.assert_called_once_with();self.initialize.assert_called_once_with()
+        self.original_start.assert_called_once_with(self.trainer)
+        self.best_adapter.assert_called_once_with()
+        self.direct_adapter.assert_called_once_with(self.cls,self.access)
+        self.checkpoint_adapter.assert_called_once()
+        self.binding_guard.assert_called_once_with(self.binding)
+        self.assertEqual(self.budget.call_count,2)
+        self.publish.assert_called_once()
+        path, report = self.publish.call_args.args
+        self.assertEqual(path,self.root/'actual_nnunet_configuration.json')
+        self.assertEqual(report['resources'],self.post_resources)
+        expected = dict(train_cases=105, validation_cases=26, epochs=250,
+            physical_batch=2, gradient_accumulation=1, effective_batch=2,
+            patch_size=[128]*3, CPU_workers=4, cp_probability=.5,
+            source_policy='same_patient_uniform_original_sources_per_visit',
+            candidate_count=128, source_entries=642, eligible_cases=81,
+            validation_checkpoint='checkpoint_best.pth', debug=False, full_training_complete=False,
+            parameters=48, trainable_parameters=16)
+        for key,value in expected.items():
+            with self.subTest(key=key):self.assertEqual(report[key],value)
+        self.assertEqual(report['runtime_proofs'],proofs)
+        self.trainer.on_train_epoch_start()
+        self.original_epoch.assert_called_once_with(self.trainer)
+        self.assertEqual(self.budget.call_count,3)
+
+    def test_project_budget_failure_after_loader_start_is_visible_and_not_published(self):
+        runtime.install_native_runtime(self.native_path,training=True)
+        self.budget.side_effect=[self.pre_resources,MemoryError('DEBUG project+children exceed48GiB')]
+        with self.assertRaisesRegex(MemoryError,'project\\+children'):
+            self.trainer.on_train_start()
+        self.original_start.assert_called_once_with(self.trainer)
+        self.publish.assert_not_called()
 
 
 if __name__=='__main__':unittest.main()

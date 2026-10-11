@@ -336,7 +336,7 @@ def install_native_runtime(native_path, *, training=False):
         def start(self):
             if access is not None:
                 access()
-            from .v24_nnunet_cp import require_project_budget, snapshot
+            from .v24_nnunet_cp import require_project_budget
             if not self.was_initialized:
                 self.initialize()
             train, val = self.do_split()
@@ -365,7 +365,7 @@ def install_native_runtime(native_path, *, training=False):
                 cp_probability=.5, source_policy='same_patient_uniform_original_sources_per_visit',
                 candidate_count=128, source_entries=642, eligible_cases=81,
                 validation_checkpoint='checkpoint_best.pth', runtime_proofs=result,
-                observed=runtime_observation(trainer_module=module), resources=snapshot(),
+                observed=runtime_observation(trainer_module=module), resources=require_project_budget(),
                 model_weights_fresh=True, debug=False, full_training_complete=False))
             return started
         def epoch(self):
