@@ -1,5 +1,8 @@
 # GNN·CP 공통 진행 화면 계약
 
+Notion 재사용 기준: https://app.notion.com/p/3eabea17210b81c8969dd61f2aef459e 의 '공통 진행 화면 디자인 — UI schema 2' 절.
+다음 진행 화면 작업은 이 계약과 Notion 양식을 먼저 읽고 기존 공통 renderer/adapter를 재사용한다. v2.5 등 새 실험 버전 때문에 화면을 새로 만들지 않는다.
+
 UI schema version: 2 (작업 종류별 고정 디자인)
 상태: GNN·CP 타입별 공통 화면 구현 및 Windows CPU 98개 검사 완료. 실제 서버 Linux CPU 98개 검사 및 GPU4·5·6 화면/기존 명령 재연결 검증 완료.
 

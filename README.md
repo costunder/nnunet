@@ -4,6 +4,8 @@
 
 ## 어떤 실험인가
 
+진행 화면을 수정하거나 새 실험에 연결할 때는 [GNN·CP 공통 화면 계약](docs/training_monitor_ui_contract.txt)과 [Notion 디자인 양식](https://app.notion.com/p/3eabea17210b81c8969dd61f2aef459e)의 '공통 진행 화면 디자인 — UI schema 2' 절을 먼저 읽습니다. GNN 9행·CP 8행은 기존 공통 renderer/adapter로 재사용하고, nnU-Net 기본 로그 형식은 유지합니다.
+
 | 구분 | 위치 | 현재 확인된 상태 |
 | --- | --- | --- |
 | 원본 V1, 30mm | [v1](versions/v1/README.md) | 예전 서버 checkpoint와 보존 소스를 구분한다. 원본30mm 전체 P+128U 최종 평가 결과는 아직 확인되지 않았다. |
