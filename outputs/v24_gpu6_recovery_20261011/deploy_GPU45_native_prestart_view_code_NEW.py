@@ -20,6 +20,31 @@ if bundle.exists():assert bundle.read_bytes()==raw
 else:create(bundle,raw)
 if not code.exists():
  subprocess.run(['git','clone','--shared','--no-checkout',str(anchor),str(code)],capture_output=True,text=True,check=True,timeout=30)
+assert code.parent==anchor.parent and code.name=='code_'+P['commit'][:12] and not code.is_symlink() and code.stat().st_uid==41833
+# Flatten only this new clone's alternate list, deepest stores first. Older
+# immutable checkouts can form a longer chain than Git's alternate depth limit.
+alternate=code/'.git/objects/info/alternates'
+original=alternate.read_bytes();visited=set();stores=[]
+def collect(store):
+ store=Path(store).resolve(strict=True)
+ if store in visited:return
+ visited.add(store)
+ nested=store/'info/alternates'
+ if nested.exists():
+  for line in nested.read_text().splitlines():
+   item=Path(line);collect(item if item.is_absolute() else store/item)
+ stores.append(str(store))
+for line in original.decode().splitlines():
+ item=Path(line);collect(item if item.is_absolute() else alternate.parent.parent/item)
+flat=('\n'.join(stores)+'\n').encode()
+if flat!=original:
+ backup=alternate.with_name('alternates.pre_viewer_flatten')
+ if backup.exists():assert backup.read_bytes()==original
+ else:create(backup,original)
+ temporary=alternate.with_name('alternates.viewer_flatten.tmp');create(temporary,flat);os.replace(temporary,alternate)
+current=subprocess.check_output(['git','-C',str(code),'rev-parse','HEAD'],text=True).strip()
+if current!=P['commit']:
+ assert current==P['controller_commit'] and [p.name for p in code.iterdir()]==['.git'],'Only our own empty no-checkout clone may be completed'
  subprocess.run(['git','-C',str(code),'fetch',str(bundle),'HEAD'],capture_output=True,text=True,check=True,timeout=30)
  subprocess.run(['git','-C',str(code),'checkout','--detach','FETCH_HEAD'],capture_output=True,text=True,check=True,timeout=30)
 assert subprocess.check_output(['git','-C',str(code),'rev-parse','HEAD'],text=True).strip()==P['commit']

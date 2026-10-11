@@ -1,0 +1,131 @@
+GPU4/5 v2.4 nnU-Net 시작 오류 재발 방지 — 실제 배포 기록
+확인 시각: 2026-10-12 05:48:56 KST
+
+문제와 적용 결과
+
+GPU6의 봉인된 nnU-Net runtime은 on_train_start에서 v24_nnunet_cp가
+제공하지 않는 snapshot을 import하여 첫 optimizer update 전에 실패했다.
+현재 Git의 수정만으로 실행 중인 GPU4/5의 과거 checkout이 바뀌지는 않는다.
+GPU4/5는 아직 native 준비 폴더가 없어, 기존 CP를 유지하면서 이후 세 단계를
+수정된 checkout으로 실행하는 별도 prestart controller를 실제 등록했다.
+on_train_start는 실제 require_project_budget()의 자원 관측값을 기록한다.
+
+학습 controller checkout:
+  /dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/code_6fbfe29c48c3
+  commit 6fbfe29c48c3b987a0fcbafdfa23d5730be60186
+뷰어 전용 checkout:
+  /dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/code_ec81af9c0f8b
+  commit ec81af9c0f8b47c3fadcc86a57f326ababa4773c
+실행 Python:
+  /home/aicompetition06/.conda/envs/nnunet/bin/python3.10 -B
+
+실제 인계와 현재 상태
+
+GPU4: 새 CPU controller PID 2120001, birth 1791751079.64, CPU 0–3.
+  CP PID 1979501, birth 1791728656.16는 재시작하지 않았다.
+  기존 CPU controller PID 2001544만 정확한 UID/birth/전체 argv 확인 및
+  사용자에게 사전 보고 후 개별 SIGTERM으로 교체했다.
+  현재 source 340/642, 위치 43520/82176, CP 채점 중.
+  GNN은 원래 전체 40 epoch/680 update를 완료했다.
+
+GPU5: 새 CPU controller PID 2120008, birth 1791751079.88, CPU 42–45.
+  CP PID 2076621, birth 1791744037.09는 재시작하지 않았다.
+  기존 CPU controller PID 2061145만 같은 신원 확인 및 사전 보고 후
+  개별 SIGTERM으로 교체했다. 기존 scorer는 부모 종료 후에도 자신의
+  stage_score.json 및 admitted_scoring.json을 직접 생성하는 경로다.
+  현재 source 116/642, 위치 14848/82176, CP 채점 중.
+  GNN은 사용자가 승인한 27/40 epoch, 459 update 조기 종료다.
+  자기 BEST 및 실제 조기 종료 pin을 유지하며 full40 완료로 표시하지 않는다.
+
+두 새 controller 상태는 WAITING_FOR_EXISTING_SCORING이다.
+기존 controller 두 개가 종료되고, 기존 CP 두 개와 새 controller 두 개가
+살아 있음을 실제 서버에서 확인했다. 원래 GPU4 메타데이터 4개와 GPU5
+메타데이터 13개의 SHA/stat 증거도 검증했다. 원래 checkpoint/결과,
+봉인된 요청/checkout/registration/lease를 덮어쓰지 않았다.
+
+GPU6은 같은 확인에서 실제 nnU-Net train 단계, epoch 22/250였다.
+GPU4/5의 native 폴더는 아직 없으며 nnU-Net 본학습 시작 전이다.
+
+후속 실행 계약
+
+기존 CP 전체 642 source × 128 위치 = 82176 채점 완료 증거와
+정확한 scorer 종료를 확인한 후, 수정된 코드로 native-prepare →
+native-calibrate → train을 실행한다. 전체 CP를 다시 채점하지 않는다.
+GPU5는 원래 score receipt와 같은 E27 BEST pin을 확인한 뒤 새 전용
+early/request.json으로 native 세 단계를 실행한다.
+
+전체 native 250 epoch, physical/effective batch 2/2, patch 128³,
+train 105/validation 26, CP 확률 0.5, 기존 CP/depth1 계약을 유지한다.
+기존 모델/그래프/데이터/후보/epoch 규모, optimizer, BEST를 축소하지 않는다.
+모든 평가 경로는 checkpoint_best.pth, 전체 validation 26명이다.
+checkpoint_final.pth는 최종 평가 입력으로 사용하지 않는다.
+실제 완료 receipt 없이 full250/BEST26 완료 상태를 만들지 않는다.
+
+원래 GPU/CPU/RAM/저장공간/할당 시간 확인을 유지한다. 실제 읽기 확인에서
+RTX A6000 GPU4/5/6 VRAM 사용은 25094/4941/7713 MiB였고, GPU6 util은
+78%였다. GPU4/5 scorer RSS는 30.79/28.09 GiB였으며 각각 4 CPU를 사용한다.
+CP의 CPU 준비 구간에서 GPU utilization 0 또는 sleeping이 보이는 것은
+채점 중단의 단독 근거가 아니다. 완료 source와 실제 로그를 함께 확인한다.
+현재 봉인된 host lifetime은 2026-10-12 16:03:36 KST까지다.
+native 준비/보정 최소 잔여 8시간, train 최소 잔여 7시간 및 180초 reserve를
+그대로 보존한다. CP 종료 시 자원이 부족하면 WAITING_FOR_NATIVE_RESOURCES에
+정확한 원인을 표시하며, 자원 검사를 우회하거나 epoch를 줄이지 않는다.
+
+뷰어와 검증
+
+GPU4/5는 실제 DirectSource arm_root=source_output.parent를 사용한다.
+GPU6 전용 CompletedGNNSource를 GPU4에 적용하는 잘못된 연결과,
+GPU5 source_output 뒤에 gnn을 중복으로 붙이는 연결을 수정했다.
+기존 명령을 유지하고, 변경 전 실행 파일 7개는 별도 폴더에 백업했다.
+GPU6의 직접 viewer 세 개는 SHA가 그대로이며, 공통 --gpu 6도 기존
+GPU6 정상 controller를 표시한다. 학습 소스와 뷰어 소스는 별도로 고정했다.
+
+  python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_gpu4_current.py
+  python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_gpu5_current.py
+  python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_training.py --gpu 4
+  python3.10 -B /var/tmp/aicompetition06_v24_20261010/view_training.py --gpu 5
+
+위 python3.10은 반드시 앞서 기록한 nnunet 환경의 절대 경로를 사용한다.
+GNN/CP는 기존 UI 2, native는 기존 nnU-Net 로그 디자인을 유지한다.
+새 controller는 실제 request/registration/lease/PID/birth/argv로 확인한다.
+old CPU controller 종료를 CP 종료나 full 학습 완료로 표시하지 않는다.
+
+정적 검사: Python 및 내장 원격 스크립트 syntax, Git diff --check 통과.
+Windows: 최초 통합 CPU 68개 통과; 실제 DirectSource 통합 회귀 추가 후
+  수정된 viewer CPU 17개 통과(기존 14개 + 새 3개).
+서버 nnunet: 최종 통합 CPU 71개, 4.192초, 전부 통과.
+그중 training=True의 실제 on_train_start 연결 검사 9개는 GPU4 직접
+  native 경로와 GPU5 early private runtime 모두를 검증한다.
+실제 서버: CP 두 개 유지, 새 controller 두 개 등록, 실제 source 진행량,
+  모든 공통/직접 viewer 명령과 GPU6 native 진행을 확인했다.
+이 CPU 검사들은 의료 데이터 전체 CUDA 학습/평가의 완료 결과가 아니다.
+GPU4/5의 실제 후속 CUDA 시작, 전체250 학습 및 BEST26 평가는 아직 미완료다.
+
+별도 뷰어 checkout 배포 중 Git alternate store chain 깊이 제한을 발견했다.
+소유권과 비어 있는 새 clone을 확인한 뒤, 그 새 clone의 alternates만 원본을
+백업하고 깊은 store부터 직접 참조하도록 정리했다. 실행 중인 기존 clone의
+Git 객체/소스는 수정하지 않았다. 그 후 배포와 서버 71개 검사가 통과했다.
+
+실제 운영 증거(로컬 outputs/v24_gpu6_recovery_20261011)
+  GPU45_NATIVE_PRESTART_REGISTERED_1791751080106658100.json
+  GPU45_NATIVE_PRESTART_HANDOFF_VERIFIED_1791751127563437000.json
+  GPU45_NATIVE_PRESTART_VIEW_CODE_VERIFIED_1791751657662536400.json
+  GPU45_NATIVE_PRESTART_ACTUAL_VERIFIED_1791751715887675700.json
+  GPU45_NATIVE_PRESTART_VIEWERS_VERIFIED_1791751735900701400.json
+증거 JSON, Git bundle, 데이터/가중치/checkpoint는 코드 push에 포함하지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. (이번 수정은 import/인계 오류이며 OOM 대응 변경 없음)
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. (기존 모델 경로 보존; 이번 수정은 자원 관측과 controller/뷰어)
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
