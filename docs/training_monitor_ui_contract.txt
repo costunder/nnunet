@@ -1,7 +1,7 @@
 # GNN·CP 공통 진행 화면 계약
 
 UI schema version: 2 (작업 종류별 고정 디자인)
-상태: GNN·CP 타입별 공통 화면 구현 및 Windows CPU 98개 검사 완료. 실제 서버 재연결 검증 진행 중.
+상태: GNN·CP 타입별 공통 화면 구현 및 Windows CPU 98개 검사 완료. 실제 서버 Linux CPU 98개 검사 및 GPU4·5·6 화면/기존 명령 재연결 검증 완료.
 
 ## 적용 범위
 
@@ -54,18 +54,31 @@ Windows CPU 98개 검사 PASS: 작업 종류별 버전 간 고정 디자인, 미
 
 실제 명령은 view_training.py --gpu 4|5|6이며 기존 view_gpu4_current.py / view_gpu5.py / view_gpu6.py 및 auto/current 별칭도 같은 공통 진입점에 연결한다. 이미 켜진 옛 뷰어는 학습을 유지한 채 뷰어만 Ctrl+C로 닫고 같은 명령을 다시 실행한다.
 
+## 실제 서버 검증 완료
+
+코드 commit: 6db87bf56a980d7534b073d5fd4608c2e150ba85
+독립 UI release: /var/tmp/aicompetition06_v24_20261010/UI_COMMON_2_20261012_1791737120382169900
+서버 검증 영수증: 위 release의 installation_verified.json
+로컬 확인 영수증: outputs/v24_gpu6_recovery_20261011/typed_common_ui_actual_install_saved.txt
+
+서버 Linux CPU 98개 PASS. 실제 GPU4·6 CP 화면은 같은 8행 라벨·순서·항목이다. GPU4 132/642 sources 및 16896/82176 positions, GPU6 525/642 및 67200/82176을 확인했다. GPU5 GNN 9행은 epoch27/40, 완료26, U119, update459, stage validation18/21의 실제 기록을 보여줬다. 이 값은 해당 검증 시점 값이며 이후 학습에 따라 바뀐다.
+
+기존 view_gpu4_current / pipeline / auto, view_gpu5 / current / auto, view_gpu6 / current / auto 9개와 공통 view_training.py를 원본 SHA 백업 후 새 display-only wrapper로 연결했다. 9개 별칭 모두 실제 --once --json을 실행해 자기 GPU와 UI schema2를 확인했다. 기존 viewer module, config, 과학 코드, checkpoint와 학습 결과를 변경하지 않았다. 과거 소스와 원본 별칭은 release/previous_UI_launchers에 보존했다.
+
+nnU-Net console logger 변경 없음. GPU1 대상 변경 없음. 기존 native controller PID2001544 / 2001549 / 2001553의 birth, 전체 argv, UID와 registration SHA는 설치 전후 동일하다. 새 학습 실행 또는 프로세스 신호를 보내지 않았다. 본 검증은 UI와 자동 후속 상태의 읽기 확인이며 전체 학습·전체 평가 완료를 의미하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
-- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다. 기존 자체 생성 UI 별칭만 원본 백업 후 연결했다.
 - [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
 - [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
 - [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
-- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. 이 문서 작업에서는 실행 설정을 변경하지 않았다.
-- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 공통 UI의 실제 서버 검증은 진행 중이다.
-- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이 문서 작업에서는 OOM 실행을 하지 않았다.
-- [x] 디버그 설정과 최종 설정을 분리했다.
-- [x] dummy, placeholder, random fallback을 사용하지 않았다.
-- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 이 읽기 전용 UI는 학습 모듈이 아니며 학습 경로를 변경하지 않는다.
-- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. 이번 변경은 공통 UI 계약 문서 작성이다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 현재 source request의 B4 및 후보 chunk64/32 검증을 유지하며 실행 설정을 변경하지 않았다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 실제 GPU/source 바인딩과 프로세스 상태, GNN50.92GiB·CP35.61/31.99GiB RSS를 읽었다.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 UI 작업에는 OOM 실행이 없었다.
+- [x] 디버그 설정과 최종 설정을 분리했다. CPU fixture 검사와 실제 서버 로그 확인을 구분했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다. 관측되지 않은 UI 값은 '-'로 명시했다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 이번 읽기 전용 UI는 학습 모듈이 아니며 기존 학습 경로를 변경하지 않았다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다. GNN·CP 타입별 디자인과 별칭 연결만 변경했다.
 - [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
