@@ -176,7 +176,7 @@ class StandaloneDTests(unittest.TestCase):
             self.assertIn('host_memory.py',names);self.assertIn('v25_provider_memory_runtime.py',names)
 
     def test_helper_build_is_pure_and_remote_template_parses(self):
-        path=execution.ROOT/'outputs/v24_gpu6_recovery_20261011/deploy_v25_D_provider_recovery_20261012.py'
+        path=execution.ROOT/'tools/deploy_v25_d_provider_recovery.py'
         spec=importlib.util.spec_from_file_location('D_deploy_debug',path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         payload=b'CPU DEBUG archive';manifest=dict(commit='a'*40,sha256=hashlib.sha256(payload).hexdigest(),paths=['new.py'],
             proof={'new.py':dict(previous_sha256=None,new_sha256='b'*64)})
