@@ -419,8 +419,28 @@ def task_model(value, *, experiment_version=None):
     return model
 
 
+def verified_native_completion(value):
+    """Console epochs and unchecked flags cannot select the final native screen."""
+    native, cp = value.get('native') or {}, value.get('scoring') or {}
+    return (value.get('snapshot_fresh') is True and value.get('active_stage') == 'native'
+        and value.get('status') == 'COMPLETE' and native.get('status') == 'COMPLETE'
+        and value.get('full_native_training') is True and value.get('full_native_evaluation') is True
+        and native.get('full_native_training') is True and native.get('full_native_evaluation') is True
+        and native.get('completion_metadata_verified') is True
+        and cp.get('source_done') == 642 and cp.get('CP_done') == 82176)
+
+
 def display(value, renderer=None, *, experiment_version=None):
     native = value.get('native') or {}
+    if verified_native_completion(value):
+        lines = ['GPU' + str(value.get('GPU')) + ' | nnU-Net | COMPLETE',
+            'nnU-Net 학습 완료: 250/250 epoch | physical batch 2',
+            '자기 BEST 평가 완료: 26/26 | checkpoint_best.pth',
+            'CP 후보 채점 완료: 642/642 source | 82176/82176 CP',
+            '완료 검증: 봉인된 full250 학습 및 BEST full26 평가 증거 확인']
+        if native.get('completion_root'):
+            lines.append('기존 학습·평가 결과 검증 완료; 재학습·재평가 없음')
+        return '\n'.join(lines)
     if value.get('snapshot_fresh') and value.get('active_stage') == 'native' and native.get('native_training_started'):
         # Native logging/formatting is already established; only GNN and CP
         # screens are being standardized in response to this request.
@@ -475,7 +495,8 @@ def main(argv=None):
                 print(json.dumps(value, ensure_ascii=False, allow_nan=False)); return
             model = task_model(value, experiment_version=args.experiment_version)
             native = value.get('native') or {}
-            if value.get('snapshot_fresh') and value.get('active_stage') == 'native' and native.get('native_training_started'):
+            if (value.get('snapshot_fresh') and value.get('active_stage') == 'native' and native.get('native_training_started')
+                    or verified_native_completion(value)):
                 if terminal:
                     terminal.close(); terminal = None
                 shown = display(value, renderer, experiment_version=args.experiment_version)

@@ -260,7 +260,8 @@ def main(argv=None):
             if args.json:
                 print(json.dumps(dict(value, ui_schema_version=2, experiment_version='v2.4'), ensure_ascii=False, allow_nan=False))
                 return
-            if value.get('active_stage') == 'native' and value.get('native', {}).get('native_training_started'):
+            if (value.get('active_stage') == 'native' and value.get('native', {}).get('native_training_started')
+                    or pipeline.verified_native_completion(value)):
                 if terminal:
                     terminal.close()
                     terminal = None

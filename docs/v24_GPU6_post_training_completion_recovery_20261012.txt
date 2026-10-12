@@ -1,0 +1,73 @@
+v2.4 GPU6 학습 후 완료 기록 복구 — 2026-10-12
+
+실제 결과
+- GPU6은 nnU-Net 250epoch를 완료했다. Epoch 249 종료 11:25:45,
+  Training done 11:25:46, 자기 checkpoint_best.pth 전체 26명 validation 종료 12:23:17.
+- 이 성공 결과가 있었는데 supervisor의 두 번째 완료 admission이, 최초 admission에서
+  봉인된 과거 저장공간 helper를 정당하게 불러온 것을 다른 checkout 오염으로 판단했다.
+  따라서 상태가 FAILED로 남았다. 학습 시작 실패와 별개인 학습 후 검증 오류였다.
+- 최초 검증한 정확한 module 객체를 이후 admission에 재사용하도록 수정했다.
+  전역 sys.modules 삭제, 임의 경로 허용, 검증 생략은 사용하지 않았다.
+
+실제 복구 적용
+- 복구 producer commit: b281947abd10239563fac5d61d1503dfaee655b0.
+- 새 코드: /dev/shm/aicompetition06_v24_gpu6_DEBUG_20261011/code_b281947abd10.
+- 원래 FAILED 상태, 원래 로그, checkpoint, 예측, best_validation_complete.json은 보존했다.
+- 새 CPU 전용 완료 요청은 정확한 원래 request/status/registration/lease/entry/log,
+  actual configuration, BEST/FINAL checkpoint와 BEST26 receipt의 SHA256/stat를 봉인했다.
+- 원래 full40/680 GNN, full642/82176 CP, 전체 epoch 0..249 성공 로그,
+  105+26/B2/128^3/workers4/CP0.5, 실제 BEST26 예측과 요약 증거를 검증했다.
+- checkpoint_final.pth는 전체250 완료 증거로만 사용했다. 평가 입력은 BEST이며
+  final fallback을 사용하지 않았다.
+- 실제 CPU API 결과는 COMPLETE, completed_epochs=250, evaluated_cases=26,
+  evaluation_checkpoint=checkpoint_best.pth이다. GPU 연산, 재학습, 재평가 없이
+  누락되었던 canonical training_complete/matched_storage_train 기록을 생성했다.
+- 기존 aggregate disk 계약도 통과했다. 실제 여유16,286,416,896bytes,
+  필요15,721,830,259bytes이며, 이미 쓰인 GPU6 bytes를 정해진 계약대로 차감했다.
+  기존11,274,289,152bytes reserve를 축소하지 않았다.
+
+검사와 증거
+- Windows CPU 검사65개, 서버 nnunet 환경 Linux CPU 검사65개 통과.
+- 실제 완료 receipt:
+  GPU6_EXISTING_COMPLETION_COMPLETE_1791779749909871100.json.
+- 실제 direct/common viewer --json은 COMPLETE/full native flags True,
+  250epochs/BEST26/read_problem=null로 확인했다.
+  GPU6_COMPLETION_FRONTDOORS_VERIFIED_1791779874696683500.json.
+- receipt와 서버 산출물은 코드 Git에 넣지 않는다. SHA-bound producer/request/code는 보존한다.
+
+안정 조회 경로
+- /var/tmp/aicompetition06_v24_20261010/view_gpu6_current.py
+- /var/tmp/aicompetition06_v24_20261010/view_training.py --gpu 6
+- 기존 frontdoor를 정확한 해시로 확인하고 바이트 그대로 백업한 뒤 새 뷰어에 연결했다.
+  과거 UI 릴리스 폴더의 봉인된 wrapper는 수정하지 않는다.
+- 오래된 V24_VIEW 값을 쓰면 과거 FAILED/EXITED 상태를 계속 볼 수 있다.
+  재접속 후 V24_VIEW=/var/tmp/aicompetition06_v24_20261010 으로 지정한다.
+- viewer 재시작이 필요한 경우 viewer의 Ctrl+C만 사용한다. 학습/SSH/PBS 종료를 요청하지 않는다.
+
+GPU4/GPU5 현재 제한
+- GPU4는 전체642/82176 CP 채점이 실제 완료되었다. 현재 새 controller는
+  WAITING_FOR_NATIVE_RESOURCES이며, 남은 host lifetime이 전체 native stage 조건보다 짧다.
+- GPU5 CP scorer는 자기 descendant zombie를 active identity로 조회해 128/642에서 실패했다.
+  별도로 새 adoption controller가 이미 종료된 actor PID의 재사용을 원래 actor 변경으로
+  오판하는 문제가 있었다. 해결 코드와 전체128 real-score resume 검사를 준비했다.
+  현재 GPU5 native 학습은 시작하지 않았으며 whole642 CP 완료를 주장하지 않는다.
+- PBS129528.ECE-util1의 실제 종료는 2026-10-12 16:03:36 KST다.
+  자기 job만 walltime24h→48h 연장을 시도했으나 PBS는 Unauthorized Request로 거부했다.
+  job을 지우거나 SSH/interactive allocation을 종료하지 않았다.
+- 새 충분한 할당 없이는 GPU4/5 전체 stage를 재개했다고 보고하지 않는다.
+  score/prepare8h, train7h, expiry reserve180초 계약과250epoch는 유지한다.
+
+작업 완료 체크리스트
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 기존 B2/4workers 유지.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 복구는 CPU 전용이며 GPU 학습은 이미 완료.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 이번 실패는 import/PID 검증 오류.
+- [x] 디버그 설정과 최종 설정을 분리했다. CPU 회귀 검사와 실제250/BEST26 결과 구분.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 이번 완료 기록 복구에서 gradient 검사를 재실행하지 않았으며 모델 경로는 변경하지 않았다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
