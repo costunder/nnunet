@@ -131,6 +131,27 @@ def _metadata(process):
     return dict(pid=process.pid, create_time=process.create_time(), UID=process.uids().real)
 
 
+def _fork_no_exec(process):
+    """Linux records an inherited fork image until that child first executes.
+
+    Field9 is the kernel task flags. PF_FORKNOEXEC is cleared by the first
+    exec, so a parent's temporarily inherited argv is not a final child argv.
+    The caller binds PID/birth/UID before and after reading this observation.
+    """
+    try:
+        body = (Path('/proc') / str(process.pid) / 'stat').read_text()
+    except FileNotFoundError as failure:
+        if process.is_running():
+            raise RuntimeError('Live Basic descendant lost its Linux fork/exec observation') from failure
+        raise psutil.NoSuchProcess(process.pid) from failure
+    prefix, separator, tail = body.rpartition(') ')
+    fields = tail.split()
+    if (not separator or not prefix.startswith(str(process.pid) + ' (')
+            or len(fields) < 7 or not fields[6].isdigit()):
+        raise RuntimeError('Exact Linux descendant fork/exec observation required')
+    return bool(int(fields[6]) & 0x40)
+
+
 def _actor(process):
     if process.status() == psutil.STATUS_ZOMBIE:
         raise RuntimeError('Exact Basic controller or stage is already terminal')
@@ -232,6 +253,7 @@ class BasicLease:
         self.actual_resources = None
         self._controller_cgroup = None
         self._managed = {}
+        self._fork_pending = {}
         self._cached_tree = {}
 
     def _admit(self, path, digest):
@@ -281,20 +303,53 @@ class BasicLease:
                 raise RuntimeError('Basic descendant PID/birth/UID changed or became foreign')
             if process.status() == psutil.STATUS_ZOMBIE:
                 return None
+            fork_before = _fork_no_exec(process)
             command = process.cmdline()
-            if command and previous is not None and command != previous['command']:
-                raise RuntimeError('Basic descendant live argv changed')
             if process.status() == psutil.STATUS_ZOMBIE:
                 return None
+            if _fork_no_exec(process) != fork_before:
+                if attempt < 2:
+                    time.sleep(.01)
+                    continue
+                raise RuntimeError('Descendant first exec did not stabilize during bounded observation')
             if not command:
                 if attempt < 2:
                     time.sleep(.01)
                     continue
                 raise RuntimeError('Basic live descendant retained unknown empty argv')
+            pending = self._fork_pending.get(process.pid)
+            if fork_before:
+                parent = process.parent()
+                if parent is None:
+                    raise RuntimeError('Unexecuted Basic fork lost its exact parent lineage')
+                inherited = _actor(parent)
+                if command != inherited['command'] or pending is not None and pending != inherited:
+                    raise RuntimeError('Unexecuted Basic fork changed its exact inherited parent argv/identity')
+                if previous is not None and pending is None:
+                    raise RuntimeError('Finalized Basic descendant regressed to an unexecuted fork')
+            else:
+                inherited = None
+                if pending is not None:
+                    parent = process.parent()
+                    if parent is None or _actor(parent) != pending:
+                        raise RuntimeError('First Basic child exec changed its exact parent lineage')
+                elif previous is not None and command != previous['command']:
+                    raise RuntimeError('Basic descendant live argv changed')
             identity = dict(metadata, command=command)
-            if not _identity(identity) or _metadata(process) != metadata:
+            final_metadata = _metadata(process)
+            final_command = process.cmdline()
+            final_fork = _fork_no_exec(process)
+            if (fork_before and not final_fork and final_metadata == metadata and attempt < 2):
+                time.sleep(.01)
+                continue
+            if (not _identity(identity) or final_metadata != metadata
+                    or final_command != command or final_fork != fork_before):
                 raise RuntimeError('Exact Basic descendant changed during live observation')
             self._managed[process.pid] = identity
+            if fork_before:
+                self._fork_pending[process.pid] = inherited
+            else:
+                self._fork_pending.pop(process.pid, None)
             return process
         raise RuntimeError('Exact Basic worker observation could not complete')
 

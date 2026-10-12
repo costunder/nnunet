@@ -14,11 +14,13 @@ import copy
 import gc
 import hashlib
 import importlib.util
+import itertools
 import json
 import multiprocessing
 import os
 from pathlib import Path
 import pickle
+import shutil
 import sys
 import time
 import types
@@ -33,10 +35,18 @@ COMMON_SHA256 = "12363d1f326b5a5e962d169860d548a0c5c38123672f716b49f8e5f6cf437bc
 FORMAT = "basic_cp_ablation_candidates256_preserved128_v1"
 GENERATION = {"source_pad": 4, "max_draws": 50000, "min_liver_coverage": 0.85,
               "occupied_clearance_vox": 2, "min_center_separation_mm": 12.0}
+ADDITIONAL_CANDIDATE_SEARCH = {
+    "policy": "deterministic_rejection_until_full256_or_cooperative_resource_failure",
+    "initial_historical_pool_attempts": 4,
+    "extra_attempt_seed": "stable_seed(global_seed,case_id,component,online_pool,attempt4_then5_then6_and_on)",
+    "original128_and_source_arrays_preserved": True, "raw_preprocessed_graph_filters_unchanged": True,
+    "minimum_center_separation_mm_unchanged": 12.0,
+    "source_or_candidate_count_fallback": False, "additional_GNN_scoring": False}
 _WORKER_PROVIDER = None
 _WORKER_BINDING = None
 _PREPARATION_LEASE = None
 _PREPARATION_LEASE_BINDING = None
+_PREPARATION_ABORT_ROOT = None
 
 
 class BankContractError(ValueError):
@@ -110,9 +120,46 @@ def process_tree_rss() -> int:
     return int(total)
 
 
+def preparation_abort_verify(root=None) -> None:
+    """Workers stop cooperatively at normal boundaries after a visible failure."""
+    root = _PREPARATION_ABORT_ROOT if root is None else Path(root)
+    if root is None:
+        return
+    path = Path(root)/"preparation_abort.json"
+    if path.exists():
+        require(not path.is_symlink(), "Own cooperative abort marker cannot be a symlink")
+        record = read_json(path)
+        require(record.get("format") == FORMAT and record.get("stop_remaining") is True
+                and isinstance(record.get("error"), str), "Own cooperative abort marker is invalid")
+        raise BankContractError("Candidate preparation cooperatively stopped: " + record["error"])
+
+
+def publish_preparation_failure(root: Path, progress: dict, exc: Exception) -> None:
+    """Publish before executor shutdown, which may still wait for running workers."""
+    abort = {"format": FORMAT, "stop_remaining": True,
+             "error": f"{type(exc).__name__}: {exc}"}
+    marker = root/"preparation_abort.json"
+    if not marker.exists():
+        write_json_exclusive(marker, abort)
+    else:
+        require(read_json(marker) == abort, "Own preparation failure reason changed")
+    progress.update(status="FAILED", updated_at=time.time(), error=abort["error"],
+                    cooperative_abort_requested=True, running_workers_may_be_closing=True)
+    publish_progress(root, progress)
+    failed = root/"preparation_failed.json"
+    record = {"format": FORMAT, "complete": False, "error": abort["error"],
+              "original_results_preserved": True, "no_source_or_candidate_count_fallback": True,
+              "partial_outputs_preserved": True, "cooperative_abort_requested": True}
+    if not failed.exists():
+        write_json_exclusive(failed, record)
+    else:
+        require(read_json(failed) == record, "Own preparation failure receipt changed")
+
+
 def preparation_lease_verify() -> None:
     """Cooperative resource/expiry checks when launched by the Basic controller."""
     global _PREPARATION_LEASE, _PREPARATION_LEASE_BINDING
+    preparation_abort_verify()
     value = os.environ.get('BASIC_CP_LEASE_REQUEST')
     if not value:
         require(_PREPARATION_LEASE is None, 'Established preparation lease environment disappeared')
@@ -301,6 +348,227 @@ def validate_original_index(index: Mapping) -> None:
             "Original candidate-generation/CP contract differs")
 
 
+def verify_prepared_bank(witness: Mapping, binding_path: Path, binding_sha256: str) -> dict:
+    """Read-only admission of a completed own256 bank; never regenerate or copy.
+
+    This verifies published bytes and source-prefix preservation once before a
+    fresh controller's normal full geometry preflight. It does not replace that
+    preflight or claim that a prepared bank is a completed training experiment.
+    """
+    required = {"index", "index_sha256", "complete_sha256", "manifest_sha256",
+                "preparation_started_sha256"}
+    require(isinstance(witness, Mapping) and required == set(witness),
+            "Exact completed256 bank witness fields required")
+    observed = {}
+
+    def admit(path, expected=None):
+        path = Path(path)
+        require(path.is_absolute() and ".." not in path.parts
+                and not any(p.is_symlink() for p in (path, *path.parents))
+                and path.resolve(strict=True) == path and path.is_file(),
+                f"Exact regular read-only bank evidence path required: {path}")
+        identity = stat_identity(path)
+        digest = file_sha(path)
+        require(stat_identity(path) == identity, f"Bank evidence changed while hashing: {path}")
+        if expected is not None:
+            require(isinstance(expected, str) and len(expected) == 64
+                    and all(char in "0123456789abcdef" for char in expected)
+                    and digest == expected, f"Completed bank evidence SHA differs: {path}")
+        observed[str(path)] = identity
+        return path, digest
+
+    binding_file, _ = admit(binding_path, binding_sha256)
+    binding = read_json(binding_file)
+    index_path, index_sha = admit(witness["index"], witness["index_sha256"])
+    root = index_path.parent
+    require(index_path.name == "index.json", "Completed bank index.json required")
+    complete_path, complete_sha = admit(root/"complete.json", witness["complete_sha256"])
+    manifest_path, manifest_sha = admit(root/"preservation_manifest.json", witness["manifest_sha256"])
+    started_path, started_sha = admit(root/"preparation_started.json", witness["preparation_started_sha256"])
+    complete, manifest, started, index = map(read_json, (complete_path, manifest_path, started_path, index_path))
+    require(not (root/"preparation_failed.json").exists(), "Failed/partial candidate preparation cannot be reused")
+    require(started.get("format") == FORMAT and started.get("binding") == binding
+            and started.get("original_index_sha256") == BANK_SHA256
+            and started.get("full_sources") == 642
+            and started.get("original_candidate_count") == 128
+            and started.get("candidate_count") == 256
+            and started.get("CUDA_model_or_scoring_executed") is False,
+            "Actual preparation binding/full-source/scientific contract differs")
+    required_complete = {"format": FORMAT, "complete": True, "candidate_count": 256,
+        "source_entries": 642, "eligible_cases": 81, "total_candidates": 164352,
+        "index_sha256": index_sha, "original_index_sha256": BANK_SHA256,
+        "preservation_manifest_sha256": manifest_sha,
+        "all_original_arrays_and_first128_preserved": True,
+        "all_256_unique_raw_and_preprocessed": True,
+        "all_added128_historical_raw_preprocessed_graph_valid": True,
+        "additional_GNN_scores_generated": False, "training_executed": False,
+        "CUDA_initialized": False, "raw_CT_preprocessing_executed": False,
+        "patient_region_cache_rebuilt": False, "shared_preprocessed_arrays_written": False}
+    require(all(complete.get(key) == value for key, value in required_complete.items()),
+            "Complete full642/256 geometry/preservation receipt required")
+    original_path, original_sha = admit(binding["bank_index"], BANK_SHA256)
+    original = read_json(original_path)
+    validate_original_index(original)
+    require(root != original_path.parent and original_path.parent not in root.parents,
+            "Prepared bank must remain separate from original source bank")
+    groups = original["entries_by_case"]
+    names = [name for values in groups.values() for name in values]
+    name_cases = {name: case_id for case_id, values in groups.items() for name in values}
+    ablation = {"format": FORMAT, "uniform_candidate_count": 256, "scores_used": False,
+        "historical_score_count": 128, "original_candidate_count": 128,
+        "additional_GNN_scores_generated": False, "original_index": str(original_path),
+        "original_index_sha256": original_sha, "geometry": GENERATION,
+        "raw_pool_draw_count": 256, "raw_pool_max_draws": 128000,
+        "raw_pool_attempts": 4, "historical_graph_geometry_required": True,
+        "only_intervention": "uniform candidate universe128->256; original source/order/patch/RNG/appearance/CP probability retained"}
+    expected_index = copy.deepcopy(original)
+    expected_index.update(candidate_count=256, total_candidates=164352,
+                          ablation=ablation, manifest=str(manifest_path))
+    expected_extended_search = copy.deepcopy(expected_index)
+    expected_extended_search["ablation"].update(raw_pool_attempts=None,
+        additional_candidate_search=ADDITIONAL_CANDIDATE_SEARCH)
+    require(index == expected_index or index == expected_extended_search,
+            "Completed bank changes more than declared128->256 positions")
+    if index == expected_extended_search:
+        require(started.get("additional_candidate_search") == ADDITIONAL_CANDIDATE_SEARCH
+                and complete.get("additional_candidate_search") == ADDITIONAL_CANDIDATE_SEARCH,
+                "Declared extended-search policy must match actual preparation/completion")
+    require(manifest.get("format") == FORMAT and manifest.get("source_entries") == 642
+            and manifest.get("eligible_cases") == 81 and isinstance(manifest.get("entries"), list),
+            "Full preservation manifest required")
+    rows = manifest["entries"]
+    require(len(rows) == 642 and [row.get("entry") for row in rows] == sorted(names),
+            "Manifest must cover every original source exactly once in published order")
+    hashes = complete.get("entries_sha256")
+    require(isinstance(hashes, dict) and set(hashes) == set(names), "All642 actual extended entry SHA witnesses required")
+    for row in rows:
+        relative = row["entry"]
+        require(row.get("case_id") == name_cases[relative], "Source patient identity differs")
+        old_path, old_sha = admit(safe_entry(original_path.parent, relative), row.get("original_entry_sha256"))
+        new_path, new_sha = admit(safe_entry(root, relative), hashes[relative])
+        require(row.get("original_stat") == observed[str(old_path)]
+                and row.get("new_entry_sha256") == new_sha
+                and observed[str(old_path)][:2] != observed[str(new_path)][:2],
+                "Original source metadata changed or extended entry aliases its source")
+        old, new = read_entry(old_path), read_entry(new_path)
+        require(np.asarray(old["scores"]).shape == (128,) and np.isfinite(old["scores"]).all(),
+                "Only actual original128 finite scores may be reused")
+        actual = verify_preservation(old, new, original_count=128, candidate_count=256)
+        proof = row.get("proof")
+        require(isinstance(proof, dict) and all(proof.get(key) == value for key, value in actual.items()),
+                f"Source array preservation manifest differs: {relative}")
+    require(all(stat_identity(Path(path)) == identity for path, identity in observed.items()),
+            "Prepared/original bank evidence changed during read-only admission")
+    return {"format": "basic_cp_completed256_bank_reuse_admission_v1", "complete": True,
+        "index": str(index_path), "index_sha256": index_sha,
+        "source_index": str(original_path), "source_index_sha256": original_sha,
+        "complete_sha256": complete_sha, "manifest_sha256": manifest_sha,
+        "preparation_started_sha256": started_sha, "binding_sha256": binding_sha256,
+        "source_entries": 642, "eligible_cases": 81, "candidate_count": 256,
+        "total_candidates": 164352, "original_arrays_and_first128_byte_verified": True,
+        "all642_entry_sha_verified": True, "all256_centers_unique_verified": True,
+        "historical_geometry_completion_proof_verified": True,
+        "additional_candidate_search":index["ablation"].get("additional_candidate_search"),
+        "full_geometry_preflight_still_required": True,
+        "bank_regenerated": False, "source_or_prepared_bank_written": False,
+        "training_executed": False, "immutable_files": observed}
+
+
+def copy_verified_partial_bank(binding: Mapping, previous_root: Path, destination: Path) -> list[dict]:
+    """Copy only independently verified finished source receipts to a fresh bank.
+
+    The caller owns predecessor process release. Unreceipted partial files are
+    left untouched and are not treated as finished sources. No scientific
+    generation rule is changed and no smaller completed bank is published.
+    """
+    previous_root, destination = Path(previous_root), Path(destination)
+    require(previous_root.is_absolute() and destination.is_absolute()
+            and previous_root.resolve(strict=True) == previous_root
+            and destination.resolve(strict=True) == destination
+            and previous_root != destination and previous_root not in destination.parents
+            and destination not in previous_root.parents
+            and not any(p.is_symlink() for p in (previous_root, *previous_root.parents,
+                                                destination, *destination.parents)),
+            "Separate exact old/fresh partial-bank namespaces required")
+    original_index = Path(binding["bank_index"]).resolve(strict=True)
+    original = read_json(original_index)
+    validate_original_index(original)
+    require(file_sha(original_index) == BANK_SHA256, "Original index SHA differs for partial reuse")
+    require(previous_root != original_index.parent and original_index.parent not in previous_root.parents
+            and destination != original_index.parent and original_index.parent not in destination.parents,
+            "Partial-bank reuse cannot write or alias original bank")
+    started_path = previous_root/"preparation_started.json"
+    started_identity, started_sha = stat_identity(started_path), file_sha(started_path)
+    started = read_json(started_path)
+    require(started.get("format") == FORMAT and started.get("binding") == binding
+            and started.get("original_index_sha256") == BANK_SHA256
+            and started.get("full_sources") == 642 and started.get("original_candidate_count") == 128
+            and started.get("candidate_count") == 256
+            and started.get("CUDA_model_or_scoring_executed") is False,
+            "Previous partial preparation binding/geometry differs")
+    receipt_root = previous_root/"entry_receipts"
+    require(receipt_root.is_dir() and not receipt_root.is_symlink(), "Actual finished-source receipt directory required")
+    names = {name: case_id for case_id, entries in original["entries_by_case"].items() for name in entries}
+    snapshots = {str(original_index):stat_identity(original_index), str(started_path):started_identity}
+    rows, seen = [], set()
+    for receipt in sorted(receipt_root.rglob("*.json")):
+        preparation_lease_verify()
+        preparation_abort_verify(destination)
+        require(not any(p.is_symlink() for p in (receipt, *receipt.parents))
+                and receipt.resolve(strict=True) == receipt and receipt.is_file(),
+                "Actual regular finished-source receipt required")
+        receipt_identity, receipt_sha = stat_identity(receipt), file_sha(receipt)
+        row = read_json(receipt)
+        relative = row.get("entry")
+        require(relative in names and relative not in seen and row.get("case_id") == names[relative]
+                and receipt.relative_to(receipt_root) == Path(relative).with_suffix(".json"),
+                "Partial receipt source/path identity differs or duplicates another source")
+        old_path = safe_entry(original_index.parent, relative)
+        partial = safe_entry(previous_root, relative)
+        require(all(not any(p.is_symlink() for p in (path, *path.parents)) for path in (old_path, partial)),
+                "Partial/source entries cannot be symlink aliases")
+        old_identity, partial_identity = stat_identity(old_path), stat_identity(partial)
+        require(row.get("original_stat") == old_identity
+                and row.get("original_entry_sha256") == file_sha(old_path)
+                and row.get("new_entry_sha256") == file_sha(partial)
+                and old_identity[:2] != partial_identity[:2],
+                "Partial entry/source SHA/stat differs or original inode was reused")
+        old, extended = read_entry(old_path), read_entry(partial)
+        require(np.asarray(old["scores"]).shape == (128,) and np.isfinite(old["scores"]).all(),
+                "Actual original128 finite scores required for partial reuse")
+        proof = verify_preservation(old, extended, original_count=128, candidate_count=256)
+        require(isinstance(row.get("proof"), dict)
+                and all(row["proof"].get(key) == value for key, value in proof.items()),
+                "Partial original arrays/first128 preservation proof differs")
+        target = safe_entry(destination, relative)
+        target.parent.mkdir(parents=True,exist_ok=True)
+        with partial.open("rb") as source, target.open("xb") as stream:
+            shutil.copyfileobj(source,stream,1024*1024)
+            stream.flush();os.fsync(stream.fileno())
+        require(file_sha(target) == row["new_entry_sha256"]
+                and stat_identity(target)[:2] not in (old_identity[:2], partial_identity[:2]),
+                "Fresh reused entry must be byte exact and a separate inode")
+        verify_preservation(old, read_entry(target), original_count=128, candidate_count=256)
+        snapshots.update({str(receipt):receipt_identity,str(old_path):old_identity,str(partial):partial_identity})
+        row = copy.deepcopy(row)
+        row["partial_reuse"] = {"previous_root":str(previous_root), "previous_receipt_sha256":receipt_sha,
+                                "previous_entry_sha256":row["new_entry_sha256"], "new_copy_byte_verified":True}
+        new_receipt = destination/"entry_receipts"/Path(relative).with_suffix(".json")
+        new_receipt.parent.mkdir(parents=True,exist_ok=True)
+        write_json_exclusive(new_receipt,row)
+        rows.append(row);seen.add(relative)
+    require(all(stat_identity(Path(path)) == identity for path, identity in snapshots.items()),
+            "Previous partial/original evidence changed during read-only reuse")
+    write_json_exclusive(destination/"partial_reuse_admission.json", {
+        "format":"basic_cp_verified_partial256_reuse_v1", "previous_root":str(previous_root),
+        "previous_preparation_started_sha256":started_sha, "source_index_sha256":BANK_SHA256,
+        "binding":binding,"verified_reused_sources":len(rows),"required_full_sources":642,
+        "all_original_arrays_and_first128_preserved":True,"old_bank_written":False,
+        "new_copies_independent_inodes":True,"complete":False,"training_executed":False,
+        "entries_sha256":{row["entry"]:row["new_entry_sha256"] for row in rows},"immutable_old_files":snapshots})
+    return rows
+
+
 class HistoricalGeometryProvider:
     """CPU-only frozen historical source/regions/local-graph geometry provider."""
     def __init__(self, binding: Mapping):
@@ -417,10 +685,20 @@ class HistoricalGeometryProvider:
                                 ct_clip=self.ct_clip)
         old_raw = {tuple(map(int, row)) for row in entry["candidate_raw_centers"]}
         old_pre = {tuple(map(int, row)) for row in entry["candidate_centers"]}
-        self.last_proposal_diagnostics = {"graph_rejected": 0, "raw_duplicate": 0, "preprocessed_rejected": 0, "attempts": 0}
-        for attempt in range(int(self.bank["attempts"])):
+        self.last_proposal_diagnostics = {"graph_rejected": 0, "raw_duplicate": 0,
+            "preprocessed_rejected": 0, "attempts": 0, "accepted_added":0,
+            "case_id":case_id,"source_component":component,"attempt_details":[],
+            "search_policy":ADDITIONAL_CANDIDATE_SEARCH["policy"]}
+        require(int(self.bank["attempts"]) == 4, "Original initial four-pool schedule changed")
+        # Original attempts0..3 and every predicate/RNG invocation remain exact.
+        # Further deterministic pools only supply the requested missing positions;
+        # no smaller source population or candidate universe is published.
+        for attempt in itertools.count():
             preparation_lease_verify()
             self.last_proposal_diagnostics["attempts"] += 1
+            details = {"attempt":attempt,"raw_duplicate":0,"preprocessed_rejected":0,
+                       "graph_rejected":0,"accepted_added":0}
+            self.last_proposal_diagnostics["attempt_details"].append(details)
             rng = np.random.default_rng(self.benchmark.stable_seed(self.global_seed, case_id, component, "online_pool", attempt))
             pool, _ = self.patient_pool(self.case, source, placement_mask=self.placement_mask,
                                       full_organ_mask=self.regions.full_organ_mask,
@@ -431,12 +709,14 @@ class HistoricalGeometryProvider:
                                       min_liver_coverage=float(self.generation["min_liver_coverage"]),
                                       occupied_clearance_vox=int(self.generation["occupied_clearance_vox"]),
                                       min_center_separation_mm=float(self.generation["min_center_separation_mm"]))
+            details["raw_pool_candidates"] = len(pool)
             specs = self.specs(pool, self.regions, self.prototype, config=self.graph)
             for candidate, spec in zip(pool, specs):
                 preparation_lease_verify()
                 raw = tuple(map(int, candidate.center))
                 if raw in old_raw:
                     self.last_proposal_diagnostics["raw_duplicate"] += 1
+                    details["raw_duplicate"] += 1
                     continue
                 old_raw.add(raw)
                 pre = self.benchmark._map_raw_point(raw, self.plans["transpose_forward"], self.properties, self.preseg.shape[1:])
@@ -444,6 +724,7 @@ class HistoricalGeometryProvider:
                 if mapped in old_pre or not preprocessed_valid(pre, entry["source_mask"], entry["anchor_offset"], self.preseg,
                                                               liver_label=self.bank["liver_label"], tumor_label=self.bank["tumor_label"], minimum_coverage=0.85):
                     self.last_proposal_diagnostics["preprocessed_rejected"] += 1
+                    details["preprocessed_rejected"] += 1
                     continue
                 try:
                     self.local(self.case, source, spec, full_organ_mask=self.regions.full_organ_mask,
@@ -458,19 +739,23 @@ class HistoricalGeometryProvider:
                              "produced zero", "unrepresentable local geometry", "canonical node")
                     if isinstance(exc, self.geometry_error) or (isinstance(exc, ValueError) and any(token in message for token in known)):
                         self.last_proposal_diagnostics["graph_rejected"] += 1
+                        details["graph_rejected"] += 1
                         continue
                     raise
                 old_pre.add(mapped)
+                self.last_proposal_diagnostics["accepted_added"] += 1
+                details["accepted_added"] += 1
                 yield np.asarray(raw, dtype=np.int32), pre.astype(np.int32)
 
 
-def _initialize_worker(binding: Mapping) -> None:
-    global _WORKER_PROVIDER, _WORKER_BINDING
+def _initialize_worker(binding: Mapping, destination: str | None = None) -> None:
+    global _WORKER_PROVIDER, _WORKER_BINDING, _PREPARATION_ABORT_ROOT
     require(_WORKER_PROVIDER is None, "A preparation worker must initialize exactly once")
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["MKL_NUM_THREADS"] = "1"
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    _PREPARATION_ABORT_ROOT = None if destination is None else Path(destination)
     _WORKER_BINDING = copy.deepcopy(binding)
     preparation_lease_verify()
     _WORKER_PROVIDER = HistoricalGeometryProvider(binding)
@@ -479,26 +764,45 @@ def _initialize_worker(binding: Mapping) -> None:
     require(not torch.cuda.is_initialized(), "CPU-only candidate preparation initialized CUDA")
 
 
-def _build_patient(binding: Mapping, case_id: str, relative_entries: list[str], destination: str) -> list[dict]:
+def _build_patient(binding: Mapping, case_id: str, relative_entries: list[str], destination: str,
+                   verified_completed: Mapping | None = None) -> list[dict]:
     # Each process handles one patient and all its sources, keeping patient CT,
     # labels, preseg and read-only region arrays cached across those sources.
     require(_WORKER_PROVIDER is not None and binding == _WORKER_BINDING,
             "Exact initialized historical worker binding required")
     provider = _WORKER_PROVIDER
     import torch
-    segmentation = provider.load_patient(case_id)
     original_root = Path(binding["bank_index"]).resolve().parent
     destination_root = Path(destination)
+    preparation_abort_verify(destination_root)
     rows = []
-    for relative in relative_entries:
+    verified_completed = {} if verified_completed is None else verified_completed
+    require(set(verified_completed).issubset(relative_entries), "Reused rows belong to another patient job")
+    for relative, row in verified_completed.items():
+        require(row.get("entry") == relative and row.get("case_id") == case_id
+                and read_json(destination_root/"entry_receipts"/Path(relative).with_suffix(".json")) == row
+                and file_sha(safe_entry(destination_root,relative)) == row.get("new_entry_sha256"),
+                "Admitted copied source/receipt changed before worker use")
+        rows.append(row)
+    remaining = [relative for relative in relative_entries if relative not in verified_completed]
+    if not remaining:
+        return rows
+    segmentation = provider.load_patient(case_id)
+    for relative in remaining:
         preparation_lease_verify()
         source_started = time.perf_counter()
         original_path = safe_entry(original_root, relative)
         identity, original_sha = stat_identity(original_path), file_sha(original_path)
         original = read_entry(original_path)
-        result, proof = extend_entry(original, provider.proposals(case_id, original), segmentation,
-                                     liver_label=provider.bank["liver_label"], tumor_label=provider.bank["tumor_label"],
-                                     minimum_coverage=0.85, original_count=128, candidate_count=256)
+        try:
+            result, proof = extend_entry(original, provider.proposals(case_id, original), segmentation,
+                                         liver_label=provider.bank["liver_label"], tumor_label=provider.bank["tumor_label"],
+                                         minimum_coverage=0.85, original_count=128, candidate_count=256)
+        except Exception as exc:
+            diagnostics = getattr(provider,"last_proposal_diagnostics",None)
+            raise BankContractError(f"Candidate source failed case={case_id} entry={relative} "
+                f"component={int(np.asarray(original['source_component'])[0])} "
+                f"diagnostics={json.dumps(diagnostics,ensure_ascii=False)}: {type(exc).__name__}: {exc}") from exc
         new_path = safe_entry(destination_root, relative)
         new_path.parent.mkdir(parents=True, exist_ok=True)
         with new_path.open("xb") as stream:
@@ -527,7 +831,8 @@ def _build_patient(binding: Mapping, case_id: str, relative_entries: list[str], 
     return rows
 
 
-def build_bank(binding: Mapping, destination: Path, *, workers: int, rss_limit_gib: float) -> dict:
+def build_bank(binding: Mapping, destination: Path, *, workers: int, rss_limit_gib: float,
+               reuse_partial: Path | None = None) -> dict:
     preparation_lease_verify()
     original_index = Path(binding["bank_index"]).resolve()
     original = read_json(original_index)
@@ -549,6 +854,7 @@ def build_bank(binding: Mapping, destination: Path, *, workers: int, rss_limit_g
                                                                  "RSS_limit_bytes": rss_limit,
                                                                  "binding": binding, "started_at": time.time(), "full_sources": 642,
                                                                  "original_candidate_count": 128, "candidate_count": 256,
+                                                                 "additional_candidate_search":ADDITIONAL_CANDIDATE_SEARCH,
                                                                  "CUDA_model_or_scoring_executed": False})
     rows, completed_cases = [], 0
     started = time.time()
@@ -561,17 +867,25 @@ def build_bank(binding: Mapping, destination: Path, *, workers: int, rss_limit_g
                 "raw_CT_preprocessing_executed": False, "GNN_scoring_executed": False}
     publish_progress(destination, progress)
     try:
+        reused = [] if reuse_partial is None else copy_verified_partial_bank(binding, Path(reuse_partial), destination)
+        completed = {row["entry"]:row for row in reused}
+        progress.update(source_completed=len(reused), verified_reused_sources=len(reused), updated_at=time.time())
+        publish_progress(destination,progress)
         require(peak_rss <= rss_limit, "Candidate preparation initial RAM exceeds admitted limit")
         with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"),
-                                 initializer=_initialize_worker, initargs=(binding,)) as pool:
+                                 initializer=_initialize_worker, initargs=(binding,str(destination))) as pool:
             # Largest source populations start first; each patient is loaded
             # once by its worker, and independent patients run in parallel.
-            jobs = {pool.submit(_build_patient, binding, case_id, entries, str(destination)): case_id
-                    for case_id, entries in sorted(original["entries_by_case"].items(),
-                                                   key=lambda item: (-len(item[1]), item[0]))}
-            pending = set(jobs)
+            jobs, pending = {}, set()
             try:
+                for case_id, entries in sorted(original["entries_by_case"].items(),
+                                               key=lambda item: (-len(item[1]), item[0])):
+                    future = pool.submit(_build_patient,binding,case_id,entries,str(destination),
+                                         {name:completed[name] for name in entries if name in completed})
+                    jobs[future] = case_id
+                    pending.add(future)
                 while pending:
+                    preparation_abort_verify(destination)
                     preparation_lease_verify()
                     done, pending = wait(pending, timeout=1.0, return_when=FIRST_COMPLETED)
                     rss = process_tree_rss()
@@ -584,27 +898,29 @@ def build_bank(binding: Mapping, destination: Path, *, workers: int, rss_limit_g
                     progress.update(source_completed=verified_sources, case_completed=completed_cases,
                                     RSS_bytes=rss, peak_RSS_bytes=peak_rss, updated_at=time.time())
                     publish_progress(destination, progress)
-            except Exception:
+            except Exception as exc:
+                publish_preparation_failure(destination,progress,exc)
                 for future in pending:
                     future.cancel()
                 raise
     except Exception as exc:
-        progress.update(status="FAILED", updated_at=time.time(), error=f"{type(exc).__name__}: {exc}")
-        publish_progress(destination, progress)
-        write_json_exclusive(destination/"preparation_failed.json", {"format": FORMAT, "complete": False,
-                                                                   "error": f"{type(exc).__name__}: {exc}",
-                                                                   "original_results_preserved": True,
-                                                                   "no_source_or_candidate_count_fallback": True,
-                                                                   "partial_outputs_preserved": True})
+        publish_preparation_failure(destination,progress,exc)
         raise
-    require(len(rows) == 642, "All642 extended source receipts required")
-    require(stat_identity(original_index) == index_identity and file_sha(original_index) == BANK_SHA256, "Original index changed")
+    try:
+        require(len(rows) == 642, "All642 extended source receipts required")
+        require(stat_identity(original_index) == index_identity and file_sha(original_index) == BANK_SHA256, "Original index changed")
+        require(all(stat_identity(safe_entry(original_index.parent,row["entry"])) == row["original_stat"]
+                    for row in rows), "Original source metadata changed before full bank publication")
+    except Exception as exc:
+        publish_preparation_failure(destination,progress,exc)
+        raise
     ordered = sorted(rows, key=lambda row: row["entry"])
     ablation = {"format": FORMAT, "uniform_candidate_count": 256, "scores_used": False,
                 "historical_score_count": 128, "original_candidate_count": 128,
                 "additional_GNN_scores_generated": False, "original_index": str(original_index),
                 "original_index_sha256": BANK_SHA256, "geometry": GENERATION,
-                "raw_pool_draw_count": 256, "raw_pool_max_draws": 128000, "raw_pool_attempts": 4,
+                "raw_pool_draw_count": 256, "raw_pool_max_draws": 128000, "raw_pool_attempts": None,
+                "additional_candidate_search":ADDITIONAL_CANDIDATE_SEARCH,
                 "historical_graph_geometry_required": True,
                 "only_intervention": "uniform candidate universe128->256; original source/order/patch/RNG/appearance/CP probability retained"}
     index = copy.deepcopy(original)
@@ -622,6 +938,8 @@ def build_bank(binding: Mapping, destination: Path, *, workers: int, rss_limit_g
                 "training_executed": False, "CUDA_initialized": False}
     complete.update(workers=workers, CPU_affinity=affinity, peak_RSS_bytes=peak_rss,
                     RSS_limit_bytes=rss_limit, elapsed_seconds=time.time()-started,
+                    verified_reused_sources=len(reused),
+                    additional_candidate_search=ADDITIONAL_CANDIDATE_SEARCH,
                     raw_CT_preprocessing_executed=False, patient_region_cache_rebuilt=False,
                     shared_preprocessed_arrays_written=False)
     write_json_exclusive(destination/"complete.json", complete)
@@ -637,8 +955,10 @@ def main(argv=None) -> int:
     parser.add_argument("--output", type=Path, required=True, help="Fresh separate bank directory; existing paths refused")
     parser.add_argument("--workers", type=int, required=True, help="Measured CPU/RAM-admitted process worker count")
     parser.add_argument("--rss-limit-gib", type=float, required=True, help="Explicit aggregate CPU-preparation RAM budget, including workers")
+    parser.add_argument("--reuse-partial", type=Path, help="Released predecessor's read-only partial bank; only verified finished sources copied")
     args = parser.parse_args(argv)
-    receipt = build_bank(read_json(args.binding), args.output, workers=args.workers, rss_limit_gib=args.rss_limit_gib)
+    receipt = build_bank(read_json(args.binding), args.output, workers=args.workers, rss_limit_gib=args.rss_limit_gib,
+                         reuse_partial=args.reuse_partial)
     print(json.dumps(receipt, ensure_ascii=False, allow_nan=False))
     return 0
 

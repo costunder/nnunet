@@ -272,11 +272,20 @@ class FullPopulationAndPublicationTests(unittest.TestCase):
             def __init__(self,**options):
                 self.options = options
             def __enter__(self): return self
-            def __exit__(self,*args): return False
+            def __exit__(self,*args):
+                # Failure must be visible while executor shutdown is still pending.
+                self.assert_failure_visible()
+                return False
             def submit(self,*args):
                 future = Future()
                 future.set_exception(bank.BankContractError('DEBUG exact geometry shortfall'))
                 return future
+            @staticmethod
+            def assert_failure_visible():
+                if bank.read_json(output/'generation_progress.json')['status'] != 'FAILED':
+                    raise AssertionError('Failure hidden until executor shutdown')
+                if bank.read_json(output/'preparation_abort.json')['stop_remaining'] is not True:
+                    raise AssertionError('No cooperative worker abort before shutdown')
 
         with patch.object(bank,'file_sha',return_value=bank.BANK_SHA256), \
                 patch.object(bank,'cpu_affinity',return_value=[0,1,2,3]), \
@@ -288,6 +297,40 @@ class FullPopulationAndPublicationTests(unittest.TestCase):
         self.assertFalse(bank.read_json(output/'preparation_failed.json')['complete'])
         self.assertFalse((output/'index.json').exists())
         self.assertFalse((output/'complete.json').exists())
+
+    def test_abort_marker_stops_worker_before_loading_another_patient(self):
+        output=self.root/'output';output.mkdir()
+        bank.write_json_exclusive(output/'preparation_abort.json',
+            {'format':bank.FORMAT,'stop_remaining':True,'error':'DEBUG lease expired'})
+        provider=types.SimpleNamespace(load_patient=lambda case: self.fail('Patient decoded after abort'))
+        binding={'bank_index':str(self.root/'index.json')}
+        with patch.object(bank,'_WORKER_PROVIDER',provider),patch.object(bank,'_WORKER_BINDING',binding):
+            with self.assertRaisesRegex(bank.BankContractError,'cooperatively stopped'):
+                bank._build_patient(binding,'DEBUG',['entry.npz'],str(output))
+
+    def test_initializer_checks_abort_before_importing_historical_geometry(self):
+        output=self.root/'output';output.mkdir()
+        bank.write_json_exclusive(output/'preparation_abort.json',
+            {'format':bank.FORMAT,'stop_remaining':True,'error':'DEBUG source failed'})
+        with patch.object(bank,'_WORKER_PROVIDER',None),patch.object(bank,'_WORKER_BINDING',None), \
+                patch.object(bank,'_PREPARATION_ABORT_ROOT',None),patch.object(bank,'HistoricalGeometryProvider') as provider:
+            with self.assertRaisesRegex(bank.BankContractError,'cooperatively stopped'):
+                bank._initialize_worker({'DEBUG':True},str(output))
+            provider.assert_not_called()
+
+    def test_source_failure_includes_patient_entry_component_and_original_cause(self):
+        original=self.root/'original';output=self.root/'output';original.mkdir();output.mkdir()
+        path=original/'DEBUG_source.npz';np.savez(path,**entry_fixture(128))
+        def unavailable(*args):raise ValueError('DEBUG scientific input missing')
+        provider=types.SimpleNamespace(bank={'liver_label':1,'tumor_label':2},
+            load_patient=lambda cid:np.ones((1,270,4,4),dtype=np.int16),
+            proposals=unavailable,last_proposal_diagnostics={'attempts':5,'accepted_added':106})
+        binding={'bank_index':str(original/'index.json')}
+        with patch.object(bank,'_WORKER_PROVIDER',provider),patch.object(bank,'_WORKER_BINDING',binding):
+            with self.assertRaisesRegex(bank.BankContractError,'case=DEBUG entry=DEBUG_source.npz component=1') as caught:
+                bank._build_patient(binding,'DEBUG',['DEBUG_source.npz'],str(output))
+        self.assertIsInstance(caught.exception.__cause__,ValueError)
+        self.assertIn('scientific input missing',str(caught.exception))
 
     def test_optional_controller_lease_cached_and_verified_without_signals(self):
         from hiercp_v1x import basic_cp_ablation_resources as resources
@@ -341,6 +384,286 @@ class FullPopulationAndPublicationTests(unittest.TestCase):
             (self.root/'new').mkdir()
             with self.assertRaises(FileExistsError):
                 bank.build_bank(binding,self.root/'new',workers=4,rss_limit_gib=64)
+
+
+class HistoricalExtendedSearchTests(unittest.TestCase):
+    """CPU DEBUG provider tests seed order and full256, not clinical geometry."""
+    def setUp(self):
+        self.calls=[]
+        self.provider=object.__new__(bank.HistoricalGeometryProvider)
+        def seed(*parts):
+            if len(parts)>3 and parts[-2]=='online_pool':
+                self.calls.append(parts);return int(parts[-1])
+            return 42
+        self.provider.benchmark=types.SimpleNamespace(stable_seed=seed,
+            _source_from_component=lambda *args:object(),
+            _map_raw_point=lambda raw,*args:np.asarray(raw,dtype=np.int32))
+        self.provider.global_seed=42;self.provider.bank={'attempts':4,'draw_count':256,'liver_label':1,'tumor_label':2}
+        self.provider.generation=dict(bank.GENERATION)
+        self.provider.case=types.SimpleNamespace(spacing=np.ones(3))
+        self.provider.components=object();self.provider.graph=object();self.provider.prototype=object()
+        self.provider.regions=types.SimpleNamespace(full_organ_mask=np.ones(1,dtype=bool),organ_depth=np.ones(1))
+        self.provider.ct_clip=(-200.,250.);self.provider.plans={'transpose_forward':[0,1,2]}
+        self.provider.properties={};self.provider.preseg=np.ones((1,270,4,4),dtype=np.int16)
+        self.provider.placement_mask=np.ones(1,dtype=bool);self.provider.occupied_mask=np.zeros(1,dtype=bool)
+        self.provider.prepare=lambda *args,**kwargs:object()
+        self.provider.specs=lambda pool,*args,**kwargs:[None]*len(pool)
+        self.provider.geometry_error=RuntimeError
+        self.provider.local=lambda *args,**kwargs:object()
+        self.pool_attempt=0
+        self.pool_parameters=[]
+        def pool(*args,**kwargs):
+            attempt=self.pool_attempt;self.pool_attempt+=1
+            self.pool_parameters.append(kwargs)
+            # Firstfour existing pools have only original-prefix positions.
+            center=(2+attempt,2,2) if attempt<4 else (130+attempt-4,2,2)
+            return [types.SimpleNamespace(center=center)],None
+        self.provider.patient_pool=pool
+
+    def test_initial_four_exhausted_then_deterministic_more_pools_complete256(self):
+        original=entry_fixture(128)
+        result,proof=bank.extend_entry(original,self.provider.proposals('DEBUG',original),self.provider.preseg,
+            liver_label=1,tumor_label=2,minimum_coverage=.85,original_count=128,candidate_count=256)
+        self.assertEqual(result['candidate_centers'].shape,(256,3))
+        self.assertEqual(result['scores'].shape,(128,))
+        self.assertEqual([parts[-1] for parts in self.calls],list(range(132)))
+        self.assertEqual(self.calls[:4],[(42,'DEBUG',1,'online_pool',i) for i in range(4)])
+        self.assertEqual(self.provider.last_proposal_diagnostics['accepted_added'],128)
+        self.assertEqual(self.provider.last_proposal_diagnostics['raw_duplicate'],4)
+        self.assertEqual(self.provider.last_proposal_diagnostics['attempts'],132)
+        self.assertTrue(proof['original_fields_and_first128_preserved'])
+        self.assertTrue(all(p['min_liver_coverage']==.85 and p['occupied_clearance_vox']==2
+            and p['min_center_separation_mm']==12. and p['num_candidates']==256
+            and p['max_draws']==128000 for p in self.pool_parameters))
+
+    def test_continuing_search_never_bypasses_cooperative_resource_failure(self):
+        original=entry_fixture(128)
+        def lease():
+            if len(self.calls)>=4:raise RuntimeError('DEBUG host allocation expired')
+        with patch.object(bank,'preparation_lease_verify',side_effect=lease):
+            with self.assertRaisesRegex(RuntimeError,'allocation expired'):
+                list(self.provider.proposals('DEBUG',original))
+        self.assertEqual(len(self.calls),4)
+        self.assertEqual(self.provider.last_proposal_diagnostics['accepted_added'],0)
+
+
+class PreparedBankReuseTests(unittest.TestCase):
+    """Full642 CPU DEBUG catalogue tests actual hashing/arrays; no clinical claim."""
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(prefix='prepared256_debug_', dir=TMP)
+        cls.root = Path(cls.temporary.name).resolve()
+        cls.original, cls.extended = cls.root/'original', cls.root/'extended'
+        cls.original.mkdir(); cls.extended.mkdir()
+        original = index_fixture()
+        cls.original_index = cls.original/'index.json'
+        bank.write_json_exclusive(cls.original_index, original)
+        cls.original_sha = bank.file_sha(cls.original_index)
+        cls.binding_path = cls.root/'binding.json'
+        cls.binding = {'bank_index': str(cls.original_index), 'DEBUG_fixture': True}
+        bank.write_json_exclusive(cls.binding_path, cls.binding)
+        cls.binding_sha = bank.file_sha(cls.binding_path)
+        entry = entry_fixture(128)
+        extended = entry_fixture(256)
+        extended['scores'] = entry['scores'].copy()
+        proof = bank.verify_preservation(entry, extended, original_count=128, candidate_count=256)
+        rows = []
+        for cid, names in original['entries_by_case'].items():
+            for name in names:
+                old, new = cls.original/name, cls.extended/name
+                old.parent.mkdir(parents=True,exist_ok=True);new.parent.mkdir(parents=True,exist_ok=True)
+                np.savez(old,**entry);np.savez(new,**extended)
+                rows.append({'case_id':cid,'entry':name,'original_entry_sha256':bank.file_sha(old),
+                    'original_stat':bank.stat_identity(old),'new_entry_sha256':bank.file_sha(new),'proof':proof})
+        manifest = {'format':bank.FORMAT,'entries':sorted(rows,key=lambda r:r['entry']),
+                    'source_entries':642,'eligible_cases':81}
+        bank.write_json_exclusive(cls.extended/'preservation_manifest.json',manifest)
+        ablation = {'format':bank.FORMAT,'uniform_candidate_count':256,'scores_used':False,
+            'historical_score_count':128,'original_candidate_count':128,
+            'additional_GNN_scores_generated':False,'original_index':str(cls.original_index),
+            'original_index_sha256':cls.original_sha,'geometry':bank.GENERATION,
+            'raw_pool_draw_count':256,'raw_pool_max_draws':128000,'raw_pool_attempts':4,
+            'historical_graph_geometry_required':True,
+            'only_intervention':'uniform candidate universe128->256; original source/order/patch/RNG/appearance/CP probability retained'}
+        index = dict(original,candidate_count=256,total_candidates=164352,ablation=ablation,
+                     manifest=str(cls.extended/'preservation_manifest.json'))
+        bank.write_json_exclusive(cls.extended/'index.json',index)
+        started = {'format':bank.FORMAT,'binding':cls.binding,'original_index_sha256':cls.original_sha,
+            'full_sources':642,'original_candidate_count':128,'candidate_count':256,
+            'CUDA_model_or_scoring_executed':False}
+        bank.write_json_exclusive(cls.extended/'preparation_started.json',started)
+        complete = {'format':bank.FORMAT,'complete':True,'candidate_count':256,'source_entries':642,
+            'eligible_cases':81,'total_candidates':164352,'index_sha256':bank.file_sha(cls.extended/'index.json'),
+            'original_index_sha256':cls.original_sha,
+            'preservation_manifest_sha256':bank.file_sha(cls.extended/'preservation_manifest.json'),
+            'all_original_arrays_and_first128_preserved':True,'all_256_unique_raw_and_preprocessed':True,
+            'all_added128_historical_raw_preprocessed_graph_valid':True,
+            'additional_GNN_scores_generated':False,'training_executed':False,'CUDA_initialized':False,
+            'raw_CT_preprocessing_executed':False,'patient_region_cache_rebuilt':False,
+            'shared_preprocessed_arrays_written':False,
+            'entries_sha256':{row['entry']:row['new_entry_sha256'] for row in rows}}
+        bank.write_json_exclusive(cls.extended/'complete.json',complete)
+        cls.documents = {name:(cls.extended/name).read_bytes() for name in
+            ['index.json','complete.json','preservation_manifest.json','preparation_started.json']}
+        cls.entry_name = sorted(complete['entries_sha256'])[0]
+        cls.entry_bytes = (cls.extended/cls.entry_name).read_bytes()
+        cls.partial_receipts = {}
+        for row in sorted(rows,key=lambda row:row['entry'])[:2]:
+            path=cls.extended/'entry_receipts'/Path(row['entry']).with_suffix('.json')
+            path.parent.mkdir(parents=True,exist_ok=True);bank.write_json_exclusive(path,row)
+            cls.partial_receipts[path]=path.read_bytes()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temporary.cleanup()
+
+    def setUp(self):
+        for name, data in self.documents.items():(self.extended/name).write_bytes(data)
+        (self.extended/self.entry_name).write_bytes(self.entry_bytes)
+        for path,data in self.partial_receipts.items():path.write_bytes(data)
+        self.constant = patch.object(bank,'BANK_SHA256',self.original_sha)
+        self.constant.start();self.addCleanup(self.constant.stop)
+
+    def witness(self):
+        return {'index':str(self.extended/'index.json'),
+            'index_sha256':bank.file_sha(self.extended/'index.json'),
+            'complete_sha256':bank.file_sha(self.extended/'complete.json'),
+            'manifest_sha256':bank.file_sha(self.extended/'preservation_manifest.json'),
+            'preparation_started_sha256':bank.file_sha(self.extended/'preparation_started.json')}
+
+    def replace_document(self,name,value):
+        (self.extended/name).write_text(json.dumps(value),encoding='utf8')
+
+    def refresh_complete(self):
+        value = bank.read_json(self.extended/'complete.json')
+        value.update(index_sha256=bank.file_sha(self.extended/'index.json'),
+            preservation_manifest_sha256=bank.file_sha(self.extended/'preservation_manifest.json'))
+        self.replace_document('complete.json',value)
+
+    def verify(self,witness=None):
+        return bank.verify_prepared_bank(witness or self.witness(),self.binding_path,self.binding_sha)
+
+    def test_full642_readonly_reuse_returns_fresh_derivative_not_training_claim(self):
+        before = {str(p):bank.stat_identity(p) for p in self.original.rglob('*') if p.is_file()}
+        result = self.verify()
+        self.assertEqual(result['source_entries'],642)
+        self.assertEqual(result['source_index_sha256'],self.original_sha)
+        self.assertEqual(result['index'],str(self.extended/'index.json'))
+        self.assertTrue(result['all642_entry_sha_verified'])
+        self.assertTrue(result['full_geometry_preflight_still_required'])
+        self.assertFalse(result['bank_regenerated']);self.assertFalse(result['training_executed'])
+        self.assertEqual(before,{str(p):bank.stat_identity(p) for p in self.original.rglob('*') if p.is_file()})
+
+    def test_partial_bank_and_geometry_claim_changes_fail_closed(self):
+        for key,value in [('complete',False),('source_entries',641),
+                          ('all_added128_historical_raw_preprocessed_graph_valid',False)]:
+            complete=json.loads(self.documents['complete.json']);complete[key]=value
+            self.replace_document('complete.json',complete)
+            with self.assertRaisesRegex(bank.BankContractError,'Complete full642'):
+                self.verify()
+
+    def test_binding_and_complete_sha_must_match_actual_generation(self):
+        stale=self.witness();stale['complete_sha256']='0'*64
+        with self.assertRaisesRegex(bank.BankContractError,'SHA differs'):self.verify(stale)
+        started=bank.read_json(self.extended/'preparation_started.json')
+        started['binding']['DEBUG_fixture']=False
+        self.replace_document('preparation_started.json',started)
+        with self.assertRaisesRegex(bank.BankContractError,'binding/full-source'):self.verify()
+
+    def test_source_population_and_other_interventions_cannot_be_relabelled(self):
+        index=bank.read_json(self.extended/'index.json');index['cp_probability']=.6
+        self.replace_document('index.json',index);self.refresh_complete()
+        with self.assertRaisesRegex(bank.BankContractError,'more than declared'):self.verify()
+
+    def test_completed_extended_search_requires_truthful_matching_policy_receipts(self):
+        index=bank.read_json(self.extended/'index.json')
+        index['ablation'].update(raw_pool_attempts=None,additional_candidate_search=bank.ADDITIONAL_CANDIDATE_SEARCH)
+        self.replace_document('index.json',index);self.refresh_complete()
+        with self.assertRaisesRegex(bank.BankContractError,'extended-search policy'):self.verify()
+        started=bank.read_json(self.extended/'preparation_started.json')
+        started['additional_candidate_search']=bank.ADDITIONAL_CANDIDATE_SEARCH
+        self.replace_document('preparation_started.json',started)
+        complete=bank.read_json(self.extended/'complete.json')
+        complete['additional_candidate_search']=bank.ADDITIONAL_CANDIDATE_SEARCH
+        self.replace_document('complete.json',complete)
+        result=self.verify()
+        self.assertEqual(result['additional_candidate_search'],bank.ADDITIONAL_CANDIDATE_SEARCH)
+
+    def test_manifest_array_proof_and_original_metadata_must_be_actual(self):
+        for field in ['proof','original_stat']:
+            manifest=json.loads(self.documents['preservation_manifest.json'])
+            if field=='proof':manifest['entries'][0]['proof']['original_array_sha256']['scores']='0'*64
+            else:manifest['entries'][0]['original_stat'][2]+=1
+            self.replace_document('preservation_manifest.json',manifest);self.refresh_complete()
+            with self.assertRaises(bank.BankContractError):self.verify()
+
+    def test_changed_source_patch_detected_even_when_outer_hashes_recomputed(self):
+        path=self.extended/self.entry_name;entry=bank.read_entry(path)
+        entry['source_data'].flat[0]+=1;np.savez(path,**entry)
+        digest=bank.file_sha(path)
+        manifest=bank.read_json(self.extended/'preservation_manifest.json')
+        manifest['entries'][0]['new_entry_sha256']=digest
+        self.replace_document('preservation_manifest.json',manifest)
+        complete=bank.read_json(self.extended/'complete.json');complete['entries_sha256'][self.entry_name]=digest
+        self.replace_document('complete.json',complete);self.refresh_complete()
+        with self.assertRaisesRegex(bank.BankContractError,'Original field/prefix bytes changed'):self.verify()
+
+    def fresh_partial_copy(self):
+        path=self.root/('fresh_partial_'+str(bank.time.time_ns()))
+        path.mkdir();(path/'entry_receipts').mkdir()
+        return path
+
+    def test_partial_reuse_copies_only_receipted_sources_without_old_writes(self):
+        output=self.fresh_partial_copy()
+        before={str(path):bank.stat_identity(path) for path in self.extended.rglob('*') if path.is_file()}
+        rows=bank.copy_verified_partial_bank(self.binding,self.extended,output)
+        self.assertEqual(len(rows),2)  # Other640 unreceipted NPZs are preserved, not claimed complete.
+        self.assertEqual(len(list(output.rglob('*.npz'))),2)
+        self.assertFalse((output/'complete.json').exists())
+        self.assertFalse(bank.read_json(output/'partial_reuse_admission.json')['complete'])
+        for row in rows:
+            old,new=self.extended/row['entry'],output/row['entry']
+            self.assertEqual(old.read_bytes(),new.read_bytes())
+            self.assertNotEqual(bank.stat_identity(old)[:2],bank.stat_identity(new)[:2])
+        self.assertEqual(before,{str(path):bank.stat_identity(path) for path in self.extended.rglob('*') if path.is_file()})
+
+    def test_partial_binding_or_completed_source_checksum_changes_are_rejected(self):
+        started=bank.read_json(self.extended/'preparation_started.json');started['binding']['DEBUG_fixture']=False
+        self.replace_document('preparation_started.json',started)
+        with self.assertRaisesRegex(bank.BankContractError,'binding/geometry'):
+            bank.copy_verified_partial_bank(self.binding,self.extended,self.fresh_partial_copy())
+        (self.extended/'preparation_started.json').write_bytes(self.documents['preparation_started.json'])
+        receipt=next(iter(self.partial_receipts));row=bank.read_json(receipt);row['new_entry_sha256']='0'*64
+        receipt.write_text(json.dumps(row),encoding='utf8')
+        with self.assertRaisesRegex(bank.BankContractError,'SHA/stat'):
+            bank.copy_verified_partial_bank(self.binding,self.extended,self.fresh_partial_copy())
+
+    def test_partial_array_tamper_is_rejected_even_with_updated_receipt_sha(self):
+        path=self.extended/self.entry_name;entry=bank.read_entry(path);entry['scores'][0]+=.01
+        np.savez(path,**entry)
+        receipt=next(iter(self.partial_receipts));row=bank.read_json(receipt)
+        row['new_entry_sha256']=bank.file_sha(path);receipt.write_text(json.dumps(row),encoding='utf8')
+        with self.assertRaisesRegex(bank.BankContractError,'Original field/prefix bytes changed'):
+            bank.copy_verified_partial_bank(self.binding,self.extended,self.fresh_partial_copy())
+
+    def test_reused_patient_skips_all_ct_load_and_graph_work(self):
+        output=self.fresh_partial_copy()
+        rows=bank.copy_verified_partial_bank(self.binding,self.extended,output)
+        row=rows[0];name=row['entry'];case=row['case_id']
+        provider=types.SimpleNamespace(load_patient=lambda cid:self.fail('Reused patient unnecessarily decoded'))
+        with patch.object(bank,'_WORKER_PROVIDER',provider),patch.object(bank,'_WORKER_BINDING',self.binding):
+            actual=bank._build_patient(self.binding,case,[name],str(output),{name:row})
+        self.assertEqual(actual,[row])
+
+    def test_copied_receipt_change_prevents_worker_skipping_source(self):
+        output=self.fresh_partial_copy()
+        row=bank.copy_verified_partial_bank(self.binding,self.extended,output)[0]
+        receipt=output/'entry_receipts'/Path(row['entry']).with_suffix('.json')
+        receipt.write_text('{}',encoding='utf8')
+        provider=types.SimpleNamespace(load_patient=lambda cid:self.fail('Tampered reuse decoded before rejection'))
+        with patch.object(bank,'_WORKER_PROVIDER',provider),patch.object(bank,'_WORKER_BINDING',self.binding):
+            with self.assertRaisesRegex(bank.BankContractError,'copied source/receipt changed'):
+                bank._build_patient(self.binding,row['case_id'],[row['entry']],str(output),{row['entry']:row})
 
 
 if __name__ == '__main__':

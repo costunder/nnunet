@@ -281,4 +281,96 @@ class FrozenStorageNamespaceTests(unittest.TestCase):
             runner.storage_core(self.request)
 
 
+class PreparedBankDelegationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary=tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
+        self.addCleanup(self.temporary.cleanup)
+        self.root=Path(self.temporary.name)
+        binding=self.root/'binding.json';binding.write_text('{}')
+        self.request=dict(arm='candidates256',root=str(self.root),bank='/original/index.json',
+            bank_sha256='a'*64,candidate_binding=str(binding),candidate_binding_sha256=runner.sha(binding),
+            prepared_candidate_bank={'index':'/completed/index.json'})
+        self.receipt=dict(index='/completed/index.json',index_sha256='b'*64,source_index_sha256='a'*64)
+
+    def test_complete_preparation_is_verified_then_reused_without_generation(self):
+        from hiercp_v1x import basic_cp_ablation_bank as bank
+        with patch.object(bank,'verify_prepared_bank',return_value=self.receipt,create=True) as verifier, \
+                patch.object(runner,'status'),patch.object(runner,'run_actor') as actor:
+            value=runner.prepare_bank(self.request)
+        verifier.assert_called_once_with(self.request['prepared_candidate_bank'],
+            Path(self.request['candidate_binding']),self.request['candidate_binding_sha256'])
+        actor.assert_not_called()
+        self.assertEqual(value['bank'],self.receipt['index'])
+        self.assertEqual(value['bank_sha256'],self.receipt['index_sha256'])
+        self.assertEqual(value['source_bank'],self.request['bank'])
+        self.assertEqual(value['source_bank_sha256'],self.request['bank_sha256'])
+        self.assertEqual(runner.read(self.root/'prepared_candidate_bank_admission.json'),self.receipt)
+
+    def test_wrong_source_or_incomplete_preparation_never_publishes_or_generates(self):
+        from hiercp_v1x import basic_cp_ablation_bank as bank
+        for invalid in (dict(self.receipt,source_index_sha256='c'*64),RuntimeError('incomplete642')):
+            with self.subTest(invalid=invalid),patch.object(bank,'verify_prepared_bank',
+                    side_effect=invalid if isinstance(invalid,Exception) else None,
+                    return_value=invalid,create=True),patch.object(runner,'status'), \
+                    patch.object(runner,'run_actor') as actor,patch.object(runner,'publish') as publish:
+                with self.assertRaises(RuntimeError):runner.prepare_bank(self.request)
+                actor.assert_not_called();publish.assert_not_called()
+
+    def test_completed256_bank_is_rejected_for_other_two_arms(self):
+        for arm in ('blend','multi3'):
+            with self.subTest(arm=arm),self.assertRaisesRegex(ValueError,'only'):
+                runner.prepare_bank(dict(self.request,arm=arm))
+
+
+class PendingBankContinuationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary=tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
+        self.addCleanup(self.temporary.cleanup)
+        self.root=Path(self.temporary.name)
+        self.old=self.root/'old';self.old.mkdir()
+        (self.old/'request.json').write_text('{}')
+        self.fresh=self.root/'fresh';self.fresh.mkdir()
+        self.bank=self.old/'bank256';self.bank.mkdir()
+        for name in ('index.json','complete.json','preservation_manifest.json','preparation_started.json'):
+            (self.bank/name).write_text('{}')
+        (self.old/'status.json').write_text(json.dumps(dict(stage='preflight',status='FAILED')))
+        (self.old/'preflight.log').write_text("AttributeError: 'nnUNetDatasetBlosc2' object has no attribute 'keys'")
+        self.request=dict(root=str(self.fresh),pending_candidate_bank=dict(root=str(self.old),
+            request_sha256=runner.sha(self.old/'request.json'),controller_identity={'pid':1},producer_identity={'pid':2}))
+
+    def invoke(self, alive=None):
+        with patch.object(runner,'pending_bank_input',return_value=(self.old,(self.old/'request.json').stat())), \
+                patch.object(runner,'resource_guard'),patch.object(runner,'status'), \
+                patch.object(runner,'exact_actor_alive',side_effect=alive or [False,False]), \
+                patch.object(runner.time,'sleep') as sleep:
+            result=runner.await_prepared_bank(self.request)
+        return result,sleep
+
+    def test_waits_for_both_exact_actors_then_reuses_all_completion_evidence(self):
+        before={p:p.read_bytes() for p in self.old.rglob('*') if p.is_file()}
+        value,sleep=self.invoke([True,True,False,True,False,False])
+        self.assertEqual(sleep.call_count,2)
+        self.assertEqual(value['index'],str(self.bank/'index.json'))
+        self.assertEqual(value['manifest_sha256'],runner.sha(self.bank/'preservation_manifest.json'))
+        self.assertEqual(before,{p:p.read_bytes() for p in before})
+        receipt=runner.read(self.fresh/'upstream_candidate_completion.json')
+        self.assertFalse(receipt['signals_sent']);self.assertFalse(receipt['candidates_regenerated'])
+
+    def test_dead_incomplete_producer_never_advances(self):
+        (self.bank/'complete.json').unlink()
+        with self.assertRaisesRegex(RuntimeError,'without full642'):
+            self.invoke()
+        self.assertFalse((self.fresh/'upstream_candidate_completion.json').exists())
+
+    def test_other_failure_cannot_be_hidden_by_candidate_reuse(self):
+        (self.old/'preflight.log').write_text('RuntimeError: geometry rejected')
+        with self.assertRaisesRegex(RuntimeError,'repair boundary'):
+            self.invoke()
+        self.assertFalse((self.fresh/'upstream_candidate_completion.json').exists())
+
+    def test_pending_witness_cannot_be_overridden_by_completed_witness(self):
+        with self.assertRaisesRegex(ValueError,'mutually exclusive'):
+            runner.await_prepared_bank(dict(self.request,prepared_candidate_bank={}))
+
+
 if __name__=='__main__':unittest.main()

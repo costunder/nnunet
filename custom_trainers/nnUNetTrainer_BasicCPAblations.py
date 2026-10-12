@@ -321,9 +321,10 @@ _get_dataloaders = private_function(historical._nnUNetTrainer_250epochs_OnlineCP
 class _BasicCPAblation(historical.nnUNetTrainer_250epochs_OnlineBasicCP):
     ablation_arm = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: historical.torch.device = historical.torch.device('cuda')):
         require(os.environ.get('BASIC_CP_ABLATION') == self.ablation_arm, 'Trainer and explicit arm differ')
-        super().__init__(*args, **kwargs)
+        super().__init__(plans, configuration, fold, dataset_json, device)
         require(self.online_seed == 42 and self.num_epochs == 250, 'Seed42 and full250 horizon required')
         witness_path = os.environ.get('BASIC_CP_ABLATION_PREFLIGHT', '')
         require(bool(witness_path), 'Complete actual-bank preflight receipt required')

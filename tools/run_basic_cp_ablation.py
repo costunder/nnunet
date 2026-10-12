@@ -99,18 +99,121 @@ def storage_core(request):
     return _STORAGE[key]
 
 
+def exact_actor_alive(identity):
+    import psutil
+    try:
+        actor = psutil.Process(identity['pid'])
+        if actor.create_time() != identity['create_time'] or actor.uids().real != identity['UID']:
+            raise RuntimeError('Candidate producer PID/UID/birth identity changed')
+        if actor.status() == psutil.STATUS_ZOMBIE:
+            return False
+        if actor.cmdline() != identity['command']:
+            raise RuntimeError('Candidate producer command changed')
+        return True
+    except psutil.NoSuchProcess:
+        return False
+
+
+def pending_bank_input(request):
+    witness = request['pending_candidate_bank']
+    root = Path(witness['root'])
+    namespace = Path('/dev/shm/aicompetition06_basic_cp_ablation_20261013')
+    if (not root.is_absolute() or '..' in root.parts or root.resolve(strict=True) != root
+            or any(p.is_symlink() for p in (root, *root.parents))
+            or not root.is_relative_to(namespace) or root == Path(request['root'])):
+        raise ValueError('Exact previous own candidate namespace required')
+    source = root / 'request.json'
+    if sha(source) != witness['request_sha256']:
+        raise RuntimeError('Original pending candidate request changed')
+    original = read(source)
+    if (original['controller_identity'] != witness['controller_identity']
+            or original['arm'] != 'candidates256' or original['gpu'] != 4
+            or original['bank_sha256'] != request['bank_sha256']
+            or original['bank'] != request['bank']
+            or original['candidate_binding_sha256'] != request['candidate_binding_sha256']
+            or any(original[k] != request[k] for k in ('epochs', 'train_cases', 'validation_cases',
+                'physical_batch', 'sources', 'candidates_per_source', 'copies_per_CP_event'))):
+        raise RuntimeError('Pending candidate scientific contract or controller identity changed')
+    producer = read(root / 'candidate_bank_actor.json')
+    exact = dict(pid=producer['pid'], create_time=producer['birth'], UID=producer['UID'], command=producer['command'])
+    if exact != witness['producer_identity']:
+        raise RuntimeError('Original candidate actor witness changed')
+    return root, source.stat()
+
+
+def await_prepared_bank(request):
+    """Let our previous CPU producer finish; never alter or signal its processes."""
+    if 'prepared_candidate_bank' in request:
+        raise ValueError('Pending and completed candidate witnesses are mutually exclusive')
+    root, original_stat = pending_bank_input(request)
+    witness = request['pending_candidate_bank']
+    while True:
+        resource_guard(request)
+        current = (root / 'request.json').stat()
+        if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != (
+                original_stat.st_dev, original_stat.st_ino, original_stat.st_size, original_stat.st_mtime_ns):
+            raise RuntimeError('Original pending candidate request metadata changed')
+        producer_alive = exact_actor_alive(witness['producer_identity'])
+        controller_alive = exact_actor_alive(witness['controller_identity'])
+        progress = read(root / 'bank256/generation_progress.json') if (root / 'bank256/generation_progress.json').is_file() else {}
+        status(request, 'waiting_candidate_bank', 'RUNNING', candidate_bank_root=str(root / 'bank256'),
+            source_completed=progress.get('source_completed', 0), source_total=642,
+            candidate_count=256, GNN_scoring=False, CT_preprocessing=False,
+            upstream_producer_alive=producer_alive, upstream_controller_alive=controller_alive)
+        if not producer_alive and not controller_alive:
+            break
+        time.sleep(5)
+    bank = root / 'bank256'
+    for name in ('index.json', 'complete.json', 'preservation_manifest.json', 'preparation_started.json'):
+        if not (bank / name).is_file():
+            raise RuntimeError('Previous candidate preparation ended without full642 completion: ' + name)
+    original_status = read(root / 'status.json')
+    preflight = root / 'preflight.log'
+    expected = "AttributeError: 'nnUNetDatasetBlosc2' object has no attribute 'keys'"
+    if (original_status['status'] != 'FAILED' or original_status['stage'] != 'preflight'
+            or not preflight.is_file() or expected not in preflight.read_text(encoding='utf8')):
+        raise RuntimeError('Previous pipeline ended outside the verified dataset API repair boundary')
+    publish(Path(request['root']) / 'upstream_candidate_completion.json', dict(
+        root=str(root), original_request_sha256=witness['request_sha256'],
+        previous_status=original_status, previous_preflight_sha256=sha(preflight),
+        signals_sent=False, original_files_written=False, candidates_regenerated=False))
+    return dict(index=str(bank / 'index.json'), index_sha256=sha(bank / 'index.json'),
+        complete_sha256=sha(bank / 'complete.json'), manifest_sha256=sha(bank / 'preservation_manifest.json'),
+        preparation_started_sha256=sha(bank / 'preparation_started.json'))
+
+
 def prepare_bank(request):
     if request['arm'] != 'candidates256':
+        if 'prepared_candidate_bank' in request or 'pending_candidate_bank' in request:
+            raise ValueError('Completed256 bank belongs only to the candidates256 arm')
         return request
+    if 'pending_candidate_bank' in request:
+        request = dict(request, prepared_candidate_bank=await_prepared_bank(request))
     status(request, 'candidate_bank', 'RUNNING', source_completed=0, source_total=642,
         candidate_count=256, GNN_scoring=False, CT_preprocessing=False)
     binding = Path(request['candidate_binding'])
     if sha(binding) != request['candidate_binding_sha256']:
         raise RuntimeError('Frozen historical candidate binding changed')
+    if 'prepared_candidate_bank' in request:
+        from hiercp_v1x.basic_cp_ablation_bank import verify_prepared_bank
+        receipt = verify_prepared_bank(request['prepared_candidate_bank'], binding,
+            request['candidate_binding_sha256'])
+        if receipt['source_index_sha256'] != request['bank_sha256']:
+            raise RuntimeError('Completed256 bank belongs to a different original128 bank')
+        publish(Path(request['root']) / 'prepared_candidate_bank_admission.json', receipt)
+        return dict(request, bank=receipt['index'], bank_sha256=receipt['index_sha256'],
+            source_bank=request['bank'], source_bank_sha256=request['bank_sha256'])
     output = Path(request['root']) / 'bank256'
     command = [sys.executable, '-B', '-u', '-m', 'hiercp_v1x.basic_cp_ablation_bank',
         '--binding', str(binding), '--output', str(output), '--workers', '4',
         '--rss-limit-gib', '64']
+    if 'reuse_partial_candidate_bank' in request:
+        previous = Path(request['reuse_partial_candidate_bank'])
+        if (not previous.is_absolute() or '..' in previous.parts or previous.resolve(strict=True) != previous
+                or any(p.is_symlink() for p in (previous, *previous.parents))
+                or not previous.is_relative_to(Path('/dev/shm/aicompetition06_basic_cp_ablation_20261013'))):
+            raise ValueError('Exact own previous partial candidate namespace required')
+        command += ['--reuse-partial', str(previous)]
     env = os.environ.copy()
     env.update(CUDA_VISIBLE_DEVICES='', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1',
         OPENBLAS_NUM_THREADS='1', PYTHONDONTWRITEBYTECODE='1', PYTHONPATH=str(ROOT),
@@ -188,8 +291,34 @@ def preflight(native):
     module, adapter = initialize_native(native)
     from nnunetv2.training.dataloading.nnunet_dataset import nnUNetDatasetBlosc2
     dataset = nnUNetDatasetBlosc2(native['private_data_folder'], native['split']['outer_train'])
-    result = module.preflight_bank(native['bank'], dataset, arm=native['arm'],
-        network_patch_size=(128, 128, 128))
+    if 'reused_preflight' in native:
+        prior = native['reused_preflight']
+        old = Path(prior['root'])
+        if (not old.is_absolute() or '..' in old.parts or old.resolve(strict=True) != old
+                or any(p.is_symlink() for p in (old, *old.parents))
+                or not old.is_relative_to(Path('/dev/shm/aicompetition06_basic_cp_ablation_20261013'))):
+            raise ValueError('Exact own previous preflight namespace required')
+        source = old / 'request.json'
+        if sha(source) != prior['request_sha256'] or read(source)['controller_identity'] != prior['controller_identity']:
+            raise RuntimeError('Previous preflight/controller identity changed')
+        while exact_actor_alive(prior['controller_identity']):
+            resource_guard(native)
+            status(native, 'waiting_preflight', 'RUNNING', upstream_root=str(old),
+                reason='Reuse full original preflight after its known constructor API failure')
+            time.sleep(5)
+        old_state = read(old / 'status.json')
+        debug_log = old / 'debug_B2.log'
+        if (old_state['status'] != 'FAILED' or old_state['stage'] != 'debug'
+                or not debug_log.is_file() or "KeyError: 'args'" not in debug_log.read_text(encoding='utf8')):
+            raise RuntimeError('Previous preflight ended outside the known constructor API repair boundary')
+        from hiercp_v1x.basic_cp_ablation_preflight import verify_preflight_reuse
+        result = verify_preflight_reuse(old, prior['request_sha256'], Path(module.__file__),
+            native['bank'], native['bank_sha256'], native['arm'], native['split']['outer_train'],
+            readonly_admission=native['readonly_admission'],
+            readonly_admission_sha256=native['readonly_admission_sha256'])
+    else:
+        result = module.preflight_bank(native['bank'], dataset, arm=native['arm'],
+            network_patch_size=(128, 128, 128))
     result.update(readonly_adapter=adapter)
     publish(Path(native['root']) / 'preflight.json', result)
     print('BASIC_CP_PREFLIGHT_COMPLETE ' + json.dumps(result.get('summary', {})), flush=True)

@@ -9,6 +9,7 @@ import copy
 from collections import OrderedDict
 import hashlib
 import importlib.util
+import inspect
 import json
 import os
 from pathlib import Path
@@ -86,6 +87,31 @@ def fixture_actual_dataset(identifiers):
     return namespace['ActualDatasetConstructorCPUFixture']('CPU_UNIT_NO_DATA_READ', list(identifiers))
 
 
+def actual_base_constructor_introspection():
+    """Actual base constructor prefix, through its checkpoint-argument capture."""
+    folder = ROOT.parents[1] / 'outputs/v24_gpu6_recovery_20261011'
+    receipts = sorted(folder.glob('inspect_basic_actual_constructor_READONLY_20261013_*.log'))
+    if not receipts:
+        raise FileNotFoundError('Actual base constructor readonly receipt required')
+    actual = json.loads(receipts[-1].read_text(encoding='utf8'))
+    if actual['files']['training/nnUNetTrainer/nnUNetTrainer.py']['sha256'] != (
+            '7096efb2040135eb60df3c8bf39cdbcc373e299671fcee365b3aff2f4da4dfbd'):
+        raise ValueError('Actual installed base constructor source differs')
+    function = ast.parse(actual['classes']['nnUNetTrainer']['constructor']).body[0]
+    retained = []
+    for statement in function.body:
+        retained.append(statement)
+        if isinstance(statement, ast.For) and 'inspect.signature(self.__init__)' in ast.unparse(statement):
+            break
+    else:
+        raise ValueError('Actual constructor signature-introspection loop missing')
+    function.body = retained
+    namespace = {'torch': torch, 'dist': torch.distributed, 'inspect': inspect}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[])),
+                 '<actual-base-constructor-CPU-signature-regression>', 'exec'), namespace)
+    return namespace['__init__']
+
+
 def entry(centers, *, side=3, value=9.):
     return {'source_data': np.full((1, side, side, side), value, dtype=np.float32),
             'source_mask': np.ones((side, side, side), dtype=np.uint8),
@@ -157,6 +183,41 @@ class BasicCPAblationCPUUnit(unittest.TestCase):
                 self.module, '_validate_patient', side_effect=RuntimeError('CPU_UNIT_GEOMETRY_SENTINEL')):
             with self.assertRaisesRegex(RuntimeError, 'CPU_UNIT_GEOMETRY_SENTINEL'):
                 self.module.preflight_bank('CPU_UNIT_NO_FILES', dataset, arm='blend')
+
+    def test_actual_base_constructor_captures_exact_five_arguments_for_all_arms(self):
+        actual_constructor = actual_base_constructor_introspection()
+        names = ['plans', 'configuration', 'fold', 'dataset_json', 'device']
+        original_signature = inspect.signature(self.historical._nnUNetTrainer_250epochs_OnlineCP.__init__)
+        new_signature = inspect.signature(self.module._BasicCPAblation.__init__)
+        self.assertEqual(list(original_signature.parameters), list(new_signature.parameters))
+        self.assertEqual(original_signature.parameters['device'].default, new_signature.parameters['device'].default)
+        bank_path = Path(self.temp.name) / 'CPU_UNIT_constructor_index.json'
+        bank_path.write_text('{}', encoding='utf8')
+        witness_path = Path(self.temp.name) / 'CPU_UNIT_constructor_preflight.json'
+        for arm, cls in [('multi3', self.module.nnUNetTrainer_250epochs_BasicCPMulti3),
+                         ('candidates256', self.module.nnUNetTrainer_250epochs_BasicCPCandidates256),
+                         ('blend', self.module.nnUNetTrainer_250epochs_BasicCPBlend)]:
+            witness_path.write_text(json.dumps({'format': self.module.FORMAT, 'arm': arm, 'complete': True,
+                'index_sha256': 'CPU_UNIT_SHA', 'historical_trainer_sha256': self.module.HISTORICAL_SHA,
+                'entries_sha256': {f'CPU_UNIT_NO_DATA_READ_{i}': 'CPU_UNIT_SHA' for i in range(642)}}), encoding='utf8')
+            plans, dataset_json = {'CPU_UNIT_plans': True}, {'CPU_UNIT_dataset': True}
+            with patch.object(CPUUnitTrainer, '__init__', actual_constructor), patch.dict(os.environ, {
+                'ONLINE_CP_BANK': str(bank_path), 'ONLINE_CP_SEED': '42', 'BASIC_CP_ABLATION': arm,
+                'BASIC_CP_ABLATION_PREFLIGHT': str(witness_path)}), patch.object(self.module, 'sha', return_value='CPU_UNIT_SHA'):
+                trainer = cls(plans, '3d_fullres', 0, dataset_json, torch.device('cpu'))
+            self.assertEqual(list(trainer.my_init_kwargs), names)
+            self.assertIs(trainer.my_init_kwargs['plans'], plans)
+            self.assertIs(trainer.my_init_kwargs['dataset_json'], dataset_json)
+            self.assertEqual(trainer.my_init_kwargs['device'], torch.device('cpu'))
+            self.assertEqual(trainer.num_epochs, 250)
+
+    def test_actual_base_introspection_reproduces_the_rejected_varargs_constructor(self):
+        actual_constructor = actual_base_constructor_introspection()
+        class BrokenVarargsCPUUnit:
+            def __init__(self, *args, **kwargs):
+                actual_constructor(self, *args, **kwargs)
+        with self.assertRaisesRegex(KeyError, 'args'):
+            BrokenVarargsCPUUnit({}, '3d_fullres', 0, {}, torch.device('cpu'))
 
     def test_actual_metadata_full642_and_fixed_baseline_factors(self):
         receipt = ROOT.parents[1] / 'outputs/v24_gpu6_recovery_20261011/HISTORICAL_BASIC_CP_CONTRACT_READONLY_1791835410056009100.json'

@@ -50,15 +50,18 @@ def snapshot(root):
     native = read(root / 'native.json')
     log = root / 'train.log' if phase in ('train', 'historical_metrics', 'report', 'complete') else root / (phase + '.log')
     metrics = shared.parse_nnunet_lines(shared.log_tail(log, 65536)) if log.is_file() else {}
-    native_phase = bool(native) and phase not in ('prepare', 'preflight', 'candidate_bank')
-    generation = read(root / 'bank256/generation_progress.json') or {}
+    native_phase = bool(native) and phase not in ('prepare', 'preflight', 'candidate_bank', 'waiting_candidate_bank', 'waiting_preflight')
+    bank_root = Path(state.get('candidate_bank_root', str(root / 'bank256')))
+    generation = read(bank_root / 'generation_progress.json') or {}
     return dict(GPU=str(request['gpu']) + ' / Basic CP ' + request['arm'], status=status,
         physical_GPU=request['gpu'], arm=request['arm'],
         stage='nnunet_training' if native_phase else 'scoring',
         stage_label={'prepare': '전처리 공유 연결', 'preflight': '전체 CP 조건 검증',
             'CUDA_DEBUG': '실제 CUDA B2/B4 검사', 'train': 'nnU-Net 학습',
             'historical_metrics': 'BEST26 병변·크기·통계 평가', 'report': 'Result schema1 저장',
-            'complete': '학습·BEST26 평가 완료', 'candidate_bank': 'CP 위치 후보 256개 준비'}.get(phase, phase),
+            'complete': '학습·BEST26 평가 완료', 'candidate_bank': 'CP 위치 후보 256개 준비',
+            'waiting_preflight': '기존 전체 CP 검사 연결·완료 후 자동 CUDA 검사',
+            'waiting_candidate_bank': '기존 CP 위치 후보 생성 연결·완료 후 자동 학습'}.get(phase, phase),
         epochs=250, epoch=metrics.get('epoch_index', -1) + 1 if metrics else None,
         completed_epochs=250 if status == 'COMPLETE' else state.get('completed_epochs', 0),
         native_metrics=metrics, reports={}, active_U=None, progress=None,

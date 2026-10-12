@@ -20,6 +20,8 @@ class Actor:
         self.rss = rss
         self.state = 'sleeping'
         self.descendants = []
+        self.fork_no_exec = False
+        self.parent_actor = None
 
     def status(self): return self.state
     def create_time(self): return self.birth
@@ -28,6 +30,8 @@ class Actor:
     def cpu_affinity(self): return self.cpus
     def memory_info(self): return SimpleNamespace(rss=self.rss)
     def children(self, recursive=False): return self.descendants
+    def parent(self): return self.parent_actor
+    def is_running(self): return self.state != 'gone'
 
 
 def identity(actor):
@@ -90,6 +94,36 @@ class BasicRequestTests(unittest.TestCase):
         self.assertIs(self.validate(value),value)
 
 
+class BasicForkFlagTests(unittest.TestCase):
+    def test_linux_field9_handles_spaces_and_parentheses_in_the_task_name(self):
+        actor = Actor(201, ['python'])
+        for flags, expected in [(64, True), (4194304, False)]:
+            row = f'201 (python (spawn) worker) S 100 100 100 0 -1 {flags} 0 0 0'
+            with patch.object(resource.Path, 'read_text', return_value=row):
+                self.assertIs(resource._fork_no_exec(actor), expected)
+
+    def test_malformed_or_reused_pid_stat_cannot_supply_an_exec_fallback(self):
+        actor = Actor(201, ['python'])
+        for row in ['202 (python) S 100 100 100 0 -1 64',
+                    '201 (python) S 100', '201 (python) S 100 100 100 0 -1 invalid']:
+            with patch.object(resource.Path, 'read_text', return_value=row), self.assertRaisesRegex(
+                    RuntimeError, 'fork/exec observation'):
+                resource._fork_no_exec(actor)
+
+    def test_naturally_released_worker_missing_proc_stat_becomes_no_such_process(self):
+        actor = Actor(201, ['python'])
+        actor.state = 'gone'
+        with patch.object(resource.Path, 'read_text', side_effect=FileNotFoundError), self.assertRaises(
+                resource.psutil.NoSuchProcess):
+            resource._fork_no_exec(actor)
+
+    def test_live_worker_missing_proc_stat_remains_an_explicit_failure(self):
+        actor = Actor(201, ['python'])
+        with patch.object(resource.Path, 'read_text', side_effect=FileNotFoundError), self.assertRaisesRegex(
+                RuntimeError, 'Live Basic descendant'):
+            resource._fork_no_exec(actor)
+
+
 class BasicLeaseTests(unittest.TestCase):
     def setUp(self):
         self.temporary=tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
@@ -126,6 +160,7 @@ class BasicLeaseTests(unittest.TestCase):
         self.start(patch.object(resource, 'validate_request', side_effect=lambda x:x))
         self.start(patch.object(resource, '_owned', side_effect=lambda p, **kwargs:Path(p)))
         self.start(patch.object(resource.psutil, 'Process', side_effect=self.process))
+        self.start(patch.object(resource, '_fork_no_exec', side_effect=lambda p:p.fork_no_exec))
         self.start(patch.object(resource.os, 'getuid', return_value=41833, create=True))
         self.start(patch.object(resource.socket, 'gethostname', return_value='ece-a6gpu6'))
         self.start(patch.object(resource.time, 'time', side_effect=lambda:self.wall))
@@ -217,6 +252,92 @@ class BasicLeaseTests(unittest.TestCase):
         self.worker.command=[]
         with self.assertRaisesRegex(RuntimeError, 'empty argv'):
             self.lease.verify(force=True)
+
+    def provisional_fork(self):
+        self.worker.parent_actor = self.stage
+        self.worker.command = list(self.stage.command)
+        self.worker.fork_no_exec = True
+        self.lease.verify(force=True)
+        self.assertIn(self.worker.pid, self.lease._fork_pending)
+
+    def test_first_exec_replaces_only_the_exact_provisional_parent_argv(self):
+        self.provisional_fork()
+        self.worker.command = ['python', '-c', 'from multiprocessing.spawn import spawn_main; spawn_main()']
+        self.worker.fork_no_exec = False
+        self.lease.verify(force=True)
+        self.assertNotIn(self.worker.pid, self.lease._fork_pending)
+        self.assertEqual(self.lease._managed[self.worker.pid]['command'], self.worker.command)
+        self.worker.command = ['python', 'unrequested_second_exec']
+        with self.assertRaisesRegex(RuntimeError, 'live argv changed'):
+            self.lease.verify(force=True)
+
+    def test_fork_only_dataloader_worker_keeps_its_exact_inherited_identity(self):
+        self.provisional_fork()
+        for _ in range(4):
+            result = self.lease.verify(force=True)
+            self.assertEqual(result['own_process_tree_RSS_bytes'], 3*2**20)
+        self.worker.command = ['python', 'unexpected_inherited_argv']
+        with self.assertRaisesRegex(RuntimeError, 'inherited parent argv'):
+            self.lease.verify(force=True)
+
+    def test_first_exec_cannot_mask_reused_pid_foreign_uid_or_parent_change(self):
+        self.provisional_fork()
+        self.worker.fork_no_exec = False
+        self.worker.command = ['python', 'spawned_worker']
+        original_birth = self.worker.birth
+        self.worker.birth += 1
+        with self.assertRaisesRegex(RuntimeError, 'PID/birth/UID'):
+            self.lease.verify(force=True)
+        self.worker.birth = original_birth
+        self.worker.uid = 0
+        with self.assertRaisesRegex(RuntimeError, 'foreign'):
+            self.lease.verify(force=True)
+        self.worker.uid = 41833
+        self.worker.parent_actor = self.controller
+        with self.assertRaisesRegex(RuntimeError, 'parent lineage'):
+            self.lease.verify(force=True)
+
+    def test_fork_flag_is_not_a_generic_permission_to_change_a_finalized_command(self):
+        self.lease.verify(force=True)
+        self.worker.parent_actor = self.stage
+        self.worker.command = list(self.stage.command)
+        self.worker.fork_no_exec = True
+        with self.assertRaisesRegex(RuntimeError, 'regressed'):
+            self.lease.verify(force=True)
+
+    def test_first_exec_race_is_reobserved_before_binding_any_argv(self):
+        self.worker.parent_actor = self.stage
+        self.worker.command = list(self.stage.command)
+        self.worker.fork_no_exec = True
+        readings = iter([True, False, False, False, False])
+        def observe(actor):
+            if actor is self.worker:
+                result = next(readings)
+                if not result:
+                    self.worker.fork_no_exec = False
+                    self.worker.command = ['python', 'stable_exec_worker']
+                return result
+            return False
+        with patch.object(resource, '_fork_no_exec', side_effect=observe):
+            self.lease.verify(force=True)
+        self.assertEqual(self.lease._managed[self.worker.pid]['command'], ['python', 'stable_exec_worker'])
+
+    def test_late_first_exec_during_final_consistency_check_is_bounded_and_reobserved(self):
+        self.worker.parent_actor = self.stage
+        self.worker.command = list(self.stage.command)
+        self.worker.fork_no_exec = True
+        readings = iter([True, True, False, False, False, False])
+        def observe(actor):
+            if actor is self.worker:
+                result = next(readings)
+                if not result:
+                    self.worker.fork_no_exec = False
+                    self.worker.command = ['python', 'late_stable_exec_worker']
+                return result
+            return False
+        with patch.object(resource, '_fork_no_exec', side_effect=observe):
+            self.lease.verify(force=True)
+        self.assertEqual(self.lease._managed[self.worker.pid]['command'], ['python', 'late_stable_exec_worker'])
 
     def test_pbs_nonrunning_foreign_owner_othernode_or_extension_is_rejected(self):
         originals=copy.deepcopy(self.job)
