@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib
+import importlib.util
 import json
 import math
 import os
@@ -14,6 +15,7 @@ import subprocess
 import sys
 import time
 import traceback
+import types
 
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
@@ -26,6 +28,7 @@ TRAINERS = {
     'blend': 'nnUNetTrainer_250epochs_BasicCPBlend',
 }
 _LEASES = {}
+_STORAGE = {}
 
 
 def read(path):
@@ -64,6 +67,38 @@ def resource_guard(request, *, idle=False):
     return _LEASES[key].verify(force=idle, idle=idle)
 
 
+def storage_core(request):
+    """Use the exact admitted adapter and its original relative dependencies.
+
+    The old admission remains byte-identical. A private package namespace keeps
+    its original scientific source checks tied to its original repository root.
+    """
+    path = Path(request['readonly_admission'])
+    if sha(path) != request['readonly_admission_sha256']:
+        raise RuntimeError('Original full read-only admission changed')
+    document = read(path)
+    witness = document['adapter_source']
+    source = Path(witness['path'])
+    if (not source.is_absolute() or source.resolve(strict=True) != source
+            or any(p.is_symlink() for p in (source, *source.parents))
+            or sha(source) != witness['sha256']):
+        raise RuntimeError('Original frozen read-only adapter bytes/path changed')
+    key = (str(path), request['readonly_admission_sha256'], str(source), witness['sha256'])
+    if key not in _STORAGE:
+        name = '_basic_cp_frozen_' + request['readonly_admission_sha256'][:16]
+        package = types.ModuleType(name)
+        package.__path__ = [str(source.parent)]
+        package.__package__ = name
+        sys.modules[name] = package
+        spec = importlib.util.spec_from_file_location(name + '.v24_readonly_native_storage', source)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        module._admission(path)  # All original105/131/source/runtime guards stay mandatory.
+        _STORAGE[key] = module
+    return _STORAGE[key]
+
+
 def prepare_bank(request):
     if request['arm'] != 'candidates256':
         return request
@@ -90,7 +125,7 @@ def prepare_bank(request):
 
 
 def prepare(request):
-    from hiercp_v1x import v24_readonly_native_storage as core
+    core = storage_core(request)
     document = core._admission(request['readonly_admission'])
     if sha(request['readonly_admission']) != request['readonly_admission_sha256']:
         raise RuntimeError('Complete original read-only admission changed')
@@ -141,7 +176,7 @@ def environment(native, *, output=None):
 
 
 def initialize_native(native):
-    from hiercp_v1x import v24_readonly_native_storage as core
+    core = storage_core(native)
     sys.path.insert(0, native['private_runtime'])
     adapter = core.install_dataset_adapter(native['readonly_admission'], native['private_data_folder'])
     module = importlib.import_module('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_BasicCPAblations')

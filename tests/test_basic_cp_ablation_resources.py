@@ -82,6 +82,13 @@ class BasicRequestTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'SHA'):
                 self.validate(value)
 
+    def test_original_cache_admission_requires_a_matching_path_sha_pair(self):
+        value=request();value['readonly_admission']='/exact/cache_admission.json'
+        with self.assertRaisesRegex(ValueError,'pinned together'):
+            self.validate(value)
+        value['readonly_admission_sha256']='e'*64
+        self.assertIs(self.validate(value),value)
+
 
 class BasicLeaseTests(unittest.TestCase):
     def setUp(self):
@@ -270,6 +277,50 @@ class BasicLeaseTests(unittest.TestCase):
         self.lifetime.write_text(self.lifetime.read_text()+' ')
         with self.assertRaisesRegex(ValueError, 'metadata changed'):
             self.lease.verify()
+
+    def frozen_admission_request(self):
+        original=self.root/'old_code'
+        source=original/'hiercp_v1x/v24_readonly_native_storage.py'
+        source.parent.mkdir(parents=True)
+        source.write_text('exact original adapter\n')
+        scientific={}
+        for relative in resource.FROZEN_SCIENCE_FILES:
+            p=original/relative;p.parent.mkdir(exist_ok=True,parents=True)
+            p.write_text('exact original source '+relative+'\n')
+            scientific[relative]=resource.sha(p)
+        admission=self.root/'original_admission.json'
+        admission.write_text(json.dumps(dict(format='v24_native_immutable_full_cache_storage_v1',
+            model_data_scale_preserved=True,debug=False,source_arrays_written=False,
+            adapter_source=dict(path=str(source),sha256=resource.sha(source)),
+            source_bank=dict(scientific_source_files_sha256=scientific))))
+        request=dict(self.value,readonly_admission=str(admission),readonly_admission_sha256=resource.sha(admission))
+        return request,admission,source,original,scientific
+
+    def test_all_old_admitted_scientific_sources_remain_pinned_after_fresh_code_differs(self):
+        request,admission,adapter,original,scientific=self.frozen_admission_request()
+        lease=resource.BasicLease(request)
+        lease.verify(force=True)
+        source=original/'tools/online_raw_bank_preparation.py'
+        source.write_text(source.read_text()+'# original source changed\n')
+        with self.assertRaisesRegex(ValueError,'metadata changed'):
+            lease.verify()
+
+    def test_frozen_adapter_wrong_digest_or_missing_scientific_source_is_rejected(self):
+        request,admission,adapter,original,scientific=self.frozen_admission_request()
+        adapter.write_text('unknown changed adapter\n')
+        with self.assertRaisesRegex(ValueError,'admitted Basic source'):
+            resource.BasicLease(request)
+        adapter.write_text('exact original adapter\n')
+        source=original/'tools/online_raw_bank_preparation.py'
+        source.rename(source.with_suffix('.missing'))
+        with self.assertRaises(FileNotFoundError):
+            resource.BasicLease(request)
+
+    def test_historical_cache_admission_sha_is_verified_before_adapter_sources(self):
+        request,admission,adapter,original,scientific=self.frozen_admission_request()
+        admission.write_text(admission.read_text()+' ')
+        with self.assertRaisesRegex(ValueError,'admitted Basic source'):
+            resource.BasicLease(request)
 
 
 if __name__=='__main__': unittest.main()

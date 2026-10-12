@@ -32,6 +32,9 @@ EXPIRY_RESERVE_SECONDS = 180
 RSS_LIMIT = 96 * GIB
 AGGREGATE_CAPACITY = 416 * GIB
 STORAGE_FLOOR = 10 * GIB
+FROZEN_SCIENCE_FILES = ('custom_trainers/onlinecp_raw_bank.py',
+    'custom_trainers/onlinecp_raw_resampling.py', 'tools/online_raw_bank_preparation.py',
+    'hiercp_v1x/v24_lossless_raw_storage.py')
 
 
 def sha(path):
@@ -98,6 +101,13 @@ def validate_request(value):
         if (not original.is_absolute() or '..' in original.parts
                 or not _checksum(value['source_bank_sha256'])):
             raise ValueError('Admitted256bank retains a separately pinned original128bank')
+    if ('readonly_admission' in value) != ('readonly_admission_sha256' in value):
+        raise ValueError('Original full read-only admission path and SHA must be pinned together')
+    if 'readonly_admission' in value:
+        admission = Path(value['readonly_admission'])
+        if (not admission.is_absolute() or '..' in admission.parts
+                or not _checksum(value['readonly_admission_sha256'])):
+            raise ValueError('Exact original read-only admission path/SHA required')
     return value
 
 
@@ -205,6 +215,8 @@ class BasicLease:
         self._admit(self.request['bank'], self.request['bank_sha256'])
         if 'source_bank' in self.request:
             self._admit(self.request['source_bank'], self.request['source_bank_sha256'])
+        if 'readonly_admission' in self.request:
+            self._admit_frozen_storage()
         ref = self.request['host_lifetime']
         self._admit(ref['path'], ref['sha256'])
         self.lifetime = json.loads(Path(ref['path']).read_bytes())
@@ -228,6 +240,29 @@ class BasicLease:
         if sha(path) != digest or _snapshot(path) != before:
             raise ValueError('Original admitted Basic source/code/lifetime changed: ' + str(path))
         self._files[str(path)] = before
+
+    def _admit_frozen_storage(self):
+        """Keep original cache provenance; new ablation code never replaces it."""
+        path = self.request['readonly_admission']
+        self._admit(path, self.request['readonly_admission_sha256'])
+        document = json.loads(Path(path).read_bytes())
+        if (document.get('format') != 'v24_native_immutable_full_cache_storage_v1'
+                or document.get('model_data_scale_preserved') is not True
+                or document.get('debug') is not False or document.get('source_arrays_written') is not False):
+            raise ValueError('Actual original complete read-only native admission required')
+        witness = document['adapter_source']
+        adapter = Path(witness['path'])
+        if (adapter.name != 'v24_readonly_native_storage.py' or adapter.parent.name != 'hiercp_v1x'
+                or not _checksum(witness['sha256'])):
+            raise ValueError('Exact original frozen read-only adapter path and SHA required')
+        self._admit(adapter, witness['sha256'])
+        scientific = document['source_bank']['scientific_source_files_sha256']
+        if set(scientific) != set(FROZEN_SCIENCE_FILES) or any(
+                not _checksum(v) for v in scientific.values()):
+            raise ValueError('All four original scientific preparation sources must remain pinned')
+        original_root = adapter.parents[1]
+        for relative, digest in scientific.items():
+            self._admit(original_root / relative, digest)
 
     def _inputs(self):
         if json.dumps(self.request, sort_keys=True, separators=(',', ':')) != self.request_bytes:

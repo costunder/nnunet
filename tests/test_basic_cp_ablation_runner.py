@@ -1,6 +1,7 @@
 """Full stage delegation/ordering and own-BEST guard integration without CUDA."""
 import copy
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -220,6 +221,64 @@ class CandidateBankPreparationTests(unittest.TestCase):
             (root/'bank256/index.json').write_text(json.dumps({'source_entries':641,'candidate_count':256}))
             with patch.object(runner,'status'),patch.object(runner,'run_actor'),self.assertRaisesRegex(RuntimeError,'Full642'):
                 runner.prepare_bank(request)
+
+
+class FrozenStorageNamespaceTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary=tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
+        self.addCleanup(self.temporary.cleanup)
+        self.root=Path(self.temporary.name)
+        original=self.root/'original_code/hiercp_v1x';original.mkdir(parents=True)
+        self.helper=original/'storage_helper.py'
+        self.helper.write_text('ORIGIN = "exact historical helper"\n')
+        self.source=original/'v24_readonly_native_storage.py'
+        self.source.write_text('from .storage_helper import ORIGIN\n'
+            'import json\nfrom pathlib import Path\n'
+            'def _admission(path):\n'
+            '    value=json.loads(Path(path).read_text())\n'
+            '    if value["full_cases"] != 131: raise ValueError("full131 required")\n'
+            '    return value\n')
+        self.admission=self.root/'admission.json'
+        self.document=dict(full_cases=131,adapter_source=dict(path=str(self.source),sha256=runner.sha(self.source)))
+        self.admission.write_text(json.dumps(self.document))
+        self.request=dict(readonly_admission=str(self.admission),readonly_admission_sha256=runner.sha(self.admission))
+        self.original_storage=dict(runner._STORAGE)
+        self.original_modules=set(sys.modules)
+        self.addCleanup(self.restore)
+        if os.name=='nt':
+            # Windows sandbox denies _getfinalpathname on synthetic temp files;
+            # Linux production tests still exercise the actual resolve check.
+            canonical=patch.object(Path,'resolve',autospec=True,side_effect=lambda path,*a,**kw:path)
+            canonical.start();self.addCleanup(canonical.stop)
+
+    def restore(self):
+        runner._STORAGE.clear();runner._STORAGE.update(self.original_storage)
+        for name in set(sys.modules)-self.original_modules:
+            if name.startswith('_basic_cp_frozen_'):sys.modules.pop(name,None)
+
+    def test_modified_original_adapter_sha_is_rejected_before_loading(self):
+        self.source.write_text(self.source.read_text()+'\n# changed historical adapter\n')
+        with self.assertRaisesRegex(RuntimeError,'frozen read-only adapter'):
+            runner.storage_core(self.request)
+
+    def test_private_namespace_imports_old_relative_helper_despite_fresh_difference(self):
+        fresh=ModuleType('hiercp_v1x.storage_helper');fresh.ORIGIN='new unrelated helper'
+        with patch.dict(sys.modules,{'hiercp_v1x.storage_helper':fresh}):
+            actual=runner.storage_core(self.request)
+        self.assertEqual(actual.ORIGIN,'exact historical helper')
+        self.assertEqual(actual.__file__,str(self.source))
+        self.assertTrue(actual.__package__.startswith('_basic_cp_frozen_'))
+
+    def test_cached_identity_preserves_original_document_and_sources_and_detects_changed_admission(self):
+        before={p:p.read_bytes() for p in [self.source,self.helper,self.admission]}
+        first=runner.storage_core(self.request)
+        second=runner.storage_core(self.request)
+        self.assertIs(first,second)
+        self.assertEqual(first._admission(self.admission),self.document)
+        self.assertEqual(before,{p:p.read_bytes() for p in before})
+        self.admission.write_text(self.admission.read_text()+' ')
+        with self.assertRaisesRegex(RuntimeError,'Original full read-only admission'):
+            runner.storage_core(self.request)
 
 
 if __name__=='__main__':unittest.main()
