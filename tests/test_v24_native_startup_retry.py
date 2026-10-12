@@ -222,6 +222,47 @@ class RetryTests(unittest.TestCase):
                 retry._load_original(self.request)
             self.assertIs(sys.modules['hiercp_v1x.other_science'],foreign)
 
+    def test_second_proof_pass_reuses_original_tuple_after_admitted_storage_import(self):
+        package=self.old_code/'hiercp_v1x';package.mkdir()
+        names=('v24_scored_native_chain','v24_matched_basic_cp_pipeline','v24_matched_basic_cp_runtime',
+               'v24_nnunet_cp','v24_native_best_eval_runtime')
+        for name in names:
+            self.write(package/(name+'.py'),'from pathlib import Path\nROOT=Path(__file__).absolute().parents[1]\n',text=True)
+        script=('import sys,types; from hiercp_v1x import v24_native_startup_retry as r; '
+            'request={"original_declaration":{"code":'+repr(str(self.old_code))+'}}; '
+            'modules=r._load_original(request); '
+            'name="hiercp_v1x._readonly_admitted_base_"+"e"*64; '
+            'helper=types.ModuleType(name); helper.__file__='+repr(str(self.new_code/'admitted_helper.py'))+'; '
+            'sys.modules[name]=helper; '
+            'assert r._load_original(request,admitted_modules=modules)==modules; '
+            'assert sys.modules[name] is helper; '
+            'sys.modules[modules[0].__name__]=types.ModuleType(modules[0].__name__); '
+            '\ntry:r._load_original(request,admitted_modules=modules)\n'
+            'except ValueError:print("CPU second admission and replaced module refusal verified")\n'
+            'else:raise AssertionError("replaced scientific module accepted")\n')
+        result=subprocess.run([sys.executable,'-B','-c',script],cwd=Path(__file__).absolute().parents[1],
+            capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('second admission',result.stdout)
+
+    def test_admit_with_reused_tuple_rechecks_all_scientific_and_artifact_proofs(self):
+        pipeline=types.SimpleNamespace(_guard_native=Mock(),validate_calibration=Mock(),stage_proof=Mock())
+        self.chain.validate_declaration=Mock();self.chain.verify_code=Mock();self.chain.preserve_predecessors=Mock()
+        self.chain.FileProofCache=Mock(return_value=object());self.chain.source_complete=Mock(return_value={'full40':True})
+        self.chain.scoring_complete=Mock(return_value=retry.read(self.arm/'admitted_scoring.json'))
+        self.chain.storage_ready=Mock(return_value={'whole_reserve':True});self.chain.resources_ready=Mock()
+        modules=(self.chain,pipeline,object(),object(),object())
+        with patch.object(retry,'verify_new_code') as code,patch.object(retry,'_load_original',return_value=modules) as loader,\
+                patch.object(retry,'verify_failure',return_value=self.state) as failed:
+            result=retry.admit(self.request,zero=False,admitted_modules=modules)
+        loader.assert_called_once_with(self.request,admitted_modules=modules)
+        code.assert_called_once_with(self.request);failed.assert_called_once_with(self.request,self.chain,zero=False)
+        self.chain.verify_code.assert_called_once();self.chain.preserve_predecessors.assert_called_once()
+        self.chain.source_complete.assert_called_once();self.chain.scoring_complete.assert_called_once()
+        self.assertEqual(pipeline.stage_proof.call_count,2);pipeline._guard_native.assert_called_once()
+        pipeline.validate_calibration.assert_called_once();self.chain.storage_ready.assert_called_once()
+        self.chain.resources_ready.assert_not_called();self.assertEqual(result[0],modules)
+
     def test_completion_publishes_original_canonical_full250_best26_proof(self):
         self.write(self.native/'actual_nnunet_configuration.json',dict(epochs=250,physical_batch=2,
             train_cases=105,validation_cases=26,patch_size=[128]*3,CPU_workers=4,source_entries=642,
@@ -249,6 +290,103 @@ class RetryTests(unittest.TestCase):
         best=types.SimpleNamespace(RECEIPT='best_validation_complete.json',validate_best_validation_receipt=Mock(side_effect=ValueError('missing full26')))
         with self.assertRaisesRegex(ValueError,'missing full26'):
             retry.publish_completion(self.request,pipeline,best)
+        self.assertEqual(list(self.native.glob('training_complete_*.json')),[])
+        self.assertFalse((self.arm/'matched_storage_train.json').exists())
+
+    def completion_fixture(self):
+        """CPU DEBUG artifacts explicitly model the successful child boundary."""
+        old_path=retry.seal_request(self.request);root=old_path.parent;request_sha=retry.digest(old_path)
+        command=[self.request['python'],'-B','-u',str(self.new_code/'tools/run_v24_native_startup_retry.py'),
+            'watch','--request',str(old_path)]
+        reg=dict(pid=500,create_time=50.5,command=command,request_sha256=request_sha,root=str(root),GPU_arm=6,
+            UID=41833,CPU_affinity=retry.AFFINITY,commit=self.request['commit'])
+        lease=dict(pid=500,create_time=50.5,supervisor_pid=500,supervisor_create_time=50.5,command=command,
+            UID=41833,request_sha256=request_sha)
+        state=dict(format=retry.STATUS_FORMAT,status='FAILED',stage='train',error=retry.POST_PROOF_ERROR+'e'*64,
+            GPU_arm=6,UID=41833,actual_CPU_affinity=retry.AFFINITY,resource_violation=None,
+            request_sha256=request_sha,source_output=self.old['source_output'],supervisor_pid=500,supervisor_create_time=50.5,
+            child_pid=501,child_create_time=51.5,command=self.request['command'],stage_log=str(root/'train.log'),
+            full_native_training_completed=False,full_native_evaluation_completed=False,
+            stages_completed=['prepare_native','calibrate_native'])
+        for name,value in (('status.json',state),('registration.json',reg),('lease.json',lease)):
+            self.write(root/name,value)
+        self.write(self.arm/'native_startup_retry.lease.json',lease)
+        self.write(root/'entry.lease.json',dict(pid=501,create_time=51.5,command=self.request['command'],
+            UID=41833,request_sha256=request_sha))
+        self.write(root/'training_started.json',dict(format=retry.FORMAT,command=self.request['command'],
+            native_path=self.request['native_path'],original_request=self.request['original_request'],
+            original_calibration=self.request['proofs']['calibration'],zero_update_startup_retry=True,epochs=250,
+            physical_batch=2,evaluation_checkpoint='checkpoint_best.pth',binding=retry.BINDING))
+        self.write(root/'train.log',''.join('2026-10-12 05:00:00.000000: Epoch '+str(i)+'\n' for i in range(250))+
+            '2026-10-12 11:25:46.752640: Training done.\n2026-10-12 12:23:17.840449: Validation complete\n',text=True)
+        self.write(self.native/'actual_nnunet_configuration.json',dict(epochs=250,physical_batch=2,train_cases=105,
+            validation_cases=26,patch_size=[128]*3,CPU_workers=4,source_entries=642,candidate_count=128,
+            validation_checkpoint='checkpoint_best.pth',debug=False))
+        (self.fold/'checkpoint_best.pth').write_bytes(b'DEBUG BEST actual artifact')
+        (self.fold/'checkpoint_final.pth').write_bytes(b'DEBUG FINAL training witness')
+        self.write(self.fold/'best_validation_complete.json',dict(complete=True))
+        code=Path(retry.__file__).resolve().parents[1]
+        request=retry.build_completion_request(old_path,self.arm/'completed_artifact_recovery',code,'f'*40,self.manifest)
+        self.chain.process_snapshot.return_value=None
+        pipeline=types.SimpleNamespace(NATIVE_FORMAT='native-format',STAGE_FORMAT='stage-format',PROFILE='profile',
+            FILES=(),ROOT=self.old_code,_guard_native=Mock(),validate_calibration=Mock(),
+            check_aggregate_disk=Mock(),verify_admission=Mock(),stage_proof=Mock(return_value=dict(action='train',physical_GPU=6)))
+        best=types.SimpleNamespace(BEST='checkpoint_best.pth',RECEIPT='best_validation_complete.json',
+            validate_best_validation_receipt=Mock(return_value=dict(validation_cases=self.metadata['split']['outer_val'],
+                checkpoint_path=str(self.fold/'checkpoint_best.pth'),checkpoint_sha256=retry.digest(self.fold/'checkpoint_best.pth'))))
+        return request,pipeline,best
+
+    def test_completion_only_full_boundary_keeps_failure_and_never_executes_cuda(self):
+        request,pipeline,best=self.completion_fixture();path=retry.seal_completion_request(request)
+        unchanged={name:Path(value['path']).read_bytes() for name,value in request['proofs'].items()}
+        process=types.SimpleNamespace(pid=900,uids=lambda:types.SimpleNamespace(real=41833),
+            cpu_affinity=lambda:retry.AFFINITY,create_time=lambda:90.5,cmdline=lambda:['CPU completion only'])
+        import psutil
+        modules=(self.chain,pipeline,object(),object(),best)
+        torch_before=sys.modules.get('torch')
+        with patch.object(retry,'verify_new_code'),patch.object(retry,'admit',return_value=(modules,{},None)) as admitted,\
+                patch.object(psutil,'Process',return_value=process),patch.object(retry.subprocess,'Popen') as spawned:
+            state=retry.complete_existing_artifacts(path)
+        admitted.assert_called_once_with(self.request,zero=False,resources=False);spawned.assert_not_called()
+        self.assertEqual(state['status'],'COMPLETE');self.assertEqual(state['completed_epochs'],250)
+        self.assertEqual(state['evaluated_cases'],26);self.assertFalse(state['CUDA_compute'])
+        self.assertFalse(state['training_rerun']);self.assertFalse(state['evaluation_rerun'])
+        self.assertTrue(state['full_native_training_completed']);self.assertTrue(state['full_native_evaluation_completed'])
+        self.assertEqual(len(list(self.native.glob('training_complete_*.json'))),1)
+        self.assertTrue((self.arm/'matched_storage_train.json').is_file())
+        for name,value in request['proofs'].items():self.assertEqual(Path(value['path']).read_bytes(),unchanged[name])
+        self.assertEqual(retry.read(self.arm/'startup_retry/status.json')['status'],'FAILED')
+        self.assertEqual(best.validate_best_validation_receipt.call_count,2)
+        self.assertEqual(self.chain.process_snapshot.call_count,2)
+        self.assertIs(sys.modules.get('torch'),torch_before)
+
+    def test_completion_only_rejects_partial_epochs_live_actor_and_changed_best(self):
+        request,pipeline,best=self.completion_fixture();log=Path(request['proofs']['train_log']['path'])
+        original=log.read_text(encoding='utf8');log.write_text(original.replace(': Epoch 249\n','\n'),encoding='utf8')
+        request['proofs']['train_log']=retry.proof(log)
+        with self.assertRaisesRegex(ValueError,'epochs0..249'):
+            retry.verify_completed_retry_evidence(request,self.chain,pipeline,best)
+        log.write_text(original,encoding='utf8');request['proofs']['train_log']=retry.proof(log)
+        self.chain.process_snapshot.return_value=object()
+        with self.assertRaisesRegex(RuntimeError,'still active'):
+            retry.verify_completed_retry_evidence(request,self.chain,pipeline,best)
+        self.chain.process_snapshot.return_value=None
+        Path(request['proofs']['best_checkpoint']['path']).write_bytes(b'DEBUG mutated BEST')
+        with self.assertRaisesRegex(ValueError,'changed'):
+            retry.verify_completed_retry_evidence(request,self.chain,pipeline,best)
+        self.assertFalse((self.arm/'matched_storage_train.json').exists())
+        self.assertFalse((self.arm/'native_post_training_completion.lease.json').exists())
+
+    def test_completion_only_rejects_forged_entry_or_failed_best26_before_any_publication(self):
+        request,pipeline,best=self.completion_fixture();entry_path=Path(request['proofs']['entry_lease']['path'])
+        entry=retry.read(entry_path);entry['command']=['different child'];self.write(entry_path,entry)
+        request['proofs']['entry_lease']=retry.proof(entry_path)
+        with self.assertRaisesRegex(ValueError,'entry/start binding'):
+            retry.verify_completed_retry_evidence(request,self.chain,pipeline,best)
+        entry['command']=self.request['command'];self.write(entry_path,entry);request['proofs']['entry_lease']=retry.proof(entry_path)
+        best.validate_best_validation_receipt.side_effect=ValueError('missing actual full26 BEST')
+        with self.assertRaisesRegex(ValueError,'full26 BEST'):
+            retry.verify_completed_retry_evidence(request,self.chain,pipeline,best)
         self.assertEqual(list(self.native.glob('training_complete_*.json')),[])
         self.assertFalse((self.arm/'matched_storage_train.json').exists())
 

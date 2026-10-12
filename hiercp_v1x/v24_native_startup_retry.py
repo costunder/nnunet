@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import sys
@@ -31,6 +32,9 @@ IMPORT_ERROR = "ImportError: cannot import name 'snapshot' from 'hiercp_v1x.v24_
 NATIVE_ARGV = ['730', '3d_fullres', '0', '-tr', 'nnUNetTrainer_250epochs_FrozenV23CP',
                '-p', 'nnUNetResEncUNetMPlans', '--val_best']
 BINDING = 'original.v24_nnunet_cp.snapshot = original.v24_nnunet_cp.require_project_budget'
+COMPLETION_FORMAT = 'v24_post_training_existing_best26_completion_request_v1'
+COMPLETION_STATUS = 'v24_post_training_existing_best26_completion_status_v1'
+POST_PROOF_ERROR = 'ValueError: Scientific module was already imported from a different checkout: hiercp_v1x._readonly_admitted_base_'
 
 
 def digest(path):
@@ -111,24 +115,36 @@ def publish(path, value, *, replace=False):
             temporary.unlink()
 
 
-def _load_original(request):
+def _load_original(request, *, admitted_modules=None):
     """Use old package files, including deferred relative imports, without editing."""
     code = regular(request['original_declaration']['code'], directory=True)
     package = importlib.import_module('hiercp_v1x')
-    for name, module in list(sys.modules.items()):
-        if name.startswith('hiercp_v1x.') and name != __name__ and getattr(module, '__file__', None):
-            if not Path(module.__file__).absolute().is_relative_to(code):
-                raise ValueError('Scientific module was already imported from a different checkout: ' + name)
+    # Storage admission may deliberately load its SHA-bound historical helper
+    # under _readonly_admitted_base_<SHA>.  A later proof pass must reuse the
+    # exact modules admitted before that deferred import, rather than replay
+    # the first-import gate over those legitimate transitive dependencies.
+    if admitted_modules is None:
+        for name, module in list(sys.modules.items()):
+            if name.startswith('hiercp_v1x.') and name != __name__ and getattr(module, '__file__', None):
+                if not Path(module.__file__).absolute().is_relative_to(code):
+                    raise ValueError('Scientific module was already imported from a different checkout: ' + name)
+    elif (not isinstance(admitted_modules, tuple) or len(admitted_modules) != 5
+            or list(package.__path__) != [str(code / 'hiercp_v1x')]):
+        raise ValueError('Exact original admitted module tuple/package path required')
     package.__path__ = [str(code / 'hiercp_v1x')]
     if 'tools' in sys.modules:
         sys.modules['tools'].__path__ = [str(code / 'tools')]
     sys.path.insert(0, str(code))
-    modules = tuple(importlib.import_module('hiercp_v1x.' + name) for name in (
+    names = (
         'v24_scored_native_chain', 'v24_matched_basic_cp_pipeline', 'v24_matched_basic_cp_runtime',
-        'v24_nnunet_cp', 'v24_native_best_eval_runtime'))
-    for module in modules:
+        'v24_nnunet_cp', 'v24_native_best_eval_runtime')
+    modules = (tuple(importlib.import_module('hiercp_v1x.' + name) for name in names)
+        if admitted_modules is None else admitted_modules)
+    for name, module in zip(names, modules):
         if (not Path(module.__file__).absolute().is_relative_to(code)
-                or hasattr(module, 'ROOT') and Path(module.ROOT).absolute() != code):
+                or hasattr(module, 'ROOT') and Path(module.ROOT).absolute() != code
+                or sys.modules.get('hiercp_v1x.' + name) is not module
+                or module.__name__ != 'hiercp_v1x.' + name):
             raise ValueError('Frozen original module path differs: ' + module.__name__)
     return modules
 
@@ -312,9 +328,9 @@ def seal_request(request):
     return root / 'request.json'
 
 
-def admit(request, *, zero=True, resources=False):
+def admit(request, *, zero=True, resources=False, admitted_modules=None):
     validate_declaration(request); verify_new_code(request)
-    chain, pipeline, runtime, original, best = _load_original(request)
+    chain, pipeline, runtime, original, best = _load_original(request, admitted_modules=admitted_modules)
     cache = chain.FileProofCache(); old = request['original_declaration']
     chain.validate_declaration(old); chain.verify_code(old, cache); chain.preserve_predecessors(old, cache)
     verify_failure(request, chain, zero=zero)
@@ -464,7 +480,7 @@ def watch(request_path):
             result = child.wait()
         if result or violation:
             raise RuntimeError('Explicit startup retry failed ('+str(result)+'): '+str(violation)+'; preserved log '+str(log))
-        admit(request, zero=False)
+        admit(request, zero=False, admitted_modules=modules)
         pipeline.verify_admission(request['original_declaration']['storage_admission'])
         pipeline.check_aggregate_disk(pipeline.verify_admission(request['original_declaration']['storage_admission']),
             Path(request['original_declaration']['chain_root']), preparation=False)
@@ -478,4 +494,182 @@ def watch(request_path):
     except Exception as error:
         update(status='FAILED', error=type(error).__name__+': '+str(error), failed=time.time())
         raise
+    return state
+
+
+def validate_completion_request(request):
+    old = validate_declaration(request['failed_retry_declaration'])
+    root = absolute(request['recovery_root']); original_arm = Path(old['original_declaration']['chain_root'])
+    if (request.get('format') != COMPLETION_FORMAT or request.get('GPU_arm') != 6
+            or request.get('training_rerun') is not False or request.get('evaluation_rerun') is not False
+            or request.get('CUDA_compute') is not False or request.get('epochs') != 250
+            or request.get('physical_batch') != 2 or request.get('evaluation_checkpoint') != 'checkpoint_best.pth'
+            or request.get('python') != old['python'] or root.parent != original_arm
+            or root == Path(old['chain_root']) or root.name in ('native','bank')):
+        raise ValueError('Fresh CPU-only original full250/BEST26 artifact completion required')
+    required = {'failed_retry_request','status','registration','lease','global_retry_lease','entry_lease',
+        'training_started','train_log','actual_configuration','best_receipt','best_checkpoint','final_checkpoint'}
+    if not isinstance(request.get('proofs'), dict) or set(request['proofs']) != required:
+        raise ValueError('Exact failed retry and whole existing training/BEST evidence required')
+    code = absolute(request['code']); commit = request.get('commit'); manifest = request.get('code_files')
+    if (not isinstance(commit,str) or len(commit)!=40 or set(commit)-set('0123456789abcdef')
+            or not isinstance(manifest,dict) or not set(FILES)<=set(manifest)):
+        raise ValueError('Fresh completion code commit and manifest required')
+    for name, value in manifest.items():
+        if not isinstance(name,str) or Path(name).is_absolute() or '..' in Path(name).parts or not checksum(value):
+            raise ValueError('Exact tracked completion-code sources required')
+    if code == Path(old['code']):
+        raise ValueError('Completion repair must use a distinct fixed checkout')
+    if request.get('failed_retry_request') != request['proofs']['failed_retry_request']:
+        raise ValueError('Exact failed retry request witness required')
+    return request
+
+
+def build_completion_request(failed_retry_request_path, recovery_root, code, commit, code_files):
+    """Read-only declaration; training, predictions and failures remain intact."""
+    path = regular(failed_retry_request_path); old = validate_declaration(read(path))
+    root = path.parent; native = Path(old['native_path']).parent; fold = Path(old['fold'])
+    paths = dict(failed_retry_request=path,status=root/'status.json',registration=root/'registration.json',
+        lease=root/'lease.json',global_retry_lease=Path(old['original_declaration']['chain_root'])/'native_startup_retry.lease.json',
+        entry_lease=root/'entry.lease.json',training_started=root/'training_started.json',train_log=root/'train.log',
+        actual_configuration=native/'actual_nnunet_configuration.json',best_receipt=fold/'best_validation_complete.json',
+        best_checkpoint=fold/'checkpoint_best.pth',final_checkpoint=fold/'checkpoint_final.pth')
+    request = dict(format=COMPLETION_FORMAT,GPU_arm=6,recovery_root=str(absolute(str(recovery_root))),
+        code=str(absolute(str(code))),commit=commit,code_files=copy.deepcopy(code_files),python=old['python'],
+        failed_retry_declaration=old,proofs={key:proof(path) for key,path in paths.items()},
+        training_rerun=False,evaluation_rerun=False,CUDA_compute=False,epochs=250,physical_batch=2,
+        evaluation_checkpoint='checkpoint_best.pth')
+    request['failed_retry_request']=request['proofs']['failed_retry_request']
+    return validate_completion_request(request)
+
+
+def seal_completion_request(request):
+    validate_completion_request(request);root=absolute(request['recovery_root'])
+    if root.exists():
+        regular(root,directory=True)
+        if list(root.iterdir()):raise FileExistsError('Fresh empty completion namespace required')
+    else:
+        regular(root.parent,directory=True);root.mkdir(mode=0o700)
+    publish(root/'request.json',request)
+    return root/'request.json'
+
+
+def verify_completed_retry_evidence(request, chain, pipeline, best):
+    """Require the successful full CLI artifacts behind the post-proof failure."""
+    validate_completion_request(request);old=request['failed_retry_declaration'];root=Path(old['chain_root'])
+    fold=Path(old['fold']);native_path=Path(old['native_path']);arm=Path(old['original_declaration']['chain_root'])
+    paths=dict(failed_retry_request=root/'request.json',status=root/'status.json',registration=root/'registration.json',
+        lease=root/'lease.json',global_retry_lease=arm/'native_startup_retry.lease.json',entry_lease=root/'entry.lease.json',
+        training_started=root/'training_started.json',train_log=root/'train.log',
+        actual_configuration=native_path.parent/'actual_nnunet_configuration.json',
+        best_receipt=fold/best.RECEIPT,best_checkpoint=fold/best.BEST,final_checkpoint=fold/'checkpoint_final.pth')
+    for key, expected in paths.items():
+        if verify_proof(request['proofs'][key]) != expected:
+            raise ValueError('Existing completion witness path differs: '+key)
+    if read(root/'request.json') != old:raise ValueError('Preserved failed retry request changed')
+    state=read(root/'status.json');reg=read(root/'registration.json');lease=read(root/'lease.json')
+    expected_parent=[old['python'],'-B','-u',str(Path(old['code'])/'tools/run_v24_native_startup_retry.py'),
+        'watch','--request',str(root/'request.json')]
+    digest_old=request['failed_retry_request']['sha256'];error=state.get('error','')
+    if (state.get('format')!=STATUS_FORMAT or state.get('status')!='FAILED' or state.get('stage')!='train'
+            or not error.startswith(POST_PROOF_ERROR) or not checksum(error[len(POST_PROOF_ERROR):])
+            or state.get('GPU_arm')!=6 or state.get('UID')!=UID or state.get('actual_CPU_affinity')!=AFFINITY
+            or state.get('resource_violation') is not None or state.get('request_sha256')!=digest_old
+            or state.get('source_output')!=old['original_declaration']['source_output']
+            or state.get('full_native_training_completed') is not False
+            or state.get('full_native_evaluation_completed') is not False
+            or state.get('stages_completed')!=['prepare_native','calibrate_native']
+            or state.get('command')!=old['command'] or state.get('stage_log')!=str(root/'train.log')
+            or reg.get('pid')!=state.get('supervisor_pid') or reg.get('create_time')!=state.get('supervisor_create_time')
+            or reg.get('command')!=expected_parent or reg.get('request_sha256')!=digest_old
+            or reg.get('root')!=str(root) or reg.get('GPU_arm')!=6 or reg.get('UID')!=UID
+            or reg.get('CPU_affinity')!=AFFINITY or reg.get('commit')!=old['commit']
+            or lease.get('supervisor_pid')!=reg.get('pid') or lease.get('supervisor_create_time')!=reg.get('create_time')
+            or lease.get('pid')!=reg.get('pid') or lease.get('create_time')!=reg.get('create_time')
+            or lease.get('UID')!=UID or lease.get('command')!=expected_parent or lease.get('request_sha256')!=digest_old
+            or read(paths['global_retry_lease'])!=lease):
+        raise ValueError('Exact completed child/post-proof failed retry identity required')
+    entry=read(root/'entry.lease.json');started=read(root/'training_started.json')
+    if (entry.get('pid')!=state.get('child_pid') or entry.get('create_time')!=state.get('child_create_time')
+            or entry.get('command')!=old['command'] or entry.get('UID')!=UID or entry.get('request_sha256')!=digest_old
+            or started.get('format')!=FORMAT or started.get('command')!=old['command']
+            or started.get('native_path')!=old['native_path'] or started.get('original_request')!=old['original_request']
+            or started.get('original_calibration')!=old['proofs']['calibration']
+            or started.get('zero_update_startup_retry') is not True or started.get('epochs')!=250
+            or started.get('physical_batch')!=2 or started.get('evaluation_checkpoint')!=best.BEST
+            or started.get('binding')!=BINDING):
+        raise ValueError('Actual original full250/BEST retry entry/start binding required')
+    for pid,birth,command in ((reg['pid'],reg['create_time'],expected_parent),
+            (entry['pid'],entry['create_time'],old['command'])):
+        if chain.process_snapshot(pid,birth,command) is not None:
+            raise RuntimeError('Exact prior retry actor is still active; completion refused')
+    text=paths['train_log'].read_text(encoding='utf8')
+    epochs=[int(value) for value in re.findall(r'^\d{4}-\d\d-\d\d [^\n]*: Epoch (\d+)\s*$',text,re.MULTILINE)]
+    if (epochs!=list(range(250)) or 'Training done.' not in text or 'Validation complete' not in text
+            or 'Traceback (most recent call last):' in text):
+        raise ValueError('Actual complete successful epochs0..249 and full validation log required')
+    config=read(paths['actual_configuration'])
+    if (config.get('epochs')!=250 or config.get('physical_batch')!=2 or config.get('train_cases')!=105
+            or config.get('validation_cases')!=26 or config.get('patch_size')!=[128]*3
+            or config.get('CPU_workers')!=4 or config.get('source_entries')!=642
+            or config.get('candidate_count')!=128 or config.get('validation_checkpoint')!=best.BEST
+            or config.get('debug') is not False):
+        raise ValueError('Actual whole-scale completed native configuration required')
+    native=read(native_path)
+    validated=best.validate_best_validation_receipt(paths['best_receipt'],fold=fold,
+        expected_cases=native['split']['outer_val'],bank_sha256=native['bank_sha256'])
+    pipeline._guard_native(native_path);pipeline.validate_calibration(native_path)
+    for value in request['proofs'].values():verify_proof(value)
+    return validated
+
+
+def complete_existing_artifacts(request_path):
+    """Publish proofs for existing full250/BEST26 only; no training/evaluation CLI."""
+    import psutil
+    path=regular(request_path);request=validate_completion_request(read(path));root=regular(path.parent,directory=True)
+    if path!=Path(request['recovery_root'])/'request.json':raise ValueError('Exact fresh completion request path required')
+    if Path(__file__).resolve()!=Path(request['code'])/FILES[0]:raise ValueError('Exact fixed completion module required')
+    actor=psutil.Process()
+    if actor.uids().real!=UID or actor.cpu_affinity()!=AFFINITY:
+        raise ValueError('Own UID41833/original four CPUs required for CPU completion')
+    own_request_proof=proof(path)
+    if read(path)!=request:raise ValueError('Completion request changed during admission')
+    verify_new_code(request)
+    old=request['failed_retry_declaration']
+    # One first-import admission only: separately admitted historical storage
+    # helpers are retained for all later proofs in this process.
+    modules,storage,_=admit(old,zero=False,resources=False)
+    chain,pipeline,runtime,original,best=modules
+    validated=verify_completed_retry_evidence(request,chain,pipeline,best)
+    for value in request['proofs'].values():verify_proof(value)
+    arm=Path(old['original_declaration']['chain_root'])
+    if list(Path(old['native_path']).parent.glob('training_complete_*.json')) or (arm/'matched_storage_train.json').exists():
+        raise FileExistsError('Canonical completion already exists; explicit review required, no overwrite')
+    lease=dict(format=COMPLETION_FORMAT,pid=actor.pid,create_time=actor.create_time(),command=actor.cmdline(),
+        UID=UID,request_sha256=digest(path),recovery_root=str(root),training_rerun=False,evaluation_rerun=False,CUDA_compute=False)
+    publish(arm/'native_post_training_completion.lease.json',lease);publish(root/'lease.json',lease)
+    state=dict(format=COMPLETION_STATUS,GPU_arm=6,request_sha256=digest(path),source_output=old['original_declaration']['source_output'],
+        source_code=old['original_declaration']['source_code'],supervisor_pid=actor.pid,supervisor_create_time=actor.create_time(),
+        UID=UID,status='FINALIZING_EXISTING_ARTIFACTS',stage='train',child_pid=None,child_create_time=None,
+        stages_completed=['prepare_native','calibrate_native'],full_native_training_completed=False,
+        full_native_evaluation_completed=False,training_rerun=False,evaluation_rerun=False,CUDA_compute=False,
+        signals_sent=False,original_failed_records_overwritten=False,storage=storage)
+    publish(root/'status.json',state)
+    try:
+        verify_proof(own_request_proof);verify_new_code(request)
+        pipeline.check_aggregate_disk(pipeline.verify_admission(old['original_declaration']['storage_admission']),arm,preparation=False)
+        completion=publish_completion(old,pipeline,best)
+        for value in request['proofs'].values():verify_proof(value)
+        verify_proof(own_request_proof)
+        publish(root/'completion.json',dict(format=COMPLETION_FORMAT,status='COMPLETE',completion_proof=completion,
+            failed_retry_request=request['failed_retry_request'],best_validation_receipt=request['proofs']['best_receipt'],
+            full_native_training_completed=True,full_native_evaluation_completed=True,
+            training_rerun=False,evaluation_rerun=False,CUDA_compute=False))
+        state.update(status='COMPLETE',stage=None,stages_completed=['prepare_native','calibrate_native','train'],
+            full_native_training_completed=True,full_native_evaluation_completed=True,completion_proof=completion,
+            evaluation_checkpoint=best.BEST,completed_epochs=250,evaluated_cases=len(validated['validation_cases']),completed=time.time())
+    except Exception as error:
+        state.update(status='FAILED',error=type(error).__name__+': '+str(error),failed=time.time())
+        publish(root/'status.json',state,replace=True);raise
+    publish(root/'status.json',state,replace=True)
     return state
