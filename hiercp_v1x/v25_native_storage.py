@@ -133,7 +133,7 @@ def _components(document):
                    if Path(name).name not in custom)
     private += sum(row['bytes'] for row in document['custom_trainer_files'].values())
     return dict(four_private_metadata_GT_runtime_bytes=4*private,
-        native_global9_checkpoint_bytes=9*NATIVE_CHECKPOINT_BYTES,
+        native_global9_checkpoint_bytes=9*max(row['bytes'] for row in document['native_checkpoint_samples']),
         gnn_global9_checkpoint_bytes=9*document['gnn_checkpoint_measurement']['serialized_checkpoint_bytes'],
         four_additional_writable_bytes=sum(document['additional_writable_bytes'].values()))
 
@@ -185,8 +185,8 @@ def build_admission(*, group_root, arm_roots, inventory_path, baseline_preproces
     samples = [core.proof(path) for path in checkpoint_paths]
     if (len(samples) != 2 or {Path(row['path']).name for row in samples}
             != {'checkpoint_best.pth', 'checkpoint_final.pth'}
-            or max(row['bytes'] for row in samples) != NATIVE_CHECKPOINT_BYTES):
-        raise ValueError('Genuine BEST/final native checkpoint819237798-byte maximum required')
+            or max(row['bytes'] for row in samples) < NATIVE_CHECKPOINT_BYTES):
+        raise ValueError('Genuine complete BEST/final native checkpoint byte measurements required')
     for path in (group/'gnn_checkpoint_publication.lock', group/'native_final_publication.lock'):
         if path.exists() or path.is_symlink():
             raise FileExistsError('Fresh V25 publication coordination required: '+str(path))
@@ -202,7 +202,7 @@ def build_admission(*, group_root, arm_roots, inventory_path, baseline_preproces
         scores_reused=False, learned_upper_reused=False, source_arrays_written=False,
         model_data_scale_preserved=True, debug=False, admission_hash_workers=4)
     document['checkpoint_publication_proof'] = original_checkpoint._checkpoint_source_proof(
-        document, checkpoint_paths, NATIVE_CHECKPOINT_BYTES)
+        document, checkpoint_paths, max(row['bytes'] for row in samples))
     components = _components(document)
     required = sum(components.values())+RESERVE+GROWTH_MARGIN
     available = shutil.disk_usage(group).free
@@ -272,10 +272,10 @@ def verify_admission(value, *, full_hash=False):
                    for name, row in document['runtime_files'].items())):
         raise ValueError('Full131 static files must bind the exact original split and source paths')
     samples = document['native_checkpoint_samples']
-    if (len(samples) != 2 or max(row['bytes'] for row in samples) != NATIVE_CHECKPOINT_BYTES
+    if (len(samples) != 2 or max(row['bytes'] for row in samples) < NATIVE_CHECKPOINT_BYTES
             or {Path(row['path']).name for row in samples} != {'checkpoint_best.pth', 'checkpoint_final.pth'}):
         raise ValueError('Actual complete native checkpoint size witnesses changed')
-    rebuilt = original_checkpoint._checkpoint_source_proof(document, [row['path'] for row in samples], NATIVE_CHECKPOINT_BYTES)
+    rebuilt = original_checkpoint._checkpoint_source_proof(document, [row['path'] for row in samples], max(row['bytes'] for row in samples))
     if rebuilt != document['checkpoint_publication_proof']:
         raise ValueError('Original native checkpoint publication code changed')
     budget, components = document['budget'], _components(document)

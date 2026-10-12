@@ -122,7 +122,11 @@ class V25StorageDEBUGUnit(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'BEST/final'): self.admission()
         self.arguments['native_checkpoint_paths'] = [self.best, self.final]
         self.final.write_bytes(b'F'*38)
-        with self.assertRaisesRegex(ValueError, '819237798'): self.admission()
+        document=self.admission()
+        self.assertEqual(document['budget']['measured_components']['native_global9_checkpoint_bytes'],9*38)
+        self.assertEqual(document['checkpoint_publication_proof']['checkpoint_max_bytes'],38)
+        self.final.write_bytes(b'F'*39)
+        with self.assertRaises(ValueError):storage.verify_admission(document)
 
     def test_empty_optimizer_or_initial_only_measurement_not_admitted(self):
         self.arguments['gnn_checkpoint_measurement'] = dict(self.probe, full_optimizer_state=False)
