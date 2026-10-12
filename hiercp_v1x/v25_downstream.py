@@ -18,6 +18,7 @@ import time
 from . import v25_cp as cp
 from . import v25_native_cp as native
 from . import v25_native_storage as storage
+from . import v25_parallel_native_storage as wave_storage
 
 FORMAT='v25_full_own_arm_downstream_request_v1'
 STATUS_FORMAT='v25_full_own_arm_downstream_status_v1'
@@ -77,11 +78,36 @@ def _status(root,request,stage,state,*,error=None,proof=None):
     print(json.dumps(value,ensure_ascii=False),flush=True)
 
 
+def _allocation_binding(path,*,arm,gpu,cpu_affinity,group_root):
+    """Admit the real resource mode without labelling direct access as PBS."""
+    allocation=cp._read(path)
+    if (allocation.get('gpu')!=gpu or allocation.get('CPU_affinity')!=list(cpu_affinity)
+            or allocation.get('UID')!=41833 or allocation.get('owner')!='aicompetition06'
+            or not isinstance(allocation.get('GPU_UUID'),str)):
+        raise ValueError('Current exact GPU/CPU/UID proof required')
+    if allocation.get('format')=='v25_owned_GPU_allocation_v1':
+        if type(allocation.get('expires_at_unix'))not in (int,float):
+            raise ValueError('Actual owned PBS expiration required')
+    elif allocation.get('format')=='v25_explicit_direct_GPU_execution_v1':
+        from .v25_direct_resources import DirectAllocationLease
+        if (allocation.get('arm')!=arm or allocation.get('group_root')!=str(Path(group_root).absolute())
+                or allocation.get('PBS_owned_reservation')is not False
+                or allocation.get('explicit_direct_execution_authorized')is not True
+                or allocation.get('aggregate_native_and_cache_RSS_bytes')!=416*2**30
+                or allocation.get('canonical_cache_reserve_bytes')!=32*2**30):
+            raise ValueError('Own-arm explicit direct full four-native/cache resource proof required')
+        lease=DirectAllocationLease(path)
+        lease.verify(force=True)
+    else:
+        raise ValueError('Only truthful owned PBS or explicit direct resource proof admitted')
+    return allocation
+
+
 def _request(*,arm,gpu,output,score_overlay,storage_admission,project,basic_validation,
              cpu_affinity,allocation_request,evaluator_root):
     if arm not in storage.ARMS or type(gpu)is not int or gpu<0:
         raise ValueError('One explicit logical v2.5 arm and physical GPU required')
-    if allocation_request is None:raise ValueError('Actual current own allocation request required before downstream')
+    if allocation_request is None:raise ValueError('Actual current resource execution request required before downstream')
     admission_path=_regular(storage_admission);admission=storage.verify_admission(admission_path)
     root=Path(output).absolute()
     if str(root)!=admission['arm_roots'][arm]:raise ValueError('Downstream output must be exact reserved four-arm root')
@@ -90,13 +116,8 @@ def _request(*,arm,gpu,output,score_overlay,storage_admission,project,basic_vali
     if overlay['best_provenance']['arm']!=arm:raise ValueError('CP scores must come from this completed own-arm GNN BEST')
     if overlay['split']!=admission['split'] or overlay['baseline']!=admission['baseline']:
         raise ValueError('CP and native original full105/26 preprocessing/split must match')
-    allocation_path=_regular(allocation_request);allocation=cp._read(allocation_path)
-    if (allocation.get('format')!='v25_owned_GPU_allocation_v1' or allocation.get('gpu')!=gpu
-            or allocation.get('CPU_affinity')!=list(cpu_affinity)
-            or allocation.get('UID')!=41833 or allocation.get('owner')!='aicompetition06'
-            or not isinstance(allocation.get('GPU_UUID'),str)
-            or type(allocation.get('expires_at_unix'))not in (int,float)):
-        raise ValueError('Current exact owned GPU/CPU/UID/PBS proof required')
+    allocation_path=_regular(allocation_request)
+    _allocation_binding(allocation_path,arm=arm,gpu=gpu,cpu_affinity=cpu_affinity,group_root=root.parent)
     if len(set(cpu_affinity))!=len(cpu_affinity) or len(cpu_affinity)<4:
         raise ValueError('At least measured original four DA workers plus exact allocated CPU set required')
     project_path=_regular(project,directory=True);basic=_regular(basic_validation,directory=True)
@@ -373,11 +394,14 @@ def run_downstream(*,arm,gpu,output,score_overlay,storage_admission,project,basi
         native.early_stage_guard(stage_action='prepare-native',gpu=gpu)
         admission=storage.verify_admission(storage_admission)
         recovery={}
-        if (Path(admission['group_root'])/'sequential_native_wave.lease.json').exists():
+        effective,_=native.request()
+        wave_path=wave_storage.native_wave_path(storage_admission,arm,allocation_request=effective['allocation_request'])
+        if wave_path.exists():
             recovery=dict(recover_released_same_arm=True)
             if (root/'native_child.json').exists():recovery['predecessor_child']=root/'native_child.json'
             else:recovery['predecessor_status']=root/'status.json'
-        with storage.sequential_wave_lock(storage_admission,arm,request_sha256=cp._sha(path),**recovery):
+        with wave_storage.native_wave_lock(storage_admission,arm,request_sha256=cp._sha(path),
+                allocation_request=effective['allocation_request'],**recovery):
             _guard_request(request,path);storage.check_aggregate_disk(storage_admission,armroot)
             stage='prepare-native';_status(root,request,stage,'RUNNING')
             native_path=armroot/'native/native.json'

@@ -22,7 +22,8 @@ from . import v25_cp as cp
 ROOT=Path(__file__).resolve().parents[1]
 NATIVE_FORMAT='v25_four_arm_Basic642_full250_native_v1'
 FILES=('hiercp_v1x/v25_native_cp.py','hiercp_v1x/v25_native_storage.py','hiercp_v1x/v25_cp.py',
-    'hiercp_v1x/v25_context.py','hiercp_v1x/v25_downstream.py','tools/run_v25_downstream.py',
+    'hiercp_v1x/v25_context.py','hiercp_v1x/v25_downstream.py','hiercp_v1x/v25_direct_resources.py',
+    'hiercp_v1x/v25_parallel_native_storage.py','tools/run_v25_downstream.py',
     'hiercp_v1x/v24_matched_basic_cp_pipeline.py','hiercp_v1x/v24_matched_basic_cp_runtime.py',
     'hiercp_v1x/v24_nnunet_cp.py','hiercp_v1x/v24_matched_native_gradient.py',
     'hiercp_v1x/v24_native_gradient_runtime.py','hiercp_v1x/v24_native_best_eval_runtime.py',
@@ -261,13 +262,33 @@ def private_modules():
 
 
 def early_stage_guard(*,stage_action,gpu=None,chain_root=None):
-    """Own current PBS/device/CPU proof persists into every clone/native step."""
+    """Truthful owned PBS or explicit direct proof guards every native step."""
     import psutil
     declared,path=request();key=(str(path),os.environ[ENV_SHA],os.environ.get(ENV_EXECUTION_SHA))
     if gpu not in (None,declared['gpu']):raise ValueError('Native physical execution GPU changed')
     if key not in _GUARDS:
         import socket
         proof_path=Path(declared['allocation_request']);proof=cp._read(proof_path);digest=cp._sha(proof_path)
+        if digest!=declared['allocation_request_sha256']:
+            raise ValueError('Exact admitted native allocation proof changed')
+        if proof.get('format')=='v25_explicit_direct_GPU_execution_v1':
+            from .v25_direct_resources import DirectAllocationLease
+            lease=DirectAllocationLease(proof_path)
+            if (lease.request.get('gpu')!=declared['gpu']
+                    or lease.request.get('arm')!=declared['arm']
+                    or lease.request.get('CPU_affinity')!=declared['CPU_affinity']
+                    or lease.request.get('group_root')!=str(Path(declared['output']).parent)):
+                raise ValueError('Exact own-arm direct native device/CPU/group proof required')
+            def direct_guard():
+                if cp._sha(path)!=os.environ[ENV_SHA] or cp._sha(proof_path)!=digest:
+                    raise ValueError('Immutable direct native resource request changed')
+                request()
+                lease.select_cuda()
+                return require_project_budget()
+            lease.verify(force=True)
+            _GUARDS[key]=direct_guard
+            _GUARDS[key]()
+            return _GUARDS[key]
         if (proof.get('format')!='v25_owned_GPU_allocation_v1' or proof.get('gpu')!=declared['gpu']
                 or proof.get('CPU_affinity')!=declared['CPU_affinity'] or proof.get('UID')!=41833
                 or proof.get('owner')!='aicompetition06' or proof.get('node')!=socket.gethostname().split('.')[0]):

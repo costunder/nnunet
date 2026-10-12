@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +18,52 @@ from hiercp_v1x import v24_matched_basic_cp_runtime as original_runtime
 
 
 class UnchangedNativeRouteCPUUnit(unittest.TestCase):
+    def test_direct_native_guard_selects_exact_UUID_and_rejects_cross_arm(self):
+        from hiercp_v1x import v25_direct_resources as direct
+        with tempfile.TemporaryDirectory() as temporary,patch.dict(os.environ,{},clear=True):
+            group=Path(temporary);proof=group/'direct.json';path=group/'request.json'
+            binding=dict(format=direct.DIRECT_FORMAT,CPU_UNIT_SYNTHETIC_METADATA=True,
+                arm='A',gpu=6,GPU_UUID='GPU-CPU_UNIT_A',CPU_affinity=[0,1,2,3,4,5],group_root=str(group))
+            cp._publish(proof,binding)
+            declared=dict(format=downstream.FORMAT,arm='A',gpu=6,output=str(group/'A'),
+                CPU_affinity=binding['CPU_affinity'],allocation_request=str(proof),allocation_request_sha256=cp._sha(proof))
+            cp._publish(path,declared)
+            os.environ.update({native.ENV_REQUEST:str(path),native.ENV_SHA:cp._sha(path)})
+            selected=[]
+            def select():
+                os.environ['CUDA_VISIBLE_DEVICES']=binding['GPU_UUID'];selected.append(binding['GPU_UUID'])
+            lease=SimpleNamespace(request=binding,verify=lambda **kwargs:None,select_cuda=select)
+            with patch.object(direct,'DirectAllocationLease',return_value=lease) as constructor,\
+                    patch.object(native,'_GUARDS',{}),patch.object(native,'require_project_budget',return_value={'CPU_UNIT':True}):
+                guard=native.early_stage_guard(stage_action='train',gpu=6);guard()
+                self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'],'GPU-CPU_UNIT_A')
+                self.assertEqual(selected,['GPU-CPU_UNIT_A','GPU-CPU_UNIT_A'])
+                self.assertEqual(constructor.call_count,1)
+                binding['arm']='B'
+                with patch.object(native,'_GUARDS',{}),self.assertRaisesRegex(ValueError,'own-arm'):
+                    native.early_stage_guard(stage_action='train',gpu=6)
+
+    def test_downstream_direct_binding_requires_full_aggregate_and_truthful_mode(self):
+        from hiercp_v1x import v25_direct_resources as direct
+        with tempfile.TemporaryDirectory() as temporary:
+            group=Path(temporary);path=group/'direct.json';cpus=[0,1,2,3,4,5]
+            original=dict(format=direct.DIRECT_FORMAT,CPU_UNIT_SYNTHETIC_METADATA=True,
+                arm='D',gpu=4,GPU_UUID='GPU-CPU_UNIT_D',CPU_affinity=cpus,
+                UID=41833,owner='aicompetition06',group_root=str(group),PBS_owned_reservation=False,
+                explicit_direct_execution_authorized=True,aggregate_native_and_cache_RSS_bytes=416*2**30,
+                canonical_cache_reserve_bytes=32*2**30)
+            cp._publish(path,original)
+            lease=SimpleNamespace(verify=lambda **kwargs:None)
+            with patch.object(direct,'DirectAllocationLease',return_value=lease):
+                self.assertEqual(downstream._allocation_binding(path,arm='D',gpu=4,cpu_affinity=cpus,
+                    group_root=group),original)
+                for changed in (dict(original,PBS_owned_reservation=True),dict(original,arm='C'),
+                        dict(original,explicit_direct_execution_authorized=False),
+                        dict(original,aggregate_native_and_cache_RSS_bytes=128*2**30)):
+                    path.write_text(json.dumps(changed))
+                    with self.assertRaisesRegex(ValueError,'direct full'):
+                        downstream._allocation_binding(path,arm='D',gpu=4,cpu_affinity=cpus,group_root=group)
+
     def test_private_module_clone_routes_only_admission_resources_child_entries(self):
         old_pipeline=original_pipeline.prepare_native.__code__;old_runtime=original_runtime._install_overlay.__code__
         modules=native.private_modules();pipeline=modules['NATIVE_PIPELINE'];runtime=modules['NATIVE_RUNTIME']

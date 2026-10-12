@@ -1,0 +1,69 @@
+V2.5 실행 방식 고정 — GPU1/4/5/6, 공통 전처리 4분할
+
+2026-10-12 15:53 KST 실측에서 기존 준비 프로세스는 CPU 99.9%(주 스레드 한 개),
+RSS 11.69GiB였고 RTX A6000 7개 모두 CUDA process 0, GPU utilization 0%였다.
+기존 controller의 A→B→C→D 전체 순차 실행은 사용자 요구와 맞지 않아 교체한다.
+
+고정 배치
+A: GPU6 / U8에서 +8 / CPU32–37
+B: GPU5 / U16에서 +16 / CPU42–47
+C: GPU1 / U32에서 +32 / CPU16–21
+D: GPU4 / 처음부터 U128 / CPU0–5
+
+공통 CT/context canonical 14,102개는 한 번만 만든다. 환자 전체를 case 순서의
+index modulo4로 분할하여 네 독립 process가 각각 맡는다. 기존 canonical 파일은
+읽기 전용으로 query·tensor SHA를 검증하고 재사용한다. 각 process 안의 원래
+후보 worker4, 원래 builder와 seed, 48³ tensor와 그래프 전체 규칙은 유지한다.
+공통 source/record publication만 POSIX flock으로 보호한다. 네 shard 전체의
+ID집합·patient binding·실제 원본 파일과 tensor SHA를 합쳐 원래 index를 발행한다.
+
+전처리 완료 후 네 arm은 같은 canonical/upper cache를 공유한다. 각자 공식
+STU-Net-S에서 새 optimizer로 GNN40epoch/680update를 수행하고, 자기 full128
+BEST→Basic 동일81명/642source×128위치→nnU-Net250epoch→checkpoint_best.pth
+전체26명 평가를 각 GPU에서 독립적으로 수행한다. 다른 arm의 native/평가 완료를
+기다리지 않는다. Physical GNN batch4, native batch2/128³와 원래 loss는 유지한다.
+
+실행 entry point는 tools/run_v25_parallel_pipeline.py와
+tools/run_v25_execution.py이다. 기존 단일GPU controller를 새 실험의 기본으로
+복사하지 않는다. 각 slot의 GPU/UUID, 별도 CPU6개, 실제 controller PID/birth/argv/UID,
+동일 호스트 할당 수명, cgroup과 host RAM을 별도 direct execution proof로 기록한다.
+PBS_owned_reservation=False를 명시하며 GPU6 할당을 다른 GPU 소유 증거로 쓰지 않는다.
+외부 CUDA PID가 발견되면 해당 stage가 오류를 내고 checkpoint/log를 보존한다.
+
+전체 전처리 host 예산은 worker64GiB×4+공유cache32GiB=288GiB,
+전체 native host 예산은 각 process/자식96GiB×4+공유cache32GiB=416GiB이다.
+실제 controller/stage cgroup 한도와 available host RAM을 검증한다. 단일 PBS128GiB
+예산으로 네 작업을 소유한 것처럼 기록하지 않는다. 사용자 승인된 기존 직접 실행
+방식이며 다른 사용자 process나 셸/SSH/session을 종료하지 않는다.
+
+Native 학습을 한 arm만 허용하던 전체 wave lease는 direct 모드에서 arm별 lease로
+분리한다. Global9 checkpoint 저장/final publication lock, 저장공간 계산과 원본
+native 저장 함수는 그대로 유지한다. 원래 v25_native_storage.py와 frozen scientific
+factory/preparation/training/CLI byte를 바꾸지 않아 기존 canonical identity를 보존한다.
+
+Viewer는 기존 UI2/GNN9행/CP8행/native 원래 timestamp 로그 양식을 유지한다.
+전처리 진행은 네 writer가 만든 실제 공통 records 파일 개수를 같은 progress행에
+표시한다. Arm별 viewer의 GPU/학습/후속 상태는 각각의 실제 process와 logfile에서 읽는다.
+
+검증 구분
+CPU 단위 검사는 분할 합집합/중복, tensor 변조 거부, partial cache 보존, 원본 index
+합성, immutable source/proof, GPU/CPU 배치, 외부 CUDA process와 cgroup 제한 거부를
+검증한다. CPU 검사 통과를 실제 full STU-Net CUDA 학습이나 최종 평가 완료로 표현하지 않는다.
+실제 production 전처리4 process와 이후 CUDA calibration/full40/full250/BEST26 결과는
+서버의 실제 execution receipt와 각 arm의 complete 증거로 확인한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

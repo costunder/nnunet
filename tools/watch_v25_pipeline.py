@@ -149,7 +149,17 @@ class GNNObservation(original.Viewer):
     def _tail(self,path,byte_count=16384):
         if Path(path)==self.root/'console.log':
             path=self.observed_log
-        return original.log_tail(input_path(path),byte_count) if path else []
+        lines = original.log_tail(input_path(path),byte_count) if path else []
+        command = (self.observed_actor or {}).get('command', [])
+        if '--parallel-prepare' in command and '--input-cache' in command:
+            cache = input_path(command[command.index('--input-cache')+1])
+            records = cache/'local/records'
+            # Reuse the established canonical progress row. Count actual stored
+            # records from all four writers, rather than one shard's log count.
+            if records.is_dir() and not (cache/'local/index.json').exists():
+                done = sum(1 for record in records.glob('*.pt.gz'))
+                lines.append(f'v2.5 GT-free CPU canonical four_process: {done}/14102 records')
+        return lines
 
     def _rss(self,status,latest):
         if self.observed_actor is not None:
