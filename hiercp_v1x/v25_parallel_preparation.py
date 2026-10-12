@@ -14,10 +14,12 @@ import copy
 import gzip
 import hashlib
 import io
+import importlib
 import json
 import multiprocessing
 import os
 from pathlib import Path
+import sys
 import time
 import traceback
 import types
@@ -38,10 +40,87 @@ WORKER_RSS_BYTES = 64 * 2**30
 CACHE_BYTES = 32 * 2**30
 HOST_BYTES = WORKER_COUNT * WORKER_RSS_BYTES + CACHE_BYTES
 _FROZEN_PREPARE_LOCAL = factory.V25NativeInputs.prepare_local
+TOOLS_BOOTSTRAP_FORMAT = 'v25_spawn_exact_parent_tools_namespace_v1'
 
 
 def _sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def capture_tools_namespace():
+    """Capture the already successful parent's tools package, before spawn.
+
+    The sealed v1 runtime adds its archive root to sys.path. Spawn inherits
+    that path order but not the parent's loaded packages, so the archive's
+    regular tools package otherwise hides later frozen provenance helpers.
+    """
+    package = importlib.import_module('tools')
+    required = 'tools.run_v18_independent'
+    module = importlib.import_module(required)
+    frozen_tools = Path(factory.__file__).resolve().parents[1]/'tools'
+    paths = [str(Path(value).resolve(strict=True)) for value in package.__path__]
+    if str(frozen_tools.resolve(strict=True)) not in paths:
+        raise ValueError('Successful parent tools package does not include the frozen factory tools path')
+    required_path = Path(module.__file__).resolve(strict=True)
+    if required_path != (frozen_tools/'run_v18_independent.py').resolve(strict=True):
+        raise ValueError('Parent native provenance helper is not the exact frozen tools module')
+    package_file = Path(package.__file__).resolve(strict=True)
+    modules = {}
+    for name,loaded in list(sys.modules.items()):
+        if name.startswith('tools.') and getattr(loaded,'__file__',None):
+            path = Path(loaded.__file__).resolve(strict=True)
+            if path.suffix == '.py':
+                modules[name] = dict(path=str(path),sha256=sha(path))
+    value = dict(format=TOOLS_BOOTSTRAP_FORMAT,tools_package_search_paths=paths,
+        frozen_tools_path=str(frozen_tools.resolve(strict=True)),
+        parent_package_file=str(package_file),parent_package_sha256=sha(package_file),
+        required_modules=[required],module_files=modules,
+        archived_hiercp_package_redirected=False)
+    value['content_sha256'] = canonical_hash(value)
+    return value
+
+
+def bootstrap_tools_namespace(proof):
+    """Pin only tools to the parent's admitted package paths, never hiercp."""
+    expected = {'format','tools_package_search_paths','frozen_tools_path',
+        'parent_package_file','parent_package_sha256','required_modules',
+        'module_files','archived_hiercp_package_redirected','content_sha256'}
+    if (not isinstance(proof,dict) or set(proof) != expected
+            or proof['format'] != TOOLS_BOOTSTRAP_FORMAT
+            or proof['archived_hiercp_package_redirected'] is not False
+            or proof['content_sha256'] != canonical_hash({key:value for key,value in proof.items() if key!='content_sha256'})
+            or proof['required_modules'] != ['tools.run_v18_independent']
+            or proof['frozen_tools_path'] not in proof['tools_package_search_paths']):
+        raise ValueError('Exact sealed parent tools namespace proof required')
+    if sha(proof['parent_package_file']) != proof['parent_package_sha256']:
+        raise ValueError('Admitted parent tools package initializer changed')
+    for name,item in proof['module_files'].items():
+        if not name.startswith('tools.') or set(item) != {'path','sha256'} or sha(item['path']) != item['sha256']:
+            raise ValueError('Admitted parent tools module source changed')
+    package = importlib.import_module('tools')
+    # Both observed server initializers are the same empty sealed bytes. Never
+    # silently replace a package whose initializer has different semantics.
+    if sha(package.__file__) != proof['parent_package_sha256']:
+        raise ValueError('Spawned shadow tools initializer differs from the admitted parent')
+    paths = [str(Path(value).resolve(strict=True)) for value in proof['tools_package_search_paths']]
+    if paths != proof['tools_package_search_paths']:
+        raise ValueError('Admitted parent tools search path changed')
+    package.__path__ = paths
+    if package.__spec__ is not None:
+        package.__spec__.submodule_search_locations = paths
+    for name in proof['required_modules']:
+        module = importlib.import_module(name)
+        expected_file = proof['module_files'][name]
+        if str(Path(module.__file__).resolve(strict=True)) != expected_file['path'] or sha(module.__file__) != expected_file['sha256']:
+            raise ValueError('Spawned tools provenance helper did not resolve to the exact parent source')
+    for name,item in proof['module_files'].items():
+        loaded = sys.modules.get(name)
+        if loaded is not None and (str(Path(loaded.__file__).resolve(strict=True)) != item['path']
+                or sha(loaded.__file__) != item['sha256']):
+            raise ValueError('An already loaded spawn tools module differs from the exact parent source')
+    return dict(parent_tools_namespace_sha256=proof['content_sha256'],
+        tools_package_search_paths=list(package.__path__),
+        exact_parent_required_module_files=True,archived_hiercp_package_redirected=False)
 
 
 def split_cases(cases):
@@ -257,6 +336,7 @@ def _worker(payload, cancellation):
     try:
         if _sha(__file__) != payload['execution_source_sha256']:
             raise ValueError('Parallel execution source bytes changed')
+        bootstrap_tools_namespace(payload['tools_namespace_proof'])
         from .v25_preparation import install_runtime
         install_runtime(factory)
         psutil.Process().cpu_affinity(payload['CPU_affinity'])
@@ -374,6 +454,7 @@ def prepare_four_way(inputs, *, native_experiment, inventory_path, execution_roo
         worker_processes=4,row_threads_per_process=4,CPU_affinity=cpu_affinity,
         resource_admission=copy.deepcopy(resource_admission),scheduler_reservation_inferred=False,
         scientific_sources_unchanged=True,debug=False)
+    request['tools_namespace_proof'] = capture_tools_namespace()
     if execution_slots is not None:
         if len(execution_slots) != WORKER_COUNT:
             raise ValueError('Exactly four separately admitted execution slots required')

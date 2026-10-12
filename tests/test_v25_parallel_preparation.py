@@ -3,8 +3,10 @@ from contextlib import nullcontext
 import copy
 import gzip
 import io
+import importlib
 import json
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -246,6 +248,54 @@ class ParallelPreparationCPUUnit(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'disjoint admitted CPU'):
                 parallel.prepare_local_parallel(self.inputs(),path)
         prepare.assert_not_called()
+
+    def namespace_fixture(self):
+        frozen=self.root/'UNIT_frozen';archive=self.root/'UNIT_archive'
+        for directory in (frozen,archive):
+            (directory/'tools').mkdir(parents=True)
+            (directory/'tools/__init__.py').write_text('')
+        (frozen/'hiercp_v1x').mkdir()
+        factory_file=frozen/'hiercp_v1x/v25_factory.py';factory_file.write_text('# CPU UNIT path witness\n')
+        (frozen/'tools/run_v18_independent.py').write_text('CPU_UNIT_ORIGIN = "frozen_parent"\n')
+        return frozen,archive,factory_file
+
+    @staticmethod
+    def forget_tools():
+        for name in list(sys.modules):
+            if name=='tools' or name.startswith('tools.'):
+                sys.modules.pop(name)
+
+    def test_spawn_archive_regular_tools_shadow_is_repaired_to_exact_parent_namespace(self):
+        frozen,archive,factory_file=self.namespace_fixture()
+        with patch.dict(sys.modules),patch.object(sys,'path',[str(frozen),str(archive)]+sys.path), \
+             patch.object(parallel.factory,'__file__',str(factory_file)):
+            self.forget_tools()
+            parent=importlib.import_module('tools.run_v18_independent')
+            proof=parallel.capture_tools_namespace()
+            self.assertEqual(parent.CPU_UNIT_ORIGIN,'frozen_parent')
+            self.forget_tools();sys.path[:2]=[str(archive),str(frozen)]
+            package=importlib.import_module('tools')
+            self.assertEqual(Path(package.__file__).parent,archive/'tools')
+            with self.assertRaises(ModuleNotFoundError):importlib.import_module('tools.run_v18_independent')
+            hiercp_before=sys.modules.get('hiercp')
+            receipt=parallel.bootstrap_tools_namespace(proof)
+            child=importlib.import_module('tools.run_v18_independent')
+            self.assertEqual(Path(child.__file__),frozen/'tools/run_v18_independent.py')
+            self.assertEqual(child.CPU_UNIT_ORIGIN,'frozen_parent')
+            self.assertEqual(list(package.__path__),proof['tools_package_search_paths'])
+            self.assertIs(sys.modules.get('hiercp'),hiercp_before)
+            self.assertFalse(receipt['archived_hiercp_package_redirected'])
+
+    def test_namespace_bootstrap_rejects_changed_frozen_provenance_helper(self):
+        frozen,archive,factory_file=self.namespace_fixture()
+        with patch.dict(sys.modules),patch.object(sys,'path',[str(frozen),str(archive)]+sys.path), \
+             patch.object(parallel.factory,'__file__',str(factory_file)):
+            self.forget_tools();importlib.import_module('tools.run_v18_independent')
+            proof=parallel.capture_tools_namespace()
+            self.forget_tools();sys.path[:2]=[str(archive),str(frozen)]
+            (frozen/'tools/run_v18_independent.py').write_text('CPU_UNIT_ORIGIN = "changed"\n')
+            with self.assertRaisesRegex(ValueError,'module source changed'):
+                parallel.bootstrap_tools_namespace(proof)
 
 
 if __name__=='__main__':unittest.main()
