@@ -95,6 +95,26 @@ class AuthorizedBAdmissionCPUUnit(unittest.TestCase):
         self.assertEqual(pin['next_epoch_cursor']['train_position'],28)
         self.assertEqual(pin['completed_epochs'],3)
 
+    def test_actual_integer_recalled_P_keys_preserve_winning_report_after_JSON_serialization(self):
+        # Actual reports keep threshold keys 1/5/10 as ints in torch checkpoint
+        # dictionaries and serialize them to strings in the JSON publication.
+        winning=self.beststate['pending_epoch_completion']['full_validation']
+        historical=self.state['history'][0]['full_validation']
+        for report in (winning,historical):
+            for row in report['cases']:
+                row['recalled_observed_P']={1:1,5:2,10:3}
+        self.publish()
+        saved=json.loads((self.training/'full_validation_epoch_001.json').read_text())
+        self.assertNotEqual(winning,saved)
+        self.assertEqual(digest(winning),digest(saved))
+        self.validate(self.pin())
+        # Value changes still fail the binding even though BEST selection scalar
+        # metadata remains unchanged and checkpoint content hashes are valid.
+        winning['cases'][0]['recalled_observed_P'][1]=4
+        self.publish()
+        with self.assertRaisesRegex(ValueError,'BEST model full128 winning report'):
+            self.pin()
+
     def test_checkpoint_report_identity_and_full_patient_changes_are_refused(self):
         for mutate in ('patient','counter','best','identity','report'):
             with self.subTest(mutate=mutate):

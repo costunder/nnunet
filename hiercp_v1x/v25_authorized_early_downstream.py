@@ -167,7 +167,7 @@ def inspect_partial_best(training_root, *, authorization_path, bound_identity=No
                 raise ValueError('Original published completed patient/U report differs: '+str(path))
             reports[str(path)]=witness(path)
     winning=best['state']['pending_epoch_completion']['full_validation']
-    if winning!=read(root/f'full_validation_epoch_{state["best"]["epoch"]:03d}.json'):
+    if digest(winning)!=digest(read(root/f'full_validation_epoch_{state["best"]["epoch"]:03d}.json')):
         raise ValueError('Actual BEST model full128 winning report binding differs')
     for proof in (*guards.values(),*reports.values()):verify_witness(proof)
     result=dict(format=PIN_FORMAT,arm='B',physical_GPU=5,debug=False,full_training=False,
