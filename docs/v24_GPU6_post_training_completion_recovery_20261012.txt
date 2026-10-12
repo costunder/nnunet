@@ -33,6 +33,13 @@ v2.4 GPU6 학습 후 완료 기록 복구 — 2026-10-12
 - 실제 direct/common viewer --json은 COMPLETE/full native flags True,
   250epochs/BEST26/read_problem=null로 확인했다.
   GPU6_COMPLETION_FRONTDOORS_VERIFIED_1791779874696683500.json.
+- 최종 표시 commit bb5246341f730240676875f74edd17c4878444d0도 서버에 별도로 배포했다.
+  Windows71개 / Linux71개 관련 검사를 통과했다. 기존 b281947 완료 producer와
+  완료 요청은 변경하거나 다시 실행하지 않았다.
+- 실제 최종 --once 화면은 GPU6 | nnU-Net | COMPLETE,
+  nnU-Net250/250 epoch | physical batch2, 자기 BEST26/26 checkpoint_best.pth,
+  CP642/642 source |82176/82176이다. 완료를 CP 대기 화면으로 표시하지 않는다.
+  최종 적용 receipt: GPU6_COMPLETION_FRONTDOORS_VERIFIED_1791780268187369400.json.
 - receipt와 서버 산출물은 코드 Git에 넣지 않는다. SHA-bound producer/request/code는 보존한다.
 
 안정 조회 경로
@@ -56,6 +63,8 @@ GPU4/GPU5 현재 제한
   job을 지우거나 SSH/interactive allocation을 종료하지 않았다.
 - 새 충분한 할당 없이는 GPU4/5 전체 stage를 재개했다고 보고하지 않는다.
   score/prepare8h, train7h, expiry reserve180초 계약과250epoch는 유지한다.
+- 사용자가 '지금은 GPU6 복구부터 마쳐'로 우선순위를 지정했다.
+  이번 실제 서버 적용 완료는 GPU6이다. GPU4/5 새 할당 실행은 후속 작업으로 남는다.
 
 작업 완료 체크리스트
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
