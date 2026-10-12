@@ -43,6 +43,6 @@ PBS 만료180초 전부터 새 CUDA chunk를 거부하고 마지막 실제 check
 - [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. v2.5 실제 CUDA 시작 전이다.
 - [x] 디버그 설정과 최종 설정을 분리했다.
 - [x] dummy, placeholder, random fallback을 사용하지 않았다.
-- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 전체 모델 CPU DEBUG 검증 통과, 실제 v2.5 CUDA 증거는 준비 후 확인한다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 실제 학습 controller의 CPU DEBUG 검증 통과, 전체 v2.5 모델의 실제 CT/CUDA 증거는 준비 후 확인한다.
 - [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
 - [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

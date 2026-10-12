@@ -41,6 +41,22 @@ def unlocked_fixture(path):
 
 
 class V25StorageDEBUGUnit(unittest.TestCase):
+    def test_real_STU_extra_state_contract_is_not_mistaken_for_a_model_tensor(self):
+        import torch
+        from hiercp_v1x.v24_stunet import CHECKPOINT_SHA256,CHANNELS,DEPTHS,POOL_STRIDES
+        state=dict(format='v24_stunet_small_L0_v1',checkpoint_sha256=CHECKPOINT_SHA256,
+            encoder_channels=list(CHANNELS),encoder_depths=list(DEPTHS),pool_strides=[list(row) for row in POOL_STRIDES],
+            pretrained=True,encoder_trainable=True,segmentation_decoder_constructed=False,
+            local_message_passing=False,all_six_encoder_scales_used=True,recipient_tumor_GT_available=False)
+        # CPU UNIT metadata-only shape fixture; no weights/training/completion claim.
+        model={'CPU_UNIT_shape':torch.empty(13331793,device='meta'),'local_encoder._extra_state':state}
+        proof=storage._model_tensor_measurement(model,13331792)
+        self.assertEqual(proof['model_tensor_numel_including_buffers'],13331793)
+        with self.assertRaisesRegex(ValueError,'official full STU'):
+            storage._model_tensor_measurement(dict(model,**{'local_encoder._extra_state':dict(state,pretrained=False)}),13331792)
+        with self.assertRaisesRegex(ValueError,'extra_state'):
+            storage._model_tensor_measurement(dict(model,unknown={'CPU_UNIT':True}),13331792)
+
     def setUp(self):
         fixture = readonly_unit.ReadonlyNativeStorageUnit()
         fixture.setUp(); self.addCleanup(fixture.doCleanups)

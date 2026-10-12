@@ -34,6 +34,24 @@ _CHECKPOINT_BINDINGS = {}
 _GNN_BINDINGS = {}
 
 
+def _model_tensor_measurement(model,count):
+    import torch
+    from .v24_stunet import CHECKPOINT_SHA256,CHANNELS,DEPTHS,POOL_STRIDES
+    extras={name:value for name,value in model.items() if not isinstance(value,torch.Tensor)}
+    if set(extras)!={'local_encoder._extra_state'}:
+        raise ValueError('Only original STU encoder contract extra_state is admitted')
+    state=extras['local_encoder._extra_state']
+    expected=dict(format='v24_stunet_small_L0_v1',checkpoint_sha256=CHECKPOINT_SHA256,
+        encoder_channels=list(CHANNELS),encoder_depths=list(DEPTHS),pool_strides=[list(row) for row in POOL_STRIDES],
+        pretrained=True,encoder_trainable=True,segmentation_decoder_constructed=False,
+        local_message_passing=False,all_six_encoder_scales_used=True,recipient_tumor_GT_available=False)
+    if not isinstance(state,dict) or any(state.get(key)!=value for key,value in expected.items()):
+        raise ValueError('Original official full STU encoder metadata required')
+    total=sum(value.numel() for value in model.values() if isinstance(value,torch.Tensor))
+    if total<count:raise ValueError('Measured checkpoint cannot omit original model tensors')
+    return dict(model_tensor_numel_including_buffers=total,STU_extra_state_sha256=canonical_hash(state))
+
+
 def _positive(value, name, *, zero=False):
     if type(value) is not int or value < (0 if zero else 1):
         raise ValueError('Explicit measured integer bytes required: ' + name)
@@ -65,16 +83,15 @@ def measure_gnn_checkpoint(path):
                 or not torch.isfinite(torch.as_tensor(step)).all() or float(step) < 1):
             raise ValueError('Genuine finite populated AdamW moments required')
         count += first.numel()
-    if count != 13331792 or any(not isinstance(value, torch.Tensor) for value in model.values()):
+    if count != 13331792:
         raise ValueError('Original13331792-parameter full-STU checkpoint required')
-    if sum(value.numel() for value in model.values()) < count:
-        raise ValueError('Measured checkpoint cannot omit original model tensors')
+    model_metadata=_model_tensor_measurement(model,count)
     core.guard(witness, full_hash=True)
     return dict(format=GNN_PROBE_FORMAT, file=witness, actual_serialization=True,
         full_optimizer_state=True, optimizer_parameters=537, model_parameter_count=count,
         serialized_checkpoint_bytes=witness['bytes'], observed_training_format=saved.get('format'),
         actual_v25_checkpoint=saved.get('format') == 'v25_all_P_patient_balanced_shared_context_training_v1',
-        training_completion_claim=False)
+        training_completion_claim=False,**model_metadata)
 
 
 def _gnn_probe(value, *, full_hash=False):
