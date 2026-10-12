@@ -64,7 +64,7 @@ OLD_COMMIT='8ff98768793b692cfbb0f3d180fbd4cb1b2609b1'
 OLD_CONTROLLER=(2510561,1791811611.99)
 PEER_CONTROLLER=(2553369,1791817518.53)
 PEER_COMMIT='2db93521a9462b2209a8f25c1c84e0bce5ba1855'
-PEER_ACTORS={'A':2553653,'B':2553654,'D':2553655}
+PEER_ACTORS={'A':(2553653,1791817545.92),'B':(2553654,1791817545.94),'D':(2553655,1791817545.97)}
 peer_code=group/'code_ABD_recovery_2db93521a946'
 peerlaunchpath=group/'ABD_recovery_controller_launch_ABD_recovery_2db93521a946.json'
 peersealpath=group/'ABD_recovery_continuation_seal_ABD_recovery_2db93521a946.json'
@@ -93,6 +93,32 @@ def publish(path,value):
   json.dump(value,stream,indent=2,allow_nan=False);stream.flush();os.fsync(stream.fileno())
 def same(path,digest):
  if sha(regular(path))!=digest:raise ValueError('Immutable file changed: '+str(path))
+def metadata(path):
+ info=regular(path).stat()
+ return{key:getattr(info,key)for key in('st_dev','st_ino','st_mode','st_uid','st_gid','st_size','st_mtime_ns','st_ctime_ns','st_nlink')}
+def copy_immutable(source,target,digest):
+ before=metadata(source)
+ # Never hardlink: creating a link changes the original inode ctime and
+ # invalidates a running forward-input guard, even when bytes are unchanged.
+ with regular(source).open('rb')as stream,target.open('xb')as output:
+  shutil.copyfileobj(stream,output,2**20);output.flush();os.fsync(output.fileno())
+ shutil.copystat(source,target,follow_symlinks=False)
+ same(source,digest);same(target,digest)
+ if metadata(source)!=before:raise RuntimeError('Original source inode metadata changed during independent copy')
+ if(source.stat().st_dev,source.stat().st_ino)==(target.stat().st_dev,target.stat().st_ino):
+  raise RuntimeError('Independent new code inode required; no original hardlink')
+ return before
+def execution_profile(relative,explicit):
+ relative=pathlib.PurePosixPath(relative)
+ if str(relative)in explicit:return True
+ # Only inactive repository documentation, bytecode and historical source
+ # archives are excluded. All actual package/tool/config code is preserved.
+ # v1's archive is a real runtime input and is ALWAYS copied in its entirety.
+ if relative.parts[:2]==('versions','v1'):return True
+ if '__pycache__'in relative.parts or relative.suffix=='.pyc':return False
+ if relative.parts[0]in('docs','.git','outputs','tmp','DEBUG_owned_D'):return False
+ if relative.parts[0]=='versions'and('history'in relative.parts or relative.suffix=='.zip'):return False
+ return True
 def actor(process):
  if process.status()==psutil.STATUS_ZOMBIE:raise RuntimeError('Live actor became zombie; no signal')
  result=dict(pid=process.pid,create_time=process.create_time(),command=process.cmdline(),UID=process.uids().real)
@@ -134,20 +160,53 @@ def protected_actors():
      or launch['private_code']!=str(peer_code) or launch['seal']!=str(peersealpath)
      or peer['controller_identity']!=identity or peer['private_code']!=str(peer_code)):
   raise RuntimeError('Exact unchanged deployed ABD controller and seal required')
- exact(identity);children={}
+ try:peer_process=psutil.Process(identity['pid'])
+ except psutil.NoSuchProcess:peer_process=None
+ if peer_process is not None:
+  if peer_process.status()==psutil.STATUS_ZOMBIE:
+   if(peer_process.create_time(),peer_process.uids().real)!=(identity['create_time'],UID):
+    raise RuntimeError('Exact naturally terminal ABD controller PID/birth/UID required')
+  else:exact(identity)
+ children={};terminal={}
  for arm in 'ABD':
   status=json.loads(regular(group/arm/'monitor/status.json').read_bytes())
   child=dict(pid=status.get('child_pid'),create_time=status.get('child_create_time'),command=status.get('child_command'),UID=status.get('UID'))
-  if(status.get('status')!='RUNNING'or status.get('stage')!='train'
-      or child['pid']!=PEER_ACTORS[arm]or status.get('controller_pid')!=identity['pid']):
-   raise RuntimeError('Actual unchanged live ABD training actors required')
-  process=exact(child);parent=process.parent()
-  if parent is None or actor(parent)!=identity:raise RuntimeError('Exact live ABD controller lineage required')
-  children[arm]=child
+  if(status.get('status')not in('RUNNING','FAILED')or status.get('stage')!='train'
+      or(child['pid'],child['create_time'])!=PEER_ACTORS[arm]or status.get('controller_pid')!=identity['pid']):
+   raise RuntimeError('Actual exact live or naturally failed ABD training actors required')
+  slot=peer['slots'][arm];command=child['command']
+  if(command[:4]!=['/home/aicompetition06/.conda/envs/nnunet/bin/python3.10','-B','-u',str(peer_code/'tools/run_v25_ad_execution.py')]
+      or child['UID']!=UID or any(argument(command,flag)!=expected for flag,expected in(
+       ('--arm',arm),('--gpu',str(slot['gpu'])),('--mode','train'),('--output',str(group/arm)),
+       ('--continuation-seal',str(peersealpath)),('--allocation-request',slot['direct_proof']['path'])))):
+   raise RuntimeError('Exact unchanged ABD own stage argv/GPU/output/proof binding required')
+  if status['status']=='RUNNING':
+   process=exact(child);parent=process.parent()
+   if parent is None or actor(parent)!=identity:raise RuntimeError('Exact live ABD controller lineage required')
+   children[arm]=child
+  else:
+   released(child);log=regular(status['stage_log'])
+   if not log.is_relative_to(group/arm/'monitor')or 'Traceback (most recent call last)'not in log.read_text():
+    raise RuntimeError('Exact own failed ABD traceback required')
+   terminal[arm]=dict(actor=child,monitor_sha256=sha(group/arm/'monitor/status.json'),failure_log=dict(path=str(log),sha256=sha(log)))
  gpu0=actor(psutil.Process(LIVE_GPU0[0]))
  if(gpu0['pid'],gpu0['create_time'])!=LIVE_GPU0 or not any('nnUNet' in token for token in gpu0['command']):
   raise RuntimeError('Exact live GPU0 nnU-Net actor required')
- return dict(old_controller=controller,ABD_controller=identity,ABD=children,GPU0=gpu0)
+ if children and(peer_process is None or peer_process.status()==psutil.STATUS_ZOMBIE):
+  raise RuntimeError('Live ABD stage requires its exact live controller')
+ return dict(old_controller=controller,ABD_controller=identity,ABD=children,ABD_failed=terminal,GPU0=gpu0)
+def protected_transition(before,after):
+ if any(before[key]!=after[key]for key in('old_controller','ABD_controller','GPU0')):
+  raise RuntimeError('Protected controller/GPU0 identity changed')
+ for arm in 'ABD':
+  if arm in before['ABD_failed']:
+   if after['ABD_failed'].get(arm)!=before['ABD_failed'][arm]:
+    raise RuntimeError('Previously failed ABD actor/evidence changed')
+  elif arm in before['ABD']:
+   actual=after['ABD'].get(arm)or after['ABD_failed'].get(arm,{}).get('actor')
+   if actual!=before['ABD'][arm]:raise RuntimeError('Protected exact ABD actor identity changed')
+  else:raise RuntimeError('Every original ABD actor observation required')
+ return after
 def scientific(base):
  rows={}
  for arm in 'ABCD':
@@ -279,6 +338,18 @@ def tmpfs_backup_admission(backup_bytes,tmpfs_free,available_RAM,gpu0):
   original_primary_checkpoints_remain_on_disk=True,server_reboot_can_remove_backup=True,
   original_canonical_and_GPU0_tmpfs_budgets_preserved=True)
 
+def stage_capacity(disk,code_bytes,overlay_bytes,gpu0):
+ if any(type(value)is not int or value<0 for value in(code_bytes,overlay_bytes)):
+  raise ValueError('Exact measured full execution code and overlay sizes required')
+ # Separate deployment metadata room; original 2GiB reserve/1GiB growth and
+ # the existing external GPU0 archive admission remain completely intact.
+ metadata_reserve=2**20
+ needed=disk['required_free_bytes']+gpu0['persistent_archive_bytes']+code_bytes+overlay_bytes+metadata_reserve
+ if disk['actual_free_bytes']<needed:raise OSError('Independent complete execution code does not fit outside original native/GPU0 budgets')
+ return dict(original_admission=disk,complete_execution_code_bytes=code_bytes,overlay_peak_bytes=overlay_bytes,
+  deployment_metadata_reserve_bytes=metadata_reserve,required_free_bytes=needed,actual_free_bytes=disk['actual_free_bytes'],
+  no_original_inode_linked_or_modified=True,original_native_and_GPU0_budgets_preserved=True)
+
 if os.getuid()!=UID:raise ValueError('Exact account required')
 regular(group,True);regular(oldcode,True);regular(peer_code,True);regular(cache,True)
 requests=scientific(oldcode)
@@ -286,23 +357,32 @@ if set(manifest['paths']).intersection(requests['A']['source_sha256']):raise Val
 if phase=='stage':
  if stagepath.exists()or code.exists():raise FileExistsError('Staged namespace exists; inspect prior receipt instead of retry')
  old,controller,previous=old_launch();protected=protected_actors();admitted=validate_archive();preserved=immutable_inputs(previous)
- source_files=[];directories=[]
+ peer_previous=json.loads(regular(peersealpath).read_bytes())
+ explicit=set(requests['A']['source_sha256'])|set(manifest['paths'])
+ for contract,base in((previous,oldcode),(peer_previous,peer_code)):
+  explicit.update(str(pathlib.Path(path).relative_to(base))for path in contract['runtime_files'])
+ source_files=[];omitted=[]
  for folder,dirs,files in os.walk(peer_code,followlinks=False):
-  folder=regular(pathlib.Path(folder),True);directories.append(folder.relative_to(peer_code))
+  folder=regular(pathlib.Path(folder),True)
   for name in dirs:regular(folder/name,True)
   for name in files:
-   path=regular(folder/name);source_files.append((path,path.relative_to(peer_code),sha(path)))
+   path=regular(folder/name);relative=path.relative_to(peer_code)
+   if execution_profile(relative.as_posix(),explicit):source_files.append((path,relative,sha(path)))
+   else:omitted.append(dict(path=str(relative),bytes=path.stat().st_size))
+ selected={relative.as_posix()for source,relative,digest in source_files}
+ original_required=explicit-set(manifest['paths'])
+ if not original_required<=selected:raise ValueError('All original scientific/runtime source and v1 archive dependencies required')
+ if 'versions/v1/pipeline_v1_source.zip'not in selected:raise ValueError('Whole v1 source archive is a required runtime input')
+ sys.path.insert(0,str(peer_code))
+ from hiercp_v1x.v25_native_storage import verify_admission,check_aggregate_disk
+ verify_admission(group/'native_storage_admission.json',full_hash=False)
+ capacity=stage_capacity(check_aggregate_disk(group/'native_storage_admission.json',group/'C'),
+  sum(path.stat().st_size for path,relative,digest in source_files),sum(len(body)for name,body in admitted),gpu0_storage_contract())
  code.mkdir(exist_ok=False)
- for relative in directories:
-  if relative.parts:(code/relative).mkdir(parents=True,exist_ok=True)
- oldfiles={}
+ oldfiles={};source_metadata={}
  for source,relative,digest in source_files:
-  target=code/relative
-  # Existing sealed files are immutable and all execution uses -B. Every
-  # overlay below is written to a NEW inode and renamed in this new namespace;
-  # an old or running peer code inode is never written.
-  os.link(source,target,follow_symlinks=False)
-  same(source,digest);same(target,digest);oldfiles[str(source)]=digest
+  target=code/relative;target.parent.mkdir(parents=True,exist_ok=True)
+  source_metadata[str(source)]=copy_immutable(source,target,digest);oldfiles[str(source)]=digest
  for name,body in admitted:
   target=code/name;target.parent.mkdir(parents=True,exist_ok=True);temporary=target.with_name(target.name+'.C_overlay.tmp')
   with temporary.open('xb')as stream:stream.write(body);stream.flush();os.fsync(stream.fileno())
@@ -310,6 +390,8 @@ if phase=='stage':
  scientific(code)
  for path,digest in preserved.items():same(path,digest)
  for path,digest in oldfiles.items():same(path,digest)
+ for path,before in source_metadata.items():
+  if metadata(path)!=before:raise RuntimeError('Original source metadata changed after code overlay')
  tests=[name[:-3].replace('/','.')for name in manifest['paths']if name.startswith('tests/')and name.endswith('.py')]
  if not tests:raise ValueError('Reviewed runtime regression tests required')
  env=os.environ.copy();env.update(PYTHONPATH=str(code),PYTHONDONTWRITEBYTECODE='1',CUDA_VISIBLE_DEVICES='',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
@@ -319,12 +401,14 @@ if phase=='stage':
  with testlog.open('x')as stream:stream.write(checked.stdout);stream.flush();os.fsync(stream.fileno())
  if checked.returncode:raise RuntimeError('Private Linux CPU tests failed; training not started: '+str(testlog))
  renewed=protected_actors()
- if renewed!=protected:raise RuntimeError('Protected old controller/C/GPU0 identity changed during stage')
+ protected=protected_transition(protected,renewed)
  result=dict(format='v25_C_terminal_recovery_private_stage_v1',phase='stage',commit=manifest['commit'],archive_sha256=manifest['sha256'],
   private_code=str(code),previous_code=str(oldcode),preserved_files=preserved,unchanged_old_code_files=oldfiles,protected_actors=protected,
   CPU_regression_tests=dict(command=checked.args,returncode=checked.returncode,log=str(testlog),sha256=sha(testlog)),
+  source_metadata=source_metadata,execution_code_profile=dict(complete_runtime_code=True,whole_v1_source_archive_preserved=True,
+   omitted_inactive_documentation_and_history_archives=omitted,model_graph_dataset_or_epochs_changed=False),stage_capacity=capacity,
   frozen23_sources_unchanged=True,existing_code_files_modified=False,signals_sent=False,training_started=False,
-  immutable_code_hardlinked=True,overlays_use_new_inodes=True,bytecode_writes_disabled=True)
+  hardlinks_created=False,original_inode_metadata_preserved=True,overlays_use_new_inodes=True,bytecode_writes_disabled=True)
  publish(stagepath,result);print(json.dumps(result))
 elif phase=='start':
  if any(path.exists()for path in(intentpath,launchpath,sealpath,*proofpaths.values())):
@@ -337,9 +421,11 @@ elif phase=='start':
  same(staged['CPU_regression_tests']['log'],staged['CPU_regression_tests']['sha256'])
  for path,digest in staged['preserved_files'].items():same(path,digest)
  for path,digest in staged['unchanged_old_code_files'].items():same(path,digest)
+ for path,before in staged['source_metadata'].items():
+  if metadata(path)!=before:raise RuntimeError('Original source metadata changed since independent stage')
  for name,proof in manifest['proof'].items():same(code/name,proof['new_sha256'])
  scientific(code);old,previous_controller,previous=old_launch();protected=protected_actors()
- if protected!=staged['protected_actors']:raise RuntimeError('Protected ABD/GPU0 identity changed after stage')
+ protected_transition(staged['protected_actors'],protected)
  statuses={};actors={};logs={}
  for arm in 'C':statuses[arm],actors[arm],logs[arm]=terminal_arm(arm,previous_controller)
  for arm in 'C':
@@ -411,8 +497,9 @@ elif phase=='start':
    output.flush();os.fsync(output.fileno())
   same(source,checkpoints[arm]['sha256']);same(target,checkpoints[arm]['sha256'])
   backups[arm]=dict(path=str(target),sha256=checkpoints[arm]['sha256'])
- if protected_actors()!=protected or gpu0_storage_contract()!=gpu0storage:
-  raise RuntimeError('Exact protected live actors/GPU0 storage contract changed before intent')
+ protected=protected_transition(protected,protected_actors())
+ if gpu0_storage_contract()!=gpu0storage:
+  raise RuntimeError('Exact protected GPU0 storage contract changed before intent')
  for arm in 'C':released(actors[arm]);same(checkpoints[arm]['path'],checkpoints[arm]['sha256'])
  intent=dict(format='v25_C_terminal_recovery_launch_intent_v1',command=command,private_code=str(code),commit=manifest['commit'],
   checkpoints=checkpoints,previous_actors=actors,protected_actors=protected,checkpoint_backups=backups,

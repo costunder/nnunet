@@ -190,13 +190,17 @@ class CDeploymentAdmissionTests(unittest.TestCase):
             launch.write_text(json.dumps(dict(PID=peer['pid'], create_time=peer['create_time'],
                 command=peer['command'], UID=peer['UID'], commit='b'*40,
                 private_code=str(peer_code), seal=str(seal))))
-            seal.write_text(json.dumps(dict(controller_identity=peer, private_code=str(peer_code))))
+            slots={arm:dict(gpu=gpu,direct_proof=dict(path=str(group/(arm+'_proof.json'))))for arm,gpu in dict(A=6,B=5,D=4).items()}
+            seal.write_text(json.dumps(dict(controller_identity=peer, private_code=str(peer_code),slots=slots)))
             children={}; processes={}
-            peer_process=SimpleNamespace(identity=peer)
+            peer_process=SimpleNamespace(identity=peer,status=lambda:'running')
             processes[peer['pid']]=peer_process
             for offset, arm in enumerate('ABD'):
                 child=dict(pid=2553653+offset, create_time=100+offset,
-                    command=['python', arm], UID=41833)
+                    command=['/home/aicompetition06/.conda/envs/nnunet/bin/python3.10','-B','-u',
+                        str(peer_code/'tools/run_v25_ad_execution.py'),'--arm',arm,'--gpu',str(slots[arm]['gpu']),
+                        '--mode','train','--output',str(group/arm),'--continuation-seal',str(seal),
+                        '--allocation-request',slots[arm]['direct_proof']['path']], UID=41833)
                 path=group/arm/'monitor/status.json';path.parent.mkdir(parents=True)
                 path.write_text(json.dumps(dict(status='RUNNING',stage='train',controller_pid=peer['pid'],
                     child_pid=child['pid'],child_create_time=child['create_time'],child_command=child['command'],UID=41833)))
@@ -205,11 +209,12 @@ class CDeploymentAdmissionTests(unittest.TestCase):
             processes[gpu0['pid']]=SimpleNamespace(identity=gpu0)
             functions=helpers({'protected_actors'},group=group,peer_code=peer_code,
                 peerlaunchpath=launch,peersealpath=seal,PEER_CONTROLLER=(peer['pid'],peer['create_time']),
-                PEER_COMMIT='b'*40,PEER_ACTORS={arm:value['pid']for arm,value in children.items()},
+                PEER_COMMIT='b'*40,PEER_ACTORS={arm:(value['pid'],value['create_time'])for arm,value in children.items()},
                 LIVE_GPU0=(gpu0['pid'],gpu0['create_time']),regular=lambda path:path,
                 old_launch=lambda:({},old,{}),actor=lambda process:process.identity,
                 exact=lambda identity:processes[identity['pid']],
-                psutil=SimpleNamespace(Process=lambda pid:processes[pid]))
+                argument=helpers({'argument'})['argument'],
+                psutil=SimpleNamespace(Process=lambda pid:processes[pid],NoSuchProcess=ProcessLookupError,STATUS_ZOMBIE='zombie'))
             result=functions['protected_actors']()
             self.assertEqual(result['ABD'],children)
             self.assertEqual(result['ABD_controller'],peer)
@@ -220,19 +225,111 @@ class CDeploymentAdmissionTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'lineage'):
                 functions['protected_actors']()
 
-    def test_shared_source_overlay_is_replaced_using_a_new_inode(self):
-        import os
-        with tempfile.TemporaryDirectory() as folder:
-            source=Path(folder)/'sealed.py';target=Path(folder)/'new.py'
-            source.write_bytes(b'old sealed code')
-            os.link(source,target)
-            self.assertEqual(source.stat().st_ino,target.stat().st_ino)
-            overlay=Path(folder)/'new.py.C_overlay.tmp';overlay.write_bytes(b'new reviewed code')
-            os.replace(overlay,target)
-            self.assertEqual(source.read_bytes(),b'old sealed code')
-            self.assertEqual(target.read_bytes(),b'new reviewed code')
-            self.assertNotEqual(source.stat().st_ino,target.stat().st_ino)
 
+
+    def test_independent_copy_preserves_original_inode_metadata_and_bytes(self):
+        import os, shutil
+        functions=helpers({'sha','metadata','same','copy_immutable'},regular=lambda path:Path(path),
+            hashlib=hashlib,shutil=shutil)
+        with tempfile.TemporaryDirectory()as folder:
+            source=Path(folder)/'source.zip';target=Path(folder)/'new.zip';source.write_bytes(b'complete runtime archive')
+            original=functions['metadata'](source);digest=functions['sha'](source)
+            proof=functions['copy_immutable'](source,target,digest)
+            self.assertEqual(proof,original)
+            self.assertEqual(functions['metadata'](source),original)
+            self.assertEqual(target.read_bytes(),source.read_bytes())
+            self.assertNotEqual(source.stat().st_ino,target.stat().st_ino)
+            self.assertEqual(source.stat().st_nlink,original['st_nlink'])
+
+    def test_same_bytes_but_changed_original_timestamp_blocks_stage(self):
+        import os, shutil
+        copier=shutil.copyfileobj
+        with tempfile.TemporaryDirectory()as folder:
+            source=Path(folder)/'source.py';target=Path(folder)/'new.py';source.write_bytes(b'unchanged bytes')
+            def changed_copy(stream,output,size):
+                copier(stream,output,size)
+                info=source.stat();os.utime(source,ns=(info.st_atime_ns,info.st_mtime_ns+10**9))
+            functions=helpers({'sha','metadata','same','copy_immutable'},regular=lambda path:Path(path),
+                hashlib=hashlib,shutil=SimpleNamespace(copyfileobj=changed_copy,copystat=shutil.copystat))
+            with self.assertRaisesRegex(RuntimeError,'metadata changed'):
+                functions['copy_immutable'](source,target,functions['sha'](source))
+            self.assertEqual(source.read_bytes(),b'unchanged bytes')
+
+    def test_copy_does_not_overwrite_a_prior_owned_target(self):
+        import shutil
+        functions=helpers({'sha','metadata','same','copy_immutable'},regular=lambda path:Path(path),
+            hashlib=hashlib,shutil=shutil)
+        with tempfile.TemporaryDirectory()as folder:
+            source=Path(folder)/'source.py';target=Path(folder)/'prior.py'
+            source.write_bytes(b'full source');target.write_bytes(b'prior result')
+            before=functions['metadata'](source)
+            with self.assertRaises(FileExistsError):
+                functions['copy_immutable'](source,target,functions['sha'](source))
+            self.assertEqual(target.read_bytes(),b'prior result')
+            self.assertEqual(functions['metadata'](source),before)
+
+    def test_every_runtime_package_and_full_v1_archive_is_copied(self):
+        profile=helpers({'execution_profile'})['execution_profile']
+        for path in ('hiercp_v1x/v25_factory.py','tools/run_v25_execution.py',
+                'custom_trainers/nnUNetTrainer.py','config/v25.json',
+                'versions/v1/pipeline_v1_source.zip','versions/v1/README.md'):
+            with self.subTest(path=path):self.assertTrue(profile(path,set()))
+
+    def test_only_inactive_history_documents_and_bytecode_are_omitted(self):
+        profile=helpers({'execution_profile'})['execution_profile']
+        for path in ('versions/v2.2/history/old/source.zip','versions/v2.2/history/old/code.txt',
+                'versions/v2.2/documentation.zip','docs/old_results.md','tools/__pycache__/old.pyc'):
+            with self.subTest(path=path):self.assertFalse(profile(path,set()))
+
+    def test_explicit_scientific_or_runtime_dependency_overrides_history_filter(self):
+        profile=helpers({'execution_profile'})['execution_profile']
+        path='versions/v2.2/history/admitted/source.zip'
+        self.assertTrue(profile(path,{path}))
+        self.assertFalse(profile(path,set()))
+
+    def test_complete_code_capacity_keeps_native_GPU0_and_growth_reserves(self):
+        functions=helpers({'stage_capacity'})
+        code_bytes=16*2**20;overlay=2**18;original=8*2**30
+        needed=original+2**30+code_bytes+overlay+2**20
+        value=functions['stage_capacity'](dict(required_free_bytes=original,actual_free_bytes=needed),
+            code_bytes,overlay,gpu0_contract())
+        self.assertEqual(value['required_free_bytes'],needed)
+        self.assertTrue(value['original_native_and_GPU0_budgets_preserved'])
+        with self.assertRaisesRegex(OSError,'does not fit'):
+            functions['stage_capacity'](dict(required_free_bytes=original,actual_free_bytes=needed-1),
+                code_bytes,overlay,gpu0_contract())
+
+    def test_protected_stage_can_naturally_fail_without_replacing_its_actor(self):
+        from copy import deepcopy
+        check=helpers({'protected_transition'})['protected_transition']
+        before=dict(old_controller={'pid':1},ABD_controller={'pid':2},GPU0={'pid':3},
+            ABD={arm:dict(pid=10+index,create_time=100+index,command=['python',arm],UID=41833)
+                for index,arm in enumerate('ABD')},ABD_failed={})
+        after=deepcopy(before)
+        actor=after['ABD'].pop('B')
+        after['ABD_failed']['B']=dict(actor=actor,monitor_sha256='a'*64,
+            failure_log=dict(path='/own/B/failure.log',sha256='b'*64))
+        self.assertEqual(check(before,after),after)
+        changed=deepcopy(after);changed['ABD_failed']['B']['actor']['create_time']+=1
+        with self.assertRaisesRegex(RuntimeError,'identity changed'):
+            check(before,changed)
+
+    def test_failed_peer_cannot_become_live_or_change_failure_evidence(self):
+        from copy import deepcopy
+        check=helpers({'protected_transition'})['protected_transition']
+        actors={arm:dict(pid=10+index,create_time=100+index,command=['python',arm],UID=41833)
+            for index,arm in enumerate('ABD')}
+        before=dict(old_controller={'pid':1},ABD_controller={'pid':2},GPU0={'pid':3},ABD={},
+            ABD_failed={arm:dict(actor=identity,monitor_sha256='a'*64,
+                failure_log=dict(path='/own/'+arm+'/failure.log',sha256='b'*64))
+                for arm,identity in actors.items()})
+        self.assertEqual(check(before,deepcopy(before)),before)
+        for kind in ('live','changed_log'):
+            after=deepcopy(before)
+            if kind=='live':after['ABD']['A']=after['ABD_failed'].pop('A')['actor']
+            else:after['ABD_failed']['A']['failure_log']['sha256']='c'*64
+            with self.subTest(kind=kind),self.assertRaisesRegex(RuntimeError,'evidence changed'):
+                check(before,after)
 
 if __name__ == '__main__':
     unittest.main()

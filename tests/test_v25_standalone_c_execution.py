@@ -122,6 +122,53 @@ class CIsolationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'genuine terminal monitor'):
                 resources._peer_tree(lease, seal, {})
 
+    def test_initial_terminal_ABD_controller_requires_verified_terminal_monitors(self):
+        seal = seal_document()
+        contract = dict(controller_identity=seal['peer_controller_identity'], runtime_files={}, slots={})
+        with patch.object(resources, '_guard_proof', return_value=contract), \
+                patch.object(resources.ad, 'validate_seal', return_value=contract), \
+                patch.object(resources.ad, '_peer_controller',
+                    side_effect=resources.direct.psutil.NoSuchProcess(700)), \
+                patch.object(resources, '_terminal_peer_monitors') as verified:
+            receipt = resources.verify_initial_peer(seal)
+            self.assertTrue(receipt['ABD_controller_terminal_with_verified_monitors'])
+            self.assertEqual(receipt['ABD_identity'], seal['peer_controller_identity'])
+            self.assertEqual(verified.call_count, 1)
+            self.assertEqual(verified.call_args.args[0].group, Path(seal['group_root']))
+            self.assertEqual(verified.call_args.args[1], seal)
+        with patch.object(resources, '_guard_proof', return_value=contract), \
+                patch.object(resources.ad, 'validate_seal', return_value=contract), \
+                patch.object(resources.ad, '_peer_controller', return_value=None), \
+                patch.object(resources, '_terminal_peer_monitors',
+                    side_effect=RuntimeError('CPU_DEBUG incomplete terminal ABD monitors')):
+            with self.assertRaisesRegex(RuntimeError, 'incomplete terminal ABD'):
+                resources.verify_initial_peer(seal)
+
+    def test_initial_live_peer_requires_original_runtime_digest_and_cgroup(self):
+        seal = seal_document(); peer = Mock(); peer.pid = 700
+        proofref = {'path': '/CPU_DEBUG/direct.json', 'sha256': 'a'*64}
+        contract = dict(controller_identity=seal['peer_controller_identity'],
+            runtime_files={'CPU_DEBUG/runtime.py': 'a'*64}, slots={'A': {'direct_proof': proofref}})
+        proof = dict(aggregate_CPU_affinity=list(range(24)), cgroup_admission={'DEBUG': True})
+        peer.cpu_affinity.return_value = list(range(24))
+        with patch.object(resources, '_guard_proof', side_effect=lambda ref:
+                    proof if ref == proofref else contract), \
+                patch.object(resources.ad, 'validate_seal', return_value=contract), \
+                patch.object(resources.direct, '_owned_regular', return_value=Mock()), \
+                patch.object(resources, 'sha', return_value='a'*64), \
+                patch.object(resources.ad, '_peer_controller', return_value=peer), \
+                patch.object(resources.direct, 'capture_cgroup_admission', return_value={'DEBUG': True}):
+            self.assertFalse(resources.verify_initial_peer(seal)['ABD_controller_terminal_with_verified_monitors'])
+            peer.cpu_affinity.return_value = [1]
+            with self.assertRaisesRegex(RuntimeError, 'CPU/cgroup changed'):
+                resources.verify_initial_peer(seal)
+        with patch.object(resources, '_guard_proof', return_value=contract), \
+                patch.object(resources.ad, 'validate_seal', return_value=contract), \
+                patch.object(resources.direct, '_owned_regular', return_value=Mock()), \
+                patch.object(resources, 'sha', return_value='b'*64):
+            with self.assertRaisesRegex(ValueError, 'runtime source changed'):
+                resources.verify_initial_peer(seal)
+
     def test_gpu_query_receives_only_own_C_stage_tree(self):
         lease = object.__new__(resources.StandaloneCAllocationLease)
         own = {900: Mock()}; selected = {901: Mock()}

@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 from . import v25_direct_resources as direct
 from . import v25_terminal_descendant_resources as terminal
@@ -168,12 +169,28 @@ def validate_own_contracts(lease):
 
 
 def verify_initial_peer(seal):
-    peer = direct._exact(seal['peer_controller_identity'])
-    proof = _guard_proof(_guard_proof(seal['peer_seal'])['slots']['A']['direct_proof'])
+    contract = ad.validate_seal(_guard_proof(seal['peer_seal']))
+    if contract['controller_identity'] != seal['peer_controller_identity']:
+        raise ValueError('Exact original ABD controller seal required before C launch')
+    for name, digest in contract['runtime_files'].items():
+        if sha(direct._owned_regular(name)) != digest:
+            raise ValueError('Original ABD runtime source changed before C launch')
+    observer = SimpleNamespace(group=Path(seal['group_root']), managed={})
+    try:
+        peer = ad._peer_controller(observer, seal['peer_controller_identity'])
+    except direct.psutil.NoSuchProcess:
+        peer = None
+    if peer is None:
+        _terminal_peer_monitors(observer, seal)
+        return dict(ABD_controller_preserved=True, ABD_identity=seal['peer_controller_identity'],
+            ABD_controller_terminal_with_verified_monitors=True,
+            original_C_monitor_unchanged=True, no_process_signaled=True)
+    proof = _guard_proof(contract['slots']['A']['direct_proof'])
     if (peer.cpu_affinity() != proof['aggregate_CPU_affinity']
             or direct.capture_cgroup_admission(peer.pid) != proof['cgroup_admission']):
         raise RuntimeError('Continuing initial ABD controller CPU/cgroup changed')
     return dict(ABD_controller_preserved=True, ABD_identity=seal['peer_controller_identity'],
+        ABD_controller_terminal_with_verified_monitors=False,
         original_C_monitor_unchanged=True, no_process_signaled=True)
 
 
