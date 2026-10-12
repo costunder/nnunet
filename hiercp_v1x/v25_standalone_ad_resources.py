@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import time
 
 from . import v25_direct_resources as direct
 from . import v25_terminal_descendant_resources as terminal
@@ -193,22 +194,77 @@ def verify_initial_peer(seal):
         C_command_sha256=command_sha(child.cmdline()), C_controller_identity=seal['peer_controller_identity'])
 
 
+def _terminal_peer_controller(lease, peer, identity):
+    if peer.status() != direct.psutil.STATUS_ZOMBIE:
+        raise RuntimeError('C controller terminal observation requires actual zombie status')
+    metadata = terminal._metadata(peer)
+    if any(metadata[key] != identity[key] for key in ('pid', 'create_time', 'UID')):
+        raise RuntimeError('Original C controller PID/birth/UID changed during terminal observation')
+    if peer.status() != direct.psutil.STATUS_ZOMBIE:
+        raise RuntimeError('Original C controller terminal status changed during observation')
+    prior = getattr(lease, '_terminal_C_controller_identity', None)
+    if prior is not None and prior != identity:
+        raise RuntimeError('Original C terminal controller identity changed')
+    lease._terminal_C_controller_identity = dict(identity)
+    return None
+
+
+def _peer_controller(lease, identity):
+    """Observe only the sealed C controller; terminal still needs its monitor."""
+    if not direct._identity_document(identity):
+        raise ValueError('Exact sealed C controller PID/birth/argv/UID required')
+    peer = direct.psutil.Process(identity['pid'])
+    for attempt in range(3):
+        status = peer.status()
+        metadata = terminal._metadata(peer)
+        if any(metadata[key] != identity[key] for key in ('pid', 'create_time', 'UID')):
+            raise RuntimeError('Original C controller PID/birth/UID identity changed')
+        if status == direct.psutil.STATUS_ZOMBIE:
+            return _terminal_peer_controller(lease, peer, identity)
+        try:
+            command = peer.cmdline()
+        except direct.psutil.ZombieProcess:
+            return _terminal_peer_controller(lease, peer, identity)
+        # A nonempty changed argv is never accepted as an exit transition,
+        # even when a later status observation becomes terminal.
+        if command != [] and command != identity['command']:
+            raise RuntimeError('Original C controller argv identity changed')
+        if peer.status() == direct.psutil.STATUS_ZOMBIE:
+            return _terminal_peer_controller(lease, peer, identity)
+        if command == []:
+            if attempt < 2:
+                time.sleep(.01)
+            continue
+        if terminal._metadata(peer) != metadata:
+            raise RuntimeError('Original C controller PID/birth/UID changed during live observation')
+        if getattr(lease, '_terminal_C_controller_identity', None) is not None:
+            raise RuntimeError('Previously terminal C controller became a live actor')
+        return peer
+    raise RuntimeError('Original live C controller retained empty argv after bounded observations')
+
+
 def _peer_tree(lease, seal, tree):
     identity = seal['peer_controller_identity']; union = dict(tree)
     observed = getattr(lease, '_observed_C_descendants', None)
     if observed is None:
         observed = lease._observed_C_descendants = {}
     try:
-        peer = direct._exact(identity)
+        peer = _peer_controller(lease, identity)
+    except direct.psutil.ZombieProcess as error:
+        raise RuntimeError('Original C terminal controller UID/birth could not be verified') from error
     except direct.psutil.NoSuchProcess:
+        peer = None
+    if peer is None:
         # The original controller can end with the already recorded ABD
         # failures. Do not call that full C completion. Verify C's own terminal
         # monitor and released stage, and retain every observed live orphan in
         # RAM accounting if any survived its controller.
         value = json.loads(direct._owned_regular(lease.group/'C/monitor/status.json').read_bytes())
         if value.get('controller_pid') != identity['pid'] or value.get('arm') != 'C':
-            raise RuntimeError('Missing C controller requires its exact terminal monitor')
+            raise RuntimeError('Terminal C controller requires its exact terminal monitor')
         if value.get('status') == 'COMPLETE':
+            if value.get('stage') != 'complete':
+                raise RuntimeError('Original C completion requires its actual complete stage')
             certificate = direct._owned_regular(lease.group/'C/downstream/completion.json')
             digest = sha(certificate)
             cached = getattr(lease, '_completed_C_certificate_sha256', None)
@@ -230,6 +286,13 @@ def _peer_tree(lease, seal, tree):
                     ('--continuation-seal', seal['peer_seal']['path']),
                     ('--allocation-request', seal['peer_slots']['C']['direct_proof']['path']))):
                 raise RuntimeError('Original failed C own output binding changed')
+            stage = value.get('stage')
+            if stage in ('train', 'scoring'):
+                if ('--native' in actor['command'] or _flag(actor['command'], '--mode') !=
+                        ('train' if stage == 'train' else 'score-cp')):
+                    raise RuntimeError('Original failed C stage/mode binding changed')
+            elif stage != 'native' or actor['command'][4:5] != ['--native']:
+                raise RuntimeError('Original C failure requires its exact train/scoring/native stage')
             original._released(actor)
         else:
             raise RuntimeError('Original C controller vanished before an actual terminal monitor')
