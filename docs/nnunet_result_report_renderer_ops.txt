@@ -1,0 +1,94 @@
+# Result schema 1 실제 근거 연결과 재사용
+
+기준: https://app.notion.com/p/3eabea17210b81c8969dd61f2aef459e 의
+"nnU-Net 학습·평가 결과 양식 — Result schema 1" 및 저장소의
+docs/nnunet_result_report_contract.txt, docs/nnunet_result_report_template.txt,
+config/nnunet_result_report_schema_v1.json.
+
+결과 작성 전에 위 기준을 읽는다. 실험 이름이나 arm이 바뀌어도 기존 8절,
+표 열, Basic CP 우선 순서, 6개 검출 기준, 3개 크기 구간을 유지한다.
+
+tools/render_nnunet_result_schema_v1.py는 이 고정 양식을 실제 근거에서
+생성한다. 이 도구는 학습, 예측, 평가 수식, 통계 또는 checkpoint 선택을
+실행하거나 변경하지 않는다. 전체 학습·평가 완료는 원래 producer의
+실제 완료 증거로 연결하고, 보고서 저장 성공과 구분한다.
+
+## 실행
+
+python -B tools/render_nnunet_result_schema_v1.py --evidence EVIDENCE.json --output-stem NEW_REPORT
+
+NEW_REPORT.txt와 NEW_REPORT.json을 새 파일로만 만든다. 이미 있는 파일은
+덮어쓰지 않는다. 결과·서버 receipt·예측·checkpoint·데이터는 코드 배포
+commit에 넣지 않는다.
+
+## 근거 입력
+
+- experiments: experiment 이름과 completion, settings, training, native.
+- completion: planned_epochs, completed_epochs, predicted_cases, expected_cases,
+  training_status, best_native_evaluation_status. 학습 및 BEST native 평가의
+  VERIFIED_COMPLETE를 실제 receipt와 연결한다.
+- native: 원래 summary, 실제 dataset_labels, 원래 BEST receipt와
+  training_receipt, verification.best_receipt_verified 및 실제 검증 source.
+  receipt의 원래 checkpoint load/full validation 호출, FINAL fallback=false,
+  checkpoint/summary SHA 및 전체 case 예측 SHA 목록을 보존한다.
+- training: BEST 원시 current_epoch와 index 정의, loss epoch, loss,
+  온라인 Pseudo dice와 class 순서, 실제 CP 적용·시도, 시간 및 측정 범위.
+  전체 학습 peak 기록이 없으면 startup RSS나 RAM 예산으로 대신하지 않는다.
+- settings: experiment, gnn, gnn_best, cp, nnunet. 계획 설명이 아닌 실제
+  실행 request/configuration 값을 사용한다. GNN train/inference context와
+  native/GNN precision을 각각 기록한다.
+- basic: 역사적 Basic native summary와 label mapping은 실제 가져온 경우에
+  제공하고 checkpoint_origin_status를 별도로 기록한다.
+- online_evaluation: 정확한 experiment 이름과 directory. 기존 병변 평가기의
+  completion.json, summary, comparison, CSV 및 evaluation_started.json을
+  원본 bytes 그대로 가져온 폴더를 사용한다. 모든 완료 output SHA와 summary/
+  evaluation_contract 연결을 검사한다. 부분 파일은 완료로 표시하지 않는다.
+- comparison: status, reason, source 및 admission. MATCHED_VERIFIED에는
+  cohort, gt_spacing, own_best, basic_best, metric_implementation,
+  aggregation_matching_empty_mask, native_training, cp_policy가 모두 true여야
+  한다. 역사적 Basic checkpoint 연결 미검증은 HISTORICAL_REFERENCE로 둔다.
+- artifacts, verification, limitations, checklist: 실제 검증 범위와 출처.
+
+각 값은 직접 값 또는 {value, source, status, reason} 형태이다. 없는 숫자는
+null과 사유로 표시한다. Native 원본의 undefined NaN은 원본 파일을 보존한
+채 표시용 입력에서 null과 정의상 사유로 연결한다. 비율과 metric 원본
+정밀도를 유지하고 화면 소수점만 고정한다.
+
+## 완료 범위와 비교
+
+실험당 검출 6행, 크기별 18행, Basic 비교 44행을 유지한다. 역사적 Basic의
+출처/실험 통제 미검증 시 matched 비교 차이는 NA로 보존하고, 기존 계약대로
+실제 evaluator의 참고 차이·CI·p는 별도 HISTORICAL_REFERENCE 표에 표시한다.
+원문의 prediction_origin_status와 각 arm의 별도 BEST 증거를 함께 기록한다.
+
+Native label Dice와 전체 종양 mask의 환자 평균 Dice를 섞지 않는다. 온라인
+Pseudo dice도 BEST full-volume 성능으로 대체하지 않는다. GT 병변 체적의
+등가구 직경 크기 구간과 CP donor 자격을 구분한다. TP+FN, GT−검출 수의
+정수 inventory 표기는 metric 수식/통계 재계산과 구분해 출처를 남긴다.
+
+평가기 version/source SHA를 기록한다. 현재 evaluator와 고정한 역사적
+exact-replay evaluator가 다르면 실제 사용한 구현을 표시한다. 기존 bootstrap,
+permutation 반복 횟수와 matching/empty-mask 규칙을 임의로 바꾸지 않는다.
+
+## 검증
+
+tests/test_render_nnunet_result_schema_v1.py는 CPU DEBUG 검사이다. 고정 표
+구조, null/0 구분, native label mapping, 실제 BEST receipt, 완료 output SHA,
+matched admission, 역사적 참고 분리 및 기존 보고서 보존을 검사한다.
+이 검사의 통과는 새로운 전체 모델 학습이나 성능 평가 완료를 뜻하지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [ ] physical batch size와 병렬화 가능성을 실제로 검토했다. 표시 도구이며 모델 실행을 새로 수행하지 않는다.
+- [ ] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 각 실제 실행 receipt에서 별도로 연결한다.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 표시 도구에는 모델 실행이 없다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 표시 도구는 이 경로를 변경하거나 재실행하지 않는다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
