@@ -1,0 +1,48 @@
+v2.5 네 실험 자동 실행 연결: 2026-10-12 KST
+
+기존 docs/v25_server_pipeline_20261012.txt 및 v25_adaptive_context_curriculum_plan_20261011.txt를 따른다.
+tools/run_v25_pipeline.py는 현재 실제 PBS129664/GPU6/CPU32~37/RAM128GiB에서
+A U8/+8, B U16/+16, C U32/+32, D U128 전체 학습을 순서대로 실행한다.
+각 arm의 GNN40epoch/680update/B4, CP642source×128위치, nnU-Net250epoch/B2,
+자기 checkpoint_best.pth 전체26명 평가를 보존한다. 실행 시간 때문에 실험을 축소하지 않는다.
+
+현재 시작된 준비 프로세스를 PID·생성시각·argv·UID로 확인해 인계한다.
+완전한14102 canonical index의 실제 SHA와 request SHA를 확인한 후 CUDA 측정을 시작한다.
+새 context 공통조건은 간 깊이>1mm, 종양 거리0<d<=10mm이며 실제 CT source/target
+레코드에서 새 geometry 계약과 원래5×48×48×48 patch를 읽어 확인했다.
+
+저장 admission은 전체131 Blosc2 CT/seg/properties/GT를 읽기 전용으로 SHA 확인한다.
+실제537 optimizer tensor/13331792parameter GNN checkpoint의 파일 크기와 원래 native
+BEST/final 크기로 네 arm 각9 checkpoint peak 슬롯을 예약한다. 네 arm 각각256MiB의
+CP·예측·통계·로그 출력 예산, persistent reserve2GiB와 growth1GiB를 함께 검증한다.
+새 tmpfs canonical/upper의 실제 할당 블록은 PBS RAM에 포함하고32GiB를 넘으면 명시적으로
+중단한다. native process tree96GiB+cache reserve32GiB를128GiB 할당 안에서 사용한다.
+원래4 augmentation workers, native 모델·batch·patch·loss·optimizer·증강은 유지한다.
+
+각 arm별 stage argv 선언과 실제 PID·birth·UID·현재 log를 보존한다.
+뷰어 tools/watch_v25_pipeline.py는 기존 GNN9행/CP8행 task UI2와 원래 native console을 사용한다.
+전체 완료 표시는 모든 arm의 실제 완료 certificate와 자기 BEST 평가 증거 확인 후에만 한다.
+
+평가는 기존 완료 GPU6에서 검증한 frozen v4 evaluator와 provenance SHA를 고정하고,
+기존6개 검출기준·3개 크기구간·bootstrap20000/permutation50000 계산을 사용한다.
+Result schema1의 Basic 원래 BEST 연결 미검증 상태는 그대로 표시한다. 주 비교44개 delta/CI/p는
+NA를 유지하고, 실제 Basic 예측을 사용한44개 통계는 역사적 비교로 별도 표시한다.
+
+PBS 만료180초 전부터 새 CUDA chunk를 거부하고 마지막 실제 checkpoint/완료 CP batch를 보존한다.
+일부 단계 성공과 전체 학습·평가 완료를 혼동하지 않는다. 새 할당이 필요해도 epoch 수를 줄이지 않는다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 최종 GNN B4/native B2 유지, 실제 CUDA 반복 측정은 준비 후 자동 수행한다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 실제 할당과 준비 프로세스 RSS/CPU affinity를 조회했다.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. v2.5 실제 CUDA 시작 전이다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 전체 모델 CPU DEBUG 검증 통과, 실제 v2.5 CUDA 증거는 준비 후 확인한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.
