@@ -1,0 +1,419 @@
+"""Build a reviewed private ABD recovery deployment; never signal another job.
+
+Stage copies the current execution code and applies a SHA-checked code overlay.
+Start admits only naturally failed A/B/D actors and preserves the live C and GPU0
+actors. Both phases record exclusive receipts so retries cannot duplicate jobs.
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import re
+import sys
+import time
+
+PATHS = {
+    'hiercp_v1x/v25_terminal_descendant_resources.py',
+    'hiercp_v1x/v25_standalone_ad_resources.py',
+    'hiercp_v1x/v25_forward_memory_runtime.py',
+    'tools/run_v25_execution.py',
+    'tools/run_v25_ad_execution.py',
+    'tools/run_v25_ad_continuation.py',
+    'tools/deploy_v25_abd_terminal_recovery.py',
+    'tests/test_v25_terminal_descendant_resources.py',
+    'tests/test_v25_terminal_empty_cmdline_race.py',
+    'tests/test_v25_standalone_ad_execution.py',
+    'tests/test_v25_forward_memory_runtime.py',
+    'tests/test_v25_abd_terminal_recovery.py',
+}
+REQUIRED = {
+    'hiercp_v1x/v25_terminal_descendant_resources.py',
+    'hiercp_v1x/v25_standalone_ad_resources.py',
+    'hiercp_v1x/v25_forward_memory_runtime.py',
+    'tools/run_v25_execution.py',
+    'tools/run_v25_ad_execution.py',
+    'tools/run_v25_ad_continuation.py',
+    'tools/deploy_v25_abd_terminal_recovery.py',
+}
+
+REMOTE_SCRIPT = r'''
+import ast,base64,hashlib,io,json,os,pathlib,psutil,stat,subprocess,sys,tarfile,time
+group=pathlib.Path('/var/tmp/aicompetition06_v25_20261012/run_1791784719489478600')
+oldcode=group/'code_U128_reuse_8ff98768793b';UID=41833
+manifest=MANIFEST_DATA;phase=PHASE_DATA;allowed=ALLOWED_DATA;required=REQUIRED_DATA
+suffix='_ABD_recovery_'+manifest['commit'][:12]
+code=group/('code_ABD_recovery_'+manifest['commit'][:12])
+stagepath=group/('ABD_recovery_code_deployed'+suffix+'.json')
+intentpath=group/('ABD_recovery_controller_intent'+suffix+'.json')
+launchpath=group/('ABD_recovery_controller_launch'+suffix+'.json')
+sealpath=group/('ABD_recovery_continuation_seal'+suffix+'.json')
+proofpaths={arm:group/(arm+'_direct_execution'+suffix+'.json')for arm in 'ABD'}
+cache=pathlib.Path('/dev/shm/aicompetition06_v25_20261012/run_1791784719489478600/shared_context_cache')
+oldlaunchpath=group/'U128_reuse_controller_launch_U128_reuse_8ff98768793b.json'
+oldsealpath=group/'U128_reuse_continuation_seal_U128_reuse_8ff98768793b.json'
+OLD_COMMIT='8ff98768793b692cfbb0f3d180fbd4cb1b2609b1'
+OLD_CONTROLLER=(2510561,1791811611.99)
+LIVE_C=(2510833,1791811642.45)
+LIVE_GPU0=(2460965,1791804951.51)
+MAPPING={'A':(6,list(range(32,38))),'B':(5,list(range(42,48))),'D':(4,list(range(6)))}
+FAILED_ACTORS={'A':(2510834,1791811642.46),'B':(2510835,1791811642.46),'D':(2510832,1791811642.44)}
+
+def sha(path):
+ result=hashlib.sha256()
+ with pathlib.Path(path).open('rb')as stream:
+  for block in iter(lambda:stream.read(2**20),b''):result.update(block)
+ return result.hexdigest()
+def regular(path,directory=False):
+ path=pathlib.Path(path)
+ if not path.is_absolute()or '..'in path.parts or any(p.is_symlink()for p in (path,*path.parents)):
+  raise ValueError('Absolute own non-symlink namespace required')
+ info=path.lstat()
+ if info.st_uid!=UID or not(stat.S_ISDIR(info.st_mode)if directory else stat.S_ISREG(info.st_mode)):
+  raise ValueError('Exact owned regular file/directory required: '+str(path))
+ return path
+def publish(path,value):
+ with path.open('x')as stream:
+  json.dump(value,stream,indent=2,allow_nan=False);stream.flush();os.fsync(stream.fileno())
+def same(path,digest):
+ if sha(regular(path))!=digest:raise ValueError('Immutable file changed: '+str(path))
+def actor(process):
+ if process.status()==psutil.STATUS_ZOMBIE:raise RuntimeError('Live actor became zombie; no signal')
+ result=dict(pid=process.pid,create_time=process.create_time(),command=process.cmdline(),UID=process.uids().real)
+ if not result['command']or result['UID']!=UID:raise RuntimeError('Exact live own PID/birth/argv/UID required')
+ return result
+def exact(identity):
+ process=psutil.Process(identity['pid'])
+ if actor(process)!=identity:raise RuntimeError('PID/birth/UID/argv differs')
+ return process
+def released(identity):
+ if set(identity)!={'pid','create_time','command','UID'}or identity['UID']!=UID:
+  raise ValueError('Exact known own previous actor required')
+ try:process=psutil.Process(identity['pid'])
+ except psutil.NoSuchProcess:return
+ if process.create_time()!=identity['create_time']or process.uids().real!=UID:
+  raise RuntimeError('Previous PID reused; release not assumed')
+ raise RuntimeError('Previous own actor still exists; no signal or restart')
+def argument(command,flag):
+ if command.count(flag)!=1 or command.index(flag)+1>=len(command):raise ValueError('Exact argument required: '+flag)
+ return command[command.index(flag)+1]
+def old_launch():
+ value=json.loads(regular(oldlaunchpath).read_bytes())
+ identity=dict(pid=value['PID'],create_time=value['create_time'],command=value['command'],UID=value['UID'])
+ if (value['private_code']!=str(oldcode)or value['commit']!=OLD_COMMIT or value['seal']!=str(oldsealpath)
+     or(identity['pid'],identity['create_time'])!=OLD_CONTROLLER):raise ValueError('Exact current U128 reuse controller required')
+ exact(identity)
+ previous=json.loads(regular(oldsealpath).read_bytes())
+ if previous['controller_identity']!=identity or previous['private_code']!=str(oldcode):raise ValueError('Exact old controller/seal binding required')
+ return value,identity,previous
+def protected_actors():
+ old,controller,previous=old_launch()
+ status=json.loads(regular(group/'C/monitor/status.json').read_bytes())
+ c=dict(pid=status.get('child_pid'),create_time=status.get('child_create_time'),command=status.get('child_command'),UID=status.get('UID'))
+ if((c['pid'],c['create_time'])!=LIVE_C or status.get('controller_pid')!=controller['pid']
+     or status.get('status')!='RUNNING' or status.get('stage')!='train'):
+  raise RuntimeError('Actual C status changed; inspect before deployment')
+ cp=exact(c)
+ parent=cp.parent()
+ if parent is None or actor(parent)!=controller:raise RuntimeError('Exact live C controller lineage required')
+ gpu0=actor(psutil.Process(LIVE_GPU0[0]))
+ if(gpu0['pid'],gpu0['create_time'])!=LIVE_GPU0 or not any('nnUNet' in token for token in gpu0['command']):
+  raise RuntimeError('Exact live GPU0 nnU-Net actor required')
+ return dict(old_controller=controller,C=c,GPU0=gpu0)
+def scientific(base):
+ rows={}
+ for arm in 'ABCD':
+  request=json.loads(regular(group/arm/'request.json').read_bytes())
+  if len(request['source_sha256'])!=23:raise ValueError('All 23 frozen scientific sources required')
+  for name,digest in request['source_sha256'].items():same(base/name,digest)
+  rows[arm]=request
+ if any(rows[a]['source_sha256']!=rows['A']['source_sha256']for a in 'BCD'):
+  raise ValueError('Frozen four-arm source contracts differ')
+ return rows
+def immutable_inputs(previous):
+ paths=[cache/'local/index.json',cache/'input_bindings.json',group/'shared_preparation.json',
+  group/'native_storage_admission.json',oldlaunchpath,oldsealpath]
+ for arm in 'ABCD':
+  paths.append(pathlib.Path(previous['slots'][arm]['direct_proof']['path']))
+  paths.extend(group/arm/name for name in('request.json','preparation.json','calibration.json','training/training_identity.json'))
+ return{str(path):sha(regular(path))for path in paths}
+def validate_archive():
+ data=base64.b64decode(PAYLOAD_DATA)
+ if hashlib.sha256(data).hexdigest()!=manifest['sha256']:raise ValueError('Reviewed archive changed')
+ result=[];seen=set()
+ with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz')as bundle:
+  for member in bundle.getmembers():
+   if member.isdir():continue
+   relative=pathlib.PurePosixPath(member.name)
+   if(not member.isfile()or relative.is_absolute()or '..'in relative.parts or member.name in seen or member.name not in allowed):
+    raise ValueError('Only exact reviewed code overlay paths admitted')
+   seen.add(member.name);proof=manifest['proof'][member.name];old=oldcode/member.name
+   if(sha(regular(old))if old.exists()else None)!=proof['previous_sha256']:
+    raise ValueError('Current U128 reuse file SHA differs: '+member.name)
+   body=bundle.extractfile(member).read()
+   if hashlib.sha256(body).hexdigest()!=proof['new_sha256']:raise ValueError('New committed file SHA differs: '+member.name)
+   if relative.suffix=='.py':ast.parse(body.decode('utf8'),filename=member.name)
+   result.append((member.name,body))
+ if seen!=set(manifest['paths'])or not required<=seen:raise ValueError('Complete reviewed ABD recovery overlay required')
+ return result
+def terminal_arm(arm,controller):
+ status=json.loads(regular(group/arm/'monitor/status.json').read_bytes())
+ identity=dict(pid=status.get('child_pid'),create_time=status.get('child_create_time'),command=status.get('child_command'),UID=status.get('UID'))
+ if(status.get('status')!='FAILED'or status.get('stage')!='train'or status.get('controller_pid')!=controller['pid']
+     or(identity['pid'],identity['create_time'])!=FAILED_ACTORS[arm]):
+  raise RuntimeError('Exact own naturally FAILED '+arm+' training actor required')
+ gpu,cpus=MAPPING[arm];command=identity['command']
+ if(command[:4]!=['/home/aicompetition06/.conda/envs/nnunet/bin/python3.10','-B','-u',str(oldcode/'tools/run_v25_u128_reuse_execution.py')]
+     or any(argument(command,name)!=expected for name,expected in(
+      ('--arm',arm),('--gpu',str(gpu)),('--mode','train'),('--output',str(group/arm)),
+      ('--continuation-seal',str(oldsealpath))))):raise ValueError('Exact old own FAILED stage binding required')
+ released(identity)
+ log=regular(status['stage_log'])
+ if not log.is_relative_to(group/arm/'monitor'):raise ValueError('Actual own failure log namespace required')
+ text=log.read_text()
+ if 'Traceback (most recent call last)'not in text:raise ValueError('Actual own training failure traceback required')
+ return status,identity,dict(path=str(log),sha256=sha(log))
+def checkpoint(arm):
+ import torch
+ from hiercp_v1x.u_bridge_training import digest
+ from hiercp_v1x.v25_training import validate_curriculum_progress
+ path=regular(group/arm/'training/checkpoint_latest.pt');before=path.stat()
+ saved=torch.load(path,map_location='cpu',weights_only=False);after=path.stat()
+ if(before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns):
+  raise RuntimeError('Failed arm latest checkpoint changed during CPU inspection')
+ own=json.loads(regular(group/arm/'training/training_identity.json').read_bytes());state=saved['state']
+ if(saved.get('format')!='v25_all_P_patient_balanced_shared_context_training_v1'
+     or saved['identity_sha256']!=own['identity_sha256']or digest(own['binding'])!=own['identity_sha256']
+     or saved['content_sha256']!=digest({key:value for key,value in saved.items()if key!='content_sha256'})
+     or len(saved['rank_rng'])!=1 or 'shuffle_generator'not in saved
+     or not all(key in saved for key in('model','optimizer','scheduler','scaler'))or state['status']!='RUNNING'):
+  raise ValueError('Exact own model/optimizer/scheduler/scaler/RNG RUNNING checkpoint required')
+ binding=own['binding']
+ validate_curriculum_progress(state,policy=binding['config']['v24_runtime']['curriculum'],train_cases=binding['train_cases'],
+  val_cases=binding['val_cases'],physical_patient_batch=binding['physical_patient_batch'])
+ if binding['physical_patient_batch']!=4:raise ValueError('Original physical patient B4 required')
+ result=dict(path=str(path),sha256=sha(path),identity_sha256=saved['identity_sha256'],content_sha256=saved['content_sha256'],
+  epoch=state['epoch'],updates=state['updates'],phase=state['phase'],train_position=state['train_position'],
+  evaluation_position=state['evaluation_position'],active_u=state['curriculum']['active_u'],status=state['status'])
+ del saved;return result
+def extra_storage_admission(disk,backup_bytes):
+ if(type(backup_bytes)is not int or backup_bytes<=0 or type(disk.get('actual_free_bytes'))is not int
+     or type(disk.get('required_free_bytes'))is not int or disk['actual_free_bytes']<0 or disk['required_free_bytes']<0):
+  raise ValueError('Measured disk/complete checkpoint sizes required')
+ needed=disk['required_free_bytes']+backup_bytes+2**30
+ if disk['actual_free_bytes']<needed:raise OSError('Original native reserve plus three exact latest backups and 1GiB do not fit')
+ return dict(original_admission=disk,checkpoint_backup_bytes=backup_bytes,additional_reserve_bytes=2**30,
+  required_free_bytes=needed,actual_free_bytes=disk['actual_free_bytes'],original_storage_admission_rewritten=False)
+
+if os.getuid()!=UID:raise ValueError('Exact account required')
+regular(group,True);regular(oldcode,True);regular(cache,True)
+requests=scientific(oldcode)
+if set(manifest['paths']).intersection(requests['A']['source_sha256']):raise ValueError('Frozen23 scientific sources cannot change')
+if phase=='stage':
+ if stagepath.exists()or code.exists():raise FileExistsError('Staged namespace exists; inspect prior receipt instead of retry')
+ old,controller,previous=old_launch();protected=protected_actors();admitted=validate_archive();preserved=immutable_inputs(previous)
+ source_files=[];directories=[]
+ for folder,dirs,files in os.walk(oldcode,followlinks=False):
+  folder=regular(pathlib.Path(folder),True);directories.append(folder.relative_to(oldcode))
+  for name in dirs:regular(folder/name,True)
+  for name in files:
+   path=regular(folder/name);source_files.append((path,path.relative_to(oldcode),sha(path)))
+ code.mkdir(exist_ok=False)
+ for relative in directories:
+  if relative.parts:(code/relative).mkdir(parents=True,exist_ok=True)
+ oldfiles={}
+ for source,relative,digest in source_files:
+  target=code/relative
+  with source.open('rb')as stream,target.open('xb')as output:
+   for block in iter(lambda:stream.read(2**20),b''):output.write(block)
+  same(source,digest);same(target,digest);oldfiles[str(source)]=digest
+ for name,body in admitted:
+  target=code/name;target.parent.mkdir(parents=True,exist_ok=True);temporary=target.with_name(target.name+'.ABD_overlay.tmp')
+  with temporary.open('xb')as stream:stream.write(body);stream.flush();os.fsync(stream.fileno())
+  os.replace(temporary,target)
+ scientific(code)
+ for path,digest in preserved.items():same(path,digest)
+ for path,digest in oldfiles.items():same(path,digest)
+ tests=[name[:-3].replace('/','.')for name in manifest['paths']if name.startswith('tests/')and name.endswith('.py')]
+ if not tests:raise ValueError('Reviewed runtime regression tests required')
+ env=os.environ.copy();env.update(PYTHONPATH=str(code),PYTHONDONTWRITEBYTECODE='1',CUDA_VISIBLE_DEVICES='',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
+ checked=subprocess.run([sys.executable,'-B','-m','unittest',*tests],cwd=code,env=env,
+  stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=240)
+ testlog=group/('ABD_recovery_CPU_tests'+suffix+'.log')
+ with testlog.open('x')as stream:stream.write(checked.stdout);stream.flush();os.fsync(stream.fileno())
+ if checked.returncode:raise RuntimeError('Private Linux CPU tests failed; training not started: '+str(testlog))
+ renewed=protected_actors()
+ if renewed!=protected:raise RuntimeError('Protected old controller/C/GPU0 identity changed during stage')
+ result=dict(format='v25_ABD_terminal_recovery_private_stage_v1',phase='stage',commit=manifest['commit'],archive_sha256=manifest['sha256'],
+  private_code=str(code),previous_code=str(oldcode),preserved_files=preserved,unchanged_old_code_files=oldfiles,protected_actors=protected,
+  CPU_regression_tests=dict(command=checked.args,returncode=checked.returncode,log=str(testlog),sha256=sha(testlog)),
+  frozen23_sources_unchanged=True,existing_code_files_modified=False,signals_sent=False,training_started=False)
+ publish(stagepath,result);print(json.dumps(result))
+elif phase=='start':
+ if any(path.exists()for path in(intentpath,launchpath,sealpath,*proofpaths.values())):
+  raise FileExistsError('ABD launch intent exists; inspect exact actor instead of retry')
+ staged=json.loads(regular(stagepath).read_bytes())
+ if(staged['commit']!=manifest['commit']or staged['archive_sha256']!=manifest['sha256']
+     or staged['CPU_regression_tests']['returncode']!=0):raise ValueError('Exact reviewed CPU-tested staged code required')
+ same(staged['CPU_regression_tests']['log'],staged['CPU_regression_tests']['sha256'])
+ for path,digest in staged['preserved_files'].items():same(path,digest)
+ for path,digest in staged['unchanged_old_code_files'].items():same(path,digest)
+ for name,proof in manifest['proof'].items():same(code/name,proof['new_sha256'])
+ scientific(code);old,previous_controller,previous=old_launch();protected=protected_actors()
+ if protected!=staged['protected_actors']:raise RuntimeError('Protected controller/C/GPU0 identity changed after stage')
+ statuses={};actors={};logs={}
+ for arm in 'ABD':statuses[arm],actors[arm],logs[arm]=terminal_arm(arm,previous_controller)
+ for arm in 'ABD':
+  if(group/arm/'training/STOP_AFTER_BATCH').exists():raise RuntimeError('Existing own stop marker requires independent inspection; no silent archive')
+ sys.path.insert(0,str(code))
+ from hiercp_v1x.v25_direct_resources import capture_cgroup_admission,_pbs_start_time,validate_direct_document
+ from hiercp_v1x.v25_native_storage import verify_admission,check_aggregate_disk
+ from hiercp_v1x import v25_standalone_ad_resources as resources
+ verify_admission(group/'native_storage_admission.json',full_hash=False)
+ checkpoints={arm:checkpoint(arm)for arm in 'ABD'}
+ disk=check_aggregate_disk(group/'native_storage_admission.json',group/'B')
+ backup_bytes=sum(regular(checkpoints[arm]['path']).stat().st_size for arm in 'ABD')
+ storage=extra_storage_admission(disk,backup_bytes)
+ oldproofs={}
+ for arm in 'ABCD':
+  proof=previous['slots'][arm]['direct_proof'];same(proof['path'],proof['sha256'])
+  oldproofs[arm]=validate_direct_document(json.loads(regular(proof['path']).read_bytes()))
+ aggregate=oldproofs['A']['aggregate_CPU_affinity']
+ if not set(aggregate)<=set(psutil.Process().cpu_affinity()):raise RuntimeError('Actual allowed CPUs do not admit original 24-core set')
+ for arm,(gpu,cpus)in MAPPING.items():
+  row=oldproofs[arm]
+  if(row['controller_identity']!=previous_controller or row['gpu']!=gpu or row['CPU_affinity']!=cpus
+      or row['aggregate_CPU_affinity']!=aggregate):raise ValueError('Original exact per-arm GPU/sixCPU proof required')
+  values=subprocess.check_output(['nvidia-smi','--id='+str(gpu),'--query-gpu=uuid,memory.free',
+   '--format=csv,noheader,nounits'],text=True,timeout=20).strip().split(',')
+  if values[0].strip()!=row['GPU_UUID']or float(values[1])<40*1024:
+   raise RuntimeError('Exact idle own physical GPU UUID/free40GiB required')
+ apps=subprocess.check_output(['nvidia-smi','--query-compute-apps=pid,gpu_uuid','--format=csv,noheader,nounits'],text=True,timeout=20)
+ wanted={oldproofs[arm]['GPU_UUID']for arm in 'ABD'}
+ if any(line.strip()and line.split(',')[-1].strip()in wanted for line in apps.splitlines()):
+  raise RuntimeError('Requested GPU4/5/6 still has a live CUDA actor; preserve it')
+ owned=json.loads(regular(group/'allocation_request.json').read_bytes())
+ jobs=json.loads(subprocess.check_output(['/opt/pbs/bin/qstat','-f','-F','json',owned['job_id']],text=True,timeout=20))['Jobs']
+ if list(jobs)!=[owned['job_id']]:raise RuntimeError('Exact owned host lifetime unavailable')
+ job=next(iter(jobs.values()));h,m,s=map(int,job['Resource_List']['walltime'].split(':'))
+ expiry=_pbs_start_time(job['stime'])+h*3600+m*60+s
+ if(job.get('job_state')!='R'or job.get('Job_Owner','').split('@')[0]!='aicompetition06'
+     or abs(expiry-owned['expires_at_unix'])>1 or time.time()>=expiry-180):raise RuntimeError('Current owned host lifetime failed')
+ cgroup=capture_cgroup_admission(os.getpid())
+ if cgroup!=oldproofs['C']['cgroup_admission']:raise RuntimeError('Actual new controller cgroup differs from protected C admission')
+ if any(row['limit_bytes']is not None and row['limit_bytes']<416*2**30 for row in cgroup['memory_limits']):
+  raise MemoryError('Unchanged 416GiB cgroup admission failed')
+ if psutil.virtual_memory().available<416*2**30:raise MemoryError('Actual available RAM cannot admit unchanged full416GiB')
+ command=list(old['command']);entry=str(oldcode/'tools/run_v25_u128_reuse_continuation.py')
+ if command.count(entry)!=1:raise ValueError('Exact current controller entry required')
+ command[command.index(entry)]=str(code/'tools/run_v25_ad_continuation.py')
+ if argument(command,'--group')!=str(group)or argument(command,'--input-cache')!=str(cache):
+  raise ValueError('Original full shared cache/group bindings required')
+ command[command.index('--execution-manifest')+1]=str(sealpath)
+ archive=group/'code_revisions'/('ABD_recovery_before_launch_'+manifest['commit'][:12])
+ archive.mkdir(parents=True,exist_ok=False);monitors={};backups={}
+ for arm in 'ABD':
+  monitor=group/arm/'monitor/status.json';current_status,current_actor,current_log=terminal_arm(arm,previous_controller)
+  if current_status!=statuses[arm]or current_actor!=actors[arm]or current_log!=logs[arm]:
+   raise RuntimeError('Own failed status/log/actor changed before backup')
+  copied=archive/(arm+'_failed_status.json')
+  with copied.open('xb')as stream:stream.write(regular(monitor).read_bytes());stream.flush();os.fsync(stream.fileno())
+  same(copied,sha(monitor));monitors[arm]=dict(path=str(copied),sha256=sha(copied))
+  source=regular(checkpoints[arm]['path']);target=archive/(arm+'_checkpoint_latest.pt')
+  with source.open('rb')as stream,target.open('xb')as output:
+   for block in iter(lambda:stream.read(2**20),b''):output.write(block)
+   output.flush();os.fsync(output.fileno())
+  same(source,checkpoints[arm]['sha256']);same(target,checkpoints[arm]['sha256'])
+  backups[arm]=dict(path=str(target),sha256=checkpoints[arm]['sha256'])
+ if protected_actors()!=protected:raise RuntimeError('Exact protected live actors changed before intent')
+ for arm in 'ABD':released(actors[arm]);same(checkpoints[arm]['path'],checkpoints[arm]['sha256'])
+ intent=dict(format='v25_ABD_terminal_recovery_launch_intent_v1',command=command,private_code=str(code),commit=manifest['commit'],
+  checkpoints=checkpoints,previous_actors=actors,protected_actors=protected,checkpoint_backups=backups,
+  storage_admission=storage,selected_arms=['A','B','D'],created_at=time.time(),signals_sent=False)
+ publish(intentpath,intent)
+ env=os.environ.copy();env.update(PYTHONPATH=str(code),PYTHONDONTWRITEBYTECODE='1',CUDA_VISIBLE_DEVICES='',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
+ log=group/('ABD_recovery_pipeline_controller'+suffix+'.log')
+ with log.open('xb')as stream:
+  child=subprocess.Popen(command,cwd=code,env=env,stdout=stream,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,
+   start_new_session=True,preexec_fn=lambda:os.sched_setaffinity(0,aggregate))
+ process=psutil.Process(child.pid);deadline=time.monotonic()+5
+ while process.cmdline()!=command and time.monotonic()<deadline:time.sleep(.05)
+ identity=actor(process)
+ if identity['command']!=command:raise RuntimeError('Exact new ABD controller not observed; inspect durable intent')
+ newcgroup=capture_cgroup_admission(process.pid)
+ if newcgroup!=cgroup:raise RuntimeError('New exact ABD controller cgroup changed; inspect durable intent')
+ for arm in 'ABD':
+  value=dict(oldproofs[arm],controller_identity=identity,resource_guard_sha256=sha(code/'hiercp_v1x/v25_direct_resources.py'),cgroup_admission=newcgroup)
+  validate_direct_document(value);publish(proofpaths[arm],value)
+ runtime_names={str(pathlib.Path(path).relative_to(oldcode))for path in previous['runtime_files']}
+ runtime_names.update(('hiercp_v1x/v25_standalone_ad_resources.py','hiercp_v1x/v25_forward_memory_runtime.py',
+  'tools/run_v25_ad_execution.py','tools/run_v25_ad_continuation.py'))
+ preserved=dict(staged['preserved_files'])
+ preserved.update({str(code/name):digest for name,digest in requests['A']['source_sha256'].items()})
+ for arm in 'ABD':
+  for proof in(monitors[arm],logs[arm],backups[arm]):preserved[proof['path']]=proof['sha256']
+ slots={arm:dict(arm=arm,gpu=MAPPING[arm][0],CPU_affinity=MAPPING[arm][1],
+  direct_proof=dict(path=str(proofpaths[arm]),sha256=sha(proofpaths[arm])),checkpoint=checkpoints[arm],
+  previous_actor=actors[arm],failed_monitor=monitors[arm],failure_log=logs[arm])for arm in 'ABD'}
+ seal=dict(format=resources.FORMAT,selected_arms=['A','B','D'],group_root=str(group),private_code=str(code),previous_code=str(oldcode),
+  controller_identity=identity,peer_seal=dict(path=str(oldsealpath),sha256=sha(oldsealpath)),
+  peer_controller_identity=previous_controller,peer_slots={'C':dict(direct_proof=previous['slots']['C']['direct_proof'],
+   initial_actor=protected['C'],command_sha256=resources.command_sha(protected['C']['command']))},slots=slots,
+  preserved_files=preserved,runtime_files={str(code/name):sha(regular(code/name))for name in sorted(runtime_names)},created_at=time.time(),
+  scientific_configuration_unchanged=True,no_process_signaled=True)
+ resources.validate_seal(seal);resources.verify_initial_peer(seal)
+ for slot in slots.values():resources._validate_failed_slot(slot,seal)
+ publish(sealpath,seal)
+ result=dict(phase='start',PID=identity['pid'],create_time=identity['create_time'],UID=UID,command=command,log=str(log),private_code=str(code),
+  seal=str(sealpath),proofs={arm:str(proofpaths[arm])for arm in 'ABD'},commit=manifest['commit'],checkpoints=checkpoints,
+  GPUs=[6,5,4],CPU_affinity={arm:MAPPING[arm][1]for arm in 'ABD'},protected_actors=protected,checkpoint_backups=backups,
+  storage_admission=storage,full40_GNN=True,full680_updates=True,physical_patient_batch=4,full250_native=True,own_BEST26=True,
+  frozen23_sources_unchanged=True,scientific_configuration_unchanged=True,signals_sent=False,debug=False)
+ publish(launchpath,result);print(json.dumps(result))
+else:raise ValueError('Explicit stage/start required')
+'''
+
+
+def build_remote_script(manifest, payload, phase):
+    if phase not in ('stage', 'start'):
+        raise ValueError('Explicit stage/start required')
+    if not re.fullmatch('[0-9a-f]{40}', manifest.get('commit', '')):
+        raise ValueError('Exact reviewed Git commit required')
+    if hashlib.sha256(payload).hexdigest() != manifest.get('sha256'):
+        raise ValueError('Reviewed archive bytes differ')
+    paths = manifest.get('paths', [])
+    proof = manifest.get('proof', {})
+    if len(paths) != len(set(paths)) or set(paths) != set(proof) or not REQUIRED <= set(paths) <= PATHS:
+        raise ValueError('Exact reviewed ABD execution overlay required')
+    for row in proof.values():
+        if set(row) != {'previous_sha256', 'new_sha256'} or not re.fullmatch('[0-9a-f]{64}', row['new_sha256']):
+            raise ValueError('Exact before/new SHA proofs required')
+        if row['previous_sha256'] is not None and not re.fullmatch('[0-9a-f]{64}', row['previous_sha256']):
+            raise ValueError('Exact original SHA or explicit absent file required')
+    return REMOTE_SCRIPT.replace('MANIFEST_DATA', repr(manifest)).replace('PHASE_DATA', repr(phase)).replace(
+        'ALLOWED_DATA', repr(PATHS)).replace('REQUIRED_DATA', repr(REQUIRED)).replace(
+        'PAYLOAD_DATA', repr(base64.b64encode(payload).decode()))
+
+
+def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if len(arguments) != 2:
+        raise ValueError('Provide exact reviewed manifest and stage/start')
+    manifest = json.loads(Path(arguments[0]).resolve(strict=True).read_text(encoding='utf8'))
+    script = build_remote_script(manifest, Path(manifest['archive']).read_bytes(), arguments[1])
+    here = Path('D:/AI project/nnunet/outputs/v24_gpu6_recovery_20261011')
+    spec = importlib.util.spec_from_file_location('secure_remote', here/'remote_once.py')
+    remote = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(remote)
+    value = json.loads(remote.run(script, 300))
+    path = here/('V25_ABD_RECOVERY_'+arguments[1].upper()+'_'+str(time.time_ns())+'.json')
+    with path.open('x', encoding='utf8') as stream:
+        json.dump(value, stream, indent=2)
+    keys = ('phase', 'commit', 'PID', 'create_time', 'private_code', 'checkpoints', 'GPUs', 'CPU_affinity', 'signals_sent', 'CPU_regression_tests')
+    print(json.dumps(dict(receipt=str(path), observed={key: value[key] for key in keys if key in value}), ensure_ascii=False))
+
+
+if __name__ == '__main__':
+    main()
