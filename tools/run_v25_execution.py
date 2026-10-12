@@ -37,7 +37,8 @@ def prefix_geometry_runtime(args, frozen, *, common_only=False):
     preconstructed = None
     execution_paths = tuple(ROOT/name for name in (
         'tools/run_v25_execution.py', 'hiercp_v1x/v25_prefix_geometry_reuse.py',
-        'hiercp_v1x/v24_upper_reuse.py', 'hiercp_v1x/v25_terminal_descendant_resources.py'))
+        'hiercp_v1x/v24_upper_reuse.py', 'hiercp_v1x/v25_terminal_descendant_resources.py',
+        'hiercp_v1x/v25_forward_memory_runtime.py'))
 
     def install(factory_module=factory):
         nonlocal selected_constructor, preconstructed
@@ -92,7 +93,15 @@ def prefix_geometry_runtime(args, frozen, *, common_only=False):
             if preconstructed is None:
                 raise RuntimeError('Exact prefix inputs were not bound before CUDA initialization')
             inputs = preconstructed
-        return original_build(*arguments, inputs=inputs, **keywords)
+        result = original_build(*arguments, inputs=inputs, **keywords)
+        from hiercp_v1x.v25_forward_memory_runtime import bind
+        # Frozen build_runtime receives the original budget as argument 3.
+        budget = arguments[2] if len(arguments) > 2 else keywords['budget']
+        proof = bind(budget, inputs)
+        frozen.publish(args.output/'execution'/('forward_memory_binding_'+str(time.time_ns())+'.json'),
+            dict(arm=args.arm, mode=args.mode, runtime=proof, actual_PID=os.getpid(),
+                scientific_configuration_unchanged=True, debug=False))
+        return result
 
     preparation.install_runtime = install
     factory.build_runtime = build
@@ -138,7 +147,8 @@ def main(argv=None):
         return original_lease(path)
     original_resources.AllocationLease = resource_lease
     adapter_files = ['tools/run_v25_execution.py', 'hiercp_v1x/v25_direct_resources.py',
-        'hiercp_v1x/v25_terminal_descendant_resources.py']
+        'hiercp_v1x/v25_terminal_descendant_resources.py',
+        'hiercp_v1x/v25_forward_memory_runtime.py']
     if not shared_prepare:
         adapter_files.extend(('hiercp_v1x/v25_prefix_geometry_reuse.py', 'hiercp_v1x/v24_upper_reuse.py'))
     from hiercp_v1x.v25_upper_memory_runtime import install_upper_memory_runtime

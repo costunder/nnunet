@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import math
 from pathlib import Path
+import time
 
 from . import v25_direct_resources as direct
 
@@ -38,11 +39,13 @@ def _metadata(process):
     return value
 
 
-def _terminal(lease, process):
+def _terminal(lease, process, *, expected=None):
     """Verify terminal UID/birth; a missing process is handled by the caller."""
     if process.status() != direct.psutil.STATUS_ZOMBIE:
         raise RuntimeError('Descendant ZombieProcess must have actual zombie status')
     observed = _metadata(process)
+    if expected is not None and observed != expected:
+        raise RuntimeError('Observed descendant PID/birth/UID changed during terminal transition')
     if process.status() != direct.psutil.STATUS_ZOMBIE:
         raise RuntimeError('Terminal descendant status changed during identity observation')
     previous = lease.managed.get(process.pid)
@@ -65,24 +68,44 @@ def _terminal(lease, process):
 
 def _descendant(lease, process):
     """Take a live identity, checking both sides of the terminal transition."""
-    if process.status() == direct.psutil.STATUS_ZOMBIE:
-        return _terminal(lease, process)
-    try:
-        identity = dict(pid=process.pid, create_time=process.create_time(),
-            command=process.cmdline(), UID=process.uids().real)
-    except direct.psutil.ZombieProcess:
-        return _terminal(lease, process)
-    # Linux may return [] for zombie cmdline instead of raising ZombieProcess.
-    if process.status() == direct.psutil.STATUS_ZOMBIE:
-        return _terminal(lease, process)
-    if identity['UID'] != 41833:
-        raise RuntimeError('Foreign-UID controller descendant cannot be an admitted direct actor')
-    if not direct._identity_document(identity):
-        raise RuntimeError('Exact live descendant PID/birth/argv/UID identity required')
-    terminal = getattr(lease, '_terminal_descendants', {}).get(process.pid)
-    if terminal is not None:
-        raise RuntimeError('Previously terminal direct child PID became an active actor')
-    return identity
+    observed = None
+    # Linux clears an exiting worker's cmdline before its zombie status becomes
+    # observable. Retry only that incomplete transition; empty argv alone never
+    # grants live-tree or CUDA admission. Every reread must retain the exact
+    # same owned PID/birth/UID, including identities already in managed.
+    for attempt in range(3):
+        if process.status() == direct.psutil.STATUS_ZOMBIE:
+            return _terminal(lease, process, expected=observed)
+        try:
+            metadata = _metadata(process)
+            if observed is not None and metadata != observed:
+                raise RuntimeError('Observed descendant PID/birth/UID changed during terminal transition')
+            previous = lease.managed.get(process.pid)
+            if previous is not None and any(previous[key] != metadata[key]
+                    for key in ('pid', 'create_time', 'UID')):
+                raise RuntimeError('Managed direct child PID/birth/argv identity changed')
+            observed = metadata
+            command = process.cmdline()
+        except direct.psutil.ZombieProcess:
+            return _terminal(lease, process, expected=observed)
+        if process.status() == direct.psutil.STATUS_ZOMBIE:
+            return _terminal(lease, process, expected=observed)
+        if command == []:
+            if attempt < 2:
+                # Give the exiting kernel task a scheduling opportunity. The
+                # two bounded yields total at most20ms; ordinary live actors
+                # never wait and persistent empty argv still fails below.
+                time.sleep(.01)
+            continue
+        identity = dict(**metadata, command=command)
+        if not direct._identity_document(identity):
+            raise RuntimeError('Exact live descendant PID/birth/argv/UID identity required')
+        if previous is not None and previous != identity:
+            raise RuntimeError('Managed direct child PID/birth/argv identity changed')
+        if getattr(lease, '_terminal_descendants', {}).get(process.pid) is not None:
+            raise RuntimeError('Previously terminal direct child PID became an active actor')
+        return identity
+    raise RuntimeError('Exact live descendant PID/birth/argv/UID identity required')
 
 
 def _tree(lease):
