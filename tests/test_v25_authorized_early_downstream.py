@@ -12,6 +12,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 import torch
 from hiercp_v1x import v25_authorized_early_downstream as adapter
@@ -158,6 +159,22 @@ class AuthorizedBAdmissionCPUUnit(unittest.TestCase):
 
 
 class PrivateNamespacesCPUUnit(unittest.TestCase):
+    def test_actual_private_CP_entry_uses_B_rebound_lease_instead_of_PBS_only_lease(self):
+        from hiercp_v1x import v25_B_early_downstream_resources as resources,v25_server_resources as pbs
+        private=adapter.private_modules()['CP']
+        self.assertEqual(private.authorized_B_adaptation_proof['admission_and_child_import_counts']['B_CP_resource_lease'],1)
+        net=torch.nn.Linear(1,1);net.eval()  # CPU UNIT guard path, deliberately no CUDA/model execution.
+        with patch.object(resources,'BEarlyDownstreamAllocationLease')as constructor,\
+                patch.object(pbs,'AllocationLease',side_effect=AssertionError('PBS-only lease must not be reached'))as old,\
+                patch('sys.argv',['CPU_UNIT_ENTRY','--allocation-request','CPU_UNIT_B_DIRECT.json']):
+            with self.assertRaisesRegex(RuntimeError,'actual complete v2.5 STU model'):
+                private.score_v25_cp_bank(net=net,inputs=None,population=None,source_bank=None,
+                    baseline_preprocessed=None,physical_candidate_batch=32,budget=SimpleNamespace(check=lambda:None),
+                    amp=True,best_provenance={},output=Path('CPU_UNIT_NO_OUTPUT'))
+            constructor.assert_called_once_with('CPU_UNIT_B_DIRECT.json')
+            self.assertEqual(constructor.return_value.verify.call_count,1)
+            old.assert_not_called()
+
     def test_original_globals_and_full_completion_validator_remain_unchanged(self):
         before=(original_cp.validate_best_provenance,original_native.cp,original_downstream.cp,original_downstream.native)
         private=adapter.private_modules()

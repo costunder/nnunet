@@ -275,6 +275,12 @@ def _private_clone(module, *, overrides=None, route_native_children=False, score
                         return ast.copy_location(ast.parse(new,mode='eval').body,node)
             return self.generic_visit(node)
         def visit_ImportFrom(self,node):
+            if node.level==1 and node.module=='v25_server_resources':
+                if [(alias.name,alias.asname)for alias in node.names]!=[('AllocationLease',None)]:
+                    raise ValueError('Original CP resource import changed')
+                counts['B_CP_resource_lease']=counts.get('B_CP_resource_lease',0)+1
+                return ast.copy_location(ast.ImportFrom(module='v25_B_early_downstream_resources',
+                    level=1,names=[ast.alias(name='BEarlyDownstreamAllocationLease',asname='AllocationLease')]),node)
             if score_output and node.level==0 and node.module=='hiercp_v1x.v25_server_resources':
                 if [(alias.name,alias.asname)for alias in node.names]!=[('AllocationLease',None)]:
                     raise ValueError('Original score resource import changed')
@@ -304,6 +310,8 @@ def _private_clone(module, *, overrides=None, route_native_children=False, score
                     return ast.copy_location(ast.Constant(strings[node.value]),node)
             return node
     transformed=ast.fix_missing_locations(Route().visit(tree))
+    if module.__name__=='hiercp_v1x.v25_cp' and counts.get('B_CP_resource_lease')!=1:
+        raise ValueError('Original CP inner resource admission must be redirected exactly once')
     if score_output and any(counts.get(key)!=1 for key in ('fresh_cp_bank','fresh_cp_scores.json','B_resource_lease','absolute_v25_cp')):
         raise ValueError('Original score admission/output expressions changed; exact review required')
     clone=types.ModuleType(module.__name__+'_private_authorized_B')
