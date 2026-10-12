@@ -409,11 +409,21 @@ def _validate_patient(bank, dataset, case_id, network_patch_size):
             'three_paste_positions': triple_positions, 'entries_sha256': before}
 
 
+def validate_dataset_population(dataset, source_case_ids):
+    # Actual installed nnUNetBaseDataset constructor exposes .identifiers,
+    # not a mapping API. The private read-only adapter preserves this class.
+    identifiers = dataset.identifiers
+    require(isinstance(identifiers, (list, tuple)) and len(identifiers) == 105
+            and len(set(identifiers)) == 105, 'All105 unique training identifiers required')
+    require(set(source_case_ids).issubset(identifiers),
+            'Every own-source patient must belong to the full105 training population')
+    return tuple(identifiers)
+
+
 def preflight_bank(index_path, dataset, *, arm, network_patch_size=(128, 128, 128)):
     require(tuple(network_patch_size) == (128, 128, 128), 'Full network patch128 required')
     bank = AblationBank(index_path, arm=arm)
-    require(len(dataset.keys()) == 105 and set(bank.entries_by_case).issubset(dataset.keys()),
-            'Full105 inner-training dataset and all81 own-source cases required')
+    identifiers = validate_dataset_population(dataset, bank.entries_by_case)
     extension = None
     if arm == 'candidates256':
         extension = json.loads((bank.root / 'complete.json').read_text(encoding='utf8'))
@@ -445,6 +455,7 @@ def preflight_bank(index_path, dataset, *, arm, network_patch_size=(128, 128, 12
             'historical_trainer_sha256': HISTORICAL_SHA, 'historical_bank_sha256': BANK_SHA,
             'entries_sha256': source_checksums,
             'source_entries': 642, 'eligible_cases': 81, 'full_training_cases': 105,
+            'actual_training_identifiers': list(identifiers),
             'full_validation_cases': 26, 'candidate_count': bank.candidate_count,
             'validated_positions': total, 'three_paste_positions': triples, 'CP_probability': .5,
             'copies_per_event': 3 if arm == 'multi3' else 1,

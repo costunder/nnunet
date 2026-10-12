@@ -66,6 +66,26 @@ def fixture_historical(path):
     return module
 
 
+def fixture_actual_dataset(identifiers):
+    """Compile the constructor read from the actual installed server class."""
+    receipt_folder = ROOT.parents[1] / 'outputs/v24_gpu6_recovery_20261011'
+    receipts = sorted(receipt_folder.glob('inspect_basic_actual_dataset_API_READONLY_20261013_*.log'))
+    if not receipts:
+        raise FileNotFoundError('Actual readonly dataset-interface receipt required for this CPU regression')
+    actual = json.loads(receipts[-1].read_text(encoding='utf8'))
+    if actual['sha256'] != '755175caad47cf1e719e7f0dd0771304eaad1f7f4497f993ed56a7b8f95a08f2':
+        raise ValueError('Actual installed dataset class source differs')
+    tree = ast.parse(actual['classes']['nnUNetBaseDataset'])
+    original = next(n for n in tree.body[0].body if isinstance(n, ast.FunctionDef) and n.name == '__init__')
+    constructor = copy.deepcopy(original)
+    fixture = ast.ClassDef(name='ActualDatasetConstructorCPUFixture', bases=[], keywords=[],
+        body=[constructor], decorator_list=[])
+    namespace = {'List': list}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[fixture], type_ignores=[])),
+                 '<actual-server-dataset-constructor-CPU-unit>', 'exec'), namespace)
+    return namespace['ActualDatasetConstructorCPUFixture']('CPU_UNIT_NO_DATA_READ', list(identifiers))
+
+
 def entry(centers, *, side=3, value=9.):
     return {'source_data': np.full((1, side, side, side), value, dtype=np.float32),
             'source_mask': np.ones((side, side, side), dtype=np.uint8),
@@ -113,6 +133,30 @@ class BasicCPAblationCPUUnit(unittest.TestCase):
         self.assertIs(m._get_dataloaders.__globals__['nnUNetDataLoader'], CPUUnitDataLoader)
         self.assertIs(self.historical.__dict__['nnUNetDataLoaderOnlineCP'], self.historical.nnUNetDataLoaderOnlineCP)
         self.assertIsNot(m._generate.__globals__, self.historical.__dict__)
+
+    def test_actual_dataset_constructor_identifiers_API_full105_not_mapping_keys(self):
+        identifiers = [f'CPU_UNIT_case_{number:03d}' for number in range(105)]
+        dataset = fixture_actual_dataset(identifiers[::-1])
+        self.assertFalse(hasattr(dataset, 'keys'))
+        self.assertEqual(dataset.identifiers, identifiers)
+        self.assertEqual(self.module.validate_dataset_population(dataset, identifiers[:81]), tuple(identifiers))
+        for bad in (identifiers[:-1], identifiers + ['EXTRA_CASE'], identifiers[:-1] + [identifiers[0]]):
+            with self.assertRaises(self.module.OnlineCPError):
+                self.module.validate_dataset_population(fixture_actual_dataset(bad), identifiers[:81])
+        with self.assertRaises(self.module.OnlineCPError):
+            self.module.validate_dataset_population(dataset, ['FOREIGN_DONOR_PATIENT'])
+
+    def test_preflight_consumes_actual_dataset_population_before_patient_tasks(self):
+        identifiers = [f'CPU_UNIT_case_{number:03d}' for number in range(105)]
+        dataset = fixture_actual_dataset(identifiers)
+        populations = {key: ('UNIT_ENTRY',) for key in identifiers[:81]}
+        # No NPZ/clinical metric is simulated: this test stops at the actual
+        # population admission and deliberately fails the first geometry task.
+        bank = SimpleNamespace(entries_by_case=populations)
+        with patch.object(self.module, 'AblationBank', return_value=bank), patch.object(
+                self.module, '_validate_patient', side_effect=RuntimeError('CPU_UNIT_GEOMETRY_SENTINEL')):
+            with self.assertRaisesRegex(RuntimeError, 'CPU_UNIT_GEOMETRY_SENTINEL'):
+                self.module.preflight_bank('CPU_UNIT_NO_FILES', dataset, arm='blend')
 
     def test_actual_metadata_full642_and_fixed_baseline_factors(self):
         receipt = ROOT.parents[1] / 'outputs/v24_gpu6_recovery_20261011/HISTORICAL_BASIC_CP_CONTRACT_READONLY_1791835410056009100.json'
