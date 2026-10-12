@@ -40,7 +40,7 @@ REQUIRED = {
 }
 
 REMOTE_SCRIPT = r'''
-import ast,base64,hashlib,io,json,os,pathlib,psutil,stat,subprocess,sys,tarfile,time
+import ast,base64,hashlib,io,json,os,pathlib,psutil,shutil,stat,subprocess,sys,tarfile,time
 group=pathlib.Path('/var/tmp/aicompetition06_v25_20261012/run_1791784719489478600')
 oldcode=group/'code_U128_reuse_8ff98768793b';UID=41833
 manifest=MANIFEST_DATA;phase=PHASE_DATA;allowed=ALLOWED_DATA;required=REQUIRED_DATA
@@ -58,6 +58,9 @@ OLD_COMMIT='8ff98768793b692cfbb0f3d180fbd4cb1b2609b1'
 OLD_CONTROLLER=(2510561,1791811611.99)
 LIVE_C=(2510833,1791811642.45)
 LIVE_GPU0=(2460965,1791804951.51)
+GPU0_ROOT=pathlib.Path('/var/tmp/aicompetition06_v24_20261010/GPU4_NNUNET_GPU0_20261012_1791804509808819200_canonical_1')
+GPU0_REQUEST_SHA='ad641ae1bc1a362eeef405d9987b6eec67fcb17e48aa61357ef12a814acd028d'
+GPU0_STORAGE_SHA='c724450584c757e70b92ca90117c15c8f690a64e1dd3f6e5f015abd09f67d88f'
 MAPPING={'A':(6,list(range(32,38))),'B':(5,list(range(42,48))),'D':(4,list(range(6)))}
 FAILED_ACTORS={'A':(2510834,1791811642.46),'B':(2510835,1791811642.46),'D':(2510832,1791811642.44)}
 
@@ -134,7 +137,7 @@ def scientific(base):
  return rows
 def immutable_inputs(previous):
  paths=[cache/'local/index.json',cache/'input_bindings.json',group/'shared_preparation.json',
-  group/'native_storage_admission.json',oldlaunchpath,oldsealpath]
+  group/'native_storage_admission.json',oldlaunchpath,oldsealpath,GPU0_ROOT/'request.json',GPU0_ROOT/'storage_admission.json']
  for arm in 'ABCD':
   paths.append(pathlib.Path(previous['slots'][arm]['direct_proof']['path']))
   paths.extend(group/arm/name for name in('request.json','preparation.json','calibration.json','training/training_identity.json'))
@@ -198,14 +201,48 @@ def checkpoint(arm):
   epoch=state['epoch'],updates=state['updates'],phase=state['phase'],train_position=state['train_position'],
   evaluation_position=state['evaluation_position'],active_u=state['curriculum']['active_u'],status=state['status'])
  del saved;return result
-def extra_storage_admission(disk,backup_bytes):
+def gpu0_storage_contract():
+ request_path=regular(GPU0_ROOT/'request.json');same(request_path,GPU0_REQUEST_SHA)
+ request=json.loads(request_path.read_bytes());proof=request['storage_admission']
+ if(request.get('source_arm')!=4 or request.get('execution_physical_gpu')!=0
+     or request.get('metadata_root')!=str(GPU0_ROOT)
+     or proof!=dict(path=str(GPU0_ROOT/'storage_admission.json'),sha256=GPU0_STORAGE_SHA)):
+  raise ValueError('Exact original running GPU0 storage request required')
+ path=regular(proof['path']);same(path,proof['sha256']);document=json.loads(path.read_bytes())
+ binding=document['gpu0_storage_rebinding'];archive=binding['persistent_archive_bytes']
+ canonical=binding['canonical_tmpfs_reserve_bytes'];tmpfs=document['aggregate_budget']['required_free_bytes']
+ if archive!=2**30 or canonical!=32*2**30 or tmpfs!=13862461217:
+  raise ValueError('Original exact GPU0 persistent1GiB/canonical32GiB/native tmpfs admission required')
+ return dict(persistent_archive_bytes=archive,canonical_tmpfs_reserve_bytes=canonical,GPU0_native_tmpfs_required_bytes=tmpfs,
+  source_proofs={str(request_path):GPU0_REQUEST_SHA,str(path):GPU0_STORAGE_SHA},original_GPU0_admission_rewritten=False)
+def extra_storage_admission(disk,backup_bytes,monitor_bytes,gpu0):
  if(type(backup_bytes)is not int or backup_bytes<=0 or type(disk.get('actual_free_bytes'))is not int
-     or type(disk.get('required_free_bytes'))is not int or disk['actual_free_bytes']<0 or disk['required_free_bytes']<0):
+     or type(disk.get('required_free_bytes'))is not int or disk['actual_free_bytes']<0 or disk['required_free_bytes']<0
+     or type(monitor_bytes)is not int or monitor_bytes<=0 or gpu0['persistent_archive_bytes']!=2**30):
   raise ValueError('Measured disk/complete checkpoint sizes required')
- needed=disk['required_free_bytes']+backup_bytes+2**30
- if disk['actual_free_bytes']<needed:raise OSError('Original native reserve plus three exact latest backups and 1GiB do not fit')
- return dict(original_admission=disk,checkpoint_backup_bytes=backup_bytes,additional_reserve_bytes=2**30,
-  required_free_bytes=needed,actual_free_bytes=disk['actual_free_bytes'],original_storage_admission_rewritten=False)
+ if disk['required_free_bytes']<3*2**30:raise ValueError('Original 2GiB reserve and 1GiB growth must remain fully admitted')
+ # The existing GPU0 archive is outside the four V25 arms and must be reserved
+ # separately. Checkpoint backups go to admitted tmpfs, not this disk budget.
+ needed=disk['required_free_bytes']+gpu0['persistent_archive_bytes']+monitor_bytes
+ if disk['actual_free_bytes']<needed:raise OSError('Original V25/GPU0 persistent budgets plus actual failed monitors do not fit')
+ return dict(original_admission=disk,checkpoint_backup_bytes=backup_bytes,checkpoint_backup_storage='tmpfs',
+  failed_monitor_archive_bytes=monitor_bytes,additional_reserve_bytes=gpu0['persistent_archive_bytes'],
+  existing_GPU0_persistent_archive_bytes=gpu0['persistent_archive_bytes'],GPU0_storage_contract=gpu0,
+  original_2GiB_reserve_1GiB_growth_preserved=True,required_free_bytes=needed,actual_free_bytes=disk['actual_free_bytes'],
+  original_storage_admission_rewritten=False)
+def tmpfs_backup_admission(backup_bytes,tmpfs_free,available_RAM,gpu0):
+ if(type(backup_bytes)is not int or backup_bytes<=0 or type(tmpfs_free)is not int or tmpfs_free<0
+     or type(available_RAM)is not int or available_RAM<0 or gpu0['canonical_tmpfs_reserve_bytes']!=32*2**30
+     or gpu0['GPU0_native_tmpfs_required_bytes']!=13862461217):raise ValueError('Exact measured tmpfs/RAM admission required')
+ needed=gpu0['canonical_tmpfs_reserve_bytes']+gpu0['GPU0_native_tmpfs_required_bytes']+backup_bytes
+ memory=416*2**30+backup_bytes
+ if tmpfs_free<needed:raise OSError('Full shared canonical/GPU0 native tmpfs plus complete recovery backups do not fit')
+ if available_RAM<memory:raise MemoryError('Full original416GiB RAM plus complete recovery backups do not fit')
+ return dict(format='v25_tmpfs_recovery_backup_admission_v1',checkpoint_backup_bytes=backup_bytes,
+  required_tmpfs_free_bytes=needed,actual_tmpfs_free_bytes=tmpfs_free,required_available_RAM_bytes=memory,
+  actual_available_RAM_bytes=available_RAM,tmpfs_recovery_backup_not_persistent=True,
+  original_primary_checkpoints_remain_on_disk=True,server_reboot_can_remove_backup=True,
+  original_canonical_and_GPU0_tmpfs_budgets_preserved=True)
 
 if os.getuid()!=UID:raise ValueError('Exact account required')
 regular(group,True);regular(oldcode,True);regular(cache,True)
@@ -273,9 +310,11 @@ elif phase=='start':
  from hiercp_v1x import v25_standalone_ad_resources as resources
  verify_admission(group/'native_storage_admission.json',full_hash=False)
  checkpoints={arm:checkpoint(arm)for arm in 'ABD'}
- disk=check_aggregate_disk(group/'native_storage_admission.json',group/'B')
+ disk=check_aggregate_disk(group/'native_storage_admission.json',group/'B');gpu0storage=gpu0_storage_contract()
  backup_bytes=sum(regular(checkpoints[arm]['path']).stat().st_size for arm in 'ABD')
- storage=extra_storage_admission(disk,backup_bytes)
+ monitor_bytes=sum(regular(group/arm/'monitor/status.json').stat().st_size for arm in 'ABD')
+ storage=extra_storage_admission(disk,backup_bytes,monitor_bytes,gpu0storage)
+ tmpfs_admission=tmpfs_backup_admission(backup_bytes,shutil.disk_usage(cache).free,psutil.virtual_memory().available,gpu0storage)
  oldproofs={}
  for arm in 'ABCD':
   proof=previous['slots'][arm]['direct_proof'];same(proof['path'],proof['sha256'])
@@ -314,6 +353,11 @@ elif phase=='start':
  command[command.index('--execution-manifest')+1]=str(sealpath)
  archive=group/'code_revisions'/('ABD_recovery_before_launch_'+manifest['commit'][:12])
  archive.mkdir(parents=True,exist_ok=False);monitors={};backups={}
+ backup_parent=cache.parent/'recovery_checkpoint_backups'
+ if backup_parent.exists():regular(backup_parent,True)
+ else:backup_parent.mkdir(exist_ok=False)
+ backup_root=backup_parent/('ABD_'+manifest['commit'][:12]);backup_root.mkdir(exist_ok=False)
+ regular(backup_root,True)
  for arm in 'ABD':
   monitor=group/arm/'monitor/status.json';current_status,current_actor,current_log=terminal_arm(arm,previous_controller)
   if current_status!=statuses[arm]or current_actor!=actors[arm]or current_log!=logs[arm]:
@@ -321,17 +365,18 @@ elif phase=='start':
   copied=archive/(arm+'_failed_status.json')
   with copied.open('xb')as stream:stream.write(regular(monitor).read_bytes());stream.flush();os.fsync(stream.fileno())
   same(copied,sha(monitor));monitors[arm]=dict(path=str(copied),sha256=sha(copied))
-  source=regular(checkpoints[arm]['path']);target=archive/(arm+'_checkpoint_latest.pt')
+  source=regular(checkpoints[arm]['path']);target=backup_root/(arm+'_checkpoint_latest.pt')
   with source.open('rb')as stream,target.open('xb')as output:
    for block in iter(lambda:stream.read(2**20),b''):output.write(block)
    output.flush();os.fsync(output.fileno())
   same(source,checkpoints[arm]['sha256']);same(target,checkpoints[arm]['sha256'])
   backups[arm]=dict(path=str(target),sha256=checkpoints[arm]['sha256'])
- if protected_actors()!=protected:raise RuntimeError('Exact protected live actors changed before intent')
+ if protected_actors()!=protected or gpu0_storage_contract()!=gpu0storage:
+  raise RuntimeError('Exact protected live actors/GPU0 storage contract changed before intent')
  for arm in 'ABD':released(actors[arm]);same(checkpoints[arm]['path'],checkpoints[arm]['sha256'])
  intent=dict(format='v25_ABD_terminal_recovery_launch_intent_v1',command=command,private_code=str(code),commit=manifest['commit'],
   checkpoints=checkpoints,previous_actors=actors,protected_actors=protected,checkpoint_backups=backups,
-  storage_admission=storage,selected_arms=['A','B','D'],created_at=time.time(),signals_sent=False)
+  storage_admission=storage,tmpfs_backup_admission=tmpfs_admission,selected_arms=['A','B','D'],created_at=time.time(),signals_sent=False)
  publish(intentpath,intent)
  env=os.environ.copy();env.update(PYTHONPATH=str(code),PYTHONDONTWRITEBYTECODE='1',CUDA_VISIBLE_DEVICES='',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
  log=group/('ABD_recovery_pipeline_controller'+suffix+'.log')
@@ -369,7 +414,7 @@ elif phase=='start':
  result=dict(phase='start',PID=identity['pid'],create_time=identity['create_time'],UID=UID,command=command,log=str(log),private_code=str(code),
   seal=str(sealpath),proofs={arm:str(proofpaths[arm])for arm in 'ABD'},commit=manifest['commit'],checkpoints=checkpoints,
   GPUs=[6,5,4],CPU_affinity={arm:MAPPING[arm][1]for arm in 'ABD'},protected_actors=protected,checkpoint_backups=backups,
-  storage_admission=storage,full40_GNN=True,full680_updates=True,physical_patient_batch=4,full250_native=True,own_BEST26=True,
+  storage_admission=storage,tmpfs_backup_admission=tmpfs_admission,full40_GNN=True,full680_updates=True,physical_patient_batch=4,full250_native=True,own_BEST26=True,
   frozen23_sources_unchanged=True,scientific_configuration_unchanged=True,signals_sent=False,debug=False)
  publish(launchpath,result);print(json.dumps(result))
 else:raise ValueError('Explicit stage/start required')

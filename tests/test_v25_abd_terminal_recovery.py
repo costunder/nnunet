@@ -37,6 +37,11 @@ def helpers(names, **values):
     return namespace
 
 
+def gpu0_contract():
+    return dict(persistent_archive_bytes=2**30,canonical_tmpfs_reserve_bytes=32*2**30,
+        GPU0_native_tmpfs_required_bytes=13862461217)
+
+
 class ABDDeploymentAdmissionTests(unittest.TestCase):
     def test_both_complete_phases_are_valid_python(self):
         manifest, payload = bundle()
@@ -81,14 +86,56 @@ class ABDDeploymentAdmissionTests(unittest.TestCase):
         functions = helpers({'released'}, psutil=SimpleNamespace(Process=missing, NoSuchProcess=ProcessLookupError))
         functions['released'](dict(pid=99, create_time=123.45, command=['python', 'train'], UID=41833))
 
-    def test_complete_native_reserve_and_three_checkpoint_backups_required(self):
+    def test_complete_native_and_existing_GPU0_archive_reserves_required(self):
         functions = helpers({'extra_storage_admission'})
         original = dict(actual_free_bytes=10*2**30, required_free_bytes=8*2**30)
-        value = functions['extra_storage_admission'](original, 2**29)
-        self.assertEqual(value['required_free_bytes'], 9*2**30+2**29)
+        value = functions['extra_storage_admission'](original, 2**29, 500, gpu0_contract())
+        self.assertEqual(value['required_free_bytes'], 9*2**30+500)
+        self.assertEqual(value['additional_reserve_bytes'], 2**30)
+        self.assertEqual(value['existing_GPU0_persistent_archive_bytes'], 2**30)
+        self.assertEqual(value['checkpoint_backup_storage'], 'tmpfs')
+        self.assertEqual(value['checkpoint_backup_bytes'], 2**29)
+        self.assertTrue(value['original_2GiB_reserve_1GiB_growth_preserved'])
         self.assertFalse(value['original_storage_admission_rewritten'])
         with self.assertRaisesRegex(OSError, 'do not fit'):
-            functions['extra_storage_admission'](original, 2*2**30)
+            functions['extra_storage_admission'](dict(actual_free_bytes=9*2**30+499,
+                required_free_bytes=8*2**30), 2**29, 500, gpu0_contract())
+
+    def test_original_minimum_reserve_and_growth_cannot_be_dropped(self):
+        functions = helpers({'extra_storage_admission'})
+        with self.assertRaisesRegex(ValueError, 'Original 2GiB reserve'):
+            functions['extra_storage_admission'](dict(actual_free_bytes=10*2**30,
+                required_free_bytes=3*2**30-1), 1, 500, gpu0_contract())
+
+    def test_exact_original_budget_and_complete_backup_boundary_is_admitted(self):
+        functions = helpers({'extra_storage_admission'})
+        original = dict(actual_free_bytes=9*2**30+500, required_free_bytes=8*2**30)
+        value = functions['extra_storage_admission'](original, 485774438, 500, gpu0_contract())
+        self.assertEqual(value['required_free_bytes'], original['actual_free_bytes'])
+        with self.assertRaisesRegex(OSError, 'do not fit'):
+            functions['extra_storage_admission'](original, 485774438, 501, gpu0_contract())
+
+    def test_all_tmpfs_backups_fit_with_unchanged_canonical_and_GPU0_budgets(self):
+        functions = helpers({'tmpfs_backup_admission'})
+        backup_bytes=485774438
+        required=32*2**30+13862461217+backup_bytes
+        memory=416*2**30+backup_bytes
+        value=functions['tmpfs_backup_admission'](backup_bytes,required,memory,gpu0_contract())
+        self.assertEqual(value['required_tmpfs_free_bytes'],required)
+        self.assertEqual(value['required_available_RAM_bytes'],memory)
+        self.assertTrue(value['tmpfs_recovery_backup_not_persistent'])
+        self.assertTrue(value['original_primary_checkpoints_remain_on_disk'])
+        self.assertTrue(value['server_reboot_can_remove_backup'])
+
+    def test_tmpfs_or_RAM_capacity_shortfall_blocks_before_any_backup(self):
+        functions = helpers({'tmpfs_backup_admission'})
+        backup_bytes=485774438
+        required=32*2**30+13862461217+backup_bytes
+        memory=416*2**30+backup_bytes
+        with self.assertRaisesRegex(OSError,'do not fit'):
+            functions['tmpfs_backup_admission'](backup_bytes,required-1,memory,gpu0_contract())
+        with self.assertRaisesRegex(MemoryError,'do not fit'):
+            functions['tmpfs_backup_admission'](backup_bytes,required,memory-1,gpu0_contract())
 
     def test_receipt_publish_does_not_overwrite_prior_intent(self):
         functions = helpers({'publish'})
@@ -107,7 +154,8 @@ class ABDDeploymentAdmissionTests(unittest.TestCase):
     def test_negative_measurement_is_rejected(self):
         functions = helpers({'extra_storage_admission'})
         with self.assertRaisesRegex(ValueError, 'Measured disk'):
-            functions['extra_storage_admission'](dict(actual_free_bytes=-1, required_free_bytes=0), 1)
+            functions['extra_storage_admission'](dict(actual_free_bytes=-1,
+                required_free_bytes=0), 1, 500, gpu0_contract())
 
 
 if __name__ == '__main__':
