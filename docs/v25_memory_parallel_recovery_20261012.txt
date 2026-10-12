@@ -1,0 +1,63 @@
+# V2.5 공통 준비 이후 RAM 회수 및 네 GPU 독립 재개
+
+범위: GPU6/A(U8/+8), GPU5/B(U16/+16), GPU1/C(U32/+32), GPU4/D(U128).
+v2.4 GPU4를 재개하는 작업은 하지 않는다.
+
+원인과 실제 상태
+
+공통 canonical 14,102/14,102와 full128 upper86/86을 실제로 저장한 뒤,
+A initialU8 upper30/86에서 process RSS64GiB guard로 준비가 실패했다.
+CPU 준비에는 아직 학습 memory coordinator가 없었고, 원래 LRU eviction이
+allocator 회수 전에 RSS를 검사하고 마지막 popped payload 참조도 보유했다.
+서버 실측 여유 RAM 약978GiB, tmpfs 여유 약490GiB로 서버 전체 RAM 부족의
+증거는 없다. 실패 프로세스의 정확한 peak RSS는 기록되지 않았다.
+
+수정
+
+v25_upper_memory_runtime 실행 sidecar는 eviction frame의 payload 참조를
+반환 전에 해제하고 GC/malloc_trim 이후 실제 RSS를 새로 측정한다.
+CPU 준비는 기존 workspace headroom식의36GiB 압력선을 사용하고,
+32GiB provider가 붙은 학습에서는 기존 coordinator의48GiB 압력선을 쓴다.
+64GiB strict RSS, raw/region/source resident8GiB, workers4를 유지한다.
+활성 입력과 weak region admission은 보존하며 회수 후 실제 overflow는 실패한다.
+
+v25_independent_preparation은 공통14102/full128의 실제 admission을 별도로
+봉인하고 각 arm 자신의 prefix prepare→calibrate→GNN40→CP642×128→
+nnU-Net250→자기 checkpoint_best.pth 전체26명 평가를 독립 실행한다.
+한 arm의 prefix 준비/실패는 다른 arm의 준비 완료 후 학습 시작을 막지 않는다.
+공통 cache proof가 실제로 검증된 경우만 prefix prepare lock을 arm별로 분리한다.
+
+캐시·연구 계약 보존
+
+v25_preparation.py, v25_factory.py, frozen run_v25.py 및 원래 과학 파일의
+바이트와 입력 binding을 그대로 유지한다. 이미 완료된 전처리를 다시 생성하지
+않고 기존 canonical/upper cache의 SHA와 context/source binding을 검증한다.
+모델, 전체 데이터105명·평가26명, 그래프, 후보128, physical patientB4,
+680 optimizer update, GNN40epoch, native250epoch, CP source642를 축소하지 않는다.
+context는 간 깊이>1mm, 종양 거리0mm 초과~10mm 이하로 동일하게 유지한다.
+
+검증 범위
+
+CPU 회귀 검사는 allocator 회수, 실제 overflow 유지, 활성 입력 보존,
+coordinator 압력선, 공통/prefix admission, 잘못된 proof 거부,
+정확한 lock 분리와 느린/실패 arm이 다른 arm을 막지 않는 동작을 검사한다.
+CPU 검사 성공을 실제 CUDA 학습 완료로 표현하지 않는다.
+서버 배포 전후의 원본 source SHA와 복구 launch/실제 진행 근거는
+outputs/v24_gpu6_recovery_20261011의 V25_MEMORY_PARALLEL_* receipt에 기록한다.
+학습 완료와 후속 평가 완료는 각각 원래 완료 receipt로 판단한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다. 실행 코드 이전 바이트와 실패 로그를 보존한다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 원래B4와 네 독립 GPU chain을 유지한다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 새 조회의 실제 자원 receipt를 기준으로 한다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다. CPU 회귀는 UNIT 검증이며 최종 모델 검증이 아니다.
+- [x] dummy, placeholder, random fallback을 실제 결과로 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. 과학 모듈은 변경하지 않았으며 새 실제 CUDA 증거는 재개 후 원래 학습 receipt에서 확인한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

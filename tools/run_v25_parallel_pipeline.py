@@ -57,17 +57,43 @@ def validate_manifest(manifest, group):
     return manifest
 
 
-def stage_command(args, slot, mode, *, parallel_prepare=False):
+def validate_slots_live(manifest, verifier):
+    for arm in ARMS:
+        slot = manifest['slots'][arm]
+        verifier(slot['resource_request_path'], gpu=slot['gpu'],
+            cpu_affinity=slot['CPU_affinity'], force=True)
+
+
+def stage_command(args, slot, mode, *, parallel_prepare=False, shared_prepare=False):
     argv = ['/home/aicompetition06/.conda/envs/nnunet/bin/python3.10', '-B', '-u',
         str(ROOT/'tools/run_v25_execution.py')]
     if parallel_prepare:
         argv.append('--parallel-prepare')
+    if shared_prepare:
+        if mode != 'prepare':
+            raise ValueError('Shared preparation requires prepare mode')
+        argv.append('--shared-preparation')
+    elif mode == 'prepare':
+        argv.append('--independent-prepare')
     return argv + ['--mode', mode, '--arm', slot['arm'], '--gpu', str(slot['gpu']),
         '--native-experiment', str(args.native_experiment), '--inventory', str(args.inventory),
         '--stunet-checkpoint', str(args.stunet_checkpoint), '--input-cache', str(args.input_cache),
         '--output', str(args.group/slot['arm']), '--cpu-affinity', ','.join(map(str, slot['CPU_affinity'])),
         '--allocation-request', slot['resource_request_path'], '--storage-admission', str(args.storage_admission),
         '--source-bank', str(args.source_bank), '--baseline-preprocessed', str(args.baseline_preprocessed)]
+
+
+def execute_independent_arm(args, slot, run_stage, validate_prepared):
+    """Start a ready arm immediately, irrespective of other arms' U prefixes."""
+    output = args.group/slot['arm']
+    if not (output/'preparation.json').is_file():
+        run_stage(slot, 'prepare_inputs', stage_command(args, slot, 'prepare'))
+    validate_prepared(args.group, args.input_cache, slot['arm'])
+    if not (output/'calibration.json').exists():
+        run_stage(slot, 'calibrate', stage_command(args, slot, 'calibrate'))
+    run_stage(slot, 'train', stage_command(args, slot, 'train'))
+    run_stage(slot, 'scoring', stage_command(args, slot, 'score-cp'))
+    run_stage(slot, 'native', native_command(args, slot))
 
 
 def native_command(args, slot):
@@ -82,7 +108,8 @@ def native_command(args, slot):
 
 def main(argv=None):
     import psutil
-    from tools.run_v25_pipeline import actor, atomic_status, cache_memory_admission, validate_preparation
+    from tools.run_v25_pipeline import actor, atomic_status, cache_memory_admission
+    from hiercp_v1x.v25_independent_preparation import validate_shared_preparation, validate_arm_preparation
     from hiercp_v1x.u_bridge_experiment import lock
     args = parse(argv)
     args.group = args.group.resolve(strict=True)
@@ -95,6 +122,7 @@ def main(argv=None):
     from hiercp_v1x.v25_direct_resources import validate_resource_proof
     aggregate_cpus = sorted({cpu for slot in manifest['slots'].values() for cpu in slot['CPU_affinity']})
     psutil.Process().cpu_affinity(aggregate_cpus)
+    validate_slots_live(manifest, validate_resource_proof)
     from hiercp_v1x.v25_native_storage import verify_admission
     admission = verify_admission(args.storage_admission, full_hash=True)
     if admission['group_root'] != str(args.group):
@@ -143,11 +171,7 @@ def main(argv=None):
                 from hiercp_v1x.v25_downstream import verify_completion
                 verify_completion(args.group/slot['arm']/'downstream/completion.json')
                 return
-            if not (args.group/slot['arm']/'calibration.json').exists():
-                run_stage(slot, 'calibrate', stage_command(args, slot, 'calibrate'))
-            run_stage(slot, 'train', stage_command(args, slot, 'train'))
-            run_stage(slot, 'scoring', stage_command(args, slot, 'score-cp'))
-            run_stage(slot, 'native', native_command(args, slot))
+            execute_independent_arm(args, slot, run_stage, validate_arm_preparation)
             from hiercp_v1x.v25_downstream import verify_completion
             verify_completion(args.group/slot['arm']/'downstream/completion.json')
             publish(slot, 'complete', 'COMPLETE')
@@ -163,15 +187,13 @@ def main(argv=None):
             (args.group/slot['arm']).mkdir(exist_ok=True)
             publish(slot, 'prepare_inputs', 'WAITING_FOR_COMMON_PREPARATION')
         first = manifest['slots']['A']
-        if not (args.group/'A/preparation.json').is_file():
-            run_stage(first, 'prepare_inputs', stage_command(args, first, 'prepare', parallel_prepare=True))
-        validate_preparation(args.group, args.input_cache)
+        if not (args.group/'shared_preparation.json').is_file():
+            run_stage(first, 'prepare_inputs', stage_command(args, first, 'prepare',
+                shared_prepare=True, parallel_prepare=not (args.input_cache/'local/index.json').is_file()))
+        validate_shared_preparation(args.group, args.input_cache)
         atomic_status(args.group/'cache_memory_admission.json', cache_memory_admission(args.input_cache))
-        # Each arm admits the SAME complete canonical index, then only its own U prefix.
-        for arm in 'BCD':
-            slot = manifest['slots'][arm]
-            if not (args.group/arm/'preparation.json').exists():
-                run_stage(slot, 'prepare_inputs', stage_command(args, slot, 'prepare'))
+        # Full14102/full128 is common. Each arm's remaining prefix preparation
+        # is part of that arm's thread, so a slow prefix never delays ready GPUs.
         failures = []
         with ThreadPoolExecutor(max_workers=4) as pool:
             futures = {pool.submit(chain, manifest['slots'][arm]): arm for arm in ARMS}
