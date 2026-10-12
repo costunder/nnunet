@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import patch
 
 from hiercp_v1x import v25_native_cp as native,v25_downstream as downstream,v25_cp as cp
+from hiercp_v1x import v25_terminal_descendant_resources as terminal
 from hiercp_v1x import v24_matched_basic_cp_pipeline as original_pipeline
 from hiercp_v1x import v24_matched_basic_cp_runtime as original_runtime
 
@@ -34,6 +35,7 @@ class UnchangedNativeRouteCPUUnit(unittest.TestCase):
                 os.environ['CUDA_VISIBLE_DEVICES']=binding['GPU_UUID'];selected.append(binding['GPU_UUID'])
             lease=SimpleNamespace(request=binding,verify=lambda **kwargs:None,select_cuda=select)
             with patch.object(direct,'DirectAllocationLease',return_value=lease) as constructor,\
+                    patch.object(terminal,'install_runtime',return_value={'CPU_UNIT_SYNTHETIC_METADATA':True}),\
                     patch.object(native,'_GUARDS',{}),patch.object(native,'require_project_budget',return_value={'CPU_UNIT':True}):
                 guard=native.early_stage_guard(stage_action='train',gpu=6);guard()
                 self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'],'GPU-CPU_UNIT_A')

@@ -1,0 +1,27 @@
+V2.5 shared candidate geometry execution recovery — 2026-10-12
+
+The four independent experiments share the sealed canonical 14,102 records and full128 raw patient/prototype geometry. Their fixed curriculum contracts remain A=U8/+8 GPU6, B=U16/+16 GPU5, C=U32/+32 GPU1 and D=U128 GPU4. GNN training remains 40 epochs, 680 optimizer updates and physical patient batch4. Each arm continues into its own BEST CP642x128, nnU-Net250 epochs batch2 and own checkpoint_best.pth evaluation on all26 cases.
+
+The original launch omitted the already verified exact UpperReuseAdapter. Missing active-U prefix entries consequently repeated CT decoding, EDT and region construction. An execution-only sidecar now binds the same admitted CPU inputs before frozen CUDA initialization. It derives the complete requested P+active-U graph from the common full128 tensors; all candidate-related relations are recomputed with the original hierarchy functions. This is necessary to preserve the exact graph for the selected nodes. It never caches neural predictions, reduces candidate count, changes the graph rule, or falls back to raw preprocessing.
+
+The resource guard also treated a normally completed sibling zombie as an active-actor error. A separately sealed execution sidecar excludes only observed inactive own descendants. The controller and current actor retain exact PID, birth, argv and UID admission. CPU, RAM, CUDA identity, cgroup and lifetime checks remain strict. The guard is installed in GNN stages, downstream launcher and fresh native subprocesses.
+
+Deployment uses a new private code directory and leaves the original live code unchanged. All23 scientific source hashes, shared cache headers and experiment requests remain unchanged. Any live training process must first save its exact state cooperatively at a batch boundary. Only exact task-created non-training actors and controller may then receive SIGTERM. Latest weights, optimizer, RNG and progression state are reused by the existing frozen resume path. Failed arms retain their original logs. A stopped-controller receipt and fresh launch admission prevent duplicate launches.
+
+Validation: 64 DEBUG CPU tests passed, including exact full128-prefix graph/prototype/audit equality at U8/U16/U32/U128, CPU binding before CUDA, cached input lifetime, original resource failure reproduction, terminal descendant identity and foreign/reused PID rejection. This is CPU validation; actual CUDA execution and full training/evaluation are separate runtime evidence and are not implied by these tests.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다.
+- [x] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [x] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

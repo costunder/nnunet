@@ -23,6 +23,7 @@ ROOT=Path(__file__).resolve().parents[1]
 NATIVE_FORMAT='v25_four_arm_Basic642_full250_native_v1'
 FILES=('hiercp_v1x/v25_native_cp.py','hiercp_v1x/v25_native_storage.py','hiercp_v1x/v25_cp.py',
     'hiercp_v1x/v25_context.py','hiercp_v1x/v25_downstream.py','hiercp_v1x/v25_direct_resources.py',
+    'hiercp_v1x/v25_terminal_descendant_resources.py',
     'hiercp_v1x/v25_parallel_native_storage.py','tools/run_v25_downstream.py',
     'hiercp_v1x/v24_matched_basic_cp_pipeline.py','hiercp_v1x/v24_matched_basic_cp_runtime.py',
     'hiercp_v1x/v24_nnunet_cp.py','hiercp_v1x/v24_matched_native_gradient.py',
@@ -264,6 +265,8 @@ def private_modules():
 def early_stage_guard(*,stage_action,gpu=None,chain_root=None):
     """Truthful owned PBS or explicit direct proof guards every native step."""
     import psutil
+    from .v25_terminal_descendant_resources import install_runtime
+    install_runtime()
     declared,path=request();key=(str(path),os.environ[ENV_SHA],os.environ.get(ENV_EXECUTION_SHA))
     if gpu not in (None,declared['gpu']):raise ValueError('Native physical execution GPU changed')
     if key not in _GUARDS:

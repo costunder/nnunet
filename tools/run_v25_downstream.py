@@ -1,9 +1,12 @@
 """Run the actual full own v2.5 native250/BEST26/metric/schema1 chain."""
 from __future__ import annotations
 import argparse
+import hashlib
 import json
+import os
 from pathlib import Path
 import sys
+import time
 
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT)not in sys.path:sys.path.insert(0,str(ROOT))
@@ -50,6 +53,19 @@ def main(argv=None):
         calibration_worker(args.native,args.physical_batch,args.output)
         return 0
     cpu_affinity=execution_cpu_affinity(args.cpu_affinity)
+    from hiercp_v1x.v25_terminal_descendant_resources import install_runtime
+    terminal_runtime=install_runtime()
+    # Record execution-only guard provenance separately from the immutable
+    # native model/data/training request and its historical evaluator inputs.
+    folder=args.output/'execution'
+    folder.mkdir(parents=True,exist_ok=True)
+    record=dict(format='v25_downstream_terminal_descendant_execution_v1',
+        arm=args.arm,terminal_descendant_runtime=terminal_runtime,
+        launcher_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        scientific_model_CP_training_and_BEST_contract_unchanged=True,
+        actual_PID=os.getpid(),debug=False)
+    with (folder/('terminal_descendant_'+str(time.time_ns())+'.json')).open('x',encoding='utf8') as stream:
+        json.dump(record,stream,allow_nan=False)
     from hiercp_v1x.v25_downstream import run_downstream
     proof=run_downstream(arm=args.arm,gpu=args.gpu,output=args.output,score_overlay=args.score_overlay,
         storage_admission=args.storage_admission,project=args.project,basic_validation=args.basic_validation,
