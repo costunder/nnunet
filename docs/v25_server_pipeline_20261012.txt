@@ -1,0 +1,56 @@
+v2.5 서버 실행 계약
+2026-10-12 KST
+
+네 arm: A U8/+8, B U16/+16, C U32/+32, D 첫 epoch U128.
+모든 arm은 동일한 공식 STU-Net-S SHA f440f401bf4cac1d1d6f7c4635542ef057193a5f96c0b3c661a6179afeab7be6,
+seed42, 새 GNN/optimizer, 13,331,792 trainable parameters/537 tensors를 쓴다.
+혈관 분기는 포함하지 않는다. 기존 v2.4 학습 가중치와 context 캐시는 재사용하지 않는다.
+
+공통 context: 간 깊이>1mm, 종양 거리0<d<=10mm.
+spacing-aware voxel-center EDT, 원래48^3 CT/두view/전체 grid·sampling·typed role·edge 유지.
+학습·검증·CP의 source/target 생성기 및 검사기에 같은 조건을 적용한다.
+
+전체131case, outer105/26, inner84/21, native records14,102/P662/U13,440 유지.
+ranking train65/P527, validation21/P135. zero-P inventory는 제거하지 않는다.
+GNN40epoch/680update/physical B4/accumulation1/effective4, 매epoch fixed29 train65 probe,
+active-U validation21, full128 validation21. BEST는 공통 full128에서만 선정한다.
+최소2/최대4epoch와 mastery/overfit/remaining-budget deadline을 기록하며 epoch33부터
+최소8epoch full128 학습을 보장한다. 본학습 조기종료·subset·epoch축소를 하지 않는다.
+
+준비->full128 B4/B8·chunk32/64/128 실제 CUDA 반복 측정->전체 GNN->자기 BEST
+->Basic의 자기 병변642×기존 CP-valid128=82,176 채점->독립 score overlay
+->native nnU-Net250epoch/B2/patch128^3/CP0.5->자기 checkpoint_best.pth/전체26명 평가
+->기존 6검출기준·3크기구간·통계·Result schema1. 새 모델 초기값은 같고 learned output은 arm마다 독립이다.
+Basic source/paste/RNG/일반 증강/정규화 구현 및 native logging은 유지한다.
+
+실행기는 tools/run_v25.py. prepare/calibrate는 production optimizer update0.
+train/gnn-pipeline은 완전한 checkpoint cursor/optimizer/scheduler/RNG로 이어받는다.
+서버 할당 증거 JSON과 저장 admission은 모델 identity와 별도이며 실행 직전 검증한다.
+할당 만료180초 전부터 새 CUDA chunk를 거부하고 마지막 정확한 checkpoint를 보존한다.
+view는 기존 tools/training_monitor_ui.py의 task UI2를 재사용한다.
+
+저장: shared canonical은 새 /dev/shm namespace, learned checkpoint/score/result는 /var/tmp.
+Home 실제 quota 오류 EDQUOT를 확인했다. sudo/관리자 작업을 하지 않는다.
+원본 full131 Blosc2 전처리 배열은 read-only 재사용하며 중복 CT/seg를 만들지 않는다.
+네 arm checkpoint retention 및 atomic-write peak9슬롯, 실측 파일 크기, 예측/평가/로그
+성장 예산, persistent reserve2GiB/growth1GiB를 새 정책으로 별도 검증한다.
+tmpfs는 서버 재시작 때 유실될 수 있으며 checkpoint는 persistent filesystem에 둔다.
+
+준비 완료와 실제 CUDA·전체 학습·전체 평가 완료는 구분하여 보고한다.
+서버 PID/할당/GPU UUID/epoch/update/현재 단계/실패·대기 이유를 actual receipt로 확인한다.
+
+## 작업 완료 체크리스트
+
+- [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
+- [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
+- [x] 모델 깊이와 너비를 편의상 축소하지 않았다.
+- [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
+- [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
+- [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 본학습B4와 B4/B8 CUDA 측정 경로를 분리했다.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 실제 PBS129664/GPU6/CPU32~37/RAM128GiB 조회.
+- [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 새 V25 CUDA 실행 전 항목이다.
+- [x] 디버그 설정과 최종 설정을 분리했다.
+- [x] dummy, placeholder, random fallback을 사용하지 않았다.
+- [ ] 핵심 모듈이 forward, loss, gradient와 optimizer에 연결되어 있다. CPU 검증 통과; 실제 CT/CUDA 증거는 실행 후 확인한다.
+- [x] 실제 실행 설정과 변경 사항을 명확하게 보고했다.
+- [x] smoke test와 전체 학습 또는 전체 평가를 구분해서 보고했다.

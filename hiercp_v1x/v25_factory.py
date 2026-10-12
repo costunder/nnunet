@@ -1,0 +1,472 @@
+"""Actual native admission and fresh v2.5 CT/organ shared-context runtime construction.
+
+The sealed v1 archive and train-only prototype bank are provenance inputs.
+No trained v2.3 weights or annotation-dependent canonical/upper cache is read.
+"""
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
+import copy
+import json
+from pathlib import Path
+import threading
+from types import SimpleNamespace
+
+import numpy as np
+import psutil
+import torch
+
+from .contracts import canonical_hash
+from hiercp_v22.contracts import sha
+from .v24_inputs import (recipient_context, prepare_donor, build_local_record,
+    materialize_pair, query_inputs, array_digest, immutable_array)
+from .v24_provider import FORMAT as CANONICAL_FORMAT, V24InputCoordinator, V24InputProvider
+
+INPUT_BINDINGS_FORMAT = 'v25_immutable_CT_organ_fixed_donor_shared_context_bindings_v1'
+
+
+def _stat(path):
+    value=Path(path).stat()
+    return value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns
+
+
+def _publish(path, value):
+    path=Path(path)
+    if path.exists():
+        if json.loads(path.read_text(encoding='utf8')) != value:
+            raise FileExistsError('Existing owned v2.5 metadata differs; no overwrite: '+str(path))
+        return
+    with path.open('x',encoding='utf8') as stream: json.dump(value,stream,ensure_ascii=False,indent=2,allow_nan=False)
+
+
+class V25NativeInputs:
+    """Annotated donors plus label-less recipient contexts, with file admission."""
+    def __init__(self, experiment, inventory, output, runtime):
+        from .comparison_native_upper_cache import _load_geometry_inputs
+        from .v23_data import V23Population
+        from .v24_geometry import V24UpperGeometryCache
+        self.bundle,self.inventory,self.cohort,self.signature,self.preserved = _load_geometry_inputs(experiment,'native',inventory)
+        from hiercp.schema import graph_config_from_dict
+        self.population=V23Population(self.inventory,debug=False)
+        self.root=Path(output).resolve(); self.root.mkdir(parents=True,exist_ok=True)
+        self.runtime=copy.deepcopy(runtime)
+        self.config=copy.deepcopy(self.bundle.config)
+        from .transition_v1_local import _runtime
+        from .v25_context import install, identity as context_identity
+        install(_runtime(expected_snapshot_root=self.bundle.source), approved_profile=True)
+        self.context_contract=context_identity()
+        self.config["graph"]["context_inner_radius_mm"]=0.
+        self.graph_config=graph_config_from_dict(self.config['graph'])
+        self.ct_clip=tuple(self.config['ct_clip'])
+        self.training_cases=set(self.inventory['split']['inner_train'])
+        self.raw={row['case_id']:row for row in self.inventory['raw_records']}
+        self._file_proofs={str(Path(path).resolve()):_stat(path) for path in self.preserved}
+        self._input_file_proofs={str(self.bundle.source/name):_stat(self.bundle.source/name)
+            for name in self.signature['source_proof']['verified_files']}
+        self._input_file_proofs[self.signature['bank_path']]=_stat(self.signature['bank_path'])
+        self._raw_cache,self._donors,self._regions=OrderedDict(),OrderedDict(),OrderedDict()
+        self._raw_bytes=0; self._lock=threading.RLock()
+        self._build_locks={}; self._build_lock_guard=threading.Lock()
+        # Raw/region workspace is evictable and shares the actual process RSS
+        # ceiling with providers. This is a residency limit, not a data cap.
+        self.raw_resident_bytes=runtime['raw_resident_gib']*2**30
+        self.rss_bytes=runtime['rss_gib']*2**30
+        from . import v24_inputs,v24_geometry,v24_model,v25_context,v25_targets,v25_training,v25_preparation
+        source_paths=[Path(module.__file__) for module in (v24_inputs,v24_geometry,v24_model,v25_context,v25_targets,v25_training,v25_preparation)]+[
+            Path(__file__),Path(__file__).with_name('v24_provider.py')]
+        self._input_file_proofs.update({str(path.resolve()):_stat(path) for path in source_paths})
+        self.source_sha256=canonical_hash(dict(v25={path.name:sha(path) for path in source_paths},
+            archived=self.signature['source_proof']['verified_files']))
+        self.config_sha256=canonical_hash(dict(graph=self.config['graph'],ct_clip=self.config['ct_clip'],
+            source_pad=self.config['cache']['source_pad'],context=self.context_contract))
+        self.bank_sha256=self.signature['bank_sha256']
+        # Small immutable proofs outlive evictable full CT/EDT/donor workspaces.
+        # Cache admission must not reconstruct those arrays on an upper hit.
+        self._bindings_path=self.root/'input_bindings.json'
+        self._input_bindings={}; self._binding_receipt=None; self._binding_file_proof=None
+        if self._bindings_path.exists(): self._admit_input_bindings()
+        elif (self.root/'local/index.json').exists():
+            raise ValueError('Complete canonical cache lacks immutable input binding proof; use a fresh namespace')
+        self.geometry=V24UpperGeometryCache(self.population,self.root/'upper',self._upper,
+            input_binding=self.input_binding,guard_inputs=self.guard_inputs,
+            workers=runtime['workers'],resident_bytes=runtime['geometry_resident_gib']*2**30,rss_bytes=self.rss_bytes)
+
+    def _binding_header(self):
+        cases=self.population.partition_cases('inner_train')+self.population.partition_cases('inner_val')
+        required=set(cases)|{row['donor_case_id'] for row in self.inventory['records']}
+        raw_files={str(Path(self.raw[case][kind]).resolve()):self.raw[case][kind+'_sha256']
+            for case in sorted(required) for kind in ('image','label')}
+        return dict(format=INPUT_BINDINGS_FORMAT,source_sha256=self.source_sha256,
+            config_sha256=self.config_sha256,prototype_bank_sha256=self.bank_sha256,
+            context_contract_sha256=self.context_contract['contract_sha256'],
+            query_rows_sha256=canonical_hash([query_inputs([row])[0] for row in self.inventory['records']]),
+            case_ids=list(cases),raw_files=raw_files)
+
+    def _validate_binding(self,case,binding):
+        plan=self.population.case(case,128); row=plan.query_rows[0]
+        if not isinstance(binding,dict) or set(binding)!={'recipient','donor','prototype_bank_sha256','config_sha256','source_sha256'}:
+            raise ValueError('Closed immutable recipient/donor binding required')
+        recipient=binding['recipient']; donor=binding['donor']
+        if (not isinstance(recipient,dict) or set(recipient)!={'format','case_id','CT_sha256','organ_sha256','spacing','image_affine','recipient_tumor_GT_used'}
+                or recipient['format']!='v24_recipient_CT_organ_no_tumor_annotation_v1'
+                or recipient['case_id']!=case or recipient['recipient_tumor_GT_used'] is not False
+                or not isinstance(donor,dict) or set(donor)!={'case_id','component_id','CT_sha256','label_sha256','mask_sha256'}
+                or donor['case_id']!=row['donor_case_id'] or donor['component_id']!=row['donor_component']
+                or donor['CT_sha256']!=self.raw[row['donor_case_id']]['image_sha256']
+                or donor['label_sha256']!=self.raw[row['donor_case_id']]['label_sha256']
+                or binding['source_sha256']!=self.source_sha256 or binding['config_sha256']!=self.config_sha256
+                or binding['prototype_bank_sha256']!=self.bank_sha256):
+            raise ValueError('Immutable CT/organ/fixed donor/source binding differs')
+        for checksum in (recipient['CT_sha256'],recipient['organ_sha256'],donor['mask_sha256']):
+            if not isinstance(checksum,str) or len(checksum)!=64 or any(c not in '0123456789abcdef' for c in checksum):
+                raise ValueError('Actual immutable array SHA256 required')
+        spacing=np.asarray(recipient['spacing']); affine=np.asarray(recipient['image_affine'])
+        if spacing.shape!=(3,) or not np.isfinite(spacing).all() or (spacing<=0).any() or affine.shape!=(4,4) or not np.isfinite(affine).all():
+            raise ValueError('Immutable native physical geometry differs')
+
+    def _guard_binding_receipt(self):
+        if self._binding_receipt is not None and _stat(self._bindings_path)!=self._binding_file_proof:
+            raise ValueError('Admitted immutable input binding metadata changed')
+
+    def _admit_input_bindings(self):
+        before=_stat(self._bindings_path)
+        value=json.loads(self._bindings_path.read_text(encoding='utf8'))
+        header=self._binding_header()
+        expected=set(header)|{'bindings','raw_file_proofs','complete','content_sha256'}
+        if (set(value)!=expected or value.get('complete') is not True
+                or any(value.get(key)!=item for key,item in header.items())
+                or value['content_sha256']!=canonical_hash({key:item for key,item in value.items() if key!='content_sha256'})
+                or set(value['bindings'])!=set(header['case_ids'])
+                or set(value['raw_file_proofs'])!=set(header['raw_files'])):
+            raise ValueError('Complete immutable input binding/source/query proof differs')
+        for case,binding in value['bindings'].items(): self._validate_binding(case,binding)
+        for path,checksum in header['raw_files'].items():
+            proof=value['raw_file_proofs'][path]
+            if (not isinstance(proof,dict) or set(proof)!={'sha256','stat_identity'}
+                    or proof['sha256']!=checksum or len(proof['stat_identity'])!=5
+                    or any(type(item)is not int for item in proof['stat_identity'])
+                    or _stat(path)!=tuple(proof['stat_identity'])):
+                raise ValueError('SHA-verified immutable raw source was changed or replaced: '+path)
+        if _stat(self._bindings_path)!=before:
+            raise ValueError('Immutable input binding metadata changed during admission')
+        self._input_bindings=copy.deepcopy(value['bindings'])
+        self._file_proofs.update({path:tuple(proof['stat_identity']) for path,proof in value['raw_file_proofs'].items()})
+        self._binding_receipt=value; self._binding_file_proof=before
+        index=self.root/'local/index.json'
+        if index.exists() and json.loads(index.read_text(encoding='utf8')).get('input_bindings_sha256')!=value['content_sha256']:
+            raise ValueError('Canonical cache is not bound to the exact immutable input metadata')
+
+    def _publish_input_bindings(self):
+        header=self._binding_header()
+        if set(self._input_bindings)!=set(header['case_ids']):
+            raise ValueError('Every native patient immutable input binding must be prepared')
+        raw_proofs={}
+        for path,checksum in header['raw_files'].items():
+            proof=self._file_proofs.get(path)
+            if proof is None or _stat(path)!=proof:
+                raise ValueError('Actual SHA-verified raw source proof missing or changed: '+path)
+            raw_proofs[path]=dict(sha256=checksum,stat_identity=list(proof))
+        value=dict(**header,bindings=copy.deepcopy(self._input_bindings),raw_file_proofs=raw_proofs,complete=True)
+        value['content_sha256']=canonical_hash(value)
+        _publish(self._bindings_path,value); self._admit_input_bindings()
+        return value['content_sha256']
+
+    def guard_source(self):
+        """Experiment/supervision provenance, outside the GT-free input cache."""
+        for path,proof in self._file_proofs.items():
+            if _stat(path)!=proof: raise ValueError('Admitted native/source/prototype provenance changed: '+path)
+
+    def guard_input_files(self, case, donor=None):
+        for path,proof in self._input_file_proofs.items():
+            if _stat(path)!=proof: raise ValueError('Admitted GT-free implementation/prototype input changed')
+        pairs=[(case,'image')]
+        if donor is not None: pairs.extend(((donor,'image'),(donor,'label')))
+        for identity,kind in pairs:
+            path=str(Path(self.raw[identity][kind]).resolve())
+            if path in self._file_proofs and _stat(path)!=self._file_proofs[path]:
+                raise ValueError('Actual CT or allowed donor annotation changed')
+
+    def _build_lock(self, key):
+        """One builder per immutable input key; never acquire under the LRU lock."""
+        with self._build_lock_guard:
+            return self._build_locks.setdefault(key,threading.RLock())
+
+    def _case(self, case):
+        from hiercp.common import CasePaths,load_case
+        with self._build_lock(('raw',case)):
+            with self._lock:
+                self.guard_input_files(case)
+                if case in self._raw_cache:
+                    self._raw_cache.move_to_end(case); return self._raw_cache[case][0]
+                row=self.raw[case]
+                paths={kind:Path(row[kind]).resolve(strict=True) for kind in ('image','label')}
+                proofs={kind:_stat(path) for kind,path in paths.items()}
+            # Independent case SHA, native decoding, immutable CT snapshots and
+            # the complete physical EDT do not hold the shared LRU lock.
+            for kind,path in paths.items():
+                if sha(path)!=row[kind+'_sha256']: raise ValueError('Actual native CT/annotation SHA differs: '+case)
+            loaded=load_case(CasePaths(case,paths['image'],paths['label']))
+            organ=np.isin(loaded.label,(1,2))
+            context=recipient_context(case,loaded.image,organ,loaded.spacing,loaded.image_affine)
+            # Python 3.10/3.11 cached_property locks are shared by every
+            # instance. Prime the unchanged original equations on this private
+            # per-case workspace before publication, avoiding global EDT/hash
+            # serialization without changing the original cached values.
+            for name in ('organ_depth','_input_binding'):
+                context.__dict__[name]=getattr(type(context),name).func(context)
+            depth=context.organ_depth
+            # Donor annotation remains available only in this explicit donor
+            # branch; recipient builders receive context, never loaded.label.
+            loaded.image=context.image; loaded.spacing=context.spacing; loaded.image_affine=context.image_affine
+            loaded.label.flags.writeable=False
+            value=dict(context=context,donor_case=loaded,binding=context.binding(),organ_depth=depth)
+            size=context.image.nbytes+context.organ_mask.nbytes+loaded.label.nbytes+depth.nbytes
+            with self._lock:
+                self.guard_input_files(case)
+                for kind,path in paths.items():
+                    if _stat(path)!=proofs[kind]:
+                        raise ValueError('Actual native source changed during complete case build: '+case)
+                self._file_proofs.update({str(path):proofs[kind] for kind,path in paths.items()})
+                self._raw_cache[case]=(value,size); self._raw_bytes+=size
+                while self._raw_bytes>self.raw_resident_bytes and len(self._raw_cache)>1:
+                    old,(unused,bytes_)=self._raw_cache.popitem(last=False); self._raw_bytes-=bytes_
+                    for key in [key for key in self._donors if key[0]==old]: self._donors.pop(key)
+                    self._regions.pop(old,None)
+                self._rss_locked()
+            return value
+
+    def _rss(self):
+        with self._lock:return self._rss_locked()
+
+    def _rss_locked(self):
+        coordinator=getattr(self,'memory_coordinator',None)
+        if coordinator is not None:coordinator.trim(strict=False)
+        while psutil.Process().memory_info().rss>self.rss_bytes and self._raw_cache:
+            case,(_,size)=self._raw_cache.popitem(last=False);self._raw_bytes-=size
+            self._regions.pop(case,None)
+            for key in [key for key in self._donors if key[0]==case]:self._donors.pop(key)
+        if psutil.Process().memory_info().rss>self.rss_bytes:
+            raise MemoryError('Actual complete v24 workspace exceeds process RSS; no subset or fallback')
+
+    def _donor(self,row):
+        from hiercp_v22.data import sources
+        from hiercp.common import stable_case_seed
+        key=row['donor_case_id'],row['donor_component']
+        with self._build_lock(('donor',key)):
+            if key[0] not in self.training_cases or key[0]==row['case_id']:
+                raise ValueError('Fixed independent inner-train donor required')
+            raw=self._case(key[0])
+            with self._lock:
+                cached=self._donors.get(key)
+            if cached is None:
+                collection=sources(raw['donor_case'],self.config['cache']['source_pad'],self.inventory['config']['donor_max_diameter_mm'])
+                match=[i for i,(component,_) in enumerate(collection.entries) if component==key[1]]
+                if len(match)!=1: raise ValueError('Exact native donor component absent')
+                source,_=collection[match[0]]
+                source.full_mask=immutable_array(source.full_mask)
+                source.v24_mask_sha256=array_digest(source.full_mask)
+                prepared=prepare_donor(raw['donor_case'],source,config=self.graph_config,
+                    seed=self.config['seed'],ct_clip=self.ct_clip)
+                cached=source,prepared
+                with self._lock:
+                    self.guard_input_files(row['case_id'],key[0])
+                    # An evicted raw case must not gain an orphan donor entry.
+                    # This caller still owns its complete private raw workspace.
+                    if key[0] in self._raw_cache:self._donors[key]=cached
+                    self._rss_locked()
+            source,prepared=cached
+            return raw['donor_case'],source,prepared
+
+    def _region(self,case):
+        from .v24_geometry import build_recipient_regions
+        from hiercp.common import stable_case_seed
+        from hiercp.region import REGION_CACHE_SEED_SALT
+        with self._build_lock(('region',case)):
+            with self._lock:
+                self.guard_input_files(case)
+                region=self._regions.get(case)
+                if region is not None:
+                    self._rss_locked(); return region
+            raw=self._case(case)
+            region=build_recipient_regions(raw['context'],config=self.graph_config,
+                seed=stable_case_seed(42,case,REGION_CACHE_SEED_SALT),ct_clip=self.ct_clip)
+            with self._lock:
+                self.guard_input_files(case)
+                if case in self._raw_cache:self._regions[case]=region
+                self._rss_locked()
+            return region
+
+    def input_binding(self,plan):
+        with self._build_lock(('binding',plan.case_id)):
+            with self._lock:
+                self._guard_binding_receipt()
+                binding=self._input_bindings.get(plan.case_id)
+                if binding is None and self._binding_receipt is not None:
+                    raise ValueError('Admitted immutable patient input binding is missing')
+            if binding is None:
+                raw=self._case(plan.case_id); row=plan.query_rows[0]
+                donor,source,_=self._donor(row)
+                binding=dict(recipient=copy.deepcopy(raw['binding']),
+                    donor=dict(case_id=row['donor_case_id'],component_id=row['donor_component'],
+                        CT_sha256=self.raw[row['donor_case_id']]['image_sha256'],
+                        label_sha256=self.raw[row['donor_case_id']]['label_sha256'],
+                        mask_sha256=source.v24_mask_sha256),
+                    prototype_bank_sha256=self.bank_sha256,config_sha256=self.config_sha256,source_sha256=self.source_sha256)
+                self._validate_binding(plan.case_id,binding)
+                with self._lock:
+                    self._guard_binding_receipt()
+                    self._input_bindings[plan.case_id]=copy.deepcopy(binding)
+            row=plan.query_rows[0]
+            if (binding['donor']['case_id'],binding['donor']['component_id'])!=(row['donor_case_id'],row['donor_component']):
+                raise ValueError('Immutable patient donor differs from actual query')
+            self.guard_inputs(plan,binding)
+            return copy.deepcopy(binding)
+
+    def guard_inputs(self,plan,binding):
+        self._guard_binding_receipt()
+        self.guard_input_files(plan.case_id,plan.query_rows[0]['donor_case_id'])
+        # Recipient label provenance is checked outside the forward/cache key;
+        # the binding itself still contains only recipient CT and explicit organ.
+        label=str(Path(self.raw[plan.case_id]['label']).resolve())
+        if label in self._file_proofs and _stat(label)!=self._file_proofs[label]:
+            raise ValueError('Admitted native recipient annotation provenance changed')
+        self._rss()
+        if (binding['source_sha256']!=self.source_sha256 or binding['config_sha256']!=self.config_sha256
+                or binding['prototype_bank_sha256']!=self.bank_sha256
+                or binding['recipient']['case_id']!=plan.case_id):
+            raise ValueError('Actual GT-free source/config/bank/recipient binding changed')
+
+    def _upper(self,plan,provider=None):
+        from .v24_geometry import build_upper_graphs
+        raw=self._case(plan.case_id); donor,source,_=self._donor(plan.query_rows[0])
+        return build_upper_graphs(raw['context'],donor,source,self._region(plan.case_id),
+            self._region(plan.query_rows[0]['donor_case_id']),plan.query_rows,self.bundle.prototype_bank,
+            config=self.graph_config,ct_clip=self.ct_clip,training_case_ids=self.training_cases)
+
+    def _local(self,row):
+        from hiercp.common import stable_case_seed
+        raw=self._case(row['case_id']); donor,source,prepared=self._donor(row)
+        return build_local_record(raw['context'],donor,source,prepared,row,
+            config=self.graph_config,seed=self.config['seed'],
+            ct_clip=self.ct_clip,scope_contract=self.bundle.scope['contract_sha256'],
+            donor_mask_sha256=source.v24_mask_sha256)
+
+    def prepare_local(self):
+        from hiercp_v22.storage import GraphWriter
+        root=self.root/'local'; root.mkdir(exist_ok=True); index=root/'index.json'
+        expected=dict(format=CANONICAL_FORMAT,recipient_GT_used_in_forward=False,debug=False,
+            query_rows_sha256=canonical_hash([query_inputs([row])[0] for row in self.inventory['records']]),
+            config_sha256=self.config_sha256,source_sha256=self.source_sha256,
+            prototype_bank_sha256=self.bank_sha256,
+            context_contract_sha256=self.context_contract['contract_sha256'])
+        if index.exists():
+            value=json.loads(index.read_text(encoding='utf8'))
+            if (any(value.get(key)!=item for key,item in expected.items()) or value.get('complete') is not True
+                    or self._binding_receipt is None
+                    or value.get('input_bindings_sha256')!=self._binding_receipt['content_sha256']):
+                raise ValueError('Existing GT-free canonical namespace does not match actual query/source')
+            return index
+        writer=GraphWriter(root,minimum_free_bytes=self.runtime['minimum_free_disk_gib']*2**30)
+        # Serialize each case's preparation, with original independent rows
+        # built in the persistent CPU pool. All14102 records are retained.
+        stored=[]
+        with ThreadPoolExecutor(max_workers=self.runtime['workers']) as pool:
+            for case in self.population.partition_cases('inner_train')+self.population.partition_cases('inner_val'):
+                plan=self.population.case(case,128)
+                rows=list(plan.query_rows)
+                binding=self.input_binding(plan)
+                def write(row):
+                    key=canonical_hash(dict(query=query_inputs([row])[0],inputs=binding)); relative='records/'+key+'.pt.gz'
+                    path=root/relative
+                    if path.exists():
+                        from hiercp_v22.storage import load_record
+                        record=load_record(root,relative)
+                        if query_inputs([dict(row,id=record['observation_id'],center=record['center'])])[0]!=query_inputs([row])[0]:
+                            raise ValueError('Partial owned canonical query differs')
+                        # Read-only recovery verifies actual original record,
+                        # never silently creates or replaces missing content.
+                        from .v24_inputs import tensor_digest
+                        if tensor_digest({k:record[k] for k in ('source_patch','target_patch','source_local','target_local')})!=record['tensor_sha256']:
+                            raise ValueError('Partial canonical tensor proof differs')
+                        import gzip,io
+                        with gzip.open(path,'rb') as stream: partial=torch.load(io.BytesIO(stream.read()),map_location='cpu',weights_only=False)
+                        entry=dict(path=relative,sha256=sha(path),shared_source=partial['shared_source'])
+                    else:
+                        record=self._local(row)
+                        source_key=(row['donor_case_id'],row['donor_component'],tuple(self.raw[case]['spacing']))
+                        entry=writer.write(relative,record,source_key)
+                    views,_,_=materialize_pair(record,epoch=0)
+                    return dict(id=row['id'],query=query_inputs([row])[0],tensor_sha256=record['tensor_sha256'],
+                        sampled_two_view_nodes=sum(sum(store.num_nodes for store in graph.node_stores) for graph in views),
+                        sampled_two_view_edges=sum(sum(store.num_edges for store in graph.edge_stores) for graph in views),**entry)
+                entries=list(pool.map(write,rows)); stored.extend(entries)
+                print(f'v2.5 GT-free CPU canonical {case}: {len(stored)}/{len(self.inventory["records"])} records',flush=True)
+                self._rss()
+        if {row['id'] for row in stored}!={row['id'] for row in self.inventory['records']} or len(stored)!=len(self.inventory['records']):
+            raise ValueError('Full GT-free canonical preparation omitted or duplicated native records')
+        bindings_sha256=self._publish_input_bindings()
+        _publish(index,dict(**expected,input_bindings_sha256=bindings_sha256,
+            records=sorted(stored,key=lambda row:row['id']),complete=True))
+        return index
+
+    def close(self):
+        with self._lock:
+            self._raw_cache.clear(); self._raw_bytes=0
+            self._donors.clear(); self._regions.clear()
+
+
+def build_runtime(args, experiment_config, budget, *, inputs=None):
+    """Actual fresh net/scorer/population/config/close callable; no placeholders."""
+    import random
+    from .v24_model import build_gt_free_model
+    from .v24_training import V24Scorer
+    from .u_bridge_training import digest
+    runtime=copy.deepcopy(experiment_config['runtime'])
+    if inputs is None:
+        inputs=V25NativeInputs(args.native_experiment,args.inventory,args.input_cache,runtime)
+    elif inputs.root != Path(args.input_cache).resolve() or inputs.runtime != runtime:
+        raise ValueError('Prepared v25 inputs differ from the exact runtime request')
+    inputs.guard_source()
+    if experiment_config['encoder'] != 'official_pretrained_STU_Net_S':
+        raise ValueError('v2.5 retains the confirmed v2.5 official STU-Net-S encoder')
+    config=copy.deepcopy(inputs.config); config['v24_runtime']=runtime
+    config['training'].update(epochs=40,lr=1e-4,consistency_weight=.1,gradient_accumulation_steps=1,fixed_validation_epoch=29)
+    from hiercp.tensor import configure_runtime
+    configure_runtime(**{key:config['runtime'][key] for key in ('deterministic','allow_tf32','cudnn_benchmark')})
+    torch.manual_seed(42); np.random.seed(42); random.seed(42)
+    net=build_gt_free_model(config['model'],original_snapshot_root=inputs.bundle.source)
+    contract=copy.deepcopy(net.v24_model_contract)
+    contract.update(trained_v23_weights_loaded=False,initialization_seed=42,optimizer='fresh AdamW',lr=1e-4)
+    if experiment_config['encoder']=='official_pretrained_STU_Net_S':
+        if args.stunet_checkpoint is None: raise ValueError('Official SHA-bound STU-Net-S checkpoint required; no random substitute')
+        from .v24_stunet import install_stunet_l0
+        audit=install_stunet_l0(net,args.stunet_checkpoint)
+        contract.update(encoder='official_pretrained_STU_Net_S',STU_Net=audit,
+            parameters=sum(p.numel() for p in net.parameters()),trainable_parameters=sum(p.numel() for p in net.parameters() if p.requires_grad),
+            local_GNN_message_passing=False,encoder_fine_tuned=True,encoder_lr=1e-4)
+    contract.update(recipient_GT_used_in_forward=False, trained_v23_weights_loaded=False,
+        context=inputs.context_contract, version="v2.5",
+        parameter_tensors=len([p for p in net.parameters() if p.requires_grad]))
+    if (contract['parameters'] != 13331792 or contract['trainable_parameters'] != 13331792
+            or contract['parameter_tensors'] != 537):
+        raise ValueError('Complete official STU-Net-S model requires13331792 trainable parameters/537 tensors')
+    net.v24_model_contract=copy.deepcopy(contract)
+    net.to("cuda"); inputs.guard_source()
+    index=Path(args.input_cache)/'local/index.json'
+    coordinator=V24InputCoordinator(budget.rss_bytes)
+    inputs.memory_coordinator=coordinator
+    inputs.geometry.memory_guard=inputs._rss
+    providers={partition:V24InputProvider(SimpleNamespace(rows=[row for row in inputs.inventory['records']
+        if row['case_id'] in inputs.inventory['split'][partition]],meta=inputs.inventory,partition=partition),
+        index,workers=runtime['workers'],resident_bytes=runtime['resident_gib']*2**30,coordinator=coordinator)
+        for partition in ('inner_train','inner_val')}
+    inputs.geometry.admit(runtime['curriculum']['initial_u']); inputs.geometry.admit(128)
+    scorer=V24Scorer(net,providers,inputs.geometry,
+        physical_candidate_batch=min(runtime['physical_candidate_batch_candidates']),
+        checkpoint_local_chunks=True,amp=bool(config['training']['amp']),budget=budget,
+        prefetch_cpu_chunks=True,pin_cpu_batches=True)
+    scorer.inputs=inputs
+    config['v24_runtime']['initial_model_sha256']=digest(net.state_dict())
+    def close():
+        for provider in providers.values(): provider.close()
+        inputs.close()
+    return net,scorer,inputs.population,config,contract,close
