@@ -1,12 +1,19 @@
-v2.5 네 실험 자동 실행 연결: 2026-10-12 KST
+v2.5 네 실험 자동 실행 연결: 초기 단일GPU 역사기록과 현재 실행 입구
+
+현재 기본 실행은 tools/run_v25_parallel_pipeline.py와 tools/run_v25_execution.py다.
+GPU6/A(U8/+8), GPU5/B(U16/+16), GPU1/C(U32/+32), GPU4/D(U128)를 각각 사용한다.
+공통 전체 전처리는 네 process로 분할하고 이후 네 GNN→CP→native→평가 chain은 독립 실행한다.
+현재 자원 proof와 재개 방법은 docs/v25_four_gpu_execution_20261012.txt를 따른다.
+아래 PBS129664/GPU6 한 개에서 A→B→C→D로 진행하던 계약은 교체 전 역사기록이다.
+tools/run_v25_pipeline.py를 현재 기본 실행기나 새 네GPU 실행의 시작점으로 사용하지 않는다.
 
 기존 docs/v25_server_pipeline_20261012.txt 및 v25_adaptive_context_curriculum_plan_20261011.txt를 따른다.
-tools/run_v25_pipeline.py는 현재 실제 PBS129664/GPU6/CPU32~37/RAM128GiB에서
-A U8/+8, B U16/+16, C U32/+32, D U128 전체 학습을 순서대로 실행한다.
+tools/run_v25_pipeline.py는 당시 실제 PBS129664/GPU6/CPU32~37/RAM128GiB에서
+A U8/+8, B U16/+16, C U32/+32, D U128 전체 학습을 순서대로 실행하도록 구성했다.
 각 arm의 GNN40epoch/680update/B4, CP642source×128위치, nnU-Net250epoch/B2,
 자기 checkpoint_best.pth 전체26명 평가를 보존한다. 실행 시간 때문에 실험을 축소하지 않는다.
 
-현재 시작된 준비 프로세스를 PID·생성시각·argv·UID로 확인해 인계한다.
+당시 시작된 준비 프로세스를 PID·생성시각·argv·UID로 확인해 인계하도록 구성했다.
 완전한14102 canonical index의 실제 SHA와 request SHA를 확인한 후 CUDA 측정을 시작한다.
 새 context 공통조건은 간 깊이>1mm, 종양 거리0<d<=10mm이며 실제 CT source/target
 레코드에서 새 geometry 계약과 원래5×48×48×48 patch를 읽어 확인했다.

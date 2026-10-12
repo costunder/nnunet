@@ -34,6 +34,16 @@ GNN_FORMAT='v25_all_P_patient_balanced_shared_context_training_v1'
 NATIVE_STATUS='v25_full_own_arm_downstream_status_v1'
 
 
+def canonical_worker_command(command):
+    """Match actual Python spawn workers, excluding its resource tracker."""
+    if not isinstance(command,list) or '-c' not in command:
+        return False
+    index=command.index('-c')+1
+    return index<len(command) and re.fullmatch(
+        r'from multiprocessing\.spawn import spawn_main; spawn_main\(tracker_fd=\d+, pipe_handle=\d+\)',
+        command[index]) is not None
+
+
 def input_path(path):
     path=Path(path)
     if not path.is_absolute() or '..' in path.parts:
@@ -75,14 +85,18 @@ def actor_snapshot(pid):
             return None
         uid=process.uids().real if hasattr(process,'uids') else None
         rss=process.memory_info().rss
+        canonical_workers=[]
         for child in process.children(recursive=True):
             try:
                 if uid is None or child.uids().real==uid:
                     rss+=child.memory_info().rss
+                    command=child.cmdline()
+                    if canonical_worker_command(command) and child.status()!=psutil.STATUS_ZOMBIE:
+                        canonical_workers.append(dict(pid=child.pid,process_status=child.status()))
             except (psutil.NoSuchProcess,psutil.ZombieProcess):
                 continue
         return dict(pid=pid,parent_pid=process.ppid(),create_time=process.create_time(),command=process.cmdline(),
-            UID=uid,process_status=status,RSS_bytes=rss)
+            UID=uid,process_status=status,RSS_bytes=rss,canonical_workers=canonical_workers)
     except (psutil.NoSuchProcess,psutil.ZombieProcess):
         return None
 
@@ -220,6 +234,52 @@ class Viewer:
             read_problem=dict(detail=detail,unchanged_seconds=age,retries_continue=True))
         return value
 
+    def common_preparation(self, arm, state, actor, log):
+        """Observe the actual shared preparation without borrowing GNN results."""
+        common=state
+        output=self.group/arm
+        if state.get('status')=='WAITING_FOR_COMMON_PREPARATION' and state.get('stage')=='prepare_inputs':
+            output=self.group/'A'
+            path=output/'monitor/status.json'
+            common=read(path,required=True)
+            if common.get('arm')!='A' or common.get('stage')!='prepare_inputs':
+                return None
+            if common.get('status') not in ('RUNNING','PREPARING','FAILED'):
+                # A successfully released common child is not a failed B/C/D
+                # actor while their next own stage publication is pending.
+                return None
+            request=common.get('request') or read(output/'monitor/request.json',required=True)
+            if (not isinstance(request,dict) or request.get('arm')!='A'
+                    or Path(request.get('production_output',''))!=output
+                    or type(request.get('GPU')) is not int or request.get('RAM_GiB')!=64):
+                raise ValueError(str(path)+': exact common preparation source request required')
+            stages=request.get('stages')
+            if not isinstance(stages,list) or not stages:
+                raise ValueError(str(path)+': common preparation stage commands required')
+            commands=[]
+            for stage in stages:
+                command=stage.get('command') if isinstance(stage,dict) else None
+                if not isinstance(command,list) or not command or any(not isinstance(value,str) or not value for value in command):
+                    raise ValueError(str(path)+': complete common preparation argv required')
+                commands.append(command)
+            actor,problem=observe_actor(declared_actor(common),commands=commands,path=path)
+            log=input_path(common.get('stage_log') or output/'monitor/console.log')
+            if not log.is_relative_to(output):
+                raise ValueError(str(path)+': common preparation console escaped its own arm')
+        else:
+            problem=None
+        declaration=declared_actor(common) or {}
+        command=(actor or declaration).get('command') or []
+        if common.get('stage')!='prepare_inputs' or '--parallel-prepare' not in command:
+            return None
+        if '--input-cache' not in command or command.index('--input-cache')+1>=len(command):
+            raise ValueError('Common preparation requires its actual shared cache argv')
+        cache=input_path(command[command.index('--input-cache')+1])
+        return dict(source_arm='A',state=common,actor=actor,actor_problem=problem,log=log,
+            cache=str(cache),worker_RSS_limit_GiB=256,shared_cache_reserve_GiB=32,
+            aggregate_budget_GiB=288,worker_count=4,
+            source='공통 전처리 프로세스 트리 (worker256GiB+공유cache32GiB 예산; RSS는 프로세스 합계)')
+
     def _snapshot(self):
         group=read(self.group/'status.json')
         arm=self.selected_arm or (group or {}).get('arm')
@@ -276,8 +336,32 @@ class Viewer:
                 if 'CPU canonical' in line or 'UPPER PREPARE' in line:
                     normal['stage']='prepare_inputs';break
         reader=self.gnn.setdefault(arm,GNNObservation())
-        gnn=reader.observe(monitor,normal,log,actor)
-        gnn.update(status=status,process_status=(actor or {}).get('process_status'))
+        shared=self.common_preparation(arm,state,actor,log)
+        observed_actor=actor
+        if shared is not None:
+            observed_actor=shared['actor']
+            log=shared['log']
+            normal['stage']='prepare_inputs'
+            normal['request']=copy.deepcopy(request)
+            normal['request']['RAM_GiB']=shared['aggregate_budget_GiB']
+            if shared['state'].get('error'):
+                normal['error']=shared['state']['error']
+            if shared['state'].get('status')=='FAILED':
+                status='COMMON_PREPARATION_FAILED'
+            elif shared['actor_problem']:
+                status=shared['actor_problem']
+            normal['status']=status
+        gnn=reader.observe(monitor,normal,log,observed_actor)
+        gnn.update(status=status,process_status=(observed_actor or {}).get('process_status'))
+        if shared is not None:
+            workers=(observed_actor or {}).get('canonical_workers') or []
+            gnn.update(RSS_source=shared['source'],RAM_limit_GiB=shared['aggregate_budget_GiB'],
+                common_preparation={key:value for key,value in shared.items() if key not in ('state','log')})
+            if workers:
+                counts={kind:sum(worker.get('process_status')==kind for worker in workers)
+                    for kind in sorted({worker.get('process_status') for worker in workers})}
+                gnn['process_status']='coordinator '+str((observed_actor or {}).get('process_status'))+' | worker '+', '.join(
+                    kind+' '+str(count) for kind,count in counts.items())
         if gnn.get('epochs') is None:
             gnn['epochs']=request.get('epochs')
         invocations,_=original.JsonlCursor().read(input_path(output/'training/invocations.jsonl'))

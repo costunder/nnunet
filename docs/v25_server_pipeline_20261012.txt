@@ -1,6 +1,12 @@
 v2.5 서버 실행 계약
 2026-10-12 KST
 
+현재 기본 entry point는 tools/run_v25_parallel_pipeline.py와 tools/run_v25_execution.py다.
+고정 배치는 GPU6/A, GPU5/B, GPU1/C, GPU4/D이며 공통 전처리4분할 뒤 네 전체 chain을 독립 실행한다.
+현재 실행·자원 계약은 docs/v25_four_gpu_execution_20261012.txt를 따른다.
+초기 단일GPU/PBS128GiB 실행 설명은 역사기록이며 현재 네GPU 실행의 기본값이 아니다.
+아래 모델·context·데이터·epoch·batch·BEST 계약은 그대로 유지한다.
+
 네 arm: A U8/+8, B U16/+16, C U32/+32, D 첫 epoch U128.
 모든 arm은 동일한 공식 STU-Net-S SHA f440f401bf4cac1d1d6f7c4635542ef057193a5f96c0b3c661a6179afeab7be6,
 seed42, 새 GNN/optimizer, 13,331,792 trainable parameters/537 tensors를 쓴다.
@@ -23,7 +29,8 @@ active-U validation21, full128 validation21. BEST는 공통 full128에서만 선
 ->기존 6검출기준·3크기구간·통계·Result schema1. 새 모델 초기값은 같고 learned output은 arm마다 독립이다.
 Basic source/paste/RNG/일반 증강/정규화 구현 및 native logging은 유지한다.
 
-실행기는 tools/run_v25.py. prepare/calibrate는 production optimizer update0.
+tools/run_v25.py는 frozen 과학 실행기이며 현재 execution adapter에서 호출한다.
+전체 서버 시작은 위의 parallel entry point를 사용한다. prepare/calibrate는 production optimizer update0.
 train/gnn-pipeline은 완전한 checkpoint cursor/optimizer/scheduler/RNG로 이어받는다.
 서버 할당 증거 JSON과 저장 admission은 모델 identity와 별도이며 실행 직전 검증한다.
 할당 만료180초 전부터 새 CUDA chunk를 거부하고 마지막 정확한 checkpoint를 보존한다.
@@ -47,7 +54,7 @@ tmpfs는 서버 재시작 때 유실될 수 있으며 checkpoint는 persistent f
 - [x] 그래프와 데이터 규모를 편의상 축소하지 않았다.
 - [x] 숨겨진 subset, cap, fast mode를 추가하지 않았다.
 - [x] physical batch size와 병렬화 가능성을 실제로 검토했다. 본학습B4와 B4/B8 CUDA 측정 경로를 분리했다.
-- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 실제 PBS129664/GPU6/CPU32~37/RAM128GiB 조회.
+- [x] GPU, CPU, RAM 활용 상태를 측정하거나 확인했다. 초기 PBS129664/GPU6/128GiB 조회는 역사기록이다. 현재 네GPU/24CPU/호스트·cgroup proof는 four_gpu_execution 문서와 실제 실행 receipt를 따른다.
 - [ ] OOM 발생 시 모델 축소보다 메모리 및 병목 원인을 먼저 조사했다. 새 V25 CUDA 실행 전 항목이다.
 - [x] 디버그 설정과 최종 설정을 분리했다.
 - [x] dummy, placeholder, random fallback을 사용하지 않았다.

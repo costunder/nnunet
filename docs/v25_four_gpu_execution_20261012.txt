@@ -52,6 +52,16 @@ CPU 단위 검사는 분할 합집합/중복, tensor 변조 거부, partial cach
 실제 production 전처리4 process와 이후 CUDA calibration/full40/full250/BEST26 결과는
 서버의 실제 execution receipt와 각 arm의 complete 증거로 확인한다.
 
+2026-10-12 16:37 KST 실제 실행 확인
+controller PID2366189, nnunet환경 Python3.10, worker PID2366761/2366762/2366763/2366764.
+네 worker 동시8.009초 CPU 측정은100.0/100.0/99.6/198.4%, 합498.0%였다.
+해당 순간 RSS는7.438/9.331/8.353/3.709GiB이며 네 분할 모두 환자 완료 로그를 확인했다.
+기존 canonical8,223개 파일 SHA가 모두 동일함을 확인했고 그래프 파일을 재생성하지 않는다.
+현재는 공통 CPU 전처리 중이며 CUDA GNN 학습과 native 학습·평가는 아직 시작 전이다.
+실제 네 GPU chain의 동시 실행은 전처리 완료 후 각 arm stage PID로 별도 확인한다.
+GPU6에 표시되는 prepare coordinator는 네 worker의 공통 index를 발행하는 역할이다.
+이 prepare coordinator의 GPU 번호를 전처리 또는 후속 학습 전체의 단일GPU 실행으로 해석하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

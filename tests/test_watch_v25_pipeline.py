@@ -169,6 +169,94 @@ class PipelineMetadataUnitTests(unittest.TestCase):
         self.log.write_text('v25 CALIBRATION patients4/chunk16/allP+128U\nv25 CALIBRATION repeat2 12.3s\n',encoding='utf8')
         self.assertEqual(self.viewer.snapshot()['gnn']['calibration_progress'],dict(patients=4,chunk=16,repeats_completed=2,last_seconds=12.3))
 
+    def common_parallel_preparation(self):
+        cache=self.group/'UNIT_shared_cache';records=cache/'local/records';records.mkdir(parents=True)
+        for index in range(3):(records/(str(index)+'.pt.gz')).write_bytes(b'CPU UNIT progress-count witness, not canonical tensor data')
+        command=self.commands['prepare_inputs']+['--parallel-prepare','--input-cache',str(cache)]
+        self.request['stages'].append(dict(name='parallel_prepare_inputs',command=command))
+        self.identity['command']=command
+        self.actors[12345].update(command=command,RSS_bytes=48*2**30,
+            canonical_workers=[dict(pid=200+index,process_status='running') for index in range(4)])
+        self.state.update(status='RUNNING',stage='prepare_inputs',child_command=command)
+        self.write(self.monitor/'status.json',self.state)
+        self.write(self.group/'status.json',self.state)
+        self.log.write_text('V2.5 CANONICAL SHARD2 case=UNIT_case patients=1/26 records=128\n',encoding='utf8')
+        for arm,gpu in (('B',5),('C',1),('D',4)):
+            output=self.group/arm;monitor=output/'monitor'
+            request=dict(GPU=gpu,arm=arm,production_output=str(output),RAM_GiB=64,epochs=40,
+                stages=[dict(name='prepare_inputs',command=['python','-B','run_v25.py','--arm',arm,
+                    '--output',str(output),'--mode','prepare'])])
+            self.write(monitor/'status.json',dict(status='WAITING_FOR_COMMON_PREPARATION',
+                stage='prepare_inputs',arm=arm,request=request))
+        return cache
+
+    def test_all_four_arms_share_actual_preparation_progress_and_resource_budget_in_fixed_ui(self):
+        self.common_parallel_preparation()
+        for arm,gpu in (('A',6),('B',5),('C',1),('D',4)):
+            with self.subTest(arm=arm):
+                value=watch.Viewer(self.group,arm).snapshot();gnn=value['gnn']
+                self.assertEqual(value['GPU'],gpu)
+                self.assertEqual(gnn['progress'],dict(done=3,total=14102,unit='canonical 기록'))
+                self.assertEqual(gnn['RSS_GiB'],48);self.assertEqual(gnn['RAM_limit_GiB'],288)
+                self.assertIn('공통 전처리',gnn['RSS_source'])
+                self.assertIn('RSS는 프로세스 합계',gnn['RSS_source'])
+                self.assertEqual(gnn['common_preparation']['shared_cache_reserve_GiB'],32)
+                self.assertEqual(gnn['common_preparation']['worker_RSS_limit_GiB'],256)
+                self.assertIn('worker running 4',gnn['process_status'])
+                self.assertIsNone(gnn['epoch']);self.assertIsNone(gnn['optimizer_updates'])
+                self.assertEqual([line.split(':',1)[0] for line in watch.display(value).splitlines()],list(ui.GNN_ROW_LABELS))
+        self.assertEqual(json.loads((self.monitor/'status.json').read_text())['request']['RAM_GiB'],64)
+
+    def test_actual_linux_spawn_worker_without_flag_is_counted_and_tracker_is_excluded(self):
+        self.assertTrue(watch.canonical_worker_command(['/home/conda/bin/python3.10','-B','-c',
+            'from multiprocessing.spawn import spawn_main; spawn_main(tracker_fd=4, pipe_handle=6)']))
+        self.assertFalse(watch.canonical_worker_command(['/home/conda/bin/python3.10','-B','-c',
+            'from multiprocessing.resource_tracker import main;main(3)']))
+        self.assertFalse(watch.canonical_worker_command(['python','unrelated.py']))
+
+    def test_waiting_arm_never_borrows_common_source_arm_training_epochs_or_validation(self):
+        self.common_parallel_preparation();self.training_identity()
+        self.row('update_timing',dict(status='OPTIMIZER_UPDATED',epoch=9,update=150,active_u=32,
+            case_ids=['train0','train1','train2','train3'],loss=.01,RSS_bytes=2*2**30))
+        self.write(self.output/'training/initial_full_validation_epoch_0.json',dict(epoch=0,active_u=128,
+            updates=0,metrics=dict(per_P_patient_mrr=.8,per_P_patient_top1=.7)))
+        value=watch.Viewer(self.group,'B').snapshot()['gnn']
+        self.assertIsNone(value['epoch']);self.assertIsNone(value['optimizer_updates'])
+        self.assertEqual(value['reports'],{})
+        self.assertEqual(value['progress']['done'],3)
+
+    def test_waiting_arm_rejects_reused_common_preparation_pid_identity(self):
+        self.common_parallel_preparation();self.actors[12345]['create_time']=999.
+        value=watch.Viewer(self.group,'C').snapshot()
+        self.assertEqual(value['status'],'READ_ERROR')
+        self.assertIn('PID was reused',value['read_problem']['detail'])
+
+    def test_completed_common_canonical_still_shares_actual_upper_preparation_progress(self):
+        cache=self.common_parallel_preparation()
+        self.write(cache/'local/index.json',dict(complete=True,CPU_UNIT=True))
+        self.log.write_text('V2.5 UPPER PREPARE completed=18/86 active_U=128\n',encoding='utf8')
+        value=watch.Viewer(self.group,'D').snapshot()
+        self.assertEqual(value['gnn']['progress']['done'],18)
+        self.assertEqual(value['gnn']['progress']['total'],86)
+        self.assertEqual(value['gnn']['RAM_limit_GiB'],288)
+
+    def test_waiting_arm_stops_reading_common_log_after_source_starts_own_training(self):
+        self.common_parallel_preparation()
+        self.state.update(stage='train',child_command=self.commands['train'])
+        self.actors[12345]['command']=self.commands['train']
+        self.write(self.monitor/'status.json',self.state)
+        value=watch.Viewer(self.group,'B').snapshot()['gnn']
+        self.assertIsNone(value['progress']);self.assertIsNone(value['RSS_GiB'])
+        self.assertEqual(value['RAM_limit_GiB'],64);self.assertNotIn('common_preparation',value)
+
+    def test_successfully_released_common_actor_does_not_make_waiting_arm_failed(self):
+        self.common_parallel_preparation()
+        self.state['status']='STAGE_COMPLETE';self.write(self.monitor/'status.json',self.state)
+        self.actors.pop(12345)
+        value=watch.Viewer(self.group,'C').snapshot()
+        self.assertEqual(value['status'],'WAITING_FOR_COMMON_PREPARATION')
+        self.assertNotIn('common_preparation',value['gnn'])
+
     def test_actual_update_and_fixed_full_validation_reports(self):
         self.training_identity()
         self.row('update_timing',dict(status='OPTIMIZER_UPDATED',epoch=1,update=1,active_u=8,
