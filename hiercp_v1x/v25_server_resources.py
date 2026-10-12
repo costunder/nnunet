@@ -65,4 +65,3 @@ class AllocationLease:
             lease.verify()
             return original(instance, *args, **kwargs)
         factory.V25NativeInputs._rss = checked
-
