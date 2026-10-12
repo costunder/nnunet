@@ -167,6 +167,34 @@ class LiveGuardUnitTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'start/walltime'):
             direct.DirectAllocationLease(self.path)
 
+    def test_actual_pbs_local_text_start_keeps_same_sealed_expiration(self):
+        self.lifetime['expires_at_unix'] = 1791868590.
+        self.lifetime_path.write_text(json.dumps(self.lifetime))
+        self.document['host_lifetime']['expires_at_unix'] = 1791868590.
+        self.document['host_lifetime']['allocation_request_sha256'] = hashlib.sha256(self.lifetime_path.read_bytes()).hexdigest()
+        self.write_document()
+        self.job['stime'] = 'Mon Oct 12 14:16:30 2026'
+        self.job['Resource_List']['walltime'] = '24:00:00'
+        with patch.object(direct.time, 'mktime', return_value=1791782190.) as local:
+            lease = direct.DirectAllocationLease(self.path)
+            self.assertEqual(lease.lifetime['expires_at_unix'], 1791868590.)
+            self.assertEqual(local.call_args.args[0].tm_year, 2026)
+            self.assertEqual(local.call_args.args[0].tm_hour, 14)
+
+    def test_unparseable_pbs_text_is_reported_and_never_accepted(self):
+        self.job['stime'] = 'not a valid PBS date'
+        with self.assertRaisesRegex(RuntimeError, 'Actual PBS start time.*server-local PBS date text'):
+            direct.DirectAllocationLease(self.path)
+
+    def test_numeric_pbs_seconds_and_numeric_text_keep_same_expiration(self):
+        for value in (6400, 6400., '6400'):
+            with self.subTest(stime=value):
+                self.job['stime'] = value
+                with patch.object(direct.time, 'mktime') as local:
+                    lease = direct.DirectAllocationLease(self.path)
+                    self.assertEqual(lease.lifetime['expires_at_unix'], 10000.)
+                    local.assert_not_called()
+
     def test_changed_cpu_and_cgroup_are_not_ignored(self):
         self.actor.cpu_affinity.return_value = [0]
         with self.assertRaisesRegex(RuntimeError, 'six-CPU'):

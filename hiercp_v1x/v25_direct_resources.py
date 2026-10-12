@@ -167,6 +167,25 @@ def _query(command):
     return subprocess.check_output(command, text=True, timeout=20).strip()
 
 
+def _pbs_start_time(value):
+    """PBS JSON may expose Unix seconds or the server-local PBS date text."""
+    if type(value) in (int, float):
+        result = float(value)
+    elif isinstance(value, str):
+        try:
+            result = float(value)
+        except ValueError:
+            try:
+                result = time.mktime(time.strptime(value, '%a %b %d %H:%M:%S %Y'))
+            except (ValueError, OverflowError) as error:
+                raise RuntimeError('Actual PBS start time must be Unix seconds or valid server-local PBS date text') from error
+    else:
+        raise RuntimeError('Actual PBS start time must be Unix seconds or valid server-local PBS date text')
+    if not math.isfinite(result) or result <= 0:
+        raise RuntimeError('Actual PBS start time must be finite positive seconds')
+    return result
+
+
 class DirectAllocationLease:
     """Compatibility interface for unchanged v2.5 stage entry points."""
     def __init__(self, path):
@@ -230,7 +249,7 @@ class DirectAllocationLease:
                 or any(part.split('/')[0] != self.request['node'] for part in job.get('exec_host', '').split('+'))):
             raise RuntimeError('Owned job is only a current host lifetime witness; its identity changed')
         hours, minutes, seconds = map(int, job['Resource_List']['walltime'].split(':'))
-        expiration = float(job['stime'])+hours*3600+minutes*60+seconds
+        expiration = _pbs_start_time(job['stime'])+hours*3600+minutes*60+seconds
         if abs(expiration-self.lifetime['expires_at_unix']) > 1:
             raise RuntimeError('Actual host lifetime differs from its sealed start/walltime proof')
 
