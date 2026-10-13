@@ -274,6 +274,32 @@ class SharedPBSAndActorBoundaryTests(unittest.TestCase):
         self.assertEqual(before,after)
         self.assertEqual(self.observer._pbs_observation['job_state'],'R')
 
+    def selected_stage(self, *, changed_birth=False):
+        f=self.fixture
+        actor=identity(f.stage)
+        if changed_birth:actor['create_time']-=1
+        monitor=f.root/'actual_stage_monitor.json'
+        write(monitor,dict(status='RUNNING',stage='scoring',arm='B',
+            controller_pid=f.controller.pid,child_pid=actor['pid'],
+            child_create_time=actor['create_time'],UID=actor['UID'],child_command=actor['command']))
+        seal=dict(controller_identity=identity(f.controller),slot=dict(monitor_path=str(monitor)))
+        lease=recovery.FreshBLifetimeLease.__new__(recovery.FreshBLifetimeLease)
+        lease._observer=self.observer
+        with (patch.object(recovery.previous,'load_seal',return_value=seal),
+                patch.object(recovery.previous,'_stage_binding'),
+                patch.object(recovery.direct,'_owned_regular',side_effect=lambda p:Path(p))):
+            return lease._selected_stage_tree({f.controller.pid:f.controller})
+
+    def test_completed_stage_zombie_between_poll_and_guard_is_not_new_CUDA_actor(self):
+        self.fixture.stage.state=recovery.basic.psutil.STATUS_ZOMBIE
+        self.assertEqual(self.selected_stage(),{})
+        self.assertIn(self.fixture.stage.pid,self.observer._terminal_observations)
+
+    def test_terminated_stage_reused_pid_birth_is_still_rejected(self):
+        self.fixture.stage.state=recovery.basic.psutil.STATUS_ZOMBIE
+        with self.assertRaisesRegex(RuntimeError,'PID/birth/UID'):
+            self.selected_stage(changed_birth=True)
+
     def test_timeout_never_refreshes_raw_timestamp_and_300sec_expires(self):
         self.observer._host_lifetime();f=self.fixture;f.monotonic=570
         with patch.object(recovery.basic,'_pbs_query',side_effect=recovery.basic.subprocess.TimeoutExpired(['qstat'],20)):

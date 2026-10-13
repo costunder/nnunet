@@ -336,7 +336,19 @@ class FreshBLifetimeLease(_B_BASE):
             raise RuntimeError('Exact fresh B monitored scoring/native actor required')
         previous._stage_binding(actor, seal, monitor.get('stage'))
         try:
-            root = direct._exact(actor)
+            root = direct.psutil.Process(actor['pid'])
+            if basic._metadata(root) != {key: actor[key] for key in ('pid', 'create_time', 'UID')}:
+                raise RuntimeError('Fresh B monitored stage PID/birth/UID changed')
+            observed = self._observer._descendant(root)
+            if observed is None:
+                return {}
+            terminal_state = self._observer._terminal_observations.get(root.pid, {})
+            if terminal_state.get('status') == 'PF_EXITING':
+                # The full tree still accounts actual RSS. An exiting actor
+                # cannot be admitted to a new CUDA stage during poll/reap.
+                return {}
+            if self._observer._managed.get(root.pid) != actor:
+                raise RuntimeError('Fresh B monitored live stage command changed')
         except direct.psutil.NoSuchProcess:
             return {}
         if root.ppid() != seal['controller_identity']['pid'] or root.parent() is None or direct._actor(root.parent()) != seal['controller_identity']:
