@@ -18,7 +18,7 @@ import numpy as np
 from . import nnUNetTrainer_BasicCPAblations as base
 
 FORMAT = 'basic_cp_expanded_one_factor_full250_v1'
-EXTENSION_FORMAT = 'basic_cp_expanded_candidates_preserved128_v1'
+EXTENSION_FORMAT = 'basic_cp_shared_large_candidates_preserved128_v1'
 ARMS = ('multi5', 'multi7', 'multi10', 'candidates512', 'candidates1024', 'candidates2048', 'blend50')
 HISTORICAL_SHA = base.HISTORICAL_SHA
 BANK_SHA = base.BANK_SHA

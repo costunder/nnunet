@@ -170,13 +170,23 @@ def train(native):
 def actor(native,command,label,env):
     import psutil
     resource_guard(native);root=Path(native['root']);log=root/(label+'.log')
-    with log.open('ab',buffering=0)as stream:
-        child=subprocess.Popen(command,cwd=ROOT,env=env,stdin=subprocess.DEVNULL,stdout=stream,stderr=subprocess.STDOUT)
-        p=psutil.Process(child.pid);identity=dict(pid=p.pid,birth=p.create_time(),UID=os.getuid(),command=command,log=str(log),stage=label)
-        receipt=root/(label+'_actor.json')
-        if receipt.exists():publish(root/(label+'_prior_actor_'+str(time.time_ns())+'.json'),read(receipt));mutable(receipt,identity)
-        else:publish(receipt,identity)
-        while child.poll()is None:resource_guard(native);time.sleep(2)
+    shared=label=='candidate_bank'and native.get('shared_candidate_geometry_cache')is True
+    lease=None
+    if shared:
+        from hiercp_v1x.basic_cp_shared_bank_resources import SharedBankLease
+        lease=SharedBankLease(native);psutil.Process().cpu_affinity(native['shared_bank_CPU_affinity']);lease.verify(force=True)
+    try:
+        with log.open('ab',buffering=0)as stream:
+            child=subprocess.Popen(command,cwd=ROOT,env=env,stdin=subprocess.DEVNULL,stdout=stream,stderr=subprocess.STDOUT)
+            p=psutil.Process(child.pid);identity=dict(pid=p.pid,birth=p.create_time(),UID=os.getuid(),command=command,log=str(log),stage=label)
+            receipt=root/(label+'_actor.json')
+            if receipt.exists():publish(root/(label+'_prior_actor_'+str(time.time_ns())+'.json'),read(receipt));mutable(receipt,identity)
+            else:publish(receipt,identity)
+            while child.poll()is None:
+                lease.verify(force=True)if shared else resource_guard(native)
+                time.sleep(2)
+    finally:
+        if shared:psutil.Process().cpu_affinity(native['cpu_affinity'])
     if child.returncode:raise RuntimeError(f'{label} failed ({child.returncode}); log: {log}')
 
 
@@ -192,9 +202,14 @@ def prepare_bank(request):
     if count==128:return request
     banks=Path(request['shared_banks']);target=banks/str(count)
     if count==2048 and not(target/'complete.json').exists():
-        command=[sys.executable,'-B','-u','-m','hiercp_v1x.basic_cp_large_bank','--binding',request['candidate_binding'],
-                 '--output',str(banks),'--workers','4','--rss-limit-gib','96']
+        shared=request.get('shared_candidate_geometry_cache')is True
+        command=[sys.executable,'-B','-u','-m','hiercp_v1x.basic_cp_large_bank_fast'if shared else'hiercp_v1x.basic_cp_large_bank',
+                 '--binding',request['candidate_binding'],'--output',str(banks),
+                 '--workers',str(request['shared_bank_workers'])if shared else'4','--rss-limit-gib','288'if shared else'96']
         if request.get('prepared256_witness'):command+=['--prepared256-witness',request['prepared256_witness']]
+        if shared:command+=['--reuse-partial-from',request['previous_partial_banks'],
+                            '--reuse-request',request['previous_producer_request'],
+                            '--reuse-request-sha256',request['previous_producer_request_sha256']]
         status(request,'candidate_bank','RUNNING',candidate_bank_root=str(target),candidate_count=count)
         actor(request,command,'candidate_bank',dict(os.environ,PYTHONPATH=str(ROOT),CUDA_VISIBLE_DEVICES='',
             BASIC_CP_LEASE_REQUEST=str(Path(request['root'])/'request.json'),OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1'))
