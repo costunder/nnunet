@@ -198,7 +198,9 @@ def actor(native,command,label,env):
     shared=label=='candidate_bank'and native.get('shared_candidate_geometry_cache')is True
     lease=None
     if shared:
-        if native.get('group_observation_revision')==5:
+        if native.get('shared_resource_observation_revision')==6:
+            from hiercp_v1x.basic_cp_shared_bank_resources_v6 import SharedBankLease
+        elif native.get('group_observation_revision')==5:
             from hiercp_v1x.basic_cp_shared_bank_resources_v5 import SharedBankLease
         elif native.get('shared_resource_guard_version')==3:
             from hiercp_v1x.basic_cp_shared_bank_resources_v3 import SharedBankLease

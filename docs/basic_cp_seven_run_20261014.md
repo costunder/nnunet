@@ -156,6 +156,28 @@ epoch와 저장된 BEST resume epoch 및 전체26명 평가 완료 여부를 구
 결과·코드·bank를 수정하지 않는다. 실제250 완료와 원래 BEST26 검증이
 모두 확인된 뒤에만 평가 완료 역할을 기록한다.
 
+## 공유 생성기와 native의 동일 RAM 계산
+
+실제 재개 후 native0/1/2/3/6의 완료28/44/42/34/86 epoch에서8개 logger,
+optimizer262 state·scaler와 각 CUDA UUID를 확인했다. CP event별 병변 수도
+930=186×5,1400=200×7,1920=192×10으로 확인했고 blend50의 alpha0.5도
+실제 로그에 기록됐다. 이 시점은 전체250 학습·26명 평가 완료가 아니다.
+
+공유 생성기는 여전히 `available + 자기 RSS >=800GiB`를 검사해 동시에
+실행된 native5개 약55GiB를 제외했다. 24 worker가 시작하기 전 완료512
+항목279개를 복사한 상태에서 중단됐다. 기존 완료642개와1024 부분79개는
+원본 SHA/prefix byte를 독립 검사해 보존 확인했다. 새 Shared6는 immutable
+7개 controller ledger를 쓰는 Group5의 RAM 계산을 재사용한다. 실제
+`available + 중복 제거한 전체7개 tree RSS >=800GiB`, candidate384GiB,
+group768GiB, 각 native96GiB를 유지하며 자신의 CPU tree도384GiB로 제한한다.
+
+Shared6 적용 때 모든 controller를 같은 새 ledger로 등록해야 한다. 이전
+native ledger를 유지하면 새 producer가 합산에서 빠지므로, whole latest를
+검증해 보존하고 새 폴더로 이어간다. private operational BEST cache는
+원래 데이터·실험 결과와 구분하며, 이전 계약 metadata를 기록한 뒤 새
+manifest에 이어 붙여 같은 full checkpoint 파일을 재사용한다. 사용자 원본
+결과나 학습 checkpoint를 덮어쓰거나 삭제하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
