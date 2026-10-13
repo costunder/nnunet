@@ -80,7 +80,7 @@ class RecoveryTransition(legacy.Transition):
                 or slot.get('arm') != 'B' or slot.get('gpu') != 5
                 or slot.get('CPU_affinity') != list(range(42, 48))
                 or not monitor.is_relative_to(self.group/'B/monitor')
-                or not monitor.parent.name.startswith('B_CP529_RAM_recovery_')
+                or not monitor.parent.name.startswith(('B_CP529_RAM_recovery_', 'B_CP642_native_recovery_'))
                 or monitor.name != 'status.json'):
             raise ValueError('Exact separate B recovery monitor and original science required')
         best = str(self.group/'B/training/checkpoint_best.pt')

@@ -77,6 +77,15 @@ class RecoveryDisplayTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'immutable 529-source'):
             self.context().early()
 
+    def test_completed642_native_recovery_binds_exact_new_monitor(self):
+        new_monitor = self.base.group/'B/monitor/B_CP642_native_recovery_DEBUG/status.json'
+        self.base.put(new_monitor, json.loads(self.monitor.read_bytes()))
+        self.fresh['slot']['monitor_path'] = str(new_monitor)
+        self.republish()
+        observed = self.context().early()
+        self.assertEqual(observed['monitor'], new_monitor)
+        self.assertEqual(observed['cp_root'], self.old['cp_root'])
+
     def test_fabricated_642_prefix_is_rejected(self):
         self.recovery['durable']['completed_sources']=642; self.republish()
         with self.assertRaisesRegex(ValueError, 'immutable 529-source'):
