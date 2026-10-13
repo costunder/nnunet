@@ -25,7 +25,9 @@ def verify_resources(*,force=False):
  identity=(str(path),base.stat_identity(path))
  if _LEASE is None:
   request=base.read_json(path)
-  if request.get('shared_resource_guard_version')==3:
+  if request.get('group_observation_revision')==5:
+   from .basic_cp_shared_bank_resources_v5 import SharedBankLease
+  elif request.get('shared_resource_guard_version')==3:
    from .basic_cp_shared_bank_resources_v3 import SharedBankLease
   else:
    from .basic_cp_shared_bank_resources import SharedBankLease

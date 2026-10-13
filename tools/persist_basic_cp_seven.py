@@ -285,10 +285,13 @@ def select_checkpoint(native, *, unfinished='latest', code=None):
         complete_latest_backup=True,historical_best_not_durable_until_verified_BEST26=True)
 
 
-def copy_bank(cache, source, count, original, originals, *, binding=None, binding_sha256=None):
+def copy_bank(cache, source, count, original, originals, *, binding=None, binding_sha256=None, destination_name=None):
     """Preserve full or published partial banks without generating any candidates."""
     from hiercp_v1x.basic_cp_ablation_bank import read_entry, verify_preservation
-    source = Path(source); destination = cache.root/'banks'/str(count)
+    source = Path(source); name=str(count) if destination_name is None else destination_name
+    require(isinstance(name,str) and name not in ('.','..') and Path(name).name==name,
+            'Single owned bank destination component required')
+    destination = cache.root/'banks'/name
     destination.mkdir(parents=True,exist_ok=True)
     receipts = sorted((source/'entry_receipts').rglob('*.json'))
     rows = []
@@ -311,12 +314,16 @@ def copy_bank(cache, source, count, original, originals, *, binding=None, bindin
         rows.append(row['entry'])
     complete = source/'complete.json'
     if complete.exists():
-        from hiercp_v1x.basic_cp_large_bank import verify_prepared_bank
         require(binding is not None and binding_sha256 is not None, 'Actual completed bank binding witness required')
         witness=dict(index=str(source/'index.json'),index_sha256=digest(source/'index.json'),
             complete_sha256=digest(complete),manifest_sha256=digest(source/'preservation_manifest.json'),
             preparation_started_sha256=digest(source/'preparation_started.json'))
-        verify_prepared_bank(witness,Path(binding),binding_sha256,candidate_count=count)
+        if count==256:
+            from hiercp_v1x.basic_cp_ablation_bank import verify_prepared_bank
+            verify_prepared_bank(witness,Path(binding),binding_sha256)
+        else:
+            from hiercp_v1x.basic_cp_large_bank import verify_prepared_bank
+            verify_prepared_bank(witness,Path(binding),binding_sha256,candidate_count=count)
         done = read(exact(complete)); index = read(exact(source/'index.json'))
         require(done.get('complete') is True and done.get('source_entries') == 642 and len(rows)==len(set(rows))==642
                 and set(rows)==set(originals) and done.get('candidate_count')==count
@@ -331,7 +338,8 @@ def copy_bank(cache, source, count, original, originals, *, binding=None, bindin
             cache.immutable(exact(source/name), destination/name)
     publish(destination/'durable_receipt.json', dict(format=FORMAT, source=str(source), candidate_count=count,
         source_entries=len(rows), complete=complete.exists(), original_index_sha256=BANK_SHA,
-        raw_CT_preprocessing_copied=False, originals_unchanged=True))
+        source_index_sha256=digest(source/'index.json') if (source/'index.json').exists() else None,
+        destination_name=name,raw_CT_preprocessing_copied=False, originals_unchanged=True))
     require(sum(p.stat().st_size for p in (cache.root/'banks').rglob('*') if p.is_file()) <= 500*2**20,
             'Durable candidate-bank allocation exceeds500MiB; preserve existing cache and report')
 
@@ -370,7 +378,7 @@ def admit(manifest_path):
 
 
 def snapshot(cache, manifest, requests, *, unfinished='latest'):
-    cache.guard(); originals = None; original = requests['0']['bank']; outcomes = {}
+    cache.guard(); originals = None; original = requests['0']['bank']; outcomes = {}; native_banks=[]
     for gpu,q in requests.items():
         root = Path(q['root']); folder = cache.root/root.name; folder.mkdir(exist_ok=True)
         cache.recover_pending(folder); cache.immutable(root/'request.json', folder/'request.json',
@@ -388,6 +396,9 @@ def snapshot(cache, manifest, requests, *, unfinished='latest'):
         native = read(root/'native.json')
         require(all(native[k]==q[k] for k in ('root','arm','gpu','uid','commit','code_sha256')),
                 'Actual native identity/code differs from its frozen request')
+        if native['candidates_per_source']>128:
+            require(digest(exact(native['bank']))==native['bank_sha256'], 'Actual native bank index identity differs')
+            native_banks.append((gpu,q,native))
         if (root/'actual_model.json').exists():
             model=read(root/'actual_model.json')
             require(model['epochs']==250 and model['physical_batch']==model['effective_batch']==2
@@ -435,12 +446,30 @@ def snapshot(cache, manifest, requests, *, unfinished='latest'):
     for count in (512,1024,2048):
         if (bankroot/str(count)).exists(): copy_bank(cache,bankroot/str(count),count,original,originals,
             binding=requests['5']['candidate_binding'],binding_sha256=requests['5']['candidate_binding_sha256'])
+    bank_mapping={}
+    for gpu,q,native in native_banks:
+        source=Path(native['bank']); count=native['candidates_per_source']; name=str(count)
+        if source.parent!=bankroot/str(count):
+            name='native_GPU'+gpu+'_'+str(count)
+            require((source.parent/'complete.json').exists(), 'Native candidate bank must retain its actual complete witness')
+            copy_bank(cache,source.parent,count,original,originals,binding=q['candidate_binding'],
+                      binding_sha256=q['candidate_binding_sha256'],destination_name=name)
+        require(digest(cache.root/'banks'/name/'index.json')==native['bank_sha256'],
+                'Native bank is not covered by a different same-count index SHA')
+        bank_mapping[gpu]=dict(source_index=str(source),source_index_sha256=native['bank_sha256'],
+                              durable_index='banks/'+name+'/index.json')
+    if requests['5'].get('prepared256_witness'):
+        prepared=read(exact(requests['5']['prepared256_witness'])); index=exact(prepared['index'])
+        from hiercp_v1x.basic_cp_ablation_bank import verify_prepared_bank
+        verify_prepared_bank(prepared,Path(requests['5']['candidate_binding']),requests['5']['candidate_binding_sha256'])
+        copy_bank(cache,index.parent,256,original,originals,binding=requests['5']['candidate_binding'],
+                  binding_sha256=requests['5']['candidate_binding_sha256'],destination_name='prepared256')
     publish(cache.root/'snapshot.json', dict(format=FORMAT, updated_at_unix=time.time(), outcomes=outcomes,
         expiry_unix=cache.expiry, original_results_overwritten=False, processes_signaled=False,
         CPU_only=True, durable_budget_bytes=8*GIB, required_free_bytes=GIB,
         unfinished_checkpoint_policy=unfinished,complete_latest_backup=unfinished=='latest',
         unfinished_arm_historical_BEST_not_independently_durable=unfinished=='latest',
-        native_prediction_volumes_and_raw_CT_not_copied=True))
+        native_prediction_volumes_and_raw_CT_not_copied=True,native_bank_backups=bank_mapping))
     return outcomes
 
 

@@ -115,6 +115,37 @@ class DurableCheckpointTests(unittest.TestCase):
             self.assertEqual(saved['source_entries'],1); self.assertFalse(saved['complete'])
             self.assertEqual(durable.read(output/'banks/1024/durable_receipt.json')['source_entries'],0)
 
+    def test_same_count_bank_indices_keep_distinct_native_identity_namespaces(self):
+        # DEBUG published partial fixture tests identity collision only. It is
+        # explicitly not an admitted full642 clinical or geometry bank.
+        import numpy as np
+        from tests.test_basic_cp_large_bank import source_fixture
+        from hiercp_v1x.basic_cp_ablation_bank import verify_preservation
+        with tempfile.TemporaryDirectory(prefix='DEBUG_DURABLE_',dir=Path(__file__).parent) as folder:
+            root=Path(folder); original=root/'DEBUG_original'; relative=Path('entries/DEBUG.npz')
+            base=original/relative; base.parent.mkdir(parents=True); old=source_fixture(128); extended=source_fixture(512)
+            np.savez(base,**old); (original/'index.json').write_text('{}',encoding='utf8')
+            sources=[]
+            for label in ('DEBUG_C','DEBUG_V3'):
+                source=root/label; entry=source/relative; entry.parent.mkdir(parents=True); np.savez(entry,**extended)
+                (source/'index.json').write_text(json.dumps({'DEBUG_ONLY':True,'generation_root':label}),encoding='utf8')
+                receipt=source/'entry_receipts'/relative.with_suffix('.json'); receipt.parent.mkdir(parents=True)
+                row=dict(entry=relative.as_posix(),original_entry_sha256=durable.digest(base),
+                    new_entry_sha256=durable.digest(entry),proof=verify_preservation(old,extended,original_count=128,candidate_count=512))
+                receipt.write_text(json.dumps(row),encoding='utf8'); sources.append(source)
+            output=root/'cache'; output.mkdir(); cache=durable.Cache(output,10**12)
+            with patch.object(cache,'guard'),patch.object(durable,'fsync_directory'), \
+                 patch.object(durable,'exact',side_effect=lambda p,**kw:Path(p)):
+                durable.copy_bank(cache,sources[1],512,original/'index.json',{relative.as_posix():durable.digest(base)})
+                durable.copy_bank(cache,sources[0],512,original/'index.json',{relative.as_posix():durable.digest(base)},
+                                  destination_name='native_GPU3_512')
+            primary=durable.read(output/'banks/512/durable_receipt.json')
+            native=durable.read(output/'banks/native_GPU3_512/durable_receipt.json')
+            self.assertNotEqual(primary['source_index_sha256'],native['source_index_sha256'])
+            self.assertEqual(primary['source'],str(sources[1])); self.assertEqual(native['source'],str(sources[0]))
+            self.assertFalse(primary['complete']); self.assertFalse(native['complete'])
+            self.assertEqual((output/'banks/512'/relative).read_bytes(),(output/'banks/native_GPU3_512'/relative).read_bytes())
+
     def test_full_epoch_model_optimizer_scaler_logger_validation_fails_closed(self):
         state=debug_state(); result=durable.checkpoint_info(state,'DEBUG_NATIVE')
         self.assertEqual(result['checkpoint_completed_epoch'],3)

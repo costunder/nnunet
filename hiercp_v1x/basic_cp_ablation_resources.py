@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 from contextlib import contextmanager
+import errno
 import hashlib
 import json
 import math
@@ -154,6 +155,13 @@ def _task_flags(process):
     """
     try:
         body = (Path('/proc') / str(process.pid) / 'stat').read_text()
+    except ProcessLookupError as failure:
+        # An opened procfs task can disappear before read(), producing ESRCH
+        # rather than ENOENT. Preserve the existing exact-process release
+        # path; never manufacture flags or suppress unrelated I/O failures.
+        if failure.errno != errno.ESRCH:
+            raise
+        raise psutil.NoSuchProcess(process.pid) from failure
     except FileNotFoundError as failure:
         if process.is_running():
             raise RuntimeError('Live Basic descendant lost its Linux fork/exec observation') from failure

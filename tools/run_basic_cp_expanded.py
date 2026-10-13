@@ -28,7 +28,9 @@ LEASES = {}
 
 
 def resource_guard(value, *, idle=False):
-    if value.get('group_observation_revision')==4:
+    if value.get('group_observation_revision')==5:
+        from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
+    elif value.get('group_observation_revision')==4:
         from hiercp_v1x.basic_cp_group_resources_v4 import BasicLease
     elif value.get('shared_resource_guard_version')==3:
         from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
@@ -183,7 +185,9 @@ def actor(native,command,label,env):
     shared=label=='candidate_bank'and native.get('shared_candidate_geometry_cache')is True
     lease=None
     if shared:
-        if native.get('shared_resource_guard_version')==3:
+        if native.get('group_observation_revision')==5:
+            from hiercp_v1x.basic_cp_shared_bank_resources_v5 import SharedBankLease
+        elif native.get('shared_resource_guard_version')==3:
             from hiercp_v1x.basic_cp_shared_bank_resources_v3 import SharedBankLease
         else:
             from hiercp_v1x.basic_cp_shared_bank_resources import SharedBankLease
@@ -210,7 +214,9 @@ def child(native,stage,*,batch=None,output=None):
 
 
 def prepare_bank(request):
-    if request.get('group_observation_revision')==4:
+    if request.get('group_observation_revision')==5:
+        from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
+    elif request.get('group_observation_revision')==4:
         from hiercp_v1x.basic_cp_group_resources_v4 import BasicLease
     elif request.get('shared_resource_guard_version')==3:
         from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
@@ -254,7 +260,9 @@ def prepare_bank(request):
 
 
 def run(request):
-    if request.get('group_observation_revision')==4:
+    if request.get('group_observation_revision')==5:
+        from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
+    elif request.get('group_observation_revision')==4:
         from hiercp_v1x.basic_cp_group_resources_v4 import BasicLease
     elif request.get('shared_resource_guard_version')==3:
         from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease

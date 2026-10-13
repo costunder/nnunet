@@ -129,6 +129,31 @@ worker의64CPU가 확인됐고, 새 observation revision4는 같은 PID·birth·
 유지한 채 최대300ms 내 다시 읽는다. 지속 위반은 실제/예상 mask와 PID를
 기록해 실패하며, 실제 PF_EXITING task의 RSS는 계속 계상한다.
 
+## 최종 자원 관측과 원본 BEST 보존
+
+observation revision5는 사라지는 `/proc/PID/stat`의 정확한 ESRCH만
+`psutil.NoSuchProcess`로 연결한다. 권한 오류나 다른 I/O 오류를 숨기지 않는다.
+native와 공유24worker 모두 기존300ms CPU 재관측 및384/800GiB 계약을
+유지한다. 이 변경의187개 CPU 회귀 검사는 CUDA 학습 완료 증거가 아니다.
+다른 계정의 CUDA 점유로 실패한 경우는 관측 오류로 처리하지 않는다.
+실제 빈 GPU를 기다린 뒤 해당 실험의 whole latest로 재개하며 다른 작업은
+종료하지 않는다. 새 namespace의 code/request SHA와 원래 bank를 고정한다.
+
+`/var/tmp` 여유는 약9.57GiB이므로7개 full latest/BEST 쌍(약10.68GiB)을
+보존할 수 없다. 별도8GiB/최소 여유1GiB cache에 각 arm의 **원본 full
+BEST 하나**를 byte 그대로 보존한다. 모델·optimizer·scaler·8개 logger를
+검증하고 모델만 추출하거나 epoch를 바꾸지 않는다. 살아 있는 학습은
+whole latest로 계속된다. tmpfs 전체가 소실되면 이 cache의 BEST epoch부터
+250까지 재개하므로 BEST 이후 epoch를 다시 수행할 수 있다. 실제 latest
+epoch와 저장된 BEST resume epoch 및 전체26명 평가 완료 여부를 구분한다.
+
+전체642 source의 원래128 후보, 원래256 prefix, 공개된512/1024/2048
+항목 및 GPU3 native가 사용하는 별도의 원래512 index SHA를 보존한다.
+이 cache의 데이터 보존 예산은 모델·source·후보 규모의 축소가 아니다.
+보존 프로세스는 CPU82/83을 공유하고 CUDA를 사용하지 않으며 원본
+결과·코드·bank를 수정하지 않는다. 실제250 완료와 원래 BEST26 검증이
+모두 확인된 뒤에만 평가 완료 역할을 기록한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
