@@ -18,6 +18,7 @@ import re
 from . import basic_cp_ablation_resources as basic
 from . import v25_B_early_downstream_resources as previous
 from . import v25_direct_resources as direct
+from . import v25_terminal_descendant_resources as terminal
 
 FORMAT = 'v25_B_own_CP529_fresh_host_recovery_v1'
 ENV_PATH = 'V25_B_CP_RECOVERY_SEAL'
@@ -29,6 +30,7 @@ GPU_UUID = 'GPU-e41d3421-8819-0a49-4a97-6c4518a54f5f'
 CPUS = list(range(42, 48))
 _B_BASE = previous.BEarlyDownstreamAllocationLease
 _DIRECT_BASE = previous._BASE
+_TERMINAL_INSTALL = terminal.install_runtime
 _FIELDS = {'format', 'B_controller_seal', 'previous_failed_execution', 'durable',
     'fresh_host_lifetime', 'PBS_shared_cache_root', 'gpu', 'gpu_uuid', 'CPU_affinity',
     'runtime_files', 'created_at', 'previous_results_preserved', 'processes_signaled'}
@@ -379,6 +381,27 @@ class FreshBLifetimeLease(_B_BASE):
         self.actual_resources.update(result)
 
 
+_FRESH_TREE = FreshBLifetimeLease._tree
+
+
+def _install_terminal_for_fresh_B():
+    """Compose the native admission hook with the already sealed fresh guard."""
+    if (direct.DirectAllocationLease is not FreshBLifetimeLease
+            or FreshBLifetimeLease._tree is not _FRESH_TREE):
+        raise ValueError('Unknown existing fresh B resource tree execution override')
+    if terminal._sha(terminal._SOURCE) != terminal._SOURCE_SHA256:
+        raise ValueError('Immutable terminal-descendant execution source changed')
+    load_recovery_proof()
+    return dict(format='v25_B_fresh_terminal_guard_composition_v1',
+        runtime_source_sha256=terminal._SOURCE_SHA256,
+        original_resource_guard_file_bytes_changed=False,
+        current_actor_and_controller_exact_identity_preserved=True,
+        fresh_B_tree_and_stage_RSS_guards_preserved=True,
+        terminal_descendants_admitted_as_CUDA_actors=False,
+        CPU_RAM_GPU_cgroup_and_host_lifetime_guards_unchanged=True,
+        scientific_files_changed=False, no_process_signaled=True)
+
+
 def install_from_environment():
     if direct.DirectAllocationLease not in (_DIRECT_BASE, _B_BASE, FreshBLifetimeLease):
         raise ValueError('Unknown existing direct-resource class override')
@@ -386,11 +409,16 @@ def install_from_environment():
         raise ValueError('Unknown existing B-resource class override')
     if previous.ENTRY not in ('tools/run_v25_B_early_downstream_execution.py', ENTRY):
         raise ValueError('Unknown existing B downstream execution entry override')
+    if terminal.install_runtime not in (_TERMINAL_INSTALL, _install_terminal_for_fresh_B):
+        raise ValueError('Unknown existing terminal-resource installer override')
+    if FreshBLifetimeLease._tree is not _FRESH_TREE:
+        raise ValueError('Unknown existing fresh B resource tree execution override')
     previous.ENTRY = ENTRY
     value, seal = load_recovery_proof()
     direct.DirectAllocationLease = FreshBLifetimeLease
     previous.BEarlyDownstreamAllocationLease = FreshBLifetimeLease
     previous.install_from_environment = install_from_environment
+    terminal.install_runtime = _install_terminal_for_fresh_B
     return dict(format=FORMAT, selected_arms=['B'], physical_GPU=5, CPU_affinity=CPUS,
         fresh_host_lifetime=value['fresh_host_lifetime'], controller_identity=seal['controller_identity'],
         source_seal_sha256=os.environ[ENV_SHA], original529_complete_sources_preserved=True,

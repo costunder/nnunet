@@ -222,6 +222,37 @@ class RecoveryProofTests(unittest.TestCase):
         self.assertTrue(lease._B_rebound)
 
 
+class NativeGuardCompositionTests(unittest.TestCase):
+    def test_native_installer_retains_fresh_tree_and_revalidates_seal(self):
+        value = dict(fresh_host_lifetime={'fixture': True})
+        seal = dict(controller_identity={'fixture': True})
+        with (patch.object(recovery, 'load_recovery_proof', return_value=(value, seal)) as validate,
+                patch.dict(recovery.os.environ, {recovery.ENV_SHA: 'fixture'}),
+                patch.object(recovery.direct, 'DirectAllocationLease', recovery._DIRECT_BASE),
+                patch.object(recovery.previous, 'BEarlyDownstreamAllocationLease', recovery._B_BASE),
+                patch.object(recovery.previous, 'ENTRY', 'tools/run_v25_B_early_downstream_execution.py'),
+                patch.object(recovery.previous, 'install_from_environment'),
+                patch.object(recovery.terminal, 'install_runtime', recovery._TERMINAL_INSTALL)):
+            recovery.install_from_environment()
+            # The frozen native function imports this hook at call time.
+            for _ in range(2):
+                receipt = recovery.terminal.install_runtime()
+                self.assertIs(recovery.direct.DirectAllocationLease._tree, recovery._FRESH_TREE)
+                self.assertTrue(receipt['fresh_B_tree_and_stage_RSS_guards_preserved'])
+            self.assertEqual(validate.call_count, 3)
+
+    def test_composed_hook_rejects_unknown_tree_before_admission(self):
+        with (patch.object(recovery.direct, 'DirectAllocationLease', recovery.FreshBLifetimeLease),
+                patch.object(recovery.FreshBLifetimeLease, '_tree', lambda self: None),
+                self.assertRaisesRegex(ValueError, 'tree execution override')):
+            recovery._install_terminal_for_fresh_B()
+
+    def test_unknown_installer_cannot_be_silently_replaced(self):
+        with (patch.object(recovery.terminal, 'install_runtime', lambda: None),
+                self.assertRaisesRegex(ValueError, 'installer override')):
+            recovery.install_from_environment()
+
+
 class SharedPBSAndActorBoundaryTests(unittest.TestCase):
     def setUp(self):
         # Reuse existing Linux-observation fixture, not its inherited tests.
