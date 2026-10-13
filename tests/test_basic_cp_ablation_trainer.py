@@ -179,8 +179,21 @@ class BasicCPAblationCPUUnit(unittest.TestCase):
         # No NPZ/clinical metric is simulated: this test stops at the actual
         # population admission and deliberately fails the first geometry task.
         bank = SimpleNamespace(entries_by_case=populations)
-        with patch.object(self.module, 'AblationBank', return_value=bank), patch.object(
-                self.module, '_validate_patient', side_effect=RuntimeError('CPU_UNIT_GEOMETRY_SENTINEL')):
+        class CPUUnitForkPool:
+            def __init__(self, **kwargs):
+                self.configuration = kwargs
+                if kwargs['max_workers'] != 4 or kwargs['initializer'] is not self_module._initialize_preflight_worker:
+                    raise AssertionError('Full four-process initializer missing')
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def map(self, function, cases):
+                return [function(next(iter(cases)))]  # deliberately fails at first UNIT geometry sentinel
+        self_module = self.module
+        with (patch.object(self.module, 'AblationBank', return_value=bank), patch.object(
+                self.module, '_preflight_patient_task', side_effect=RuntimeError('CPU_UNIT_GEOMETRY_SENTINEL')),
+                patch.object(self.module, 'ProcessPoolExecutor', CPUUnitForkPool), patch.object(
+                self.module.multiprocessing, 'get_all_start_methods', return_value=['fork']), patch.object(
+                self.module.multiprocessing, 'get_context', return_value=SimpleNamespace(CPU_UNIT_ONLY=True))):
             with self.assertRaisesRegex(RuntimeError, 'CPU_UNIT_GEOMETRY_SENTINEL'):
                 self.module.preflight_bank('CPU_UNIT_NO_FILES', dataset, arm='blend')
 
@@ -352,6 +365,119 @@ class BasicCPAblationCPUUnit(unittest.TestCase):
         primary = {'entry': own, 'center': (10, 10, 10)}
         with self.assertRaises(self.module.OnlineCPError):
             self.module.select_extra_pastes([own], primary, np.zeros(3), np.full(3, 128))
+
+    def test_observed_liver28_geometry_moves_crop_without_changing_source_or_candidate_centers(self):
+        # Shape/anchor/centers are actual read-only geometry summaries. The
+        # single-voxel mask is explicitly synthetic, never a patient-array copy.
+        own = {'source_data': np.full((1, 13, 34, 34), 9., dtype=np.float32),
+               'source_mask': np.zeros((13, 34, 34), dtype=np.uint8),
+               'anchor_offset': np.asarray([6, 16, 17], dtype=np.int64),
+               'candidate_centers': np.asarray([[107, 407, 201], [111, 451, 252], [103, 464, 249]], dtype=np.int64),
+               'scores': np.arange(128, dtype=np.float32)}
+        own['source_mask'][6, 16, 17] = 1
+        primary = {'entry': own, 'center': (107, 407, 201)}
+        original_lower, original_upper = self.module.canonical_crop((129, 667, 667), primary)
+        with self.assertRaises(self.module.OnlineCPError):
+            self.module.select_extra_pastes([own], primary, original_lower, original_upper)
+        extras = self.module.select_extra_pastes([own], primary, np.zeros(3), np.asarray([129, 667, 667]),
+                                                maximum_union_shape=(128, 128, 128))
+        plans = [primary, *extras]
+        lower, upper = self.module.joint_network_crop((129, 667, 667), plans)
+        np.testing.assert_array_equal(lower, [1, 354, 141])
+        np.testing.assert_array_equal(upper - lower, [128] * 3)
+        self.assertEqual(primary['center'], (107, 407, 201))
+        self.assertTrue(all(plan['entry'] is own for plan in plans))
+        self.assertEqual({plan['center'] for plan in plans}, set(map(tuple, own['candidate_centers'])))
+        initial = SimpleNamespace(patch_size=np.asarray([218] * 3), final_patch_size=np.asarray([128] * 3),
+                                  need_to_pad=np.asarray([90] * 3))
+        augmented_lower, augmented_upper, base_lower = self.module.initial_crop_around_joint(initial,
+                   (129, 667, 667), plans, lower)
+        np.testing.assert_array_equal(np.asarray(augmented_upper) - augmented_lower, [218] * 3)
+        np.testing.assert_array_equal(base_lower, lower)
+
+    def test_joint_paste_three_inside_shifted128_and_no_partial_array_write(self):
+        own = entry([[120, 130, 130], [180, 130, 130], [190, 130, 130]], side=3)
+        loader = self.loader('multi3', [own]); loader._ablation_case_shape = (320, 320, 320)
+        primary = {'entry': own, 'center': (120, 130, 130), 'scale': 1., 'normalized_offset': 0.,
+                   'ablation_schedule_token': 98}
+        plans = self.module.prepare_joint_plan(loader, loader._ablation_case_shape, primary, 'OWN_PATIENT')
+        lower = np.asarray(primary['ablation_joint128_lower'])
+        self.assertEqual(len(plans), 3)
+        image = np.ones((1, 128, 128, 128), dtype=np.float32)
+        seg = np.ones_like(image, dtype=np.int16)
+        loader._apply_paste_to_crop(image, seg, lower, primary, 'OWN_PATIENT')
+        self.assertEqual(np.count_nonzero(seg == 2), 81)
+        self.assertEqual(ndi.label(seg[0] == 2)[1], 3)
+        self.assertTrue(np.all(image[seg != 2] == 1.))
+        impossible = entry([[10, 10, 10], [220, 10, 10], [230, 10, 10]])
+        with self.assertRaisesRegex(self.module.OnlineCPError, 'no 1/2-paste fallback'):
+            self.module.select_extra_pastes([impossible], {'entry': impossible, 'center': (10, 10, 10)},
+                     np.zeros(3), np.full(3, 320), maximum_union_shape=(128, 128, 128))
+
+    def test_joint_selection_preserves_every_primary_index_0_to127(self):
+        # Full128 symbolic centers; count is never reduced to make union fit.
+        centers = [[10 + i % 8 * 10, 10 + i // 8 * 6, 40] for i in range(128)]
+        own = entry(centers)
+        for index in range(128):
+            primary = {'entry': own, 'center': tuple(own['candidate_centers'][index])}
+            extras = self.module.select_extra_pastes([own], primary, np.zeros(3), np.full(3, 160),
+                          np.random.default_rng(index), maximum_union_shape=(128, 128, 128))
+            lower, upper = self.module.joint_network_crop((160, 160, 160), [primary, *extras])
+            self.assertEqual(primary['center'], tuple(own['candidate_centers'][index]))
+            np.testing.assert_array_equal(upper - lower, [128] * 3)
+
+    def test_original_bbox_callback_and_apply_share_same_three_plans_and_initial_shape(self):
+        own = entry([[120, 130, 130], [180, 130, 130], [190, 130, 130]])
+        loader = self.loader('multi3', [own])
+        loader.patch_size = np.asarray([218] * 3); loader.final_patch_size = np.asarray([128] * 3)
+        loader.need_to_pad = np.asarray([90] * 3)
+        primary = {'entry': own, 'center': (120, 130, 130), 'scale': 1., 'normalized_offset': 0.,
+                   'ablation_schedule_token': 98}
+        loader._pending_paste_plan = primary; loader._pending_case_id = 'OWN_PATIENT'
+        original_rng_state = copy.deepcopy(loader._rng().bit_generator.state)
+        lower, upper = self.module._remember_case_shape(loader, (320, 320, 320), primary['center'],
+                            own['source_mask'].shape, own['anchor_offset'])
+        np.testing.assert_array_equal(np.asarray(upper) - lower, [218] * 3)
+        self.assertEqual(original_rng_state, loader._rng().bit_generator.state)
+        before_plans = tuple((item['center'], item['scale'], item['normalized_offset'])
+                             for item in primary['ablation_extra_plans'])
+        image = np.ones((1, 218, 218, 218), dtype=np.float32)
+        seg = np.ones_like(image, dtype=np.int16)
+        loader._apply_paste_to_crop(image, seg, lower, primary, 'OWN_PATIENT')
+        self.assertEqual(before_plans, tuple((item['center'], item['scale'], item['normalized_offset'])
+                                           for item in primary['ablation_extra_plans']))
+        self.assertEqual(np.count_nonzero(seg == 2), 81)
+        offset = np.asarray(primary['ablation_joint128_lower']) - lower
+        sl = tuple(slice(int(v), int(v + 128)) for v in offset)
+        self.assertEqual(np.count_nonzero(seg[(0, *sl)] == 2), 81)
+        self.assertEqual(original_rng_state, loader._rng().bit_generator.state)
+
+    def test_fork_worker_rejects_initialized_CUDA_or_missing_readonly_instance_binding(self):
+        dataset = fixture_actual_dataset([f'CPU_UNIT_case_{i:03d}' for i in range(105)])
+        with self.assertRaisesRegex(self.module.OnlineCPError, 'read-only adapter binding'):
+            self.module._initialize_preflight_worker('CPU_UNIT_NO_BANK', dataset, 'multi3', (128, 128, 128))
+        dataset._v24_readonly_binding = {'CPU_UNIT_BINDING': True}
+        with patch.object(self.module.historical.torch.cuda, 'is_initialized', return_value=True):
+            with self.assertRaisesRegex(self.module.OnlineCPError, 'initialized CUDA'):
+                self.module._initialize_preflight_worker('CPU_UNIT_NO_BANK', dataset, 'multi3', (128, 128, 128))
+
+    def test_worker_copy_retains_authoritative_binding_and_releases_patient_cache(self):
+        dataset = fixture_actual_dataset([f'CPU_UNIT_case_{i:03d}' for i in range(105)])
+        binding = {'CPU_UNIT_readonly_binding': True}; dataset._v24_readonly_binding = binding
+        bank = SimpleNamespace(entries_by_case={dataset.identifiers[0]: ['CPU_UNIT_ENTRY']},
+                               _cache=OrderedDict([('CPU_UNIT_ENTRY', {'CPU_UNIT_ARRAY': True})]),
+                               _validated_entries={'CPU_UNIT_ENTRY'})
+        with patch.object(self.module, 'AblationBank', return_value=bank):
+            self.module._initialize_preflight_worker('CPU_UNIT_INDEX', dataset, 'multi3', (128, 128, 128))
+        worker_bank, worker_dataset, _ = self.module._PREFLIGHT_WORKER
+        self.assertIsNot(worker_dataset, dataset)
+        self.assertIs(worker_dataset._v24_readonly_binding, binding)
+        self.assertEqual(worker_dataset.identifiers, dataset.identifiers)
+        with patch.object(self.module, '_validate_patient', side_effect=RuntimeError('CPU_UNIT_EXPLICIT_FAILURE')):
+            with self.assertRaisesRegex(RuntimeError, 'CPU_UNIT_EXPLICIT_FAILURE'):
+                self.module._preflight_patient_task(dataset.identifiers[0])
+        self.assertFalse(worker_bank._cache); self.assertFalse(worker_bank._validated_entries)
+        self.module._PREFLIGHT_WORKER = None
 
 
 if __name__ == '__main__':
