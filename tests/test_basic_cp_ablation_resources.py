@@ -168,6 +168,7 @@ class BasicLeaseTests(unittest.TestCase):
         self.start(patch.object(resource.time, 'sleep', return_value=None))
         self.start(patch.object(resource, 'capture_cgroup_admission', side_effect=lambda pid:copy.deepcopy(self.admission)))
         self.start(patch.object(resource, '_query', side_effect=self.query))
+        self.start(patch.object(resource, '_pbs_query', side_effect=lambda argv, **kwargs:self.query(argv)))
         self.start(patch.object(resource.psutil, 'virtual_memory', side_effect=lambda:self.host))
         self.start(patch.object(resource.shutil, 'disk_usage', side_effect=lambda p:self.storage))
         self.start(patch.dict(resource.os.environ, {'CUDA_VISIBLE_DEVICES':'1'}))
@@ -240,6 +241,23 @@ class BasicLeaseTests(unittest.TestCase):
             self.lease.verify(force=True)
         self.worker.uid=41833; self.worker.cpus=[16]
         with self.assertRaisesRegex(RuntimeError, 'six-CPU'):
+            self.lease.verify(force=True)
+
+    def test_fresh_pid_birth_rejects_replacement_hidden_by_an_old_process_object(self):
+        self.lease.verify(force=True)
+        replacement=Actor(201,list(self.worker.command),birth=701)
+        self.actors[201]=replacement
+        # controller.children still contains the earlier Process observation
+        # with cached birth700, while the actual current numeric PID is701.
+        self.assertEqual(self.worker.create_time(),700)
+        with self.assertRaisesRegex(RuntimeError,'PID/birth/UID'):
+            self.lease.verify(force=True)
+
+    def test_fresh_pid_uid_rejects_foreign_replacement_hidden_by_old_object(self):
+        self.lease.verify(force=True)
+        self.actors[201]=Actor(201,list(self.worker.command),uid=0)
+        self.assertEqual(self.worker.uids().real,41833)
+        with self.assertRaisesRegex(RuntimeError,'foreign'):
             self.lease.verify(force=True)
 
     def test_genuinely_zombie_worker_is_removed_without_fake_live_identity(self):
@@ -338,6 +356,174 @@ class BasicLeaseTests(unittest.TestCase):
         with patch.object(resource, '_fork_no_exec', side_effect=observe):
             self.lease.verify(force=True)
         self.assertEqual(self.lease._managed[self.worker.pid]['command'], ['python', 'late_stable_exec_worker'])
+
+    def test_short_lived_helper_becomes_zombie_during_final_argv_read(self):
+        original_command=list(self.worker.command)
+        reads=0
+        def cmdline():
+            nonlocal reads
+            reads+=1
+            if reads >= 2:
+                self.worker.state=resource.psutil.STATUS_ZOMBIE
+                return []
+            return original_command
+        self.worker.cmdline=cmdline
+        result=self.lease.verify(force=True)
+        self.assertEqual(result['own_process_tree_RSS_bytes'],2*2**20)
+        witness=result['naturally_released_descendant_observations'][201]
+        self.assertEqual(witness['UID'],41833)
+        self.assertEqual(witness['create_time'],700)
+        self.assertEqual(witness['status'],resource.psutil.STATUS_ZOMBIE)
+
+    def test_short_lived_helper_release_during_terminal_recheck_is_proven(self):
+        self.lease.verify(force=True)
+        self.worker.command=['python','finishing_helper']
+        states=iter(['sleeping','sleeping','sleeping',resource.psutil.STATUS_ZOMBIE])
+        self.worker.status=lambda:next(states,resource.psutil.STATUS_ZOMBIE)
+        result=self.lease.verify(force=True)
+        self.assertEqual(result['own_process_tree_RSS_bytes'],2*2**20)
+        self.assertIn(201,result['naturally_released_descendant_observations'])
+
+    def test_final_argv_change_of_a_live_process_is_still_rejected_with_evidence(self):
+        commands=iter([['python','worker'],['python','changed_live_command']])
+        self.worker.cmdline=lambda:next(commands,['python','changed_live_command'])
+        with self.assertRaisesRegex(RuntimeError,'final_command.*changed_live_command'):
+            self.lease.verify(force=True)
+
+    def test_terminal_race_does_not_admit_a_reused_pid_or_foreign_uid(self):
+        for changed in ['birth','uid']:
+            self.worker.birth=700;self.worker.uid=41833;self.worker.state='sleeping'
+            reads=0
+            def cmdline():
+                nonlocal reads
+                reads+=1
+                if reads>=2:
+                    setattr(self.worker,changed,701 if changed=='birth' else 0)
+                    self.worker.state=resource.psutil.STATUS_ZOMBIE
+                    return []
+                return ['python','worker']
+            self.worker.cmdline=cmdline
+            with self.subTest(changed=changed),self.assertRaisesRegex(RuntimeError,'PID/birth/UID'):
+                self.lease.verify(force=True)
+
+    def test_live_process_cannot_disguise_unknown_command_as_terminal(self):
+        self.lease.verify(force=True)
+        self.worker.command=['python','different_live_job']
+        with self.assertRaisesRegex(RuntimeError,'live argv changed'):
+            self.lease.verify(force=True)
+
+    def test_dead_worker_does_not_require_a_nonempty_live_command(self):
+        self.worker.state=resource.psutil.STATUS_DEAD
+        self.worker.command=[]
+        result=self.lease.verify(force=True)
+        self.assertEqual(result['own_process_tree_RSS_bytes'],2*2**20)
+        self.assertEqual(result['naturally_released_descendant_observations'][201]['status'],resource.psutil.STATUS_DEAD)
+
+    def test_dead_worker_cannot_hide_changed_uid(self):
+        self.worker.state=resource.psutil.STATUS_DEAD
+        self.worker.uid=0
+        with self.assertRaisesRegex(RuntimeError,'foreign'):
+            self.lease.verify(force=True)
+
+    def test_pbs_queries_are_separate_from_five_second_gpu_polls(self):
+        self.lease.verify()
+        pbs_calls=lambda:sum(argv[0]=='/opt/pbs/bin/qstat'for argv in self.query_calls)
+        self.assertEqual(pbs_calls(),1)
+        for seconds in [5,10,15,20,25]:
+            self.monotonic=500+seconds
+            self.lease.verify()
+        self.assertEqual(pbs_calls(),1)
+        self.monotonic=530
+        self.lease.verify()
+        self.assertEqual(pbs_calls(),2)
+
+    def test_no_initial_admission_can_use_timeout_grace(self):
+        failure=resource.subprocess.TimeoutExpired(['qstat'],5)
+        with patch.object(resource,'_pbs_query',side_effect=failure)as query:
+            with self.assertRaisesRegex(RuntimeError,'no verified running job'):
+                self.lease.verify()
+        self.assertEqual(query.call_count,3)
+        self.assertIsNone(self.lease.last_verified)
+
+    def test_three_transient_timeouts_use_only_a_recent_exact_running_job(self):
+        self.lease.verify()
+        self.monotonic=530
+        def timeout(argv,**kwargs):
+            self.monotonic+=kwargs['timeout']
+            raise resource.subprocess.TimeoutExpired(argv,kwargs['timeout'])
+        with patch.object(resource,'_pbs_query',side_effect=timeout)as query:
+            result=self.lease.verify()
+        self.assertEqual(query.call_count,3)
+        self.assertEqual(self.monotonic,545)
+        self.assertEqual(result['host_lifetime_PBS_warning']['error'],'TimeoutExpired')
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],45)
+        self.assertEqual(result['host_lifetime_actual_PBS_observation']['job_state'],'R')
+        self.assertEqual(result['host_lifetime_expires_at_unix'],5000)
+
+    def test_timeout_grace_cannot_outlive_sixty_seconds_or_extend_its_deadline(self):
+        self.lease.verify()
+        self.monotonic=555
+        def timeout(argv,**kwargs):
+            self.monotonic+=kwargs['timeout']
+            raise resource.subprocess.TimeoutExpired(argv,kwargs['timeout'])
+        with patch.object(resource,'_pbs_query',side_effect=timeout):
+            with self.assertRaisesRegex(RuntimeError,'no verified running job'):
+                self.lease.verify()
+        self.assertEqual(self.monotonic,560)
+        self.assertEqual(self.lease._pbs_verified_at,500)
+
+    def test_successful_scheduler_query_recovers_a_timeout_warning(self):
+        self.lease.verify()
+        self.monotonic=530
+        with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],5)):
+            self.lease.verify()
+        self.assertIsNotNone(self.lease._pbs_timeout)
+        self.monotonic=536
+        result=self.lease.verify()
+        self.assertIsNone(result['host_lifetime_PBS_warning'])
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
+
+    def test_stale_observation_requires_actual_query_and_cannot_be_fallback(self):
+        self.lease.verify()
+        self.monotonic=600
+        result=self.lease.verify()
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
+        self.monotonic=700
+        with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],5))as query:
+            with self.assertRaisesRegex(RuntimeError,'no verified running job'):
+                self.lease.verify()
+        self.assertEqual(query.call_count,1)
+
+    def test_only_timeout_can_use_recent_pbs_proof_not_finished_job_or_malformed_json(self):
+        self.lease.verify()
+        self.monotonic=530
+        for failure in [resource.subprocess.CalledProcessError(35,['qstat']),json.JSONDecodeError('bad','x',0)]:
+            with self.subTest(failure=type(failure).__name__),patch.object(resource,'_pbs_query',side_effect=failure):
+                with self.assertRaises(type(failure)):
+                    self.lease.verify(force=True)
+        self.job['job_state']='F'
+        with self.assertRaisesRegex(RuntimeError,'no longer proves'):
+            self.lease.verify(force=True)
+
+    def test_pbs_query_time_cannot_cross_the_fixed_lifetime_reserve(self):
+        self.monotonic=4319
+        self.wall=4819
+        def observed(argv,**kwargs):
+            self.monotonic+=2;self.wall+=2
+            return self.query(argv)
+        with patch.object(resource,'_pbs_query',side_effect=observed):
+            with self.assertRaisesRegex(RuntimeError,'180second boundary'):
+                self.lease.verify()
+
+    def test_a_slow_gpu_query_requires_fresh_pbs_proof_before_returning(self):
+        original=self.lease._gpu
+        def slow_gpu(tree,*,idle):
+            self.monotonic+=65
+            return original(tree,idle=idle)
+        with patch.object(self.lease,'_gpu',side_effect=slow_gpu):
+            result=self.lease.verify()
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
+        self.assertEqual(sum(argv[0]=='/opt/pbs/bin/qstat'for argv in self.query_calls),2)
 
     def test_pbs_nonrunning_foreign_owner_othernode_or_extension_is_rejected(self):
         originals=copy.deepcopy(self.job)

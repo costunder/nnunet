@@ -119,6 +119,19 @@ class PipelineTests(unittest.TestCase):
         self.prepare_bank.assert_not_called();self.prepare.assert_not_called()
         self.child.assert_not_called();self.actor.assert_not_called()
 
+    def test_completed_native_resume_keeps_full250_and_starts_from_verified200(self):
+        self.request['completed_native_resume'] = {'completed_epochs':200}
+        self.native['completed_native_resume'] = {'completed_epochs':200}
+        module = ModuleType('hiercp_v1x.basic_cp_ablation_resume')
+        module.prepare_resume = Mock(side_effect=lambda native:self.record('resume200',{'completed_epochs':200}))
+        with patch.dict(sys.modules,{'hiercp_v1x.basic_cp_ablation_resume':module}):
+            runner.run(self.request)
+        self.assertLess(self.events.index('debug4'),self.events.index('resume200'))
+        self.assertLess(self.events.index('resume200'),self.events.index('train'))
+        self.assertIn(('train','RUNNING',{'completed_epochs':200}),self.states)
+        self.assertEqual(self.states[-1][2]['completed_epochs'],250)
+        self.assertEqual(self.states[-1][2]['evaluated_cases'],26)
+
 
 class NativeGuardIntegrationTests(unittest.TestCase):
     def setUp(self):
@@ -200,6 +213,23 @@ class NativeGuardIntegrationTests(unittest.TestCase):
         self.torch.load.return_value={'current_epoch':249}
         with self.assertRaisesRegex(RuntimeError,'full250'):
             runner.train(self.native)
+
+    def test_resume_uses_native_continue_and_rejects_an_incomplete_loaded_epoch(self):
+        self.native['completed_native_resume']={'completed_epochs':200}
+        self.trainer.on_train_start=lambda instance:self.calls.append(('original_train_start',))
+        self.start(patch.object(runner,'read',return_value={'completed_epochs':200,'native_goal_epochs':250}))
+        def entry():
+            instance=self.trainer()
+            instance.current_epoch=216
+            with self.assertRaisesRegex(RuntimeError,'exact completed epoch'):
+                instance.on_train_start()
+            instance.current_epoch=200
+            instance.on_train_start()
+        self.entry.side_effect=entry
+        runner.train(self.native)
+        self.assertIn('-c',sys.argv)
+        self.assertIn('--val_best',sys.argv)
+        self.assertIn(('original_train_start',),self.calls)
 
 
 class CandidateBankPreparationTests(unittest.TestCase):

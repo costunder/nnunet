@@ -28,6 +28,10 @@ UID = 41833
 NODE = 'ece-a6gpu6'
 CPUS = {1: list(range(16, 22)), 4: list(range(6)), 6: list(range(32, 38))}
 POLL_SECONDS = 5
+PBS_POLL_SECONDS = 30
+PBS_TRANSIENT_MAX_AGE_SECONDS = 60
+PBS_QUERY_TIMEOUT_SECONDS = 5
+PBS_QUERY_ATTEMPTS = 3
 EXPIRY_RESERVE_SECONDS = 180
 RSS_LIMIT = 96 * GIB
 AGGREGATE_CAPACITY = 416 * GIB
@@ -128,7 +132,10 @@ def _snapshot(path):
 
 
 def _metadata(process):
-    return dict(pid=process.pid, create_time=process.create_time(), UID=process.uids().real)
+    # psutil caches create_time on a Process object. Re-open the numeric PID
+    # so a replaced task cannot inherit the earlier object's cached birth.
+    current = psutil.Process(process.pid)
+    return dict(pid=current.pid, create_time=current.create_time(), UID=current.uids().real)
 
 
 def _fork_no_exec(process):
@@ -153,7 +160,7 @@ def _fork_no_exec(process):
 
 
 def _actor(process):
-    if process.status() == psutil.STATUS_ZOMBIE:
+    if process.status() in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
         raise RuntimeError('Exact Basic controller or stage is already terminal')
     value = dict(_metadata(process), command=process.cmdline())
     if not _identity(value):
@@ -207,6 +214,10 @@ def _query(command):
     return subprocess.check_output(command, text=True, timeout=20).strip()
 
 
+def _pbs_query(command, *, timeout):
+    return subprocess.check_output(command, text=True, timeout=timeout).strip()
+
+
 def _pbs_start(value):
     if type(value) in (int, float):
         result = float(value)
@@ -255,6 +266,11 @@ class BasicLease:
         self._managed = {}
         self._fork_pending = {}
         self._cached_tree = {}
+        self._terminal_observations = {}
+        self._pbs_verified_at = None
+        self._pbs_last_attempt = None
+        self._pbs_observation = None
+        self._pbs_timeout = None
 
     def _admit(self, path, digest):
         path = _owned(path)
@@ -293,6 +309,31 @@ class BasicLease:
             if _snapshot(_owned(path)) != observed:
                 raise ValueError('Original admitted Basic source/code/lifetime metadata changed: ' + path)
 
+    def _terminal_after_change(self, process, metadata, *, reason):
+        """Only prove an exact task's natural release; never accept a live argv change.
+
+        A short-lived qstat/helper may enter exit after cmdline was read. Linux
+        then returns an empty cmdline before /proc itself disappears. Re-read
+        the state within30ms and retain the same PID/birth/UID throughout.
+        """
+        for attempt in range(3):
+            try:
+                observed = _metadata(process)
+                if observed != metadata:
+                    raise RuntimeError('Basic descendant PID/birth/UID changed during terminal observation')
+                state = process.status()
+                if state in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
+                    self._terminal_observations[process.pid] = dict(metadata,
+                        status=state, reason=reason, observed_at=time.time())
+                    return True
+            except psutil.NoSuchProcess:
+                self._terminal_observations[process.pid] = dict(metadata,
+                    status='NoSuchProcess', reason=reason, observed_at=time.time())
+                return True
+            if attempt < 2:
+                time.sleep(.01)
+        return False
+
     def _descendant(self, process):
         """A genuinely terminal worker may disappear without pretending it is live."""
         previous = self._managed.get(process.pid)
@@ -301,11 +342,13 @@ class BasicLease:
             if metadata['UID'] != UID or previous is not None and any(
                     metadata[k] != previous[k] for k in ('pid', 'create_time', 'UID')):
                 raise RuntimeError('Basic descendant PID/birth/UID changed or became foreign')
-            if process.status() == psutil.STATUS_ZOMBIE:
+            if process.status() in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
+                self._terminal_after_change(process, metadata, reason='terminal before argv observation')
                 return None
             fork_before = _fork_no_exec(process)
             command = process.cmdline()
-            if process.status() == psutil.STATUS_ZOMBIE:
+            if process.status() in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
+                self._terminal_after_change(process, metadata, reason='terminal after argv observation')
                 return None
             if _fork_no_exec(process) != fork_before:
                 if attempt < 2:
@@ -334,6 +377,8 @@ class BasicLease:
                     if parent is None or _actor(parent) != pending:
                         raise RuntimeError('First Basic child exec changed its exact parent lineage')
                 elif previous is not None and command != previous['command']:
+                    if self._terminal_after_change(process, metadata, reason='argv changed during natural exit'):
+                        return None
                     raise RuntimeError('Basic descendant live argv changed')
             identity = dict(metadata, command=command)
             final_metadata = _metadata(process)
@@ -344,7 +389,15 @@ class BasicLease:
                 continue
             if (not _identity(identity) or final_metadata != metadata
                     or final_command != command or final_fork != fork_before):
-                raise RuntimeError('Exact Basic descendant changed during live observation')
+                if final_metadata != metadata:
+                    raise RuntimeError('Basic descendant PID/birth/UID changed during live observation')
+                if self._terminal_after_change(process, metadata, reason='final process snapshot crossed natural exit'):
+                    return None
+                evidence = dict(before=identity, final_metadata=final_metadata,
+                    final_command=final_command, fork_before=fork_before, fork_final=final_fork,
+                    terminal_reobservation='live after three exact observations')
+                raise RuntimeError('Exact Basic descendant changed during live observation: '
+                    + json.dumps(evidence, sort_keys=True))
             self._managed[process.pid] = identity
             if fork_before:
                 self._fork_pending[process.pid] = inherited
@@ -368,8 +421,8 @@ class BasicLease:
             raise RuntimeError('Basic stage is outside its exact authorized fresh controller tree')
         return tree
 
-    def _host_lifetime(self):
-        jobs = json.loads(_query(['/opt/pbs/bin/qstat', '-f', '-F', 'json', self.lifetime['job_id']]))['Jobs']
+    def _validate_pbs_observation(self, text):
+        jobs = json.loads(text)['Jobs']
         if list(jobs) != [self.lifetime['job_id']]:
             raise RuntimeError('Exact owned host-lifetime job unavailable')
         value = next(iter(jobs.values()))
@@ -385,6 +438,56 @@ class BasicLease:
         expiration = _pbs_start(value['stime']) + hours * 3600 + minutes * 60 + seconds
         if abs(expiration - self.lifetime['expires_at_unix']) > 1:
             raise RuntimeError('Actual PBS start/walltime deadline changed from its original immutable proof')
+        return dict(job_id=self.lifetime['job_id'], job_state=value['job_state'],
+            owner=value['Job_Owner'], node=NODE, expires_at_unix=expiration,
+            observed_at=time.time())
+
+    def _host_lifetime(self, *, force=False):
+        """Query initially and each30s; tolerate only a bounded scheduler timeout.
+
+        Immutable bytes, exact controller/GPU/cgroup and both wall/monotonic
+        deadlines remain independently verified. A successful non-R response,
+        unavailable job, owner/node/deadline change or malformed JSON fails
+        immediately. No initial admission can use the timeout grace period.
+        """
+        now = time.monotonic()
+        age = None if self._pbs_verified_at is None else now - self._pbs_verified_at
+        retry_after = POLL_SECONDS if self._pbs_timeout is not None else PBS_POLL_SECONDS
+        due = (force or self._pbs_verified_at is None or self._pbs_last_attempt is None
+            or now - self._pbs_last_attempt >= retry_after)
+        if not due:
+            if age > PBS_TRANSIENT_MAX_AGE_SECONDS:
+                raise RuntimeError('Last verified PBS host lifetime exceeded its60second timeout boundary')
+            return
+        command = ['/opt/pbs/bin/qstat', '-f', '-F', 'json', self.lifetime['job_id']]
+        timeout_error = None
+        attempts = 0
+        for attempts in range(1, PBS_QUERY_ATTEMPTS + 1):
+            now = time.monotonic()
+            age = None if self._pbs_verified_at is None else now - self._pbs_verified_at
+            if timeout_error is not None and age is not None and age >= PBS_TRANSIENT_MAX_AGE_SECONDS:
+                break
+            timeout = PBS_QUERY_TIMEOUT_SECONDS if age is None or age >= PBS_TRANSIENT_MAX_AGE_SECONDS else min(
+                PBS_QUERY_TIMEOUT_SECONDS, PBS_TRANSIENT_MAX_AGE_SECONDS - age)
+            try:
+                observed = self._validate_pbs_observation(_pbs_query(command, timeout=timeout))
+            except subprocess.TimeoutExpired as failure:
+                timeout_error = failure
+                continue
+            self._pbs_observation = observed
+            self._pbs_verified_at = time.monotonic()
+            self._pbs_last_attempt = self._pbs_verified_at
+            self._pbs_timeout = None
+            return
+        self._pbs_last_attempt = time.monotonic()
+        age = None if self._pbs_verified_at is None else self._pbs_last_attempt - self._pbs_verified_at
+        if timeout_error is None or age is None or age >= PBS_TRANSIENT_MAX_AGE_SECONDS:
+            raise RuntimeError('PBS timeout admission has no verified running job within60seconds') from timeout_error
+        self._pbs_timeout = dict(error='TimeoutExpired', attempts=attempts,
+            last_verified_age_seconds=age, observed_at=time.time(),
+            deadline_unmodified=True, command=command)
+        print('BASIC PBS TEMPORARY QUERY TIMEOUT ' + json.dumps(self._pbs_timeout, sort_keys=True),
+            file=sys.stderr, flush=True)
 
     def _rss(self, tree):
         total = 0
@@ -476,21 +579,37 @@ class BasicLease:
         if not visible and torch is not None and torch.cuda.is_initialized():
             raise RuntimeError('Basic physical GPU must be selected before CUDA initialization')
         now = time.monotonic()
+        self._host_lifetime(force=force or idle)
+        remaining = min(self.lifetime['expires_at_unix'] - time.time(),
+            self.monotonic_expiry - time.monotonic())
+        if remaining < EXPIRY_RESERVE_SECONDS:
+            raise RuntimeError('Host lifetime crossed its180second boundary during PBS verification')
         if force or idle or self.last_verified is None or now - self.last_verified >= POLL_SECONDS:
             tree = self._tree(controller, own)
-            self._host_lifetime()
             resources = self._resources(controller, own, tree)
             resources.update(self._gpu(tree, idle=idle))
             self._cached_tree = tree
             self.actual_resources = resources
-            self.last_verified = now
+            self.last_verified = time.monotonic()
         else:
             self.actual_resources['own_process_tree_RSS_bytes'] = self._rss(self._cached_tree)
             free = shutil.disk_usage(self.request['native_root']).free
             if free < STORAGE_FLOOR:
                 raise OSError('Full native tmpfs output dropped below its10GiB free floor')
             self.actual_resources['native_free_bytes'] = free
+        if time.monotonic() - self._pbs_verified_at >= PBS_TRANSIENT_MAX_AGE_SECONDS:
+            # A slow GPU query must not extend the scheduler-proof timeout
+            # window while this verification is blocked.
+            self._host_lifetime(force=True)
+        remaining = min(self.lifetime['expires_at_unix'] - time.time(),
+            self.monotonic_expiry - time.monotonic())
+        if remaining < EXPIRY_RESERVE_SECONDS:
+            raise RuntimeError('Host lifetime crossed its180second boundary during resource verification')
         self.actual_resources['host_lifetime_remaining_seconds'] = remaining
         self.actual_resources['host_lifetime_expires_at_unix'] = self.lifetime['expires_at_unix']
         self.actual_resources['host_lifetime_job_id'] = self.lifetime['job_id']
+        self.actual_resources['host_lifetime_actual_PBS_observation'] = copy.deepcopy(self._pbs_observation)
+        self.actual_resources['host_lifetime_PBS_observation_age_seconds'] = time.monotonic() - self._pbs_verified_at
+        self.actual_resources['host_lifetime_PBS_warning'] = copy.deepcopy(self._pbs_timeout)
+        self.actual_resources['naturally_released_descendant_observations'] = copy.deepcopy(self._terminal_observations)
         return dict(self.actual_resources)

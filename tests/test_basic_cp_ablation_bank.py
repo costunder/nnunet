@@ -627,6 +627,40 @@ class PreparedBankReuseTests(unittest.TestCase):
             self.assertNotEqual(bank.stat_identity(old)[:2],bank.stat_identity(new)[:2])
         self.assertEqual(before,{str(path):bank.stat_identity(path) for path in self.extended.rglob('*') if path.is_file()})
 
+    def test_failed55_sources_remain_reusable_without_claiming_completed642_bank(self):
+        manifest=bank.read_json(self.extended/'preservation_manifest.json')
+        created=[]
+        for index,row in enumerate(manifest['entries'][:55]):
+            receipt=self.extended/'entry_receipts'/Path(row['entry']).with_suffix('.json')
+            if not receipt.exists():
+                receipt.parent.mkdir(parents=True,exist_ok=True)
+                bank.write_json_exclusive(receipt,row);created.append(receipt)
+            if index<28:
+                previous=bank.read_json(receipt)
+                previous['partial_reuse']={'previous_root':'/CPU_DEBUG/older28',
+                    'previous_receipt_sha256':'0'*64,'previous_entry_sha256':row['new_entry_sha256'],
+                    'new_copy_byte_verified':True}
+                receipt.write_text(json.dumps(previous),encoding='utf8')
+        try:
+            output=self.fresh_partial_copy()
+            before={str(path):bank.stat_identity(path) for path in self.extended.rglob('*') if path.is_file()}
+            rows=bank.copy_verified_partial_bank(self.binding,self.extended,output)
+            self.assertEqual(len(rows),55)
+            self.assertEqual({row['entry'] for row in rows},{row['entry'] for row in manifest['entries'][:55]})
+            for row in rows:
+                old_receipt=self.extended/'entry_receipts'/Path(row['entry']).with_suffix('.json')
+                self.assertEqual(row['partial_reuse']['previous_receipt_sha256'],bank.file_sha(old_receipt))
+                self.assertEqual(bank.file_sha(output/row['entry']),row['new_entry_sha256'])
+            admission=bank.read_json(output/'partial_reuse_admission.json')
+            self.assertEqual(admission['verified_reused_sources'],55)
+            self.assertEqual(admission['required_full_sources'],642)
+            self.assertFalse(admission['complete'])
+            self.assertFalse((output/'complete.json').exists())
+            self.assertEqual(before,{str(path):bank.stat_identity(path) for path in self.extended.rglob('*') if path.is_file()})
+        finally:
+            for receipt in created:receipt.unlink()  # Own CPU DEBUG fixture files only.
+            for path,data in self.partial_receipts.items():path.write_bytes(data)
+
     def test_partial_binding_or_completed_source_checksum_changes_are_rejected(self):
         started=bank.read_json(self.extended/'preparation_started.json');started['binding']['DEBUG_fixture']=False
         self.replace_document('preparation_started.json',started)

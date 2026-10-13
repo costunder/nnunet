@@ -419,6 +419,20 @@ def train(native):
     previous_initialize = cls.initialize
     previous_epoch_end = cls.on_epoch_end
     active = []
+    if 'completed_native_resume' in native:
+        resume_receipt = read(Path(native['root']) / 'resume.json')
+        expected_resume_epoch = native['completed_native_resume']['completed_epochs']
+        if (resume_receipt['completed_epochs'] != expected_resume_epoch
+                or resume_receipt['native_goal_epochs'] != 250):
+            raise RuntimeError('Complete native resume receipt differs from the full250 request')
+        previous_train_start = cls.on_train_start
+
+        def resumed_train_start(self):
+            if self.current_epoch != expected_resume_epoch:
+                raise RuntimeError('Native continuation did not load the exact completed epoch')
+            return previous_train_start(self)
+
+        cls.on_train_start = resumed_train_start
 
     def initialize(self):
         previous_initialize(self)
@@ -450,6 +464,8 @@ def train(native):
     cls.on_epoch_end = epoch_end
     sys.argv = ['basic_cp_ablation', '730', '3d_fullres', '0', '-tr', native['trainer'],
         '-p', native['baseline']['plans_name'], '--val_best']
+    if 'completed_native_resume' in native:
+        sys.argv += ['-c']
     from nnunetv2.run.run_training import run_training_entry
     try:
         run_training_entry()
@@ -493,6 +509,13 @@ def run_actor(native, command, label, env):
     resource_guard(native)
     log = Path(native['root']) / (label + '.log')
     with log.open('xb', buffering=0) as stream:
+        if label == 'train' and 'completed_native_resume' in native:
+            receipt = read(Path(native['root']) / 'resume.json')
+            prefix = Path(native['root']) / 'resumed_training_prefix.log'
+            if sha(prefix) != receipt['training_prefix_sha256']:
+                raise RuntimeError('Original completed training log prefix changed')
+            stream.write(prefix.read_bytes())
+            stream.write(('\nBASIC_CP_COMPLETED_NATIVE_RESUME ' + json.dumps(receipt) + '\n').encode('utf8'))
         actor = subprocess.Popen(command, env=env, cwd=ROOT, stdin=subprocess.DEVNULL,
             stdout=stream, stderr=subprocess.STDOUT)
         import psutil
@@ -538,7 +561,11 @@ def run(request):
         decision='Preserve historical Basic batch2 and optimization steps for one-factor comparison',
         production_optimizer_updates=0))
     resource_guard(native, idle=True)
-    status(native, 'train', 'RUNNING', completed_epochs=0)
+    resumed_epochs = 0
+    if 'completed_native_resume' in native:
+        from hiercp_v1x.basic_cp_ablation_resume import prepare_resume
+        resumed_epochs = prepare_resume(native)['completed_epochs']
+    status(native, 'train', 'RUNNING', completed_epochs=resumed_epochs)
     child(native, 'train')
     status(native, 'historical_metrics', 'RUNNING', completed_epochs=250)
     proof = read(Path(native['root']) / 'training_and_BEST26_complete.json')
