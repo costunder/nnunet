@@ -123,6 +123,12 @@ GNN/혈관 그래프의 연구 버전을 뜻하지 않는다. 기존 code/reques
 checkpoint는 보존하고 새 실행 폴더를 쓴다. 완료512 bank와1024 부분
 항목은 원래 파일 SHA·receipt를 확인해 바이트 그대로 재사용한다.
 
+24 worker spawn 직후 기존 exact-affinity 관측이 세 arm을 중단했다.
+당시 PID/actual mask 기록이 없어 원인을 단정하지 않는다. 현재 모든
+worker의64CPU가 확인됐고, 새 observation revision4는 같은 PID·birth·UID·argv를
+유지한 채 최대300ms 내 다시 읽는다. 지속 위반은 실제/예상 mask와 PID를
+기록해 실패하며, 실제 PF_EXITING task의 RSS는 계속 계상한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
