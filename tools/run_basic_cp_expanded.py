@@ -27,7 +27,7 @@ TRAINERS = {arm:'nnUNetTrainer_250epochs_BasicCP'+arm.capitalize() for arm in AR
 LEASES = {}
 
 
-def resource_guard(value, *, idle=False):
+def _lease_class(value):
     if value.get('group_observation_revision')==5:
         from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
     elif value.get('group_observation_revision')==4:
@@ -40,9 +40,22 @@ def resource_guard(value, *, idle=False):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
     else:
         from hiercp_v1x.basic_cp_seven_resources import BasicLease
+    return BasicLease
+
+
+def _lease_for(value):
     key=(value['root'],value['bank'],value['bank_sha256'])
-    if key not in LEASES: LEASES[key]=BasicLease(value)
-    return LEASES[key].verify(force=idle,idle=idle)
+    if key not in LEASES: LEASES[key]=_lease_class(value)(value)
+    return LEASES[key]
+
+
+def resource_guard(value, *, idle=False):
+    return _lease_for(value).verify(force=idle,idle=idle)
+
+
+def _wait_for_GPU(value):
+    return _lease_for(value).wait_until_available(
+        on_wait=lambda observation:status(value,'waiting_GPU','WAITING',reason=str(observation)))
 
 
 def clone(function, **bindings):
@@ -208,25 +221,17 @@ def actor(native,command,label,env):
 
 
 def child(native,stage,*,batch=None,output=None):
+    # Bank preparation can outlast the initial GPU admission. Re-read actual
+    # release before each native actor; keep the exact same controller/lease.
+    _wait_for_GPU(native)
+    status(native,'CUDA_DEBUG'if stage=='debug'else stage,'RUNNING')
     command=[sys.executable,'-B','-u',str(Path(__file__).resolve()),'--native',str(Path(native['root'])/'native.json'),'--stage',stage]
     if batch is not None:command+=['--batch',str(batch),'--output',str(output)]
     actor(native,command,stage+('_B'+str(batch)if batch else ''),environment(native,output=str(Path(output)/'nnUNet_results')if output else None))
 
 
 def prepare_bank(request):
-    if request.get('group_observation_revision')==5:
-        from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
-    elif request.get('group_observation_revision')==4:
-        from hiercp_v1x.basic_cp_group_resources_v4 import BasicLease
-    elif request.get('shared_resource_guard_version')==3:
-        from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
-    elif request.get('shared_resource_guard_version')==2:
-        from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
-    elif request.get('shared_resource_registry'):
-        from hiercp_v1x.basic_cp_group_resources import BasicLease
-    else:
-        from hiercp_v1x.basic_cp_seven_resources import BasicLease
-    lease=BasicLease(request);count=request['candidates_per_source']
+    lease=_lease_for(request);count=request['candidates_per_source']
     if count==128:return request
     banks=Path(request['shared_banks']);target=banks/str(count)
     if count==2048 and not(target/'complete.json').exists():
@@ -260,20 +265,7 @@ def prepare_bank(request):
 
 
 def run(request):
-    if request.get('group_observation_revision')==5:
-        from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
-    elif request.get('group_observation_revision')==4:
-        from hiercp_v1x.basic_cp_group_resources_v4 import BasicLease
-    elif request.get('shared_resource_guard_version')==3:
-        from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
-    elif request.get('shared_resource_guard_version')==2:
-        from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
-    elif request.get('shared_resource_registry'):
-        from hiercp_v1x.basic_cp_group_resources import BasicLease
-    else:
-        from hiercp_v1x.basic_cp_seven_resources import BasicLease
-    lease=BasicLease(request)
-    lease.wait_until_available(on_wait=lambda observation:status(request,'waiting_GPU','WAITING',reason=str(observation)))
+    _wait_for_GPU(request)
     request=prepare_bank(request);path=Path(request['root'])/'native.json'
     native=read(path)if path.exists()else prepare(request)
     if not(Path(native['root'])/'preflight.json').exists():status(native,'preflight','RUNNING');child(native,'preflight')

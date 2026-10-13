@@ -138,6 +138,8 @@ native와 공유24worker 모두 기존300ms CPU 재관측 및384/800GiB 계약�
 다른 계정의 CUDA 점유로 실패한 경우는 관측 오류로 처리하지 않는다.
 실제 빈 GPU를 기다린 뒤 해당 실험의 whole latest로 재개하며 다른 작업은
 종료하지 않는다. 새 namespace의 code/request SHA와 원래 bank를 고정한다.
+후보 준비 이후 preflight·CUDA DEBUG·train 직전에도 동일 lease로 다시
+실제 GPU release를 기다린다. 학습 도중 재시도나 중복 controller는 만들지 않는다.
 
 `/var/tmp` 여유는 약9.57GiB이므로7개 full latest/BEST 쌍(약10.68GiB)을
 보존할 수 없다. 별도8GiB/최소 여유1GiB cache에 각 arm의 **원본 full
