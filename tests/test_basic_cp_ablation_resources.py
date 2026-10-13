@@ -179,11 +179,11 @@ class BasicLeaseTests(unittest.TestCase):
 
     def process(self, pid=None):
         selected=self.stage.pid if pid is None else pid
-        if selected not in self.actors:
+        if selected not in self.actors or self.actors[selected].state=='gone':
             raise resource.psutil.NoSuchProcess(selected)
         return self.actors[selected]
 
-    def query(self, argv):
+    def query(self, argv, **kwargs):
         self.query_calls.append(argv)
         if argv[0]=='/opt/pbs/bin/qstat':
             return json.dumps({'Jobs':{'129664.ECE-util1':self.job}})
@@ -204,6 +204,7 @@ class BasicLeaseTests(unittest.TestCase):
         result=self.lease.verify(force=True)
         self.assertEqual(result['own_GPU_compute_PIDs'], [200])
         self.apps+='\n777, GPU-exact'
+        self.actors[777]=Actor(777,['python','outside_controller_CUDA'])
         with self.assertRaisesRegex(RuntimeError, 'non-admitted'):
             self.lease.verify(force=True)
 
@@ -224,6 +225,106 @@ class BasicLeaseTests(unittest.TestCase):
         self.gpu_total=49140
         with self.assertRaisesRegex(RuntimeError, 'UUID/MIG'):
             self.lease.verify(force=True)
+
+    def test_cuda_stage_started_after_tree_snapshot_is_admitted_only_after_fresh_exact_checks(self):
+        original=self.query
+        added=False
+        def query(argv,**kwargs):
+            nonlocal added
+            if '--query-compute-apps=pid,gpu_uuid'in argv and not added:
+                added=True
+                new=Actor(202,['python','new_native_stage'],birth=702)
+                self.actors[202]=new;self.controller.descendants.append(new)
+                self.apps='202, GPU-exact'
+            return original(argv,**kwargs)
+        with patch.object(resource,'_query',side_effect=query):
+            result=self.lease.verify()
+        self.assertEqual(result['own_GPU_compute_PIDs'],[202])
+        self.assertIn(202,self.lease._cached_tree)
+        self.assertEqual(result['own_process_tree_RSS_bytes'],4*2**20)
+        self.assertEqual(self.lease._managed[202]['create_time'],702)
+
+    def test_fresh_cuda_tree_cannot_admit_foreign_uid_or_wrong_affinity(self):
+        for uid,cpus in [(0,list(range(16,22))),(41833,[16])]:
+            original=self.query
+            def query(argv,**kwargs):
+                if '--query-compute-apps=pid,gpu_uuid'in argv:
+                    new=Actor(202,['python','new_native_stage'],birth=702,uid=uid,cpus=cpus)
+                    self.actors[202]=new
+                    self.controller.descendants=[self.stage,self.worker,new]
+                    self.apps='202, GPU-exact'
+                return original(argv,**kwargs)
+            with self.subTest(uid=uid,cpus=cpus),patch.object(resource,'_query',side_effect=query):
+                with self.assertRaisesRegex(RuntimeError,'foreign|six-CPU'):
+                    self.lease.verify(force=True)
+
+    def test_live_cuda_actor_outside_exact_controller_lineage_remains_rejected(self):
+        self.actors[777]=Actor(777,['python','other_own_uid_job'])
+        self.apps='777, GPU-exact'
+        with self.assertRaisesRegex(RuntimeError,'non-admitted CUDA actor'):
+            self.lease.verify()
+
+    def test_naturally_completed_cuda_actor_requires_driver_disappearance(self):
+        self.lease.verify()
+        self.worker.state=resource.psutil.STATUS_ZOMBIE
+        self.worker.command=[]
+        original=self.query;queries=0
+        def query(argv,**kwargs):
+            nonlocal queries
+            if '--query-compute-apps=pid,gpu_uuid'in argv:
+                queries+=1
+                self.apps='201, GPU-exact'if queries==1 else ''
+            return original(argv,**kwargs)
+        with patch.object(resource,'_query',side_effect=query):
+            result=self.lease.verify(force=True)
+        self.assertEqual(queries,2)
+        self.assertEqual(result['own_GPU_compute_PIDs'],[])
+        witness=result['naturally_released_GPU_actor_observations'][201]
+        self.assertTrue(witness['driver_row_disappeared'])
+        self.assertEqual(witness['previous_admitted_identity']['create_time'],700)
+        self.assertFalse(witness['live_actor_ignored'])
+
+    def test_idle_admission_can_confirm_an_absent_stale_driver_row_but_never_a_live_actor(self):
+        original=self.query;queries=0
+        def query(argv,**kwargs):
+            nonlocal queries
+            if '--query-compute-apps=pid,gpu_uuid'in argv:
+                queries+=1
+                self.apps='555, GPU-exact'if queries==1 else ''
+            return original(argv,**kwargs)
+        with patch.object(resource,'_query',side_effect=query):
+            result=self.lease.verify(idle=True)
+        self.assertEqual(result['own_GPU_compute_PIDs'],[])
+        self.assertEqual(result['naturally_released_GPU_actor_observations'][555]['status'],'NoSuchProcess')
+        self.apps='200, GPU-exact'
+        with self.assertRaisesRegex(RuntimeError,'occupied'):
+            self.lease.verify(idle=True)
+
+    def test_persistent_stale_driver_row_is_not_blanket_ignored(self):
+        self.lease.verify()
+        self.worker.state=resource.psutil.STATUS_ZOMBIE;self.worker.command=[]
+        self.apps='201, GPU-exact'
+        original=self.query;queries=0
+        def query(argv,**kwargs):
+            nonlocal queries
+            if '--query-compute-apps=pid,gpu_uuid'in argv:queries+=1
+            return original(argv,**kwargs)
+        with patch.object(resource,'_query',side_effect=query):
+            with self.assertRaisesRegex(RuntimeError,'stale CUDA row did not clear'):
+                self.lease.verify(force=True)
+        self.assertEqual(queries,3)
+
+    def test_a_stale_row_cannot_hide_later_live_pid_reuse_or_outside_actor(self):
+        original=self.query;queries=0
+        def query(argv,**kwargs):
+            nonlocal queries
+            if '--query-compute-apps=pid,gpu_uuid'in argv:
+                queries+=1;self.apps='555, GPU-exact'
+                if queries>=2:self.actors[555]=Actor(555,['python','outside_replacement'],birth=703)
+            return original(argv,**kwargs)
+        with patch.object(resource,'_query',side_effect=query):
+            with self.assertRaisesRegex(RuntimeError,'non-admitted CUDA actor'):
+                self.lease.verify()
 
     def test_exact_stage_must_be_in_controller_tree(self):
         self.controller.descendants=[self.worker]

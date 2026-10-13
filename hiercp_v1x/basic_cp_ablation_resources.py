@@ -210,8 +210,8 @@ def capture_cgroup_admission(pid):
         memory_limits=[dict(path=p, limit_bytes=limits[p]) for p in sorted(limits)])
 
 
-def _query(command):
-    return subprocess.check_output(command, text=True, timeout=20).strip()
+def _query(command, *, timeout=20):
+    return subprocess.check_output(command, text=True, timeout=timeout).strip()
 
 
 def _pbs_query(command, *, timeout):
@@ -271,6 +271,7 @@ class BasicLease:
         self._pbs_last_attempt = None
         self._pbs_observation = None
         self._pbs_timeout = None
+        self._cuda_observations = {}
 
     def _admit(self, path, digest):
         path = _owned(path)
@@ -533,10 +534,35 @@ class BasicLease:
             PBS_GPU_owned_reservation=False, PBS_job_role='host_lifetime_only',
             own_GPU=self.request['gpu'], own_CPU_affinity=self.request['cpu_affinity'])
 
+    def _fresh_cuda_tree(self, tree):
+        controller = _exact(self.request['controller_identity'])
+        own = _exact(self.self_identity)
+        if controller.cpu_affinity() != self.request['cpu_affinity'] or own.cpu_affinity() != self.request['cpu_affinity']:
+            raise RuntimeError('Basic CUDA admission changed exact controller/stage CPU affinity')
+        fresh = self._tree(controller, own)
+        self._rss(fresh)
+        tree.clear(); tree.update(fresh)
+
+    def _terminal_cuda_actor(self, pid):
+        """A stale driver row is not an authorization for any living process."""
+        previous = self._managed.get(pid)
+        try:
+            process = psutil.Process(pid)
+            observed = _metadata(process)
+            if previous is not None and any(observed[k] != previous[k]
+                    for k in ('pid', 'create_time', 'UID')):
+                raise RuntimeError('CUDA PID was reused or changed its exact admitted birth/UID')
+            state = process.status()
+            if state not in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
+                return None
+            return dict(observed, status=state, previous_admitted_identity=copy.deepcopy(previous))
+        except psutil.NoSuchProcess:
+            return dict(pid=pid, status='NoSuchProcess', previous_admitted_identity=copy.deepcopy(previous))
+
     def _gpu(self, tree, *, idle):
         value = _query(['nvidia-smi', '--id=' + str(self.request['gpu']),
             '--query-gpu=index,uuid,name,memory.total,memory.free,mig.mode.current',
-            '--format=csv,noheader,nounits'])
+            '--format=csv,noheader,nounits'], timeout=5)
         row = [x.strip() for x in value.split(',')]
         if (len(row) != 6 or row[0] != str(self.request['gpu']) or row[1] != self.request['gpu_uuid']
                 or row[5] not in ('N/A', 'Disabled', '[N/A]') or not math.isfinite(float(row[3]))
@@ -544,21 +570,61 @@ class BasicLease:
                 or not math.isfinite(float(row[4]))
                 or idle and float(row[4]) < 40 * 1024):
             raise RuntimeError('Exact full GPU UUID/MIG/40GiB initial free admission failed')
-        apps = _query(['nvidia-smi', '--query-compute-apps=pid,gpu_uuid', '--format=csv,noheader,nounits'])
-        own_pids = []
-        for line in apps.splitlines():
-            if not line.strip():
-                continue
-            cells = [x.strip() for x in line.split(',')]
-            if len(cells) != 2 or not cells[0].isdigit():
-                raise RuntimeError('Actual CUDA actors require exact numeric PID evidence')
-            pid, uuid = int(cells[0]), cells[1]
-            if uuid == self.request['gpu_uuid']:
-                if idle or pid not in tree:
-                    raise RuntimeError('Target Basic GPU is occupied by a non-admitted CUDA actor')
-                own_pids.append(pid)
+        command = ['nvidia-smi', '--query-compute-apps=pid,gpu_uuid', '--format=csv,noheader,nounits']
+        pending_terminal = {}
+        for attempt in range(3):
+            apps = _query(command, timeout=5)
+            own_pids, current_target, retry = [], set(), False
+            for line in apps.splitlines():
+                if not line.strip():
+                    continue
+                cells = [x.strip() for x in line.split(',')]
+                if len(cells) != 2 or not cells[0].isdigit():
+                    raise RuntimeError('Actual CUDA actors require exact numeric PID evidence')
+                pid, uuid = int(cells[0]), cells[1]
+                if uuid != self.request['gpu_uuid']:
+                    continue
+                current_target.add(pid)
+                if pid not in tree:
+                    # A new exact stage can start after the earlier tree scan.
+                    # Refresh actual ancestry, UID, birth, argv and affinity;
+                    # the old snapshot never grants permission by itself.
+                    self._fresh_cuda_tree(tree)
+                if pid in tree:
+                    if pid == self.request['controller_identity']['pid']:
+                        process = _exact(self.request['controller_identity'])
+                    else:
+                        process = self._descendant(tree[pid])
+                    if process is not None:
+                        if idle:
+                            raise RuntimeError('Target Basic GPU is occupied by a non-admitted CUDA actor')
+                        if process.cpu_affinity() != self.request['cpu_affinity']:
+                            raise RuntimeError('Exact Basic CUDA descendant changed six-CPU affinity')
+                        own_pids.append(pid)
+                        continue
+                    tree.pop(pid, None)
+                terminal = self._terminal_cuda_actor(pid)
+                if terminal is None:
+                    raise RuntimeError('Target Basic GPU is occupied by a non-admitted CUDA actor: '
+                        + json.dumps(dict(pid=pid, GPU_UUID=uuid, fresh_tree_PIDs=sorted(tree)), sort_keys=True))
+                pending_terminal[pid] = terminal
+                retry = True
+            for pid in list(pending_terminal):
+                if pid not in current_target:
+                    # Require both a naturally terminal/absent task and its
+                    # disappearance from a subsequent actual driver query.
+                    self._cuda_observations[pid] = dict(pending_terminal.pop(pid),
+                        driver_row_disappeared=True, queries=attempt+1, observed_at=time.time(),
+                        live_actor_ignored=False)
+            if not retry:
+                break
+            if attempt == 2:
+                raise RuntimeError('Target Basic GPU stale CUDA row did not clear during bounded verification: '
+                    + json.dumps(pending_terminal, sort_keys=True))
+            time.sleep(.05)
         return dict(GPU_name=row[2], GPU_UUID=row[1], GPU_total_MiB=float(row[3]),
-            GPU_free_MiB=float(row[4]), MIG=row[5], own_GPU_compute_PIDs=own_pids)
+            GPU_free_MiB=float(row[4]), MIG=row[5], own_GPU_compute_PIDs=own_pids,
+            naturally_released_GPU_actor_observations=copy.deepcopy(self._cuda_observations))
 
     def verify(self, *, force=False, idle=False):
         self._inputs()
@@ -588,6 +654,7 @@ class BasicLease:
             tree = self._tree(controller, own)
             resources = self._resources(controller, own, tree)
             resources.update(self._gpu(tree, idle=idle))
+            resources['own_process_tree_RSS_bytes'] = self._rss(tree)
             self._cached_tree = tree
             self.actual_resources = resources
             self.last_verified = time.monotonic()
