@@ -247,6 +247,10 @@ class ProviderGeometryCache:
             kwargs['full_organ_mask'] = self.organ_uint8
         return self.builder(*args,**kwargs)
 
+    def reset_source(self):
+        """Release the prior source BEFORE constructing the next complete source."""
+        self.prepared = self.builder = self.cache = None
+
     @property
     def diagnostics(self):
         return dict(source_changes=self.source_changes,patient_organ_uint8_cache_bytes=self.organ_uint8.nbytes,
@@ -262,6 +266,14 @@ def release_provider_cache(provider):
         del provider._exact_geometry_cache_manager
 
 
+def reset_provider_source_cache(provider):
+    """Keep patient organ data but release all previous-source derived tensors."""
+    manager = getattr(provider,'_exact_geometry_cache_manager',None)
+    if manager is not None:
+        _require(provider.local is manager,"Private provider local callable changed unexpectedly")
+        manager.reset_source()
+
+
 def optimize_provider(provider,*,cache_limit_bytes):
     """Install exact memoization only on this worker's current patient provider."""
     _require(type(cache_limit_bytes) is int and cache_limit_bytes > 0,
@@ -274,4 +286,4 @@ def optimize_provider(provider,*,cache_limit_bytes):
 
 
 __all__ = ['SourceFieldCache','cached_full_local_graph','ProviderGeometryCache',
-           'optimize_provider','release_provider_cache']
+           'optimize_provider','release_provider_cache','reset_provider_source_cache']

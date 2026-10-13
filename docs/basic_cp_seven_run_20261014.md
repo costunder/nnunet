@@ -106,6 +106,23 @@ GPU5의 기존 후보 준비 코드는 immutable 상태로 유지한다. 별도 
 선택 상태와 serialized device tag를 다시 검증하며 원본 latest/BEST/final은
 변경하지 않는다. 이 보조 CLI의 CPU7개 검사는 학습 완료 증거가 아니다.
 
+## 1024 준비 단계의 RAM 복구
+
+512 전체642개 bank 공개 후 GPU3 학습과1024 후보 준비가 겹치면서 기존
+공유288GiB 가드가 중단했다. host 전체 RAM은 약1008GiB이며 실패 후
+available 약779GiB를 측정했고,800GiB보다 작은 inherited cgroup 제한은
+관찰되지 않았다. 기존 환자의 EDT를 캡처한 patient_pool/patient_cache와
+이전 source builder가 다음 입력 생성 때까지 유지되는 참조를 해제한다.
+정적 patient organ 배열은 재사용하며 모든 source/graph 배열은 그대로다.
+
+새 v3 자원 가드는 candidate GPU3/4/5 합384GiB, 나머지4개 native arm은
+각96GiB, group RSS768GiB와 reserve32GiB를 합친800GiB admission이다.
+원래24 worker·64CPU, native8CPU·physical/effective B2,128³,250epoch,
+전체105/26명과642개 source를 유지한다. 이 v3는 자원 가드 버전이며
+GNN/혈관 그래프의 연구 버전을 뜻하지 않는다. 기존 code/request/bank와
+checkpoint는 보존하고 새 실행 폴더를 쓴다. 완료512 bank와1024 부분
+항목은 원래 파일 SHA·receipt를 확인해 바이트 그대로 재사용한다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

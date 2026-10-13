@@ -24,8 +24,12 @@ def verify_resources(*,force=False):
  path=Path(os.environ['BASIC_CP_LEASE_REQUEST']).absolute()
  identity=(str(path),base.stat_identity(path))
  if _LEASE is None:
-  from .basic_cp_shared_bank_resources import SharedBankLease
-  _LEASE=SharedBankLease(base.read_json(path));_REQUEST_IDENTITY=identity
+  request=base.read_json(path)
+  if request.get('shared_resource_guard_version')==3:
+   from .basic_cp_shared_bank_resources_v3 import SharedBankLease
+  else:
+   from .basic_cp_shared_bank_resources import SharedBankLease
+  _LEASE=SharedBankLease(request);_REQUEST_IDENTITY=identity
  require(identity==_REQUEST_IDENTITY,'Exact shared CPU lease request changed')
  return _LEASE.verify(force=True)if force else _LEASE.quick_verify()
 
@@ -50,12 +54,24 @@ class FastGeometryProvider(base.LargeGeometryProvider):
    return self.preseg
   from .basic_cp_large_geometry_cache import release_provider_cache
   release_provider_cache(self)
+  # The base loader used to keep this old full-volume EDT/forbidden dictionary
+  # until AFTER decoding the next patient. Drop every old pool/cache reference
+  # before that allocation; all arrays are recomputed unchanged for the new case.
+  self.patient_cache=None;self.flat_liver=None;self.patient_pool=None
+  import gc
+  gc.collect()
   segmentation=super().load_patient(case_id)
   from .basic_cp_large_geometry_cache import optimize_provider
   optimize_provider(self,cache_limit_bytes=512*2**20)
   self._fast_case_id=case_id
   return segmentation
- proposals=_cloned(base.LargeGeometryProvider.proposals,verify_resources=verify_resources,FiniteLiverCenters=FastFiniteLiverCenters)
+ _full_proposals=_cloned(base.LargeGeometryProvider.proposals,verify_resources=verify_resources,FiniteLiverCenters=FastFiniteLiverCenters)
+ def proposals(self,case_id,entry):
+  # A generator starts this boundary before source.prepare allocates the next
+  # complete canonical source. Patient-wide immutable geometry remains cached.
+  from .basic_cp_large_geometry_cache import reset_provider_source_cache
+  reset_provider_source_cache(self)
+  yield from self._full_proposals(case_id,entry)
 
 def _initialize(binding,root):
  global _PROVIDER,_BINDING,_ROOT
@@ -105,6 +121,31 @@ def _reuse_entry(partial,relative,count,original,admitted_prefix,destination):
  new_receipt=destination/str(count)/'entry_receipts'/Path(relative).with_suffix('.json')
  new_receipt.parent.mkdir(parents=True,exist_ok=True);base.write_json_exclusive(new_receipt,row)
  return True
+
+def _reuse_completed_prefix(partial,count,binding,binding_path,binding_sha256,prefix256_root,destination):
+ """Copy a proved full642 prefix without loading a patient or rerunning geometry."""
+ if partial is None:return None
+ previous=Path(partial['root'])/str(count)
+ if not(previous/'complete.json').exists():return None
+ witness=dict(index=str(previous/'index.json'),index_sha256=base.file_sha(previous/'index.json'),
+  complete_sha256=base.file_sha(previous/'complete.json'),manifest_sha256=base.file_sha(previous/'preservation_manifest.json'),
+  preparation_started_sha256=base.file_sha(previous/'preparation_started.json'))
+ admission=base.verify_prepared_bank(witness,binding_path,binding_sha256,candidate_count=count)
+ original_index=Path(binding['bank_index']);original=base.read_json(original_index);copied=[]
+ for case,entries in original['entries_by_case'].items():
+  for relative in entries:
+   verify_resources(force=True)
+   entry=base.read_entry(base.safe_entry(original_index.parent,relative))
+   prefix=base.read_entry(base.safe_entry(Path(prefix256_root),relative))
+   require(_reuse_entry(partial,relative,count,entry,prefix,destination),
+           'Completed642 prefix must retain every original per-source receipt')
+   copied.append(relative)
+ require(len(copied)==len(set(copied))==642,'Exactly all642 previous prefix sources must be copied')
+ record=dict(candidate_count=count,source_entries=642,entries=copied,previous_complete_admission=admission,
+  copied_entry_bytes_verified=True,patient_CT_loaded=False,preprocessed_geometry_recomputed=False,
+  full_graph_recomputed=False,original_inputs_written=False)
+ base.write_json_exclusive(destination/str(count)/'complete_prefix_reuse.json',record)
+ return record
 
 def _build_stage_patient(binding,case_id,relative_entries,destination,prefix256_root,count,partial):
  require(_PROVIDER is not None and binding==_BINDING,'Exact worker binding required')
@@ -161,7 +202,9 @@ def build_staged_banks(binding,destination,*,workers,rss_limit_gib,prepared256_w
  base.historical.validate_original_index(base.read_json(original_index))
  require(base.file_sha(original_index)==base.historical.BANK_SHA256,'Original index SHA required')
  affinity=base.historical.cpu_affinity();require(type(workers)is int and 2<=workers<=len(affinity),'Measured parallel CPU workers required')
- require(rss_limit_gib==288,'Shared three-arm CPU budget is288GiB');rss_limit=int(rss_limit_gib*2**30)
+ requested=base.read_json(Path(os.environ['BASIC_CP_LEASE_REQUEST']))
+ admitted_rss=384 if requested.get('shared_resource_guard_version')==3 else 288
+ require(requested.get('shared_bank_RSS_limit_GiB')==admitted_rss and rss_limit_gib==admitted_rss,'Exact measured shared preparation budget required');rss_limit=int(rss_limit_gib*2**30)
  admission=base.historical.verify_prepared_bank(prepared256_witness,binding_path,binding_sha256)
  prefix256_root=str(Path(admission['index']).parent)
  partial=None
@@ -184,6 +227,17 @@ def build_staged_banks(binding,destination,*,workers,rss_limit_gib,prepared256_w
   with ProcessPoolExecutor(max_workers=workers,mp_context=multiprocessing.get_context('spawn'),initializer=_initialize,initargs=(binding,str(root)))as pool:
    for count in base.COUNTS:
     progress.update(active_candidate_count=count,case_completed=0)
+    reused=_reuse_completed_prefix(partial,count,binding,binding_path,binding_sha256,Path(prefix256_root),root)
+    if reused is not None:
+     verify_resources(force=True)
+     rss=base.historical.process_tree_rss();peak=max(peak,rss)
+     receipt=_publish_checked_prefix(root,count,binding,started,peak_rss=peak,workers=workers,affinity=affinity,rss_limit=rss_limit)
+     require(receipt is not None,'Copied completed prefix must publish every642 source before proceeding')
+     completed[str(count)]=receipt;progress['prefix_completed'][str(count)]=642
+     progress.update(case_completed=81,RSS_bytes=rss,peak_RSS_bytes=peak,updated_at=time.time())
+     base.historical.publish_progress(root,progress)
+     print(f'BASIC_CP_FULL642_PREFIX_BYTE_REUSED {count}',flush=True)
+     continue
     cases=base.read_json(original_index)['entries_by_case'];finished_sources={case:set()for case in cases}
     jobs=[(case,entries[start:start+4])for case,entries in sorted(cases.items(),key=lambda row:(-len(row[1]),row[0]))
           for start in range(0,len(entries),4)]
@@ -193,7 +247,7 @@ def build_staged_banks(binding,destination,*,workers,rss_limit_gib,prepared256_w
     try:
      while futures:
       verify_resources(force=True);done,futures=wait(futures,timeout=2,return_when=FIRST_COMPLETED)
-      rss=base.historical.process_tree_rss();peak=max(peak,rss);require(rss<=rss_limit,'Measured shared preparation exceeds288GiB; no count/source reduction')
+      rss=base.historical.process_tree_rss();peak=max(peak,rss);require(rss<=rss_limit,'Measured shared preparation exceeds its admitted budget; no count/source reduction')
       for future in done:
        row=future.result();finished_sources[row['case_id']].update(row['source_entries'])
       progress['case_completed']=sum(len(finished_sources[case])==len(entries)for case,entries in cases.items())

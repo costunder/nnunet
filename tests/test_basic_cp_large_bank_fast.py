@@ -123,6 +123,8 @@ class StagedScopeAndGuardTests(unittest.TestCase):
                 liver_label=1, tumor_label=2, draw_count=256, attempts=4, cp_probability=.5)
             index_path = original / 'index.json'; base.write_json_exclusive(index_path, index)
             binding = {'bank_index': str(index_path)}; events = []
+            request_path=folder/'DEBUG_request.json'
+            base.write_json_exclusive(request_path,{'shared_bank_RSS_limit_GiB':288})
 
             class DebugFuture:
                 def __init__(self, count, case, entries): self.count, self.case, self.entries = count, case, entries
@@ -142,6 +144,7 @@ class StagedScopeAndGuardTests(unittest.TestCase):
                 events.append(('published', count, 642)); return {'DEBUG_CONTROL_FLOW_ONLY': True, 'count': count}
 
             with (patch.object(fast, 'verify_resources'), patch.object(fast, '_ROOT', None),
+                  patch.dict(fast.os.environ,{'BASIC_CP_LEASE_REQUEST':str(request_path)}),
                   patch.object(fast, 'ProcessPoolExecutor', DebugExecutor),
                   patch.object(fast, 'wait', side_effect=lambda futures, **kwargs: (set(futures), set())),
                   patch.object(base.historical, 'BANK_SHA256', base.file_sha(index_path)),
@@ -166,9 +169,9 @@ class StagedScopeAndGuardTests(unittest.TestCase):
                 self.assertLess(publish_at, second_at)
 
     def test_fast_proposals_and_finite_sampler_both_bind_the_shared_guard_privately(self):
-        guard = fast.FastGeometryProvider.proposals.__globals__['verify_resources']
+        guard = fast.FastGeometryProvider._full_proposals.__globals__['verify_resources']
         self.assertIs(guard, fast.verify_resources)
-        catalogue_class = fast.FastGeometryProvider.proposals.__globals__['FiniteLiverCenters']
+        catalogue_class = fast.FastGeometryProvider._full_proposals.__globals__['FiniteLiverCenters']
         self.assertIs(catalogue_class.sampler.__globals__['verify_resources'], fast.verify_resources)
         self.assertIs(base.FiniteLiverCenters.sampler.__globals__['verify_resources'], base.verify_resources)
 

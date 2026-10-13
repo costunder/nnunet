@@ -28,7 +28,9 @@ LEASES = {}
 
 
 def resource_guard(value, *, idle=False):
-    if value.get('shared_resource_guard_version')==2:
+    if value.get('shared_resource_guard_version')==3:
+        from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
+    elif value.get('shared_resource_guard_version')==2:
         from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
     elif value.get('shared_resource_registry'):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
@@ -179,7 +181,10 @@ def actor(native,command,label,env):
     shared=label=='candidate_bank'and native.get('shared_candidate_geometry_cache')is True
     lease=None
     if shared:
-        from hiercp_v1x.basic_cp_shared_bank_resources import SharedBankLease
+        if native.get('shared_resource_guard_version')==3:
+            from hiercp_v1x.basic_cp_shared_bank_resources_v3 import SharedBankLease
+        else:
+            from hiercp_v1x.basic_cp_shared_bank_resources import SharedBankLease
         lease=SharedBankLease(native);psutil.Process().cpu_affinity(native['shared_bank_CPU_affinity']);lease.verify(force=True)
     try:
         with log.open('ab',buffering=0)as stream:
@@ -203,7 +208,9 @@ def child(native,stage,*,batch=None,output=None):
 
 
 def prepare_bank(request):
-    if request.get('shared_resource_guard_version')==2:
+    if request.get('shared_resource_guard_version')==3:
+        from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
+    elif request.get('shared_resource_guard_version')==2:
         from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
     elif request.get('shared_resource_registry'):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
@@ -216,7 +223,7 @@ def prepare_bank(request):
         shared=request.get('shared_candidate_geometry_cache')is True
         command=[sys.executable,'-B','-u','-m','hiercp_v1x.basic_cp_large_bank_fast'if shared else'hiercp_v1x.basic_cp_large_bank',
                  '--binding',request['candidate_binding'],'--output',str(banks),
-                 '--workers',str(request['shared_bank_workers'])if shared else'4','--rss-limit-gib','288'if shared else'96']
+                 '--workers',str(request['shared_bank_workers'])if shared else'4','--rss-limit-gib',str(request['shared_bank_RSS_limit_GiB'])if shared else'96']
         if request.get('prepared256_witness'):command+=['--prepared256-witness',request['prepared256_witness']]
         if shared:command+=['--reuse-partial-from',request['previous_partial_banks'],
                             '--reuse-request',request['previous_producer_request'],
@@ -243,7 +250,9 @@ def prepare_bank(request):
 
 
 def run(request):
-    if request.get('shared_resource_guard_version')==2:
+    if request.get('shared_resource_guard_version')==3:
+        from hiercp_v1x.basic_cp_group_resources_v3 import BasicLease
+    elif request.get('shared_resource_guard_version')==2:
         from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
     elif request.get('shared_resource_registry'):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
