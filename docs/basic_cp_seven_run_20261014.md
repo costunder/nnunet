@@ -90,6 +90,22 @@ B2/B4 gradient 검사 통과를 최종 결과로 제시하지 않는다.
 실제 checkpoint와 완성 후보를 보존해 후속 할당에서 이어야 한다.
 새 결과 저장 위치는 tmpfs이며 durable persistence를 보장하지 않는다.
 
+## 종료 경합과 완료 epoch 보존
+
+GPU0의 완료12epoch latest는8개 logger 길이와 optimizer/scaler가 일치한다.
+다른 GPU의 DataLoader가 정상 종료하면서 마지막 argv가 비는 순간을
+기존 가드가 오류로 판정했다. 새 v2 가드는 PID·birth·UID가 그대로이고
+실제 Linux PF_EXITING이 확인된 경우에만 실제 RSS를 포함해 관찰을 마친다.
+live empty argv나 PID 재사용은 여전히 거부한다. 이전 ledger의 정확한 SHA와
+해당 row를 고정해 건강한 peer controller를 변경 없이 승계한다. CPU13개
+검사 통과이며, 실제 CUDA 재개 확인은 별도 실행 증거로 기록한다.
+
+GPU5의 기존 후보 준비 코드는 immutable 상태로 유지한다. 별도 보조 CLI는
+나중에 생성되는 latest의 완료 N epoch를8개 logger로 확인하고, epoch header만
+수정한 operational rolling cache를 만든다. 모델·optimizer·scaler·logger·BEST
+선택 상태와 serialized device tag를 다시 검증하며 원본 latest/BEST/final은
+변경하지 않는다. 이 보조 CLI의 CPU7개 검사는 학습 완료 증거가 아니다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

@@ -28,7 +28,9 @@ LEASES = {}
 
 
 def resource_guard(value, *, idle=False):
-    if value.get('shared_resource_registry'):
+    if value.get('shared_resource_guard_version')==2:
+        from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
+    elif value.get('shared_resource_registry'):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
     else:
         from hiercp_v1x.basic_cp_seven_resources import BasicLease
@@ -201,7 +203,9 @@ def child(native,stage,*,batch=None,output=None):
 
 
 def prepare_bank(request):
-    if request.get('shared_resource_registry'):
+    if request.get('shared_resource_guard_version')==2:
+        from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
+    elif request.get('shared_resource_registry'):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
     else:
         from hiercp_v1x.basic_cp_seven_resources import BasicLease
@@ -239,7 +243,9 @@ def prepare_bank(request):
 
 
 def run(request):
-    if request.get('shared_resource_registry'):
+    if request.get('shared_resource_guard_version')==2:
+        from hiercp_v1x.basic_cp_group_resources_v2 import BasicLease
+    elif request.get('shared_resource_registry'):
         from hiercp_v1x.basic_cp_group_resources import BasicLease
     else:
         from hiercp_v1x.basic_cp_seven_resources import BasicLease
