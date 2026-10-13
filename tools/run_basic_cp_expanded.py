@@ -28,7 +28,10 @@ LEASES = {}
 
 
 def resource_guard(value, *, idle=False):
-    from hiercp_v1x.basic_cp_seven_resources import BasicLease
+    if value.get('shared_resource_registry'):
+        from hiercp_v1x.basic_cp_group_resources import BasicLease
+    else:
+        from hiercp_v1x.basic_cp_seven_resources import BasicLease
     key=(value['root'],value['bank'],value['bank_sha256'])
     if key not in LEASES: LEASES[key]=BasicLease(value)
     return LEASES[key].verify(force=idle,idle=idle)
@@ -141,7 +144,8 @@ def train(native):
         if 0<self.current_epoch<250:
             target=Path(self.output_folder)/'checkpoint_latest.pth'
             temporary=target.with_name('whole_epoch_'+str(time.time_ns())+'.pth')
-            self.save_checkpoint(str(temporary));os.replace(temporary,target)
+            from hiercp_v1x.basic_cp_completed_epoch_checkpoint import save_completed_epoch
+            save_completed_epoch(self,str(temporary));os.replace(temporary,target)
         status(native,'train','RUNNING',completed_epochs=int(self.current_epoch),
                RSS_bytes=psutil.Process().memory_info().rss,peak_cuda_bytes=torch.cuda.max_memory_allocated())
         return result
@@ -197,7 +201,10 @@ def child(native,stage,*,batch=None,output=None):
 
 
 def prepare_bank(request):
-    from hiercp_v1x.basic_cp_seven_resources import BasicLease
+    if request.get('shared_resource_registry'):
+        from hiercp_v1x.basic_cp_group_resources import BasicLease
+    else:
+        from hiercp_v1x.basic_cp_seven_resources import BasicLease
     lease=BasicLease(request);count=request['candidates_per_source']
     if count==128:return request
     banks=Path(request['shared_banks']);target=banks/str(count)
@@ -232,7 +239,10 @@ def prepare_bank(request):
 
 
 def run(request):
-    from hiercp_v1x.basic_cp_seven_resources import BasicLease
+    if request.get('shared_resource_registry'):
+        from hiercp_v1x.basic_cp_group_resources import BasicLease
+    else:
+        from hiercp_v1x.basic_cp_seven_resources import BasicLease
     lease=BasicLease(request)
     lease.wait_until_available(on_wait=lambda observation:status(request,'waiting_GPU','WAITING',reason=str(observation)))
     request=prepare_bank(request);path=Path(request['root'])/'native.json'

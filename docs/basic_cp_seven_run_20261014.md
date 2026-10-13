@@ -53,6 +53,15 @@ node/edge/source/후보 수를 줄이지 않는다. 실제 후보20개·ROI 크�
 5초 이내 주기와 모든 source/prefix 공개 전에 실행하며, 요청 identity와
 실행 identity 및 양쪽 만료 clock은 후보마다 확인한다.
 
+24worker 초기 peak RSS는 약275GiB, 이후 steady는 약150GiB로 측정됐다.
+초기 peak 동안 기존 가드가 각 arm에서 `available + 자기 RSS >=704GiB`를
+따로 요구해 다른 arm을 중단시킨 오류를 수정한다. 새 immutable registry는
+7개 controller의 실제 PID·UID·birth·argv와 request SHA를 고정하고,
+중복 PID를 제거한 **전체 group RSS + available >=704GiB**를 검사한다.
+GPU0/1/2/6는 각각96GiB, GPU3/4/5는 공유 합288GiB, group은 합672GiB
+RSS 상한을 적용한다. 후보 native 학습과 CPU 준비가 겹쳐도 이 합산
+예산을 지켜야 한다. 기존 실패 로그와 checkpoint는 삭제하지 않는다.
+
 ## 완료·평가·표시 계약
 
 whole epoch checkpoint를 매 epoch atomic 저장한다. full250 학습 후
@@ -60,6 +69,14 @@ whole epoch checkpoint를 매 epoch atomic 저장한다. full250 학습 후
 병변/크기별/통계 평가, 고정 Result schema1의 순서로 자동 실행한다.
 checkpoint_final.pth는250epoch 완료 증거에만 사용한다.
 원래 native console 및 UI2 양식을 유지한다.
+
+재개 감사에서 GPU0/1/2의 완료10epoch와 GPU6의 완료24epoch BEST가
+8개 logging 배열·optimizer·scaler를 보존함을 확인했다. 기존 latest는
+native `save_checkpoint`의 +1을 postincrement callback에서 중복 적용한
+metadata 오류가 있어 그대로 보존하고, 같은 완료 epoch의 full BEST를
+새 namespace의 latest로 바이트 그대로 복사해 이어간다. 새 postincrement
+저장 helper는 실제 native 함수의 고유 epoch serialization 값만 private
+clone에서 수정하며, 원래 BEST/final 저장과 trainer epoch는 변경하지 않는다.
 
 2026-10-14 06:08 당시 GPU0/1/2는 실제250epoch 학습을 시작했고,
 각각3epoch를 완료했다. GPU6도 실제 학습 중이었다. 후보3개는 공유
