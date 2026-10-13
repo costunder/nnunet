@@ -227,7 +227,8 @@ class NativeGuardIntegrationTests(unittest.TestCase):
             instance.on_train_start()
         self.entry.side_effect=entry
         runner.train(self.native)
-        self.assertIn('-c',sys.argv)
+        self.assertIn('--c',sys.argv)
+        self.assertNotIn('-c',sys.argv)
         self.assertIn('--val_best',sys.argv)
         self.assertIn(('original_train_start',),self.calls)
 

@@ -465,7 +465,7 @@ def train(native):
     sys.argv = ['basic_cp_ablation', '730', '3d_fullres', '0', '-tr', native['trainer'],
         '-p', native['baseline']['plans_name'], '--val_best']
     if 'completed_native_resume' in native:
-        sys.argv += ['-c']
+        sys.argv += ['--c']
     from nnunetv2.run.run_training import run_training_entry
     try:
         run_training_entry()
