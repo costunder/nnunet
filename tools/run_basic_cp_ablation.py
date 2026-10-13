@@ -301,16 +301,34 @@ def preflight(native):
         source = old / 'request.json'
         if sha(source) != prior['request_sha256'] or read(source)['controller_identity'] != prior['controller_identity']:
             raise RuntimeError('Previous preflight/controller identity changed')
-        while exact_actor_alive(prior['controller_identity']):
+        upstream_identity = prior.get('preflight_actor_identity', prior['controller_identity'])
+        upstream_registration_sha = None
+        if 'preflight_actor_identity' in prior:
+            actor_record = read(old / 'preflight_actor.json')
+            upstream_registration_sha = sha(old / 'preflight_actor.json')
+            registered = dict(pid=actor_record['pid'], create_time=actor_record['birth'],
+                UID=actor_record['UID'], command=actor_record['command'])
+            if registered != upstream_identity or actor_record['stage'] != 'preflight':
+                raise RuntimeError('Previous complete preflight actor registration changed')
+        while exact_actor_alive(upstream_identity):
             resource_guard(native)
             status(native, 'waiting_preflight', 'RUNNING', upstream_root=str(old),
-                reason='Reuse full original preflight after its known constructor API failure')
+                reason='Wait for exact original CPU preflight; reuse only its complete full-source proof')
             time.sleep(5)
+        if (sha(source) != prior['request_sha256'] or upstream_registration_sha is not None
+                and sha(old / 'preflight_actor.json') != upstream_registration_sha):
+            raise RuntimeError('Previous preflight request/actor registration changed during completion wait')
         old_state = read(old / 'status.json')
         debug_log = old / 'debug_B2.log'
-        if (old_state['status'] != 'FAILED' or old_state['stage'] != 'debug'
-                or not debug_log.is_file() or "KeyError: 'args'" not in debug_log.read_text(encoding='utf8')):
-            raise RuntimeError('Previous preflight ended outside the known constructor API repair boundary')
+        constructor_boundary = (old_state['status'] == 'FAILED' and old_state['stage'] == 'debug'
+            and debug_log.is_file() and "KeyError: 'args'" in debug_log.read_text(encoding='utf8'))
+        resource_boundary = ('preflight_actor_identity' in prior
+            and old_state['status'] == 'FAILED' and old_state['stage'] == 'preflight'
+            and 'PBS timeout admission' in old_state.get('error', '')
+            and (old / 'preflight.json').is_file())
+        if not (constructor_boundary or resource_boundary):
+            raise RuntimeError('Previous preflight lacks a complete proof at its admitted repair boundary: '
+                + str(old_state.get('error', old_state.get('status'))))
         from hiercp_v1x.basic_cp_ablation_preflight import verify_preflight_reuse
         result = verify_preflight_reuse(old, prior['request_sha256'], Path(module.__file__),
             native['bank'], native['bank_sha256'], native['arm'], native['split']['outer_train'],

@@ -1,5 +1,6 @@
 """Actual lease invariants, mocked OS observations; no server/CUDA execution."""
 import copy
+from contextlib import contextmanager
 import json
 from pathlib import Path, PurePosixPath
 import tempfile
@@ -169,6 +170,12 @@ class BasicLeaseTests(unittest.TestCase):
         self.start(patch.object(resource, 'capture_cgroup_admission', side_effect=lambda pid:copy.deepcopy(self.admission)))
         self.start(patch.object(resource, '_query', side_effect=self.query))
         self.start(patch.object(resource, '_pbs_query', side_effect=lambda argv, **kwargs:self.query(argv)))
+        self.start(patch.object(resource, '_pbs_private', side_effect=lambda p,**kwargs:Path(p)))
+        self.pbs_lock_busy=False
+        @contextmanager
+        def lock(folder):yield not self.pbs_lock_busy
+        self.start(patch.object(resource, '_pbs_lock', side_effect=lock))
+        self.start(patch.object(resource.os,'O_NOFOLLOW',0,create=True))
         self.start(patch.object(resource.psutil, 'virtual_memory', side_effect=lambda:self.host))
         self.start(patch.object(resource.shutil, 'disk_usage', side_effect=lambda p:self.storage))
         self.start(patch.dict(resource.os.environ, {'CUDA_VISIBLE_DEVICES':'1'}))
@@ -186,7 +193,7 @@ class BasicLeaseTests(unittest.TestCase):
     def query(self, argv, **kwargs):
         self.query_calls.append(argv)
         if argv[0]=='/opt/pbs/bin/qstat':
-            return json.dumps({'Jobs':{'129664.ECE-util1':self.job}})
+            return json.dumps({'timestamp':self.wall,'Jobs':{'129664.ECE-util1':self.job}})
         if '--query-compute-apps=pid,gpu_uuid' in argv:
             return self.apps
         return '1, GPU-exact, NVIDIA RTX A6000, '+str(self.gpu_total)+', '+str(self.free_gpu)+', [N/A]'
@@ -534,52 +541,52 @@ class BasicLeaseTests(unittest.TestCase):
             self.monotonic=500+seconds
             self.lease.verify()
         self.assertEqual(pbs_calls(),1)
-        self.monotonic=530
+        self.monotonic=560
         self.lease.verify()
         self.assertEqual(pbs_calls(),2)
 
     def test_no_initial_admission_can_use_timeout_grace(self):
         failure=resource.subprocess.TimeoutExpired(['qstat'],5)
         with patch.object(resource,'_pbs_query',side_effect=failure)as query:
-            with self.assertRaisesRegex(RuntimeError,'no verified running job'):
+            with self.assertRaisesRegex(RuntimeError,'initial admission requires'):
                 self.lease.verify()
-        self.assertEqual(query.call_count,3)
+        self.assertEqual(query.call_count,2)
         self.assertIsNone(self.lease.last_verified)
 
-    def test_three_transient_timeouts_use_only_a_recent_exact_running_job(self):
+    def test_two_transient_timeouts_use_only_a_recent_exact_running_job(self):
         self.lease.verify()
-        self.monotonic=530
+        self.monotonic=560
         def timeout(argv,**kwargs):
             self.monotonic+=kwargs['timeout']
             raise resource.subprocess.TimeoutExpired(argv,kwargs['timeout'])
         with patch.object(resource,'_pbs_query',side_effect=timeout)as query:
             result=self.lease.verify()
-        self.assertEqual(query.call_count,3)
-        self.assertEqual(self.monotonic,545)
+        self.assertEqual(query.call_count,2)
+        self.assertEqual(self.monotonic,600)
         self.assertEqual(result['host_lifetime_PBS_warning']['error'],'TimeoutExpired')
-        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],45)
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],100)
         self.assertEqual(result['host_lifetime_actual_PBS_observation']['job_state'],'R')
         self.assertEqual(result['host_lifetime_expires_at_unix'],5000)
 
-    def test_timeout_grace_cannot_outlive_sixty_seconds_or_extend_its_deadline(self):
+    def test_timeout_grace_cannot_outlive_three_hundred_seconds_or_extend_deadline(self):
         self.lease.verify()
-        self.monotonic=555
+        self.monotonic=799
         def timeout(argv,**kwargs):
             self.monotonic+=kwargs['timeout']
             raise resource.subprocess.TimeoutExpired(argv,kwargs['timeout'])
         with patch.object(resource,'_pbs_query',side_effect=timeout):
-            with self.assertRaisesRegex(RuntimeError,'no verified running job'):
+            with self.assertRaisesRegex(RuntimeError,'within300seconds'):
                 self.lease.verify()
-        self.assertEqual(self.monotonic,560)
+        self.assertEqual(self.monotonic,839)
         self.assertEqual(self.lease._pbs_verified_at,500)
 
     def test_successful_scheduler_query_recovers_a_timeout_warning(self):
         self.lease.verify()
-        self.monotonic=530
+        self.monotonic=560
         with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],5)):
             self.lease.verify()
         self.assertIsNotNone(self.lease._pbs_timeout)
-        self.monotonic=536
+        self.monotonic=620
         result=self.lease.verify()
         self.assertIsNone(result['host_lifetime_PBS_warning'])
         self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
@@ -589,20 +596,24 @@ class BasicLeaseTests(unittest.TestCase):
         self.monotonic=600
         result=self.lease.verify()
         self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
-        self.monotonic=700
+        self.monotonic=900
         with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],5))as query:
-            with self.assertRaisesRegex(RuntimeError,'no verified running job'):
+            with self.assertRaisesRegex(RuntimeError,'within300seconds'):
                 self.lease.verify()
-        self.assertEqual(query.call_count,1)
+        self.assertEqual(query.call_count,2)
 
     def test_only_timeout_can_use_recent_pbs_proof_not_finished_job_or_malformed_json(self):
         self.lease.verify()
         self.monotonic=530
         for failure in [resource.subprocess.CalledProcessError(35,['qstat']),json.JSONDecodeError('bad','x',0)]:
+            (self.lease._pbs_shared_root/'observation.json').unlink(missing_ok=True)
+            self.lease._pbs_verified_at=None
             with self.subTest(failure=type(failure).__name__),patch.object(resource,'_pbs_query',side_effect=failure):
                 with self.assertRaises(type(failure)):
                     self.lease.verify(force=True)
         self.job['job_state']='F'
+        (self.lease._pbs_shared_root/'observation.json').unlink(missing_ok=True)
+        self.lease._pbs_verified_at=None
         with self.assertRaisesRegex(RuntimeError,'no longer proves'):
             self.lease.verify(force=True)
 
@@ -619,12 +630,79 @@ class BasicLeaseTests(unittest.TestCase):
     def test_a_slow_gpu_query_requires_fresh_pbs_proof_before_returning(self):
         original=self.lease._gpu
         def slow_gpu(tree,*,idle):
-            self.monotonic+=65
+            self.monotonic+=305
             return original(tree,idle=idle)
         with patch.object(self.lease,'_gpu',side_effect=slow_gpu):
             result=self.lease.verify()
         self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
         self.assertEqual(sum(argv[0]=='/opt/pbs/bin/qstat'for argv in self.query_calls),2)
+
+    def test_fresh_actual_shared_R_admits_another_stage_without_duplicate_query(self):
+        self.lease.verify()
+        other=resource.BasicLease(self.value)
+        with patch.object(resource,'_pbs_query',side_effect=AssertionError('duplicate scheduler query')):
+            result=other.verify()
+        self.assertEqual(result['host_lifetime_actual_PBS_observation']['job_state'],'R')
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
+        self.assertEqual(sum(argv[0]=='/opt/pbs/bin/qstat'for argv in self.query_calls),1)
+
+    def test_initial_stage_cannot_borrow_stale_shared_R_on_timeout(self):
+        self.lease.verify();self.monotonic=570
+        other=resource.BasicLease(self.value)
+        with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],20))as query:
+            with self.assertRaisesRegex(RuntimeError,'within60seconds'):
+                other.verify()
+        self.assertEqual(query.call_count,2)
+        self.assertIsNone(other._pbs_verified_at)
+        self.assertIsNone(other.last_verified)
+
+    def test_timeout_keeps_actual_R_timestamp_and_suppresses_peer_queries(self):
+        self.lease.verify();other=resource.BasicLease(self.value);other.verify()
+        path=self.lease._pbs_shared_root/'observation.json'
+        original=json.loads(path.read_bytes());self.monotonic=560
+        def timeout(argv,**kwargs):
+            self.monotonic+=kwargs['timeout']
+            raise resource.subprocess.TimeoutExpired(argv,kwargs['timeout'])
+        with patch.object(resource,'_pbs_query',side_effect=timeout)as query:
+            self.lease.verify();result=other.verify()
+        self.assertEqual(query.call_count,2)
+        cached=json.loads(path.read_bytes())
+        for key in ['raw_response','raw_response_sha256','observed_at_unix','observed_at_monotonic']:
+            self.assertEqual(cached[key],original[key])
+        self.assertEqual(cached['last_query_at_monotonic'],600)
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],100)
+        self.assertEqual(result['host_lifetime_PBS_warning']['error'],'TimeoutExpired')
+
+    def test_actual_finished_observation_is_shared_fail_closed_even_for_recent_peer(self):
+        self.lease.verify();other=resource.BasicLease(self.value);other.verify()
+        self.monotonic=560;self.job['job_state']='F'
+        with self.assertRaisesRegex(RuntimeError,'no longer proves'):
+            self.lease.verify()
+        with patch.object(resource,'_pbs_query',side_effect=AssertionError('must not reuse invalidated job')):
+            with self.assertRaisesRegex(RuntimeError,'invalidated'):
+                other.verify()
+
+    def test_shared_proof_binding_timestamp_and_response_tampering_are_rejected(self):
+        self.lease.verify();path=self.lease._pbs_shared_root/'observation.json'
+        original=json.loads(path.read_bytes())
+        changes=[('UID',0),('node','othernode'),('expires_at_unix',5001),
+                 ('lifetime_proof_sha256','f'*64),('raw_response',original['raw_response']+' '),
+                 ('observed_at_unix',1001),('observed_at_monotonic',900)]
+        for key,changed in changes:
+            value=copy.deepcopy(original);value[key]=changed;path.write_text(json.dumps(value))
+            with self.subTest(key=key),self.assertRaisesRegex(RuntimeError,'Shared|shared'):
+                self.lease.verify()
+        path.write_text(json.dumps(original))
+
+    def test_busy_shared_query_uses_only_existing_admission_and_preserves_age(self):
+        self.lease.verify();self.monotonic=570;self.pbs_lock_busy=True
+        with patch.object(resource,'_pbs_query',side_effect=AssertionError('query lock held by another observer')):
+            result=self.lease.verify()
+        self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],70)
+        self.assertEqual(result['host_lifetime_PBS_warning']['error'],'SharedQueryInFlight')
+        self.monotonic=801
+        with self.assertRaisesRegex(RuntimeError,'within300seconds'):
+            self.lease.verify()
 
     def test_pbs_nonrunning_foreign_owner_othernode_or_extension_is_rejected(self):
         originals=copy.deepcopy(self.job)

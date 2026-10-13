@@ -6,6 +6,7 @@ not reserve GPU1 or GPU4 and never signals, launches, or modifies a process.
 from __future__ import annotations
 
 import copy
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -28,10 +29,12 @@ UID = 41833
 NODE = 'ece-a6gpu6'
 CPUS = {1: list(range(16, 22)), 4: list(range(6)), 6: list(range(32, 38))}
 POLL_SECONDS = 5
-PBS_POLL_SECONDS = 30
-PBS_TRANSIENT_MAX_AGE_SECONDS = 60
-PBS_QUERY_TIMEOUT_SECONDS = 5
-PBS_QUERY_ATTEMPTS = 3
+PBS_POLL_SECONDS = 60
+PBS_INITIAL_MAX_AGE_SECONDS = 60
+PBS_TRANSIENT_MAX_AGE_SECONDS = 300
+PBS_QUERY_TIMEOUT_SECONDS = 20
+PBS_QUERY_ATTEMPTS = 2
+PBS_CACHE_FORMAT = 'basic_actual_shared_PBS_host_lifetime_observation_v1'
 EXPIRY_RESERVE_SECONDS = 180
 RSS_LIMIT = 96 * GIB
 AGGREGATE_CAPACITY = 416 * GIB
@@ -112,6 +115,10 @@ def validate_request(value):
         if (not admission.is_absolute() or '..' in admission.parts
                 or not _checksum(value['readonly_admission_sha256'])):
             raise ValueError('Exact original read-only admission path/SHA required')
+    if 'PBS_shared_cache_root' in value:
+        folder=Path(value['PBS_shared_cache_root'])
+        if not folder.is_absolute() or '..' in folder.parts:
+            raise ValueError('Absolute own private shared PBS cache namespace required')
     return value
 
 
@@ -218,6 +225,59 @@ def _pbs_query(command, *, timeout):
     return subprocess.check_output(command, text=True, timeout=timeout).strip()
 
 
+def _pbs_private(path, *, directory=False):
+    path=_owned(path,directory=directory)
+    if stat.S_IMODE(path.stat().st_mode)!=(0o700 if directory else 0o600):
+        raise RuntimeError('Shared PBS observations require exact own0700 directory/0600 files')
+    return path
+
+
+def _pbs_folder(folder):
+    missing=[];current=Path(folder)
+    while not current.exists():
+        missing.append(current);current=current.parent
+    for path in reversed(missing):
+        try:path.mkdir(mode=0o700)
+        except FileExistsError:_pbs_private(path,directory=True)
+        _pbs_private(path,directory=True)
+    return _pbs_private(folder,directory=True)
+
+
+@contextmanager
+def _pbs_lock(folder):
+    import fcntl
+    path=Path(folder)/'query.lock'
+    descriptor=os.open(path,os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)
+    locked=False
+    try:
+        _pbs_private(path)
+        row=os.fstat(descriptor)
+        if row.st_uid!=UID or not stat.S_ISREG(row.st_mode) or stat.S_IMODE(row.st_mode)!=0o600:
+            raise RuntimeError('Shared PBS query lock changed exact UID/type/0600 mode')
+        try:
+            fcntl.flock(descriptor,fcntl.LOCK_EX|fcntl.LOCK_NB);locked=True
+        except BlockingIOError:
+            locked=False
+        yield locked
+    finally:
+        if locked:fcntl.flock(descriptor,fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+def _publish_pbs(path,value):
+    path=Path(path);temporary=path.parent/('.PBS.'+str(os.getpid())+'.'+str(time.time_ns())+'.tmp')
+    if path.exists():_pbs_private(path)
+    descriptor=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    try:
+        with os.fdopen(descriptor,'w',encoding='utf8')as stream:
+            json.dump(value,stream,sort_keys=True,ensure_ascii=False,allow_nan=False)
+            stream.flush();os.fsync(stream.fileno())
+        _pbs_private(temporary)
+        os.replace(temporary,path)
+    finally:
+        if temporary.exists():temporary.unlink()
+
+
 def _pbs_start(value):
     if type(value) in (int, float):
         result = float(value)
@@ -272,6 +332,11 @@ class BasicLease:
         self._pbs_observation = None
         self._pbs_timeout = None
         self._cuda_observations = {}
+        self._pbs_shared_root=Path(self.request.get('PBS_shared_cache_root',
+            str(Path(ref['path']).parent/('basic_PBS_observations_'+value['job_id']+'_'+ref['sha256'][:16]))))
+        self._pbs_shared_header=dict(format=PBS_CACHE_FORMAT,UID=UID,job_id=value['job_id'],
+            node=NODE,owner=value['owner'],expires_at_unix=value['expires_at_unix'],
+            lifetime_proof_sha256=ref['sha256'])
 
     def _admit(self, path, digest):
         path = _owned(path)
@@ -423,7 +488,11 @@ class BasicLease:
         return tree
 
     def _validate_pbs_observation(self, text):
-        jobs = json.loads(text)['Jobs']
+        document=json.loads(text)
+        timestamp=document.get('timestamp')
+        if type(timestamp)not in(int,float)or not math.isfinite(timestamp)or timestamp<=0 or timestamp>time.time()+1:
+            raise RuntimeError('Actual PBS response requires its genuine finite server timestamp')
+        jobs = document['Jobs']
         if list(jobs) != [self.lifetime['job_id']]:
             raise RuntimeError('Exact owned host-lifetime job unavailable')
         value = next(iter(jobs.values()))
@@ -443,52 +512,113 @@ class BasicLease:
             owner=value['Job_Owner'], node=NODE, expires_at_unix=expiration,
             observed_at=time.time())
 
-    def _host_lifetime(self, *, force=False):
-        """Query initially and each30s; tolerate only a bounded scheduler timeout.
+    def _read_shared_pbs(self):
+        path=self._pbs_shared_root/'observation.json'
+        if not path.exists():return None
+        _pbs_private(path);value=json.loads(path.read_bytes())
+        if any(value.get(k)!=v for k,v in self._pbs_shared_header.items()):
+            raise RuntimeError('Shared actual PBS observation changed job/UID/node/owner/immutable deadline proof')
+        if value.get('status')=='INVALID':
+            raise RuntimeError('Actual shared PBS query invalidated this host lifetime: '+value.get('error','unknown'))
+        if value.get('status')!='VERIFIED_RUNNING':
+            raise RuntimeError('Shared PBS cache cannot supply an unverified running response')
+        raw=value.get('raw_response')
+        if not isinstance(raw,str) or hashlib.sha256(raw.encode()).hexdigest()!=value.get('raw_response_sha256'):
+            raise RuntimeError('Actual shared PBS response bytes or SHA changed')
+        self._validate_pbs_observation(raw)
+        if not _identity(value.get('publisher_identity')) or value.get('observed_at_unix')!=json.loads(raw)['timestamp']:
+            raise RuntimeError('Shared PBS publisher or original actual response timestamp changed')
+        for key in ('observed_at_monotonic','observed_at_unix','last_query_at_monotonic'):
+            if type(value.get(key))not in(int,float)or not math.isfinite(value[key]):
+                raise RuntimeError('Shared PBS cache requires actual finite query timestamps')
+        age=max(time.monotonic()-value['observed_at_monotonic'],time.time()-value['observed_at_unix'])
+        if age<0 or value['observed_at_monotonic']>time.monotonic() or value['observed_at_unix']>time.time()+1 or value['last_query_at_monotonic']<value['observed_at_monotonic']:
+            raise RuntimeError('Shared PBS actual observation clock identity changed')
+        return value
 
-        Immutable bytes, exact controller/GPU/cgroup and both wall/monotonic
-        deadlines remain independently verified. A successful non-R response,
-        unavailable job, owner/node/deadline change or malformed JSON fails
-        immediately. No initial admission can use the timeout grace period.
+    def _accept_shared_pbs(self,value,*,initial,query_pending=False):
+        age=max(time.monotonic()-value['observed_at_monotonic'],time.time()-value['observed_at_unix'])
+        maximum=PBS_INITIAL_MAX_AGE_SECONDS if initial else PBS_TRANSIENT_MAX_AGE_SECONDS
+        if age>=maximum:
+            raise RuntimeError('PBS admission has no actual running job within'+str(maximum)+'seconds')
+        observed=self._validate_pbs_observation(value['raw_response'])
+        observed['observed_at']=value['observed_at_unix']
+        self._pbs_observation=observed
+        self._pbs_verified_at=value['observed_at_monotonic']
+        self._pbs_last_attempt=value['last_query_at_monotonic']
+        self._pbs_timeout=copy.deepcopy(value.get('last_timeout'))
+        if query_pending and age>=PBS_POLL_SECONDS:
+            self._pbs_timeout=dict(error='SharedQueryInFlight',actual_R_observation_age_seconds=age,
+                source_observation_timestamp_unmodified=True)
+
+    def _host_lifetime(self, *, force=False):
+        """Share actual R observations; never refresh their timestamps on timeout.
+
+        One0600flock serializes queries across all own stages. Initial admission
+        requires a real R response at most60s old. An already admitted lease may
+        retain that exact observation at most300s while query timeouts persist.
+        Immutable proof, controller/GPU/cgroup and both180s expiry boundaries
+        are still checked independently. Invalid or finished jobs never reuse R.
         """
-        now = time.monotonic()
-        age = None if self._pbs_verified_at is None else now - self._pbs_verified_at
-        retry_after = POLL_SECONDS if self._pbs_timeout is not None else PBS_POLL_SECONDS
-        due = (force or self._pbs_verified_at is None or self._pbs_last_attempt is None
-            or now - self._pbs_last_attempt >= retry_after)
-        if not due:
-            if age > PBS_TRANSIENT_MAX_AGE_SECONDS:
-                raise RuntimeError('Last verified PBS host lifetime exceeded its60second timeout boundary')
-            return
-        command = ['/opt/pbs/bin/qstat', '-f', '-F', 'json', self.lifetime['job_id']]
-        timeout_error = None
-        attempts = 0
-        for attempts in range(1, PBS_QUERY_ATTEMPTS + 1):
-            now = time.monotonic()
-            age = None if self._pbs_verified_at is None else now - self._pbs_verified_at
-            if timeout_error is not None and age is not None and age >= PBS_TRANSIENT_MAX_AGE_SECONDS:
-                break
-            timeout = PBS_QUERY_TIMEOUT_SECONDS if age is None or age >= PBS_TRANSIENT_MAX_AGE_SECONDS else min(
-                PBS_QUERY_TIMEOUT_SECONDS, PBS_TRANSIENT_MAX_AGE_SECONDS - age)
-            try:
-                observed = self._validate_pbs_observation(_pbs_query(command, timeout=timeout))
-            except subprocess.TimeoutExpired as failure:
-                timeout_error = failure
-                continue
-            self._pbs_observation = observed
-            self._pbs_verified_at = time.monotonic()
-            self._pbs_last_attempt = self._pbs_verified_at
-            self._pbs_timeout = None
-            return
-        self._pbs_last_attempt = time.monotonic()
-        age = None if self._pbs_verified_at is None else self._pbs_last_attempt - self._pbs_verified_at
-        if timeout_error is None or age is None or age >= PBS_TRANSIENT_MAX_AGE_SECONDS:
-            raise RuntimeError('PBS timeout admission has no verified running job within60seconds') from timeout_error
-        self._pbs_timeout = dict(error='TimeoutExpired', attempts=attempts,
-            last_verified_age_seconds=age, observed_at=time.time(),
-            deadline_unmodified=True, command=command)
-        print('BASIC PBS TEMPORARY QUERY TIMEOUT ' + json.dumps(self._pbs_timeout, sort_keys=True),
-            file=sys.stderr, flush=True)
+        _pbs_folder(self._pbs_shared_root)
+        initial=self._pbs_verified_at is None
+        waiting_until=time.monotonic()+45
+        command=['/opt/pbs/bin/qstat','-f','-F','json',self.lifetime['job_id']]
+        while True:
+            current=self._read_shared_pbs()
+            if current is not None:
+                age=max(time.monotonic()-current['observed_at_monotonic'],time.time()-current['observed_at_unix'])
+                since_attempt=time.monotonic()-current['last_query_at_monotonic']
+                if age<PBS_POLL_SECONDS or not initial and since_attempt<PBS_POLL_SECONDS:
+                    self._accept_shared_pbs(current,initial=initial);return
+            with _pbs_lock(self._pbs_shared_root)as locked:
+                if locked:
+                    current=self._read_shared_pbs()
+                    cache_age=None if current is None else max(time.monotonic()-current['observed_at_monotonic'],time.time()-current['observed_at_unix'])
+                    if current is not None and time.monotonic()-current['last_query_at_monotonic']<PBS_POLL_SECONDS and (not initial or cache_age<PBS_INITIAL_MAX_AGE_SECONDS):
+                        self._accept_shared_pbs(current,initial=initial);return
+                    timeout_error=None
+                    for attempt in range(1,PBS_QUERY_ATTEMPTS+1):
+                        try:
+                            raw=_pbs_query(command,timeout=PBS_QUERY_TIMEOUT_SECONDS)
+                            self._validate_pbs_observation(raw)
+                        except subprocess.TimeoutExpired as failure:
+                            timeout_error=failure;continue
+                        except (subprocess.CalledProcessError,ValueError,KeyError,TypeError,RuntimeError)as failure:
+                            invalid=dict(self._pbs_shared_header,status='INVALID',
+                                error=type(failure).__name__+': '+str(failure),observed_at_unix=time.time(),
+                                observed_at_monotonic=time.monotonic(),publisher_identity=copy.deepcopy(self.self_identity))
+                            _publish_pbs(self._pbs_shared_root/'observation.json',invalid)
+                            raise
+                        source_time=json.loads(raw)['timestamp']
+                        source_mono=time.monotonic()-(time.time()-source_time)
+                        value=dict(self._pbs_shared_header,status='VERIFIED_RUNNING',raw_response=raw,
+                            raw_response_sha256=hashlib.sha256(raw.encode()).hexdigest(),
+                            observed_at_unix=source_time,observed_at_monotonic=source_mono,
+                            last_query_at_monotonic=time.monotonic(),last_timeout=None,
+                            publisher_identity=copy.deepcopy(self.self_identity))
+                        _publish_pbs(self._pbs_shared_root/'observation.json',value)
+                        self._accept_shared_pbs(value,initial=initial);return
+                    warning=dict(error='TimeoutExpired',attempts=PBS_QUERY_ATTEMPTS,
+                        observed_at=time.time(),deadline_unmodified=True,command=command,
+                        actual_R_timestamp_not_updated=True,actual_R_observation_age_seconds=None if current is None else
+                        max(time.monotonic()-current['observed_at_monotonic'],time.time()-current['observed_at_unix']))
+                    print('BASIC PBS TEMPORARY SHARED QUERY TIMEOUT '+json.dumps(warning,sort_keys=True),file=sys.stderr,flush=True)
+                    if current is not None:
+                        current=copy.deepcopy(current)
+                        current['last_query_at_monotonic']=time.monotonic()
+                        current['last_timeout']=warning
+                        _publish_pbs(self._pbs_shared_root/'observation.json',current)
+                        self._accept_shared_pbs(current,initial=initial);return
+                    raise RuntimeError('PBS initial admission requires a fresh actual running response; two query timeouts')from timeout_error
+                if current is not None and not initial:
+                    self._accept_shared_pbs(current,initial=False,query_pending=True);return
+            if time.monotonic()>=waiting_until:
+                raise RuntimeError('Initial actual PBS observation is unavailable after bounded shared-query wait')
+            remaining=min(self.lifetime['expires_at_unix']-time.time(),self.monotonic_expiry-time.monotonic())
+            if remaining<EXPIRY_RESERVE_SECONDS:
+                raise RuntimeError('Host lifetime crossed its180second boundary while awaiting shared PBS observation')
+            time.sleep(.1)
 
     def _rss(self, tree):
         total = 0
