@@ -140,6 +140,9 @@ def completed_log_prefix(data, epochs=200):
 
 
 def prepare_resume(native):
+    if native.get('gpu') == 1 and native.get('arm') == 'multi3':
+        from .basic_cp_multi3_resume import prepare_resume as multi3
+        return multi3(native)
     import torch
     witness=native.get('completed_native_resume')
     require(isinstance(witness,dict) and set(witness)=={'root','request_sha256','controller_identity',

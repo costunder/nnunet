@@ -145,7 +145,7 @@ def _metadata(process):
     return dict(pid=current.pid, create_time=current.create_time(), UID=current.uids().real)
 
 
-def _fork_no_exec(process):
+def _task_flags(process):
     """Linux records an inherited fork image until that child first executes.
 
     Field9 is the kernel task flags. PF_FORKNOEXEC is cleared by the first
@@ -163,7 +163,17 @@ def _fork_no_exec(process):
     if (not separator or not prefix.startswith(str(process.pid) + ' (')
             or len(fields) < 7 or not fields[6].isdigit()):
         raise RuntimeError('Exact Linux descendant fork/exec observation required')
-    return bool(int(fields[6]) & 0x40)
+    return int(fields[6])
+
+
+def _fork_no_exec(process):
+    return bool(_task_flags(process) & 0x40)
+
+
+def _kernel_exiting(process):
+    # Linux include/linux/sched.h: PF_EXITING = 0x00000004. An exiting
+    # task can have no argv before its state becomes zombie/dead.
+    return bool(_task_flags(process) & 0x4)
 
 
 def _actor(process):
@@ -422,6 +432,17 @@ class BasicLease:
                     continue
                 raise RuntimeError('Descendant first exec did not stabilize during bounded observation')
             if not command:
+                if _kernel_exiting(process):
+                    if _metadata(process) != metadata:
+                        raise RuntimeError('Basic exiting descendant PID/birth/UID changed')
+                    self._terminal_observations[process.pid] = dict(metadata,
+                        status='PF_EXITING', reason='kernel exit with empty argv',
+                        observed_at=time.time(), RSS_still_accounted=True)
+                    # Keep its actual RSS/affinity in the tree until it vanishes.
+                    # No invented argv and no permission for a new live actor.
+                    return process
+                if self._terminal_after_change(process, metadata, reason='empty argv during natural exit'):
+                    return None
                 if attempt < 2:
                     time.sleep(.01)
                     continue

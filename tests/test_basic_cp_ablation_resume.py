@@ -79,6 +79,32 @@ class NativeResumeTests(unittest.TestCase):
     @staticmethod
     def write_json(path,value):path.write_text(json.dumps(value),encoding='utf8')
 
+    def test_multi3_completed_best31_recovers_full_optimizer_and_preserves_original(self):
+        from hiercp_v1x.basic_cp_multi3_resume import TRAINER
+        for native in (self.old,self.native):
+            native.update(gpu=1,arm='multi3',trainer=TRAINER)
+        self.write_json(self.oldroot/'native.json',self.old)
+        request={'uid':self.uid,'gpu':1,'arm':'multi3','controller_identity':self.actor}
+        self.write_json(self.oldroot/'request.json',request)
+        actor=dict(pid=987655,birth=123.,UID=self.uid,command=['python','CPU_DEBUG_train'])
+        self.write_json(self.oldroot/'train_actor.json',actor)
+        model=resume.read(self.oldroot/'actual_model.json');model['trainer']=TRAINER
+        self.write_json(self.oldroot/'actual_model.json',model)
+        fold=resume.fold(self.old);fold.mkdir(parents=True)
+        saved=self.saved(31);saved['trainer_name']=TRAINER
+        best=fold/'checkpoint_best.pth';torch.save(saved,best)
+        w=self.native['completed_native_resume'];w.update(completed_epochs=31,
+            request_sha256=resume.sha(self.oldroot/'request.json'),
+            checkpoint_sha256=resume.sha(best),best_sha256=resume.sha(best))
+        before={str(p):resume.snapshot(p) for p in self.oldroot.rglob('*') if p.is_file()}
+        receipt=resume.prepare_resume(self.native)
+        self.assertEqual(receipt['completed_epochs'],31)
+        self.assertEqual(receipt['remaining_epochs'],219)
+        self.assertEqual(receipt['training_prefix']['last_epoch'],30)
+        self.assertFalse(receipt['partial_recovery_checkpoint_used'])
+        self.assertEqual(resume.sha(resume.fold(self.native)/'checkpoint_latest.pth'),resume.sha(best))
+        self.assertEqual(before,{str(p):resume.snapshot(p) for p in self.oldroot.rglob('*') if p.is_file()})
+
     def test_verified200_resume_keeps_optimizer_best_prefix_and_old_results(self):
         before={str(path):resume.snapshot(path) for path in self.oldroot.rglob('*') if path.is_file()}
         receipt=resume.prepare_resume(self.native)

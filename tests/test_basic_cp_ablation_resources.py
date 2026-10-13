@@ -162,6 +162,7 @@ class BasicLeaseTests(unittest.TestCase):
         self.start(patch.object(resource, '_owned', side_effect=lambda p, **kwargs:Path(p)))
         self.start(patch.object(resource.psutil, 'Process', side_effect=self.process))
         self.start(patch.object(resource, '_fork_no_exec', side_effect=lambda p:p.fork_no_exec))
+        self.start(patch.object(resource, '_kernel_exiting', side_effect=lambda p:getattr(p,'kernel_exiting',False)))
         self.start(patch.object(resource.os, 'getuid', return_value=41833, create=True))
         self.start(patch.object(resource.socket, 'gethostname', return_value='ece-a6gpu6'))
         self.start(patch.object(resource.time, 'time', side_effect=lambda:self.wall))
@@ -378,6 +379,23 @@ class BasicLeaseTests(unittest.TestCase):
         self.worker.command=[]
         with self.assertRaisesRegex(RuntimeError, 'empty argv'):
             self.lease.verify(force=True)
+
+    def test_kernel_exiting_empty_argv_keeps_real_rss_accounted(self):
+        self.lease.verify(force=True)
+        self.worker.command=[]
+        self.worker.kernel_exiting=True
+        result=self.lease.verify(force=True)
+        self.assertEqual(result['own_process_tree_RSS_bytes'],3*2**20)
+        witness=result['naturally_released_descendant_observations'][201]
+        self.assertEqual(witness['status'],'PF_EXITING')
+        self.assertTrue(witness['RSS_still_accounted'])
+
+    def test_empty_argv_rechecks_natural_release_before_failure(self):
+        self.worker.command=[]
+        states=iter(['sleeping','sleeping',resource.psutil.STATUS_ZOMBIE])
+        self.worker.status=lambda:next(states,resource.psutil.STATUS_ZOMBIE)
+        result=self.lease.verify(force=True)
+        self.assertEqual(result['own_process_tree_RSS_bytes'],2*2**20)
 
     def provisional_fork(self):
         self.worker.parent_actor = self.stage
