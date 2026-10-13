@@ -511,8 +511,13 @@ class BasicLease:
     def _validate_pbs_observation(self, text):
         document=json.loads(text)
         timestamp=document.get('timestamp')
-        if type(timestamp)not in(int,float)or not math.isfinite(timestamp)or timestamp<=0:
-            raise RuntimeError('Actual PBS response requires its genuine finite server timestamp')
+        # Some actual qstat JSON responses omit this optional server field or
+        # contain "". Keep those raw values; observation freshness is bound to
+        # our real query start in both local clocks, never an invented server
+        # timestamp. A supplied numeric timestamp must still be valid.
+        if 'timestamp' in document and timestamp != '' and (
+                type(timestamp)not in(int,float)or not math.isfinite(timestamp)or timestamp<=0):
+            raise RuntimeError('Supplied PBS server timestamp must be genuine finite positive seconds')
         jobs = document['Jobs']
         if list(jobs) != [self.lifetime['job_id']]:
             raise RuntimeError('Exact owned host-lifetime job unavailable')
@@ -548,7 +553,7 @@ class BasicLease:
             raise RuntimeError('Actual shared PBS response bytes or SHA changed')
         self._validate_pbs_observation(raw)
         if (not _identity(value.get('publisher_identity'))
-                or value.get('server_timestamp')!=json.loads(raw)['timestamp']
+                or value.get('server_timestamp')!=json.loads(raw).get('timestamp')
                 or value.get('observed_at_unix')!=value.get('query_started_at_unix')
                 or value.get('observed_at_monotonic')!=value.get('query_started_at_monotonic')):
             raise RuntimeError('Shared PBS publisher or original actual response timestamp changed')
@@ -618,7 +623,7 @@ class BasicLease:
                                 raw_response=locals().get('raw'),query_started_at_unix=query_wall)
                             _publish_pbs(self._pbs_shared_root/'observation.json',invalid)
                             raise
-                        source_time=json.loads(raw)['timestamp']
+                        source_time=json.loads(raw).get('timestamp')
                         value=dict(self._pbs_shared_header,status='VERIFIED_RUNNING',raw_response=raw,
                             raw_response_sha256=hashlib.sha256(raw.encode()).hexdigest(),
                             server_timestamp=source_time,query_started_at_unix=query_wall,

@@ -723,6 +723,80 @@ class BasicLeaseTests(unittest.TestCase):
             self.assertEqual(record['server_timestamp'],self.wall+offset)
             self.assertEqual(record['observed_at_unix'],self.wall)
 
+    def test_empty_or_missing_server_timestamp_keeps_real_local_freshness_and_raw_bytes(self):
+        for timestamp_fields in ({'timestamp':''}, {}):
+            (self.lease._pbs_shared_root/'observation.json').unlink(missing_ok=True)
+            self.lease._pbs_verified_at=None
+            raw=json.dumps(dict(timestamp_fields,Jobs={'129664.ECE-util1':self.job}))
+            with self.subTest(timestamp_fields=timestamp_fields),patch.object(
+                    resource,'_pbs_query',return_value=raw):
+                result=self.lease.verify(force=True)
+            self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
+            record=json.loads((self.lease._pbs_shared_root/'observation.json').read_bytes())
+            self.assertEqual(record['raw_response'],raw)
+            self.assertEqual(record['raw_response_sha256'],resource.hashlib.sha256(raw.encode()).hexdigest())
+            self.assertEqual(record['server_timestamp'],timestamp_fields.get('timestamp'))
+            self.assertEqual(record['observed_at_unix'],self.wall)
+            self.assertEqual(record['observed_at_monotonic'],self.monotonic)
+            other=resource.BasicLease(self.value)
+            with patch.object(resource,'_pbs_query',side_effect=AssertionError('duplicate query')):
+                self.assertEqual(other.verify()['host_lifetime_PBS_observation_age_seconds'],0)
+            self.monotonic+=70
+            newcomer=resource.BasicLease(self.value)
+            with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],20)):
+                with self.assertRaisesRegex(RuntimeError,'within60seconds'):
+                    newcomer.verify()
+            self.monotonic+=231
+            with patch.object(resource,'_pbs_query',side_effect=resource.subprocess.TimeoutExpired(['qstat'],20)):
+                with self.assertRaisesRegex(RuntimeError,'within300seconds'):
+                    self.lease.verify()
+
+    def test_empty_server_timestamp_does_not_admit_finished_foreign_or_changed_job(self):
+        original=copy.deepcopy(self.job)
+        for key,replacement in [('job_state','F'),('Job_Owner','other@node'),
+                ('exec_host','othernode/0*6'),('stime',1001.5)]:
+            (self.lease._pbs_shared_root/'observation.json').unlink(missing_ok=True)
+            self.lease._pbs_verified_at=None
+            job=copy.deepcopy(original);job[key]=replacement
+            raw=json.dumps({'timestamp':'','Jobs':{'129664.ECE-util1':job}})
+            with self.subTest(key=key),patch.object(resource,'_pbs_query',return_value=raw):
+                with self.assertRaisesRegex(RuntimeError,'no longer proves|deadline changed'):
+                    self.lease.verify()
+            record=json.loads((self.lease._pbs_shared_root/'observation.json').read_bytes())
+            self.assertEqual(record['status'],'INVALID')
+            self.assertEqual(record['raw_response'],raw)
+
+    def test_supplied_invalid_server_timestamp_is_rejected_instead_of_optional_fallback(self):
+        for timestamp in (True,False,None,0,-1,float('nan'),float('inf'),'1000','invalid',[],{}):
+            raw=json.dumps({'timestamp':timestamp,'Jobs':{'129664.ECE-util1':self.job}})
+            with self.subTest(timestamp=timestamp),self.assertRaisesRegex(RuntimeError,'server timestamp'):
+                self.lease._validate_pbs_observation(raw)
+
+    def test_optional_server_timestamp_remains_bound_to_exact_raw_observation(self):
+        for timestamp_fields in ({'timestamp':''}, {}):
+            (self.lease._pbs_shared_root/'observation.json').unlink(missing_ok=True)
+            self.lease._pbs_verified_at=None
+            raw=json.dumps(dict(timestamp_fields,Jobs={'129664.ECE-util1':self.job}))
+            with patch.object(resource,'_pbs_query',return_value=raw):
+                self.lease.verify()
+            path=self.lease._pbs_shared_root/'observation.json'
+            original=json.loads(path.read_bytes())
+            for changed in ('',None,1000):
+                if changed==timestamp_fields.get('timestamp'):
+                    continue
+                value=copy.deepcopy(original);value['server_timestamp']=changed
+                path.write_text(json.dumps(value))
+                with self.subTest(timestamp_fields=timestamp_fields,changed=changed),self.assertRaisesRegex(
+                        RuntimeError,'original actual response timestamp changed'):
+                    self.lease.verify()
+            value=copy.deepcopy(original)
+            raw_document=json.loads(raw);raw_document['timestamp']=1000
+            value['raw_response']=json.dumps(raw_document)
+            value['raw_response_sha256']=resource.hashlib.sha256(value['raw_response'].encode()).hexdigest()
+            path.write_text(json.dumps(value))
+            with self.assertRaisesRegex(RuntimeError,'original actual response timestamp changed'):
+                self.lease.verify()
+
     def test_busy_shared_query_uses_only_existing_admission_and_preserves_age(self):
         self.lease.verify();self.monotonic=570;self.pbs_lock_busy=True
         with patch.object(resource,'_pbs_query',side_effect=AssertionError('query lock held by another observer')):
