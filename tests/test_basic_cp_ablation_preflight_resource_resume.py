@@ -81,7 +81,7 @@ class ResourcePreflightResumeBoundaryTests(unittest.TestCase):
             Path(self.module.__file__),self.native['bank'],self.native['bank_sha256'],'multi3',
             self.native['split']['outer_train'],readonly_admission=self.native['readonly_admission'],
             readonly_admission_sha256=self.native['readonly_admission_sha256'])
-        self.dataset_constructor.assert_called_once_with(self.native['private_data_folder'],self.native['split']['outer_train'])
+        self.dataset_constructor.assert_not_called()
         self.publish.assert_called_once();self.assertEqual(self.publish.call_args.args[0],self.new/'preflight.json')
         self.assertTrue(self.publish.call_args.args[1]['complete'])
         self.assertEqual(self.publish.call_args.args[1]['validated_positions'],82176)

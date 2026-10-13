@@ -298,7 +298,6 @@ def preflight(native):
     resource_guard(native)
     module, adapter = initialize_native(native)
     from nnunetv2.training.dataloading.nnunet_dataset import nnUNetDatasetBlosc2
-    dataset = nnUNetDatasetBlosc2(native['private_data_folder'], native['split']['outer_train'])
     if 'verified_native_continuation' in native:
         from hiercp_v1x.basic_cp_verified_continuation import reuse_preflight
         result = reuse_preflight(native)
@@ -349,6 +348,7 @@ def preflight(native):
             readonly_admission=native['readonly_admission'],
             readonly_admission_sha256=native['readonly_admission_sha256'])
     else:
+        dataset = nnUNetDatasetBlosc2(native['private_data_folder'], list(native['split']['outer_train']))
         result = module.preflight_bank(native['bank'], dataset, arm=native['arm'],
             network_patch_size=(128, 128, 128))
     result.update(readonly_adapter=adapter)
