@@ -71,12 +71,15 @@ def _private_completed_saver(function):
 def save_completed_epoch(trainer, filename):
     """Save full native model/optimizer/scaler/logger at a proved completed epoch.
 
-    Trainer.current_epoch is never modified. Logger.get_checkpoint and native
-    state_dict guards execute once, in the privately cloned original method.
+    Trainer.current_epoch is never modified. The actual public logger snapshot
+    is checked first; the cloned native method retains its own getter and all
+    original state_dict guards. MetaLogger has no LocalLogger private fields.
     """
     epoch = trainer.current_epoch
     _require(type(epoch) is int and epoch > 0, 'Post-epoch checkpoint requires a positive completed current_epoch')
-    logging = getattr(trainer.logger, 'my_fantastic_logging', None)
+    get_checkpoint = getattr(trainer.logger, 'get_checkpoint', None)
+    _require(callable(get_checkpoint), 'Actual native public logger.get_checkpoint API required')
+    logging = get_checkpoint()
     _require(isinstance(logging, dict) and _LOGGER_FIELDS.issubset(logging),
              'Actual native logger must contain all eight completed-epoch arrays')
     _require(all(isinstance(value, (list, tuple)) and len(value) == epoch for value in logging.values()),

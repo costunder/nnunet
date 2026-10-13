@@ -77,6 +77,10 @@ metadata 오류가 있어 그대로 보존하고, 같은 완료 epoch의 full BE
 새 namespace의 latest로 바이트 그대로 복사해 이어간다. 새 postincrement
 저장 helper는 실제 native 함수의 고유 epoch serialization 값만 private
 clone에서 수정하며, 원래 BEST/final 저장과 trainer epoch는 변경하지 않는다.
+실제 logger는 MetaLogger이므로 내부 속성을 가정하지 않고 public
+`get_checkpoint()`로8개 배열을 검증한다. 실제 MetaLogger와 실제 native
+saver의 별도 CPU DEBUG 직렬화에서 epoch 값만 달라지고 나머지 상태가
+동일함을 확인했다. 이 DEBUG 결과는 학습 성능 결과가 아니다.
 
 2026-10-14 06:08 당시 GPU0/1/2는 실제250epoch 학습을 시작했고,
 각각3epoch를 완료했다. GPU6도 실제 학습 중이었다. 후보3개는 공유

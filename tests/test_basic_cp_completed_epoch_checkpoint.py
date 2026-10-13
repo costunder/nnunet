@@ -88,8 +88,10 @@ class CompletedEpochCheckpointTests(unittest.TestCase):
         logging['epoch_start_timestamps'] = [1., 3., 5.]
         logging['epoch_end_timestamps'] = [2., 4., 6.]
         calls = []
-        trainer.logger = SimpleNamespace(my_fantastic_logging=logging,
-            get_checkpoint=lambda: (calls.append('logger'), copy.deepcopy(logging))[1])
+        # Actual native MetaLogger exposes only get_checkpoint; its private
+        # local_logger owns storage. Do not assume LocalLogger fields here.
+        trainer.logger = SimpleNamespace(get_checkpoint=lambda: (calls.append('logger'), copy.deepcopy(logging))[1])
+        trainer._debug_logging = logging
         trainer._logger_calls = calls
         trainer._best_ema = .73; trainer.my_init_kwargs = {'plans': {'DEBUG': True}, 'fold': 0}
         trainer.inference_allowed_mirroring_axes = (0, 1, 2)
@@ -115,7 +117,8 @@ class CompletedEpochCheckpointTests(unittest.TestCase):
                 self.assertIs(corrected[key], original[key])
             else:
                 self.assertEqual(corrected[key], original[key])
-        self.assertEqual(trainer._logger_calls, ['logger', 'logger'])
+        self.assertEqual(trainer._logger_calls, ['logger', 'logger', 'logger'])
+        self.assertFalse(hasattr(trainer.logger, 'my_fantastic_logging'))
         trainer.save_checkpoint('DEBUG_BEST_UNCHANGED')
         self.assertEqual(_SAVED[-1][0]['current_epoch'], 4)
 
@@ -134,7 +137,7 @@ class CompletedEpochCheckpointTests(unittest.TestCase):
     def test_all_native_rank_disable_ddp_and_optimized_module_guards_are_retained(self):
         trainer = self.trainer(); trainer.local_rank = 1
         completed.save_completed_epoch(trainer, 'DEBUG_NONZERO_RANK')
-        self.assertEqual(_SAVED, []); self.assertEqual(trainer._logger_calls, [])
+        self.assertEqual(_SAVED, []); self.assertEqual(trainer._logger_calls, ['logger'])
         trainer.local_rank = 0; trainer.disable_checkpointing = True
         completed.save_completed_epoch(trainer, 'DEBUG_DISABLED')
         self.assertEqual(_SAVED, []); self.assertEqual(trainer._messages, ['No checkpoint written, checkpointing is disabled'])
@@ -152,22 +155,22 @@ class CompletedEpochCheckpointTests(unittest.TestCase):
     def test_incomplete_or_inconsistent_logger_rejected_before_any_save(self):
         trainer = self.trainer()
         for field in completed._LOGGER_FIELDS:
-            values = trainer.logger.my_fantastic_logging[field]
-            trainer.logger.my_fantastic_logging[field] = values[:-1]
+            values = trainer._debug_logging[field]
+            trainer._debug_logging[field] = values[:-1]
             with self.assertRaisesRegex(ValueError, 'Every actual logger array'):
                 completed.save_completed_epoch(trainer, 'DEBUG_PARTIAL')
-            trainer.logger.my_fantastic_logging[field] = values
+            trainer._debug_logging[field] = values
         trainer.current_epoch = 0
         with self.assertRaisesRegex(ValueError, 'positive completed'):
             completed.save_completed_epoch(trainer, 'DEBUG_ZERO_EPOCH')
         self.assertEqual(_SAVED, [])
 
     def test_missing_fields_and_unfinished_timestamps_rejected(self):
-        trainer = self.trainer(); del trainer.logger.my_fantastic_logging['val_losses']
+        trainer = self.trainer(); del trainer._debug_logging['val_losses']
         with self.assertRaisesRegex(ValueError, 'all eight'):
             completed.save_completed_epoch(trainer, 'DEBUG_MISSING')
         for bad in (0., float('nan'), float('inf')):
-            trainer = self.trainer(); trainer.logger.my_fantastic_logging['epoch_end_timestamps'][-1] = bad
+            trainer = self.trainer(); trainer._debug_logging['epoch_end_timestamps'][-1] = bad
             with self.assertRaisesRegex(ValueError, 'finite ordered'):
                 completed.save_completed_epoch(trainer, 'DEBUG_BAD_END')
         self.assertEqual(_SAVED, [])
