@@ -50,13 +50,16 @@ def prepare(request):
     if sha(historical)!=original.HISTORICAL_SHA:raise RuntimeError('Historical trainer changed')
     for name in ('nnUNetTrainer_BasicCPAblations.py','nnUNetTrainer_BasicCPExpanded.py'):
         with(runtime/'training/nnUNetTrainer'/name).open('xb')as f:f.write((ROOT/'custom_trainers'/name).read_bytes())
+    if request.get('primary_joint_resampling_policy'):
+        name='nnUNetTrainer_BasicCPMultiNJoint.py'
+        with(runtime/'training/nnUNetTrainer'/name).open('xb')as f:f.write((ROOT/'custom_trainers'/name).read_bytes())
     baseline=document['baseline'];pre=root/'nnUNet_preprocessed'/baseline['dataset_name']
     data=pre/baseline['data_identifier'];data.mkdir(parents=True)
     for name,witness in document['private_metadata_files'].items():core.copy_private(witness,pre/name)
     gt=pre/'gt_segmentations';gt.mkdir()
     for name,witness in document['ground_truth_files'].items():core.copy_private(witness,gt/name)
     native=dict(request,baseline=baseline,split=document['split'],private_runtime=str(runtime.parent),
-        private_pre=str(pre),private_data_folder=str(data),trainer=TRAINERS[request['arm']],
+        private_pre=str(pre),private_data_folder=str(data),trainer=TRAINERS[request['arm']]+('Joint'if request.get('primary_joint_resampling_policy')else ''),
         historical_trainer_sha256=original.HISTORICAL_SHA,shared_preprocessed_cases=131,
         source_preprocessed_arrays_written=False,full_training_cases=105,full_validation_cases=26)
     publish(Path(request['root'])/'native.json',native)
@@ -74,7 +77,8 @@ def environment(native, *, output=None):
 def initialize_native(native):
     core=original.storage_core(native);sys.path.insert(0,native['private_runtime'])
     adapter=core.install_dataset_adapter(native['readonly_admission'],native['private_data_folder'])
-    module=importlib.import_module('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_BasicCPExpanded')
+    name='nnUNetTrainer_BasicCPMultiNJoint'if native.get('primary_joint_resampling_policy')else 'nnUNetTrainer_BasicCPExpanded'
+    module=importlib.import_module('nnunetv2.training.nnUNetTrainer.'+name)
     return module,adapter
 
 
@@ -251,6 +255,9 @@ def main():
     value=read(target);psutil.Process().cpu_affinity(value['cpu_affinity'])
     if value['arm']not in ARMS or(value['copies_per_CP_event'],value['candidates_per_source'])!=ARMS[value['arm']]:
         raise ValueError('Exact requested one-factor arm settings required')
+    if value.get('primary_joint_resampling_policy') and (value['arm'] not in ('multi5','multi7','multi10')
+            or value['primary_joint_resampling_policy']!='basic_cp_multin_same_source128_primary_rejection_v1'):
+        raise ValueError('Only the explicitly approved same-source128 impossible-primary rejection policy is allowed')
     try:
         if args.stage=='preflight':preflight(value)
         elif args.stage=='debug':debug_trial(value,args.batch,args.output)

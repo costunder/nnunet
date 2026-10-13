@@ -35,6 +35,7 @@ edits={
  "'constant blending donor80% recipient20%' if native.get('blend_mode') == 'constant' else ARMS[native['arm']]":"ARMS[native['arm']]",
  "(256 if native['arm']=='candidates256' else 128)":"native['candidates_per_source']",
  "copied_lesions_per_successful_sample=3 if native['arm']=='multi3' else 1":"copied_lesions_per_successful_sample=native['copies_per_CP_event']",
+ "location_policy='uniform complete candidate universe; GNN scores unused'":"location_policy=('original uniform primary retained when joint feasible; impossible primary redrawn uniformly within same source original128 joint-feasible locations; GNN scores unused' if native.get('primary_joint_resampling_policy') else 'uniform complete candidate universe; GNN scores unused'), primary_joint_resampling_policy=native.get('primary_joint_resampling_policy')",
 }
 for old,new in edits.items():
     if source.count(old)!=1:raise RuntimeError('Exact original result cardinality expression required: '+old)

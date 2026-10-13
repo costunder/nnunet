@@ -248,5 +248,21 @@ class ExpandedBasicCPTests(unittest.TestCase):
             self.assertEqual(state, loader._rng().bit_generator.state)
             self.assertEqual(len(primary['expanded_extra_plans']), count - 1)
 
+    def test_independent_diagnostic_clique_proof_matches_all_combinations(self):
+        from tools.diagnose_basic_cp_multin_geometry import independent_clique, independent_geometry
+        for seed in range(30):
+            rng = np.random.default_rng(seed)
+            matrix = rng.random((8, 8)) < .5
+            matrix = np.triu(matrix, 1); matrix |= matrix.T
+            for needed in range(1, 7):
+                expected = any(all(matrix[i, j] for i, j in combinations(group, 2))
+                               for group in combinations(range(8), needed))
+                actual = independent_clique(matrix, needed)
+                self.assertEqual(actual['feasible'], expected)
+        own = entry([[10, 20, 20], [20, 20, 20], [30, 20, 20], [40, 20, 20]])
+        proof = independent_geometry([own], 0, own['candidate_centers'][0], (128, 128, 128), 5)
+        self.assertFalse(proof['feasible'])
+        self.assertEqual(proof['available_primary_compatible_placements'], 3)
+
 
 if __name__ == '__main__': unittest.main()
