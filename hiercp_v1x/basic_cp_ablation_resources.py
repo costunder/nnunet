@@ -34,7 +34,7 @@ PBS_INITIAL_MAX_AGE_SECONDS = 60
 PBS_TRANSIENT_MAX_AGE_SECONDS = 300
 PBS_QUERY_TIMEOUT_SECONDS = 20
 PBS_QUERY_ATTEMPTS = 2
-PBS_CACHE_FORMAT = 'basic_actual_shared_PBS_host_lifetime_observation_v1'
+PBS_CACHE_FORMAT = 'basic_actual_shared_PBS_host_lifetime_observation_v2'
 EXPIRY_RESERVE_SECONDS = 180
 RSS_LIMIT = 96 * GIB
 AGGREGATE_CAPACITY = 416 * GIB
@@ -511,7 +511,7 @@ class BasicLease:
     def _validate_pbs_observation(self, text):
         document=json.loads(text)
         timestamp=document.get('timestamp')
-        if type(timestamp)not in(int,float)or not math.isfinite(timestamp)or timestamp<=0 or timestamp>time.time()+1:
+        if type(timestamp)not in(int,float)or not math.isfinite(timestamp)or timestamp<=0:
             raise RuntimeError('Actual PBS response requires its genuine finite server timestamp')
         jobs = document['Jobs']
         if list(jobs) != [self.lifetime['job_id']]:
@@ -547,7 +547,10 @@ class BasicLease:
         if not isinstance(raw,str) or hashlib.sha256(raw.encode()).hexdigest()!=value.get('raw_response_sha256'):
             raise RuntimeError('Actual shared PBS response bytes or SHA changed')
         self._validate_pbs_observation(raw)
-        if not _identity(value.get('publisher_identity')) or value.get('observed_at_unix')!=json.loads(raw)['timestamp']:
+        if (not _identity(value.get('publisher_identity'))
+                or value.get('server_timestamp')!=json.loads(raw)['timestamp']
+                or value.get('observed_at_unix')!=value.get('query_started_at_unix')
+                or value.get('observed_at_monotonic')!=value.get('query_started_at_monotonic')):
             raise RuntimeError('Shared PBS publisher or original actual response timestamp changed')
         for key in ('observed_at_monotonic','observed_at_unix','last_query_at_monotonic'):
             if type(value.get(key))not in(int,float)or not math.isfinite(value[key]):
@@ -601,6 +604,9 @@ class BasicLease:
                     timeout_error=None
                     for attempt in range(1,PBS_QUERY_ATTEMPTS+1):
                         try:
+                            # Freshness uses the actual local query start, never a
+                            # comparison between independent server/client clocks.
+                            query_wall,query_mono=time.time(),time.monotonic()
                             raw=_pbs_query(command,timeout=PBS_QUERY_TIMEOUT_SECONDS)
                             self._validate_pbs_observation(raw)
                         except subprocess.TimeoutExpired as failure:
@@ -608,14 +614,16 @@ class BasicLease:
                         except (subprocess.CalledProcessError,ValueError,KeyError,TypeError,RuntimeError)as failure:
                             invalid=dict(self._pbs_shared_header,status='INVALID',
                                 error=type(failure).__name__+': '+str(failure),observed_at_unix=time.time(),
-                                observed_at_monotonic=time.monotonic(),publisher_identity=copy.deepcopy(self.self_identity))
+                                observed_at_monotonic=time.monotonic(),publisher_identity=copy.deepcopy(self.self_identity),
+                                raw_response=locals().get('raw'),query_started_at_unix=query_wall)
                             _publish_pbs(self._pbs_shared_root/'observation.json',invalid)
                             raise
                         source_time=json.loads(raw)['timestamp']
-                        source_mono=time.monotonic()-(time.time()-source_time)
                         value=dict(self._pbs_shared_header,status='VERIFIED_RUNNING',raw_response=raw,
                             raw_response_sha256=hashlib.sha256(raw.encode()).hexdigest(),
-                            observed_at_unix=source_time,observed_at_monotonic=source_mono,
+                            server_timestamp=source_time,query_started_at_unix=query_wall,
+                            query_started_at_monotonic=query_mono,
+                            observed_at_unix=query_wall,observed_at_monotonic=query_mono,
                             last_query_at_monotonic=time.monotonic(),last_timeout=None,
                             publisher_identity=copy.deepcopy(self.self_identity))
                         _publish_pbs(self._pbs_shared_root/'observation.json',value)

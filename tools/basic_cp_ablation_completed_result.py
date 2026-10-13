@@ -163,7 +163,8 @@ def completed_report(native, proof):
     from hiercp_v1x.v25_downstream import _summary_evidence
     from tools import render_nnunet_result_schema_v1 as renderer
     root,native_root,fold,best,model = validate_completed(native,proof)
-    name = 'Basic CP ' + ARMS[native['arm']] + ' (GPU' + str(native['gpu']) + ')'
+    intervention = 'constant blending donor80% recipient20%' if native.get('blend_mode') == 'constant' else ARMS[native['arm']]
+    name = 'Basic CP ' + intervention + ' (GPU' + str(native['gpu']) + ')'
     log = exact(root/'train.log',root)
     saved = torch.load(fold/'checkpoint_final.pth',map_location='cpu',weights_only=False)
     train = training_record(saved,best,log)
@@ -205,7 +206,9 @@ def completed_report(native, proof):
         copied_lesions_per_successful_sample=3 if native['arm']=='multi3' else 1,
         appearance=read(root/'preflight.json').get('appearance'),
         intensity_scale_range=bank['intensity_scale_range'],intensity_shift_range_hu=bank['intensity_shift_range_hu'],
-        ablation=native['arm'],only_intervention=ARMS[native['arm']])
+        ablation=native['arm'],only_intervention=intervention,
+        blend_mode=native.get('blend_mode', 'feather' if native['arm']=='blend' else 'hard'),
+        blend_alpha=native.get('blend_alpha'),label_blending=False)
     evidence = dict(kind='ACTUAL_COMPLETED_BASIC_CP_ONE_FACTOR_FULL250_OWN_BEST26',
         experiments=[dict(experiment=name,completion=dict(training_status='VERIFIED_COMPLETE',completed_epochs=250,
             planned_epochs=250,best_native_evaluation_status='VERIFIED_COMPLETE',predicted_cases=26,expected_cases=26,

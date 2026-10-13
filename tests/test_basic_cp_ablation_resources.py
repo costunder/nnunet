@@ -712,6 +712,17 @@ class BasicLeaseTests(unittest.TestCase):
                 self.lease.verify()
         path.write_text(json.dumps(original))
 
+    def test_real_query_freshness_does_not_compare_independent_server_clock(self):
+        for offset in (-120, 120):
+            (self.lease._pbs_shared_root/'observation.json').unlink(missing_ok=True)
+            with patch.object(resource,'_pbs_query',return_value=json.dumps(
+                    {'timestamp':self.wall+offset,'Jobs':{'129664.ECE-util1':self.job}})):
+                result=self.lease.verify(force=True)
+            self.assertEqual(result['host_lifetime_PBS_observation_age_seconds'],0)
+            record=json.loads((self.lease._pbs_shared_root/'observation.json').read_bytes())
+            self.assertEqual(record['server_timestamp'],self.wall+offset)
+            self.assertEqual(record['observed_at_unix'],self.wall)
+
     def test_busy_shared_query_uses_only_existing_admission_and_preserves_age(self):
         self.lease.verify();self.monotonic=570;self.pbs_lock_busy=True
         with patch.object(resource,'_pbs_query',side_effect=AssertionError('query lock held by another observer')):

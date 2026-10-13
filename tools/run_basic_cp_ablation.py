@@ -244,6 +244,13 @@ def prepare(request):
     trainer = runtime / 'training/nnUNetTrainer/nnUNetTrainer_BasicCPAblations.py'
     with trainer.open('xb') as stream:
         stream.write((ROOT / 'custom_trainers/nnUNetTrainer_BasicCPAblations.py').read_bytes())
+    fixed80 = request.get('blend_mode') == 'constant'
+    if fixed80:
+        if request['arm'] != 'blend' or request.get('blend_alpha') != .8 or 'completed_native_resume' in request:
+            raise ValueError('Constant80 requires a fresh explicitly authorized blend experiment')
+        filename = 'nnUNetTrainer_BasicCPBlend80.py'
+        with (trainer.parent / filename).open('xb') as stream:
+            stream.write((ROOT / 'custom_trainers' / filename).read_bytes())
     baseline = document['baseline']
     pre = root / 'nnUNet_preprocessed' / baseline['dataset_name']
     data = pre / baseline['data_identifier']
@@ -256,7 +263,7 @@ def prepare(request):
         core.copy_private(witness, gt / name)
     result = dict(request, baseline=baseline, split=document['split'],
         private_runtime=str(runtime.parent), private_pre=str(pre), private_data_folder=str(data),
-        trainer=TRAINERS[request['arm']], historical_trainer_sha256=HISTORICAL_SHA,
+        trainer='nnUNetTrainer_250epochs_BasicCPBlend80' if fixed80 else TRAINERS[request['arm']], historical_trainer_sha256=HISTORICAL_SHA,
         shared_preprocessed_cases=131, source_preprocessed_arrays_written=False,
         full_training_cases=105, full_validation_cases=26)
     publish(Path(request['root']) / 'native.json', result)
@@ -282,7 +289,8 @@ def initialize_native(native):
     core = storage_core(native)
     sys.path.insert(0, native['private_runtime'])
     adapter = core.install_dataset_adapter(native['readonly_admission'], native['private_data_folder'])
-    module = importlib.import_module('nnunetv2.training.nnUNetTrainer.nnUNetTrainer_BasicCPAblations')
+    module_name = 'nnUNetTrainer_BasicCPBlend80' if native.get('blend_mode') == 'constant' else 'nnUNetTrainer_BasicCPAblations'
+    module = importlib.import_module('nnunetv2.training.nnUNetTrainer.' + module_name)
     return module, adapter
 
 
@@ -326,7 +334,10 @@ def preflight(native):
             and old_state['status'] == 'FAILED' and old_state['stage'] == 'preflight'
             and 'PBS timeout admission' in old_state.get('error', '')
             and (old / 'preflight.json').is_file())
-        if not (constructor_boundary or resource_boundary):
+        resume_boundary = (native.get('completed_native_resume', {}).get('root') == str(old)
+            and old_state['status'] == 'FAILED' and old_state['stage'] == 'train'
+            and native['arm'] == 'multi3' and (old / 'preflight.json').is_file())
+        if not (constructor_boundary or resource_boundary or resume_boundary):
             raise RuntimeError('Previous preflight lacks a complete proof at its admitted repair boundary: '
                 + str(old_state.get('error', old_state.get('status'))))
         from hiercp_v1x.basic_cp_ablation_preflight import verify_preflight_reuse
