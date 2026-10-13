@@ -4,8 +4,11 @@ No training, process signaling, source writes or native console changes.
 """
 from __future__ import annotations
 import argparse
+import codecs
 import json
+import os
 from pathlib import Path
+import re
 import sys
 import time
 
@@ -13,6 +16,65 @@ if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
 from tools import watch_v24_training as shared
 from tools import training_monitor_ui as ui
+
+
+_EPOCH_LINE = re.compile(rb'(?m)^[^\r\n]*\bEpoch[ \t]+\d+[ \t]*(?:\r?\n|$)')
+
+
+def _recent_native_block(data):
+    """Select original console bytes, including the latest completed epoch."""
+    starts = [match.start() for match in _EPOCH_LINE.finditer(data)]
+    if not starts:
+        return data
+    completed = [start for index, start in enumerate(starts)
+        if b'Epoch time:' in data[start:starts[index+1] if index+1 < len(starts) else len(data)]]
+    start = completed[-1] if completed else starts[-1]
+    # nnU-Net prints an original timestamped blank separator before Epoch.
+    previous = data.rfind(b'\n', 0, max(0, start-1)) + 1
+    if re.fullmatch(rb'(?:[^\r\n]*:[ \t]*)?\r?\n', data[previous:start]):
+        start = previous
+    return data[start:]
+
+
+class NativeConsole:
+    """Follow the actual nnU-Net console without a replacement dashboard."""
+    def __init__(self, stream):
+        self.stream = stream
+        self.identity = None
+        self.position = 0
+        self.decoder = codecs.getincrementaldecoder('utf8')()
+
+    def render(self, path):
+        path = Path(path)
+        try:
+            with path.open('rb') as source:
+                row = os.fstat(source.fileno())
+                identity = (str(path.absolute()), row.st_dev, row.st_ino)
+                initial = identity != self.identity or row.st_size < self.position
+                if initial:
+                    self.decoder.reset()
+                    start = max(0, row.st_size-65536)
+                    source.seek(start)
+                    data = source.read()
+                    if start:
+                        data = data.partition(b'\n')[2]
+                    data = _recent_native_block(data)
+                else:
+                    source.seek(self.position)
+                    data = source.read()
+                self.position = source.tell()
+                self.identity = identity
+        except FileNotFoundError:
+            return
+        if not data:
+            return
+        self.stream.flush()
+        binary = getattr(self.stream, 'buffer', None)
+        if binary is not None:
+            binary.write(data); binary.flush()
+        else:
+            self.stream.write(self.decoder.decode(data, final=False))
+            self.stream.flush()
 
 
 def read(path):
@@ -100,25 +162,23 @@ def main(argv=None):
     if args.interval <= 0:
         parser.error('Positive viewer interval required')
     terminal = None
-    mode = None
+    native_console = NativeConsole(sys.stdout)
     animated = sys.stdout.isatty() and not (args.once or args.json)
     try:
         while True:
             value = snapshot(args.root)
             if args.json:
                 print(json.dumps(value, ensure_ascii=False, allow_nan=False))
+            elif value['stage'] == 'nnunet_training':
+                if terminal:
+                    terminal.close(); terminal = None
+                native_console.render(value['stage_log'])
             elif animated:
-                next_mode = 'native' if value['stage'] == 'nnunet_training' else 'preparation'
-                if next_mode != mode:
-                    if terminal:
-                        terminal.close()
-                    terminal = (shared._LegacyNativeTerminalView(sys.stdout) if next_mode == 'native'
-                        else ui.TerminalView(sys.stdout, layout='task'))
-                    mode = next_mode
-                terminal.render(value if mode == 'native' else preparation_model(value))
+                if terminal is None:
+                    terminal = ui.TerminalView(sys.stdout, layout='task')
+                terminal.render(preparation_model(value))
             else:
-                print(shared.text_snapshot(value, experiment_version='Basic CP')
-                    if value['stage'] == 'nnunet_training' else ui.render_task(preparation_model(value)), flush=True)
+                print(ui.render_task(preparation_model(value)), flush=True)
             if args.once or args.json:
                 break
             time.sleep(args.interval)
