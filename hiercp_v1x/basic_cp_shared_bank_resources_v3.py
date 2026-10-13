@@ -42,8 +42,20 @@ def _rebind(value):
     source=_textwrap.dedent(_inspect.getsource(value));tree=_ast.parse(source)
     function=tree.body[0];function.decorator_list=[]
     tree=_ResourceConstants().visit(tree)
-    _scope=globals();exec(compile(_ast.fix_missing_locations(tree),__file__,'exec'),_scope)
-    return _scope[function.name]
+    # An aliased function can have a different source name: the original
+    # ``_runtime_validate_request`` is itself named ``validate_request``.
+    # Compile privately so that this alias cannot overwrite the stricter
+    # execution-view validator already installed under that public name.
+    scope=dict(globals())
+    exec(compile(_ast.fix_missing_locations(tree),__file__,'exec'),scope)
+    compiled=scope[function.name]
+    rebound=_types.FunctionType(compiled.__code__,globals(),value.__name__,
+                                compiled.__defaults__,compiled.__closure__)
+    rebound.__kwdefaults__=_copy.deepcopy(compiled.__kwdefaults__)
+    rebound.__doc__=value.__doc__
+    rebound.__qualname__=value.__qualname__
+    rebound.__annotations__=dict(compiled.__annotations__)
+    return rebound
 
 
 # Each clone resolves384/800 here; no imported live module is monkey-patched.
@@ -70,7 +82,8 @@ def validate_shared_request(value):
 
 def validate_request(value):
     _old_runtime_validation(value)
-    if value.get('shared_resource_guard_version')!=3 or ORIGINAL_SHARED_GUARD_FILE not in value['code_sha256']:
+    if (type(value.get('shared_resource_guard_version'))is not int or value['shared_resource_guard_version']!=3
+            or ORIGINAL_SHARED_GUARD_FILE not in value['code_sha256']):
         raise ValueError('CPU-bank execution view requires the explicit v3 admission')
     return value
 
