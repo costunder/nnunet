@@ -54,8 +54,18 @@ def resource_guard(value, *, idle=False):
 
 
 def _wait_for_GPU(value):
-    return _lease_for(value).wait_until_available(
-        on_wait=lambda observation:status(value,'waiting_GPU','WAITING',reason=str(observation)))
+    from hiercp_v1x.basic_cp_group_resources import RAMAdmissionUnavailable
+    lease=_lease_for(value)
+    while True:
+        try:
+            return lease.wait_until_available(
+                on_wait=lambda observation:status(value,'waiting_GPU','WAITING',reason=str(observation)))
+        except RAMAdmissionUnavailable as failure:
+            # Only admission has a queue path. Runtime caps, cgroups, identity,
+            # scientific/source contracts and actual training errors still fail.
+            status(value,'waiting_RAM','WAITING',reason=str(failure),
+                   RAM_admission=copy.deepcopy(failure.observation))
+            time.sleep(5)
 
 
 def clone(function, **bindings):

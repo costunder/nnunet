@@ -178,6 +178,21 @@ native ledger를 유지하면 새 producer가 합산에서 빠지므로, whole l
 manifest에 이어 붙여 같은 full checkpoint 파일을 재사용한다. 사용자 원본
 결과나 학습 checkpoint를 덮어쓰거나 삭제하지 않는다.
 
+## 초기 RAM 대기와 복구 사본 중복 제거
+
+실제 host available793.6GiB/등록 tree RSS0의 초기 상태에서는800GiB를
+확보하지 못했다. 초기/native stage 입장에서 이 부족만 별도 typed
+`RAMAdmissionUnavailable`로 구분해 waiting_RAM/WAITING과 실제 byte 수를
+기록하고5초마다 같은 lease로 다시 검사한다. total RAM/cgroup/96·384·768
+cap, 입력 SHA·UID 위반과 이미 시작된 학습/후보 준비의 오류는 여전히 실패다.
+이 변경까지 CPU 회귀 검사210개를 통과했다.
+
+미사용 복구 폴더의 이전 checkpoint_resume 사본을 매번 다시 복사하면서
+알려진 checkpoint151GiB가 tmpfs에 누적됐다. 새 미사용 폴더의 사본만
+정확한 UID·닫힌 controller·stable FD SHA를 검사해 동일한 불변 백업 inode를
+공유한다. 새 학습의 latest/BEST는 독립적으로 복사한다. 원래 checkpoint
+내용·학습 상태·data/bank·코드를 변경하거나 삭제하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

@@ -31,6 +31,21 @@ ARMS = {0:'multi5', 1:'multi7', 2:'multi10', 3:'candidates512',
         4:'candidates1024', 5:'candidates2048', 6:'blend50'}
 
 
+class RAMAdmissionUnavailable(MemoryError):
+    """Exact full-group capacity is temporarily unavailable before admission."""
+
+    def __init__(self, *, host_total_bytes, available_bytes, group_resident_bytes, required_bytes):
+        observed = available_bytes + group_resident_bytes
+        self.observation = dict(host_RAM_bytes=host_total_bytes,
+            host_available_RAM_bytes=available_bytes,
+            group_process_tree_RSS_bytes=group_resident_bytes,
+            observed_available_plus_group_RSS_bytes=observed,
+            required_group_and_cache_capacity_bytes=required_bytes,
+            shortfall_bytes=max(0, required_bytes-observed))
+        super().__init__('Actual available RAM plus deduplicated registered group RSS cannot admit'
+            + str(required_bytes//GIB) + 'GiB: ' + json.dumps(self.observation, sort_keys=True))
+
+
 def _absolute(value):
     return isinstance(value,str) and Path(value).is_absolute() and '..' not in Path(value).parts
 
@@ -241,8 +256,11 @@ class BasicLease(resource.BasicLease):
                 if int(cells[0])in shared_tree:
                     raise RuntimeError('Registered shared CPU bank actor created a forbidden CUDA context')
         memory=psutil.virtual_memory()
-        if memory.total<AGGREGATE_CAPACITY or memory.available+group_rss<AGGREGATE_CAPACITY:
-            raise MemoryError('Actual available RAM plus deduplicated registered group RSS cannot admit704GiB')
+        if memory.total<AGGREGATE_CAPACITY:
+            raise MemoryError('Actual total host RAM cannot admit the complete704GiB group')
+        if memory.available+group_rss<AGGREGATE_CAPACITY:
+            raise RAMAdmissionUnavailable(host_total_bytes=memory.total,available_bytes=memory.available,
+                group_resident_bytes=group_rss,required_bytes=AGGREGATE_CAPACITY)
         free=shutil.disk_usage(self.request['native_root']).free
         if free<resource.STORAGE_FLOOR:
             raise OSError('Full native tmpfs output has less than its admitted10GiB free floor')
@@ -263,5 +281,5 @@ class BasicLease(resource.BasicLease):
 
 
 SharedGroupLease=BasicLease
-__all__=['BasicLease','SharedGroupLease','FORMAT','GUARD_FILE','AGGREGATE_CAPACITY',
+__all__=['BasicLease','SharedGroupLease','RAMAdmissionUnavailable','FORMAT','GUARD_FILE','AGGREGATE_CAPACITY',
          'GROUP_RSS_LIMIT','CANDIDATE_RSS_LIMIT','NATIVE_RSS_LIMIT','GIB']
