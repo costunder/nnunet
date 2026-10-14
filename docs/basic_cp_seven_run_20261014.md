@@ -245,8 +245,6 @@ source이며 아직 nnU-Net을 시작하지 않았다. GPU2/3은 실제 외부 C
 별도 읽기 뷰어는 기존8행에서 실제 활성1024 진행과 목표2048 진행을 함께
 표시한다. 뷰어24개 CPU 검사가 통과했으며 GPU 대기 코드 적용과 구분한다.
 
-## 작업 완료 체크리스트
-
 2026-10-14 12:59 KST 재확인에서7개 완료250/BEST26 기록은 없었다.
 GPU0/1/2/3/4/6 whole latest는69/144/50/42/16/187 epoch이며 각8개
 logger·optimizer262 state·scaler와 SHA가 유효하다. GPU1/4/6은 실제
@@ -276,6 +274,22 @@ SHA는 보존됐고 모델·source·코드는 줄이지 않았다. 새 mutable c
 entry별 자원 관측만 기존5초 quick poll을 이용한다. build 경계의 forced
 관측도 유지한다. 실제642개 DEBUG 복사를 포함한 관련34개 CPU 검사가
 통과했다. 이는 전체 학습·최종 평가 완료를 뜻하지 않는다.
+
+13:31 KST 실제 완료 후보 파일1284개를 재검사했다. 원래 생성기의 정확한
+10-key legacy receipt15개가 새 진단 필드를 갖지 않아 거부되던 오류를
+수정했다. 공식 sealed642 admission·실제 NPZ SHA/array·원본128/admitted256/
+nested prefix·ancestor receipt를 모두 통과한 경우만 호환한다. 미완성 파일이나
+변조된 SEARCH/ancestor는 계속 거부한다. 실제512와1024 각각642개가
+VALID이며 관련 CPU16개 검사가 통과했다. 수정 commit4fbebbb는 코드만
+push됐으며 이 검사 통과 자체를 학습 재개로 표시하지 않는다.
+
+13:40 KST 현재 본인 PBS129776 walltime 연장은 서버가 Unauthorized Request로
+거부했다.13:45 실제 조회에서129776은 Held 상태, 본인 RUNNING 할당은 없다.
+GPU0~4는 다른 계정의 실제 CUDA 작업, GPU5/6는 비어 있으며 RAM 여유는
+825.01GiB다. 새 immutable 실행 준비와 실제 RUNNING 할당 검증을 분리한다.
+종료된 할당의 시간을 연장하거나 다른 계정의 GPU 할당으로 가장하지 않는다.
+
+## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
 - [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
