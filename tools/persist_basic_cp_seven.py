@@ -14,11 +14,13 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import stat
 import sys
 import time
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -345,11 +347,45 @@ def copy_bank(cache, source, count, original, originals, *, binding=None, bindin
             'Durable candidate-bank allocation exceeds500MiB; preserve existing cache and report')
 
 
+def validate_host_lifetime(reference, value, actual_PBS_text):
+    """Validate the admitted same-host job against a genuine running PBS read.
+
+    CPU unit fixtures exercise this parser; they do not establish a running job.
+    Production admission obtains actual_PBS_text directly with native qstat.
+    """
+    from hiercp_v1x import basic_cp_ablation_resources as native_resources
+    require(set(reference)=={'path','sha256','expires_at_unix'}
+            and value.get('format')=='v25_owned_GPU_allocation_v1'
+            and value.get('owner')=='aicompetition06' and value.get('UID')==UID
+            and value.get('node')==NODE and value.get('gpu')==6
+            and isinstance(value.get('job_id'),str)
+            and re.fullmatch(r'\d+\.ECE-util1',value['job_id']) is not None
+            and value.get('job_state')=='R'
+            and type(reference['expires_at_unix'])in(int,float)
+            and math.isfinite(reference['expires_at_unix'])
+            and value.get('expires_at_unix')==reference['expires_at_unix'],
+            'Exact admitted own running same-host PBS lifetime witness required')
+    walltime=value.get('walltime','').split(':')
+    require(len(walltime)==3 and all(part.isdigit()for part in walltime),
+            'Actual witness start/walltime is required')
+    hours,minutes,seconds=map(int,walltime)
+    require(minutes<60 and seconds<60 and hours*3600+minutes*60+seconds>0,
+            'Actual witness walltime must be a positive valid duration')
+    expiration=native_resources._pbs_start(value['stime'])+hours*3600+minutes*60+seconds
+    require(abs(expiration-reference['expires_at_unix'])<=1,
+            'Witness deadline differs from its actual start/walltime')
+    observation=native_resources.BasicLease._validate_pbs_observation(
+        SimpleNamespace(lifetime=value),actual_PBS_text)
+    require(reference['expires_at_unix']-time.time()>=native_resources.EXPIRY_RESERVE_SECONDS,
+            'Actual PBS lifetime has crossed the unchanged180second reserve')
+    return observation
+
+
 def admit(manifest_path):
     require(os.getuid()==UID and socket.gethostname().split('.')[0]==NODE, 'Exact own host/UID required')
     path = exact(manifest_path); manifest = read(path); group = exact(manifest['group'],directory=True)
     require(set(manifest['registration'])=={str(i) for i in range(7)}, 'Exactly seven registered GPU arms required')
-    requests = {}
+    requests = {}; admitted_lifetime = None
     for gpu,row in manifest['registration'].items():
         root = exact(row['root'], directory=True); q = read(exact(root/'request.json'))
         require(Path('/dev/shm/aicompetition06_basic_cp_ablation_20261013') in root.parents
@@ -369,10 +405,18 @@ def admit(manifest_path):
             require(not rel.is_absolute() and '..' not in rel.parts
                     and digest(exact(code/rel))==checksum, 'Frozen per-arm code admission differs')
         lifetime = q['host_lifetime']; value = read(exact(lifetime['path']))
-        require(digest(lifetime['path'])==lifetime['sha256'] and value.get('format')=='v25_owned_GPU_allocation_v1'
-                and value.get('owner')=='aicompetition06' and value['UID']==UID and value['node']==NODE
-                and value['job_id']=='129776.ECE-util1' and value['expires_at_unix']==lifetime['expires_at_unix'],
-                'Exact owned job129776 lifetime witness required')
+        require(digest(lifetime['path'])==lifetime['sha256'], 'Exact admitted lifetime witness SHA required')
+        if admitted_lifetime is None:
+            from hiercp_v1x import basic_cp_ablation_resources as native_resources
+            require(isinstance(value.get('job_id'),str)
+                    and re.fullmatch(r'\d+\.ECE-util1',value['job_id']) is not None,
+                    'Numeric admitted same-host PBS job identity required')
+            actual=native_resources._pbs_query(['qstat','-f','-F','json',value['job_id']],
+                                               timeout=native_resources.PBS_QUERY_TIMEOUT_SECONDS)
+            validate_host_lifetime(lifetime,value,actual)
+            admitted_lifetime=dict(lifetime)
+        else:
+            require(lifetime==admitted_lifetime, 'All seven arms must retain one exact admitted actual host lifetime')
         require(q['bank_sha256']==BANK_SHA and digest(exact(q['bank']))==BANK_SHA, 'Frozen original128 bank SHA differs')
         requests[gpu] = q
     return manifest, requests
