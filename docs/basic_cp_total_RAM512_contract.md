@@ -29,6 +29,10 @@
 
 rolling durable cache는 실제 전체 BEST 모델·optimizer·scaler·logger를 복사한다. 훈련 중 BEST의 동일 inode가 쓰이는 순간에는 변화한 파일 메타데이터를 확인한 경우에만 복사를 보류하고 이전 유효 CURRENT를 유지한다. 변하지 않는 손상이나 pinned 평가 파일의 변경은 오류로 보고한다. 작은 CPU DEBUG fixture 결과를 실제 학습 완료로 보고하지 않는다.
 
+종료 중인 조회 프로세스의 빈 명령행은 새로운 학습 프로세스 identity로 등록하지 않는다. 이미 등록한 PID·생성 시각·UID는 원래 명령행을 유지하고 실제 종료까지 추적한다. 처음 관측한 빈 명령행은 해당 프로세스의 kernel exit와 실제 terminal/소멸을 제한된 재관측으로 확인한 경우에만 제외한다. 살아 있는 미확인 프로세스나 identity 변경은 계속 오류로 처리한다.
+
+CPU 후보 생성의 부모가 정리 과정에서 native CPU 할당으로 돌아가더라도, source 예약에 연결된 producer와 자식은 원래 64 CPU·320GiB·CUDA 미사용 조건으로 실제 해제까지 계정에 포함한다. 다른 작업의 CPU 조건을 완화하지 않는다. 실패 후 재개는 전체 source 파일을 검증한 새 snapshot과 공통 ledger를 사용하며, progress 표시값을 근거로 기존 후보를 버리지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [ ] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

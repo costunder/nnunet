@@ -449,7 +449,30 @@ class ProcessResolver:
                 try:
                     admitted = self.lease._descendant(process)
                     if admitted is not None:
-                        result.append(_identity(admitted))
+                        current = _identity(admitted)
+                        if not current['command']:
+                            # The original guard keeps a PF_EXITING task in
+                            # its RSS/CPU tree. Never turn that observation
+                            # into an invented nonempty allocation identity.
+                            metadata = {key: current[key] for key in ('pid', 'create_time', 'UID')}
+                            previous = self.lease._managed.get(current['pid'])
+                            if previous is not None:
+                                if any(previous[key] != metadata[key] for key in metadata):
+                                    raise RuntimeError('Exiting claim descendant PID/birth/UID changed')
+                                current = _normalize_identity(previous)
+                                self.inspect(current)  # Original exact argv remains bound until release.
+                            else:
+                                terminal = self.lease._terminal_observations.get(current['pid'])
+                                if (terminal is None or terminal.get('status') != 'PF_EXITING'
+                                        or any(terminal.get(key) != metadata[key] for key in metadata)
+                                        or common._metadata(admitted) != metadata
+                                        or not common._kernel_exiting(admitted)):
+                                    raise RuntimeError('Uncaptured empty-argv descendant lacks exact kernel-exit evidence')
+                                if not self.lease._terminal_after_change(admitted, metadata,
+                                        reason='uncaptured allocation descendant completed kernel exit'):
+                                    raise RuntimeError('Uncaptured empty-argv descendant is still live after bounded exit observation')
+                                continue  # Actual terminal/NoSuch proof is retained by the original guard.
+                        result.append(current)
                 except psutil.NoSuchProcess:
                     continue
             common._exact(identity)
@@ -769,8 +792,17 @@ class _RAM512:
         inventory, inventory_rss, inventory_ids = own_process_inventory()
         registered = {}; observations = {}; native_rss = {}; source_rss = 0
         compute_pids = set()
+        closing_view = None
+        bound_source = [claim for claim in source_claims if claim.get('child_identity')]
+        if bound_source:
+            source_request = view.registered_requests[5]
+            source_controller, _, source_affinity, _ = view._controller_stage_snapshot(5)
+            if source_controller is None or source_affinity == source_request['cpu_affinity']:
+                closing_view = (view if isinstance(view, _ClosingSourceObservation)
+                    else _ClosingSourceObservation.from_admitted_view(view, state))
         for gpu in range(7):
-            row_tree, observation = view._group_tree(gpu)
+            row_tree, observation = (closing_view._group_tree(5)
+                if gpu == 5 and closing_view is not None else view._group_tree(gpu))
             observations[str(gpu)] = observation
             descendants = {pid: process for pid, process in row_tree.items()
                            if pid != view.registration[str(gpu)]['controller_identity']['pid']}
@@ -906,11 +938,11 @@ class _RAM512:
         try:
             if prospective_claim is None:
                 controller = common._exact(self.request['controller_identity'])
+                native = self.native_request if hasattr(self, 'native_request') else self.request
                 if controller.cpu_affinity() == SHARED_CPU_AFFINITY:
                     if self.request['gpu'] != 5:
                         raise RuntimeError('Only exact GPU5 source may use CPU64 observation')
                     if self._shared_observer_lease is None:
-                        native = self.native_request if hasattr(self, 'native_request') else self.request
                         self._shared_observer_lease = SharedBankLease(native)
                     cpu = self._shared_observer_lease
                     cpu._claim_override = state
@@ -920,6 +952,35 @@ class _RAM512:
                         return shared.SharedBankLease.verify(cpu, force=True)
                     finally:
                         cpu._claim_override = None
+                source_claims = [claim for claim in state['claims'].values()
+                    if claim['kind'] == 'cpu_source']
+                if (self.request['gpu'] == 5 and any(
+                        claim.get('child_identity') for claim in source_claims)):
+                    if (self.request['gpu'] != 5 or len(source_claims) != 1
+                            or controller.cpu_affinity() != native['cpu_affinity']
+                            or self.self_identity != native['controller_identity']):
+                        raise RuntimeError('Only exact GPU5 native8 controller may observe its retained CPU source release')
+                    closing = _ClosingSourceObservation(native, state)
+                    own = common._exact(closing.self_identity)
+                    if own.pid != controller.pid or own.cpu_affinity() != native['cpu_affinity']:
+                        raise RuntimeError('Source release observer must remain its exact native8 controller')
+                    closing._claim_override = state
+                    # The parent finally restores native8 before the claim
+                    # closes. Remaining bound source descendants keep CPU64,
+                    # source320 and noCUDA until their real natural release.
+                    tree, detail = closing._group_tree(5)
+                    result = _RAM512._resources(closing, controller, own,
+                                               {controller.pid: controller})
+                    result.update(SharedBankLease._gpu(closing, tree, idle=False))
+                    result.update(source_release_observation=detail)
+                    return result
+                if hasattr(self, 'native_request'):
+                    # A SharedLease's effective request remains CPU64. Once
+                    # its source is actually gone, inspect native8 through a
+                    # fresh private native lease and the same held state.
+                    native_view = BasicLease(native)
+                    native_view._claim_override = state
+                    return group.BasicLease.observe_waiting(native_view)
                 # CPU preparation needs exact UUID evidence, not CUDA ownership.
                 return group.BasicLease.observe_waiting(self)
             return group.BasicLease.verify(self, force=True, idle=True)
@@ -943,6 +1004,105 @@ class BasicLease(_RAM512, pause._RAMPause, group.BasicLease):
 
 class _CPUStageGroupLease(_RAM512, group.BasicLease):
     """Raw all-seven observer only; CPU64 own RSS may use source320."""
+
+
+class _ClosingSourceObservation(BasicLease):
+    """Retain exactly bound CPU64 survivors after their parent restores CPU8."""
+    def __init__(self, request, state):
+        super().__init__(request)
+        self._closing_source_state = copy.deepcopy(state)
+
+    @classmethod
+    def from_admitted_view(cls, view, state):
+        # Every peer request/SHA/registry has already been admitted by this
+        # exact group view. Observe its peer without creating another stage
+        # lease or pretending the current native actor belongs to GPU5.
+        result = object.__new__(cls)
+        result.__dict__.update(view.__dict__)
+        for name in ('_managed', '_fork_pending', '_terminal_observations'):
+            if hasattr(view, name):
+                setattr(result, name, copy.deepcopy(getattr(view, name)))
+        result._closing_source_state = copy.deepcopy(state)
+        return result
+
+    def _group_tree(self, gpu):
+        if gpu != 5:
+            return super()._group_tree(gpu)
+        claims = [claim for claim in self._closing_source_state['claims'].values()
+                  if claim['kind'] == 'cpu_source']
+        if len(claims) != 1:
+            raise RuntimeError('Exactly one retained source claim is required for closing CPU observation')
+        claim = claims[0]
+        control_identity = self.registered_requests[5]['controller_identity']
+        if (claim['gpu'] != 5 or claim['stage'] != 'candidate_bank'
+                or claim['controller_identity'] != _normalize_identity(control_identity)
+                or not claim.get('child_identity')
+                or claim['child_identity']['command'] != claim['command']):
+            raise RuntimeError('Closing source must retain its exact bound producer/controller command')
+        controller, control_observation, affinity, control_children = self._controller_stage_snapshot(5)
+        native_cpu = self.registered_requests[5]['cpu_affinity']
+        if controller is not None and affinity != native_cpu:
+            raise RuntimeError('Closing source controller must preserve its real native8 affinity')
+        identities = {_normalize_identity(value)['pid']: _normalize_identity(value)
+                      for value in [claim['child_identity'], *claim['captured']]}
+        root_identity = _normalize_identity(claim['child_identity'])
+        candidates = {}
+        for expected in identities.values():
+            try:
+                process = psutil.Process(expected['pid'])
+                actual = common._metadata(process)
+                if actual['create_time'] != expected['create_time']:
+                    continue # The original birth released; no new PID permission.
+                if actual['UID'] != expected['UID'] or actual['UID'] != common.UID:
+                    raise RuntimeError('Closing source retained PID/birth changed its exact UID')
+                if process.status() in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
+                    continue
+                command = process.cmdline()
+                if command != expected['command'] and not (
+                        not command and common._kernel_exiting(process)):
+                    raise RuntimeError('Closing source retained live actor changed its exact argv')
+                _same_metadata(process, actual)
+                candidates[process.pid] = process
+            except psutil.NoSuchProcess:
+                continue
+        producer = candidates.get(root_identity['pid'])
+        producer_descendants = {}
+        if producer is not None:
+            for process in producer.children(recursive=True):
+                producer_descendants[process.pid] = process
+            candidates.update(producer_descendants)
+        for process in control_children:
+            if process.pid not in identities and process.pid not in producer_descendants:
+                raise RuntimeError('Unexpected live actor accompanies the exact closing source claim')
+            candidates[process.pid] = process
+        tree = {} if controller is None else {controller.pid: controller}
+        terminal = []
+        for process in candidates.values():
+            try:
+                process = self._descendant(process)
+                if process is None:
+                    continue
+                metadata = common._metadata(process); actual = process.cpu_affinity()
+                if actual != SHARED_CPU_AFFINITY:
+                    detail = self._affinity_details(5, process, metadata, actual,
+                                                    SHARED_CPU_AFFINITY, 'closing_source_descendant')
+                    if not self._retain_exiting_affinity(process, metadata, detail):
+                        raise RuntimeError('Exact retained source descendant left its admitted64CPU affinity')
+                    terminal.append(process.pid)
+                _same_metadata(process, metadata)
+                tree[process.pid] = process
+            except psutil.NoSuchProcess:
+                continue
+        detail = dict(controller_identity=control_identity,
+            actual_CPU_affinity=None if controller is None else list(native_cpu),
+            shared_CPU_bank_stage=True,
+            closing_source_controller_native8=controller is not None,
+            released_source_controller_observation=control_observation,
+            retained_source_descendant_CPU_affinity=list(SHARED_CPU_AFFINITY),
+            surviving_exact_descendant_PIDs=sorted(tree),
+            exact_kernel_exiting_unadmitted_CPU_mask_PIDs=terminal,
+            source_claim_token=claim['token'], captured_source_identity_count=len(identities))
+        return tree, detail
 
 
 class SharedBankLease(_RAM512, pause._RAMPause, shared.SharedBankLease):
