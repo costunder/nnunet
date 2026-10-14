@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import pickle
 import re
 import shutil
 import socket
@@ -32,6 +33,28 @@ LOGGERS = {'mean_fg_dice', 'ema_fg_dice', 'dice_per_class_or_region', 'train_los
 ARMS = {0:'multi5', 1:'multi7', 2:'multi10', 3:'candidates512',
         4:'candidates1024', 5:'candidates2048', 6:'blend50'}
 BEST_VALIDATORS={}
+
+
+class CheckpointSourceInFlight(RuntimeError):
+    """An unpinned training BEST changed while its own source FD was held."""
+    def __init__(self, source, reason):
+        self.source, self.reason = source, reason
+        super().__init__(reason+': '+source)
+
+
+def source_changed(stream, before, *, observe_write=False):
+    if identity(before) != identity(os.fstat(stream.fileno())):
+        return True
+    if observe_write:
+        # A writer can have truncated BEST just before our open. Treat it as
+        # transient only when actual held-inode metadata advances; stable
+        # corruption still raises its original decoder error.
+        deadline = time.monotonic()+.5
+        while time.monotonic() < deadline:
+            time.sleep(.025)
+            if identity(before) != identity(os.fstat(stream.fileno())):
+                return True
+    return False
 
 
 def require(condition, message):
@@ -112,12 +135,21 @@ def checkpoint_info(value, trainer):
 class Cache:
     def __init__(self, root, expiry):
         self.root, self.expiry = Path(root), expiry
+        self._used_bytes = None
+        self._usage_observed_at = 0.0
 
     def guard(self, incoming=0):
         import psutil
         require(time.time() < self.expiry-180, 'Host lifetime reached its180 second persistence reserve')
         require(psutil.Process().memory_info().rss <= 4*GIB, 'CPU persistence RSS exceeds4GiB')
-        used = sum(p.stat().st_size for p in self.root.rglob('*') if p.is_file())
+        # The exact writer flock permits one cache writer. Reserve a complete
+        # temporary before copying; repeated chunk guards need not walk the
+        # entire cache every8MiB. Reobserve for each incoming copy and every2s.
+        observed_at = time.monotonic()
+        if incoming or self._used_bytes is None or observed_at-self._usage_observed_at >= 2:
+            self._used_bytes = sum(p.stat().st_size for p in self.root.rglob('*') if p.is_file())
+            self._usage_observed_at = observed_at
+        used = self._used_bytes
         require(used+incoming <= 8*GIB, 'Durable cache including atomic temporary exceeds8GiB')
         require(shutil.disk_usage(self.root).free >= incoming+GIB, 'Durable cache requires1GiB free after atomic temporary')
 
@@ -134,7 +166,15 @@ class Cache:
                 before = os.fstat(inp.fileno()); proof = {}
                 if trainer is not None:
                     import torch
-                    value = torch.load(inp, map_location='cpu', weights_only=False)
+                    try:
+                        value = torch.load(inp, map_location='cpu', weights_only=False)
+                    except (RuntimeError, EOFError, OSError, pickle.UnpicklingError) as error:
+                        if role == 'OWN_BEST_TRAINING_STATE' and expected is None and source_changed(inp,before,observe_write=True):
+                            raise CheckpointSourceInFlight(str(source), 'source changed during whole-state decode') from error
+                        raise
+                    if role == 'OWN_BEST_TRAINING_STATE' and expected is None and source_changed(inp,before):
+                        del value; gc.collect()
+                        raise CheckpointSourceInFlight(str(source), 'BEST source changed during whole-state decode')
                     try: proof = checkpoint_info(value, trainer)
                     finally: del value; gc.collect()
                     require(not torch.cuda.is_initialized(), 'Persistence must never initialize CUDA')
@@ -147,7 +187,10 @@ class Cache:
                     remaining=before.st_size
                     while remaining:
                         block=inp.read(min(8*2**20,remaining))
-                        require(block, 'Source ended before its admitted snapshot length')
+                        if not block:
+                            if trainer is not None and role == 'OWN_BEST_TRAINING_STATE' and expected is None and source_changed(inp,before):
+                                raise CheckpointSourceInFlight(str(source), 'BEST source truncated during held-FD copy')
+                            raise ValueError('Source ended before its admitted snapshot length: '+str(source))
                         self.guard(); h.update(block); out.write(block)
                         remaining-=len(block)
                     out.flush(); os.fsync(out.fileno())
@@ -160,7 +203,10 @@ class Cache:
                         block=inp.read(min(8*2**20,remaining)); require(block, 'Log prefix disappeared')
                         prefix.update(block); remaining-=len(block)
                     require(prefix.hexdigest()==h.hexdigest(), 'Append-only log prefix changed')
-                else: require(identity(before) == identity(after), 'Source inode changed during snapshot')
+                else:
+                    if trainer is not None and role == 'OWN_BEST_TRAINING_STATE' and expected is None and identity(before) != identity(after):
+                        raise CheckpointSourceInFlight(str(source), 'BEST source changed during snapshot')
+                    require(identity(before) == identity(after), 'Source inode changed during snapshot')
                 checksum = h.hexdigest()
                 require(expected is None or checksum == expected, 'Pinned source checksum differs')
                 require(digest(temporary) == checksum, 'Durable copied bytes differ from held source FD')
@@ -176,13 +222,18 @@ class Cache:
                 if trainer is not None:
                     proof['role'] = role
                     # Recovery validates this receipt against CURRENT bytes if interrupted between replacements.
+                    self.guard(len(json.dumps(proof,ensure_ascii=False,allow_nan=False,indent=2).encode('utf8')))
                     publish(target.parent/'PENDING.json', proof)
                 os.replace(temporary, target)
-                if trainer is not None: publish(target.parent/'CURRENT.json', proof)
+                if trainer is not None:
+                    self.guard(len(json.dumps(proof,ensure_ascii=False,allow_nan=False,indent=2).encode('utf8')))
+                    publish(target.parent/'CURRENT.json', proof)
                 fsync_directory(target.parent)
+                self._used_bytes = None
                 return proof
         finally:
             if temporary.exists(): temporary.unlink()  # Only our exclusive incomplete temporary.
+            self._used_bytes = None
 
     def immutable(self, source, target, expected=None):
         target = Path(target); checksum = expected or digest(source)
@@ -215,13 +266,25 @@ def request_code(request, manifest=None):
     require(len(command)==6 and command[:3]==['/home/aicompetition06/.conda/envs/nnunet/bin/python3.10','-B','-u']
             and command[4:]==['--request',str(root/'request.json')], 'Exact own controller code command required')
     script=Path(command[3]); code=script.parents[1]
-    require(script.is_absolute() and script.name=='run_basic_cp_expanded.py' and script.parent.name=='tools',
+    dynamic='memory_budget_revision' in request
+    runner='run_basic_cp_RAM512.py' if dynamic else 'run_basic_cp_expanded.py'
+    require(script.is_absolute() and script.name==runner and script.parent.name=='tools',
             'Actual arm code root differs from its pinned controller command')
     code=exact(code,directory=True)
     pins=request.get('code_sha256')
     require(isinstance(pins,dict) and pins and 'tools/run_basic_cp_expanded.py' in pins,
             'Full per-request immutable controller code pins required')
-    if code.parent!=root.parent:
+    if dynamic:
+        fields={'memory_budget_revision':512,'aggregate_memory_cap_GiB':512,
+            'effective_native_RSS_limit_GiB':32,'effective_shared_bank_RSS_limit_GiB':320,
+            'owned_tmpfs_envelope_GiB':144,'post_source_owned_tmpfs_envelope_GiB':272,
+            'auxiliary_RAM_envelope_GiB':16}
+        require(all(type(request.get(key)) is int and request[key]==value for key,value in fields.items()),
+                'Actual approved TOTAL512 resource declarations required for its named runner')
+        require({'tools/run_basic_cp_RAM512.py','hiercp_v1x/basic_cp_512_claims.py',
+                 'hiercp_v1x/basic_cp_512_resources.py','hiercp_v1x/basic_cp_large_bank_RAM512.py'}<=set(pins),
+                'Explicit TOTAL512 runner/claims/guard/provider SHA pins required')
+    if dynamic or code.parent!=root.parent:
         exports=(manifest or {}).get('controller_code_exports',{})
         descriptor=exports.get(str(code)) if isinstance(exports,dict) else None
         require(isinstance(descriptor,dict) and set(descriptor)=={'path','sha256'}
@@ -258,6 +321,35 @@ def best_validator(code):
     return BEST_VALIDATORS[str(path)]
 
 
+def completed_best_code(native, code):
+    reference=native.get('RAM512_completed_best_validator')
+    if reference is None:
+        return code
+    require(isinstance(reference,dict) and set(reference)=={'code','export','receipt'}
+            and code is not None, 'Named original completed BEST26 validator evidence required')
+    original=exact(reference['code'],directory=True)
+    for name in ('export','receipt'):
+        row=reference[name]
+        require(isinstance(row,dict) and set(row)=={'path','sha256'}
+                and isinstance(row['sha256'],str) and re.fullmatch(r'[0-9a-f]{64}',row['sha256']) is not None,
+                'Exact original completed BEST26 path/SHA descriptor required')
+        require(digest(exact(row['path']))==row['sha256'], 'Original completed BEST26 evidence checksum changed')
+    proof=read(reference['export']['path']);pins=proof.get('code_sha256')
+    validator='hiercp_v1x/v24_native_best_eval_runtime.py'
+    require(proof.get('code')==str(original) and isinstance(pins,dict) and validator in pins,
+            'Original completed BEST26 immutable export differs')
+    for relative,checksum in pins.items():
+        path=Path(relative)
+        require(not path.is_absolute() and '..'not in path.parts
+                and isinstance(checksum,str) and re.fullmatch(r'[0-9a-f]{64}',checksum) is not None
+                and digest(exact(original/path))==checksum, 'Original completed BEST26 source export changed')
+    require(pins[validator]==digest(exact(Path(code)/validator)),
+            'Completed BEST26 scientific validator changed between exports')
+    require(Path(reference['receipt']['path'])==fold(native)/'best_validation_complete.json',
+            'Completed BEST26 receipt belongs to a different original fold')
+    return original
+
+
 def latest_epoch(native):
     """Read the actual latest inode, not an assumed status counter."""
     path=fold(native)/'checkpoint_latest.pth'
@@ -289,7 +381,7 @@ def select_checkpoint(native, *, unfinished='latest', code=None):
             finally: del value; gc.collect()
             require(identity(before)==identity(os.fstat(f.fileno())), 'FINAL changed during validation')
         require(digest(final) == proof['final_training_witness_sha256'], 'Final250 witness SHA differs')
-        receipt = best_validator(code)(goal/'best_validation_complete.json', fold=goal,
+        receipt = best_validator(completed_best_code(native,code))(goal/'best_validation_complete.json', fold=goal,
             expected_cases=native['split']['outer_val'], bank_sha256=native['bank_sha256'])
         require(receipt['checkpoint_sha256'] == proof['best_sha256'], 'Own evaluated BEST checksum differs')
         return goal/'checkpoint_best.pth', 'BEST_EVALUATED26', dict(training_completed_epochs=250,
@@ -486,8 +578,14 @@ def snapshot(cache, manifest, requests, *, unfinished='latest'):
                 expected = extra.pop('expected_sha256',None); required_epoch = extra.pop('required_epoch',None)
                 if required_epoch is not None:
                     extra['required_epoch']=required_epoch
-                proof = cache.copy(exact(source), folder/'CURRENT.pth', expected=expected,
-                    trainer=native['trainer'], role=role, extra=extra)
+                try:
+                    proof = cache.copy(exact(source), folder/'CURRENT.pth', expected=expected,
+                        trainer=native['trainer'], role=role, extra=extra)
+                except CheckpointSourceInFlight as error:
+                    outcomes[gpu]='KEEP_PREVIOUS_BEST_SOURCE_IN_FLIGHT'
+                    print(json.dumps(dict(event=outcomes[gpu],gpu=gpu,source=error.source,reason=error.reason,
+                        previous_valid_cache_preserved=True),ensure_ascii=False),flush=True)
+                    continue
                 require(required_epoch is None or proof['checkpoint_completed_epoch']==required_epoch, 'FINAL full250 epoch differs')
             elif role=='OWN_BEST_TRAINING_STATE':
                 prior.update(latest_on_tmpfs_N=extra['latest_on_tmpfs_N'],
