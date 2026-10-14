@@ -63,6 +63,35 @@ class InterruptedPublicationTests(unittest.TestCase):
   self.create(1024);prefix=self.old/'512'/self.relative;data=base.read_entry(prefix);data['candidate_centers'][400,0]+=10000
   with prefix.open('wb')as stream:np.savez(stream,**data)
   with self.assertRaises(base.BankContractError):self.classify(1024)
+ def legacy(self,count):
+  archive,receipt=(self.old/'512'/self.relative,self.old/'512/entry_receipts'/Path(self.relative).with_suffix('.json'))if count==512 else self.create(count)
+  row=base.read_json(receipt);row.pop('generation_prefix');row.pop('full_graph_geometry_cache')
+  row['original_stat']=base.stat_identity(self.original_path);row['admitted_prefix']['stat']=base.stat_identity(self.admitted_path)
+  row['proposal_diagnostics']=dict(case_id='DEBUG_case',source_component=1,prefix_candidate_count=256,accepted_added=count-256,search=base.SEARCH)
+  row['seconds']=0.1;ancestor=self.root/('DEBUG_ancestor_'+str(count)+'.npz');ancestor_receipt=ancestor.with_suffix('.json')
+  recovery._atomic_copy(archive,ancestor);recovery._atomic_json(ancestor_receipt,dict(DEBUG_original_large_receipt=True))
+  row['partial_reuse']=dict(path=str(ancestor),sha256=base.file_sha(ancestor),receipt=str(ancestor_receipt),receipt_sha256=base.file_sha(ancestor_receipt))
+  receipt.write_text(__import__('json').dumps(row),encoding='utf8')
+  admission=dict(format='basic_cp_completedlarge_bank_reuse_admission_v1',complete=True,source_entries=642,candidate_count=count,index=str(self.old/str(count)/'index.json'),all642_entry_sha_verified=True,original_arrays_and_first128_byte_verified=True,historical_geometry_completion_proof_verified=True,immutable_files={str(archive):base.stat_identity(archive)})
+  return archive,receipt,admission
+ def test_exact_sealed_legacy512_and1024_receipts_keep_arrays_nested_prefix_and_real_ancestor_bytes(self):
+  for count in(512,1024):
+   archive,receipt,admission=self.legacy(count);before=(archive.read_bytes(),receipt.read_bytes())
+   row=recovery._classify(self.old,count,self.relative,'DEBUG_case',self.original_path,self.admitted_path,sealed_admission=admission)
+   self.assertEqual(row['status'],'VALID');self.assertTrue(row['legacy_sealed_original_large_receipt']);self.assertEqual(len(row['assets']),4)
+   self.assertTrue(self.reuse(row,count));self.assertEqual((self.fresh/str(count)/self.relative).read_bytes(),before[0]);self.assertEqual((archive.read_bytes(),receipt.read_bytes()),before)
+   self.assertNotIn('generation_prefix',base.read_json(receipt));self.assertNotIn('full_graph_geometry_cache',base.read_json(receipt))
+ def test_unsealed_legacy_receipt_is_not_admitted(self):
+  self.legacy(512);self.assertEqual(self.classify(512)['status'],'INTERRUPTED')
+ def test_legacy_wrong_search_contract_remains_fatal_even_under_sealed_bank(self):
+  _,receipt,admission=self.legacy(512);row=base.read_json(receipt);row['proposal_diagnostics']['search']=dict(DEBUG_wrong_search=True);receipt.write_text(__import__('json').dumps(row),encoding='utf8')
+  with self.assertRaisesRegex(base.BankContractError,'historical search'):
+   recovery._classify(self.old,512,self.relative,'DEBUG_case',self.original_path,self.admitted_path,sealed_admission=admission)
+ def test_legacy_reused_ancestor_SHA_mutation_remains_fatal(self):
+  _,receipt,admission=self.legacy(512);ancestor=Path(base.read_json(receipt)['partial_reuse']['path'])
+  with ancestor.open('ab')as stream:stream.write(b'DEBUG_CHANGED_ANCESTOR')
+  with self.assertRaisesRegex(base.BankContractError,'copied source witness'):
+   recovery._classify(self.old,512,self.relative,'DEBUG_case',self.original_path,self.admitted_path,sealed_admission=admission)
 
 class AtomicPublicationTests(unittest.TestCase):
  def test_atomic_json_npz_reject_existing_outputs_without_overwrite_or_stale_temporary(self):

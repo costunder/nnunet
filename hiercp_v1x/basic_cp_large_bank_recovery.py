@@ -98,7 +98,7 @@ def _unchanged(asset):
 
 class InterruptedPublication(ValueError):pass
 
-def _classify(root,count,relative,case,original_path,admitted_path):
+def _classify(root,count,relative,case,original_path,admitted_path,*,sealed_admission=None):
  root=Path(root);archive=base.safe_entry(root/str(count),relative)
  receipt=root/str(count)/'entry_receipts'/Path(relative).with_suffix('.json')
  assets=dict(archive=_asset(archive),receipt=_asset(receipt))
@@ -108,7 +108,9 @@ def _classify(root,count,relative,case,original_path,admitted_path):
  try:
   try:row=base.read_json(receipt)
   except(json.JSONDecodeError,UnicodeDecodeError)as error:raise InterruptedPublication('Malformed interrupted receipt: '+str(error))from error
-  if not isinstance(row,dict)or not {'entry','case_id','new_entry_sha256','original_entry_sha256','proof','admitted_prefix','generation_prefix'}<=set(row):
+  legacy_keys={'entry','case_id','original_stat','original_entry_sha256','new_entry_sha256','proof','admitted_prefix','proposal_diagnostics','seconds','partial_reuse'}
+  legacy=isinstance(row,dict)and set(row)==legacy_keys and count in(512,1024)and sealed_admission is not None
+  if not isinstance(row,dict)or not {'entry','case_id','new_entry_sha256','original_entry_sha256','proof','admitted_prefix'}<=set(row)or('generation_prefix'not in row and not legacy):
    raise InterruptedPublication('Incomplete receipt fields')
   require(row['entry']==relative and row['case_id']==case,'Completed receipt changed source identity')
   if assets['archive']is None:raise InterruptedPublication('Receipt exists without its completed archive')
@@ -124,15 +126,29 @@ def _classify(root,count,relative,case,original_path,admitted_path):
   require(row['proof'].get('admitted_prefix_count')==n and all(data[key][:n].tobytes()==admitted[key].tobytes()for key in('candidate_centers','candidate_raw_centers')),'Completed admitted256 bytes differ')
   previous={512:None,1024:512,2048:1024}[count]
   current_prefix=admitted_path if previous is None else base.safe_entry(root/str(previous),relative)
-  generation=row['generation_prefix'];referenced=Path(generation['path'])
-  require(referenced.is_absolute()and referenced.exists()and base.file_sha(referenced)==generation['sha256'],'Immutable generation-prefix witness differs')
   require(current_prefix.exists(),'Completed publication lacks its nested current prefix')
-  current,referenced_data=base.read_entry(current_prefix),base.read_entry(referenced)
+  current=base.read_entry(current_prefix)
   length=len(current['candidate_centers'])
-  require(generation['count']==length and all(current[key].tobytes()==referenced_data[key].tobytes()==data[key][:length].tobytes()for key in('candidate_centers','candidate_raw_centers')),'Completed current nested prefix bytes differ')
-  require(row.get('full_graph_geometry_cache')is True,'Actual frozen full-graph generator receipt required')
+  require(all(current[key].tobytes()==data[key][:length].tobytes()for key in('candidate_centers','candidate_raw_centers')),'Completed current nested prefix bytes differ')
+  if legacy:
+   # Original large-bank receipts predate the explicit generation/cache fields.
+   # Admit only their exact copied shape after full642 sealed-bank verification;
+   # do not synthesize historical fields or admit an unsealed legacy publication.
+   require(sealed_admission.get('format')=='basic_cp_completedlarge_bank_reuse_admission_v1'and sealed_admission.get('complete')is True and sealed_admission.get('source_entries')==642 and sealed_admission.get('candidate_count')==count and sealed_admission.get('index')==str(root/str(count)/'index.json')and sealed_admission.get('all642_entry_sha_verified')is True and sealed_admission.get('original_arrays_and_first128_byte_verified')is True and sealed_admission.get('historical_geometry_completion_proof_verified')is True,'Exact full642 sealed legacy admission required')
+   require(sealed_admission['immutable_files'].get(str(archive))==assets['archive']['stat']and row['original_stat']==base.stat_identity(original_path)and prefix_info.get('stat')==base.stat_identity(admitted_path),'Sealed legacy immutable input/output identities differ')
+   diagnostics=row['proposal_diagnostics']
+   require(diagnostics.get('case_id')==case and diagnostics.get('source_component')==int(original['source_component'].reshape(-1)[0])and diagnostics.get('prefix_candidate_count')==n and diagnostics.get('accepted_added')==count-n and diagnostics.get('search')==base.SEARCH,'Sealed legacy full historical search diagnostics differ')
+   reuse=row['partial_reuse'];source_archive=_asset(Path(reuse['path']));source_receipt=_asset(Path(reuse['receipt']))
+   require(source_archive is not None and source_receipt is not None and source_archive['sha256']==reuse['sha256']==row['new_entry_sha256']and source_receipt['sha256']==reuse['receipt_sha256'],'Sealed legacy copied source witness differs')
+   assets.update(legacy_source_archive=source_archive,legacy_source_receipt=source_receipt)
+  else:
+   generation=row['generation_prefix'];referenced=Path(generation['path'])
+   require(referenced.is_absolute()and referenced.exists()and base.file_sha(referenced)==generation['sha256'],'Immutable generation-prefix witness differs')
+   referenced_data=base.read_entry(referenced)
+   require(generation['count']==length and all(current[key].tobytes()==referenced_data[key].tobytes()for key in('candidate_centers','candidate_raw_centers')),'Completed current nested prefix bytes differ')
+   require(row.get('full_graph_geometry_cache')is True,'Actual frozen full-graph generator receipt required')
   for asset in assets.values():_unchanged(asset)
-  return dict(result,status='VALID',reason='Complete owned receipt/NPZ SHA and original128/admitted256/current nested prefixes verified')
+  return dict(result,status='VALID',reason='Complete owned receipt/NPZ SHA and original128/admitted256/current nested prefixes verified',legacy_sealed_original_large_receipt=legacy)
  except InterruptedPublication as error:
   for asset in assets.values():_unchanged(asset)
   return dict(result,status='INTERRUPTED',reason=str(error))
@@ -169,7 +185,7 @@ def snapshot_interrupted_outputs(binding_path,binding_sha256,prior_request,prior
    sealed_assets.extend(_asset(prefix/name)for name in('index.json','complete.json','preservation_manifest.json','preparation_started.json'))
  records={};counts={}
  for count in base.COUNTS:
-  rows={relative:_classify(root,count,relative,case,base.safe_entry(original_index.parent,relative),base.safe_entry(admitted_root,relative))for relative,case in sorted(names.items())}
+  rows={relative:_classify(root,count,relative,case,base.safe_entry(original_index.parent,relative),base.safe_entry(admitted_root,relative),sealed_admission=completed.get(str(count)))for relative,case in sorted(names.items())}
   records[str(count)]=rows;counts[str(count)]={status:sum(row['status']==status for row in rows.values())for status in('VALID','INTERRUPTED','UNPUBLISHED')}
   if str(count)in completed:require(counts[str(count)]['VALID']==642,'A sealed full prefix can never be downgraded to interrupted')
   expected={str((root/str(count)/'entry_receipts'/Path(relative).with_suffix('.json')))for relative in names}
