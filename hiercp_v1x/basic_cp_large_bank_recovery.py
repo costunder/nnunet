@@ -208,7 +208,7 @@ def _admit_partial(root,binding,prior_request,prior_request_sha):
  require(_RECOVERY_REF is not None,'Explicit snapshot admission required for recovery builder')
  snapshot=_snapshot(*_RECOVERY_REF)
  for asset in snapshot['sealed_metadata_assets']:_unchanged(asset)
- require(snapshot['source_root']==str(Path(root).absolute())and snapshot['prior_request']==str(Path(prior_request).absolute())and snapshot['prior_request_sha256']==prior_request_sha and snapshot['binding_sha256']==base.file_sha(snapshot['binding_path'])and base.read_json(snapshot['binding_path'])==binding,'Recovery snapshot belongs to a different exact prior producer')
+ require(snapshot['source_root']==str(Path(root).absolute())and snapshot['prior_request']==str(Path(prior_request).absolute())and snapshot['prior_request_sha256']==prior_request_sha and snapshot['binding_sha256']==base.file_sha(snapshot['binding_path'])and base.read_json(Path(snapshot['binding_path']))==binding,'Recovery snapshot belongs to a different exact prior producer')
  return dict(partial,recovery_snapshot=str(_RECOVERY_REF[0]),recovery_snapshot_sha256=_RECOVERY_REF[1])
 
 def _reuse_entry(partial,relative,count,original,admitted_prefix,destination):

@@ -113,6 +113,34 @@ class AtomicPublicationTests(unittest.TestCase):
   self.assertIs(recovery.FastFiniteLiverCenters.sampler.__code__,base.FiniteLiverCenters.sampler.__code__)
   self.assertIs(base.write_json_exclusive,base.historical.write_json_exclusive)
 
+class SerializedSnapshotAdmissionTests(unittest.TestCase):
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory(dir=ROOT/'tmp');self.root=Path(self.temp.name).resolve();self.bank=self.root/'DEBUG_bank';self.bank.mkdir()
+  self.binding_path=self.root/'DEBUG_binding.json';self.binding=dict(bank_index=str(self.root/'DEBUG_original_index.json'),DEBUG_protocol_fixture=True)
+  recovery._atomic_json(self.binding_path,self.binding)
+  self.request_path=self.root/'DEBUG_prior_request.json'
+  request=dict(arm='candidates2048',shared_banks=str(self.bank),root=str(self.root/'DEBUG_original_controller'),controller_identity=dict(pid=2_000_000_000,create_time=1.0))
+  recovery._atomic_json(self.request_path,request)
+  recovery._atomic_json(self.bank/'preparation_started.json',dict(format=base.FORMAT,binding=self.binding,full_sources=642,candidate_counts=list(base.COUNTS)))
+  self.request_sha=base.file_sha(self.request_path);self.snapshot_path=self.root/'DEBUG_snapshot.json'
+  records={str(count):{'DEBUG_source_'+str(i):dict(status='UNPUBLISHED',reason='CPU DEBUG metadata only',assets=dict(archive=None,receipt=None))for i in range(642)}for count in base.COUNTS}
+  snapshot=dict(format=recovery.FORMAT,full_sources=642,eligible_cases=81,candidate_counts=list(base.COUNTS),old_outputs_written=False,records=records,sealed_metadata_assets=[],source_root=str(self.bank),prior_request=str(self.request_path),prior_request_sha256=self.request_sha,binding_path=str(self.binding_path),binding_sha256=base.file_sha(self.binding_path))
+  recovery._atomic_json(self.snapshot_path,snapshot);self.snapshot_sha=base.file_sha(self.snapshot_path)
+ def tearDown(self):self.temp.cleanup()
+ def admit(self):
+  with patch.object(recovery,'_RECOVERY_REF',(str(self.snapshot_path),self.snapshot_sha)),patch.object(recovery,'_SNAPSHOTS',{}):
+   return recovery._admit_partial(str(self.bank),self.binding,str(self.request_path),self.request_sha)
+ def test_actual_shaped_serialized_string_binding_path_uses_Path_reader_and_preserves_full_snapshot(self):
+  with patch.object(recovery.base,'read_json',wraps=recovery.base.read_json)as reader:
+   admission=self.admit()
+  self.assertEqual(admission['root'],str(self.bank));self.assertEqual(admission['request_sha256'],self.request_sha)
+  self.assertEqual(admission['recovery_snapshot'],str(self.snapshot_path));self.assertEqual(admission['recovery_snapshot_sha256'],self.snapshot_sha)
+  self.assertIn(self.binding_path,[call.args[0]for call in reader.call_args_list]);self.assertTrue(all(isinstance(call.args[0],Path)for call in reader.call_args_list))
+  self.assertEqual([len(rows)for rows in base.read_json(self.snapshot_path)['records'].values()],[642]*3)
+ def test_changed_binding_SHA_remains_fatal_after_string_path_normalization(self):
+  self.binding_path.write_text('{"DEBUG_changed_after_snapshot":true}',encoding='utf8')
+  with self.assertRaisesRegex(base.BankContractError,'different exact prior producer'):self.admit()
+
 class CompletedPrefixGuardCadenceTests(unittest.TestCase):
  def test_all642_actual_archive_copies_keep_full_array_SHA_checks_with_quick_per_entry_guards(self):
   # CPU DEBUG: all642 source identities with tiny fixture arrays. The sealed
