@@ -749,6 +749,64 @@ class _RAM512:
         return dict(source_complete=source_released, source_completion_proof=source_proof,
                     priority_complete=priority_ready, priority_completion_proof=priority_proof)
 
+    def _completed_source_controller_aux(self, state, view, tree, descendants):
+        """Recognize cleanup after a real bound producer has fully stopped.
+
+        Ledger refresh may remove its finished child claim before the parent
+        finally restores CPU8. This grants no source/model work: only the exact
+        controller and literal read-only GPU/PBS probes remain auxiliary RSS.
+        The original phase proof still requires every captured PID fully gone.
+        """
+        captured = state.get('source_captured')
+        actor = state.get('source_actor_identity')
+        if not isinstance(captured, list) or not captured or actor is None:
+            raise RuntimeError('CPU64 source actor has no atomic prospective/bound source reservation: '
+                               'cleanup lacks its exact previously bound source provenance')
+        actor = _normalize_identity(actor)
+        identities = [_normalize_identity(value) for value in captured]
+        if actor not in identities or not self.source_complete():
+            raise RuntimeError('CPU64 cleanup requires the original bound actor and actual full642 banks')
+        resolver = ProcessResolver(self)
+        observed = [resolver.inspect(value) for value in identities]
+        if any(value['state'] == 'live' for value in observed) or resolver.has_cuda(identities):
+            raise RuntimeError('Live source or CUDA actors cannot lose their atomic source reservation')
+        allowed = {
+            ('nvidia-smi', '--query-compute-apps=pid,gpu_uuid', '--format=csv,noheader,nounits'),
+            ('nvidia-smi', '--id=5',
+             '--query-gpu=index,uuid,name,memory.total,memory.free,mig.mode.current',
+             '--format=csv,noheader,nounits'),
+            ('/opt/pbs/bin/qstat', '-f', '-F', 'json', self.lifetime['job_id']),
+        }
+        probes = []
+        for process in descendants.values():
+            try:
+                metadata = common._metadata(process)
+                command = process.cmdline()
+                if tuple(command) not in allowed:
+                    previous = view._managed.get(process.pid)
+                    known_probe = (previous is not None
+                        and all(previous[key] == metadata[key] for key in ('pid', 'create_time', 'UID'))
+                        and tuple(previous['command']) in allowed)
+                    if not (not command and common._kernel_exiting(process) and known_probe):
+                        if (not command and common._kernel_exiting(process)
+                                and view._terminal_after_change(process, metadata,
+                                    reason='finished source read-only probe naturally exiting')):
+                            continue
+                        raise RuntimeError('Unexpected live child remains after the completed source claim')
+                _same_metadata(process, metadata)
+                probes.append(dict(metadata, command=command,
+                    source_work_authorized=False, auxiliary_RSS_still_accounted=True))
+            except psutil.NoSuchProcess:
+                continue
+        if _pids_have_cuda(set(tree)):
+            raise RuntimeError('Completed source controller cleanup created a forbidden CUDA context')
+        return dict(completed_source_controller_auxiliary_only=True,
+            bound_source_actor_identity=actor,
+            captured_source_actual_states=[value['state'] for value in observed],
+            completed_source_readonly_probe_observations=probes,
+            source_work_or_CUDA_permission_granted=False,
+            controller_CPU_restoration_not_yet_complete=True)
+
     def _resources(self, controller, own, tree):
         view = getattr(self, '_group_view', self)
         view._inputs()
@@ -823,7 +881,8 @@ class _RAM512:
                     continue
             claim = source_claims[0] if gpu == 5 and observation['shared_CPU_bank_stage'] and source_claims else native_claims.get(gpu)
             if observation['shared_CPU_bank_stage'] and claim is None:
-                raise RuntimeError('CPU64 source actor has no atomic prospective/bound source reservation')
+                observation.update(self._completed_source_controller_aux(
+                    state, view, row_tree, descendants))
             claimed = set()
             if claim is not None:
                 child = claim.get('child_identity')

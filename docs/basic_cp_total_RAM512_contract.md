@@ -33,6 +33,10 @@ rolling durable cache는 실제 전체 BEST 모델·optimizer·scaler·logger를
 
 CPU 후보 생성의 부모가 정리 과정에서 native CPU 할당으로 돌아가더라도, source 예약에 연결된 producer와 자식은 원래 64 CPU·320GiB·CUDA 미사용 조건으로 실제 해제까지 계정에 포함한다. 다른 작업의 CPU 조건을 완화하지 않는다. 실패 후 재개는 전체 source 파일을 검증한 새 snapshot과 공통 ledger를 사용하며, progress 표시값을 근거로 기존 후보를 버리지 않는다.
 
+source 예약이 실제 자식 종료에 따라 제거된 직후, 부모가 아직 64 CPU 정리 구간에 있을 수 있다. 이때는 전체 3종×642개 bank 완료, 이전 bound producer 및 captured actor의 출처와 종료, CUDA 미사용을 확인한 controller와 명시적인 조회 프로세스만 보조 RSS로 계정한다. 미확인 자식이나 새 모델 실행을 정리 작업으로 허용하지 않는다.
+
+이미 전체 후보가 완료된 복구에서는 원래 bank를 전체 검증해 재사용하고 CPU producer를 다시 만들지 않는다. 이 경우 새 ledger는 실제 완료 증거와 이전 source actor 해제를 근거로 처음부터 `source_pending=False`, source 예약 0으로 시작한다. 새 producer identity나 완료 기록을 만들어 대체하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [ ] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
