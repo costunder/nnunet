@@ -6,6 +6,8 @@ old exports remain immutable and the producer still cannot initialize CUDA.
 """
 from __future__ import annotations
 
+import json
+
 from . import basic_cp_shared_bank_resources_v5 as prior
 from . import basic_cp_group_resources_v5 as group
 
@@ -37,16 +39,50 @@ class SharedBankLease(prior.SharedBankLease):
         # require native8 execution and is intentionally not called in the
         # CPU64 stage. Its immutable inputs and resource accounting are used.
         self._group_view = _CPUStageGroupLease(self.native_request)
-        for admitted in self._group_view.registered_requests.values():
+        for gpu, admitted in self._group_view.registered_requests.items():
             if (type(admitted.get('shared_resource_observation_revision')) is not int
                     or admitted['shared_resource_observation_revision'] != 6
                     or type(admitted.get('group_observation_revision')) is not int
                     or admitted.get('group_observation_revision') != 5
                     or type(admitted.get('shared_resource_guard_version')) is not int
                     or admitted.get('shared_resource_guard_version') != 3
-                    or admitted.get('shared_resource_registry') != str(self._group_view.registry_path)
+                    or not self._peer_registry_admitted(gpu, admitted)
                     or not {SHARED_GUARD_FILE, group.GUARD_FILE} <= set(admitted.get('code_sha256', {}))):
-                raise ValueError('All seven current peers must bind the same fresh ledger and explicit observation6/5/marker3 SHAs')
+                raise ValueError('All seven current peers require the current or exactly verified retained ledger and explicit observation6/5/marker3 SHAs')
+
+    def _peer_registry_admitted(self, gpu, admitted):
+        """Use only prior ledgers already SHA/row-admitted by the GroupV2 constructor."""
+        view = self._group_view
+        key = str(gpu)
+        path = admitted.get('shared_resource_registry')
+        current = str(view.registry_path)
+        descriptors = getattr(view, '_previous_registry_manifest', {})
+        if not isinstance(descriptors, dict):
+            return False
+        if path == current:
+            # A retained-ledger permission cannot authorize the fresh own row
+            # or be silently ignored on a current-ledger peer.
+            return key not in descriptors
+        if gpu == self.native_request['gpu']:
+            return False
+        descriptor = descriptors.get(key)
+        cache = getattr(view, '_previous_registry_cache', {})
+        if (not isinstance(descriptor, dict)
+                or set(descriptor) not in ({'path', 'sha256'}, {'path', 'sha'})
+                or descriptor['path'] != path
+                or path not in view._files
+                or getattr(view, '_previous_registry_manifest_bytes', None)
+                != json.dumps(descriptors, sort_keys=True, separators=(',', ':'))
+                or not isinstance(cache, dict)):
+            return False
+        document = cache.get(key)
+        if (not isinstance(document, dict)
+                or document.get('format') != 'basic_cp_shared_resource_registry_v1'
+                or not isinstance(document.get('registration'), dict)
+                or set(document['registration']) != {str(i) for i in range(7)}
+                or document['registration'][key] != view.registration[key]):
+            return False
+        return True
 
     def _inputs(self):
         super()._inputs()

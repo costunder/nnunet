@@ -210,14 +210,39 @@ def fold(native):
         native['trainer']+'__'+native['baseline']['plans_name']+'__3d_fullres')/'fold_0'
 
 
-def request_code(request):
+def request_code(request, manifest=None):
     command=request['controller_identity']['command']; root=Path(request['root'])
     require(len(command)==6 and command[:3]==['/home/aicompetition06/.conda/envs/nnunet/bin/python3.10','-B','-u']
             and command[4:]==['--request',str(root/'request.json')], 'Exact own controller code command required')
     script=Path(command[3]); code=script.parents[1]
-    require(script.name=='run_basic_cp_expanded.py' and script.parent.name=='tools' and code.parent==root.parent,
+    require(script.is_absolute() and script.name=='run_basic_cp_expanded.py' and script.parent.name=='tools',
             'Actual arm code root differs from its pinned controller command')
-    return exact(code,directory=True)
+    code=exact(code,directory=True)
+    pins=request.get('code_sha256')
+    require(isinstance(pins,dict) and pins and 'tools/run_basic_cp_expanded.py' in pins,
+            'Full per-request immutable controller code pins required')
+    if code.parent!=root.parent:
+        exports=(manifest or {}).get('controller_code_exports',{})
+        descriptor=exports.get(str(code)) if isinstance(exports,dict) else None
+        require(isinstance(descriptor,dict) and set(descriptor)=={'path','sha256'}
+                and isinstance(descriptor['path'],str) and Path(descriptor['path']).is_absolute()
+                and isinstance(descriptor['sha256'],str) and re.fullmatch(r'[0-9a-f]{64}',descriptor['sha256']) is not None,
+                'External controller code requires an explicitly named exact manifest export proof')
+        proof_path=exact(descriptor['path'])
+        require(digest(proof_path)==descriptor['sha256'], 'External controller export proof SHA differs')
+        proof=read(proof_path)
+        require(proof.get('code')==str(code) and proof.get('commit')==request.get('commit')
+                and proof.get('code_sha256')==pins,
+                'External immutable export code/commit/full pins differ from its actual controller request')
+        require(digest(proof_path)==descriptor['sha256'], 'External controller export proof changed during admission')
+    for relative,checksum in pins.items():
+        require(isinstance(relative,str) and isinstance(checksum,str)
+                and re.fullmatch(r'[0-9a-f]{64}',checksum) is not None,
+                'Exact immutable per-request code path/SHA required')
+        rel=Path(relative)
+        require(not rel.is_absolute() and '..' not in rel.parts
+                and digest(exact(code/rel))==checksum, 'Frozen per-arm code admission differs')
+    return code
 
 
 def best_validator(code):
@@ -400,11 +425,7 @@ def admit(manifest_path):
         require({'hiercp_v1x/basic_cp_group_resources_v3.py','hiercp_v1x/basic_cp_shared_bank_resources_v3.py',
                  'hiercp_v1x/basic_cp_completed_epoch_checkpoint.py','tools/run_basic_cp_expanded.py'}.issubset(q['code_sha256']),
                 'Actual V3 resource and completed-epoch helper code pins required')
-        code=request_code(q)
-        for relative,checksum in q['code_sha256'].items():
-            rel = Path(relative)
-            require(not rel.is_absolute() and '..' not in rel.parts
-                    and digest(exact(code/rel))==checksum, 'Frozen per-arm code admission differs')
+        request_code(q,manifest)
         lifetime = q['host_lifetime']; value = read(exact(lifetime['path']))
         require(digest(lifetime['path'])==lifetime['sha256'], 'Exact admitted lifetime witness SHA required')
         if admitted_lifetime is None:
@@ -412,7 +433,7 @@ def admit(manifest_path):
             require(isinstance(value.get('job_id'),str)
                     and re.fullmatch(r'\d+\.ECE-util1',value['job_id']) is not None,
                     'Numeric admitted same-host PBS job identity required')
-            actual=native_resources._pbs_query(['qstat','-f','-F','json',value['job_id']],
+            actual=native_resources._pbs_query(['/opt/pbs/bin/qstat','-f','-F','json',value['job_id']],
                                                timeout=native_resources.PBS_QUERY_TIMEOUT_SECONDS)
             validate_host_lifetime(lifetime,value,actual)
             admitted_lifetime=dict(lifetime)
@@ -453,7 +474,7 @@ def snapshot(cache, manifest, requests, *, unfinished='latest'):
                     and set(model['actual_train_cases'])==set(native['split']['outer_train'])
                     and set(model['actual_validation_cases'])==set(native['split']['outer_val']),
                     'Full unchanged native training/model/data contract required')
-        source,role,extra = select_checkpoint(native,unfinished=unfinished,code=request_code(q))
+        source,role,extra = select_checkpoint(native,unfinished=unfinished,code=request_code(q,manifest))
         if (root/'actual_model.json').exists(): extra['minimum_network_tensor_elements']=model['parameters']
         runtime=exact(native['private_runtime'],directory=True)
         for path in runtime.rglob('*.py'):
@@ -550,8 +571,9 @@ def main():
     cache.immutable(args.manifest,output/'source_manifest.json')
     cache.immutable(Path(__file__),output/'persistence_helper.py')
     for q in requests.values():
+        code=request_code(q,manifest)
         for relative,checksum in q['code_sha256'].items():
-            cache.immutable(request_code(q)/relative,output/'code'/q['commit']/relative,checksum)
+            cache.immutable(code/relative,output/'code'/q['commit']/relative,checksum)
     publish(output/'identity.json',dict(format=FORMAT,uid=UID,node=NODE,pid=os.getpid(),birth=process.create_time(),
         command=process.cmdline(),cpu_affinity=cpus,RSS_limit_bytes=4*GIB,commit=manifest['commit'],
         helper_source_sha256=digest(__file__),unfinished_checkpoint_policy=args.unfinished_checkpoint,
