@@ -193,6 +193,21 @@ cap, 입력 SHA·UID 위반과 이미 시작된 학습/후보 준비의 오류�
 공유한다. 새 학습의 latest/BEST는 독립적으로 복사한다. 원래 checkpoint
 내용·학습 상태·data/bank·코드를 변경하거나 삭제하지 않는다.
 
+## 실행 확인과 별도 읽기 도구
+
+2026-10-14 09:21 KST에24개 worker/64CPU, source RSS142GiB/peak299.88GiB,
+group RSS165.54GiB+available654.15GiB=819.69GiB를 확인했다.512 전체642개
+archive가 원본과 byte/SHA 동일하고,1024는 보존79개에서89개로 증가했다.
+GPU1/6는 완료59/101 epoch로 학습 중이며 GPU0/2/3/4는 다른 UID의 CUDA
+점유로 자동 대기한다. 전체250 학습/최종26명 평가는 아직 완료되지 않았다.
+
+대기를 native console로 분류해 화면이 비던 문제는 별도 읽기 adapter로
+기존 UI2의 대기 상태·사유를 표시한다. 학습 중 native console은 byte 그대로다.
+보존기는 receipt 목록을 읽은 뒤 source bank가 완료될 수 있으므로 snapshot
+시작 시점의 complete 상태를 고정한다. 부분 목록은 완료로 승격하지 않고
+다음 snapshot에서 실제642개를 다시 검사한다. 이 보존기 수정은 CPU8개,
+뷰어 adapter는18개 검사로 검증했으며 live 학습 export를 수정하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

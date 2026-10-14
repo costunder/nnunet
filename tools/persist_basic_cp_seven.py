@@ -293,6 +293,8 @@ def copy_bank(cache, source, count, original, originals, *, binding=None, bindin
             'Single owned bank destination component required')
     destination = cache.root/'banks'/name
     destination.mkdir(parents=True,exist_ok=True)
+    complete = source/'complete.json'
+    complete_at_start = complete.exists()
     receipts = sorted((source/'entry_receipts').rglob('*.json'))
     rows = []
     for path in receipts:
@@ -312,8 +314,7 @@ def copy_bank(cache, source, count, original, originals, *, binding=None, bindin
         cache.immutable(entry, destination/relative, row['new_entry_sha256'])
         cache.immutable(path, destination/'entry_receipts'/path.relative_to(source/'entry_receipts'))
         rows.append(row['entry'])
-    complete = source/'complete.json'
-    if complete.exists():
+    if complete_at_start:
         require(binding is not None and binding_sha256 is not None, 'Actual completed bank binding witness required')
         witness=dict(index=str(source/'index.json'),index_sha256=digest(source/'index.json'),
             complete_sha256=digest(complete),manifest_sha256=digest(source/'preservation_manifest.json'),
@@ -334,10 +335,10 @@ def copy_bank(cache, source, count, original, originals, *, binding=None, bindin
                 'Only actual verified full642 candidate bank may become durable complete')
         require(done['entries_sha256']=={read(p)['entry']:read(p)['new_entry_sha256'] for p in receipts},
                 'Completed bank checksum population differs')
-        for name in ('index.json','preservation_manifest.json','preparation_started.json','complete.json'):
-            cache.immutable(exact(source/name), destination/name)
+        for metadata_name in ('index.json','preservation_manifest.json','preparation_started.json','complete.json'):
+            cache.immutable(exact(source/metadata_name), destination/metadata_name)
     publish(destination/'durable_receipt.json', dict(format=FORMAT, source=str(source), candidate_count=count,
-        source_entries=len(rows), complete=complete.exists(), original_index_sha256=BANK_SHA,
+        source_entries=len(rows), complete=complete_at_start, original_index_sha256=BANK_SHA,
         source_index_sha256=digest(source/'index.json') if (source/'index.json').exists() else None,
         destination_name=name,raw_CT_preprocessing_copied=False, originals_unchanged=True))
     require(sum(p.stat().st_size for p in (cache.root/'banks').rglob('*') if p.is_file()) <= 500*2**20,

@@ -146,6 +146,82 @@ class DurableCheckpointTests(unittest.TestCase):
             self.assertFalse(primary['complete']); self.assertFalse(native['complete'])
             self.assertEqual((output/'banks/512'/relative).read_bytes(),(output/'banks/native_GPU3_512'/relative).read_bytes())
 
+    def test_partial_snapshot_does_not_promote_when_completion_is_published_during_copy(self):
+        # DEBUG tiny-array fixture retains the actual642 source population.
+        # Only the outer clinical CT/binding verifier is an explicit adapter;
+        # every copied NPZ/prefix/SHA and the full642 receipt guard are real.
+        import numpy as np
+        from tests.test_basic_cp_large_bank import source_fixture
+        from hiercp_v1x import basic_cp_large_bank as large
+        from hiercp_v1x.basic_cp_ablation_bank import verify_preservation
+        with tempfile.TemporaryDirectory(prefix='DEBUG_DURABLE_',dir=Path(__file__).parent) as folder:
+            root=Path(folder); source=root/'DEBUG_bank'; original=root/'DEBUG_original'
+            relative=Path('entries/DEBUG_000.npz'); old,new=source_fixture(128),source_fixture(512)
+            base=original/relative; base.parent.mkdir(parents=True); np.savez(base,**old)
+            entry=source/relative; entry.parent.mkdir(parents=True); np.savez(entry,**new)
+            originals={relative.as_posix():durable.digest(base)}
+            extended_sha=durable.digest(entry)
+            preservation=verify_preservation(old,new,original_count=128,candidate_count=512)
+            def publish_entry(path):
+                receipt=source/'entry_receipts'/path.with_suffix('.json'); receipt.parent.mkdir(parents=True,exist_ok=True)
+                receipt.write_text(json.dumps(dict(entry=path.as_posix(),original_entry_sha256=durable.digest(original/path),
+                    new_entry_sha256=extended_sha,proof=preservation)),encoding='utf8')
+            publish_entry(relative)
+            output=root/'cache'; output.mkdir(); cache=durable.Cache(output,10**12)
+            original_immutable=cache.immutable; published=[False]
+            # DEBUG accounting adapter maintains the exact bytes of actual
+            # copied artifacts, avoiding unrelated repeated O(N²) Windows
+            # directory traversal. No source/copy/receipt is skipped.
+            copied_sizes={}; real_rglob=Path.rglob
+            def recorded_bank_bytes():
+                saved=output/'banks/native_GPU3_512/durable_receipt.json'
+                return sum(copied_sizes.values())+(saved.stat().st_size if saved.exists()else 0)
+            footprint=SimpleNamespace(is_file=lambda:True,stat=lambda:SimpleNamespace(st_size=recorded_bank_bytes()))
+            def debug_accounted_rglob(path,pattern):
+                if path==output/'banks'and pattern=='*':return iter((footprint,))
+                return real_rglob(path,pattern)
+            def complete_during_first_copy(src,target,expected=None):
+                if not published[0]:
+                    published[0]=True
+                    original_bytes=base.read_bytes();extended_bytes=entry.read_bytes()
+                    for i in range(1,642):
+                        path=Path(f'entries/DEBUG_{i:03}.npz')
+                        (original/path).write_bytes(original_bytes); (source/path).write_bytes(extended_bytes)
+                        originals[path.as_posix()]=durable.digest(base); publish_entry(path)
+                    entries_by_case={'DEBUG_ONLY':[f'entries/DEBUG_{i:03}.npz'for i in range(642)]}
+                    (original/'index.json').write_text(json.dumps(dict(entries_by_case=entries_by_case)),encoding='utf8')
+                    (source/'index.json').write_text(json.dumps(dict(candidate_count=512,total_candidates=642*512,
+                        entries_by_case=entries_by_case)),encoding='utf8')
+                    for name in ('preservation_manifest.json','preparation_started.json'):
+                        (source/name).write_text('{"DEBUG_ONLY":true}',encoding='utf8')
+                    done=dict(complete=True,source_entries=642,candidate_count=512,original_index_sha256=durable.BANK_SHA,
+                        index_sha256=durable.digest(source/'index.json'),
+                        preservation_manifest_sha256=durable.digest(source/'preservation_manifest.json'),
+                        entries_sha256={path:extended_sha for path in originals})
+                    (source/'complete.json').write_text(json.dumps(done),encoding='utf8')
+                result=original_immutable(src,target,expected)
+                copied_sizes[Path(target)]=Path(target).stat().st_size
+                return result
+            with patch.object(cache,'guard'),patch.object(durable,'fsync_directory'), \
+                 patch.object(durable,'exact',side_effect=lambda p,**kw:Path(p)), \
+                 patch.object(cache,'immutable',side_effect=complete_during_first_copy), \
+                 patch.object(Path,'rglob',debug_accounted_rglob), \
+                 patch.object(large,'verify_prepared_bank') as clinical_binding_adapter:
+                durable.copy_bank(cache,source,512,original/'index.json',originals,destination_name='native_GPU3_512')
+                first=durable.read(output/'banks/native_GPU3_512/durable_receipt.json')
+                self.assertEqual(first['source_entries'],1); self.assertFalse(first['complete'])
+                self.assertEqual(first['destination_name'],'native_GPU3_512')
+                self.assertFalse((output/'banks/native_GPU3_512/complete.json').exists())
+                clinical_binding_adapter.assert_not_called()
+                durable.copy_bank(cache,source,512,original/'index.json',originals,
+                    binding=root/'DEBUG_binding.json',binding_sha256='DEBUG_BOUNDARY_ONLY',destination_name='native_GPU3_512')
+                clinical_binding_adapter.assert_called_once()
+            second=durable.read(output/'banks/native_GPU3_512/durable_receipt.json')
+            self.assertEqual(second['source_entries'],642); self.assertTrue(second['complete'])
+            self.assertEqual(second['destination_name'],'native_GPU3_512')
+            self.assertEqual(sum(1 for _ in(output/'banks/native_GPU3_512/entry_receipts').rglob('*.json')),642)
+            self.assertEqual((output/'banks/native_GPU3_512/complete.json').read_bytes(),(source/'complete.json').read_bytes())
+
     def test_full_epoch_model_optimizer_scaler_logger_validation_fails_closed(self):
         state=debug_state(); result=durable.checkpoint_info(state,'DEBUG_NATIVE')
         self.assertEqual(result['checkpoint_completed_epoch'],3)
