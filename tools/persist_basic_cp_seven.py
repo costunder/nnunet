@@ -357,7 +357,7 @@ def validate_host_lifetime(reference, value, actual_PBS_text):
     require(set(reference)=={'path','sha256','expires_at_unix'}
             and value.get('format')=='v25_owned_GPU_allocation_v1'
             and value.get('owner')=='aicompetition06' and value.get('UID')==UID
-            and value.get('node')==NODE and value.get('gpu')==6
+            and value.get('node')==NODE
             and isinstance(value.get('job_id'),str)
             and re.fullmatch(r'\d+\.ECE-util1',value['job_id']) is not None
             and value.get('job_state')=='R'
@@ -365,6 +365,7 @@ def validate_host_lifetime(reference, value, actual_PBS_text):
             and math.isfinite(reference['expires_at_unix'])
             and value.get('expires_at_unix')==reference['expires_at_unix'],
             'Exact admitted own running same-host PBS lifetime witness required')
+    native_resources.validate_host_lifetime_GPU(value)
     walltime=value.get('walltime','').split(':')
     require(len(walltime)==3 and all(part.isdigit()for part in walltime),
             'Actual witness start/walltime is required')

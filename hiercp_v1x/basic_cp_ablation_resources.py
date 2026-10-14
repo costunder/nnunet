@@ -1,6 +1,6 @@
 """Read-only lease for each explicitly authorized Basic CP single-factor arm.
 
-The original owned GPU6 job supplies the host lifetime only. This guard does
+The actual owned single-GPU job supplies the host lifetime only. This guard does
 not reserve GPU1 or GPU4 and never signals, launches, or modifies a process.
 """
 from __future__ import annotations
@@ -106,7 +106,7 @@ def validate_request(value):
             or '..' in Path(lifetime['path']).parts or not _checksum(lifetime['sha256'])
             or type(lifetime['expires_at_unix']) not in (int, float)
             or not math.isfinite(lifetime['expires_at_unix'])):
-        raise ValueError('Unchanged owned GPU6 job is required as a separate host-lifetime witness')
+        raise ValueError('Unchanged actual owned job is required as a separate host-lifetime witness')
     if ('source_bank' in value) != ('source_bank_sha256' in value):
         raise ValueError('Original bank path and SHA must be admitted together')
     if 'source_bank' in value:
@@ -126,6 +126,52 @@ def validate_request(value):
         if not folder.is_absolute() or '..' in folder.parts:
             raise ValueError('Absolute own private shared PBS cache namespace required')
     return value
+
+
+def validate_host_lifetime_GPU(value):
+    """Verify the actual allocated GPU without changing any experimental GPU.
+
+    Original GPU6 documents remain readable. New UUID-bearing documents bind
+    the real holder and scheduler visibility to the unchanged physical driver.
+    """
+    gpu=value.get('gpu')
+    if type(gpu)is not int or not 0<=gpu<7:
+        raise ValueError('Actual allocated physical GPU index0..6 required')
+    if gpu==6 and 'GPU_UUID'not in value:
+        return dict(allocated_GPU=6,legacy_original_GPU6_witness=True)
+    expected=value.get('GPU_UUID')
+    if (not isinstance(expected,str) or re.fullmatch(r'GPU-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',expected)is None
+            or value.get('GPU_visibility_overridden')is not False
+            or not isinstance(value.get('actual_driver_mapping'),dict)
+            or not isinstance(value.get('actual_scheduler_visibility'),dict)
+            or not _identity(value.get('holder_identity'))):
+        raise ValueError('Actual allocated GPU UUID/driver/holder/unaltered scheduler witness required')
+    mapping={}
+    for line in _query(['nvidia-smi','--query-gpu=index,uuid','--format=csv,noheader,nounits']).splitlines():
+        parts=[part.strip()for part in line.split(',')]
+        if len(parts)!=2 or not parts[0].isdigit() or parts[0]in mapping:
+            raise RuntimeError('Exact current physical GPU driver map required')
+        mapping[parts[0]]=parts[1]
+    declared={str(index):uuid for index,uuid in value['actual_driver_mapping'].items()}
+    if set(mapping)!={str(i)for i in range(7)} or declared!=mapping or mapping[str(gpu)]!=expected:
+        raise RuntimeError('Allocated GPU UUID does not match the actual same-host driver map')
+    holder=_exact(value['holder_identity'])
+    environment=holder.environ()
+    _exact(value['holder_identity'])  # Recheck PID/birth/UID/argv after procfs environment read.
+    visible={key:environment.get(key)for key in('CUDA_VISIBLE_DEVICES','NVIDIA_VISIBLE_DEVICES','PBS_GPUFILE')}
+    if visible!=value['actual_scheduler_visibility'] or environment.get('PBS_JOBID')!=value['job_id']:
+        raise RuntimeError('Exact owned holder scheduler visibility or PBS job identity changed')
+    assignments=[]
+    for key in('CUDA_VISIBLE_DEVICES','NVIDIA_VISIBLE_DEVICES'):
+        text=visible[key]
+        if text is None or not text.strip() or text.strip()in('all','none','void'):
+            continue
+        tokens=[part.strip()for part in text.split(',')if part.strip()]
+        assignments.append([mapping.get(part)if part.isdigit()else part for part in tokens])
+    if not assignments or any(devices!=[expected]for devices in assignments):
+        raise RuntimeError('Actual scheduler visibility must prove exactly its allocated single GPU UUID')
+    return dict(allocated_GPU=gpu,allocated_GPU_UUID=expected,holder_identity=copy.deepcopy(value['holder_identity']),
+                legacy_original_GPU6_witness=False,experimental_GPU_ownership_claimed=False)
 
 
 def _owned(path, *, directory=False):
@@ -338,9 +384,10 @@ class BasicLease:
         value = self.lifetime
         if (value.get('format') != 'v25_owned_GPU_allocation_v1' or value.get('UID') != UID
                 or value.get('owner') != 'aicompetition06' or value.get('node') != NODE
-                or value.get('gpu') != 6 or not re.fullmatch(r'\d+\.ECE-util1', value.get('job_id', ''))
+                or not re.fullmatch(r'\d+\.ECE-util1', value.get('job_id', ''))
                 or value.get('expires_at_unix') != ref['expires_at_unix']):
-            raise ValueError('Genuine unchanged original GPU6-owned host lifetime required; otherGPU ownership is not claimed')
+            raise ValueError('Genuine unchanged owned same-host lifetime required; experimental GPU ownership is not claimed')
+        self.host_allocation_GPU_observation=validate_host_lifetime_GPU(value)
         self.self_identity = _actor(psutil.Process())
         self.monotonic_expiry = time.monotonic() + value['expires_at_unix'] - time.time()
         self.last_verified = None
