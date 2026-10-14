@@ -247,6 +247,36 @@ source이며 아직 nnU-Net을 시작하지 않았다. GPU2/3은 실제 외부 C
 
 ## 작업 완료 체크리스트
 
+2026-10-14 12:59 KST 재확인에서7개 완료250/BEST26 기록은 없었다.
+GPU0/1/2/3/4/6 whole latest는69/144/50/42/16/187 epoch이며 각8개
+logger·optimizer262 state·scaler와 SHA가 유효하다. GPU1/4/6은 실제
+RAM admission 부족11.91/22.91/12.57GiB로 종료됐고 GPU0/2/3은 외부
+CUDA 점유로 종료됐다. 후보512/1024는642개 완료,2048는46개 완료다.
+
+새 RAM_admission_pause_revision=1은 같은 actor를 유지하고5초마다 원래
+전체800GiB admission을 강제 재검사한다. 같은 native step/source 작업은
+readmission 뒤에만 진행한다.96/384/768GiB cap·CPU·UID·SHA·GPU·storage·
+PBS expiry는 유지하고 다른 실제 오류는 실패한다. controller만 기존
+waiting_RAM UI를 쓰며 worker별 증거를 분리해 상태 경합을 피한다.
+관련 리소스251개와 최종 RAM pause22개 CPU 검사 및 독립 검토를 통과했다.
+
+기존 모든 학습·24 worker는 자연 종료됐다. worker 없이 멈춘 단일 CPU
+부모3622065와 읽기 전용 보존 helper3660803만 정확한 identity 검증 후
+정리했으며 GPU 학습에 신호를 보내지 않았다. 새 닫힌 상태 증명에서
+여섯 latest/BEST/durable CURRENT와 모든2670 후보 파일을 다시 확인했다.
+
+닫힌 직접 생성 실험의 불변 checkpoint_resume59개 경로와
+checkpoint_previous_raw_latest26개 경로의 동일 SHA 복사본을 동일 inode로
+연결해25.176+19.835GiB를 확보했다. 경로·내용 및 실제 latest/BEST/FINAL
+SHA는 보존됐고 모델·source·코드는 줄이지 않았다. 새 mutable checkpoints는
+각각 독립적으로 복사한다. 새 GPU4 native1024 bank는 기존 index SHA를
+보존하며GPU3의 별도 C512도 유지한다.
+
+완료 prefix byte-copy에서는642개의 원본/array/SHA 검사를 그대로 수행하고
+entry별 자원 관측만 기존5초 quick poll을 이용한다. build 경계의 forced
+관측도 유지한다. 실제642개 DEBUG 복사를 포함한 관련34개 CPU 검사가
+통과했다. 이는 전체 학습·최종 평가 완료를 뜻하지 않는다.
+
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.
 - [x] 사용자 파일과 기존 결과를 파괴적으로 변경하지 않았다.
 - [x] 모델 깊이와 너비를 편의상 축소하지 않았다.

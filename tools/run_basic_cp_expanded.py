@@ -30,7 +30,9 @@ LEASES = {}
 
 
 def _lease_class(value):
-    if value.get('group_observation_revision')==5:
+    if 'RAM_admission_pause_revision'in value:
+        from hiercp_v1x.basic_cp_RAM_admission_pause import BasicLease
+    elif value.get('group_observation_revision')==5:
         from hiercp_v1x.basic_cp_group_resources_v5 import BasicLease
     elif value.get('group_observation_revision')==4:
         from hiercp_v1x.basic_cp_group_resources_v4 import BasicLease
@@ -339,7 +341,9 @@ def actor(native,command,label,env):
     shared=label=='candidate_bank'and native.get('shared_candidate_geometry_cache')is True
     lease=None
     if shared:
-        if native.get('shared_resource_observation_revision')==6:
+        if 'RAM_admission_pause_revision'in native:
+            from hiercp_v1x.basic_cp_RAM_admission_pause import SharedBankLease
+        elif native.get('shared_resource_observation_revision')==6:
             from hiercp_v1x.basic_cp_shared_bank_resources_v6 import SharedBankLease
         elif native.get('group_observation_revision')==5:
             from hiercp_v1x.basic_cp_shared_bank_resources_v5 import SharedBankLease

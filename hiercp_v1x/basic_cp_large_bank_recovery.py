@@ -233,7 +233,15 @@ exec(compile(_stage_source.replace(_old_io,'_atomic_npz(target,result)'),__file_
 
 def _checked_write(path,value):verify_resources(force=True);return _atomic_json(path,value)
 _publish_checked_prefix=_clone(original_base._publish_completed_prefix,write_json_exclusive=_checked_write)
-_reuse_completed_prefix=_clone(strict._reuse_completed_prefix,base=base,verify_resources=verify_resources,_reuse_entry=_reuse_entry)
+# Retain the full642 SHA/array copy statements and existing build boundary
+# force checks. Each source polls the same admitted quick guard, whose normal
+# interval is5seconds, instead of rescanning all seven process trees per source.
+_prefix_source=inspect.getsource(strict._reuse_completed_prefix)
+_prefix_force='verify_resources(force=True)'
+require(_prefix_source.count(_prefix_force)==1,'Exact single completed-prefix per-source forced guard required')
+_prefix_scope=dict(strict._reuse_completed_prefix.__globals__,base=base,verify_resources=verify_resources,_reuse_entry=_reuse_entry)
+exec(compile(_prefix_source.replace(_prefix_force,'verify_resources()'),__file__,'exec'),_prefix_scope)
+_reuse_completed_prefix=_prefix_scope['_reuse_completed_prefix']
 _build=types.FunctionType(strict.build_staged_banks.__code__,globals(),'_build',strict.build_staged_banks.__defaults__)
 _build.__kwdefaults__=copy.deepcopy(strict.build_staged_banks.__kwdefaults__)
 
