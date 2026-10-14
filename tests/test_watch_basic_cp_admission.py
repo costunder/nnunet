@@ -33,11 +33,12 @@ class AdmissionViewerTests(unittest.TestCase):
             snapshot_fresh=True,full_native_evaluation=False,native_started=False)
         self.entry=adapter.build_entry(expanded,viewer)
 
-    def show(self,phase='waiting_GPU',reason='GPU0 PID123 UID66006 occupied',json_output=False):
+    def show(self,phase='waiting_GPU',reason='GPU0 PID123 UID66006 occupied',json_output=False,details=None):
         self.value.update(controller_stage=phase,stage_label=phase,stage_log=str(self.root/(phase+'.log')))
         stream=io.StringIO()
+        state=dict(stage=phase,reason=reason);state.update(details or {})
         with (patch.object(expanded,'expanded_snapshot',return_value=copy.deepcopy(self.value)),
-              patch.object(viewer,'read',return_value=dict(stage=phase,reason=reason)),
+              patch.object(viewer,'read',return_value=state),
               patch.object(viewer.sys,'stdout',stream)):
             self.entry(['--root',str(self.root),'--json'if json_output else'--once'])
         return stream.getvalue()
@@ -64,6 +65,44 @@ class AdmissionViewerTests(unittest.TestCase):
         self.assertEqual(value['controller_stage'],'waiting_GPU')
         self.assertEqual(value['waiting_reason'],'GPU0 PID123 UID66006 occupied')
         self.assertIsNone(value['sources_done']);self.assertIsNone(value['candidates_done'])
+
+    def test_gpu_literal_observation_is_concise_and_full_detail_remains_in_json(self):
+        reason=str(dict(occupied_GPU_compute_actors=[dict(pid=123,GPU_UUID='GPU-exact'),dict(pid=456)],
+                        group_controller_observations={'exact_detail':'x'*8000}))
+        shown=self.show(reason=reason)
+        self.assertIn('GPU0 점유 중: PID 123, 456 | 점유 해제 대기',shown)
+        self.assertNotIn('group_controller_observations',shown)
+        self.assertLess(len(shown),1500)
+        value=json.loads(self.show(reason=reason,json_output=True))
+        self.assertEqual(value['waiting_reason_detail'],reason)
+        self.assertEqual(value['waiting_reason'],'GPU0 점유 중: PID 123, 456 | 점유 해제 대기')
+
+    def test_ram_structured_measurement_shows_actual_capacity_and_preserves_error(self):
+        observation=dict(host_available_RAM_bytes=790*2**30,group_process_tree_RSS_bytes=5*2**30,
+                         required_group_and_cache_capacity_bytes=800*2**30)
+        reason='Actual transient RAM admission failure: '+json.dumps(observation)
+        shown=self.show('waiting_RAM',reason,details={'RAM_admission':observation})
+        self.assertIn('여유 790.00GiB + 실험 RSS 5.00GiB = 795.00GiB | 필요 800.00GiB',shown)
+        value=json.loads(self.show('waiting_RAM',reason,json_output=True,details={'RAM_admission':observation}))
+        self.assertEqual(value['waiting_reason_detail'],reason)
+        # The typed error itself is sufficient if an older status lacks RAM_admission.
+        self.assertEqual(adapter.concise_reason('waiting_RAM',dict(reason=reason),0),value['waiting_reason'])
+
+    def test_unrecognized_or_unsafe_reason_is_preserved_without_execution(self):
+        for reason in ('psutil.NoSuchProcess(pid=3622007)',
+                       "__import__('os').system('must never execute')",
+                       str(dict(occupied_GPU_compute_actors=[dict(pid='123')]))):
+            with self.subTest(reason=reason):
+                self.assertEqual(adapter.concise_reason('waiting_GPU',dict(reason=reason),0),reason)
+        reason='Actual unrecognized RAM error'
+        self.assertEqual(adapter.concise_reason('waiting_RAM',dict(reason=reason,RAM_admission={
+            'host_available_RAM_bytes':-1,'group_process_tree_RSS_bytes':0,
+            'required_group_and_cache_capacity_bytes':800*2**30}),0),reason)
+
+    def test_empty_gpu_actor_list_reports_actual_vram_instead_of_invented_actor(self):
+        reason=str(dict(occupied_GPU_compute_actors=[],GPU_free_MiB=31.5*1024))
+        self.assertEqual(adapter.concise_reason('waiting_GPU',dict(reason=reason),4),
+                         'GPU4 VRAM 여유 31.50GiB | 필요 40.00GiB')
 
     def test_running_native_console_keeps_exact_original_bytes_and_no_new_header(self):
         value=copy.deepcopy(self.value)

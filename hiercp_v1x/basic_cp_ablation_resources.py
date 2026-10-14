@@ -22,6 +22,7 @@ import sys
 import time
 
 import psutil
+from .basic_cp_gpu_admission import GPUAdmissionUnavailable, GPU_GUARD_FILE
 
 FORMAT = 'basic_cp_one_factor_experiment_request_v1'
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +96,10 @@ def validate_request(value):
             or 'hiercp_v1x/basic_cp_ablation_resources.py' not in code
             or not _checksum(value['bank_sha256'])):
         raise ValueError('Original Basic bank and every private runtime guard require exact SHA admissions')
+    if 'GPU_admission_retry_version' in value and (
+            type(value['GPU_admission_retry_version']) is not int
+            or value['GPU_admission_retry_version'] != 1 or GPU_GUARD_FILE not in code):
+        raise ValueError('GPU admission retry version1 requires its exact typed protocol SHA')
     lifetime = value['host_lifetime']
     if (not isinstance(lifetime, dict) or set(lifetime) != {'path', 'sha256', 'expires_at_unix'}
             or not isinstance(lifetime['path'], str) or not Path(lifetime['path']).is_absolute()
@@ -731,6 +736,27 @@ class BasicLease:
         except psutil.NoSuchProcess:
             return dict(pid=pid, status='NoSuchProcess', previous_admitted_identity=copy.deepcopy(previous))
 
+    def _live_outside_cuda_actor(self, pid, uuid, tree):
+        """Confirm live outside identity twice; never turn identity faults into waits."""
+        try:
+            process = psutil.Process(pid)
+            metadata = _metadata(process)
+            command = process.cmdline()
+            state = process.status()
+            final_metadata = _metadata(process)
+            final_command = process.cmdline()
+            if final_metadata != metadata:
+                raise RuntimeError('Outside CUDA PID/birth/UID changed during admission observation')
+            if state in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD) or _kernel_exiting(process):
+                return None
+            if not command or final_command != command:
+                raise RuntimeError('Live outside CUDA argv did not remain exact during admission observation')
+            return dict(metadata, command=command, status=state, GPU_UUID=uuid,
+                        physical_GPU=self.request['gpu'], fresh_tree_PIDs=sorted(tree),
+                        admitted=False, processes_signaled=False, observed_at=time.time())
+        except psutil.NoSuchProcess:
+            return None
+
     def _gpu(self, tree, *, idle):
         value = _query(['nvidia-smi', '--id=' + str(self.request['gpu']),
             '--query-gpu=index,uuid,name,memory.total,memory.free,mig.mode.current',
@@ -739,8 +765,7 @@ class BasicLease:
         if (len(row) != 6 or row[0] != str(self.request['gpu']) or row[1] != self.request['gpu_uuid']
                 or row[5] not in ('N/A', 'Disabled', '[N/A]') or not math.isfinite(float(row[3]))
                 or float(row[3]) != self.request['GPU_memory_total_MiB']
-                or not math.isfinite(float(row[4]))
-                or idle and float(row[4]) < 40 * 1024):
+                or not math.isfinite(float(row[4]))):
             raise RuntimeError('Exact full GPU UUID/MIG/40GiB initial free admission failed')
         command = ['nvidia-smi', '--query-compute-apps=pid,gpu_uuid', '--format=csv,noheader,nounits']
         pending_terminal = {}
@@ -769,6 +794,8 @@ class BasicLease:
                         process = self._descendant(tree[pid])
                     if process is not None:
                         if idle:
+                            if float(row[4]) < 40 * 1024:
+                                raise RuntimeError('Exact full GPU UUID/MIG/40GiB initial free admission failed')
                             raise RuntimeError('Target Basic GPU is occupied by a non-admitted CUDA actor')
                         if process.cpu_affinity() != self.request['cpu_affinity']:
                             raise RuntimeError('Exact Basic CUDA descendant changed six-CPU affinity')
@@ -777,8 +804,15 @@ class BasicLease:
                     tree.pop(pid, None)
                 terminal = self._terminal_cuda_actor(pid)
                 if terminal is None:
-                    raise RuntimeError('Target Basic GPU is occupied by a non-admitted CUDA actor: '
-                        + json.dumps(dict(pid=pid, GPU_UUID=uuid, fresh_tree_PIDs=sorted(tree)), sort_keys=True))
+                    live = self._live_outside_cuda_actor(pid, uuid, tree)
+                    if live is not None:
+                        if self.request.get('GPU_admission_retry_version') == 1:
+                            raise GPUAdmissionUnavailable(live)
+                        raise RuntimeError('Target Basic GPU is occupied by a non-admitted CUDA actor: '
+                            + json.dumps(live, sort_keys=True))
+                    terminal = self._terminal_cuda_actor(pid)
+                    if terminal is None:
+                        raise RuntimeError('Outside CUDA exit observation has not reached actual terminal release')
                 pending_terminal[pid] = terminal
                 retry = True
             for pid in list(pending_terminal):
@@ -794,6 +828,8 @@ class BasicLease:
                 raise RuntimeError('Target Basic GPU stale CUDA row did not clear during bounded verification: '
                     + json.dumps(pending_terminal, sort_keys=True))
             time.sleep(.05)
+        if idle and float(row[4]) < 40 * 1024:
+            raise RuntimeError('Exact full GPU UUID/MIG/40GiB initial free admission failed')
         return dict(GPU_name=row[2], GPU_UUID=row[1], GPU_total_MiB=float(row[3]),
             GPU_free_MiB=float(row[4]), MIG=row[5], own_GPU_compute_PIDs=own_pids,
             naturally_released_GPU_actor_observations=copy.deepcopy(self._cuda_observations))

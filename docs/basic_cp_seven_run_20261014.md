@@ -139,7 +139,7 @@ native와 공유24worker 모두 기존300ms CPU 재관측 및384/800GiB 계약�
 실제 빈 GPU를 기다린 뒤 해당 실험의 whole latest로 재개하며 다른 작업은
 종료하지 않는다. 새 namespace의 code/request SHA와 원래 bank를 고정한다.
 후보 준비 이후 preflight·CUDA DEBUG·train 직전에도 동일 lease로 다시
-실제 GPU release를 기다린다. 학습 도중 재시도나 중복 controller는 만들지 않는다.
+실제 GPU release를 기다린다. 당시 export는 학습 도중 재시도를 지원하지 않았다.
 
 `/var/tmp` 여유는 약9.57GiB이므로7개 full latest/BEST 쌍(약10.68GiB)을
 보존할 수 없다. 별도8GiB/최소 여유1GiB cache에 각 arm의 **원본 full
@@ -206,7 +206,35 @@ GPU1/6는 완료59/101 epoch로 학습 중이며 GPU0/2/3/4는 다른 UID의 CUD
 보존기는 receipt 목록을 읽은 뒤 source bank가 완료될 수 있으므로 snapshot
 시작 시점의 complete 상태를 고정한다. 부분 목록은 완료로 승격하지 않고
 다음 snapshot에서 실제642개를 다시 검사한다. 이 보존기 수정은 CPU8개,
-뷰어 adapter는18개 검사로 검증했으며 live 학습 export를 수정하지 않는다.
+뷰어 adapter는22개 검사로 검증했으며 live 학습 export를 수정하지 않는다.
+대기 사유는 실제 GPU 점유 PID 또는 RAM 측정값으로 짧게 표시하고 전체 원문은
+JSON의 waiting_reason_detail에 보존한다. native 학습 콘솔의 출력은 바꾸지 않는다.
+
+09:23/09:24 KST에 GPU2/3은 대기 검사가 통과한 직후 다른 CUDA 작업이
+다시 들어와 actor 생성 전/시작 검사가 실패했다. whole latest는 각각50/42
+epoch 그대로 보존됐다. 이 오류는 실제 CUDA 점유이며 NoSuchProcess는
+이미 종료된 controller를 나중에 관측한 결과다. 다른 계정의 작업은 종료하지 않는다.
+새 export는 GPU_admission_retry_version=1과 전용 코드 SHA를 명시한다.
+실제 외부 CUDA actor의 PID·birth·UID·argv만 typed 대기로 구분한다.
+native finally 이후의 actor/stage/bank receipt와 종료 코드75를 모두 확인하고,
+새로 태어난 worker까지 자연 종료한 뒤에만 whole latest에서 다시 시작한다.
+일시 점유가 사라지고 같은 native actor가 계속 학습하는 경우 RUNNING으로
+복귀한다. 다른 오류는 계속 실패한다. 부분 DEBUG는 보존하고 새 attempt
+폴더에서 검사한다. 이 프로토콜을 포함한 CPU 회귀230개가 통과했다.
+
+중단된 후보 생성의 NPZ/receipt는 기존 경로에서 수정하지 않는다. 전용
+interrupted_candidate_recovery_revision=1 snapshot이 실제 종료된24 worker와
+원본128·256·nested prefix SHA를 바탕으로 전체642×3 publication을 분류한다.
+검증된 파일은 byte 그대로 재사용하고, 개별 기록된 미완성·미공개 항목은
+전체 source를 다시 생성한다. 검증 완료 파일이 이후 바뀌거나 원본 계약이
+어긋나면 실패한다. 새 publication은 fsync 후 원자적으로 승격한다.
+후보 복구와 관련 CPU DEBUG 검사31개가 통과했다.
+
+기존7개 불변 ledger를 한꺼번에 새로 등록해야 정확한 전체 RSS 계산을
+유지할 수 있다. 직접 생성한 정확한 task PID만 인계 proof에 기록하고,
+native의 다음 epoch/LR 헤더 이후·OnlineCP 종료 표시 이전에 SIGINT하며
+latest와 BEST의 전체 logger·optimizer·scaler를 재검증한다. 실제 적용·재개
+증거는 적용 후 추가하며, 준비된 수정과 실제 실행을 구분한다.
 
 ## 작업 완료 체크리스트
 
