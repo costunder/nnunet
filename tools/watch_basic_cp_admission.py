@@ -64,6 +64,29 @@ def concise_reason(phase, state, gpu):
     return reason
 
 
+def candidate_progress_reason(path, requested_count):
+    """Show the active staged bank without replacing the requested-bank counters."""
+    try:
+        progress = json.loads(Path(path).read_bytes())
+    except FileNotFoundError:
+        return '후보 준비 진행 정보 대기: generation_progress.json 없음', None
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        return '후보 준비 진행 정보 해석 오류: ' + type(error).__name__, None
+    if not isinstance(progress, dict):
+        return '후보 준비 진행 정보 오류: JSON 객체가 아님', progress
+    active = progress.get('active_candidate_count')
+    prefixes = progress.get('prefix_completed')
+    if (type(active) is not int or active not in (512, 1024, 2048)
+            or type(requested_count) is not int or requested_count not in (512, 1024, 2048)
+            or progress.get('source_total') != 642 or not isinstance(prefixes, dict)
+            or any(type(prefixes.get(str(count))) is not int
+                   or not 0 <= prefixes[str(count)] <= 642 for count in (active, requested_count))):
+        return '후보 준비 진행 정보 오류: 실제 단계·642 source·prefix 진행값 확인 필요', progress
+    return (str(active) + ' 후보 준비 ' + str(prefixes[str(active)]) + '/642 source; '
+            + str(requested_count) + ' 후보 준비 ' + str(prefixes[str(requested_count)])
+            + '/642 source; nnU-Net 시작 전'), progress
+
+
 def load_pinned_viewers(code_root):
     """Load only the explicitly bound live export, without rewriting its files."""
     code_root = Path(code_root).resolve(strict=True)
@@ -90,11 +113,20 @@ def build_entry(expanded, viewer):
             value = dict(value, stage='scoring', stage_label=ADMISSION_LABELS[phase],
                          waiting_reason=concise_reason(phase, state, value['physical_GPU']),
                          waiting_reason_detail=state.get('reason'))
+        elif phase == 'candidate_bank' and value['physical_GPU'] == 5:
+            request = viewer.read(Path(root) / 'request.json')
+            if not request or not request.get('shared_banks'):
+                reason, detail = '후보 준비 진행 정보 오류: shared_banks 요청 경로 없음', None
+            else:
+                reason, detail = candidate_progress_reason(
+                    Path(request['shared_banks']) / 'generation_progress.json',
+                    request.get('candidates_per_source'))
+            value = dict(value, waiting_reason=reason, waiting_reason_detail=detail)
         return value
 
     def preparation_model(value):
         model = expanded.preparation_model(value)
-        if value['controller_stage'] in ADMISSION_LABELS:
+        if 'waiting_reason' in value:
             model['waiting_reason'] = value.get('waiting_reason')
             model['controller']['stage'] = value['controller_stage']
             model['native'] = dict(model.get('native') or {},

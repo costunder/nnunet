@@ -104,6 +104,44 @@ class AdmissionViewerTests(unittest.TestCase):
         self.assertEqual(adapter.concise_reason('waiting_GPU',dict(reason=reason),4),
                          'GPU4 VRAM 여유 31.50GiB | 필요 40.00GiB')
 
+    def test_active1024_progress_is_visible_while_final2048_counters_stay_unchanged(self):
+        banks=self.root/'banks';banks.mkdir()
+        progress=dict(active_candidate_count=1024,source_total=642,
+                      prefix_completed={'512':642,'1024':219,'2048':0})
+        (banks/'generation_progress.json').write_text(json.dumps(progress))
+        value=copy.deepcopy(self.value)
+        value.update(physical_GPU=5,GPU='5 / Basic CP candidates2048',arm='candidates2048',stage='scoring',
+                     controller_stage='candidate_bank',controller_status='RUNNING',status='RUNNING',
+                     sources_done=0,candidates_done=0,candidates_total=642*2048,
+                     stage_label='CP 위치 후보 2048개 준비')
+        request=dict(shared_banks=str(banks),candidates_per_source=2048)
+        for flag in('--once','--json'):
+            stream=io.StringIO()
+            with(patch.object(expanded,'expanded_snapshot',return_value=copy.deepcopy(value)),
+                 patch.object(viewer,'read',return_value=request),patch.object(viewer.sys,'stdout',stream)):
+                self.entry(['--root',str(self.root),flag])
+            shown=stream.getvalue()
+            self.assertIn('1024 후보 준비 219/642 source; 2048 후보 준비 0/642 source; nnU-Net 시작 전',shown)
+            if flag=='--once':self.assertEqual(tuple(line.partition(': ')[0]for line in shown.splitlines()),ui.CP_ROW_LABELS)
+            else:
+                actual=json.loads(shown)
+                self.assertEqual(actual['sources_done'],0);self.assertEqual(actual['candidates_done'],0)
+                self.assertEqual(actual['candidates_total'],642*2048)
+                self.assertEqual(actual['waiting_reason_detail'],progress)
+
+    def test_missing_malformed_or_unknown_candidate_progress_is_explicit_without_fake_zero(self):
+        path=self.root/'generation_progress.json'
+        reason,detail=adapter.candidate_progress_reason(path,2048)
+        self.assertIn('없음',reason);self.assertIsNone(detail);self.assertNotIn('0/642',reason)
+        path.write_text('{"active_candidate_count":')
+        reason,detail=adapter.candidate_progress_reason(path,2048)
+        self.assertIn('해석 오류',reason);self.assertIsNone(detail);self.assertNotIn('0/642',reason)
+        for progress in (dict(active_candidate_count=1024,source_total=642,prefix_completed={'2048':0}),
+                         dict(active_candidate_count=1024,source_total=642,prefix_completed={'1024':True,'2048':0}),
+                         dict(active_candidate_count=1024,source_total=642,prefix_completed={'1024':643,'2048':0})):
+            path.write_text(json.dumps(progress));reason,detail=adapter.candidate_progress_reason(path,2048)
+            self.assertIn('확인 필요',reason);self.assertEqual(detail,progress);self.assertNotIn('0/642',reason)
+
     def test_running_native_console_keeps_exact_original_bytes_and_no_new_header(self):
         value=copy.deepcopy(self.value)
         value.update(stage='nnunet_training',controller_stage='train',stage_log=str(self.log),status='RUNNING')
