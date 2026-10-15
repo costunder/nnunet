@@ -23,6 +23,7 @@ import psutil
 GIB=2**30
 UID=41833
 FORMAT='basic_cp_single_parent_allocation_v1'
+DIRECT_MODE='direct_idle_MIG_same_parent'
 ARMS=('multi5','multi7','multi10','candidates512','candidates1024','candidates2048')
 EPOCHS={'multi5':130,'multi7':181,'multi10':115,'candidates512':111,'candidates1024':80,'candidates2048':46}
 _HASHED={}
@@ -94,6 +95,20 @@ def _visible(value,inventory):
     return[index.get(x,x)for x in tokens]
 
 
+def cgroup_identity(value):return {'path':value['path'],'limit':value['limit']}
+
+
+def observe_holder(receipt):
+    """Keep the direct execution holder separate from its host-lifetime PBS shell."""
+    holder=exact_actor(receipt['holder_identity']);memory=_memory_cgroup(holder.pid)
+    observation=dict(identity=identity(holder),environment=holder.environ(),CPU_affinity=holder.cpu_affinity(),
+        memory_limit_bytes=memory['limit'],memory_cgroup=cgroup_identity(memory))
+    if receipt.get('mode')==DIRECT_MODE:
+        host=exact_actor(receipt['host_allocation_process'])
+        observation['host_allocation_holder']=dict(identity=identity(host),environment=host.environ())
+    return holder,memory,observation
+
+
 def duration(value):
     require(isinstance(value,str)and re.fullmatch(r'\d+:\d{2}:\d{2}',value),'Actual PBS elapsed/walltime required')
     hours,minutes,seconds=map(int,value.split(':'))
@@ -130,34 +145,53 @@ def validate_allocation(receipt,job,holder,devices,*,now_monotonic,node_boot_id,
     require(receipt.get('format')==FORMAT and receipt.get('UID')==UID
         and receipt.get('owner')=='aicompetition06'and isinstance(receipt.get('node'),str),
         'Explicit same-owner allocation receipt required')
-    require(receipt.get('mode')in('full_GPU_shared6','six_MIG_same_parent'),
-        'Full GPU or six separately owned MIG instances required')
+    require(receipt.get('mode')in('full_GPU_shared6','six_MIG_same_parent',DIRECT_MODE),
+        'Explicit allocated or previously authorized direct execution mode required')
     selected=receipt.get('execution_UUID_by_arm',{})
     require(set(selected)==set(ARMS)and all(isinstance(v,str)for v in selected.values()),
         'All six unfinished experiments need explicit execution UUIDs')
     parent=receipt.get('physical_parent_GPU_UUID');mode=receipt['mode'];assigned=set(selected.values())
     require(isinstance(parent,str)and parent.startswith('GPU-')and
         ((mode=='full_GPU_shared6'and assigned=={parent})or
-         (mode=='six_MIG_same_parent'and len(assigned)==6 and all(v.startswith('MIG-')for v in assigned))),
+         (mode in('six_MIG_same_parent',DIRECT_MODE)and len(assigned)==6 and all(v.startswith('MIG-')for v in assigned))),
         'One parent full GPU or six distinct MIG UUIDs required')
     require(receipt.get('job_id')==job.get('job_id')and job.get('job_state')=='R'
         and job.get('Job_Owner','').split('@')[0]=='aicompetition06'
         and job.get('exec_host')and all(x.split('/')[0]==receipt['node']for x in job['exec_host'].split('+')),
         'Actual own running same-host PBS allocation required')
     resources=job['Resource_List']
-    require(int(resources.get('ngpus',0))==(1 if mode=='full_GPU_shared6'else 6)
-        and int(resources.get('ncpus',0))>=48,'Actual allocation must provide the requested GPU(s) and48CPUs')
+    if mode!=DIRECT_MODE:
+        require(int(resources.get('ngpus',0))==(1 if mode=='full_GPU_shared6'else 6)
+            and int(resources.get('ncpus',0))>=48,'Actual allocation must provide the requested GPU(s) and48CPUs')
     validate_lifetime(receipt,job,now_monotonic=now_monotonic,node_boot_id=node_boot_id,
         query_started_monotonic=query_started_monotonic)
     cpus=receipt.get('CPU_affinity')
     require(isinstance(cpus,list)and len(cpus)>=48 and len(set(cpus))==len(cpus)
         and holder['identity'].get('UID')==UID
-        and set(cpus)<=set(holder['CPU_affinity'])and holder['identity']==receipt['holder_identity']
-        and holder['environment'].get('PBS_JOBID')==receipt['job_id'],
-        'Original own allocation holder and48 allowed CPUs required')
-    observed=holder['environment'].get('CUDA_VISIBLE_DEVICES')
-    require(set(_visible(observed,devices))==assigned,'Unmodified scheduler visibility does not authorize the execution devices')
+        and set(cpus)<=set(holder['CPU_affinity'])and holder['identity']==receipt['holder_identity'],
+        'Original own execution holder and48 actually allowed CPUs required')
+    if mode==DIRECT_MODE:
+        require(receipt.get('PBS_GPU_owned_reservation')is False and receipt.get('PBS_CPU_owned_reservation')is False
+            and receipt.get('PBS_job_role')=='host_lifetime_only'
+            and receipt.get('explicit_existing_direct_execution_requested')is True,
+            'Direct execution cannot claim PBS GPU or CPU ownership')
+        host=holder.get('host_allocation_holder',{})
+        require(host.get('identity')==receipt.get('host_allocation_process')
+            and host.get('identity',{}).get('UID')==UID
+            and host.get('environment',{}).get('PBS_JOBID')==receipt['job_id'],
+            'Separate exact own running host-lifetime shell required for direct execution')
+        require(holder.get('memory_cgroup')==receipt.get('direct_launcher_cgroup')
+            and set(receipt.get('direct_launcher_cgroup',{}))=={'path','limit'},
+            'Actual direct launcher cgroup and inherited limit must remain unchanged')
+    else:
+        require(holder['environment'].get('PBS_JOBID')==receipt['job_id'],
+            'Original owned PBS execution holder required')
+        observed=holder['environment'].get('CUDA_VISIBLE_DEVICES')
+        require(set(_visible(observed,devices))==assigned,'Unmodified scheduler visibility does not authorize the execution devices')
     require(holder['memory_limit_bytes']>=208*GIB,'Allocation cgroup cannot reserve six32GiB native trees plus16GiB auxiliary')
+    if mode!= 'full_GPU_shared6':
+        require(len({devices[token]['GI']for token in assigned if token in devices})==6,
+            'Six independent MIG memory partitions required; compute instances cannot double-charge one shared GI')
     for token in assigned:
         require(token in devices and devices[token]['parent_UUID']==parent,
             'Assigned execution devices must independently map to one physical parent')
@@ -308,6 +342,7 @@ class Lease:
         required={'tools/run_basic_cp_single_parent.py','hiercp_v1x/basic_cp_single_parent_resources.py',
             'custom_trainers/nnUNetTrainer_BasicCPExpanded.py','custom_trainers/nnUNetTrainer_BasicCPMultiNJoint.py',
             'custom_trainers/nnUNetTrainer_BasicCPAblations.py','custom_trainers/nnUNetTrainer_OnlinePairedCP.py'}
+        if self.receipt.get('mode')==DIRECT_MODE:required.add('hiercp_v1x/basic_cp_direct_MIG_access.py')
         require(required<=set(cohort['canonical_code']['files_sha256']),
             'One canonical code manifest must bind the actual runner, guards and scientific trainers')
         actual=subprocess.check_output(['git','-C',str(self.canonical),'rev-parse','HEAD'],text=True,timeout=10).strip()
@@ -341,16 +376,17 @@ class Lease:
         require(os.getuid()==UID and socket.gethostname().split('.')[0]==self.receipt['node'],
             'Actual native owner or host changed')
         for name,value in self.files.items():require(signature(exact(name))==value,'Admitted canonical/runtime source changed: '+name)
-        holder=exact_actor(self.receipt['holder_identity']);mem=_memory_cgroup(holder.pid)
+        holder,mem,holder_observation=observe_holder(self.receipt)
         own_cgroup=_memory_cgroup(os.getpid())
-        require(mem['path']==own_cgroup['path']and self.receipt['job_id']in mem['path'],
-            'Native process is outside its actual owned allocation cgroup')
+        direct=self.receipt.get('mode')==DIRECT_MODE
+        require(cgroup_identity(mem)==cgroup_identity(own_cgroup)
+            and(direct or self.receipt['job_id']in mem['path']),
+            'Native process moved outside its unchanged admitted execution cgroup')
         observation=actual_PBS(self.cohort,self.receipt,self.actors);document=json.loads(observation['raw'])
         require(set(document['Jobs'])=={self.receipt['job_id']},'Exact own current PBS job required')
         job=dict(document['Jobs'][self.receipt['job_id']],job_id=self.receipt['job_id'])
         devices=nvml_devices(self.receipt['execution_UUID_by_arm'].values())
-        selected=validate_allocation(self.receipt,job,dict(identity=identity(holder),environment=holder.environ(),
-            CPU_affinity=holder.cpu_affinity(),memory_limit_bytes=mem['limit']),devices,
+        selected=validate_allocation(self.receipt,job,holder_observation,devices,
             now_monotonic=time.monotonic(),node_boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
             query_started_monotonic=observation['query_started_monotonic'])
         expected_UUID=self.receipt['execution_UUID_by_arm'][self.arm]
@@ -371,7 +407,8 @@ class Lease:
             for child in tree.values():
                 try:
                     require(child.uids().real==UID and set(child.cpu_affinity())<=set(expected)
-                        and _memory_cgroup(child.pid)['path']==mem['path'],'Foreign UID/CPU/cgroup appeared in native tree')
+                        and cgroup_identity(_memory_cgroup(child.pid))==cgroup_identity(mem),
+                        'Foreign UID/CPU/cgroup appeared in native tree')
                     native_RSS[arm]+=child.memory_info().rss;all_PIDs.add(child.pid)
                 except psutil.NoSuchProcess:continue
             trees[arm]=tree
@@ -382,6 +419,28 @@ class Lease:
                 try:owners[pid]=dict(arm=arm,UID=p.uids().real)
                 except psutil.NoSuchProcess:continue
         validate_execution_actors(self.receipt,devices,owners)
+        if direct:
+            from .basic_cp_direct_MIG_access import observe_direct_memory
+            cohort_PIDs={holder.pid}
+            for process in holder.children(recursive=True):
+                try:
+                    require(process.uids().real==UID and cgroup_identity(_memory_cgroup(process.pid))==cgroup_identity(mem),
+                        'Direct cohort child moved outside the original own cgroup')
+                    cohort_PIDs.add(process.pid)
+                except psutil.NoSuchProcess:continue
+            # Already captured exact native descendants remain charged after a
+            # peer's natural release, even if Linux reparents a finishing worker.
+            cohort_PIDs.update(all_PIDs)
+            memory=observe_direct_memory(native_RSS,cohort_PIDs,
+                native_PIDs_by_arm={arm:set(tree)for arm,tree in trees.items()})
+            native_RSS=memory['native_RSS_by_arm']
+            global_RAM=memory['current_uid_RSS_bytes']+memory['own_tmpfs_allocated_bytes']
+            result=validate_capacity(self.receipt,devices,native_RSS=native_RSS,
+                auxiliary_RSS=memory['cohort_auxiliary_RSS_bytes'],cgroup_usage_bytes=global_RAM)
+            result['actual_global_own_UID_and_tmpfs_RAM_bytes']=result.pop('actual_cgroup_RAM_bytes')
+            result.update(direct_memory=memory,PBS_GPU_owned_reservation=False,PBS_CPU_owned_reservation=False,
+                PBS_job_role='host_lifetime_only',RAM_accounting='own UID RSS plus owned tmpfs allocated blocks')
+            self.last=time.monotonic();return result
         # Cgroup file cache is counted by the total512GiB limit; only actual
         # non-native process RSS belongs to the separate16GiB auxiliary budget.
         auxiliary=0

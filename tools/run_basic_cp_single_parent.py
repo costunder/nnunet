@@ -22,8 +22,8 @@ import traceback
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from hiercp_v1x.basic_cp_single_parent_resources import(ARMS,EPOCHS,GIB,Lease,digest,exact,
-    exact_actor,identity,pin,require,signature,validate_allocation,nvml_devices,_memory_cgroup)
+from hiercp_v1x.basic_cp_single_parent_resources import(ARMS,EPOCHS,GIB,DIRECT_MODE,Lease,digest,exact,
+    exact_actor,identity,pin,require,signature,validate_allocation,nvml_devices,_memory_cgroup,observe_holder,cgroup_identity)
 import psutil
 
 FORMAT='basic_cp_single_parent_continuation_v1'
@@ -274,6 +274,12 @@ def train_arm(cohort,arm,actors):
             native_CPU_affinity=psutil.Process().cpu_affinity(),allocation_CPU_affinity=native['allocation_CPU_affinity'],
             native_RSS_limit_GiB=32,aggregate_RAM_limit_GiB=512,auxiliary_RSS_limit_GiB=16,
             original_hardware_preserved_in_native_metadata=True,allocation_receipt=cohort['allocation'])
+        allocation=lease.receipt
+        model['actual_hardware'].update(execution_mode=allocation['mode'],
+            PBS_GPU_owned_reservation=allocation.get('PBS_GPU_owned_reservation',True),
+            PBS_CPU_owned_reservation=allocation.get('PBS_CPU_owned_reservation',True),
+            PBS_job_role=allocation.get('PBS_job_role','execution_allocation'),
+            host_allocation_process=allocation.get('host_allocation_process',allocation['holder_identity']))
         seal(root/'actual_model.json',model)
         goal=Path(trainer.output_folder);goal.mkdir(parents=True,exist_ok=True)
         latest=copy_exact(row['LATEST'],goal/'checkpoint_latest.pth');copy_exact(row['BEST'],goal/'checkpoint_best.pth')
@@ -372,21 +378,26 @@ def main():
             raise
         return
     require(not registry.exists(),'Existing production dispatch requires inspection; no duplicate launch')
-    holder=exact_actor(allocation['holder_identity']);memory=_memory_cgroup(holder.pid)
+    holder,memory,holder_observation=observe_holder(allocation)
     own_memory=_memory_cgroup(os.getpid())
-    require(os.getuid()==41833 and memory['path']==own_memory['path']and allocation['job_id']in memory['path']
+    direct=allocation.get('mode')==DIRECT_MODE
+    require(os.getuid()==41833 and cgroup_identity(memory)==cgroup_identity(own_memory)
+        and(direct or allocation['job_id']in memory['path'])
         and set(allocation['CPU_affinity'])<=set(psutil.Process().cpu_affinity()),
-        'Production launcher must execute inside the exact own allocation with all48CPUs')
+        'Production launcher must retain its admitted own cgroup and48 allowed CPUs')
     query_started=time.monotonic()
     document=json.loads(subprocess.check_output(['/opt/pbs/bin/qstat','-f','-F','json',allocation['job_id']],text=True,timeout=20))
     require(set(document['Jobs'])=={allocation['job_id']},'Exact own actual PBS job required')
     devices=nvml_devices(allocation['execution_UUID_by_arm'].values())
     validate_allocation(allocation,dict(document['Jobs'][allocation['job_id']],job_id=allocation['job_id']),
-        dict(identity=identity(holder),environment=holder.environ(),CPU_affinity=holder.cpu_affinity(),
-            memory_limit_bytes=memory['limit']),devices,now_monotonic=time.monotonic(),
+        holder_observation,devices,now_monotonic=time.monotonic(),
         node_boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),query_started_monotonic=query_started)
     require(all(not row['compute_actors']for row in devices.values()),
         'Initial owned execution devices must be free of unknown existing CUDA actors')
+    if direct:
+        from hiercp_v1x.basic_cp_direct_MIG_access import observe_direct_memory
+        prospective=observe_direct_memory({arm:0 for arm in ARMS},
+            {holder.pid,*[p.pid for p in holder.children(recursive=True)]})
     processes={};actors={}
     for index,arm in enumerate(ARMS):
         row=cohort['experiments'][arm];output=Path(row['output_root']);output.mkdir(mode=0o700)

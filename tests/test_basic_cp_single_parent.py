@@ -48,6 +48,52 @@ class SingleParentDEBUGTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'one physical parent'):
             self.validate(receipt,job,holder,devices)
 
+    def direct_fixture(self):
+        receipt,job,holder,devices=self.fixture(True)
+        host=copy.deepcopy(holder['identity']);launcher=dict(pid=200,create_time=200,UID=41833,command=['python','direct_launcher'])
+        receipt.update(mode=resource.DIRECT_MODE,PBS_GPU_owned_reservation=False,PBS_CPU_owned_reservation=False,
+            PBS_job_role='host_lifetime_only',explicit_existing_direct_execution_requested=True,
+            holder_identity=launcher,host_allocation_process=host,
+            direct_launcher_cgroup={'path':'/system.slice/ssh.service','limit':2*1024*resource.GIB})
+        holder.update(identity=launcher,environment={},memory_cgroup=copy.deepcopy(receipt['direct_launcher_cgroup']),
+            host_allocation_holder={'identity':host,'environment':{'PBS_JOBID':receipt['job_id']}})
+        job['Resource_List'].update(ngpus=1,ncpus=1)
+        return receipt,job,holder,devices
+
+    def test_prior_authorized_direct_mode_uses_PBS_only_for_host_lifetime(self):
+        receipt,job,holder,devices=self.direct_fixture()
+        self.assertEqual(len(self.validate(receipt,job,holder,devices)),6)
+        self.assertNotIn('PBS_JOBID',holder['environment'])
+        self.assertNotIn('CUDA_VISIBLE_DEVICES',holder['environment'])
+        receipt['mode']='six_MIG_same_parent'
+        with self.assertRaisesRegex(ValueError,'requested GPU'):
+            self.validate(receipt,job,holder,devices)
+
+    def test_direct_mode_never_claims_GPU_CPU_PBS_ownership(self):
+        for field,value in(('PBS_GPU_owned_reservation',True),('PBS_CPU_owned_reservation',True),
+                ('PBS_job_role','execution_allocation'),('explicit_existing_direct_execution_requested',False)):
+            receipt,job,holder,devices=self.direct_fixture();receipt[field]=value
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'cannot claim'):
+                self.validate(receipt,job,holder,devices)
+
+    def test_direct_mode_keeps_actual_shell_lifetime_and_current_cgroup_independent(self):
+        for failure in('host_shell','host_job','launcher_cgroup','cross_parent'):
+            receipt,job,holder,devices=self.direct_fixture()
+            if failure=='host_shell':holder['host_allocation_holder']['identity']={'pid':999,'UID':41833}
+            if failure=='host_job':holder['host_allocation_holder']['environment']['PBS_JOBID']='another'
+            if failure=='launcher_cgroup':holder['memory_cgroup']['path']='/another_cgroup'
+            if failure=='cross_parent':devices[next(iter(devices))]['parent_UUID']='GPU-another'
+            with self.subTest(failure=failure),self.assertRaises(ValueError):
+                self.validate(receipt,job,holder,devices)
+
+    def test_multiple_compute_UUIDs_cannot_count_shared_GI_memory_twice(self):
+        receipt,job,holder,devices=self.direct_fixture()
+        first,second=list(devices)[:2]
+        devices[second]['GI']=devices[first]['GI'];devices[second]['CI']=1
+        receipt['execution_device_observations']=copy.deepcopy(devices)
+        with self.assertRaisesRegex(ValueError,'independent MIG memory partitions'):
+            self.validate(receipt,job,holder,devices)
+
     def test_one_MIG_cannot_be_declared_six_owned_devices(self):
         receipt,job,holder,devices=self.fixture(True)
         token=next(iter(devices));receipt['execution_UUID_by_arm']={a:token for a in resource.ARMS}
