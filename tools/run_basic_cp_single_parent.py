@@ -70,6 +70,38 @@ def copy_exact(reference,target):
     return target
 
 
+def bound_completed_epochs(arm,binding):
+    """The original saved epoch is a floor; an explicit later whole save may resume."""
+    require(arm in EPOCHS and isinstance(binding,dict),'Exact original arm/input binding required')
+    epoch=binding.get('completed_epochs',EPOCHS[arm])
+    require(type(epoch)is int and EPOCHS[arm]<=epoch<250,
+        'Bound completed epoch must be an integer at or after the original save and before250: '+arm)
+    return epoch
+
+
+def validate_bound_resume(arm,row,binding):
+    epoch=bound_completed_epochs(arm,binding)
+    require(type(row.get('completed_epochs'))is int and row['completed_epochs']==epoch,
+        'Cohort completed epoch differs from its pinned input binding: '+arm)
+    for name in('effective_bank','preflight','LATEST','BEST','calibration'):
+        require(row.get(name)==binding.get(name),'Cohort artifact differs from pinned input binding: '+arm+'/'+name)
+    proof=row.get('actual_resume_checkpoint_proof',{})
+    require(type(proof.get('current_epoch'))is int and proof['current_epoch']==epoch
+        and type(proof.get('logging_epochs'))is int and proof['logging_epochs']==epoch,
+        'Actual resume checkpoint proof differs from bound whole completed epoch: '+arm)
+    best=row.get('actual_original_BEST_proof',{})
+    require(type(best.get('current_epoch'))is int and 0<best['current_epoch']<=epoch
+        and best.get('logging_epochs')==best['current_epoch'],
+        'Actual own BEST proof lies outside the bound completed prefix: '+arm)
+    prefix=row.get('completed_log_prefix_proof',{})
+    require(prefix.get('epochs')==epoch and prefix.get('first_epoch')==0 and prefix.get('last_epoch')==epoch-1
+        and prefix.get('CP_attempted')==500*epoch
+        and row.get('raw_original_log')==binding.get('log_prefix')
+        and prefix.get('original_raw_log')==binding.get('log_prefix'),
+        'Completed log prefix differs from the pinned raw log/bound checkpoint epoch: '+arm)
+    return epoch
+
+
 def validate_cohort(value):
     require(value.get('format')==FORMAT and set(value.get('experiments',{}))==set(ARMS),
         'Exactly six unfinished experiments required; completed blend50 is retained separately')
@@ -81,8 +113,12 @@ def validate_cohort(value):
         'Six distinct absolute result folders required')
     require(Path(value['root']).is_relative_to(Path('/dev/shm')),
         'The existing independent archive contract requires actual tmpfs output roots')
+    bindings=read(pin(value['input_bindings'],owner=True))
+    require(isinstance(bindings,dict)and set(bindings)==set(ARMS),
+        'Exactly six SHA-pinned original or saved-resume input bindings required')
     for arm,row in value['experiments'].items():
-        require(row.get('completed_epochs')==EPOCHS[arm]and row.get('physical_batch')==2
+        validate_bound_resume(arm,row,bindings[arm])
+        require(row.get('physical_batch')==2
             and row.get('epochs')==250 and row.get('workers')==4,
             'Actual whole original checkpoint/B2/250epoch/four-worker contract differs: '+arm)
         require(Path(row['output_root']).is_relative_to(Path(value['root'])),'Results must remain in the fresh own cohort')

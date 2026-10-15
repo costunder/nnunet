@@ -1,11 +1,15 @@
 """CPU DEBUG admission tests; no CUDA, PBS or production process is started."""
 import copy
+import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 from types import SimpleNamespace
 import tempfile
+import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from hiercp_v1x import basic_cp_single_parent_resources as resource
 from tools import run_basic_cp_single_parent as runner
@@ -274,6 +278,193 @@ class SingleParentDEBUGTests(unittest.TestCase):
         self.assertIn('trainer.perform_actual_validation(save_probabilities=False)',source)
         self.assertIn("row['effective_bank']",source)
         self.assertEqual(set(resource.ARMS),{'multi5','multi7','multi10','candidates512','candidates1024','candidates2048'})
+
+
+class ProcessLifetimeRaceDEBUGTests(unittest.TestCase):
+    """Reproduce real finishing-worker observations without relaxing live guards."""
+    def worker(self,states=None,**changes):
+        worker=SimpleNamespace(pid=700,create_time=Mock(return_value=10),
+            status=Mock(side_effect=states)if states else Mock(return_value=resource.psutil.STATUS_RUNNING),
+            uids=Mock(return_value=SimpleNamespace(real=resource.UID)),
+            cmdline=Mock(return_value=['CPU_DEBUG_worker']),ppid=Mock(return_value=600),
+            cpu_affinity=Mock(return_value=[1,2]),memory_info=Mock(return_value=SimpleNamespace(rss=4096)))
+        for field,value in changes.items():setattr(worker,field,value)
+        return worker
+
+    def observe(self,worker,*,cgroup=None,released=None,expected=None,validator=None):
+        memory=cgroup or dict(path='/own',limit=512*resource.GIB,usage=4096)
+        if validator is None:
+            validator=lambda value:resource.validate_native_child(value,arm='multi5',expected_CPUs=[1,2],
+                expected_cgroup=dict(path='/own',limit=512*resource.GIB))
+        with patch.object(resource.psutil,'Process',return_value=worker), \
+                patch.object(resource,'_memory_cgroup',return_value=memory):
+            return resource.process_snapshot(worker,expected=expected,validator=validator,
+                released=released,context='CPU_DEBUG finishing worker')
+
+    def test_zombie_or_dead_worker_is_excluded_before_empty_argv_root_cgroup_reads(self):
+        for state in(resource.psutil.STATUS_ZOMBIE,resource.psutil.STATUS_DEAD):
+            worker=self.worker([state]);released=[]
+            self.assertIsNone(self.observe(worker,cgroup={'path':'/','limit':0},released=released))
+            worker.cmdline.assert_not_called();self.assertEqual(released[0]['state'],state)
+
+    def test_worker_becoming_zombie_during_cgroup_read_is_not_a_foreign_live_actor(self):
+        worker=self.worker([resource.psutil.STATUS_RUNNING,resource.psutil.STATUS_ZOMBIE]);released=[]
+        worker.cmdline.return_value=[]
+        self.assertIsNone(self.observe(worker,cgroup={'path':'/','limit':0},released=released))
+        self.assertEqual(released[0]['state'],resource.psutil.STATUS_ZOMBIE)
+
+    def test_terminal_recheck_also_handles_exit_between_postread_and_validation(self):
+        worker=self.worker([resource.psutil.STATUS_RUNNING,resource.psutil.STATUS_RUNNING,resource.psutil.STATUS_ZOMBIE])
+        released=[]
+        self.assertIsNone(self.observe(worker,cgroup={'path':'/','limit':0},released=released))
+        self.assertEqual(released[0]['state'],resource.psutil.STATUS_ZOMBIE)
+
+    def test_ZombieProcess_during_identity_read_requires_fresh_terminal_confirmation(self):
+        worker=self.worker([resource.psutil.STATUS_RUNNING,resource.psutil.STATUS_ZOMBIE])
+        worker.cmdline.side_effect=resource.psutil.ZombieProcess(worker.pid);released=[]
+        self.assertIsNone(self.observe(worker,released=released))
+        self.assertEqual(released[0]['evidence'],'fresh kernel process status')
+        live=self.worker();live.cmdline.side_effect=resource.psutil.ZombieProcess(live.pid)
+        with self.assertRaises(resource.psutil.ZombieProcess):self.observe(live)
+
+    def test_reaped_worker_requires_two_fresh_missing_observations(self):
+        worker=self.worker();released=[]
+        worker.memory_info.side_effect=resource.psutil.NoSuchProcess(worker.pid)
+        with patch.object(resource.psutil,'Process',side_effect=[worker,
+                resource.psutil.NoSuchProcess(worker.pid),resource.psutil.NoSuchProcess(worker.pid)]), \
+                patch.object(resource,'_memory_cgroup',return_value={'path':'/own','limit':512*resource.GIB}):
+            self.assertIsNone(resource.process_snapshot(worker,released=released))
+        self.assertEqual(released[0]['state'],'reaped');self.assertEqual(len(released[0]['evidence']),2)
+
+    def test_worker_reaped_before_initial_starttime_read_is_not_root_enumeration_failure(self):
+        worker=self.worker();worker.create_time.side_effect=resource.psutil.NoSuchProcess(worker.pid);released=[]
+        with patch.object(resource.psutil,'Process',side_effect=resource.psutil.NoSuchProcess(worker.pid))as fresh:
+            self.assertIsNone(resource.process_snapshot(worker,released=released))
+        self.assertEqual(fresh.call_count,2);self.assertEqual(released[0]['state'],'reaped')
+
+    def test_live_UID_CPU_and_cgroup_changes_never_receive_terminal_exemption(self):
+        for failure in('UID','CPU_affinity','cgroup'):
+            worker=self.worker();memory=dict(path='/own',limit=512*resource.GIB);released=[]
+            if failure=='UID':worker.uids.return_value=SimpleNamespace(real=999)
+            if failure=='CPU_affinity':worker.cpu_affinity.return_value=[1,2,99]
+            if failure=='cgroup':memory['path']='/'
+            with self.subTest(failure=failure),self.assertRaisesRegex(ValueError,'"failed": \\["'+failure+'"\\]'):
+                self.observe(worker,cgroup=memory,released=released)
+            self.assertEqual(released,[])
+
+    def test_missing_cgroup_file_for_still_live_worker_is_not_hidden(self):
+        worker=self.worker();released=[]
+        with patch.object(resource.psutil,'Process',return_value=worker), \
+                patch.object(resource,'_memory_cgroup',side_effect=FileNotFoundError('actual cgroup unavailable')):
+            with self.assertRaisesRegex(FileNotFoundError,'actual cgroup unavailable'):
+                resource.process_snapshot(worker,released=released)
+        self.assertEqual(released,[])
+
+    def test_PID_replacement_does_not_inherit_registered_worker_identity(self):
+        worker=self.worker();replacement=self.worker();replacement.create_time.return_value=20;released=[]
+        with patch.object(resource.psutil,'Process',return_value=replacement):
+            self.assertIsNone(resource.process_snapshot(worker,released=released))
+        self.assertEqual(released[0]['state'],'PID_reused');replacement.cmdline.assert_not_called()
+
+    def test_snapshot_metadata_can_be_reused_after_worker_exit_without_new_identity_reads(self):
+        worker=self.worker();value=self.observe(worker)
+        worker.cmdline.side_effect=resource.psutil.ZombieProcess(worker.pid)
+        previous={worker.pid:value['identity']};owner=dict(UID=value['identity']['UID'],identity=value['identity'],PPID=value['PPID'])
+        self.assertEqual(previous[700]['create_time'],10);self.assertEqual(owner['UID'],resource.UID)
+        worker.cmdline.assert_called_once();self.assertEqual(value['RSS_bytes'],4096)
+
+    def test_stale_NVML_is_requeried_only_after_known_actor_terminal_proof(self):
+        receipt={'execution_UUID_by_arm':{'multi5':'MIG-own'}}
+        devices={'MIG-own':{'compute_actors':[{'pid':700}]}};fresh={'MIG-own':{'compute_actors':[]}}
+        known={700:{'pid':700,'create_time':10}};worker=self.worker([resource.psutil.STATUS_ZOMBIE]);released=[]
+        with patch.object(resource.psutil,'Process',return_value=worker),patch.object(resource,'nvml_devices',return_value=fresh)as query:
+            result=resource.refresh_terminal_CUDA_observations(receipt,devices,{},known,released=released)
+        self.assertIs(result,fresh);query.assert_called_once();resource.validate_execution_actors(receipt,result,{})
+        self.assertEqual(released[0]['state'],resource.psutil.STATUS_ZOMBIE)
+
+    def test_live_unknown_or_still_reported_CUDA_actor_remains_rejected(self):
+        receipt={'execution_UUID_by_arm':{'multi5':'MIG-own'}}
+        devices={'MIG-own':{'compute_actors':[{'pid':700}]}};known={700:{'pid':700,'create_time':10}}
+        for registered,state in((known,resource.psutil.STATUS_RUNNING),({},resource.psutil.STATUS_ZOMBIE),
+                (known,resource.psutil.STATUS_ZOMBIE)):
+            worker=self.worker([state])
+            with self.subTest(registered=bool(registered),state=state), \
+                    patch.object(resource.psutil,'Process',return_value=worker), \
+                    patch.object(resource,'nvml_devices',return_value=devices)as query:
+                result=resource.refresh_terminal_CUDA_observations(receipt,devices,{},registered,released=[])
+                with self.assertRaisesRegex(ValueError,'Unknown own or foreign CUDA actor'):
+                    resource.validate_execution_actors(receipt,result,{})
+                self.assertEqual(query.call_count,1 if registered and state==resource.psutil.STATUS_ZOMBIE else 0)
+
+    def test_lease_previous_worker_loop_preserves_full_identity_map_for_CUDA_refresh(self):
+        """Exercise _verify dataflow, including a previous worker after all roots."""
+        receipt,job,holder,devices=SingleParentDEBUGTests().fixture()
+        actors={arm:dict(pid=1000+i,create_time=10+i,UID=resource.UID,command=['CPU_DEBUG_native',arm])
+            for i,arm in enumerate(resource.ARMS)}
+        orphan=dict(pid=777,create_time=77,UID=resource.UID,command=['CPU_DEBUG_previous_worker'])
+        observations={value['pid']:dict(identity=value,PPID=500,CPU_affinity=list(range(i*8,i*8+8)),
+            memory_cgroup={'path':'/123.ECE-util1','limit':512*resource.GIB},RSS_bytes=4096)
+            for i,value in enumerate(actors.values())}
+        observations[777]=dict(identity=orphan,PPID=1,CPU_affinity=list(range(40,48)),
+            memory_cgroup={'path':'/123.ECE-util1','limit':512*resource.GIB},RSS_bytes=4096)
+        processes={pid:SimpleNamespace(pid=pid,children=lambda recursive:[])for pid in observations}
+        lease=resource.Lease.__new__(resource.Lease)
+        lease.receipt=receipt;lease.actors=actors;lease.own=actors['multi5'];lease.arm='multi5';lease.cohort={}
+        lease.files={};lease.previous_trees={'candidates2048':{777:orphan}};lease.last=0
+        memory=dict(path='/123.ECE-util1',limit=512*resource.GIB,usage=8192)
+        def snapshot(process,*,validator=None,**kwargs):
+            value=observations[process.pid]
+            if validator is not None:validator(value)
+            return value
+        class InspectedIdentityMap(Exception):pass
+        def refresh(receipt,devices,owners,known,**kwargs):
+            self.assertEqual(set(known),{777,*[value['pid']for value in actors.values()]})
+            self.assertEqual(known[777],orphan)
+            self.assertEqual(set(owners),set(observations))
+            raise InspectedIdentityMap
+        pbs=dict(raw=json.dumps({'Jobs':{receipt['job_id']:job}}),query_started_monotonic=1000)
+        with patch.object(resource.os,'getuid',return_value=resource.UID,create=True), \
+                patch.object(resource.socket,'gethostname',return_value='test-node'), \
+                patch.object(resource.time,'monotonic',return_value=1000), \
+                patch.object(resource,'observe_holder',return_value=(SimpleNamespace(pid=500),memory,holder)), \
+                patch.object(resource,'_memory_cgroup',return_value=memory), \
+                patch.object(resource,'actual_PBS',return_value=pbs), \
+                patch.object(resource,'nvml_devices',return_value=devices), \
+                patch.object(resource.Path,'read_text',return_value='boot-DEBUG'), \
+                patch.dict(resource.os.environ,{'CUDA_VISIBLE_DEVICES':receipt['execution_UUID_by_arm']['multi5']}), \
+                patch.object(resource,'cuda_execution_UUID'), \
+                patch.object(resource.psutil,'Process',side_effect=lambda pid:processes[pid]), \
+                patch.object(resource,'process_snapshot',side_effect=snapshot), \
+                patch.object(resource,'refresh_terminal_CUDA_observations',side_effect=refresh):
+            with self.assertRaises(InspectedIdentityMap):lease._verify(force=True)
+
+    @unittest.skipUnless(os.name=='posix'and hasattr(os,'getuid')and os.getuid()==resource.UID,
+        'Actual own UID41833 Linux worker-lifetime DEBUG')
+    def test_actual_100_own_workers_exit_naturally_during_resource_snapshots(self):
+        """No signal, CUDA, dataset or production model; each child ends itself."""
+        expected_cgroup=resource.cgroup_identity(resource._memory_cgroup(os.getpid()))
+        expected_CPUs=resource.psutil.Process().cpu_affinity();released=[];terminal=0
+        command=[sys.executable,'-B','-c','import time;time.sleep(0.01)']
+        def validate(value):
+            resource.validate_native_child(value,arm='CPU_DEBUG_natural_worker',
+                expected_CPUs=expected_CPUs,expected_cgroup=expected_cgroup)
+        for batch in range(10):
+            children=[subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)for index in range(10)]
+            try:
+                pending={child.pid:resource.psutil.Process(child.pid)for child in children};deadline=time.monotonic()+15
+                while pending:
+                    self.assertLess(time.monotonic(),deadline,'Bounded CPU DEBUG workers did not finish naturally')
+                    for pid,worker in list(pending.items()):
+                        value=resource.process_snapshot(worker,validator=validate,released=released,
+                            context='actual Linux natural worker DEBUG')
+                        if value is None:pending.pop(pid);terminal+=1
+                    if pending:time.sleep(0.001)
+            finally:
+                # wait() only reaps these exact short-lived children; it never
+                # sends a signal or changes a user/SSH/session process.
+                for child in children:self.assertEqual(child.wait(timeout=15),0)
+        self.assertEqual(terminal,100);self.assertGreaterEqual(len(released),100)
 
 
 if __name__=='__main__':unittest.main()

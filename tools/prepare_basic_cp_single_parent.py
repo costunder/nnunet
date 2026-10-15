@@ -18,7 +18,7 @@ import psutil
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from hiercp_v1x.basic_cp_single_parent_resources import ARMS,EPOCHS,digest,pin,require,signature
-from tools.run_basic_cp_single_parent import seal,FORMAT
+from tools.run_basic_cp_single_parent import seal,FORMAT,bound_completed_epochs
 
 
 def inventory(preprocessed,cases,data_identifier):
@@ -52,6 +52,16 @@ def completed_log_prefix(reference,epochs,target):
     return dict(path=str(target),sha256=digest(target)),dict(record,
         original_raw_log=reference,completed_prefix_bytes=len(prefix),
         original_raw_bytes=source.stat().st_size,raw_log_modified=False)
+
+
+def checkpoint_resume_state(saved,*,epoch,trainer,latest):
+    """Validate an exact whole checkpoint; model/optimizer/scaler proof stays native."""
+    from hiercp_v1x.basic_cp_verified_continuation import _state
+    actual=saved.get('current_epoch')
+    require(type(actual)is int and((actual==epoch)if latest else(0<actual<=epoch)),
+        'Actual latest completed epoch differs from bound resume epoch'if latest
+        else'Own BEST epoch lies outside the bound completed prefix')
+    return _state(saved,epoch if latest else actual,trainer)
 
 
 def historical_reference_inputs(evaluator_root,project,expected_cases):
@@ -127,28 +137,25 @@ def main():
         and(Path(name.decode()).suffix=='.py'or name.decode()=='config/nnunet_result_report_schema_v1.json')}
     experiments={}
     import torch
-    from hiercp_v1x.basic_cp_verified_continuation import _state
     for arm in ARMS:
         old=rows[arm]['native'];path=original_native/(arm+'.json');seal(path,old)
         row=dict(bindings[arm])
+        epoch=bound_completed_epochs(arm,row)
         for name in('effective_bank','preflight','LATEST','BEST','log_prefix','calibration'):pin(row[name])
         raw_log=row['log_prefix']
-        prefix,prefix_proof=completed_log_prefix(raw_log,EPOCHS[arm],prefixes/(arm+'.log'))
+        prefix,prefix_proof=completed_log_prefix(raw_log,epoch,prefixes/(arm+'.log'))
         row.update(log_prefix=prefix,raw_original_log=raw_log,completed_log_prefix_proof=prefix_proof)
         loaded=torch.load(pin(row['LATEST']),map_location='cpu',weights_only=False)
-        require(loaded['current_epoch']==EPOCHS[arm],'Actual latest completed epoch differs: '+arm)
-        resume=_state(loaded,EPOCHS[arm],old['trainer']);del loaded
+        resume=checkpoint_resume_state(loaded,epoch=epoch,trainer=old['trainer'],latest=True);del loaded
         loaded=torch.load(pin(row['BEST']),map_location='cpu',weights_only=False)
-        require(type(loaded['current_epoch'])is int and 0<loaded['current_epoch']<=EPOCHS[arm],
-            'Own BEST epoch lies outside the completed original prefix')
-        best_state=_state(loaded,loaded['current_epoch'],old['trainer']);del loaded
+        best_state=checkpoint_resume_state(loaded,epoch=epoch,trainer=old['trainer'],latest=False);del loaded
         expected=128 if arm.startswith('multi')else int(arm.removeprefix('candidates'))
         effective=json.loads(pin(row['effective_bank']).read_bytes());preflight=json.loads(pin(row['preflight']).read_bytes())
         require(effective['source_entries']==642 and effective['candidate_count']==expected
             and preflight['index_sha256']==row['effective_bank']['sha256']and preflight['arm']==arm
             and len(preflight['entries_sha256'])==642,'Exact effective full642 bank/preflight required')
         experiments[arm]=dict(row,logical_slot=int(rows[arm]['slot']),source_native=dict(path=str(path),sha256=digest(path)),
-            completed_epochs=EPOCHS[arm],physical_batch=2,epochs=250,workers=4,
+            completed_epochs=epoch,physical_batch=2,epochs=250,workers=4,
             output_root=str(root/arm),
             shared_preprocessed_dataset_directory=str(pre),shared_preprocessed_inventory=dict(path=str(inventory_path),sha256=digest(inventory_path)),
             evaluator_root=str(args.evaluator_root),project=str(args.project),

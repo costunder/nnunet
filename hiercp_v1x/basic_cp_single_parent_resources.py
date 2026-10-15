@@ -81,12 +81,71 @@ def exact_actor(expected):
 
 def live_actor(expected):
     """PID reuse is release of the old actor, never permission for its replacement."""
+    try:process=psutil.Process(expected['pid'])
+    except psutil.NoSuchProcess:
+        require(_same_live_process(expected['pid'],expected['create_time'],[],'registered actor')is None,
+            'Live registered actor observation failed')
+        return None
+    observation=process_snapshot(process,expected=expected,resources=False)
+    return None if observation is None else psutil.Process(expected['pid'])
+
+
+def _same_live_process(pid,birth,released,context):
+    """Read fresh kernel state; a stale Process object is not release evidence."""
+    absent=[]
+    for attempt in range(2):
+        try:
+            process=psutil.Process(pid);actual_birth=process.create_time();state=process.status()
+        except psutil.ZombieProcess:
+            # On Linux this exception is itself an observed terminal state.
+            released.append(dict(pid=pid,create_time=birth,state=psutil.STATUS_ZOMBIE,context=context,
+                evidence='fresh psutil terminal-state exception'))
+            return None
+        except psutil.NoSuchProcess:
+            absent.append('fresh Process/status observation '+str(attempt+1));continue
+        if birth is not None and actual_birth!=birth:
+            released.append(dict(pid=pid,create_time=birth,replacement_create_time=actual_birth,
+                state='PID_reused',context=context,evidence='fresh kernel start time changed'))
+            return None
+        if state in(psutil.STATUS_ZOMBIE,psutil.STATUS_DEAD):
+            released.append(dict(pid=pid,create_time=actual_birth,state=state,context=context,
+                evidence='fresh kernel process status'))
+            return None
+        return process
+    released.append(dict(pid=pid,create_time=birth,state='reaped',context=context,
+        evidence=absent))
+    return None
+
+
+def process_snapshot(process,*,expected=None,validator=None,released=None,context='',resources=True):
+    """Validate one known descendant while bracketing reads with kernel lifetime checks.
+
+    A worker exiting during cmdline/cgroup/RSS reads may expose empty argv or
+    the root cgroup. Only a fresh terminal/reaped/PID-reuse observation permits
+    exclusion. Live UID/CPU/cgroup/identity mismatches remain fatal.
+    """
+    if released is None:released=[]
+    try:birth=expected['create_time']if expected is not None else process.create_time()
+    except psutil.NoSuchProcess:
+        require(_same_live_process(process.pid,None,released,context)is None,
+            'Live descendant start-time observation failed')
+        return None
+    current=_same_live_process(process.pid,birth,released,context)
+    if current is None:return None
+    if birth is None:birth=current.create_time()
     try:
-        p=psutil.Process(expected['pid'])
-        if p.create_time()!=expected['create_time']:return None
-        if p.status()in(psutil.STATUS_ZOMBIE,psutil.STATUS_DEAD):return None
-        return exact_actor(expected)
-    except psutil.NoSuchProcess:return None
+        value=dict(identity=identity(current),PPID=current.ppid())
+        if resources:
+            value.update(CPU_affinity=current.cpu_affinity(),
+                memory_cgroup=cgroup_identity(_memory_cgroup(current.pid)),RSS_bytes=current.memory_info().rss)
+        if _same_live_process(current.pid,birth,released,context)is None:return None
+        if expected is not None:require(value['identity']==expected,'Original live actor identity changed')
+        if validator is not None:validator(value)
+        if _same_live_process(current.pid,birth,released,context)is None:return None
+        return value
+    except(psutil.NoSuchProcess,FileNotFoundError,ProcessLookupError,ValueError):
+        if _same_live_process(current.pid,birth,released,context)is None:return None
+        raise
 
 
 def _visible(value,inventory):
@@ -241,6 +300,24 @@ def validate_execution_actors(receipt,devices,owners):
                 'A native actor created CUDA work on another execution device: '+json.dumps(
                     dict(observed_token=token,expected_token=receipt['execution_UUID_by_arm'][owner['arm']],
                         observed_GPU_instance=row.get('GI'),observed_compute_instance=row.get('CI'),actor=actor,owner=owner),sort_keys=True))
+
+
+def refresh_terminal_CUDA_observations(receipt,devices,owners,known,*,released):
+    """A pre-tree NVML snapshot may still contain an exactly known exited actor.
+
+    Only that terminal identity triggers one new execution-handle observation.
+    The caller must still reject every unknown actor in the refreshed result.
+    """
+    stale=[]
+    for row in devices.values():
+        for actor in row['compute_actors']:
+            pid=actor['pid']
+            if pid not in owners and pid in known:
+                expected=known[pid]
+                if _same_live_process(pid,expected['create_time'],released,'known CUDA actor lifetime')is None:
+                    stale.append(pid)
+    if not stale:return devices
+    return nvml_devices(receipt['execution_UUID_by_arm'].values())
 
 
 def validate_native_child(observation,*,arm,expected_CPUs,expected_cgroup):
@@ -441,50 +518,74 @@ class Lease:
         cuda_execution_UUID(expected_UUID)
         self.last_probe.update(own_CUDA_VISIBLE_DEVICES=os.environ.get('CUDA_VISIBLE_DEVICES'),
             own_CUDA_v2_UUID_verified=expected_UUID,phase='native_process_trees')
-        cpus=self.receipt['CPU_affinity'];trees={};native_RSS={};all_PIDs=set()
+        known_actor_identities={value['pid']:value for value in self.actors.values()}
+        for previous in self.previous_trees.values():known_actor_identities.update(previous)
+        cpus=self.receipt['CPU_affinity'];trees={};native_RSS={};all_PIDs=set();released=[]
+        self.last_probe['naturally_released_processes']=released
         for index,arm in enumerate(ARMS):
-            p=live_actor(self.actors[arm]);expected=cpus[index*8:index*8+8]
-            if p is not None:
-                require(p.cpu_affinity()==expected,'Actual native eight-CPU affinity changed')
-                tree={p.pid:p,**{c.pid:c for c in p.children(recursive=True)}}
-            else:
-                tree={}
-                for known in self.previous_trees.get(arm,{}).values():
-                    survivor=live_actor(known)
-                    if survivor is not None:tree[survivor.pid]=survivor
-            native_RSS[arm]=0
+            expected=cpus[index*8:index*8+8];tree={};native_RSS[arm]=0
             self.last_probe['native_children'][arm]=dict(expected_CPU_affinity=expected,
                 expected_cgroup=cgroup_identity(mem),observations=[])
-            for child in tree.values():
+            def validate_child(value):
+                validate_native_child(value,arm=arm,expected_CPUs=expected,expected_cgroup=cgroup_identity(mem))
+            def capture(child,known=None):
+                def validate(value):
+                    validate_child(value)
+                    if known==self.actors[arm]:require(value['CPU_affinity']==expected,'Actual native eight-CPU affinity changed')
+                value=process_snapshot(child,expected=known,validator=validate,released=released,context='native '+arm)
+                if value is not None:
+                    tree[child.pid]=value
+                    self.last_probe['native_children'][arm]['observations'].append(value)
+                return value
+            root=None
+            try:root=capture(psutil.Process(self.actors[arm]['pid']),self.actors[arm])
+            except psutil.NoSuchProcess:
+                require(_same_live_process(self.actors[arm]['pid'],self.actors[arm]['create_time'],released,
+                    'native root '+arm)is None,'Live native root observation failed')
+            if root is not None:
                 try:
-                    actual_child=dict(identity=identity(child),PPID=child.ppid(),CPU_affinity=child.cpu_affinity(),
-                        memory_cgroup=cgroup_identity(_memory_cgroup(child.pid)))
-                    self.last_probe['native_children'][arm]['observations'].append(actual_child)
-                    validate_native_child(actual_child,arm=arm,expected_CPUs=expected,expected_cgroup=cgroup_identity(mem))
-                    native_RSS[arm]+=child.memory_info().rss;all_PIDs.add(child.pid)
-                except psutil.NoSuchProcess:continue
+                    children=psutil.Process(root['identity']['pid']).children(recursive=True)
+                except psutil.NoSuchProcess:
+                    require(_same_live_process(root['identity']['pid'],root['identity']['create_time'],released,
+                        'native child enumeration '+arm)is None,'Live native child enumeration failed')
+                    children=[]
+                for child in children:capture(child)
+            # Retain exact previously observed workers even if a parent exits
+            # and Linux reparents them during this observation.
+            for pid,known_worker_identity in self.previous_trees.get(arm,{}).items():
+                if pid in tree:continue
+                try:capture(psutil.Process(pid),known_worker_identity)
+                except psutil.NoSuchProcess:
+                    require(_same_live_process(pid,known_worker_identity['create_time'],released,
+                        'previous native '+arm)is None,'Live previous native observation failed')
+            native_RSS[arm]=sum(row['RSS_bytes']for row in tree.values());all_PIDs.update(tree)
             trees[arm]=tree
-            self.previous_trees[arm]={pid:identity(value)for pid,value in tree.items()}
+            self.previous_trees[arm]={pid:value['identity']for pid,value in tree.items()}
         owners={}
         for arm,tree in trees.items():
-            for pid,p in tree.items():
-                try:
-                    require(pid not in owners or owners[pid]['arm']==arm,
-                        'Exact native process trees overlap: '+json.dumps(dict(pid=pid,first=owners.get(pid),second_arm=arm,
-                            identity=identity(p),PPID=p.ppid()),sort_keys=True))
-                    owners[pid]=dict(arm=arm,UID=p.uids().real,identity=identity(p),PPID=p.ppid())
-                except psutil.NoSuchProcess:continue
-        self.last_probe.update(phase='CUDA_actor_ownership',owners=owners)
+            for pid,value in tree.items():
+                require(pid not in owners or owners[pid]['arm']==arm,
+                    'Exact native process trees overlap: '+json.dumps(dict(pid=pid,first=owners.get(pid),second_arm=arm,
+                        identity=value['identity'],PPID=value['PPID']),sort_keys=True))
+                owners[pid]=dict(arm=arm,UID=value['identity']['UID'],identity=value['identity'],PPID=value['PPID'])
+        prior_devices=devices
+        devices=refresh_terminal_CUDA_observations(self.receipt,devices,owners,known_actor_identities,released=released)
+        if devices is not prior_devices:
+            self.last_probe['pre_lifetime_refresh_devices']=prior_devices
+            validate_allocation(self.receipt,job,holder_observation,devices,
+                now_monotonic=time.monotonic(),node_boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                query_started_monotonic=observation['query_started_monotonic'])
+        self.last_probe.update(phase='CUDA_actor_ownership',owners=owners,devices=devices)
         validate_execution_actors(self.receipt,devices,owners)
         if direct:
             from .basic_cp_direct_MIG_access import observe_direct_memory
             cohort_PIDs={holder.pid}
             for process in holder.children(recursive=True):
-                try:
-                    require(process.uids().real==UID and cgroup_identity(_memory_cgroup(process.pid))==cgroup_identity(mem),
-                        'Direct cohort child moved outside the original own cgroup')
-                    cohort_PIDs.add(process.pid)
-                except psutil.NoSuchProcess:continue
+                def validate_auxiliary(value):
+                    require(value['identity']['UID']==UID and value['memory_cgroup']==cgroup_identity(mem),
+                        'Direct cohort live child moved outside the original own UID/cgroup: '+json.dumps(value,sort_keys=True))
+                value=process_snapshot(process,validator=validate_auxiliary,released=released,context='direct cohort child')
+                if value is not None:cohort_PIDs.add(process.pid)
             # Already captured exact native descendants remain charged after a
             # peer's natural release, even if Linux reparents a finishing worker.
             cohort_PIDs.update(all_PIDs)
