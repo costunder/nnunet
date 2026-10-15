@@ -43,6 +43,21 @@ source 예약이 실제 자식 종료에 따라 제거된 직후, 부모가 아�
 
 기존 실행 controller·등록표·ledger를 실행 도중 바꾸지 않는다. 실행 중인 자신의 작업은 완료된 epoch와 전체 optimizer·GradScaler·8개 logger를 검증해 보존하고, 이전 controller와 자식이 해제된 뒤 새 공통 등록표에서 재개한다. 물리 GPU에 맞는 UUID·8 CPU 할당·CUDA visibility를 새로 검증한다. 완료된 blend50의 BEST26 증거는 arm을 따라 연결하며, GPU6으로 옮긴 CP 7개 실험이 이미 완료됐다고 처리하지 않는다. UI 2와 native 로그 형식, 전체 250epoch와 평가 설정은 유지한다.
 
+## GPU0·4 후속 학습 순서
+
+사용자가 지정한 순서는 `multi5(GPU0) → candidates2048 완료 후 GPU5`와
+`candidates1024(GPU4) → multi7 완료 후 GPU6`이다. 각 upstream의 전체 250epoch,
+자기 BEST의 26명 평가, 지표·보고서·독립 archive 완료와 실제 actor 해제를 확인한다.
+두 의존성은 독립적으로 처리하며 원래 GPU0·4에서는 자동 재시작하지 않는다.
+현재 보존한 최신 checkpoint는 multi5 116epoch, candidates1024 66epoch이다.
+
+`watch_basic_cp_RAM512_successor_queue.py`가 이 순서를 기존 512GiB 공통 예약과
+동일 UI2 양식으로 관리한다. 전환 때 필요한 기존 자기 학습은 전체 최신 checkpoint,
+optimizer, scaler, 8개 logger를 검증해 보존하고 새 registry에서 이어 간다.
+할당의 실제 종료 시각을 넘겨 새 작업을 시작하지 않으며, 대기 순서는 기존
+`/var/tmp/aicompetition06_basic_cp_seven_resume_1791934200100000000/queue_multi5_on5_candidates1024_on6`
+아래에 보존한다. 대기 등록은 후속 학습·평가 완료를 뜻하지 않는다.
+
 ## 작업 완료 체크리스트
 
 - [ ] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

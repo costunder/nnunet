@@ -113,5 +113,36 @@ class PlacementTests(unittest.TestCase):
             self.requests[6]=dict(copy.deepcopy(original),**mutation);self.write_requests()
             with self.assertRaises(ValueError):group.BasicLease(self.value)
 
+    def test_two_approved_successors_can_transfer_independently_in_fresh_cohorts(self):
+        for first in (False, True):
+            for second in (False, True):
+                with self.subTest(multi5=first, candidates1024=second):
+                    self.configure()
+                    mapping = placement.queue_placement(multi5_released=first,
+                        candidates1024_released=second)
+                    self.receipt.write_text(json.dumps(dict(format=placement.FORMAT,
+                        operation=placement.QUEUE_OPERATION,
+                        physical_GPU_arms={str(g): a for g, a in mapping.items()})))
+                    reference = dict(path=str(self.receipt), sha256=resource.sha(self.receipt))
+                    for gpu, peer in self.requests.items():
+                        peer['arm'] = mapping[gpu]
+                        peer[placement.FIELD] = copy.deepcopy(reference)
+                        self.document['registration'][str(gpu)]['arm'] = mapping[gpu]
+                    self.write_requests()
+                    lease = group.BasicLease(self.value)
+                    self.assertEqual({g: q['arm'] for g, q in lease.registered_requests.items()}, mapping)
+                    self.assertEqual(lease.registered_requests[1]['arm'], 'blend50')
+
+    def test_successor_operation_cannot_move_an_unrelated_arm(self):
+        self.configure()
+        mapping = placement.queue_placement(multi5_released=True)
+        mapping[2], mapping[3] = mapping[3], mapping[2]
+        self.receipt.write_text(json.dumps(dict(format=placement.FORMAT,
+            operation=placement.QUEUE_OPERATION,
+            physical_GPU_arms={str(g): a for g, a in mapping.items()})))
+        self.value[placement.FIELD]['sha256'] = resource.sha(self.receipt)
+        with self.assertRaisesRegex(ValueError, 'approved whole seven-arm'):
+            group.BasicLease(self.value)
+
 
 if __name__=='__main__':unittest.main()

@@ -544,6 +544,13 @@ def admit(manifest_path):
     return manifest, requests
 
 
+def shared_source_request(requests):
+    """Source provenance follows candidates2048, independently of its physical GPU."""
+    rows = [request for request in requests.values() if request.get('arm') == 'candidates2048']
+    require(len(rows) == 1, 'One exact registered candidates2048 source experiment required')
+    return rows[0]
+
+
 def snapshot(cache, manifest, requests, *, unfinished='latest'):
     cache.guard(); originals = None; original = requests['0']['bank']; outcomes = {}; native_banks=[]
     for gpu,q in requests.items():
@@ -615,10 +622,11 @@ def snapshot(cache, manifest, requests, *, unfinished='latest'):
     cache.immutable(original, cache.root/'banks/128/index.json',BANK_SHA)
     for relative,checksum in originals.items():
         cache.immutable(exact(Path(original).parent/relative), cache.root/'banks/128'/relative,checksum)
-    bankroot = Path(requests['5']['shared_banks'])
+    source_request = shared_source_request(requests)
+    bankroot = Path(source_request['shared_banks'])
     for count in (512,1024,2048):
         if (bankroot/str(count)).exists(): copy_bank(cache,bankroot/str(count),count,original,originals,
-            binding=requests['5']['candidate_binding'],binding_sha256=requests['5']['candidate_binding_sha256'])
+            binding=source_request['candidate_binding'],binding_sha256=source_request['candidate_binding_sha256'])
     bank_mapping={}
     for gpu,q,native in native_banks:
         source=Path(native['bank']); count=native['candidates_per_source']; name=str(count)
@@ -631,12 +639,12 @@ def snapshot(cache, manifest, requests, *, unfinished='latest'):
                 'Native bank is not covered by a different same-count index SHA')
         bank_mapping[gpu]=dict(source_index=str(source),source_index_sha256=native['bank_sha256'],
                               durable_index='banks/'+name+'/index.json')
-    if requests['5'].get('prepared256_witness'):
-        prepared=read(exact(requests['5']['prepared256_witness'])); index=exact(prepared['index'])
+    if source_request.get('prepared256_witness'):
+        prepared=read(exact(source_request['prepared256_witness'])); index=exact(prepared['index'])
         from hiercp_v1x.basic_cp_ablation_bank import verify_prepared_bank
-        verify_prepared_bank(prepared,Path(requests['5']['candidate_binding']),requests['5']['candidate_binding_sha256'])
-        copy_bank(cache,index.parent,256,original,originals,binding=requests['5']['candidate_binding'],
-                  binding_sha256=requests['5']['candidate_binding_sha256'],destination_name='prepared256')
+        verify_prepared_bank(prepared,Path(source_request['candidate_binding']),source_request['candidate_binding_sha256'])
+        copy_bank(cache,index.parent,256,original,originals,binding=source_request['candidate_binding'],
+                  binding_sha256=source_request['candidate_binding_sha256'],destination_name='prepared256')
     publish(cache.root/'snapshot.json', dict(format=FORMAT, updated_at_unix=time.time(), outcomes=outcomes,
         expiry_unix=cache.expiry, original_results_overwritten=False, processes_signaled=False,
         CPU_only=True, durable_budget_bytes=8*GIB, required_free_bytes=GIB,

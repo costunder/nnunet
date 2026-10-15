@@ -1,4 +1,4 @@
-"""One explicitly approved physical placement change; scientific arms stay fixed.
+"""Explicitly approved physical placement changes; scientific arms stay fixed.
 
 The original seven-arm mapping remains the default.  A fresh cohort may move
 the waiting Multi7 continuation from physical GPU1 to physical GPU6 only with
@@ -19,6 +19,19 @@ ORIGINAL = {0: 'multi5', 1: 'multi7', 2: 'multi10', 3: 'candidates512',
             4: 'candidates1024', 5: 'candidates2048', 6: 'blend50'}
 APPROVED = dict(ORIGINAL)
 APPROVED.update({1: 'blend50', 6: 'multi7'})
+QUEUE_OPERATION = 'queue_multi5_after_candidates2048_and_candidates1024_after_multi7'
+
+
+def queue_placement(*, multi5_released=False, candidates1024_released=False):
+    """Only the two independently approved successor swaps are permitted."""
+    if type(multi5_released) is not bool or type(candidates1024_released) is not bool:
+        raise ValueError('Actual independent queue-release flags must be booleans')
+    result = dict(APPROVED)
+    if multi5_released:
+        result[0], result[5] = result[5], result[0]
+    if candidates1024_released:
+        result[4], result[6] = result[6], result[4]
+    return result
 
 
 def _checksum(value):
@@ -40,11 +53,16 @@ def admit_placement(request, admit):
         raise ValueError('Physical GPU placement requires its exact shared receipt and code SHA')
     admit(reference['path'], reference['sha256'])
     value = json.loads(Path(reference['path']).read_bytes())
-    expected = dict(format=FORMAT, operation=OPERATION,
-                    physical_GPU_arms={str(gpu): arm for gpu, arm in APPROVED.items()})
-    if value != expected:
-        raise ValueError('Only the approved whole seven-arm GPU1/GPU6 placement permutation is allowed')
-    return dict(APPROVED)
+    admitted = [dict(operation=OPERATION, placement=dict(APPROVED))]
+    admitted.extend(dict(operation=QUEUE_OPERATION, placement=queue_placement(
+        multi5_released=first, candidates1024_released=second))
+        for first in (False, True) for second in (False, True))
+    for candidate in admitted:
+        expected = dict(format=FORMAT, operation=candidate['operation'],
+            physical_GPU_arms={str(gpu): arm for gpu, arm in candidate['placement'].items()})
+        if value == expected:
+            return dict(candidate['placement'])
+    raise ValueError('Only the approved whole seven-arm placement permutations are allowed')
 
 
 def validate_peer_placement(request, peer, placement):

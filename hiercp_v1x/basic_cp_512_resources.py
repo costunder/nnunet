@@ -519,6 +519,15 @@ def _pids_have_cuda(target):
         return False
 
 
+def _source_request(view):
+    """The completed source bank follows its scientific arm after an approved move."""
+    rows = [peer for peer in view.registered_requests.values()
+            if peer.get('arm') == 'candidates2048']
+    if len(rows) != 1:
+        raise ValueError('One exact registered candidates2048 source experiment is required')
+    return rows[0]
+
+
 class _RAM512:
     def __init__(self, request):
         validate_request(request)
@@ -560,11 +569,16 @@ class _RAM512:
                              shared.SHARED_GUARD_FILE, pause.GUARD_FILE):
                 if peer['code_sha256'][filename] != self.request['code_sha256'][filename]:
                     raise ValueError('All seven RAM512 peers require the same exact operational guard code')
-        producer = view.registered_requests[5]
+        producer = _source_request(view)
         if (type(producer.get('shared_bank_workers')) is not int or producer['shared_bank_workers'] != 24
                 or producer.get('shared_bank_CPU_affinity') != SHARED_CPU_AFFINITY
                 or producer.get('shared_bank_RSS_limit_GiB') != 384):
             raise ValueError('Exact full24-worker/64CPU source keeps its original384 declaration')
+        if producer['gpu'] != 5:
+            reference = self.request['RAM512_source_pending_receipt']
+            self._admit(reference['path'], reference['sha256'])
+            if json.loads(Path(reference['path']).read_bytes()).get('source_initially_pending') is not False:
+                raise ValueError('A transferred candidates2048 arm may only reuse a fully completed source bank')
 
     def claim_binding(self):
         view = getattr(self, '_group_view', self)
@@ -640,7 +654,7 @@ class _RAM512:
 
     def source_complete(self):
         view = getattr(self, '_group_view', self)
-        request = view.registered_requests[5]
+        request = _source_request(view)
         banks = Path(request['shared_banks'])
         def validate(value):
             if (value.get('complete') is not True or value.get('full_sources') != 642
@@ -736,7 +750,7 @@ class _RAM512:
             and not resolver.has_cuda(captured))
         source_proof = None
         if source_released:
-            source_path = Path(getattr(self, '_group_view', self).registered_requests[5]['shared_banks']) / 'complete.json'
+            source_path = Path(_source_request(getattr(self, '_group_view', self))['shared_banks']) / 'complete.json'
             source_proof = self._phase_receipt('source_release', dict(
                 format='basic_cp_RAM512_actual_source_release_v1',
                 candidate_counts={'512': 642, '1024': 642, '2048': 642},

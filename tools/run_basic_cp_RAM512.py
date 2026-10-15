@@ -70,6 +70,9 @@ def _lease_for(value):
 
 
 def resource_guard(value, *, idle=False):
+    if 'GPU_queue_deferred_transfer' in value:
+        from hiercp_v1x.basic_cp_GPU_queue_dependencies import reject_native_dispatch
+        reject_native_dispatch(value)
     return _lease_for(value).verify(force=idle, idle=idle)
 
 
@@ -157,6 +160,9 @@ def _provider_command(native, command, label):
 
 def actor(native, command, label, env):
     global _ACTIVE_RESERVATION
+    if 'GPU_queue_deferred_transfer' in native:
+        from hiercp_v1x.basic_cp_GPU_queue_dependencies import reject_native_dispatch
+        reject_native_dispatch(native)
     _admit_execution(native)
     command = _provider_command(native, command, label)
     while True:
@@ -388,6 +394,18 @@ def _carry_complete_pipeline(request):
     return True
 
 
+def _wait_for_queue_transfer(request):
+    if 'GPU_queue_deferred_transfer' not in request:
+        return
+    from hiercp_v1x.basic_cp_GPU_queue_dependencies import wait_for_transfer
+    native = historical.read(Path(request['root'])/'native.json')
+    migration = _migration(native)
+    if migration['state'] != 'TRAINING':
+        raise ValueError('Only incomplete actual training may wait for an approved GPU transfer')
+    wait_for_transfer(request, _lease_for(request), historical.status,
+        completed_epochs=migration.get('completed_epochs'))
+
+
 def _private_run():
     tree = ast.parse(inspect.getsource(historical.run))
     waits = [n for n in ast.walk(tree) if isinstance(n,ast.Expr) and isinstance(n.value,ast.Call)
@@ -425,6 +443,8 @@ def _private_run():
         args=[ast.Name(id='native',ctx=ast.Load())],keywords=[]),body=[metrics[0]],orelse=[])
     body.insert(0,ast.If(test=ast.Call(func=ast.Name(id='_carry_complete_pipeline',ctx=ast.Load()),
         args=[ast.Name(id='request',ctx=ast.Load())],keywords=[]),body=[ast.Return(value=None)],orelse=[]))
+    body.insert(1,ast.Expr(value=ast.Call(func=ast.Name(id='_wait_for_queue_transfer',ctx=ast.Load()),
+        args=[ast.Name(id='request',ctx=ast.Load())],keywords=[])))
     ast.fix_missing_locations(tree)
     exec(compile(tree,str(Path(__file__).resolve()),'exec'),_SCOPE)
     return _SCOPE['run']
@@ -434,6 +454,7 @@ _SCOPE.update(actor=actor, _capture_native_tree=_capture_native_tree,
     _refresh_current_reservation=_refresh_current_reservation, _ARCHIVE=_ARCHIVE,
     _needs_training_stage=_needs_training_stage,_needs_historical_metrics=_needs_historical_metrics,
     _carry_complete_pipeline=_carry_complete_pipeline,_completed_report_for=_completed_report_for,_archive_for=_archive_for)
+_SCOPE['_wait_for_queue_transfer'] = _wait_for_queue_transfer
 run = _private_run()
 _SCOPE.update(run=run)
 main = _SCOPE['main']
