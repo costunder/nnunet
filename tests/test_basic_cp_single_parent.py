@@ -136,6 +136,19 @@ class SingleParentDEBUGTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'unique complete training log'):
                 prepare.completed_log_prefix(dict(path=str(source2),sha256=resource.digest(source2)),2,root/'missing.log')
 
+    def test_failure_before_native_initialization_keeps_actual_console_and_error_stage(self):
+        cohort={'experiments':{'multi5':{'output_root':'/own/multi5','logical_slot':0}},'physical_parent_index':3}
+        with patch.object(runner,'read',return_value={'stage':'prepare','native_substage':'admission',
+                'completed_epochs':130}),patch.object(runner,'publish')as publish:
+            try:raise ValueError('Actual full source SHA differs')
+            except ValueError as error:runner.record_child_failure(cohort,'multi5',error)
+        path,value=publish.call_args.args
+        self.assertEqual(path,Path('/own/multi5/status.json'))
+        self.assertEqual(value['stage'],'train');self.assertEqual(value['status'],'FAILED')
+        self.assertEqual(value['failed_stage'],'admission');self.assertEqual(value['completed_epochs'],130)
+        self.assertIn('Actual full source SHA differs',value['error'])
+        self.assertIn('ValueError',value['traceback'])
+
     def test_native_auxiliary_totalRAM_and_VRAM_limits_are_independent(self):
         for failure in('native','auxiliary','total','VRAM'):
             receipt,job,holder,devices=self.fixture();rss={a:2*resource.GIB for a in resource.ARMS};aux=0;total=20*resource.GIB

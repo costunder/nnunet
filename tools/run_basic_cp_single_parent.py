@@ -44,6 +44,20 @@ def publish(path,value):
     seal(temporary,value);os.replace(temporary,path)
 
 
+def arm_status(cohort,arm,stage,state,**values):
+    row=cohort['experiments'][arm]
+    publish(Path(row['output_root'])/'status.json',dict(format='basic_cp_ablation_full250_status_v1',arm=arm,
+        physical_GPU=cohort['physical_parent_index'],logical_slot=row['logical_slot'],stage=stage,status=state,
+        time=time.time(),epochs=250,checkpoint='checkpoint_best.pth',**values))
+
+
+def record_child_failure(cohort,arm,error):
+    root=Path(cohort['experiments'][arm]['output_root']);prior=read(root/'status.json')
+    arm_status(cohort,arm,'train','FAILED',error=type(error).__name__+': '+str(error),
+        failed_stage=prior.get('failed_stage')or prior.get('native_substage')or prior.get('stage'),
+        completed_epochs=prior.get('completed_epochs'),traceback=traceback.format_exc())
+
+
 def copy_exact(reference,target):
     source=pin(reference);target=Path(target)
     if target.exists():
@@ -206,9 +220,7 @@ def train_arm(cohort,arm,actors):
     trainer=cls(plans,'3d_fullres',0,read(preprocessed/'dataset.json'),torch.device('cuda'))
     active=[trainer]
     def status(stage,state,**values):
-        publish(root/'status.json',dict(format='basic_cp_ablation_full250_status_v1',arm=arm,
-            physical_GPU=cohort['physical_parent_index'],logical_slot=native['logical_slot'],stage=stage,status=state,
-            time=time.time(),epochs=250,checkpoint='checkpoint_best.pth',**values))
+        arm_status(cohort,arm,stage,state,**values)
     try:
         trainer.initialize();train,val=trainer.do_split()
         require(trainer.batch_size==2 and trainer.num_epochs==250 and trainer.num_iterations_per_epoch==250
@@ -272,7 +284,7 @@ def train_arm(cohort,arm,actors):
         require(final.exists()and torch.load(final,map_location='cpu',weights_only=False)['current_epoch']==250,
             'Full250 FINAL is required as training witness')
         lease.verify(force=True);trainer.load_checkpoint(str(goal/'checkpoint_best.pth'))
-        status('best_validation','RUNNING',completed_epochs=250)
+        status('train','RUNNING',completed_epochs=250,native_substage='own_BEST26')
         trainer.perform_actual_validation(save_probabilities=False)
         receipt=best.validate_best_validation_receipt(goal/best.RECEIPT,fold=goal,
             expected_cases=native['split']['outer_val'],bank_sha256=native['bank_sha256'])
@@ -292,7 +304,7 @@ def train_arm(cohort,arm,actors):
         status('complete','COMPLETE',completed_epochs=250,evaluated_cases=26,full_native_training=True,
             full_native_evaluation=True,historical_metrics_complete=True,reports=reports,archive=archive)
     except BaseException as error:
-        status('failed','FAILED',error=type(error).__name__+': '+str(error),traceback=traceback.format_exc())
+        record_child_failure(cohort,arm,error)
         raise
     finally:
         seen=set()
@@ -314,11 +326,15 @@ def main():
     require(root.stat().st_uid==41833 and root.resolve()==root,'Own fresh cohort output root required')
     registry=root/'single_parent_actors.json'
     if args.arm:
-        index=ARMS.index(args.arm);psutil.Process().cpu_affinity(allocation['CPU_affinity'][index*8:index*8+8])
-        deadline=time.monotonic()+120
-        while not registry.exists():
-            require(time.monotonic()<deadline,'Exact actor registry not published within120seconds');time.sleep(.1)
-        train_arm(cohort,args.arm,read(exact(registry,owner=True)))
+        try:
+            index=ARMS.index(args.arm);psutil.Process().cpu_affinity(allocation['CPU_affinity'][index*8:index*8+8])
+            deadline=time.monotonic()+120
+            while not registry.exists():
+                require(time.monotonic()<deadline,'Exact actor registry not published within120seconds');time.sleep(.1)
+            train_arm(cohort,args.arm,read(exact(registry,owner=True)))
+        except BaseException as error:
+            record_child_failure(cohort,args.arm,error)
+            raise
         return
     require(not registry.exists(),'Existing production dispatch requires inspection; no duplicate launch')
     holder=exact_actor(allocation['holder_identity']);memory=_memory_cgroup(holder.pid)
@@ -339,6 +355,8 @@ def main():
     processes={};actors={}
     for index,arm in enumerate(ARMS):
         row=cohort['experiments'][arm];output=Path(row['output_root']);output.mkdir(mode=0o700)
+        arm_status(cohort,arm,'prepare','RUNNING',completed_epochs=row['completed_epochs'],
+            native_substage='admission_and_full_source_verification')
         copy_exact(row['log_prefix'],output/'train.log')
         command=[sys.executable,'-B','-u',str(Path(__file__)), '--cohort',str(args.cohort),
             '--cohort-sha256',args.cohort_sha256,'--arm',arm,'--execute']
