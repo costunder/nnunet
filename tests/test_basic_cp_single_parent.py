@@ -282,6 +282,11 @@ class SingleParentDEBUGTests(unittest.TestCase):
 
 class ProcessLifetimeRaceDEBUGTests(unittest.TestCase):
     """Reproduce real finishing-worker observations without relaxing live guards."""
+    def setUp(self):
+        # Synthetic PID700 must never inspect a real Linux PID with that number.
+        self.kernel_patch=patch.object(resource,'kernel_process_lifetime',return_value=None)
+        self.kernel_observation=self.kernel_patch.start();self.addCleanup(self.kernel_patch.stop)
+
     def worker(self,states=None,**changes):
         worker=SimpleNamespace(pid=700,create_time=Mock(return_value=10),
             status=Mock(side_effect=states)if states else Mock(return_value=resource.psutil.STATUS_RUNNING),
@@ -312,6 +317,56 @@ class ProcessLifetimeRaceDEBUGTests(unittest.TestCase):
         worker.cmdline.return_value=[]
         self.assertIsNone(self.observe(worker,cgroup={'path':'/','limit':0},released=released))
         self.assertEqual(released[0]['state'],resource.psutil.STATUS_ZOMBIE)
+
+    def kernel_stat(self,*,flags=4,start=1000,state='R'):
+        fields=['0']*20;fields[0]=state;fields[6]=str(flags);fields[19]=str(start)
+        return '700 (worker ) comm with spaces)) '+' '.join(fields)
+
+    def test_Linux_stat_parser_binds_PID_flags_and_startticks_with_parentheses_in_comm(self):
+        value=resource.parse_kernel_process_stat(self.kernel_stat(),700)
+        self.assertEqual(value,dict(pid=700,state='R',flags=4,starttime_ticks=1000))
+        with self.assertRaisesRegex(ValueError,'PID/comm'):resource.parse_kernel_process_stat(self.kernel_stat(),701)
+        with self.assertRaises(ValueError):resource.parse_kernel_process_stat('700 (incomplete) R 0',700)
+
+    def test_PF_EXITING_same_birth_is_terminal_even_with_running_state_empty_argv_root_cgroup(self):
+        self.kernel_observation.return_value=dict(pid=700,state='R',flags=4,starttime_ticks=1000,expected_starttime_ticks=1000)
+        worker=self.worker();worker.cmdline.return_value=[];released=[]
+        self.assertIsNone(self.observe(worker,cgroup={'path':'/','limit':0},released=released))
+        worker.cmdline.assert_not_called();self.assertEqual(released[0]['state'],'PF_EXITING')
+        self.assertEqual(released[0]['kernel_stat']['flags']&4,4)
+
+    def test_PF_EXITING_after_live_metadata_reads_requires_exact_startticks(self):
+        live=dict(pid=700,state='R',flags=0,starttime_ticks=1000,expected_starttime_ticks=1000)
+        exiting=dict(live,flags=4)
+        self.kernel_observation.side_effect=[live,live,exiting];released=[]
+        self.assertIsNone(self.observe(self.worker(),cgroup={'path':'/','limit':0},released=released))
+        self.assertEqual(released[0]['state'],'PF_EXITING')
+        self.kernel_observation.side_effect=None
+        self.kernel_observation.return_value=dict(exiting,starttime_ticks=2000)
+        released=[];self.assertIsNone(self.observe(self.worker(),released=released))
+        self.assertEqual(released[0]['state'],'PID_reused')
+        self.assertNotEqual(released[0]['state'],'PF_EXITING')
+
+    def test_running_without_PF_EXITING_empty_argv_zero_RSS_root_cgroup_still_rejects(self):
+        self.kernel_observation.return_value=dict(pid=700,state='R',flags=0,starttime_ticks=1000,expected_starttime_ticks=1000)
+        worker=self.worker();worker.cmdline.return_value=[];worker.memory_info.return_value=SimpleNamespace(rss=0)
+        with self.assertRaisesRegex(ValueError,'cgroup'):self.observe(worker,cgroup={'path':'/','limit':0})
+
+    def test_unreadable_kernel_stat_for_live_process_is_not_reaped_evidence(self):
+        self.kernel_observation.side_effect=FileNotFoundError('DEBUG stat disappeared');released=[]
+        with self.assertRaisesRegex(RuntimeError,'without two confirmed missing'):
+            self.observe(self.worker(),released=released)
+        self.assertEqual(released,[])
+
+    def test_kernel_flag_proof_uses_actual_ticks_and_psutil_birth(self):
+        self.kernel_patch.stop()
+        with patch.object(resource.sys,'platform','linux'), \
+                patch.object(resource.Path,'read_text',return_value=self.kernel_stat()), \
+                patch.object(resource.psutil,'boot_time',return_value=1000), \
+                patch.object(resource.os,'sysconf',return_value=100,create=True):
+            value=resource.kernel_process_lifetime(700,1010)
+        self.assertEqual(value['expected_starttime_ticks'],1000)
+        self.assertEqual(value['starttime_ticks'],1000)
 
     def test_terminal_recheck_also_handles_exit_between_postread_and_validation(self):
         worker=self.worker([resource.psutil.STATUS_RUNNING,resource.psutil.STATUS_RUNNING,resource.psutil.STATUS_ZOMBIE])
@@ -442,6 +497,7 @@ class ProcessLifetimeRaceDEBUGTests(unittest.TestCase):
         'Actual own UID41833 Linux worker-lifetime DEBUG')
     def test_actual_100_own_workers_exit_naturally_during_resource_snapshots(self):
         """No signal, CUDA, dataset or production model; each child ends itself."""
+        self.kernel_patch.stop()
         expected_cgroup=resource.cgroup_identity(resource._memory_cgroup(os.getpid()))
         expected_CPUs=resource.psutil.Process().cpu_affinity();released=[];terminal=0
         command=[sys.executable,'-B','-c','import time;time.sleep(0.01)']

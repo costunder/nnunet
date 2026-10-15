@@ -90,10 +90,35 @@ def live_actor(expected):
     return None if observation is None else psutil.Process(expected['pid'])
 
 
+def parse_kernel_process_stat(text,pid):
+    """Linux proc/array.c fields9(flags) and22(starttime), preserving comm spaces."""
+    prefix,separator,tail=text.rpartition(')')
+    require(separator and '('in prefix and prefix.split('(',1)[0].strip()==str(pid),
+        'Exact Linux process stat PID/comm required')
+    fields=tail.split()
+    require(len(fields)>=20 and len(fields[0])==1,'Complete Linux process lifetime stat required')
+    flags,start_ticks=int(fields[6]),int(fields[19])
+    require(flags>=0 and start_ticks>=0,'Nonnegative Linux flags/starttime required')
+    return dict(pid=pid,state=fields[0],flags=flags,starttime_ticks=start_ticks)
+
+
+def kernel_process_lifetime(pid,birth):
+    """PF_EXITING=0x4 is set before exit_mm(), while /proc state can still be R.
+
+    Primary sources: Linux include/linux/sched.h (PF_EXITING), fs/proc/array.c
+    (stat layout), kernel/exit.c (exit_signals before exit_mm). No empty argv,
+    zero RSS or root cgroup alone is terminal-state evidence.
+    """
+    if not sys.platform.startswith('linux'):return None
+    value=parse_kernel_process_stat(Path('/proc',str(pid),'stat').read_text(),pid)
+    value['expected_starttime_ticks']=round((birth-psutil.boot_time())*os.sysconf('SC_CLK_TCK'))
+    return value
+
+
 def _same_live_process(pid,birth,released,context):
     """Read fresh kernel state; a stale Process object is not release evidence."""
     absent=[]
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             process=psutil.Process(pid);actual_birth=process.create_time();state=process.status()
         except psutil.ZombieProcess:
@@ -102,7 +127,10 @@ def _same_live_process(pid,birth,released,context):
                 evidence='fresh psutil terminal-state exception'))
             return None
         except psutil.NoSuchProcess:
-            absent.append('fresh Process/status observation '+str(attempt+1));continue
+            absent.append('fresh Process/status observation '+str(attempt+1))
+            if len(absent)<2:continue
+            released.append(dict(pid=pid,create_time=birth,state='reaped',context=context,evidence=absent))
+            return None
         if birth is not None and actual_birth!=birth:
             released.append(dict(pid=pid,create_time=birth,replacement_create_time=actual_birth,
                 state='PID_reused',context=context,evidence='fresh kernel start time changed'))
@@ -111,10 +139,19 @@ def _same_live_process(pid,birth,released,context):
             released.append(dict(pid=pid,create_time=actual_birth,state=state,context=context,
                 evidence='fresh kernel process status'))
             return None
+        try:kernel=kernel_process_lifetime(pid,actual_birth)
+        except FileNotFoundError:continue
+        if kernel is not None:
+            if kernel['starttime_ticks']!=kernel['expected_starttime_ticks']:
+                released.append(dict(pid=pid,create_time=actual_birth,state='PID_reused',context=context,
+                    kernel_stat=kernel,evidence='fresh Linux starttime ticks changed'))
+                return None
+            if kernel['flags']&0x4:  # Linux sched.h: PF_EXITING, not task state.
+                released.append(dict(pid=pid,create_time=actual_birth,state='PF_EXITING',context=context,
+                    kernel_stat=kernel,evidence='exact PID/birth /proc/stat PF_EXITING flag'))
+                return None
         return process
-    released.append(dict(pid=pid,create_time=birth,state='reaped',context=context,
-        evidence=absent))
-    return None
+    raise RuntimeError('Live process kernel lifetime unavailable without two confirmed missing observations: '+str(pid))
 
 
 def process_snapshot(process,*,expected=None,validator=None,released=None,context='',resources=True):
@@ -580,17 +617,25 @@ class Lease:
         if direct:
             from .basic_cp_direct_MIG_access import observe_direct_memory
             cohort_PIDs={holder.pid}
+            cohort_identities={holder.pid:self.receipt['holder_identity']}
             for process in holder.children(recursive=True):
                 def validate_auxiliary(value):
                     require(value['identity']['UID']==UID and value['memory_cgroup']==cgroup_identity(mem),
                         'Direct cohort live child moved outside the original own UID/cgroup: '+json.dumps(value,sort_keys=True))
                 value=process_snapshot(process,validator=validate_auxiliary,released=released,context='direct cohort child')
-                if value is not None:cohort_PIDs.add(process.pid)
+                if value is not None:
+                    cohort_PIDs.add(process.pid);cohort_identities[process.pid]=value['identity']
             # Already captured exact native descendants remain charged after a
             # peer's natural release, even if Linux reparents a finishing worker.
             cohort_PIDs.update(all_PIDs)
+            for tree in trees.values():
+                for pid,value in tree.items():
+                    prior=cohort_identities.get(pid)
+                    require(prior is None or prior['create_time']==value['identity']['create_time'],
+                        'Direct native/auxiliary snapshots observed different births for the same live PID')
+                    cohort_identities[pid]=value['identity']
             memory=observe_direct_memory(native_RSS,cohort_PIDs,
-                native_PIDs_by_arm={arm:set(tree)for arm,tree in trees.items()})
+                native_PIDs_by_arm={arm:set(tree)for arm,tree in trees.items()},cohort_identities=cohort_identities)
             self.last_probe.update(phase='direct_memory',memory=memory)
             native_RSS=memory['native_RSS_by_arm']
             global_RAM=memory['current_uid_RSS_bytes']+memory['own_tmpfs_allocated_bytes']

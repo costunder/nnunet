@@ -15,6 +15,10 @@ import time
 
 GIB = 2 ** 30
 UID = 41833
+# Linux sets PF_EXITING before exit_mm(), while the task can still report R.
+# https://github.com/torvalds/linux/blob/v5.15/include/linux/sched.h#L1569
+# https://github.com/torvalds/linux/blob/v5.15/kernel/exit.c
+PF_EXITING = 0x00000004
 
 
 def _positive(value, name, *, zero=False):
@@ -40,32 +44,132 @@ def parse_CPU_list(text):
     return sorted(result)
 
 
-def _own_process_RSS(uid):
+def _proc_stat(text, pid):
+    """Read identity/exit flags without splitting the parenthesized comm field."""
+    close = text.rfind(')')
+    if close < 0 or text.split('(', 1)[0].strip() != str(pid):
+        raise RuntimeError('Actual proc stat PID/comm is invalid: ' + str(pid))
+    fields = text[close+1:].split()
+    if len(fields) < 20 or len(fields[0]) != 1:
+        raise RuntimeError('Actual proc stat fields are incomplete: ' + str(pid))
+    flags, start = int(fields[6]), int(fields[19])
+    if flags < 0 or start < 0:
+        raise RuntimeError('Actual proc stat identity/flags are invalid: ' + str(pid))
+    return {'PID': pid, 'state': fields[0], 'flags': flags, 'starttime_ticks': start}
+
+
+def _process_RSS_sample(path):
+    """Sample one PID coherently; never infer a live task's missing RSS as zero.
+
+    A stat/status/stat sandwich detects PID reuse during the read.  A bounded
+    resample observes the replacement rather than mixing its UID/RSS with the
+    original identity. Missing VmRSS is released memory only with kernel exit
+    evidence; proc status omits its memory section after the task loses its mm.
+    """
+    pid = int(path.name)
+    for attempt in range(3):
+        try:
+            before = _proc_stat((path/'stat').read_text(), pid)
+            fields = dict(line.split(':', 1) for line in (path/'status').read_text().splitlines() if ':' in line)
+            after = _proc_stat((path/'stat').read_text(), pid)
+        except (FileNotFoundError, ProcessLookupError):
+            return {'PID': pid, 'disposition': 'reaped_during_sample'}
+        if before['starttime_ticks'] != after['starttime_ticks']:
+            continue
+        if int(fields['Pid'].strip()) != pid:
+            raise RuntimeError('Actual proc status PID differs: ' + str(pid))
+        observed_uid = int(fields['Uid'].split()[0])
+        if observed_uid < 0:
+            raise RuntimeError('Actual process UID is invalid: ' + str(pid))
+        result = dict(after, UID=observed_uid, name=fields.get('Name', '').strip())
+        if 'VmRSS' not in fields:
+            if after['state'] in ('Z', 'X', 'x') or after['flags'] & PF_EXITING:
+                return dict(result, disposition='kernel_exit_without_mm',
+                            exit_evidence='PF_EXITING' if after['flags'] & PF_EXITING else 'terminal_state')
+            if attempt < 2:
+                # exec can briefly detach the old mm without exiting. Read a
+                # complete coherent observation again; no RSS value is invented.
+                continue
+            raise RuntimeError('Actual own process RSS is unavailable for live PID: ' + str(pid))
+        values = fields['VmRSS'].split()
+        if len(values) != 2 or values[1] != 'kB' or not values[0].isdigit():
+            raise RuntimeError('Actual own process RSS units/value differ: ' + str(pid))
+        return dict(result, RSS_bytes=int(values[0])*1024, disposition='RSS_observed')
+    raise RuntimeError('Process identity changed throughout coherent RSS sampling: ' + str(pid))
+
+
+def _own_process_RSS(uid, *, proc_root=None, lifecycle=None):
     rows = []
     released = []
-    for path in Path('/proc').iterdir():
+    for path in (Path('/proc') if proc_root is None else Path(proc_root)).iterdir():
         if not path.name.isdigit():
             continue
         try:
             if path.stat().st_uid != uid:
                 continue
-            fields = dict(line.split(':', 1) for line in (path / 'status').read_text().splitlines() if ':' in line)
-            if int(fields['Uid'].split()[0]) != uid:
-                continue
-            if 'VmRSS' not in fields:
-                if fields.get('State', '').strip().startswith(('Z', 'X')):
-                    rss = 0
-                else:
-                    raise RuntimeError('Actual own process RSS is unavailable: ' + path.name)
-            else:
-                values = fields['VmRSS'].split()
-                if len(values) != 2 or values[1] != 'kB':
-                    raise RuntimeError('Actual own process RSS units differ')
-                rss = int(values[0]) * 1024
-            rows.append({'PID': int(path.name), 'UID': uid, 'RSS_bytes': rss, 'name': fields.get('Name', '').strip()})
+            sample = _process_RSS_sample(path)
+            if lifecycle is not None:
+                lifecycle[int(path.name)] = sample
+            if sample['disposition'] == 'RSS_observed' and sample['UID'] == uid:
+                rows.append(sample)
+            elif sample['disposition'] != 'RSS_observed':
+                released.append(int(path.name))
         except (FileNotFoundError, ProcessLookupError):
             released.append(int(path.name))
+            if lifecycle is not None:
+                lifecycle[int(path.name)] = {'PID': int(path.name), 'disposition': 'reaped_during_sample'}
     return rows, released
+
+
+def _identity_starttime(identity):
+    if type(identity.get('starttime_ticks')) is int:
+        return _positive(identity['starttime_ticks'], 'registered process starttime', zero=True)
+    birth = identity.get('create_time')
+    if type(birth) not in (int, float) or birth <= 0:
+        raise ValueError('Registered process needs its actual starttime/create_time')
+    import psutil
+    return round((birth-psutil.boot_time())*os.sysconf('SC_CLK_TCK'))
+
+
+def _cohort_RSS_members(rows, requested, lifecycle, uid, identities=None, *, proc_root=None):
+    """Keep replacement RSS globally charged, without adopting a reused actor PID."""
+    root = Path('/proc') if proc_root is None else Path(proc_root)
+    requested = set(requested)
+    if any(type(pid) is not int or pid <= 0 for pid in requested):
+        raise ValueError('Exact positive cohort PIDs required')
+    if identities is not None and not requested <= set(identities):
+        raise ValueError('Every registered cohort PID needs an exact process identity')
+    observed = {row['PID']: row for row in rows}
+    active, released, reuse = set(), [], []
+    for pid in sorted(requested):
+        if identities is not None and identities[pid].get('pid', pid) != pid:
+            raise ValueError('Registered process identity PID differs: ' + str(pid))
+        sample = observed.get(pid) or lifecycle.get(pid)
+        if sample is None or sample['disposition'] == 'reaped_during_sample':
+            # A PID absent from an earlier enumeration can have been born or
+            # reused since then. Resolve it; exists() alone is not identity proof.
+            sample = _process_RSS_sample(root/str(pid))
+            lifecycle[pid] = sample
+            if sample['disposition'] == 'RSS_observed' and sample['UID'] == uid:
+                observed[pid] = sample
+        if sample['disposition'] == 'reaped_during_sample':
+            released.append({'PID': pid, 'disposition': 'reaped_during_sample'})
+            continue
+        expected = None if identities is None else _identity_starttime(identities[pid])
+        if expected is not None and sample['starttime_ticks'] != expected:
+            reuse.append({'PID': pid, 'registered_starttime_ticks': expected,
+                          'observed_starttime_ticks': sample['starttime_ticks'],
+                          'observed_UID': sample['UID'], 'disposition': sample['disposition']})
+            continue
+        if sample['UID'] != uid:
+            raise RuntimeError('Registered cohort process UID changed: ' + str(pid))
+        if sample['disposition'] == 'kernel_exit_without_mm':
+            released.append(sample)
+        elif sample['disposition'] == 'RSS_observed':
+            active.add(pid)
+        else:
+            raise RuntimeError('Unrecognized registered process lifecycle: ' + str(pid))
+    return list(observed.values()), active, released, reuse
 
 
 def _owned_tmpfs(uid, roots):
@@ -160,20 +264,19 @@ def _memory_accounting(rows, native_RSS_by_arm, cohort_PIDs, *, expected_arms, n
 
 def observe_direct_memory(native_RSS_by_arm, cohort_PIDs, *, uid=UID, expected_arms=6,
                           native_reserve_bytes=32*GIB, auxiliary_reserve_bytes=16*GIB,
-                          max_user_RAM_bytes=512*GIB, tmpfs_roots=('/dev/shm',), native_PIDs_by_arm=None):
+                          max_user_RAM_bytes=512*GIB, tmpfs_roots=('/dev/shm',), native_PIDs_by_arm=None,
+                          cohort_identities=None):
     if os.getuid() != uid or uid != UID:
         raise RuntimeError('Actual Linux UID41833 required')
     for name, value in [('expected_arms', expected_arms), ('native_reserve_bytes', native_reserve_bytes),
                         ('auxiliary_reserve_bytes', auxiliary_reserve_bytes), ('max_user_RAM_bytes', max_user_RAM_bytes)]:
         _positive(value, name)
-    rows, released = _own_process_RSS(uid)
-    observed = {row['PID']: row['RSS_bytes'] for row in rows}
+    lifecycle = {}
+    rows, released = _own_process_RSS(uid, lifecycle=lifecycle)
     requested = set(cohort_PIDs)
-    missing = requested - set(observed)
-    for pid in missing:
-        if (Path('/proc')/str(pid)).exists():
-            raise RuntimeError('Registered cohort PID is live but absent from own UID observations: '+str(pid))
-    cohort_PIDs = requested - missing
+    rows, cohort_PIDs, registered_released, reused = _cohort_RSS_members(
+        rows, requested, lifecycle, uid, cohort_identities)
+    observed = {row['PID']: row['RSS_bytes'] for row in rows}
     if native_PIDs_by_arm is not None:
         if set(native_PIDs_by_arm) != set(native_RSS_by_arm):
             raise ValueError('Exact same native arm keys required for coherent RSS accounting')
@@ -184,7 +287,7 @@ def observe_direct_memory(native_RSS_by_arm, cohort_PIDs, *, uid=UID, expected_a
             if all_native & pids or not pids <= requested:
                 raise RuntimeError('Native process trees overlap or escape the exact cohort')
             all_native.update(pids)
-            actual[arm] = sum(observed[pid] for pid in pids if pid in observed)
+            actual[arm] = sum(observed[pid] for pid in pids & cohort_PIDs)
         native_RSS_by_arm = actual
     tmpfs = _owned_tmpfs(uid, tmpfs_roots)
     meminfo = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
@@ -200,7 +303,10 @@ def observe_direct_memory(native_RSS_by_arm, cohort_PIDs, *, uid=UID, expected_a
             raise RuntimeError('Actual inherited cgroup limit cannot admit prospective direct user memory')
     result.update(cgroup, UID=uid, PID=os.getpid(), node=socket.gethostname(), observed_unix=time.time(),
                   own_process_RSS=rows, naturally_released_PIDs=released, tmpfs_observation=tmpfs,
-                  registered_PIDs_proven_released=sorted(missing),
+                  registered_PIDs_proven_released=sorted(row['PID'] for row in registered_released),
+                  registered_process_release_observations=registered_released,
+                  registered_PID_reuse_observations=reused,
+                  process_lifecycle_observations=list(lifecycle.values()),
                   native_RSS_from_same_process_snapshot=native_PIDs_by_arm is not None,
                   resource_mode='explicit_direct_access', PBS_CPU_GPU_ownership_claimed=False)
     return result
