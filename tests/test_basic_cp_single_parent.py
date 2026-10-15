@@ -246,6 +246,19 @@ class SingleParentDEBUGTests(unittest.TestCase):
             owners={}if uid==41833 else{700:dict(arm=resource.ARMS[0],UID=uid)}
             with self.subTest(uid=uid),self.assertRaises(ValueError):resource.validate_execution_actors(receipt,devices,owners)
 
+    def test_native_descendant_failure_identifies_exact_violated_resource(self):
+        observed=dict(identity={'pid':700,'create_time':1,'UID':41833,'command':['CPU_DEBUG_worker']},
+            PPID=600,CPU_affinity=[1,2],memory_cgroup={'path':'/own','limit':512*resource.GIB})
+        expected=dict(arm='multi5',expected_CPUs=[1,2],expected_cgroup=observed['memory_cgroup'])
+        resource.validate_native_child(observed,**expected)
+        for field,value in(('UID',999),('CPU_affinity',[1,2,3]),('cgroup',{'path':'/another','limit':512*resource.GIB})):
+            altered=copy.deepcopy(observed)
+            if field=='UID':altered['identity']['UID']=value
+            elif field=='CPU_affinity':altered[field]=value
+            else:altered['memory_cgroup']=value
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'"failed": \["'+field+'"\]'):
+                resource.validate_native_child(altered,**expected)
+
     def test_registered_actor_cannot_switch_MIG_device(self):
         receipt,job,holder,devices=self.fixture(True);wrong=receipt['execution_UUID_by_arm'][resource.ARMS[1]]
         devices[wrong]['compute_actors']=[dict(pid=700)]

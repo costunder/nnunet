@@ -234,9 +234,22 @@ def validate_execution_actors(receipt,devices,owners):
         for actor in row['compute_actors']:
             owner=owners.get(actor['pid'])
             require(owner is not None and owner.get('UID')==UID,
-                'Unknown own or foreign CUDA actor uses an allocated execution device')
+                'Unknown own or foreign CUDA actor uses an execution device: '+json.dumps(
+                    dict(observed_token=token,observed_GPU_instance=row.get('GI'),observed_compute_instance=row.get('CI'),
+                        actor=actor,owner=owner),sort_keys=True))
             require(receipt['execution_UUID_by_arm'][owner['arm']]==token,
-                'A native actor created CUDA work on another execution device')
+                'A native actor created CUDA work on another execution device: '+json.dumps(
+                    dict(observed_token=token,expected_token=receipt['execution_UUID_by_arm'][owner['arm']],
+                        observed_GPU_instance=row.get('GI'),observed_compute_instance=row.get('CI'),actor=actor,owner=owner),sort_keys=True))
+
+
+def validate_native_child(observation,*,arm,expected_CPUs,expected_cgroup):
+    failures=[]
+    if observation['identity']['UID']!=UID:failures.append('UID')
+    if not set(observation['CPU_affinity'])<=set(expected_CPUs):failures.append('CPU_affinity')
+    if observation['memory_cgroup']!=expected_cgroup:failures.append('cgroup')
+    require(not failures,'Native descendant guard rejected: '+json.dumps(dict(arm=arm,failed=failures,
+        expected_CPUs=expected_CPUs,expected_cgroup=expected_cgroup,actual=observation),sort_keys=True))
 
 
 def _memory_cgroup(pid):
@@ -306,13 +319,25 @@ def nvml_devices(tokens):
         code=getattr(lib,name)(*args);require(code==0,'Actual NVML observation failed: '+name+' '+str(code))
     def uuid_for(handle):
         out=ctypes.create_string_buffer(96);call('nvmlDeviceGetUUID',handle,out,len(out));return out.value.decode()
-    def actors(parent,gi,ci):
-        count=ctypes.c_uint(0);code=lib.nvmlDeviceGetComputeRunningProcesses_v2(parent,ctypes.byref(count),None)
+    process_name='nvmlDeviceGetComputeRunningProcesses_v2'
+    process_method=getattr(lib,process_name)
+    # Preserve the documented24byte v2 ProcessInfo ABI. Query the exact MIG
+    # handle rather than infer execution scope from a parent-level GI filter.
+    process_method.argtypes=[ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(Process)]
+    process_method.restype=ctypes.c_int
+    def actors(execution_handle):
+        count=ctypes.c_uint(0);code=process_method(execution_handle,ctypes.byref(count),None)
         require(code in(0,7),'NVML CUDA process count unavailable')
         if not count.value:return[]
-        values=(Process*count.value)();call('nvmlDeviceGetComputeRunningProcesses_v2',parent,ctypes.byref(count),values)
-        return[{'pid':int(v.pid),'used_bytes':int(v.used)}for v in values[:count.value]
-            if gi is None or(v.GI==gi and v.CI==ci)]
+        for attempt in range(3):
+            capacity=count.value+8;values=(Process*capacity)();count=ctypes.c_uint(capacity)
+            code=process_method(execution_handle,ctypes.byref(count),values)
+            if code==7:continue
+            require(code==0,'Exact execution-scoped NVML CUDA process query failed: '+str(code))
+            return[{'pid':int(v.pid),'used_bytes':int(v.used),'reported_GPU_instance':int(v.GI),
+                'reported_compute_instance':int(v.CI),'NVML_function':process_name,
+                'scope':'exact execution UUID handle'}for v in values[:count.value]]
+        raise RuntimeError('Execution-scoped NVML process list changed during all bounded retries')
     result={}
     for token in set(tokens):
         handle=ctypes.c_void_p();call('nvmlDeviceGetHandleByUUID',token.encode(),ctypes.byref(handle))
@@ -329,7 +354,7 @@ def nvml_devices(tokens):
         require(mode_code in(0,3),'Actual parent MIG mode unavailable')
         result[token]=dict(parent_UUID=uuid_for(parent),index=index.value,MIG=bool(mig.value),GI=gi,CI=ci,
             MIG_enabled=bool(current.value)if mode_code==0 else False,
-            total_bytes=memory.total,used_bytes=memory.used,free_bytes=memory.free,compute_actors=actors(parent,gi,ci))
+            total_bytes=memory.total,used_bytes=memory.used,free_bytes=memory.free,compute_actors=actors(handle))
     return result
 
 
@@ -338,6 +363,7 @@ class Lease:
         self.cohort,self.arm,self.actors=cohort,arm,actors
         self.receipt=json.loads(pin(cohort['allocation'],owner=True).read_bytes())
         self.own=identity(psutil.Process());self.last=0;self.files={};self.previous_trees={}
+        self.last_probe={}
         self.canonical=Path(cohort['canonical_code']['path'])
         required={'tools/run_basic_cp_single_parent.py','hiercp_v1x/basic_cp_single_parent_resources.py',
             'custom_trainers/nnUNetTrainer_BasicCPExpanded.py','custom_trainers/nnUNetTrainer_BasicCPMultiNJoint.py',
@@ -367,12 +393,32 @@ class Lease:
                 '--arm',peer,'--execute']
             require(actors[peer]['command']==expected,'A registered peer is outside this exact canonical cohort command')
 
+    def _publish_probe(self):
+        root=Path(self.cohort['experiments'][self.arm]['output_root']);path=root/'last_resource_guard.json'
+        temporary=path.with_name('.resource_guard_'+str(os.getpid())+'_'+str(time.time_ns()))
+        with temporary.open('x',encoding='utf8')as stream:
+            json.dump(self.last_probe,stream,ensure_ascii=False,indent=2,allow_nan=False);stream.flush();os.fsync(stream.fileno())
+        os.replace(temporary,path)
+
     def verify(self,*,force=False):
+        try:
+            result=self._verify(force=force)
+            if force:
+                self.last_probe['status']='PASS';self._publish_probe()
+            return result
+        except BaseException as error:
+            self.last_probe.update(status='FAILED',error=type(error).__name__+': '+str(error),observed_unix=time.time())
+            self._publish_probe()
+            raise
+
+    def _verify(self,*,force=False):
         now=time.monotonic()
         lifetime=self.receipt['PBS_lifetime']
         require(now<lifetime['query_started_monotonic']+lifetime['remaining_seconds']-180,
             'Actual monotonic allocation lifetime reached180second reserve')
         if not force and time.monotonic()-self.last<5:return
+        self.last_probe=dict(format='basic_cp_exact_native_resource_guard_observation_v1',arm=self.arm,
+            calling_actor=self.own,phase='actual_source_and_host',observed_unix=time.time(),native_children={})
         require(os.getuid()==UID and socket.gethostname().split('.')[0]==self.receipt['node'],
             'Actual native owner or host changed')
         for name,value in self.files.items():require(signature(exact(name))==value,'Admitted canonical/runtime source changed: '+name)
@@ -386,12 +432,15 @@ class Lease:
         require(set(document['Jobs'])=={self.receipt['job_id']},'Exact own current PBS job required')
         job=dict(document['Jobs'][self.receipt['job_id']],job_id=self.receipt['job_id'])
         devices=nvml_devices(self.receipt['execution_UUID_by_arm'].values())
+        self.last_probe.update(phase='execution_devices',devices=devices)
         selected=validate_allocation(self.receipt,job,holder_observation,devices,
             now_monotonic=time.monotonic(),node_boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
             query_started_monotonic=observation['query_started_monotonic'])
         expected_UUID=self.receipt['execution_UUID_by_arm'][self.arm]
         require(os.environ.get('CUDA_VISIBLE_DEVICES')==expected_UUID,'Native CUDA visibility changed')
         cuda_execution_UUID(expected_UUID)
+        self.last_probe.update(own_CUDA_VISIBLE_DEVICES=os.environ.get('CUDA_VISIBLE_DEVICES'),
+            own_CUDA_v2_UUID_verified=expected_UUID,phase='native_process_trees')
         cpus=self.receipt['CPU_affinity'];trees={};native_RSS={};all_PIDs=set()
         for index,arm in enumerate(ARMS):
             p=live_actor(self.actors[arm]);expected=cpus[index*8:index*8+8]
@@ -404,11 +453,14 @@ class Lease:
                     survivor=live_actor(known)
                     if survivor is not None:tree[survivor.pid]=survivor
             native_RSS[arm]=0
+            self.last_probe['native_children'][arm]=dict(expected_CPU_affinity=expected,
+                expected_cgroup=cgroup_identity(mem),observations=[])
             for child in tree.values():
                 try:
-                    require(child.uids().real==UID and set(child.cpu_affinity())<=set(expected)
-                        and cgroup_identity(_memory_cgroup(child.pid))==cgroup_identity(mem),
-                        'Foreign UID/CPU/cgroup appeared in native tree')
+                    actual_child=dict(identity=identity(child),PPID=child.ppid(),CPU_affinity=child.cpu_affinity(),
+                        memory_cgroup=cgroup_identity(_memory_cgroup(child.pid)))
+                    self.last_probe['native_children'][arm]['observations'].append(actual_child)
+                    validate_native_child(actual_child,arm=arm,expected_CPUs=expected,expected_cgroup=cgroup_identity(mem))
                     native_RSS[arm]+=child.memory_info().rss;all_PIDs.add(child.pid)
                 except psutil.NoSuchProcess:continue
             trees[arm]=tree
@@ -416,8 +468,13 @@ class Lease:
         owners={}
         for arm,tree in trees.items():
             for pid,p in tree.items():
-                try:owners[pid]=dict(arm=arm,UID=p.uids().real)
+                try:
+                    require(pid not in owners or owners[pid]['arm']==arm,
+                        'Exact native process trees overlap: '+json.dumps(dict(pid=pid,first=owners.get(pid),second_arm=arm,
+                            identity=identity(p),PPID=p.ppid()),sort_keys=True))
+                    owners[pid]=dict(arm=arm,UID=p.uids().real,identity=identity(p),PPID=p.ppid())
                 except psutil.NoSuchProcess:continue
+        self.last_probe.update(phase='CUDA_actor_ownership',owners=owners)
         validate_execution_actors(self.receipt,devices,owners)
         if direct:
             from .basic_cp_direct_MIG_access import observe_direct_memory
@@ -433,6 +490,7 @@ class Lease:
             cohort_PIDs.update(all_PIDs)
             memory=observe_direct_memory(native_RSS,cohort_PIDs,
                 native_PIDs_by_arm={arm:set(tree)for arm,tree in trees.items()})
+            self.last_probe.update(phase='direct_memory',memory=memory)
             native_RSS=memory['native_RSS_by_arm']
             global_RAM=memory['current_uid_RSS_bytes']+memory['own_tmpfs_allocated_bytes']
             result=validate_capacity(self.receipt,devices,native_RSS=native_RSS,
