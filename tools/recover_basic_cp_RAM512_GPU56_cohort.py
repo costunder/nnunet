@@ -483,6 +483,11 @@ def main():
             native.update({k:v for k,v in request.items()if k not in('bank','bank_sha256')});base.seal(root/'native.json',native)
         base.seal(root/'request.json',request)
         rows[str(gpu)]=dict(root=str(root),arm=ARMS[gpu],controller_identity=actor,request_sha256=sha(root/'request.json'))
+    # Publishing this registry releases waiting controllers. Verify the old
+    # immutable prefix while they are still blocked; resumed training may
+    # legitimately replace checkpoint_latest immediately after publication.
+    require(all(sha(path)==digest for path,digest in{**inputs,**old_metadata,**checkpoint_files}.items()),
+        'Original released data/results/checkpoint bytes changed before admission publication')
     base.seal(registry,dict(format='basic_cp_shared_resource_registry_v1',registration=rows,allowed_previous_resource_registries={}))
     # Entire source bank is sealed and released. Bootstrap creates NO CPU source
     # claim; all native allocations retain strict real GPU/RAM admission.
@@ -500,7 +505,6 @@ def main():
         old_immutable_metadata_written=False,checkpoint_bytes_copied=False,code_links_created=False,processes_signaled=False)
     fresh.pop('GPU_queue_deferred_transfer',None)
     base.seal(GROUP/'launch.json',fresh)
-    require(all(sha(path)==digest for path,digest in{**inputs,**old_metadata,**checkpoint_files}.items()),'Original released data/results/checkpoint bytes changed during new metadata launch')
     print(json.dumps(dict(manifest=str(GROUP/'launch.json'),commit=export['commit'],effective_total_RAM_GiB=512,
         completed_epochs={g:s['completed_epochs']for g,s in states.items()},completion_modes={g:s['state']for g,s in states.items()},
         source_pending=False,source_reserved_GiB=0,one_current_common_registry=True,processes_signaled=False,
