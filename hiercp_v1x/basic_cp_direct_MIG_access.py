@@ -320,7 +320,7 @@ def capture_direct_resources(native_RSS_by_arm, cohort_PIDs, *, allowed_CPU_affi
     allowed = set(actual if allowed_CPU_affinity is None else allowed_CPU_affinity)
     if not allowed <= set(actual):
         raise RuntimeError('Requested direct CPUs exceed actual SSH process affinity')
-    excluded, observations, unreadable = set(), [], []
+    PBS_assigned, observations, unreadable = set(), [], []
     root = Path('/sys/fs/cgroup/cpuset/pbs_jobs.service/jobid')
     if root.is_dir():
         for path in sorted(root.iterdir()):
@@ -328,26 +328,32 @@ def capture_direct_resources(native_RSS_by_arm, cohort_PIDs, *, allowed_CPU_affi
                 continue
             try:
                 cpus = parse_CPU_list((path/'cpuset.cpus').read_text())
-                excluded.update(cpus)
+                PBS_assigned.update(cpus)
                 observations.append({'path': str(path/'cpuset.cpus'), 'CPUs': cpus})
             except (FileNotFoundError, PermissionError) as error:
                 unreadable.append({'path': str(path), 'error': type(error).__name__+': '+str(error)})
     else:
         unreadable.append({'path': str(root), 'error': 'PBS cpuset hierarchy not readable/present'})
-    available = sorted(allowed-excluded)
+    # This is explicitly shared direct execution, not a PBS CPU reservation.
+    # The caller's actual inherited cpuset authorizes CPU access. Observed PBS
+    # assignments describe sharing; they do not make those allowed CPUs absent.
+    available = sorted(allowed)
     if len(available) < required:
-        raise RuntimeError('Actual SSH affinity minus observed PBS CPU assignments lacks '+str(required)+' disjoint CPUs')
+        raise RuntimeError('Actual allowed SSH affinity lacks '+str(required)+' disjoint CPUs')
     import psutil
     utilization = psutil.cpu_percent(interval=.1, percpu=True)
     if len(utilization) <= max(available):
         raise RuntimeError('Actual CPU utilization observations do not cover available CPU IDs')
     ranked = sorted(available, key=lambda cpu: (utilization[cpu], cpu))
     selected = ranked[:required]
-    result.update(CPU_affinity=actual, allowed_CPU_affinity=sorted(allowed), excluded_PBS_CPUs=sorted(excluded),
+    result.update(CPU_affinity=actual, allowed_CPU_affinity=sorted(allowed), excluded_PBS_CPUs=[],
+                  observed_PBS_assigned_CPUs=sorted(PBS_assigned),
+                  selected_CPUs_shared_with_observed_PBS_jobs=sorted(set(selected)&PBS_assigned),
+                  PBS_CPU_owned_reservation=False, CPU_exclusive_reservation_claimed=False,
                   PBS_cpuset_observations=observations, PBS_cpuset_unavailable=unreadable,
                   available_direct_CPUs=available, selected_CPU_groups=[selected[i:i+cpus_per_slot] for i in range(0, required, cpus_per_slot)],
                   observed_CPU_utilization_percent={str(cpu): utilization[cpu] for cpu in available},
-                  CPU_selection='actual SSH affinity minus every readable PBS job cpuset; disjoint fixed-size groups')
+                  CPU_selection='least observed utilization within actual allowed SSH affinity; disjoint fixed-size groups; observed PBS assignments are shared, not reserved')
     return result
 
 

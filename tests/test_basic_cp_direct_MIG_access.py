@@ -181,6 +181,51 @@ class ProcRSSLifecycleTests(unittest.TestCase):
 
 
 class DirectMIGTests(unittest.TestCase):
+    def capture_CPUs(self,actual,utilization,*,allowed=None):
+        workspace=Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory(prefix='DEBUG_shared_CPU_',dir=str(workspace))as folder:
+            root=Path(folder).resolve();self.assertIn(workspace,root.parents)
+            job=root/'PBS_DEBUG_fully_assigned';job.mkdir();(job/'cpuset.cpus').write_text('0-127')
+            real_Path=Path
+            def path(value):
+                return root if str(value)=='/sys/fs/cgroup/cpuset/pbs_jobs.service/jobid'else real_Path(value)
+            with mock.patch.object(access,'observe_direct_memory',return_value={'DEBUG':True})as memory, \
+                    mock.patch.object(access,'Path',side_effect=path), \
+                    mock.patch.object(access.os,'sched_getaffinity',return_value=set(actual),create=True), \
+                    mock.patch.object(access.os,'sched_setaffinity',create=True)as set_affinity, \
+                    mock.patch('psutil.cpu_percent',return_value=utilization)as measured:
+                result=access.capture_direct_resources({'DEBUG_native':0},{123},allowed_CPU_affinity=allowed)
+                set_affinity.assert_not_called();memory.assert_called_once_with({'DEBUG_native':0},{123})
+                measured.assert_called_once_with(interval=.1,percpu=True)
+        return result
+
+    def test_shared_direct_CPU_selection_uses_actual_allowed128_despite_full_PBS_assignment(self):
+        utilization=[(127-cpu)/2 for cpu in range(128)]
+        proof=self.capture_CPUs(range(128),utilization)
+        selected=[cpu for group in proof['selected_CPU_groups']for cpu in group]
+        self.assertEqual(selected,list(range(127,79,-1)))
+        self.assertEqual([len(group)for group in proof['selected_CPU_groups']],[8]*6)
+        self.assertEqual(len(set(selected)),48)
+        self.assertEqual(proof['observed_PBS_assigned_CPUs'],list(range(128)))
+        self.assertEqual(proof['selected_CPUs_shared_with_observed_PBS_jobs'],list(range(80,128)))
+        self.assertEqual(proof['excluded_PBS_CPUs'],[])
+        self.assertFalse(proof['PBS_CPU_owned_reservation']);self.assertFalse(proof['CPU_exclusive_reservation_claimed'])
+        self.assertEqual(proof['CPU_affinity'],list(range(128)))
+        self.assertIn('shared, not reserved',proof['CPU_selection'])
+
+    def test_shared_direct_CPU_selection_never_exceeds_actual_or_explicit_allowed_cpuset(self):
+        for actual,allowed in((list(range(47)),None),(list(range(128)),list(range(47)))):
+            with self.subTest(actual=len(actual),allowed=allowed),self.assertRaisesRegex(RuntimeError,'allowed SSH affinity lacks 48'):
+                self.capture_CPUs(actual,[0]*128,allowed=allowed)
+        with self.assertRaisesRegex(RuntimeError,'exceed actual SSH process affinity'):
+            self.capture_CPUs(range(48),[0]*128,allowed=range(49))
+        proof=self.capture_CPUs(range(128),[0]*128,allowed=range(64,128))
+        self.assertEqual([cpu for group in proof['selected_CPU_groups']for cpu in group],list(range(64,112)))
+
+    def test_shared_direct_CPU_selection_still_requires_measured_utilization_for_allowed_IDs(self):
+        with self.assertRaisesRegex(RuntimeError,'observations do not cover'):
+            self.capture_CPUs(range(128),[0]*127)
+
     def accounting(self, **updates):
         values = dict(rows=[{'PID':1,'RSS_bytes':2},{'PID':2,'RSS_bytes':10},{'PID':3,'RSS_bytes':5}],
                       native_RSS_by_arm={'a':8,'b':2}, cohort_PIDs={1,2}, expected_arms=2,
