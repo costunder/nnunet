@@ -31,6 +31,7 @@ class SingleParentDEBUGTests(unittest.TestCase):
             environment={'PBS_JOBID':'123.ECE-util1','CUDA_VISIBLE_DEVICES':','.join(dict.fromkeys(tokens))})
         devices={token:dict(parent_UUID=parent,index=0,MIG=mig,GI=i if mig else None,CI=0 if mig else None,
             MIG_enabled=mig,total_bytes=10*resource.GIB if mig else 80*resource.GIB,used_bytes=0,compute_actors=[])for i,token in enumerate(tokens)}
+        receipt['execution_device_observations']=copy.deepcopy(devices)
         return receipt,job,holder,devices
 
     def test_full80_allocation_admits_six_original_B2_experiments(self):
@@ -148,6 +149,40 @@ class SingleParentDEBUGTests(unittest.TestCase):
         self.assertEqual(value['failed_stage'],'admission');self.assertEqual(value['completed_epochs'],130)
         self.assertIn('Actual full source SHA differs',value['error'])
         self.assertIn('ValueError',value['traceback'])
+
+    def test_current_MIG_and_CPU8_metadata_cannot_display_original_A6000_hardware(self):
+        receipt,job,holder,devices=self.fixture(True)
+        receipt.update(physical_parent_index=3,physical_parent_observation={'model':'CPU_DEBUG_A10080','total_bytes':80*resource.GIB})
+        receipt['CPU_affinity']=list(range(100,148))
+        cohort=dict(experiments={'candidates512':{'output_root':'/own/candidates512'}},allocation={'path':'/own/allocation'},
+            physical_parent_index=3,canonical_code={'commit':'CPU_DEBUG_commit','files_sha256':{}})
+        source=dict(gpu=3,gpu_uuid='OLD_A6000',GPU_memory_total_MiB=49140,cpu_affinity=list(range(8)),
+            baseline={'dataset_name':'Dataset730_LiverOnlineCP_OF0','data_identifier':'original_data'})
+        with patch.object(runner,'pin',return_value=Path('/own/allocation')),patch.object(runner,'read',return_value=receipt), \
+                patch.object(runner,'digest',return_value='CPU_DEBUG_bankSHA'):
+            native=runner.native_for(cohort,'candidates512',source,Path('/own/bank'),Path('/shared/dataset'),{'pid':100})
+        self.assertEqual(native['original_hardware']['GPU_memory_total_MiB'],49140)
+        self.assertEqual(native['GPU_memory_total_MiB'],10*1024)
+        self.assertEqual(native['cpu_affinity'],list(range(124,132)))
+        self.assertEqual(native['gpu_uuid'],receipt['physical_parent_GPU_UUID'])
+        self.assertEqual(native['execution_GPU_UUID'],receipt['execution_UUID_by_arm']['candidates512'])
+        self.assertEqual(source['gpu_uuid'],'OLD_A6000')
+
+    def test_historical_readiness_is_not_final_evaluation_and_changed_inputs_reject(self):
+        proof=dict(format='basic_cp_historical_reference_actual26_readiness_v1',complete=True,
+            ground_truth_files=26,basic_prediction_files=26,validation_cases=['CPU_DEBUG_case'+str(i)for i in range(26)],
+            NIfTI_header_geometry_verified=True,full_evaluation_executed=False,inputs_modified=False,
+            files={'/shared/CPU_DEBUG_GT.nii.gz':{'stat':[1,2,3]}})
+        cohort={'historical_reference_inputs':{'path':'/own/CPU_DEBUG_receipt','sha256':'a'*64}}
+        with patch.object(runner,'pin',return_value=Path('/own/CPU_DEBUG_receipt')),patch.object(runner,'read',return_value=proof), \
+                patch.object(runner,'signature',return_value=(1,2,3)):
+            runner.verify_historical_reference(cohort,proof['validation_cases'])
+            proof['full_evaluation_executed']=True
+            with self.assertRaisesRegex(ValueError,'no final-evaluation claim'):
+                runner.verify_historical_reference(cohort,proof['validation_cases'])
+            proof['full_evaluation_executed']=False;proof['files']['/shared/CPU_DEBUG_GT.nii.gz']['stat']=[1,2,4]
+            with self.assertRaisesRegex(ValueError,'reference changed'):
+                runner.verify_historical_reference(cohort,proof['validation_cases'])
 
     def test_native_auxiliary_totalRAM_and_VRAM_limits_are_independent(self):
         for failure in('native','auxiliary','total','VRAM'):

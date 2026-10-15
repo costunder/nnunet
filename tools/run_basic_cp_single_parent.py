@@ -86,10 +86,23 @@ def validate_cohort(value):
             and row.get('epochs')==250 and row.get('workers')==4,
             'Actual whole original checkpoint/B2/250epoch/four-worker contract differs: '+arm)
         require(Path(row['output_root']).is_relative_to(Path(value['root'])),'Results must remain in the fresh own cohort')
+        require(Path(row['evaluator_root'])==ROOT,'Historical metrics must use the same canonical Git checkout')
         for name in('source_native','effective_bank','preflight','LATEST','BEST','log_prefix','calibration'):
             require(isinstance(row.get(name),dict)and set(row[name])=={'path','sha256'},
                 'Explicit scientific artifact path/SHA required: '+arm+'/'+name)
     return value
+
+
+def verify_historical_reference(cohort,expected_cases):
+    proof=read(pin(cohort['historical_reference_inputs']))
+    require(proof.get('format')=='basic_cp_historical_reference_actual26_readiness_v1'and proof.get('complete')is True
+        and proof.get('ground_truth_files')==proof.get('basic_prediction_files')==26
+        and set(proof['validation_cases'])==set(expected_cases)and proof.get('NIfTI_header_geometry_verified')is True
+        and proof.get('full_evaluation_executed')is False and proof.get('inputs_modified')is False,
+        'Actual full26 historical reference readiness required; no final-evaluation claim')
+    for path,record in proof['files'].items():
+        require(list(signature(path))==record['stat'],'Admitted historical reference changed: '+path)
+    return proof
 
 
 def verify_inputs(cohort,arm):
@@ -129,6 +142,7 @@ def verify_inputs(cohort,arm):
             'Previously SHA-verified shared preprocessing file changed: '+path)
         require(record.get('sha256')and Path(path).is_relative_to(preprocessed),
             'Shared preprocessing provenance leaves the admitted readonly dataset')
+    verify_historical_reference(cohort,native['split']['outer_val'])
     return native,bank_path,preprocessed
 
 
@@ -153,8 +167,21 @@ def native_for(cohort,arm,source,bank,preprocessed,actor):
         archive_root=str(root/'completed_native_archive'),archive_storage_kind='tmpfs',persistent_archive=False)
     native['logical_slot']=source['gpu']
     allocation=read(pin(cohort['allocation'],owner=True))
-    for name in('GPU56_sharing_receipt','execution_physical_GPU','execution_GPU_UUID',
-                'GPU_queue_deferred_transfer','RAM512_migration_state','RAM512_completed_best_validator'):
+    hardware_keys=('gpu','gpu_uuid','GPU_memory_total_MiB','cpu_affinity','controller_cgroup_admission',
+        'shared_resource_registry','shared_resource_guard_version','shared_resource_observation_revision',
+        'GPU_admission_retry_version','RAM_admission_pause_revision','RAM512_claim_ledger',
+        'RAM512_source_pending_receipt','GPU_placement_receipt','GPU56_sharing_receipt',
+        'execution_physical_GPU','execution_GPU_UUID')
+    native['original_hardware']={name:source[name]for name in hardware_keys if name in source}
+    for name in hardware_keys:native.pop(name,None)
+    token=allocation['execution_UUID_by_arm'][arm];device=allocation['execution_device_observations'][token]
+    cpus=allocation['CPU_affinity'];offset=ARMS.index(arm)*8
+    native.update(gpu=allocation['physical_parent_index'],gpu_uuid=allocation['physical_parent_GPU_UUID'],
+        execution_physical_GPU=allocation['physical_parent_index'],execution_GPU_UUID=token,
+        GPU_memory_total_MiB=device['total_bytes']//2**20,cpu_affinity=cpus[offset:offset+8],
+        allocation_CPU_affinity=cpus,execution_device_observation=device,
+        physical_parent_observation=allocation['physical_parent_observation'])
+    for name in('GPU56_sharing_receipt','GPU_queue_deferred_transfer','RAM512_migration_state','RAM512_completed_best_validator'):
         native.pop(name,None)
     native.update(controller_identity=actor,commit=cohort['canonical_code']['commit'],
         code_sha256=cohort['canonical_code']['files_sha256'],single_parent_allocation=cohort['allocation'],
@@ -240,6 +267,13 @@ def train_arm(cohort,arm,actors):
             debug=False,subset=False,
             pretrained_segmentation_used=False,precision='native CUDA autocast/GradScaler',own_BEST_guard=best_guard,
             resource_step_guard=step_guard,canonical_code_root=str(ROOT),no_private_code_copy=True)
+        require(torch.cuda.get_device_properties(0).total_memory==native['execution_device_observation']['total_bytes']
+            and psutil.Process().cpu_affinity()==native['cpu_affinity'],'Actual CUDA memory or native CPU8 subset differs')
+        model['actual_hardware']=dict(physical_parent=native['physical_parent_observation'],
+            execution_UUID=native['execution_GPU_UUID'],execution_device=native['execution_device_observation'],
+            native_CPU_affinity=psutil.Process().cpu_affinity(),allocation_CPU_affinity=native['allocation_CPU_affinity'],
+            native_RSS_limit_GiB=32,aggregate_RAM_limit_GiB=512,auxiliary_RSS_limit_GiB=16,
+            original_hardware_preserved_in_native_metadata=True,allocation_receipt=cohort['allocation'])
         seal(root/'actual_model.json',model)
         goal=Path(trainer.output_folder);goal.mkdir(parents=True,exist_ok=True)
         latest=copy_exact(row['LATEST'],goal/'checkpoint_latest.pth');copy_exact(row['BEST'],goal/'checkpoint_best.pth')
@@ -293,6 +327,7 @@ def train_arm(cohort,arm,actors):
             evaluation_checkpoint_is_final=False)
         seal(root/'training_and_BEST26_complete.json',proof)
         status('historical_metrics','RUNNING',completed_epochs=250)
+        verify_historical_reference(cohort,native['split']['outer_val'])
         command=[sys.executable,'-B','-u',str(ROOT/'tools/evaluate_v24_historical_metrics.py'),
             '--evaluator-root',row['evaluator_root'],'--prediction',str(goal/'validation'),'--output',str(root/'evaluation'),
             '--project',row['project'],'--checkpoint','BEST','--trainer',native['trainer'],

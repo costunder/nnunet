@@ -54,6 +54,41 @@ def completed_log_prefix(reference,epochs,target):
         original_raw_bytes=source.stat().st_size,raw_log_modified=False)
 
 
+def historical_reference_inputs(evaluator_root,project,expected_cases):
+    """Read-only availability, byte and NIfTI-header proof, not an evaluation."""
+    from tools.evaluate_v24_historical_metrics import load_evaluator,EXPECTED
+    evaluator=load_evaluator(evaluator_root)
+    require(evaluator.nib is not None,'Native historical NIfTI dependency is required before production')
+    project=project.resolve(strict=True);online=project/'work'/evaluator.DEFAULT_ONLINE_ROOT
+    nnroot=online/'nnunetv2'
+    paths=evaluator.Paths(project=project,medical=project.parent,data=project.parent/'Data',
+        paired=project/'work'/evaluator.DEFAULT_PAIRED_ROOT,online=online,nnroot=nnroot,
+        results=nnroot/'nnUNet_results',outer_splits=project/'work'/evaluator.DEFAULT_PAIRED_ROOT/'outer_splits.json',
+        nnunet_config=project/'config/nnunet.json')
+    split=evaluator.outer_split(paths.outer_splits,0)
+    require(len(expected_cases)==26 and set(split['val'])==set(expected_cases),
+        'Historical reference must use the same complete outer26 validation patients')
+    config=evaluator.load_json(paths.nnunet_config)
+    basic=evaluator.model_validation_dir(paths,730,0,config,evaluator.DEFAULT_BASIC_TRAINER)
+    evaluator.verify_prediction_inventory(basic,expected_cases)
+    files={};headers={}
+    def record(path,**values):
+        before=signature(path);checksum=evaluator.file_sha256(path)
+        require(signature(path)==before,'Historical reference changed during read-only readiness check: '+str(path))
+        files[str(path)]=dict(sha256=checksum,stat=list(before),**values)
+    for path in(paths.nnunet_config,paths.outer_splits):record(path,role='configuration')
+    for case in expected_cases:
+        ground=paths.data/'labels'/(case+'.nii.gz');prediction=basic/(case+'.nii.gz')
+        record(ground,role='ground_truth',case_id=case);record(prediction,role='historical_basic_prediction',case_id=case)
+        reference=evaluator.nib.load(str(ground));candidate=evaluator.nib.load(str(prediction))
+        evaluator.verify_geometry(reference,candidate,prediction)
+        headers[case]=dict(shape=list(reference.shape),affine=reference.affine.tolist())
+    return dict(format='basic_cp_historical_reference_actual26_readiness_v1',complete=True,
+        validation_cases=list(expected_cases),ground_truth_files=26,basic_prediction_files=26,
+        NIfTI_header_geometry_verified=True,files=files,headers=headers,evaluator_root=str(evaluator_root),
+        evaluator_sha256=EXPECTED,full_evaluation_executed=False,metrics_computed=False,inputs_modified=False)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in('source-snapshot','bindings','allocation'):
@@ -77,6 +112,9 @@ def main():
     pre=args.shared_preprocessed_dataset_directory
     native=rows['multi5']['native'];cases=set(native['split']['outer_train'])|set(native['split']['outer_val'])
     require(len(cases)==131,'All105train and26validation patients required')
+    require(args.evaluator_root==ROOT,'The historical evaluator must share the one canonical Git checkout')
+    historical=historical_reference_inputs(args.evaluator_root,args.project,native['split']['outer_val'])
+    historical_path=root/'historical_reference_actual26_readiness.json';seal(historical_path,historical)
     proof=inventory(pre,cases,native['baseline']['data_identifier'])
     inventory_path=root/'shared_preprocessed_actual131.json';seal(inventory_path,proof)
     installed={}
@@ -119,6 +157,7 @@ def main():
     cohort=dict(format=FORMAT,root=str(root),canonical_code=dict(path=str(ROOT),commit=commit,files_sha256=sources),
         allocation=refs['allocation'],physical_parent_index=allocation['physical_parent_index'],
         installed_runtime_files_sha256=installed,experiments=experiments,retained_complete_arms=['blend50'],debug=False,
+        historical_reference_inputs=dict(path=str(historical_path),sha256=digest(historical_path)),
         original_snapshot=refs['source_snapshot'],input_bindings=refs['bindings'],
         source_arrays_copied=False,preprocessing_executed=False,private_code_copies_created=False)
     path=root/'cohort.json';seal(path,cohort)

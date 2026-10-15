@@ -10,6 +10,40 @@ import json
 from pathlib import Path
 import sys
 
+EXPECTED = {'online_eval_v2.py': '93c703edb20e074645ef443f6ca2bd7db03268bbb90fda8591f337993592270b',
+    'online_eval_provenance.py': 'f624ffe37adc708ba5495b1b6bb9c59df74b841109442994379acd175ba75d91'}
+
+
+def load_evaluator(root):
+    """Admit original private exports or the one Git-pinned historical package."""
+    root=Path(root).resolve(strict=True);source=root/'tools';historical=False
+    module_name='tools.online_eval_v2'
+    if(source/'historical_v24').is_dir():
+        source=source/'historical_v24';module_name='tools.historical_v24.online_eval_v2';historical=True
+    for name,checksum in EXPECTED.items():
+        if hashlib.sha256((source/name).read_bytes()).hexdigest()!=checksum:
+            raise ValueError('Historical metric implementation hash mismatch: '+name)
+    sys.path.insert(0,str(root))
+    if historical:
+        # Frozen v1 checkout files use CRLF. Bind the exact LF historical
+        # sibling for this import, then restore the process's previous alias.
+        provenance=importlib.import_module('tools.historical_v24.online_eval_provenance')
+        marker=object();previous=sys.modules.get('tools.online_eval_provenance',marker)
+        sys.modules['tools.online_eval_provenance']=provenance
+        try:evaluator=importlib.import_module(module_name)
+        finally:
+            if previous is marker:sys.modules.pop('tools.online_eval_provenance')
+            else:sys.modules['tools.online_eval_provenance']=previous
+    else:
+        evaluator=importlib.import_module(module_name)
+        provenance=importlib.import_module('tools.online_eval_provenance')
+    if(Path(evaluator.__file__).resolve()!=source/'online_eval_v2.py'
+            or Path(provenance.__file__).resolve()!=source/'online_eval_provenance.py'
+            or any(Path(getattr(evaluator,name).__globals__['__file__']).resolve()!=source/'online_eval_provenance.py'
+                for name in('build_evaluation_contract','contract_comparability','prepare_new_output','verify_evaluation_contract'))):
+        raise ValueError('Wrong historical evaluator/provenance import')
+    return evaluator
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -22,15 +56,8 @@ def main():
     parser.add_argument('--model-label', default='v2.3 GNN CP -> nnUNet')
     parser.add_argument('--gpu-label', default='GPU1')
     args = parser.parse_args()
-    expected = {'online_eval_v2.py': '93c703edb20e074645ef443f6ca2bd7db03268bbb90fda8591f337993592270b',
-        'online_eval_provenance.py': 'f624ffe37adc708ba5495b1b6bb9c59df74b841109442994379acd175ba75d91'}
-    for name, checksum in expected.items():
-        if hashlib.sha256((args.evaluator_root / 'tools' / name).read_bytes()).hexdigest() != checksum:
-            raise ValueError('Historical metric implementation hash mismatch')
-    sys.path.insert(0, str(args.evaluator_root.resolve()))
-    evaluator = importlib.import_module('tools.online_eval_v2')
-    if Path(evaluator.__file__).resolve() != (args.evaluator_root / 'tools/online_eval_v2.py').resolve():
-        raise ValueError('Wrong evaluator import')
+    expected=EXPECTED
+    evaluator=load_evaluator(args.evaluator_root)
     trainer = args.trainer
     original = evaluator.model_validation_dir
 

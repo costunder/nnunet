@@ -162,6 +162,9 @@ def validate_allocation(receipt,job,holder,devices,*,now_monotonic,node_boot_id,
         require(token in devices and devices[token]['parent_UUID']==parent,
             'Assigned execution devices must independently map to one physical parent')
         row=devices[token]
+        admitted=receipt.get('execution_device_observations',{}).get(token,{})
+        require(all(admitted.get(name)==row[name]for name in('parent_UUID','index','MIG','GI','CI','MIG_enabled','total_bytes')),
+            'Current execution hardware differs from its original independently observed allocation')
         if mode=='full_GPU_shared6':
             require(row['MIG']is False and row['MIG_enabled']is False and row['total_bytes']>=79*GIB,'Owned full80GB GPU required')
         else:

@@ -148,7 +148,8 @@ def main():
             VRAM_measurement_evidence=inputs['VRAM_measurement_evidence'], PBS_lifetime=clock,
             expires_at_unix=time.time() + clock['remaining_seconds'],
             actual_PBS_response_sha256=hashlib.sha256(raw.encode()).hexdigest(),
-            physical_parent_observation=physical, PBS_query_warnings=warnings)
+            physical_parent_observation=physical, execution_device_observations=devices,
+            PBS_query_warnings=warnings)
         validate_allocation(allocation, record,
             dict(identity=identity(actor), environment=actor.environ(), CPU_affinity=cpus,
                  memory_limit_bytes=memory['limit']), devices,
