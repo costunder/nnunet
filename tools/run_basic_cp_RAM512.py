@@ -35,6 +35,57 @@ _PRIOR_VALIDATORS = {}
 _SCOPE = dict(vars(historical), __file__=str(Path(__file__).resolve()), __name__=__name__)
 
 
+def environment(native, *, output=None):
+    env = historical.environment(native, output=output)
+    if 'GPU56_sharing_receipt' in native:
+        from hiercp_v1x.basic_cp_GPU56_sharing import execution_uuid
+        target = execution_uuid(native)
+        env['CUDA_VISIBLE_DEVICES'] = '' if target is None else target
+    return env
+
+
+def status(native, phase, state, **values):
+    if 'GPU56_sharing_receipt' not in native:
+        return historical.status(native, phase, state, **values)
+    from hiercp_v1x.basic_cp_GPU56_sharing import execution_gpu, execution_uuid
+    # Only the status writer receives this display projection.  Validation,
+    # checkpoint, CPU and native32 accounting retain the original logical slot.
+    display = dict(native, gpu=execution_gpu(native))
+    values.update(logical_GPU=native['gpu'], execution_GPU_UUID=execution_uuid(native))
+    return historical.status(display, phase, state, **values)
+
+
+def _wait_for_GPU(value):
+    if 'GPU56_sharing_receipt' not in value:
+        return _SCOPE['_legacy_wait_for_GPU'](value)
+    lease = _lease_for(value)
+    while True:
+        try:
+            observation = lease.verify(force=True, idle=True)
+            if observation['GPU_available']:
+                return observation
+            status(value, 'waiting_GPU', 'WAITING', GPU_admission=observation,
+                reason='All three admitted experiment slots on the physical GPU are occupied')
+        except (ResourceClaimUnavailable, resources.RAMAdmissionUnavailable) as failure:
+            status(value, 'waiting_RAM', 'WAITING', reason=str(failure),
+                RAM512_reservation=copy.deepcopy(failure.observation))
+        except GPUAdmissionUnavailable as failure:
+            status(value, 'waiting_GPU', 'WAITING', reason=str(failure.observation),
+                GPU_admission=copy.deepcopy(failure.observation))
+        time.sleep(5)
+
+
+def _validate_native_GPU_wait(native, label, identity):
+    original = _SCOPE['_legacy_validate_native_GPU_wait']
+    if 'GPU56_sharing_receipt' not in native:
+        return original(native, label, identity)
+    from hiercp_v1x.basic_cp_GPU56_sharing import execution_gpu, execution_uuid
+    # Only two expected fields change. Root, bank, actor, stage, exit75 and
+    # completed-finally checks remain the exact historical validator.
+    display = dict(native, gpu=execution_gpu(native), gpu_uuid=execution_uuid(native))
+    return original(display, label, identity)
+
+
 def _clone(function, scope):
     result = FunctionType(function.__code__, scope, function.__name__, function.__defaults__, function.__closure__)
     result.__kwdefaults__ = copy.deepcopy(function.__kwdefaults__)
@@ -47,6 +98,11 @@ for _name, _value in vars(historical).items():
     if inspect.isfunction(_value) and _value.__globals__ is vars(historical):
         _SCOPE[_name] = _clone(_value, _SCOPE)
 
+_SCOPE['_legacy_wait_for_GPU'] = _SCOPE['_wait_for_GPU']
+_SCOPE['_legacy_validate_native_GPU_wait'] = _SCOPE['_validate_native_GPU_wait']
+_SCOPE.update(environment=environment, status=status, _wait_for_GPU=_wait_for_GPU,
+    _validate_native_GPU_wait=_validate_native_GPU_wait)
+
 
 def _admit_execution(value):
     validate_native(value)
@@ -54,6 +110,9 @@ def _admit_execution(value):
     if not required <= set(value['code_sha256']):
         raise ValueError('Explicit TOTAL512 runner/provider/guard/claim SHA pins required')
     resources.validate_request(value)
+    if 'GPU56_sharing_receipt' in value:
+        from hiercp_v1x.basic_cp_GPU56_sharing import validate_sharing_request
+        validate_sharing_request(value)
 
 
 def _lease_class(value):
@@ -138,6 +197,15 @@ _ACTOR = _private_actor()
 
 def _provider_command(native, command, label):
     command = list(command)
+    if label == 'historical_metrics' and 'GPU56_sharing_receipt' in native:
+        from hiercp_v1x.basic_cp_GPU56_sharing import execution_gpu
+        if command.count('--gpu-label') != 1:
+            raise ValueError('Exact historical metrics physical GPU label argument required')
+        index = command.index('--gpu-label') + 1
+        if index >= len(command) or command[index] != 'GPU' + str(native['gpu']):
+            raise ValueError('Historical metric argv changed before explicit physical GPU projection')
+        command[index] = 'GPU' + str(execution_gpu(native))
+        return command
     if label != 'candidate_bank':
         return command
     _admit_execution(native)
@@ -183,7 +251,7 @@ def actor(native, command, label, env):
                 raise
             # The context has closed its mutex. All source/PBS/GPU/storage
             # inputs are still checked; no narrower science fallback exists.
-            historical.status(native, 'waiting_RAM', 'WAITING', reason=str(failure),
+            status(native, 'waiting_RAM', 'WAITING', reason=str(failure),
                 RAM512_reservation=copy.deepcopy(failure.observation))
             _lease_for(native).observe_waiting()
             time.sleep(5)
@@ -193,7 +261,7 @@ def actor(native, command, label, env):
                 # Existing native child() owns exit75 cleanup and fresh DEBUG
                 # output retries; preserve that scientific witness workflow.
                 raise
-            historical.status(native,'waiting_GPU','WAITING',reason=str(failure.observation),
+            status(native,'waiting_GPU','WAITING',reason=str(failure.observation),
                 GPU_admission=copy.deepcopy(failure.observation),retry_CPU_stage=label)
             _lease_for(native).observe_waiting()
             time.sleep(5)
@@ -219,7 +287,7 @@ def _archive_context(native, byte_count, destination):
         try:
             reservation.__enter__()
         except (ResourceClaimUnavailable, resources.RAMAdmissionUnavailable)as failure:
-            historical.status(native,'report','WAITING',reason=str(failure),
+            status(native,'report','WAITING',reason=str(failure),
                 RAM512_archive_reservation=copy.deepcopy(failure.observation),
                 archive_copy_started=False,completed_epochs=250,evaluated_cases=26)
             lease.observe_waiting()
@@ -387,7 +455,7 @@ def _carry_complete_pipeline(request):
     if (not isinstance(carried,dict) or not isinstance(carried.get('reports'),dict)
             or not isinstance(carried.get('archive'),dict) or migration['historical_metrics_complete']is not True):
         raise ValueError('Actual full completed report/archive evidence required; no metric fallback')
-    historical.status(native,'complete','COMPLETE',completed_epochs=250,evaluated_cases=26,
+    status(native,'complete','COMPLETE',completed_epochs=250,evaluated_cases=26,
         full_native_training=True,full_native_evaluation=True,historical_metrics_complete=True,
         reports=carried['reports'],archive=carried['archive'],actual_completed_pipeline_reused=True,
         completed_source_root=migration['source_root'],existing_predictions_and_BEST_receipt_preserved=True)
@@ -402,7 +470,7 @@ def _wait_for_queue_transfer(request):
     migration = _migration(native)
     if migration['state'] != 'TRAINING':
         raise ValueError('Only incomplete actual training may wait for an approved GPU transfer')
-    wait_for_transfer(request, _lease_for(request), historical.status,
+    wait_for_transfer(request, _lease_for(request), status,
         completed_epochs=migration.get('completed_epochs'))
 
 

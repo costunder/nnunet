@@ -1,5 +1,6 @@
 """Actual RAM512 limit values over the unchanged UI2 and native console."""
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import os
@@ -161,17 +162,40 @@ def build_entry(expanded,viewer):
             value = _queue_waiting_value(value,phase='WAITING',reason=state.get('reason'),
                 completed_epochs=state.get('completed_epochs'),target=state.get('queued_physical_GPU'))
         cpu_source=value['physical_GPU']==5 and value['controller_stage']=='candidate_bank'
-        return dict(value,RAM_limit_GiB=request['effective_shared_bank_RSS_limit_GiB']if cpu_source
+        result = dict(value,RAM_limit_GiB=request['effective_shared_bank_RSS_limit_GiB']if cpu_source
             else request['effective_native_RSS_limit_GiB'])
+        if 'GPU56_sharing_receipt' in request:
+            from hiercp_v1x.basic_cp_GPU56_sharing import validate_sharing_request
+            validate_sharing_request(request)
+            result.update(physical_GPU=request['execution_physical_GPU'],logical_slot=request['gpu'])
+        return result
     scope=dict(entry.__globals__,snapshot=snapshot)
     return FunctionType(entry.__code__,scope,entry.__name__,entry.__defaults__,entry.__closure__)
 
 
 def main(argv=None):
-    scope=dict(admission.main.__globals__,build_entry=build_entry)
-    entry=FunctionType(admission.main.__code__,scope,admission.main.__name__,
-        admission.main.__defaults__,admission.main.__closure__)
-    return entry(argv)
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--manifest',type=Path,required=True)
+    parser.add_argument('--code-root',type=Path,required=True)
+    selection=parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument('--gpu',type=int,choices=range(7),
+        help='Existing logical experiment slot; retained for saved commands')
+    selection.add_argument('--arm',help='Exact scientific experiment name on a shared GPU')
+    args,rest=parser.parse_known_args(argv)
+    manifest=json.loads(args.manifest.read_bytes())
+    registration=manifest['registration']
+    if args.arm is None:
+        row=registration[str(args.gpu)]
+    else:
+        matches=[row for row in registration.values()if row['arm']==args.arm]
+        if len(matches)!=1:
+            parser.error('Choose one registered --arm: '+', '.join(row['arm']for row in registration.values()))
+        row=matches[0]
+    code_root=args.code_root.resolve(strict=True)
+    if code_root!=Path(manifest['code']).resolve(strict=True):
+        raise ValueError('Explicit code root must equal the manifest pinned export')
+    expanded,viewer=admission.load_pinned_viewers(code_root)
+    return build_entry(expanded,viewer)(['--root',str(Path(row['root'])),*rest])
 
 
 if __name__=='__main__':main()

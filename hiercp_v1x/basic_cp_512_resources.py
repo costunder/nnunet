@@ -12,7 +12,8 @@ import copy
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 import shutil
 import stat
 import time
@@ -171,7 +172,106 @@ def outside_inode_store_bound(root, *, excluded_inode_keys=frozenset()):
             os.close(fd)
 
 
-def allocated_tmpfs(root, processes, *, uid=common.UID, proc_root=Path('/proc')):
+def _device_mount_guard(root, device, proc_root):
+    """Return relevant mount identities only for one covering tmpfs mount.
+
+    A mounted subtree would make whole-device allocation an invalid bound for
+    all files below the accounting root. Its presence selects the exact scan.
+    Malformed or unreadable namespace evidence never supplies free capacity.
+    """
+    text = (Path(proc_root)/'self'/'mountinfo').read_text(encoding='utf8')
+    target = PurePosixPath(root.as_posix())
+    expected = (os.major(device), os.minor(device))
+    ancestors = []; nested = False
+    def decode(value):
+        if re.search(r'\\(?![0-7]{3})', value):
+            raise ValueError('Malformed mountinfo pathname escape')
+        result = re.sub(r'\\([0-7]{3})', lambda match:chr(int(match.group(1), 8)), value)
+        if '\x00' in result:
+            raise ValueError('NUL is not a mountinfo pathname')
+        return result
+    for line in text.splitlines():
+        halves = line.split(' - ')
+        if len(halves) != 2:
+            raise ValueError('Malformed Linux mountinfo record')
+        left, right = halves[0].split(), halves[1].split()
+        if (len(left) < 6 or len(right) < 3 or not left[0].isdigit()
+                or not left[1].isdigit() or len(left[2].split(':')) != 2
+                or any(not part.isdigit() for part in left[2].split(':'))):
+            raise ValueError('Malformed Linux mountinfo identity')
+        mount = PurePosixPath(decode(left[4]))
+        if not mount.is_absolute() or '..' in mount.parts:
+            raise ValueError('Absolute canonical mountinfo pathname required')
+        if mount != target and mount.is_relative_to(target):
+            nested = True
+        if target.is_relative_to(mount):
+            ancestors.append((str(mount), int(left[0]), int(left[1]), left[2],
+                              decode(left[3]), right[0]))
+    if not ancestors:
+        raise RuntimeError('Accounting root has no covering Linux mountinfo record')
+    covering = max(ancestors, key=lambda row:len(PurePosixPath(row[0]).parts))
+    if (nested or covering[5] != 'tmpfs'
+            or tuple(int(part) for part in covering[3].split(':')) != expected):
+        return None
+    return tuple(sorted(ancestors))
+
+
+def _whole_device_store_bound(root, metadata, *, uid, proc_root, ceiling):
+    """Conservatively charge the complete tmpfs device without walking files."""
+    if not all(hasattr(os, name) for name in ('fstatvfs', 'major', 'minor')):
+        return None  # Non-Linux DEBUG hosts retain the original exact scan.
+    before_mounts = _device_mount_guard(root, metadata.st_dev, proc_root)
+    if before_mounts is None:
+        return None
+    fields = ('st_dev', 'st_ino', 'st_uid', 'st_gid', 'st_mode')
+    signature = lambda row:tuple(getattr(row, field) for field in fields)
+    flags = (os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0)
+             | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0))
+    fd = os.open(root, flags)
+    try:
+        opened = os.fstat(fd)
+        if (not stat.S_ISDIR(opened.st_mode) or opened.st_uid != uid
+                or signature(opened) != signature(metadata)):
+            raise RuntimeError('Whole-device accounting root FD changed identity or device')
+        def used():
+            value = os.fstatvfs(fd)
+            blocks, free, fragment = value.f_blocks, value.f_bfree, value.f_frsize
+            if (any(type(part) is not int for part in (blocks, free, fragment))
+                    or blocks < 0 or free < 0 or free > blocks or fragment <= 0):
+                raise ValueError('Malformed actual tmpfs allocation counters')
+            return (blocks-free)*fragment
+        first = used()
+        after_mounts = _device_mount_guard(root, metadata.st_dev, proc_root)
+        final = used()
+        current = root.lstat(); held = os.fstat(fd)
+        if (signature(current) != signature(opened) or signature(held) != signature(opened)
+                or after_mounts != before_mounts):
+            raise RuntimeError('Whole-device accounting root or mount namespace changed during observation')
+        charge = max(first, final)
+        if charge > ceiling:
+            return None  # Keep exact own-inode accounting when overcharge does not fit.
+        return dict(owned_tmpfs_allocated_bytes=charge, inode_count=None,
+            deleted_open_inode_observations=None,
+            accounting='conservative_whole_tmpfs_device_allocated_upper_bound',
+            whole_tmpfs_device_allocated_bytes=charge,
+            whole_tmpfs_device_allocated_observations_bytes=[first, final],
+            conservative_device_ceiling_bytes=ceiling,
+            exact_inode_inventory_performed=False,
+            outside_root_files_conservatively_included=True,
+            per_inode_UID_inventory_performed=False,
+            deleted_open_inodes_included_in_device_charge=True,
+            unknown_file_charge_is_actual_owned_attribution=False,
+            denied_FD_zero_fallback_used=False,
+            root_FD_identity=dict(zip(fields, signature(opened))),
+            relevant_mount_identities=[list(row) for row in before_mounts],
+            nested_mounts_present=False,
+            foreign_files_read_for_content=False)
+    finally:
+        os.close(fd)
+
+
+def allocated_tmpfs(root, processes, *, uid=common.UID, proc_root=Path('/proc'),
+                    conservative_device_ceiling_bytes=None):
     """Count owned filesystem blocks once, including unlinked open tmpfs files.
 
     Permission/I/O errors are fatal. Only an actually vanished inode or task is
@@ -182,6 +282,14 @@ def allocated_tmpfs(root, processes, *, uid=common.UID, proc_root=Path('/proc'))
     metadata = root.lstat()
     if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != uid:
         raise RuntimeError('RAM512 accounting root is not the exact owned directory')
+    if conservative_device_ceiling_bytes is not None:
+        if (type(conservative_device_ceiling_bytes) is not int
+                or conservative_device_ceiling_bytes != POST_SOURCE_STORE_LIMIT):
+            raise ValueError('Only the exact approved post-source272GiB device ceiling is permitted')
+        bound = _whole_device_store_bound(root, metadata, uid=uid, proc_root=proc_root,
+            ceiling=conservative_device_ceiling_bytes)
+        if bound is not None:
+            return bound
     device = metadata.st_dev
     inodes = {}
     deleted = []
@@ -604,18 +712,40 @@ class _RAM512:
     def _bind_self(self):
         if self.self_identity == self.request['controller_identity']:
             return
-        state = self.claim_ledger().snapshot()
-        for claim in state['claims'].values():
-            if (claim['gpu'] == self.request['gpu'] and claim['command'] == self.self_identity['command']
-                    and claim['child_identity'] is None):
-                own = common._exact(self.self_identity)
-                parent = own.parent()
-                if parent is not None:
-                    actual_parent = _identity(parent)
-                    if actual_parent == self.request['controller_identity']:
-                        self.claim_ledger().assert_current_child(claim['stage'], claim['command'],
-                            self.self_identity, actual_parent)
-                return
+        ledger = self.claim_ledger()
+        bound = getattr(self, '_bound_native_claim', None)
+        if bound is not None:
+            state = ledger.snapshot_atomic_readonly()
+            claim = state['claims'].get(bound['token'])
+            if (claim is None or state['revision'] < bound['revision']
+                    or any(claim.get(key) != value for key, value in bound['identity'].items())
+                    or _normalize_identity(self.self_identity) != claim['child_identity']
+                    or _normalize_identity(self.request['controller_identity']) != claim['controller_identity']):
+                raise RuntimeError('Bound native allocation was removed, regressed or changed identity')
+            bound['revision'] = state['revision']
+            return
+        state = ledger.snapshot()
+        matches = [claim for claim in state['claims'].values()
+                   if claim['gpu'] == self.request['gpu']
+                   and claim['command'] == self.self_identity['command']]
+        if len(matches) != 1:
+            raise RuntimeError('Exactly one prospective allocation is required before native/source work')
+        claim = matches[0]
+        own = common._exact(self.self_identity)
+        parent = own.parent()
+        if parent is None or _identity(parent) != _normalize_identity(self.request['controller_identity']):
+            raise RuntimeError('Initial allocation binding requires the exact admitted parent')
+        if claim['child_identity'] is None:
+            claim = ledger.assert_current_child(claim['stage'], claim['command'],
+                self.self_identity, _identity(parent))
+        if (claim['child_identity'] != _normalize_identity(self.self_identity)
+                or claim['controller_identity'] != _normalize_identity(self.request['controller_identity'])):
+            raise RuntimeError('Allocation child or controller differs from the exact live identity')
+        if claim['kind'] == 'native':
+            keys = ('token', 'kind', 'gpu', 'stage', 'command', 'request_sha256',
+                    'child_identity', 'controller_identity', 'claimed_at_unix')
+            self._bound_native_claim = dict(token=claim['token'], revision=state['revision'],
+                identity={key: copy.deepcopy(claim[key]) for key in keys})
 
     def verify(self, *, force=False, idle=False):
         self._bind_self()
@@ -958,7 +1088,9 @@ class _RAM512:
             raise RuntimeError('Torch/source child must bind its exact prospective RAM512 allocation before work')
         auxiliary_pids = set(inventory_rss) - compute_pids
         aux_rss = sum(inventory_rss[pid] for pid in auxiliary_pids)
-        store = allocated_tmpfs(self.request['owned_tmpfs_root'], inventory)
+        store_options = ({'conservative_device_ceiling_bytes':POST_SOURCE_STORE_LIMIT}
+                         if 'GPU56_sharing_receipt' in self.request else {})
+        store = allocated_tmpfs(self.request['owned_tmpfs_root'], inventory, **store_options)
         memory = psutil.virtual_memory()
         reservations = state.get('storage_reservations', {})
         if not isinstance(reservations, dict):
@@ -1060,9 +1192,11 @@ class _RAM512:
                     # fresh private native lease and the same held state.
                     native_view = BasicLease(native)
                     native_view._claim_override = state
-                    return group.BasicLease.observe_waiting(native_view)
+                    return (native_view.observe_waiting() if 'GPU56_sharing_receipt' in native
+                            else group.BasicLease.observe_waiting(native_view))
                 # CPU preparation needs exact UUID evidence, not CUDA ownership.
-                return group.BasicLease.observe_waiting(self)
+                return (_observe_GPU56_waiting(self) if 'GPU56_sharing_receipt' in self.request
+                        else group.BasicLease.observe_waiting(self))
             return group.BasicLease.verify(self, force=True, idle=True)
         finally:
             self._claim_override = None
@@ -1078,8 +1212,54 @@ class _RAM512:
                                                   destination=destination)
 
 
+def _observe_GPU56_waiting(lease):
+    """Keep full CPU/RAM/PBS checks while observing the physical shared GPU."""
+    lease._inputs()
+    if os.getuid() != common.UID or common.socket.gethostname().split('.')[0] != common.NODE:
+        raise RuntimeError('Actual GPU56 waiting UID or node changed')
+    controller = common._exact(lease.request['controller_identity'])
+    own = common._exact(lease.self_identity)
+    if any(p.cpu_affinity() != lease.request['cpu_affinity'] for p in (controller, own)):
+        raise RuntimeError('Exact logical experiment CPU affinity changed')
+    lease._host_lifetime(force=True)
+    remaining = min(lease.lifetime['expires_at_unix'] - time.time(),
+                    lease.monotonic_expiry - time.monotonic())
+    if remaining < common.EXPIRY_RESERVE_SECONDS:
+        raise RuntimeError('Host lifetime has less than180seconds while observing shared GPU')
+    tree = lease._tree(controller, own)
+    result = lease._resources(controller, own, tree)
+    try:
+        from .basic_cp_GPU56_sharing import verify_gpu
+        result.update(verify_gpu(lease, tree, idle=False))
+    except common.GPUAdmissionUnavailable as failure:
+        result.update(GPU_available=False, GPU_admission=copy.deepcopy(failure.observation),
+                      unknown_GPU_actor_admitted=False, processes_signaled=False)
+    remaining = min(lease.lifetime['expires_at_unix'] - time.time(),
+                    lease.monotonic_expiry - time.monotonic())
+    if remaining < common.EXPIRY_RESERVE_SECONDS:
+        raise RuntimeError('Host lifetime crossed180second boundary during shared GPU observation')
+    result.update(host_lifetime_remaining_seconds=remaining,
+        host_lifetime_expires_at_unix=lease.lifetime['expires_at_unix'],
+        host_lifetime_job_id=lease.lifetime['job_id'],
+        host_lifetime_actual_PBS_observation=copy.deepcopy(lease._pbs_observation),
+        host_lifetime_PBS_observation_age_seconds=time.monotonic() - lease._pbs_verified_at,
+        host_lifetime_PBS_warning=copy.deepcopy(lease._pbs_timeout))
+    return result
+
+
 class BasicLease(_RAM512, pause._RAMPause, group.BasicLease):
     """Native32 operational ceiling with original identity/CPU/PBS/GPU guard."""
+
+    def _gpu(self, tree, *, idle):
+        if 'GPU56_sharing_receipt' in self.request:
+            from .basic_cp_GPU56_sharing import verify_gpu
+            return verify_gpu(self, tree, idle=idle)
+        return super()._gpu(tree, idle=idle)
+
+    def observe_waiting(self):
+        if 'GPU56_sharing_receipt' in self.request:
+            return _observe_GPU56_waiting(self)
+        return super().observe_waiting()
 
 
 class _CPUStageGroupLease(_RAM512, group.BasicLease):
@@ -1256,6 +1436,10 @@ def check_initial_GPU_idle(native):
         raise RuntimeError('Pre-Popen actual host lifetime crossed180second boundary')
     tree = lease._tree(controller, own)
     lease._rss(tree)
+    if 'GPU56_sharing_receipt' in native:
+        if shared_cpu:
+            raise RuntimeError('Sealed GPU56 sharing cannot start another CPU source producer')
+        return lease._gpu(tree, idle=True)
     return common.BasicLease._gpu(lease, tree, idle=True)
 
 

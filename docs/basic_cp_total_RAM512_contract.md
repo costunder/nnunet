@@ -58,6 +58,34 @@ optimizer, scaler, 8개 logger를 검증해 보존하고 새 registry에서 이�
 `/var/tmp/aicompetition06_basic_cp_seven_resume_1791934200100000000/queue_multi5_on5_candidates1024_on6`
 아래에 보존한다. 대기 등록은 후속 학습·평가 완료를 뜻하지 않는다.
 
+## GPU5·6에 각 3개 실험 배치
+
+2026-10-15 사용자는 GPU5·6만 사용하고 각각 3개 실험을 함께 실행하도록 지정했다.
+위의 GPU0·4 후속 순서는 이 새 배치로 대체한다. logical slot은 기존 실험과
+checkpoint의 식별자로 유지하며 실제 CUDA 장치는 별도 SHA 고정 영수증으로 지정한다.
+
+| 물리 GPU | 함께 실행할 기존 실험 | slot |
+|---|---|---|
+| 5 | CP 5개 / 후보 512 / 후보 2048 | 0 / 3 / 5 |
+| 6 | CP 10개 / 후보 1024 / CP 7개 | 2 / 4 / 6 |
+
+slot1의 blend50은 전체 학습·자기 BEST26 평가·지표·archive 완료 기록을 보존한다.
+각 A6000의 확인된 VRAM은 46,068MiB이다. 기존 production의 최대 CUDA allocated는
+12,359,319,040byte, 모든 arm의 기존 full-model calibration 최대는 12,469,026,304byte였다.
+운영 예약은 실험당 14GiB, GPU당 최대 3개로 합계 42GiB이며 남는 약 2.99GiB를
+driver·allocator 여유로 둔다. 이 측정은 세 프로세스 동시 처리량 검증을 대신하지 않는다.
+새 실행 후 실제 CUDA actor·메모리·학습 진행을 다시 확인한다.
+
+RAM은 물리 GPU 수가 아닌 실험별 32GiB를 예약한다. source는 이미 sealed된
+전체 642개 bank를 재사용한다. 전체 512GiB 상한, full model·B2·250epoch·105/26명·
+자기 BEST 평가·UI2/native 로그 형식은 그대로 유지한다. 실행 중인 코드와 registry는
+덮어쓰지 않고, 전체 checkpoint를 검증한 새 cohort에서 이어 간다.
+
+이미 bound된 native의 매 step 검증은 원자 게시된 ledger를 무잠금으로 읽되
+token·logical slot·stage·명령·request SHA·child/controller identity·revision을 검증한다.
+신규 예약·초기 bind·refresh·release는 기존 mutex를 유지한다. 입력 파일의 같은
+ancestor 검사만 한 호출 안에서 합치며 파일 metadata와 마지막 ancestor 검증은 유지한다.
+
 ## 작업 완료 체크리스트
 
 - [ ] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

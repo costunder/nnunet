@@ -18,7 +18,8 @@ OPERATIONAL_FIELDS={'root','gpu','gpu_uuid','GPU_memory_total_MiB','cpu_affinity
  'controller_identity','controller_cgroup_admission','shared_resource_registry','RAM512_claim_ledger',
  'RAM512_source_pending_receipt','shared_banks','producer_root','PBS_shared_cache_root',
  'GPU_placement_receipt','GPU_queue_deferred_transfer','RAM512_migration_state',
- 'RAM512_completed_best_validator','archive_root'}
+ 'RAM512_completed_best_validator','archive_root','GPU56_sharing_receipt',
+ 'execution_physical_GPU','execution_GPU_UUID'}
 FLAGS=dict(memory_budget_revision=512, aggregate_memory_cap_GiB=512,
  effective_native_RSS_limit_GiB=32, effective_shared_bank_RSS_limit_GiB=320,
  owned_tmpfs_envelope_GiB=144, post_source_owned_tmpfs_envelope_GiB=272,
@@ -115,6 +116,9 @@ def validate_request_transfer(old_requests,new_requests,mapping):
  require(mapping==arm_mapping(old_requests,new_requests),'Exact derived whole-arm mapping required')
  for gpu,oldgpu in mapping.items():
   a=old_requests[oldgpu];b=new_requests[gpu];physical=old_requests[gpu]
+  if 'GPU56_sharing_receipt' in b:
+   from hiercp_v1x.basic_cp_GPU56_sharing import validate_sharing_request
+   validate_sharing_request(b)
   require(all(a.get(k)==b.get(k)for k in set(a)|set(b)if k not in OPERATIONAL_FIELDS),
    'Scientific or unrecognized immutable request field changed: GPU'+gpu)
   require(b['gpu_uuid']==physical['gpu_uuid']and b['cpu_affinity']==physical['cpu_affinity']

@@ -171,12 +171,17 @@ class Ledger:
 
     def _read(self):
         _regular(self.path)
-        state = json.loads(self.path.read_bytes())
+        return self._validate_state(json.loads(self.path.read_bytes()))
+
+    def _validate_state(self, state):
+        if not isinstance(state, dict):
+            raise RuntimeError('Common RAM512 ledger must remain a mapping')
         if (state.get('format') != FORMAT or state.get('binding') != self.binding
                 or not isinstance(state.get('claims'), dict)
                 or not isinstance(state.get('storage_reservations'), dict)
                 or any(type(state.get(k)) is not bool for k in ('source_pending', 'source_released', 'priority_complete'))
-                or state['source_released'] == state['source_pending']):
+                or state['source_released'] == state['source_pending']
+                or type(state.get('revision')) is not int or state['revision'] < 0):
             raise RuntimeError('Common immutable RAM512 ledger binding or phase changed')
         for token, claim in state['claims'].items():
             if (claim.get('token') != token or claim.get('kind') not in ('native', 'cpu_source')
@@ -202,6 +207,9 @@ class Ledger:
                     or len(row['destination_parent_identity'])!=3):
                 raise RuntimeError('Projected archive destination left the owned tmpfs namespace')
         reservation_bytes(state)
+        if 'GPU56_sharing_receipt' in self.native:
+            from .basic_cp_GPU56_sharing import verify_claim_capacity
+            verify_claim_capacity(state, self.native)
         return state
 
     def _write(self, state):
@@ -237,6 +245,63 @@ class Ledger:
 
     def snapshot(self):
         with self._locked(): return copy.deepcopy(self._read())
+
+    def snapshot_atomic_readonly(self):
+        """Read one complete published ledger without taking the writer mutex.
+
+        Writers exclusively publish through fsync + atomic replace. A native
+        child which is already bound may inspect that immutable version while
+        the parent measures resources under the mutation lock. No reservation,
+        binding, refresh or release is permitted through this read-only path.
+        """
+        self._deadline()
+        fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns',
+                  'st_uid', 'st_gid', 'st_mode')
+        signature = lambda row: tuple(getattr(row, name) for name in fields)
+        for _ in range(5):
+            before = _regular(self.path)
+            parents = {parent: parent.lstat() for parent in self.path.parents}
+            flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0)
+            fd = os.open(self.path, flags)
+            try:
+                opened = os.fstat(fd)
+                if (not stat.S_ISREG(opened.st_mode)
+                        or hasattr(os, 'getuid') and opened.st_uid != UID):
+                    raise ValueError('Atomic allocation FD must be an exact owned regular file')
+                if signature(opened) != signature(before):
+                    continue  # A genuine atomic publication crossed open().
+                with os.fdopen(fd, 'rb', closefd=False) as stream:
+                    raw = stream.read()
+                after = os.fstat(fd)
+                if signature(after) != signature(opened):
+                    # Atomic replacement may unlink the held old inode. An
+                    # in-place write to the still-published inode is forbidden.
+                    current = _regular(self.path)
+                    if (current.st_dev, current.st_ino) == (opened.st_dev, opened.st_ino):
+                        raise RuntimeError('Published allocation inode changed during read')
+                    continue
+            finally:
+                os.close(fd)
+            current = _regular(self.path)
+            for parent, observed in parents.items():
+                value = parent.lstat()
+                if (stat.S_ISLNK(value.st_mode) or not stat.S_ISDIR(value.st_mode)
+                        or (value.st_dev, value.st_ino, value.st_uid, value.st_gid, value.st_mode)
+                        != (observed.st_dev, observed.st_ino, observed.st_uid,
+                            observed.st_gid, observed.st_mode)):
+                    raise RuntimeError('Atomic allocation ancestor changed during read')
+            if signature(current) != signature(after):
+                continue
+            state = self._validate_state(json.loads(raw))
+            revision = state['revision']; digest = hashlib.sha256(raw).hexdigest()
+            previous = getattr(self, '_atomic_read_version', None)
+            if previous is not None and (revision < previous[0]
+                    or revision == previous[0] and digest != previous[1]):
+                raise RuntimeError('Published allocation revision regressed or changed without a revision')
+            self._deadline()
+            self._atomic_read_version = (revision, digest)
+            return state
+        raise RuntimeError('Atomic allocation publication did not stabilize during bounded read')
 
     def _actual(self, expected):
         expected = identity(expected)
@@ -347,6 +412,9 @@ class AllocationReservation:
             gpu=native['gpu'], stage=stage, controller_identity=identity(native['controller_identity']),
             request_sha256=ledger.binding['request_sha256'][str(native['gpu'])], command=list(command),
             child_identity=None, captured=[], claimed_at_unix=time.time())
+        if 'GPU56_sharing_receipt' in native:
+            from .basic_cp_GPU56_sharing import claim_fields
+            self.claim.update(claim_fields(native, stage))
         identity(dict(self.claim['controller_identity'], command=command))
         if self.claim['kind'] == 'cpu_source' and native['gpu'] != 5:
             raise ValueError('Only exact GPU5 producer may reserve shared CPU source320')
@@ -369,6 +437,9 @@ class AllocationReservation:
             if self.claim['kind'] == 'cpu_source' and not state['source_pending']:
                 raise RuntimeError('Complete released source cannot be allocated again')
             state['claims'][self.claim['token']] = copy.deepcopy(self.claim)
+            if 'GPU56_sharing_receipt' in self.native:
+                from .basic_cp_GPU56_sharing import verify_claim_capacity
+                verify_claim_capacity(state, self.native)
             plan = reservation_bytes(state)
             if plan['required_capacity_bytes'] > plan['aggregate_cap_bytes']:
                 raise ResourceClaimUnavailable('Actual prospective TOTAL512 envelope exceeded', plan)

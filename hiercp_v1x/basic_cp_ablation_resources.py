@@ -174,10 +174,19 @@ def validate_host_lifetime_GPU(value):
                 legacy_original_GPU6_witness=False,experimental_GPU_ownership_claimed=False)
 
 
-def _owned(path, *, directory=False):
+def _owned(path, *, directory=False, ancestor_cache=None):
     path = Path(path)
-    if not path.is_absolute() or '..' in path.parts or any(p.is_symlink() for p in (path, *path.parents)):
+    if not path.is_absolute() or '..' in path.parts or path.is_symlink():
         raise ValueError('Absolute non-symlink experiment evidence required')
+    for parent in path.parents:
+        if ancestor_cache is not None and parent in ancestor_cache:
+            continue
+        info = parent.lstat()
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise ValueError('Absolute non-symlink experiment evidence required')
+        if ancestor_cache is not None:
+            ancestor_cache[parent] = (info.st_dev, info.st_ino, info.st_uid,
+                                      info.st_gid, info.st_mode)
     row = path.stat()
     if row.st_uid != UID or not (stat.S_ISDIR(row.st_mode) if directory else stat.S_ISREG(row.st_mode)):
         raise ValueError('Own UID41833 regular evidence or private namespace required')
@@ -441,9 +450,17 @@ class BasicLease:
     def _inputs(self):
         if json.dumps(self.request, sort_keys=True, separators=(',', ':')) != self.request_bytes:
             raise ValueError('Admitted Basic experiment request changed in memory')
+        # Cache only within this invocation. Every file retains its exact
+        # metadata/owner/type check; shared ancestors are rechecked at the end.
+        ancestors = {}
         for path, observed in self._files.items():
-            if _snapshot(_owned(path)) != observed:
+            if _snapshot(_owned(path, ancestor_cache=ancestors)) != observed:
                 raise ValueError('Original admitted Basic source/code/lifetime metadata changed: ' + path)
+        for parent, observed in ancestors.items():
+            info = parent.lstat()
+            if (stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode)
+                    or (info.st_dev, info.st_ino, info.st_uid, info.st_gid, info.st_mode) != observed):
+                raise ValueError('Original admitted Basic evidence ancestor changed: ' + str(parent))
 
     def _terminal_after_change(self, process, metadata, *, reason):
         """Only prove an exact task's natural release; never accept a live argv change.
@@ -894,7 +911,11 @@ class BasicLease:
         if controller.cpu_affinity() != self.request['cpu_affinity'] or own.cpu_affinity() != self.request['cpu_affinity']:
             raise RuntimeError('Exact authorized Basic six-CPU affinity changed')
         visible = os.environ.get('CUDA_VISIBLE_DEVICES', '')
-        if visible not in ('', str(self.request['gpu']), self.request['gpu_uuid']):
+        execution_gpu, execution_uuid = self.request['gpu'], self.request['gpu_uuid']
+        if 'GPU56_sharing_receipt' in self.request:
+            from .basic_cp_GPU56_sharing import execution_gpu as shared_gpu, execution_uuid as shared_uuid
+            execution_gpu, execution_uuid = shared_gpu(self.request), shared_uuid(self.request)
+        if visible not in ('', str(execution_gpu), execution_uuid):
             raise RuntimeError('CUDA visibility differs from the admitted Basic physical GPU')
         torch = sys.modules.get('torch')
         if not visible and torch is not None and torch.cuda.is_initialized():
