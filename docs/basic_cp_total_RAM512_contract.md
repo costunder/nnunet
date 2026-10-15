@@ -37,6 +37,12 @@ source 예약이 실제 자식 종료에 따라 제거된 직후, 부모가 아�
 
 이미 전체 후보가 완료된 복구에서는 원래 bank를 전체 검증해 재사용하고 CPU producer를 다시 만들지 않는다. 이 경우 새 ledger는 실제 완료 증거와 이전 source actor 해제를 근거로 처음부터 `source_pending=False`, source 예약 0으로 시작한다. 새 producer identity나 완료 기록을 만들어 대체하지 않는다.
 
+## 승인된 GPU1 작업의 GPU6 이동
+
+사용자가 승인한 이동은 대기 중인 CP 7개 실험을 물리 GPU1에서 비어 있는 GPU6으로 옮겨 원래 checkpoint부터 재개하는 것이다. 완료된 blend50은 새 등록표의 GPU1 위치에서 완료 기록만 보존하고 다시 학습하지 않는다. 나머지 물리 GPU와 arm의 연결은 유지한다. 모든 새 request가 같은 `GPU_placement_receipt` 경로·SHA와 placement guard 코드 SHA를 고정하며, 영수증은 이 한 가지 7개 arm의 일대일 배치만 허용한다. 영수증이 없으면 원래 배치 규칙을 사용한다.
+
+기존 실행 controller·등록표·ledger를 실행 도중 바꾸지 않는다. 실행 중인 자신의 작업은 완료된 epoch와 전체 optimizer·GradScaler·8개 logger를 검증해 보존하고, 이전 controller와 자식이 해제된 뒤 새 공통 등록표에서 재개한다. 물리 GPU에 맞는 UUID·8 CPU 할당·CUDA visibility를 새로 검증한다. 완료된 blend50의 BEST26 증거는 arm을 따라 연결하며, GPU6으로 옮긴 CP 7개 실험이 이미 완료됐다고 처리하지 않는다. UI 2와 native 로그 형식, 전체 250epoch와 평가 설정은 유지한다.
+
 ## 작업 완료 체크리스트
 
 - [ ] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

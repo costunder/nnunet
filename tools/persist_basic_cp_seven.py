@@ -25,6 +25,7 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from hiercp_v1x import basic_cp_gpu_placement as placement
 FORMAT = 'basic_cp_seven_single_checkpoint_durable_cache_v1'
 BANK_SHA = '9e5be3e3ab8f04fd23c166b3267bc4efbfb4b321ef974920dfc08fbf5dd275e6'
 UID, NODE, GIB = 41833, 'ece-a6gpu6', 2**30
@@ -503,15 +504,22 @@ def admit(manifest_path):
     require(os.getuid()==UID and socket.gethostname().split('.')[0]==NODE, 'Exact own host/UID required')
     path = exact(manifest_path); manifest = read(path); group = exact(manifest['group'],directory=True)
     require(set(manifest['registration'])=={str(i) for i in range(7)}, 'Exactly seven registered GPU arms required')
-    requests = {}; admitted_lifetime = None
+    requests = {}; admitted_lifetime = None; placement_request = None; admitted_placement = None
     for gpu,row in manifest['registration'].items():
         root = exact(row['root'], directory=True); q = read(exact(root/'request.json'))
+        if placement_request is None:
+            def admit_placement_file(path, checksum):
+                require(digest(exact(path))==checksum, 'Exact immutable physical GPU placement receipt SHA required')
+            admitted_placement=placement.admit_placement(q,admit_placement_file)
+            placement_request=q
+        placement.validate_peer_placement(placement_request,q,admitted_placement)
         require(Path('/dev/shm/aicompetition06_basic_cp_ablation_20261013') in root.parents
-                and q['root']==str(root) and q['gpu']==int(gpu) and q['uid']==UID and q['arm']==ARMS[int(gpu)]
+                and q['root']==str(root) and q['gpu']==int(gpu) and q['uid']==UID and q['arm']==admitted_placement[int(gpu)]
                 and q['controller_identity']==row['controller_identity']
                 and q.get('shared_resource_guard_version')==3
                 and digest(root/'request.json')==row['request_sha256'], 'Fresh V3 arm/request/code registration differs')
-        copies={0:5,1:7,2:10}.get(int(gpu),1); candidates={3:512,4:1024,5:2048}.get(int(gpu),128)
+        copies={'multi5':5,'multi7':7,'multi10':10}.get(q['arm'],1)
+        candidates={'candidates512':512,'candidates1024':1024,'candidates2048':2048}.get(q['arm'],128)
         require(q['copies_per_CP_event']==copies and q['candidates_per_source']==candidates,
                 'Exact seven authorized one-factor cardinalities required')
         require({'hiercp_v1x/basic_cp_group_resources_v3.py','hiercp_v1x/basic_cp_shared_bank_resources_v3.py',

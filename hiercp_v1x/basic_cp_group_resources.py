@@ -18,6 +18,7 @@ import time
 import psutil
 
 from . import basic_cp_seven_resources as resource
+from . import basic_cp_gpu_placement as placement
 
 GIB = resource.GIB
 FORMAT = 'basic_cp_shared_resource_registry_v1'
@@ -79,6 +80,7 @@ class BasicLease(resource.BasicLease):
         self.registry_sha256=resource.sha(path)
         self.registration=copy.deepcopy(document['registration'])
         self.registered_requests={}
+        admitted_placement=placement.admit_placement(self.request,self._admit)
         self._group_previous_trees={}
         self._group_previous_shared_stage={}
         controller_pids=[]
@@ -86,7 +88,7 @@ class BasicLease(resource.BasicLease):
         for gpu in range(7):
             row=self.registration[str(gpu)]
             if (not isinstance(row,dict) or not {'root','arm','controller_identity','request_sha256'}<=set(row)
-                    or not _absolute(row['root']) or row['arm']!=ARMS[gpu]
+                    or not _absolute(row['root']) or row['arm']!=admitted_placement[gpu]
                     or not resource._identity(row['controller_identity'])
                     or not resource._checksum(row['request_sha256'])):
                 raise ValueError('Exact seven-arm registry root/arm/controller/request SHA required')
@@ -94,6 +96,7 @@ class BasicLease(resource.BasicLease):
             self._admit(request_path,row['request_sha256'])
             admitted=json.loads(request_path.read_bytes())
             resource.validate_request(admitted)
+            placement.validate_peer_placement(self.request,admitted,admitted_placement)
             if (admitted['root']!=row['root'] or admitted.get('arm')!=row['arm']
                     or admitted['gpu']!=gpu or admitted['controller_identity']!=row['controller_identity']
                     or admitted['uid']!=resource.UID or admitted['cpu_affinity']!=resource.CPUS[gpu]

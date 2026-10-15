@@ -660,9 +660,16 @@ class _RAM512:
                 self._admit(index, common.sha(index)); self._admit(done, common.sha(done))
         return self._completion(banks / 'complete.json', validate)
 
-    def priority_complete(self):
+    def _priority_root(self):
+        """The completed blend50 experiment keeps its proof after an approved move."""
         view = getattr(self, '_group_view', self)
-        path = Path(view.registered_requests[6]['root']) / 'training_and_BEST26_complete.json'
+        rows=[peer for peer in view.registered_requests.values() if peer.get('arm')=='blend50']
+        if len(rows)!=1:
+            raise ValueError('One exact registered blend50 experiment is required for its completion proof')
+        return Path(rows[0]['root'])
+
+    def priority_complete(self):
+        path = self._priority_root() / 'training_and_BEST26_complete.json'
         def validate(value):
             if (value.get('epochs') != 250 or value.get('checkpoint') != 'checkpoint_best.pth'
                     or value.get('evaluation_checkpoint_is_final') is not False
@@ -739,7 +746,7 @@ class _RAM512:
         priority_ready = self.priority_complete()
         priority_proof = None
         if priority_ready:
-            root = Path(getattr(self, '_group_view', self).registered_requests[6]['root'])
+            root = self._priority_root()
             priority_proof = self._phase_receipt('priority_complete', dict(
                 format='basic_cp_RAM512_actual_priority_complete_v1', completed_epochs=250,
                 evaluated_cases=26, checkpoint='BEST', historical_metrics_complete=True,
