@@ -11,6 +11,7 @@ import gc
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -18,6 +19,7 @@ import socket
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import psutil
 
@@ -63,7 +65,8 @@ OPERATIONAL_CODE_CHANGES={'tools/persist_basic_cp_seven.py','hiercp_v1x/basic_cp
     'tools/recover_basic_cp_common_cohort.py','tools/watch_basic_cp_admission.py',
     'hiercp_v1x/basic_cp_512_claims.py','hiercp_v1x/basic_cp_512_resources.py','hiercp_v1x/basic_cp_group_resources.py',
     'hiercp_v1x/basic_cp_gpu_placement.py','tools/run_basic_cp_RAM512.py','tools/watch_basic_cp_RAM512.py','hiercp_v1x/basic_cp_ablation_resources.py',
-    'hiercp_v1x/basic_cp_GPU56_sharing.py'}
+    'hiercp_v1x/basic_cp_GPU56_sharing.py','tools/recover_basic_cp_RAM512_GPU56_cohort.py',
+    'tools/adopt_basic_cp_RAM512_cache_transfer.py'}
 NEW_RUNTIME_FILES.add('hiercp_v1x/basic_cp_GPU56_sharing.py')
 
 
@@ -131,7 +134,53 @@ def classification(*,latest_epoch,final_epoch,best26,metrics,complete_archive):
     return 'BEST26_READY'if best26 else'FINAL250_PENDING_BEST26'
 
 
-def retarget(request,gpu,physical_request,root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference,*,sharing_data,arms):
+def select_host_lifetime(requests,reference,base,common,*,query=None,now=None):
+    """Use a new actual allocation without rewriting the expired old evidence."""
+    previous=requests[0]['host_lifetime']
+    require(all(q['host_lifetime']==previous for q in requests.values()),
+        'All seven old experiments must retain their one original host lifetime')
+    selected=copy.deepcopy(previous if reference is None else reference)
+    evidence={}
+    witnesses={}
+    for label,pinned in(('previous',previous),('current',selected)):
+        require(isinstance(pinned,dict)and set(pinned)=={'path','sha256','expires_at_unix'}
+            and isinstance(pinned['path'],str)and Path(pinned['path']).is_absolute()
+            and re.fullmatch('[0-9a-f]{64}',pinned['sha256'])is not None
+            and type(pinned['expires_at_unix'])in(int,float)and math.isfinite(pinned['expires_at_unix']),
+            'Exact owned host-lifetime path/SHA/deadline required: '+label)
+        path=base.owned(pinned['path'])
+        require(sha(path)==pinned['sha256'],'Pinned host-lifetime evidence changed: '+label)
+        witness=read(path)
+        require(witness.get('format')=='v25_owned_GPU_allocation_v1'
+            and witness.get('UID')==UID and witness.get('owner')=='aicompetition06'
+            and witness.get('node')=='ece-a6gpu6'
+            and re.fullmatch(r'\d+\.ECE-util1',witness.get('job_id',''))is not None
+            and witness.get('expires_at_unix')==pinned['expires_at_unix'],
+            'Actual same-owner/same-host immutable lifetime witness required: '+label)
+        evidence[str(path)]=pinned['sha256'];witnesses[label]=witness
+    witness=witnesses['current']
+    allocated=common.validate_host_lifetime_GPU(witness)
+    if query is None:
+        query=lambda job:subprocess.check_output(['/opt/pbs/bin/qstat','-f','-F','json',job],text=True,timeout=20)
+    raw=query(witness['job_id'])
+    observation=common.BasicLease._validate_pbs_observation(SimpleNamespace(lifetime=witness),raw)
+    actual_now=time.time()if now is None else now
+    require(type(actual_now)in(int,float)and math.isfinite(actual_now)
+        and actual_now<selected['expires_at_unix']-180,
+        'Actual selected owned R allocation must retain more than180seconds')
+    require(all(sha(path)==digest for path,digest in evidence.items()),
+        'Lifetime witnesses changed during independent current allocation validation')
+    transition=dict(format='basic_cp_GPU56_host_lifetime_transition_v1',
+        previous_host_lifetime=copy.deepcopy(previous),current_host_lifetime=copy.deepcopy(selected),
+        previous_job_id=witnesses['previous']['job_id'],current_job_id=witness['job_id'],
+        explicit_new_host_lifetime_supplied=reference is not None,
+        actual_selected_PBS_observation=observation,actual_selected_allocation_GPU=allocated,
+        previous_allocation_required_to_be_running=False,old_lifetime_witness_written=False,
+        scientific_scale_changed=False,processes_signaled=False)
+    return selected,transition,evidence
+
+
+def retarget(request,gpu,physical_request,root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference,*,sharing_data,arms,host_lifetime=None):
     result=copy.deepcopy(request)
     result.update(FIELDS,root=str(root),gpu=gpu,gpu_uuid=physical_request['gpu_uuid'],cpu_affinity=physical_request['cpu_affinity'],
         GPU_memory_total_MiB=physical_request['GPU_memory_total_MiB'],
@@ -139,6 +188,7 @@ def retarget(request,gpu,physical_request,root,registry,export,banks,producer,pe
         RAM512_claim_ledger=str(root.parent/'RAM512_allocation_ledger.json'),
         RAM512_source_pending_receipt=copy.deepcopy(pending_reference),owned_tmpfs_root=str(BASE),
         code_sha256=export['code_sha256'],commit=export['commit'])
+    if host_lifetime is not None:result['host_lifetime']=copy.deepcopy(host_lifetime)
     result.pop('PBS_shared_cache_root',None)
     result.pop('GPU_queue_deferred_transfer',None)
     require(isinstance(sharing_data,dict),'Independently verified GPU56 sharing receipt required')
@@ -216,7 +266,11 @@ def main():
     parser.add_argument('--new-group',type=Path,required=True)
     for name in('current-manifest','release-proof','full-source-proof','code-export','placement-receipt','sharing-receipt'):
         parser.add_argument('--'+name,type=Path,required=True);parser.add_argument('--'+name+'-sha256',required=True)
+    parser.add_argument('--host-lifetime',type=Path)
+    parser.add_argument('--host-lifetime-sha256')
     args=parser.parse_args();require(args.execute,'Prepared migration requires parent explicit --execute')
+    require((args.host_lifetime is None)==(args.host_lifetime_sha256 is None),
+        'An explicit new host lifetime requires both its path and SHA256')
     require(os.getuid()==UID and socket.gethostname().split('.')[0]=='ece-a6gpu6','Exact owned actual node/UID required')
     GROUP=args.new_group
     require(GROUP.is_absolute()and GROUP.parent==BASE and GROUP.name.startswith('Basic_CP_RAM512_')
@@ -257,6 +311,7 @@ def main():
     from hiercp_v1x.basic_cp_512_claims import Ledger
     from hiercp_v1x.basic_cp_512_resources import ProcessResolver
     from hiercp_v1x.basic_cp_GPU56_sharing import validate_sharing_request
+    from hiercp_v1x import basic_cp_ablation_resources as common
     from tools import run_basic_cp_RAM512 as runtime
     import torch
     base.owned(GROUP,True)
@@ -307,22 +362,24 @@ def main():
         candidate_generation_executed=False,scientific_scale_preserved=True)
     pending_bytes=(json.dumps(pending_value,indent=2,ensure_ascii=False,allow_nan=False)+'\n').encode()
     pending_reference=dict(path=str(pending_path),sha256=hashlib.sha256(pending_bytes).hexdigest())
-    lifetime=requests[0]['host_lifetime'];witness=read(base.owned(lifetime['path']))
-    require(all(q['host_lifetime']==lifetime for q in requests.values())and sha(lifetime['path'])==lifetime['sha256'],
-        'All seven require same actual truthful current owned host lifetime')
-    job=json.loads(subprocess.check_output(['/opt/pbs/bin/qstat','-f','-F','json',witness['job_id']],text=True,timeout=20))['Jobs'][witness['job_id']]
-    require(job['job_state']=='R'and job['Job_Owner'].split('@')[0]=='aicompetition06'
-        and all(h.split('/')[0]=='ece-a6gpu6'for h in job['exec_host'].split('+'))
-        and time.time()<lifetime['expires_at_unix']-180,'Actual owned same-host R lifetime/180second reserve required')
+    new_lifetime=None
+    if args.host_lifetime is not None:
+        require(re.fullmatch('[0-9a-f]{64}',args.host_lifetime_sha256)is not None
+            and sha(base.owned(args.host_lifetime))==args.host_lifetime_sha256,
+            'Explicit new host-lifetime SHA differs')
+        new_lifetime=dict(path=str(args.host_lifetime),sha256=args.host_lifetime_sha256,
+            expires_at_unix=read(args.host_lifetime)['expires_at_unix'])
+    lifetime,lifetime_transition,lifetime_evidence=select_host_lifetime(requests,new_lifetime,base,common)
+    inputs.update(lifetime_evidence)
     registry=GROUP/'shared_resource_registry.json';producer=GROUP/next('GPU'+str(g)+'_'+a for g,a in ARMS.items()if a=='candidates2048')
     prepared=[];states={};checkpoint_files={}
     for gpu in range(7):
         oldgpu=OLD_GPU_FOR_NEW[gpu]
         root=GROUP/('GPU'+str(gpu)+'_'+ARMS[gpu]);oldq=requests[oldgpu]
         request=retarget(oldq,gpu,requests[gpu],root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference,
-            sharing_data=SHARING_DATA,arms=ARMS)
+            sharing_data=SHARING_DATA,arms=ARMS,host_lifetime=lifetime)
         for name in base.SCIENCE_KEYS:
-            if name not in('gpu','gpu_uuid','cpu_affinity','GPU_queue_deferred_transfer'):require(request.get(name)==oldq.get(name),'Original science/resource legacy field changed: '+name)
+            if name not in('gpu','gpu_uuid','cpu_affinity','GPU_queue_deferred_transfer','host_lifetime'):require(request.get(name)==oldq.get(name),'Original science/resource legacy field changed: '+name)
         require(request['gpu_uuid']==requests[gpu]['gpu_uuid']and request['cpu_affinity']==CPUS[gpu],'Exact physical GPU UUID and CPU affinity required')
         native=None;state=None;prefix=None
         if gpu in range(7):
@@ -458,6 +515,7 @@ def main():
         if native is not None:base.seal(root/'pending_native.json',native)
     base.seal(GROUP/'prelaunch_whole_state_proof.json',dict(source_files_sha256={**inputs,**old_metadata,**checkpoint_files},
         released_actors=released,checkpoint_proofs=states,evidence=evidence,code_EOL_proofs=code_eol,
+        host_lifetime_transition=lifetime_transition,
         effective_total_owned_RAM_cap_bytes=512*2**30,source_pending_bootstrap=pending_reference,
         old_immutable_metadata_written=False,code_links_created=False,checkpoint_bytes_copied=False,processes_signaled=False))
     rows={}
@@ -495,6 +553,7 @@ def main():
         controller_code_exports={str(code):dict(path=str(args.code_export),sha256=args.code_export_sha256)},
         effective_total_owned_RAM_cap_bytes=512*2**30,one_current_common_registry=True,
         RAM512_source_pending_receipt=pending_reference,RAM512_claim_ledger=str(GROUP/'RAM512_allocation_ledger.json'),
+        host_lifetime_transition=lifetime_transition,
         old_immutable_metadata_written=False,checkpoint_bytes_copied=False,code_links_created=False,processes_signaled=False)
     fresh.pop('GPU_queue_deferred_transfer',None)
     base.seal(GROUP/'launch.json',fresh)

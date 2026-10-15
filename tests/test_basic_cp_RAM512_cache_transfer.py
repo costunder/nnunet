@@ -3,7 +3,9 @@ import copy
 import hashlib
 import importlib.util
 from pathlib import Path
+import json
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -45,6 +47,80 @@ class CacheTransferTests(unittest.TestCase):
     def test_deferred_receipt_is_operational(self):
         new,mapping=transfer(self.old,[]);new['0']['GPU_queue_deferred_transfer']={'path':'/new/queue.json','sha256':'b'*64}
         self.adopter.validate_request_transfer(self.old,new,mapping)
+
+    def lifetime_fixture(self):
+        from hiercp_v1x import basic_cp_ablation_resources as native
+        new,mapping=transfer(self.old,[])
+        before={'path':'/own/old_lifetime.json','sha256':'d'*64,'expires_at_unix':1000.0}
+        after={'path':'/own/new_lifetime.json','sha256':'e'*64,'expires_at_unix':10000000000.0}
+        for q in self.old.values():q['host_lifetime']=copy.deepcopy(before)
+        for q in new.values():q['host_lifetime']=copy.deepcopy(after)
+        def witness(ref,job):
+            return dict(format='v25_owned_GPU_allocation_v1',owner='aicompetition06',UID=41833,
+                node='ece-a6gpu6',job_id=job,job_state='R',expires_at_unix=ref['expires_at_unix'])
+        values={str(Path(before['path'])):witness(before,'129864.ECE-util1'),str(Path(after['path'])):witness(after,'130001.ECE-util1')}
+        actual=json.dumps({'DEBUG_actual_PBS_read':True})
+        calls=[]
+        def validate(ref,value,raw):
+            calls.append((ref,value,raw))
+            if raw!=actual:raise RuntimeError('DEBUG changed actual PBS proof')
+            return {'job_id':value['job_id'],'state':'R','DEBUG_validator_fixture':True}
+        helper=SimpleNamespace(validate_host_lifetime=validate)
+        return new,mapping,before,after,values,actual,calls,helper,native
+
+    def test_changed_lifetime_requires_independent_new_running_PBS_validation(self):
+        new,mapping,before,after,values,actual,calls,helper,native=self.lifetime_fixture()
+        with (patch.object(self.adopter,'pin',side_effect=lambda path,sha:Path(path)),
+              patch.object(self.adopter,'read',side_effect=lambda path:values[str(path)]),
+              patch.object(native,'_pbs_query',return_value=actual)as query):
+            proof=self.adopter.validate_request_transfer(self.old,new,mapping,helper=helper)
+        self.assertEqual(len(calls),1)
+        self.assertEqual(calls[0][0],after)
+        self.assertEqual(calls[0][2],actual)
+        self.assertTrue(proof['new_running_job_independently_queried'])
+        self.assertEqual(proof['old_reference'],before)
+        query.assert_called_once_with(['/opt/pbs/bin/qstat','-f','-F','json','130001.ECE-util1'],
+            timeout=native.PBS_QUERY_TIMEOUT_SECONDS)
+
+    def test_unverified_lifetime_change_wrong_owner_node_state_or_expiry_is_rejected(self):
+        mutations=[('owner','other'),('UID',0),('node','different-host'),('job_state','Q'),
+                   ('job_id','invalid-job'),('expires_at_unix',1000.0)]
+        for field,value in mutations:
+            with self.subTest(field=field):
+                new,mapping,before,after,values,actual,calls,helper,native=self.lifetime_fixture()
+                values[str(Path(after['path']))][field]=value
+                with (patch.object(self.adopter,'pin',side_effect=lambda path,sha:Path(path)),
+                      patch.object(self.adopter,'read',side_effect=lambda path:values[str(path)]),
+                      patch.object(native,'_pbs_query',return_value=actual)as query,
+                      self.assertRaises(ValueError)):
+                    self.adopter.validate_request_transfer(self.old,new,mapping,helper=helper)
+                query.assert_not_called()
+
+    def test_mixed_cohort_lifetimes_and_failed_actual_PBS_observation_are_fatal(self):
+        new,mapping,before,after,values,actual,calls,helper,native=self.lifetime_fixture()
+        new['3']['host_lifetime']=before
+        with self.assertRaisesRegex(ValueError,'one exact host lifetime'):
+            self.adopter.validate_request_transfer(self.old,new,mapping,helper=helper)
+        new['3']['host_lifetime']=after
+        with (patch.object(self.adopter,'pin',side_effect=lambda path,sha:Path(path)),
+              patch.object(self.adopter,'read',side_effect=lambda path:values[str(path)]),
+              patch.object(native,'_pbs_query',side_effect=TimeoutError('DEBUG PBS unavailable')),
+              self.assertRaises(TimeoutError)):
+            self.adopter.validate_request_transfer(self.old,new,mapping,helper=helper)
+
+    def test_actual_lifetime_validator_rejection_cannot_be_bypassed(self):
+        new,mapping,before,after,values,actual,calls,helper,native=self.lifetime_fixture()
+        with (patch.object(self.adopter,'pin',side_effect=lambda path,sha:Path(path)),
+              patch.object(self.adopter,'read',side_effect=lambda path:values[str(path)]),
+              patch.object(native,'_pbs_query',return_value='DEBUG_nonrunning_PBS'),
+              self.assertRaisesRegex(RuntimeError,'actual PBS proof')):
+            self.adopter.validate_request_transfer(self.old,new,mapping,helper=helper)
+
+    def test_unchanged_host_reference_keeps_legacy_transfer_without_extra_query(self):
+        from hiercp_v1x import basic_cp_ablation_resources as native
+        new,mapping=transfer(self.old,[])
+        with patch.object(native,'_pbs_query',side_effect=AssertionError('unnecessary PBS read')):
+            self.assertIsNone(self.adopter.validate_request_transfer(self.old,new,mapping))
 
     def test_seven_scientific_or_physical_mutations_rejected(self):
         for field,bad in [('gpu_uuid','another GPU'),('cpu_affinity',[0]),('GPU_memory_total_MiB',1),

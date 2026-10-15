@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -41,12 +42,14 @@ class GPU56MigrationDEBUGTests(unittest.TestCase):
                 private_pre='/dev/shm/preprocessed',trainer='FULL_NATIVE',split={'train':105,'validation':26},
                 bank='/dev/shm/bank',bank_sha256='b'*64,copies_per_CP_event=7 if gpu==6 else 1,
                 candidates_per_source=2048 if gpu==5 else 128,epochs=250,physical_batch=2,
+                host_lifetime={'path':'/dev/shm/old/lifetime.json','sha256':'8'*64,'expires_at_unix':100},
                 GPU_queue_deferred_transfer={'path':'/dev/shm/old/deferred.json','sha256':'c'*64})
             before=copy.deepcopy(old)
+            new_lifetime={'path':'/dev/shm/new/lifetime.json','sha256':'9'*64,'expires_at_unix':100000}
             new=builder.retarget(old,gpu,old,Path('/dev/shm/new/GPU'+str(gpu)),Path('/dev/shm/new/registry.json'),
                 {'commit':'d'*40,'code_sha256':{'guard':'e'*64}},Path('/dev/shm/original/banks'),
                 Path('/dev/shm/new/GPU5_candidates2048'),{'source':'complete'},reference,reference,
-                sharing_data=sharing_data,arms=arms)
+                sharing_data=sharing_data,arms=arms,host_lifetime=new_lifetime)
             self.assertEqual(old,before)
             for key in('gpu','gpu_uuid','arm','cpu_affinity','native_root','private_runtime','private_pre','trainer',
                         'split','bank','bank_sha256','copies_per_CP_event','candidates_per_source','epochs','physical_batch'):
@@ -56,6 +59,8 @@ class GPU56MigrationDEBUGTests(unittest.TestCase):
             self.assertEqual(new['execution_physical_GPU'],physical)
             self.assertEqual(new['execution_GPU_UUID'],None if physical is None else sharing_data['execution_GPU_UUIDs'][str(physical)])
             self.assertEqual(new['GPU56_sharing_receipt'],reference)
+            self.assertEqual(new['host_lifetime'],new_lifetime)
+            self.assertIsNot(new['host_lifetime'],new_lifetime)
 
     def test_completed_log_adapter_accepts_builder_exact_routes(self):
         path=HERE/'tools/basic_cp_RAM512_completed_log_adapter.py'
@@ -75,9 +80,73 @@ class GPU56MigrationDEBUGTests(unittest.TestCase):
             and isinstance(node.func,ast.Name)and node.func.id=='retarget']
         self.assertEqual(len(calls),1)
         self.assertEqual({item.arg:item.value.id for item in calls[0].keywords},
-            {'sharing_data':'SHARING_DATA','arms':'ARMS'})
+            {'sharing_data':'SHARING_DATA','arms':'ARMS','host_lifetime':'lifetime'})
         for name in('ARMS','SHARING_DATA','GROUP','OLDGROUP','OLD_ARMS','OLD_GPU_FOR_NEW'):
             self.assertNotIn(name,builder.retarget.__code__.co_names)
+
+    def lifetime_fixture(self,root):
+        def witness(name,job,expiry):
+            path=root/name
+            document={'format':'v25_owned_GPU_allocation_v1','UID':41833,'owner':'aicompetition06',
+                'node':'ece-a6gpu6','job_id':job,'expires_at_unix':expiry}
+            path.write_text(json.dumps(document))
+            return {'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'expires_at_unix':expiry}
+        previous=witness('old_lifetime.json','1.ECE-util1',100)
+        current=witness('new_lifetime.json','2.ECE-util1',86500)
+        requests={gpu:{'host_lifetime':copy.deepcopy(previous)}for gpu in range(7)}
+        job={'job_state':'R','Job_Owner':'aicompetition06@host','exec_host':'ece-a6gpu6/0',
+            'Resource_List':{'ngpus':1,'walltime':'24:00:00'},'stime':100}
+        query=Mock(return_value=json.dumps({'Jobs':{'2.ECE-util1':job}}))
+        guarded=SimpleNamespace(validate_host_lifetime_GPU=Mock(return_value={'allocated_GPU':5}),BasicLease=common.BasicLease)
+        return previous,current,requests,job,query,guarded
+
+    def test_expired_old_allocation_rolls_to_one_verified_new_allocation(self):
+        import tempfile
+        (HERE/'tmp').mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=HERE/'tmp')as temp:
+            previous,current,requests,job,query,guarded=self.lifetime_fixture(Path(temp))
+            before=copy.deepcopy(requests)
+            selected,transition,evidence=builder.select_host_lifetime(requests,current,
+                SimpleNamespace(owned=Path),guarded,query=query,now=1000)
+            self.assertEqual(requests,before)
+            self.assertEqual(selected,current)
+            query.assert_called_once_with('2.ECE-util1')
+            self.assertEqual(transition['previous_host_lifetime'],previous)
+            self.assertEqual(transition['current_job_id'],'2.ECE-util1')
+            self.assertFalse(transition['previous_allocation_required_to_be_running'])
+            self.assertFalse(transition['old_lifetime_witness_written'])
+            self.assertEqual(evidence,{previous['path']:previous['sha256'],current['path']:current['sha256']})
+            guarded.validate_host_lifetime_GPU.assert_called_once()
+
+    def test_new_allocation_requires_real_owner_host_R_GPUcount_and_deadline(self):
+        import tempfile
+        (HERE/'tmp').mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=HERE/'tmp')as temp:
+            previous,current,requests,job,query,guarded=self.lifetime_fixture(Path(temp))
+            for name,value in [('job_state','Q'),('Job_Owner','foreign@host'),('exec_host','other-node/0'),
+                               ('Resource_List',{'ngpus':2,'walltime':'24:00:00'}),('stime',10100)]:
+                wrong=dict(job,**{name:value})
+                query.return_value=json.dumps({'Jobs':{'2.ECE-util1':wrong}})
+                with self.subTest(field=name),self.assertRaises(RuntimeError):
+                    builder.select_host_lifetime(requests,current,SimpleNamespace(owned=Path),guarded,query=query,now=1000)
+            query.return_value=json.dumps({'Jobs':{'2.ECE-util1':job}})
+            with self.assertRaises(ValueError):
+                builder.select_host_lifetime(requests,current,SimpleNamespace(owned=Path),guarded,query=query,now=86400)
+
+    def test_mixed_previous_refs_or_changed_lifetime_bytes_are_rejected(self):
+        import tempfile
+        (HERE/'tmp').mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=HERE/'tmp')as temp:
+            previous,current,requests,job,query,guarded=self.lifetime_fixture(Path(temp))
+            requests[6]['host_lifetime']=current
+            with self.assertRaises(ValueError):
+                builder.select_host_lifetime(requests,current,SimpleNamespace(owned=Path),guarded,query=query,now=1000)
+            requests[6]['host_lifetime']=previous
+            def changed(job_id):
+                Path(previous['path']).write_text('changed after fresh PBS query')
+                return json.dumps({'Jobs':{'2.ECE-util1':job}})
+            with self.assertRaises(ValueError):
+                builder.select_host_lifetime(requests,current,SimpleNamespace(owned=Path),guarded,query=changed,now=1000)
 
     def test_source_reuse_and_immediate_actor_capture_remain(self):
         source=(HERE/'tools/recover_basic_cp_RAM512_GPU56_cohort.py').read_text()

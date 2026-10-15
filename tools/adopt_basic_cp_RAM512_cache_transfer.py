@@ -19,7 +19,7 @@ OPERATIONAL_FIELDS={'root','gpu','gpu_uuid','GPU_memory_total_MiB','cpu_affinity
  'RAM512_source_pending_receipt','shared_banks','producer_root','PBS_shared_cache_root',
  'GPU_placement_receipt','GPU_queue_deferred_transfer','RAM512_migration_state',
  'RAM512_completed_best_validator','archive_root','GPU56_sharing_receipt',
- 'execution_physical_GPU','execution_GPU_UUID'}
+ 'execution_physical_GPU','execution_GPU_UUID','host_lifetime'}
 FLAGS=dict(memory_budget_revision=512, aggregate_memory_cap_GiB=512,
  effective_native_RSS_limit_GiB=32, effective_shared_bank_RSS_limit_GiB=320,
  owned_tmpfs_envelope_GiB=144, post_source_owned_tmpfs_envelope_GiB=272,
@@ -111,9 +111,42 @@ def arm_mapping(old_requests,new_requests):
  require(seen==ARMS,'Full seven-arm new cohort required')
  return result
 
-def validate_request_transfer(old_requests,new_requests,mapping):
+def validate_lifetime_transfer(old_requests,new_requests,*,helper=None):
+ """Only a newly proved own running PBS lifetime may replace the old witness."""
+ old_ref=old_requests['0'].get('host_lifetime');new_ref=new_requests['0'].get('host_lifetime')
+ require(all(q.get('host_lifetime')==old_ref for q in old_requests.values())
+  and all(q.get('host_lifetime')==new_ref for q in new_requests.values()),
+  'Every old/new cohort arm must share its one exact host lifetime')
+ if old_ref==new_ref:return None
+ for ref in(old_ref,new_ref):
+  require(isinstance(ref,dict)and set(ref)=={'path','sha256','expires_at_unix'},
+   'Actual pinned previous and new host lifetime references required')
+ old_value=read(pin(old_ref['path'],old_ref['sha256']))
+ new_value=read(pin(new_ref['path'],new_ref['sha256']))
+ for ref,value in((old_ref,old_value),(new_ref,new_value)):
+  require(value.get('format')=='v25_owned_GPU_allocation_v1'and value.get('owner')=='aicompetition06'
+   and value.get('UID')==UID and value.get('node')=='ece-a6gpu6'
+   and isinstance(value.get('job_id'),str)and re.fullmatch(r'\d+\.ECE-util1',value['job_id'])is not None
+   and type(ref['expires_at_unix'])in(int,float)and value.get('expires_at_unix')==ref['expires_at_unix'],
+   'Only exact own same-host previous/new lifetime provenance may transfer')
+ require(new_ref['expires_at_unix']>old_ref['expires_at_unix']and new_value.get('job_state')=='R',
+  'New admitted running lifetime must extend the old actual expiry')
+ if helper is None:
+  from tools import persist_basic_cp_seven as helper
+ from hiercp_v1x import basic_cp_ablation_resources as native_resources
+ actual=native_resources._pbs_query(['/opt/pbs/bin/qstat','-f','-F','json',new_value['job_id']],
+  timeout=native_resources.PBS_QUERY_TIMEOUT_SECONDS)
+ observation=helper.validate_host_lifetime(new_ref,new_value,actual)
+ return dict(old_reference=old_ref,new_reference=new_ref,old_job_id=old_value['job_id'],
+  new_job_id=new_value['job_id'],actual_new_PBS_observation=observation,
+  actual_PBS_response_sha256=hashlib.sha256(actual.encode('utf8')).hexdigest(),
+  validated_at_unix=time.time(),old_lifetime_extended_by_fabrication=False,
+  new_running_job_independently_queried=True)
+
+def validate_request_transfer(old_requests,new_requests,mapping,*,helper=None):
  """Every unlisted change is fatal; only placement/queue/provenance may vary."""
  require(mapping==arm_mapping(old_requests,new_requests),'Exact derived whole-arm mapping required')
+ lifetime_transfer=validate_lifetime_transfer(old_requests,new_requests,helper=helper)
  for gpu,oldgpu in mapping.items():
   a=old_requests[oldgpu];b=new_requests[gpu];physical=old_requests[gpu]
   if 'GPU56_sharing_receipt' in b:
@@ -126,6 +159,7 @@ def validate_request_transfer(old_requests,new_requests,mapping):
    'New physical GPU UUID/CPU/VRAM must match that exact original physical slot')
   require(P(a['root']).name=='GPU'+oldgpu+'_'+a['arm']and P(b['root']).name=='GPU'+gpu+'_'+a['arm'],
    'Exact original/new scientific-arm cache folder names required')
+ return lifetime_transfer
 
 def cache_renames(old_requests,new_requests,mapping):
  renames={}
@@ -222,7 +256,8 @@ def main(argv=None):
   require(all(q['root']==old['registration'][gpu]['root']and q['uid']==UID
    and q['controller_identity']==old['registration'][gpu]['controller_identity']for gpu,q in old_requests.items()),
    'Original request/root/own UID/controller registration differs')
-  mapping=arm_mapping(old_requests,requests);validate_request_transfer(old_requests,requests,mapping)
+  mapping=arm_mapping(old_requests,requests)
+  lifetime_transfer=validate_request_transfer(old_requests,requests,mapping,helper=module)
   renames=cache_renames(old_requests,requests,mapping)
   for before,after in renames.items():
    exact(own_cache(CACHE/before),True);require(not own_cache(CACHE/after).exists(),'Unknown prior cache-folder transfer outcome forbids replay')
@@ -299,10 +334,13 @@ def main(argv=None):
   relocate_cache_folders(renames)
   protected={relocated_relative(relative,renames):checksum for relative,checksum in protected.items()}
   copy_new(NEW/'launch.json',CACHE/'source_manifest.json');copy_new(helper,CACHE/'persistence_helper.py')
+  lifetime_ref=requests['0']['host_lifetime']
+  copy_new(pin(lifetime_ref['path'],lifetime_ref['sha256']),CACHE/'host_lifetime.json')
   for relative,checksum in protected.items():require(digest(CACHE/relative)==checksum,'Protected CURRENT/NPZ/runtime bytes changed during adoption')
   publish(CACHE/'identity.json',dict(identity,status='ADOPTED_WAITING_FOR_RAM512_HELPER',commit=args.new_commit,
    helper_source_sha256=args.new_helper_sha256,adopted_from_manifest_sha256=args.old_manifest_sha256,
-   adopted_to_manifest_sha256=args.new_manifest_sha256,adoption_history=str(history),previous_helper_released=True))
+   adopted_to_manifest_sha256=args.new_manifest_sha256,adoption_history=str(history),previous_helper_released=True,
+   host_lifetime=lifetime_ref,host_lifetime_transfer=lifetime_transfer))
   receipt=dict(format='basic_cp_RAM512_operational_cache_adoption_v1',old_manifest_sha256=args.old_manifest_sha256,
    new_manifest_sha256=args.new_manifest_sha256,old_helper_source_sha256=args.old_helper_sha256,
    new_helper_source_sha256=args.new_helper_sha256,new_commit=args.new_commit,new_code_export_sha256=args.new_code_export_sha256,
@@ -312,7 +350,8 @@ def main(argv=None):
    preserved_CURRENT_count=len(currents),preserved_NPZ_count=sum(k.endswith('.npz')for k in protected),
    new_common_ledger_GPUs=list(range(7)),all_original_experiment_files_unchanged=True,processes_signaled=False,
    history=str(history),candidate_arrays_unchanged=True,old_metadata_archived_before_replacement=True,
-   approved_physical_transfer=mapping,cache_directory_renames=renames,checkpoint_NPZ_copies_during_transfer=0)
+   approved_physical_transfer=mapping,cache_directory_renames=renames,checkpoint_NPZ_copies_during_transfer=0,
+   host_lifetime_transfer=lifetime_transfer,new_host_lifetime_sha256=lifetime_ref['sha256'])
   publish(CACHE/'adoption_RAM_pause.json',receipt);capacity()
   print(json.dumps(dict(format=receipt['format'],old_manifest_sha256=args.old_manifest_sha256,
    new_manifest_sha256=args.new_manifest_sha256,approved_physical_transfer=mapping,
