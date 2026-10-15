@@ -23,13 +23,6 @@ import psutil
 
 UID=41833
 BASE=Path('/dev/shm/aicompetition06_basic_cp_ablation_20261013')
-# Set only after exact current/target receipts have been validated in main().
-OLDGROUP=None
-GROUP=None
-OLD_ARMS={}
-OLD_GPU_FOR_NEW={}
-ARMS={}
-SHARING_DATA=None
 SHARING_FIELD='GPU56_sharing_receipt'
 INITIAL_ARMS={0:'multi5',1:'blend50',2:'multi10',3:'candidates512',4:'candidates1024',5:'candidates2048',6:'multi7'}
 EXECUTION_GPUS={0:5,1:None,2:6,3:5,4:6,5:5,6:6}
@@ -138,7 +131,7 @@ def classification(*,latest_epoch,final_epoch,best26,metrics,complete_archive):
     return 'BEST26_READY'if best26 else'FINAL250_PENDING_BEST26'
 
 
-def retarget(request,gpu,physical_request,root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference):
+def retarget(request,gpu,physical_request,root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference,*,sharing_data,arms):
     result=copy.deepcopy(request)
     result.update(FIELDS,root=str(root),gpu=gpu,gpu_uuid=physical_request['gpu_uuid'],cpu_affinity=physical_request['cpu_affinity'],
         GPU_memory_total_MiB=physical_request['GPU_memory_total_MiB'],
@@ -148,14 +141,14 @@ def retarget(request,gpu,physical_request,root,registry,export,banks,producer,pe
         code_sha256=export['code_sha256'],commit=export['commit'])
     result.pop('PBS_shared_cache_root',None)
     result.pop('GPU_queue_deferred_transfer',None)
-    require(isinstance(SHARING_DATA,dict),'Independently verified GPU56 sharing receipt required')
+    require(isinstance(sharing_data,dict),'Independently verified GPU56 sharing receipt required')
     physical=EXECUTION_GPUS[gpu]
     result.update(GPU56_sharing_receipt=copy.deepcopy(sharing_reference),
         execution_physical_GPU=physical,
-        execution_GPU_UUID=None if physical is None else SHARING_DATA['execution_GPU_UUIDs'][str(physical)])
+        execution_GPU_UUID=None if physical is None else sharing_data['execution_GPU_UUIDs'][str(physical)])
     if'shared_banks'in result:result['shared_banks']=str(banks)
     if'producer_root'in result:result['producer_root']=str(producer)
-    require(result['gpu']==gpu and result['arm']==ARMS[gpu],'Same actual scientific arm/GPU must remain')
+    require(result['gpu']==gpu and result['arm']==arms[gpu],'Same actual scientific arm/GPU must remain')
     return result
 
 
@@ -219,7 +212,6 @@ def _load_module(name,path):
 
 
 def main():
-    global OLDGROUP,GROUP,OLD_ARMS,OLD_GPU_FOR_NEW,ARMS,SHARING_DATA
     parser=argparse.ArgumentParser();parser.add_argument('--execute',action='store_true')
     parser.add_argument('--new-group',type=Path,required=True)
     for name in('current-manifest','release-proof','full-source-proof','code-export','placement-receipt','sharing-receipt'):
@@ -327,7 +319,8 @@ def main():
     for gpu in range(7):
         oldgpu=OLD_GPU_FOR_NEW[gpu]
         root=GROUP/('GPU'+str(gpu)+'_'+ARMS[gpu]);oldq=requests[oldgpu]
-        request=retarget(oldq,gpu,requests[gpu],root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference)
+        request=retarget(oldq,gpu,requests[gpu],root,registry,export,banks,producer,pending_reference,placement_reference,sharing_reference,
+            sharing_data=SHARING_DATA,arms=ARMS)
         for name in base.SCIENCE_KEYS:
             if name not in('gpu','gpu_uuid','cpu_affinity','GPU_queue_deferred_transfer'):require(request.get(name)==oldq.get(name),'Original science/resource legacy field changed: '+name)
         require(request['gpu_uuid']==requests[gpu]['gpu_uuid']and request['cpu_affinity']==CPUS[gpu],'Exact physical GPU UUID and CPU affinity required')

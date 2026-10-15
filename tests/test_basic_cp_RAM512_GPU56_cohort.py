@@ -31,8 +31,8 @@ class GPU56MigrationDEBUGTests(unittest.TestCase):
         with self.assertRaises(ValueError):builder.validate_complete_retained(states)
 
     def test_retarget_preserves_native_data_and_science(self):
-        builder.ARMS=dict(builder.INITIAL_ARMS)
-        builder.SHARING_DATA={'execution_GPU_UUIDs':{'5':'GPU-FIVE','6':'GPU-SIX'}}
+        arms=dict(builder.INITIAL_ARMS)
+        sharing_data={'execution_GPU_UUIDs':{'5':'GPU-FIVE','6':'GPU-SIX'}}
         reference={'path':'/dev/shm/new/sharing.json','sha256':'a'*64}
         for gpu,arm in builder.INITIAL_ARMS.items():
             old=dict(root='/dev/shm/old/GPU'+str(gpu),gpu=gpu,arm=arm,gpu_uuid='GPU-LEGACY-'+str(gpu),
@@ -45,7 +45,8 @@ class GPU56MigrationDEBUGTests(unittest.TestCase):
             before=copy.deepcopy(old)
             new=builder.retarget(old,gpu,old,Path('/dev/shm/new/GPU'+str(gpu)),Path('/dev/shm/new/registry.json'),
                 {'commit':'d'*40,'code_sha256':{'guard':'e'*64}},Path('/dev/shm/original/banks'),
-                Path('/dev/shm/new/GPU5_candidates2048'),{'source':'complete'},reference,reference)
+                Path('/dev/shm/new/GPU5_candidates2048'),{'source':'complete'},reference,reference,
+                sharing_data=sharing_data,arms=arms)
             self.assertEqual(old,before)
             for key in('gpu','gpu_uuid','arm','cpu_affinity','native_root','private_runtime','private_pre','trainer',
                         'split','bank','bank_sha256','copies_per_CP_event','candidates_per_source','epochs','physical_batch'):
@@ -53,13 +54,30 @@ class GPU56MigrationDEBUGTests(unittest.TestCase):
             self.assertNotIn('GPU_queue_deferred_transfer',new)
             physical=builder.EXECUTION_GPUS[gpu]
             self.assertEqual(new['execution_physical_GPU'],physical)
-            self.assertEqual(new['execution_GPU_UUID'],None if physical is None else builder.SHARING_DATA['execution_GPU_UUIDs'][str(physical)])
+            self.assertEqual(new['execution_GPU_UUID'],None if physical is None else sharing_data['execution_GPU_UUIDs'][str(physical)])
             self.assertEqual(new['GPU56_sharing_receipt'],reference)
 
     def test_completed_log_adapter_accepts_builder_exact_routes(self):
         path=HERE/'tools/basic_cp_RAM512_completed_log_adapter.py'
         routed=adapter.private_builder_main(builder,adapter_path=path,adapter_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
         self.assertTrue(callable(routed))
+
+    def test_adapted_main_passes_validated_receipt_and_arms_without_module_globals(self):
+        import ast
+        import inspect
+        path=HERE/'tools/basic_cp_RAM512_completed_log_adapter.py'
+        routed=adapter.private_builder_main(builder,adapter_path=path,adapter_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+        self.assertIsNot(routed.__globals__,builder.main.__globals__)
+        self.assertIs(routed.__globals__['retarget'],builder.retarget)
+        tree=ast.parse(inspect.getsource(builder.main))
+        self.assertFalse(any(isinstance(node,ast.Global)for node in ast.walk(tree)))
+        calls=[node for node in ast.walk(tree)if isinstance(node,ast.Call)
+            and isinstance(node.func,ast.Name)and node.func.id=='retarget']
+        self.assertEqual(len(calls),1)
+        self.assertEqual({item.arg:item.value.id for item in calls[0].keywords},
+            {'sharing_data':'SHARING_DATA','arms':'ARMS'})
+        for name in('ARMS','SHARING_DATA','GROUP','OLDGROUP','OLD_ARMS','OLD_GPU_FOR_NEW'):
+            self.assertNotIn(name,builder.retarget.__code__.co_names)
 
     def test_source_reuse_and_immediate_actor_capture_remain(self):
         source=(HERE/'tools/recover_basic_cp_RAM512_GPU56_cohort.py').read_text()
