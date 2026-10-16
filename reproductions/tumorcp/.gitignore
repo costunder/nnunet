@@ -1,0 +1,5 @@
+/upstream/
+/env/
+/test_artifacts/
+/remote_state/
+/__pycache__/

@@ -1,0 +1,12 @@
+numpy==1.23.5
+scipy==1.10.1
+scikit-image==0.20.0
+scikit-learn==1.2.2
+nibabel==5.2.1
+SimpleITK==2.2.1
+batchgenerators==0.21
+MedPy==0.4.0
+matplotlib==3.7.5
+pandas==1.5.3
+tqdm==4.66.6
+requests==2.32.3

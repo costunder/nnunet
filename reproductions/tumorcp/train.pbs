@@ -1,0 +1,16 @@
+#!/bin/bash
+# The scheduler selects the GPU/MIG; no host, UUID or physical GPU is fixed.
+set -eu
+: "${CP_ROOT:?Explicit isolated reproduction root required}"
+: "${PBS_JOBID:?PBS allocation required}"
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+
+CP_CODE="$CP_ROOT/code/reproductions/tumorcp"
+printf 'KiTS19 full500 | root=%s | PBS=%s | host=%s\n' "$CP_ROOT" "$PBS_JOBID" "$(hostname)"
+# An allocated CUDA device is required. run.py records the actual allocation and
+# refuses missing CUDA; phase all requires a completed, bound B2/B4 CUDA smoke.
+# The complete 210-case preparation is reused. No model or input scale changes.
+"$CP_ROOT/.env/bin/python" -B -u "$CP_CODE/run.py" \
+  --root "$CP_ROOT/run" --data "$CP_ROOT/data/kits19/data" \
+  --upstream "$CP_ROOT/upstream" --workers 4 --prepare-workers 8 --phase all

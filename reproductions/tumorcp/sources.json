@@ -1,0 +1,3797 @@
+{
+  "format": "kits19_official_210_metadata_v1",
+  "metadata_only": true,
+  "image_downloaded": false,
+  "segmentation_downloaded": false,
+  "public_sources": {
+    "README": "https://github.com/neheller/kits19/blob/master/README.md",
+    "data_license": "https://raw.githubusercontent.com/neheller/kits19/master/data/LICENSE"
+  },
+  "HF_revision": "65f1f295873a326230153c7e1de0c7dba10f0b29",
+  "kits19_revision": "456b293435b25303bbc7995f094f83a0afdff0eb",
+  "case_count": 210,
+  "image_bytes": 20017490682,
+  "segmentation_bytes": 65409835,
+  "files": [
+    {
+      "case_id": "case_00000",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00000.nii.gz",
+        "bytes": 225959569,
+        "git_oid": "a0da16371d5e9941a376ef2ea8b8627d9eb8830a",
+        "lfs": {
+          "oid": "cdae5f3e0fbc7c98ab0430b3de42677abda2c1cf93ae0f86bd29fb8606688cb7",
+          "size": 225959569,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00000/segmentation.nii.gz",
+        "bytes": 775587,
+        "git_blob_sha1": "495b190cbb27fafb41fdf59df89843e54d0ba99b"
+      }
+    },
+    {
+      "case_id": "case_00001",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00001.nii.gz",
+        "bytes": 276387358,
+        "git_oid": "0be24703dc24cc3ad064f9200c924687967975b6",
+        "lfs": {
+          "oid": "3b861149f13a1e8a0b7cae23f624e6c335f538ee9fb6ecc0625b2f062879bed6",
+          "size": 276387358,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00001/segmentation.nii.gz",
+        "bytes": 854294,
+        "git_blob_sha1": "01dfa264a287238d2b3459251d5fe22e57e5d6f0"
+      }
+    },
+    {
+      "case_id": "case_00002",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00002.nii.gz",
+        "bytes": 101967812,
+        "git_oid": "35580277c38155e72eeedbb8d735371a8ee70a9e",
+        "lfs": {
+          "oid": "58fcd6c4e59c747c2927b4ff12305f553abd33454cff6533082706b946173201",
+          "size": 101967812,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00002/segmentation.nii.gz",
+        "bytes": 367988,
+        "git_blob_sha1": "c9f279851afb29044f65cd532bd258a99dde1f61"
+      }
+    },
+    {
+      "case_id": "case_00003",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00003.nii.gz",
+        "bytes": 118681596,
+        "git_oid": "cbacac4152e4a25cc661cd1197d857414a328321",
+        "lfs": {
+          "oid": "63d267967cd02889415de2978903df36703cd7b5181e1226dc91d4832f7d5586",
+          "size": 118681596,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00003/segmentation.nii.gz",
+        "bytes": 379402,
+        "git_blob_sha1": "a0512b7097b94f0b65723e72f52250b7f4f343d2"
+      }
+    },
+    {
+      "case_id": "case_00004",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00004.nii.gz",
+        "bytes": 25269467,
+        "git_oid": "e7e29d38b443082baebb932675393870bfde65f1",
+        "lfs": {
+          "oid": "a9af51c0435086ac7007570c8bc66ceb2a54ecfb7ec530639150635d326f8f1f",
+          "size": 25269467,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00004/segmentation.nii.gz",
+        "bytes": 99076,
+        "git_blob_sha1": "c25f6c741e913573f5c06b5b8fda26a861b5fef1"
+      }
+    },
+    {
+      "case_id": "case_00005",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00005.nii.gz",
+        "bytes": 313477305,
+        "git_oid": "80b873f50c55eb387193986565d6a95f21c6bda4",
+        "lfs": {
+          "oid": "986d4186183ceefba226cf667f6c07b010c60f6b4ea00905a60b805d05300279",
+          "size": 313477305,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00005/segmentation.nii.gz",
+        "bytes": 1041381,
+        "git_blob_sha1": "8cec7b6620f40479cf63f0f62e6c939029001bc5"
+      }
+    },
+    {
+      "case_id": "case_00006",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00006.nii.gz",
+        "bytes": 78010682,
+        "git_oid": "08693d6ec7976ab6392a2f41015d1dd4f4aad8a0",
+        "lfs": {
+          "oid": "884cc817625dd041615a83ac378240675d599a42a1e0dd86e6fe88bd17f1c174",
+          "size": 78010682,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00006/segmentation.nii.gz",
+        "bytes": 249476,
+        "git_blob_sha1": "54b68232fd8eee2509db66835e0c69560cfa1675"
+      }
+    },
+    {
+      "case_id": "case_00007",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00007.nii.gz",
+        "bytes": 25826334,
+        "git_oid": "7dfc7c63c26dbb97aa4d94a7831d8d199608d990",
+        "lfs": {
+          "oid": "1261e949b46d05b0da75ac7fa73f0c6a51aa13a607d95d89fefc232b6b3ca20b",
+          "size": 25826334,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00007/segmentation.nii.gz",
+        "bytes": 114468,
+        "git_blob_sha1": "91b771c6c38e2d34cd03da24564d0753c0372f72"
+      }
+    },
+    {
+      "case_id": "case_00008",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00008.nii.gz",
+        "bytes": 107068349,
+        "git_oid": "01ba17de84d74367b2be0d071acaedbbc56f9e36",
+        "lfs": {
+          "oid": "ae2719417e36da5689aade422a0b94bd896c4b33d7897ff3ab7e30129ae119c6",
+          "size": 107068349,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00008/segmentation.nii.gz",
+        "bytes": 371767,
+        "git_blob_sha1": "6ee97526b93e65a422808899d554498da9a60376"
+      }
+    },
+    {
+      "case_id": "case_00009",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00009.nii.gz",
+        "bytes": 34134599,
+        "git_oid": "326c3a5b42e689880d09d7f1f5d8c2266bf82dc1",
+        "lfs": {
+          "oid": "492de10723f687b21b589ba1660615cac5eb4a8a785580a807be4eddca7c1756",
+          "size": 34134599,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00009/segmentation.nii.gz",
+        "bytes": 127300,
+        "git_blob_sha1": "a34ac0198a3e66a7e13eb14beac2bf8fb11a18eb"
+      }
+    },
+    {
+      "case_id": "case_00010",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00010.nii.gz",
+        "bytes": 23541391,
+        "git_oid": "8e979e646ba9ae6853f481ec1a0c7fa0a75dd448",
+        "lfs": {
+          "oid": "8e30ba81aa0422e2091b749b7c30989aeb102e01afcec826045162b437ed0ba4",
+          "size": 23541391,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00010/segmentation.nii.gz",
+        "bytes": 98583,
+        "git_blob_sha1": "a23089ebca09f0d8d7e8a0a46e4536ddb35a1b53"
+      }
+    },
+    {
+      "case_id": "case_00011",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00011.nii.gz",
+        "bytes": 41268802,
+        "git_oid": "e391f5412cba2b593c551164b69c6af25c3d63b1",
+        "lfs": {
+          "oid": "f2d346935837ad763840155ee07fde34a6698e03d207db360321a491969d4997",
+          "size": 41268802,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00011/segmentation.nii.gz",
+        "bytes": 134418,
+        "git_blob_sha1": "94f9260e9c9719f20726276fececf344f28e055d"
+      }
+    },
+    {
+      "case_id": "case_00012",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00012.nii.gz",
+        "bytes": 43185427,
+        "git_oid": "1e4df722024cb442d7c54845ce2548fb489e6a77",
+        "lfs": {
+          "oid": "039c97ac928af4dbb4f959cbaf2c7403e1c9590321ffdb3f2d86a355261cd846",
+          "size": 43185427,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00012/segmentation.nii.gz",
+        "bytes": 140964,
+        "git_blob_sha1": "8c7ecc58bab44936ccabebb032b5264c5f066191"
+      }
+    },
+    {
+      "case_id": "case_00013",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00013.nii.gz",
+        "bytes": 44485657,
+        "git_oid": "714611de1d32120c44c60e5a4ca897342c57b76e",
+        "lfs": {
+          "oid": "77e7eef8f9935192f526246f7ba5de0f3ef569ab1edc3ff18e930db8968ed7f5",
+          "size": 44485657,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00013/segmentation.nii.gz",
+        "bytes": 151570,
+        "git_blob_sha1": "497eb6fa767a70fc40912fc68da89b19e7e70ed2"
+      }
+    },
+    {
+      "case_id": "case_00014",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00014.nii.gz",
+        "bytes": 192486296,
+        "git_oid": "583a92bff524fed249e0f3e4e2789477700ae7bd",
+        "lfs": {
+          "oid": "80ae025ada8b7f50fa9cbb223c81bb8770d00dc02db5d49b7f075b760380b664",
+          "size": 192486296,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00014/segmentation.nii.gz",
+        "bytes": 565461,
+        "git_blob_sha1": "5ff3323d1e438fbc354ff252748c366b3de0ee81"
+      }
+    },
+    {
+      "case_id": "case_00015",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00015.nii.gz",
+        "bytes": 23795573,
+        "git_oid": "f5195dab019bf542b60e09abd80f888d518fc21d",
+        "lfs": {
+          "oid": "b6b216621db1c03a441b81f32540467767270f89e8b500e2012ccaa75bb12869",
+          "size": 23795573,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00015/segmentation.nii.gz",
+        "bytes": 67868,
+        "git_blob_sha1": "1c44eb27f9e162c57145c37e783defd307f195a8"
+      }
+    },
+    {
+      "case_id": "case_00016",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00016.nii.gz",
+        "bytes": 86929344,
+        "git_oid": "31e3aba006f99fdfa2d1a4f477c6b700849de6f0",
+        "lfs": {
+          "oid": "9f741f28473b79ed7e53c5dcc5bc7d8872a6d0449dbb829a903eb05ae4f8e820",
+          "size": 86929344,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00016/segmentation.nii.gz",
+        "bytes": 282196,
+        "git_blob_sha1": "219e6d00c56b57ff49b73d9df37c10a87e774402"
+      }
+    },
+    {
+      "case_id": "case_00017",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00017.nii.gz",
+        "bytes": 49940149,
+        "git_oid": "a1b6111e0bc127a6b7d8981e504684bfb1c95b26",
+        "lfs": {
+          "oid": "fb7c9074168a4a7a258f8a300b4704af42e23a63e55027834fe1e44e55b473f4",
+          "size": 49940149,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00017/segmentation.nii.gz",
+        "bytes": 155828,
+        "git_blob_sha1": "72fb61cc2c87959e89247e9f6412a900d363cd52"
+      }
+    },
+    {
+      "case_id": "case_00018",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00018.nii.gz",
+        "bytes": 49984866,
+        "git_oid": "78584c1c7f6b0ab83c829bd5f4a689f4dd963fd7",
+        "lfs": {
+          "oid": "4a55b9904bb5e3bb4738721324f49b0bb4bf4e813fee7a635cd124db5f9c40d1",
+          "size": 49984866,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00018/segmentation.nii.gz",
+        "bytes": 198857,
+        "git_blob_sha1": "897eeb4f02259033b7cb1fa949bdc19e85a3fed2"
+      }
+    },
+    {
+      "case_id": "case_00019",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00019.nii.gz",
+        "bytes": 51644458,
+        "git_oid": "6f595da3ad026a07294b10b79b9f5d02bfb028ab",
+        "lfs": {
+          "oid": "0b2cd96ac11bebc5f07e071398e273d418e13476d43e1229927c4c33fa5e03be",
+          "size": 51644458,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00019/segmentation.nii.gz",
+        "bytes": 181402,
+        "git_blob_sha1": "e570d33ba8a08e821514bdb4d5505d8fc1a59fd2"
+      }
+    },
+    {
+      "case_id": "case_00020",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00020.nii.gz",
+        "bytes": 43148211,
+        "git_oid": "07b9042a50c6e15dd6f7b66ed9003871354da66e",
+        "lfs": {
+          "oid": "0a9f9f55949dd5fcd59ca49c27662d9956d0bb87cbdab50c7f5ed347bd9e732c",
+          "size": 43148211,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00020/segmentation.nii.gz",
+        "bytes": 140974,
+        "git_blob_sha1": "3bf30d59accfb5faf580db84cdba65bbed8217e8"
+      }
+    },
+    {
+      "case_id": "case_00021",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00021.nii.gz",
+        "bytes": 17267757,
+        "git_oid": "09625f94d0dbbc809fe3b4252d520999774edebb",
+        "lfs": {
+          "oid": "97562e5d35abe55192fbbaacd04f05171343ab440c5ff592c0fad729d001a9f7",
+          "size": 17267757,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00021/segmentation.nii.gz",
+        "bytes": 72028,
+        "git_blob_sha1": "8a432b36a44eb1da76997833900dc68a89609ecb"
+      }
+    },
+    {
+      "case_id": "case_00022",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00022.nii.gz",
+        "bytes": 235518269,
+        "git_oid": "d4f358241ae0a65c26fbe24a8ae463ed8afe46e8",
+        "lfs": {
+          "oid": "365cb0082c4073eb7e60f7c759e8f6d7feef6a168f4f55edc2324b243518a452",
+          "size": 235518269,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00022/segmentation.nii.gz",
+        "bytes": 744174,
+        "git_blob_sha1": "df0ad79b2634a7351b3ef1a50cddc5f722727bbc"
+      }
+    },
+    {
+      "case_id": "case_00023",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00023.nii.gz",
+        "bytes": 45338328,
+        "git_oid": "98288b69b740e03fed567f993b983c1fba9a7fee",
+        "lfs": {
+          "oid": "b5a948824220f88ae3515234110034af1f2ca07a4b00bcaa597bd06d33b5b388",
+          "size": 45338328,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00023/segmentation.nii.gz",
+        "bytes": 87140,
+        "git_blob_sha1": "6afc41e179f284445d3ce7d721c1c830344ea4dc"
+      }
+    },
+    {
+      "case_id": "case_00024",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00024.nii.gz",
+        "bytes": 43319114,
+        "git_oid": "9d69f9d8368096e39e1d9a4ee8cabadebae11aaa",
+        "lfs": {
+          "oid": "b90540df3dd4ab0ec4cad772504d1be9471229c01a14f6cd7f0e9fb3a4523e71",
+          "size": 43319114,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00024/segmentation.nii.gz",
+        "bytes": 135119,
+        "git_blob_sha1": "4c2f1d9eee7ea0cb72a61350d81c43e53f65eca6"
+      }
+    },
+    {
+      "case_id": "case_00025",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00025.nii.gz",
+        "bytes": 42608517,
+        "git_oid": "e1a7611b549ee566d422448e17c7e408f2497992",
+        "lfs": {
+          "oid": "0b93a34f9ab521321eb7990920311912305131803d3058814f1d4dc16045a04c",
+          "size": 42608517,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00025/segmentation.nii.gz",
+        "bytes": 219219,
+        "git_blob_sha1": "3307bba1b55a96f4aa5b06e500777457838afa30"
+      }
+    },
+    {
+      "case_id": "case_00026",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00026.nii.gz",
+        "bytes": 128953647,
+        "git_oid": "687fd320714c44ca084e9bc0260de143f699e74c",
+        "lfs": {
+          "oid": "effb38cede495d9c38e46e496117c4ebb50f912223d077f45cacb9eb0aa1a9da",
+          "size": 128953647,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00026/segmentation.nii.gz",
+        "bytes": 445046,
+        "git_blob_sha1": "b85cdef42e493f8cc23c33e0d2adf13a18530474"
+      }
+    },
+    {
+      "case_id": "case_00027",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00027.nii.gz",
+        "bytes": 300960665,
+        "git_oid": "00af73a54b5142671d67e8150762d05b77acca4e",
+        "lfs": {
+          "oid": "7432ae26ab57ab2bebdce01bc420f79edac2ad6728351128bd59736816ee58e8",
+          "size": 300960665,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00027/segmentation.nii.gz",
+        "bytes": 923367,
+        "git_blob_sha1": "f7fda24f5047eb92d1eaa6c6758b0d225c4e0c78"
+      }
+    },
+    {
+      "case_id": "case_00028",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00028.nii.gz",
+        "bytes": 45001658,
+        "git_oid": "15dc18ec72ac83ce5fa6b248a2d2a6e17bfd55a6",
+        "lfs": {
+          "oid": "b41fdc5b7a7bb0a53a3ac25bbb875a8fe437a96622f6839201f8909af66612ce",
+          "size": 45001658,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00028/segmentation.nii.gz",
+        "bytes": 172418,
+        "git_blob_sha1": "b757cc4909e7f8a3447f0554f926bc99b2adb77f"
+      }
+    },
+    {
+      "case_id": "case_00029",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00029.nii.gz",
+        "bytes": 62472569,
+        "git_oid": "144d8c02a117104cb54c8d5578a5ad49ccaf14c6",
+        "lfs": {
+          "oid": "657fdb4c2ef5a66e4580e64bdacbaf9a0e9034cb3fd390b28337081cd3142e45",
+          "size": 62472569,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00029/segmentation.nii.gz",
+        "bytes": 183658,
+        "git_blob_sha1": "e195c6b2d254fdfadd84b15bac4dac3abdc9373d"
+      }
+    },
+    {
+      "case_id": "case_00030",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00030.nii.gz",
+        "bytes": 18676453,
+        "git_oid": "5dcc700a8cc0aad5ffa420748cb4e7e8a5c66662",
+        "lfs": {
+          "oid": "db5d5dd393c0fcbcdfd0d41e242c1c46138d6308765992d5b79e9a41f01b4ee2",
+          "size": 18676453,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00030/segmentation.nii.gz",
+        "bytes": 110570,
+        "git_blob_sha1": "bfc90cf110deab7e2737207ba70bd915ad738967"
+      }
+    },
+    {
+      "case_id": "case_00031",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00031.nii.gz",
+        "bytes": 50504430,
+        "git_oid": "9549e0c16c6bb97d0265ed51f87b16def969b2ae",
+        "lfs": {
+          "oid": "8e4baf209f156e6319cdbd61efdcb8bb518a9e863d86cb67ef43fe53cd3cc156",
+          "size": 50504430,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00031/segmentation.nii.gz",
+        "bytes": 200584,
+        "git_blob_sha1": "073b91edfb27c7ec93a2399484d0a5a4cae5dbd3"
+      }
+    },
+    {
+      "case_id": "case_00032",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00032.nii.gz",
+        "bytes": 75286311,
+        "git_oid": "86d4453a4ca7221524d05db3f8740bf0e842b8d4",
+        "lfs": {
+          "oid": "00f43320501a2bc31b13176add47ae81793f9097df47c750c4ac4af9910f730d",
+          "size": 75286311,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00032/segmentation.nii.gz",
+        "bytes": 258712,
+        "git_blob_sha1": "2f06033ea9b9ce1fce69483592323c55cad85a41"
+      }
+    },
+    {
+      "case_id": "case_00033",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00033.nii.gz",
+        "bytes": 191873285,
+        "git_oid": "8e7c206696872ad6579f022f96fef1adf419d714",
+        "lfs": {
+          "oid": "94524a641d762fd1692811504f6276a970f1738de4641683453b0b5fd346a3f2",
+          "size": 191873285,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00033/segmentation.nii.gz",
+        "bytes": 587743,
+        "git_blob_sha1": "298627d798b85ce44dbae1fbabcd58a2356de383"
+      }
+    },
+    {
+      "case_id": "case_00034",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00034.nii.gz",
+        "bytes": 52752885,
+        "git_oid": "b187c033faf6dcc12c7c7d9435f168f1d290b622",
+        "lfs": {
+          "oid": "55213482fc646bf30a736fc1e8620a0925b30030cbfbbd6488d47bd059f313ac",
+          "size": 52752885,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00034/segmentation.nii.gz",
+        "bytes": 174017,
+        "git_blob_sha1": "d8b328b442eb3d422baeea8a300a1f61e6d2b01f"
+      }
+    },
+    {
+      "case_id": "case_00035",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00035.nii.gz",
+        "bytes": 39633847,
+        "git_oid": "1e78170d09767b5adbb4e3b5b43a3448b35220b3",
+        "lfs": {
+          "oid": "0fab3e5adaf5f525573875ed540d24f351e3cb8c23004739c1a653bfa5b66a0c",
+          "size": 39633847,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00035/segmentation.nii.gz",
+        "bytes": 144163,
+        "git_blob_sha1": "fef0e88f3ddb1d4a409d820fc9f4887977bd0193"
+      }
+    },
+    {
+      "case_id": "case_00036",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00036.nii.gz",
+        "bytes": 78614692,
+        "git_oid": "9f0b08ead2318218dd9842381da5663cb85ae18b",
+        "lfs": {
+          "oid": "e3a61271d58bbb2ebe5c9018ea7246bad81350bcc4bab0c7ca758f8ffe6822af",
+          "size": 78614692,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00036/segmentation.nii.gz",
+        "bytes": 258670,
+        "git_blob_sha1": "7d6295b6b8707e5bc2faa114b0840a1429e118c2"
+      }
+    },
+    {
+      "case_id": "case_00037",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00037.nii.gz",
+        "bytes": 40424057,
+        "git_oid": "55ca4b82223d51ae33f7cb75b69ee73d7983a360",
+        "lfs": {
+          "oid": "31b95c03f5df0527f0943db956904a70e6c9cd779df3c6f9755858abeab4f64d",
+          "size": 40424057,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00037/segmentation.nii.gz",
+        "bytes": 84404,
+        "git_blob_sha1": "83e4e7fa5c7fc390367166f32afeea12ca2ebe70"
+      }
+    },
+    {
+      "case_id": "case_00038",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00038.nii.gz",
+        "bytes": 15415661,
+        "git_oid": "35147a9a3024882f540505be7c3ce38de77b6454",
+        "lfs": {
+          "oid": "0050172529386ea12ff21b2871e2afa0bc917f8ec2b8fc0fc5e9c0d2e298d6a3",
+          "size": 15415661,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00038/segmentation.nii.gz",
+        "bytes": 68168,
+        "git_blob_sha1": "508e2add9a2652e91496f95b0990e1017988d083"
+      }
+    },
+    {
+      "case_id": "case_00039",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00039.nii.gz",
+        "bytes": 44953099,
+        "git_oid": "17644060c9b2f084aa95ca454a1070bd6d136cba",
+        "lfs": {
+          "oid": "ba31bba727acdff50aa43244d17872c75cdf69ad6dc493e4a52c36c44e953e3c",
+          "size": 44953099,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00039/segmentation.nii.gz",
+        "bytes": 69299,
+        "git_blob_sha1": "6d028eeeb4f9fe560b65e05af66d36ae4ba38701"
+      }
+    },
+    {
+      "case_id": "case_00040",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00040.nii.gz",
+        "bytes": 81954860,
+        "git_oid": "5b6797ec693f63c4a84e7c544d1c1dc3f806a3fd",
+        "lfs": {
+          "oid": "d0098068040f8fac079925d489428ef3b486d63975f51778c1dd981d5e7ff17f",
+          "size": 81954860,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00040/segmentation.nii.gz",
+        "bytes": 309845,
+        "git_blob_sha1": "8fcf85cf12d6a852f44891169ecc6864ce2f48c5"
+      }
+    },
+    {
+      "case_id": "case_00041",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00041.nii.gz",
+        "bytes": 25224078,
+        "git_oid": "63a9c0e25b35c2b07bbc2c94806a42169dfff265",
+        "lfs": {
+          "oid": "bebf5e542eaa5731c71717b7654065fa4313c551c1cdf57f7cea426ceff028c2",
+          "size": 25224078,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00041/segmentation.nii.gz",
+        "bytes": 103314,
+        "git_blob_sha1": "9413e8606d35d72f7f910d8b499e90693b0ad8ed"
+      }
+    },
+    {
+      "case_id": "case_00042",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00042.nii.gz",
+        "bytes": 136618407,
+        "git_oid": "f9d33b5862d4a3d5946ed840c2026b59b22e1e20",
+        "lfs": {
+          "oid": "07c3503b756e9290261afd92f4b51b141c3559ff6ea42a670169ff726a713f0d",
+          "size": 136618407,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00042/segmentation.nii.gz",
+        "bytes": 550641,
+        "git_blob_sha1": "db814dd7fe45d0736ee1e3ad4e010a9aec9dd46a"
+      }
+    },
+    {
+      "case_id": "case_00043",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00043.nii.gz",
+        "bytes": 70644303,
+        "git_oid": "ae02928e18e6791b11695d71cc2125ce6a11ca02",
+        "lfs": {
+          "oid": "e3780331e973be89132aedc51c51995e8ca729391d52e194f25f7cec08a659a5",
+          "size": 70644303,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00043/segmentation.nii.gz",
+        "bytes": 247343,
+        "git_blob_sha1": "cbf479bd0903bedeb7a0786f43b57edc0d5523d2"
+      }
+    },
+    {
+      "case_id": "case_00044",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00044.nii.gz",
+        "bytes": 38419186,
+        "git_oid": "6e1d2cd5c75f1ab7c7c525400e6bbe3a951cb3a3",
+        "lfs": {
+          "oid": "4d7f8fd27cb08c8b935663757f864b3bb4113eb4af5b8ecdc9dda41ab48cdf3d",
+          "size": 38419186,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00044/segmentation.nii.gz",
+        "bytes": 152896,
+        "git_blob_sha1": "fa51c669f0f4dd4d37fd49135bc828c2163cd16b"
+      }
+    },
+    {
+      "case_id": "case_00045",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00045.nii.gz",
+        "bytes": 25584430,
+        "git_oid": "67cd5aa051ff64b54f2ce9f1edb23559012fe6bc",
+        "lfs": {
+          "oid": "ad4ddba4d11c3272dac7a35e2d4414a872b215fad2c85be7af64d7bd0caa80c8",
+          "size": 25584430,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00045/segmentation.nii.gz",
+        "bytes": 109212,
+        "git_blob_sha1": "cafedaffe9cd0f4667c82f102796b45501949b67"
+      }
+    },
+    {
+      "case_id": "case_00046",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00046.nii.gz",
+        "bytes": 59261129,
+        "git_oid": "dd939916f36ba2402b8d4edddbe6a5e371ae0694",
+        "lfs": {
+          "oid": "4f83900ab55be64e53d2b88fab5657e5d92fc10ecf30a48770615e8d2b4e0a62",
+          "size": 59261129,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00046/segmentation.nii.gz",
+        "bytes": 224699,
+        "git_blob_sha1": "5462bbb5a66aea82a0a1b9237439573ee701c0b5"
+      }
+    },
+    {
+      "case_id": "case_00047",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00047.nii.gz",
+        "bytes": 63514124,
+        "git_oid": "62180910bcd8a9c137d6250ea39c956b6753164a",
+        "lfs": {
+          "oid": "83322cd75cb52290e64edd99dc7e23c616b8e31c62fe238f5f16f45bea6d477a",
+          "size": 63514124,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00047/segmentation.nii.gz",
+        "bytes": 206151,
+        "git_blob_sha1": "f47183d413bee8f0d70167f123f3c55cb664cee4"
+      }
+    },
+    {
+      "case_id": "case_00048",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00048.nii.gz",
+        "bytes": 30867959,
+        "git_oid": "63b94902457be9d0e1cbe16c8355bbad7b1ded00",
+        "lfs": {
+          "oid": "a4762f5c8cbd30ab74cf4b16b4806a73b0f1234efb247d068a9b1c388d5ba8c4",
+          "size": 30867959,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00048/segmentation.nii.gz",
+        "bytes": 117831,
+        "git_blob_sha1": "45b0572a94b748def45366e4a38de1ed9ec9c9fd"
+      }
+    },
+    {
+      "case_id": "case_00049",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00049.nii.gz",
+        "bytes": 289194549,
+        "git_oid": "5ff1fe6236a74e90729f1ef58e8e5c46279f8b02",
+        "lfs": {
+          "oid": "d0d449e4ca322aab438a34cebe0eb47b0ea68557593ef58f1912dfeac3c5fd32",
+          "size": 289194549,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00049/segmentation.nii.gz",
+        "bytes": 896777,
+        "git_blob_sha1": "be6731120210e566f9ec74b626d27053e7bd650e"
+      }
+    },
+    {
+      "case_id": "case_00050",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00050.nii.gz",
+        "bytes": 40193355,
+        "git_oid": "3732fe36daaf630594c4dcdc3179026cc7dc467c",
+        "lfs": {
+          "oid": "ee2983b3af2e20f2e130279b9415183c99d0d4b813aead6569a905b0197ca40b",
+          "size": 40193355,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00050/segmentation.nii.gz",
+        "bytes": 179598,
+        "git_blob_sha1": "b8e96e3430e342a1805a3ed8dbf19e7f4f33c5bb"
+      }
+    },
+    {
+      "case_id": "case_00051",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00051.nii.gz",
+        "bytes": 25645257,
+        "git_oid": "332098dd6bb7913d112344cb16e7f493dee2c223",
+        "lfs": {
+          "oid": "e52fc89a7156d19cfefcb7f8794c01e1673a5c77218361a3723d0886f53cb3fb",
+          "size": 25645257,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00051/segmentation.nii.gz",
+        "bytes": 120070,
+        "git_blob_sha1": "7d4a34bf2ce5c5a30fe5a0cafbdd1975f109bdd9"
+      }
+    },
+    {
+      "case_id": "case_00052",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00052.nii.gz",
+        "bytes": 256991563,
+        "git_oid": "6375268e528a54430f619d92d6ae269b6498415d",
+        "lfs": {
+          "oid": "e4f32880944933ce2f733cc75bc1a5284b0a846ed77161e995fd3d277aaec88a",
+          "size": 256991563,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00052/segmentation.nii.gz",
+        "bytes": 860917,
+        "git_blob_sha1": "ad6c8ef1e2f724d7b62d067aa5275a6349626b3e"
+      }
+    },
+    {
+      "case_id": "case_00053",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00053.nii.gz",
+        "bytes": 251298306,
+        "git_oid": "913a6baef304838b8804c4f742864ea1cbd6df90",
+        "lfs": {
+          "oid": "ed3821653b378580bee47a0b975ba8a3d659b95408a6010c8159fa9ecd6ab23c",
+          "size": 251298306,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00053/segmentation.nii.gz",
+        "bytes": 758027,
+        "git_blob_sha1": "67c895165f1686bff3ae8da9a170a6422f92cc4e"
+      }
+    },
+    {
+      "case_id": "case_00054",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00054.nii.gz",
+        "bytes": 41865608,
+        "git_oid": "56ebbd0abcd70be0144e6557c6d3d89c48ba9cbf",
+        "lfs": {
+          "oid": "2e1670b9a7d9378c1e7d68242a08383d00c3c0755b74d5b7a46552656f4864c0",
+          "size": 41865608,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00054/segmentation.nii.gz",
+        "bytes": 154979,
+        "git_blob_sha1": "7e4067c30d96a799519f05a3ee65ff0dc3036ad8"
+      }
+    },
+    {
+      "case_id": "case_00055",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00055.nii.gz",
+        "bytes": 43342417,
+        "git_oid": "0658454e21a60d9b510c6c38005d2d2975451fe2",
+        "lfs": {
+          "oid": "bdee52e4c1b3b789142b167b77257e394d8db579e26724488dd4dc1a2dbf0959",
+          "size": 43342417,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00055/segmentation.nii.gz",
+        "bytes": 172332,
+        "git_blob_sha1": "ae63c9d7be089ee1be08482e350bfefb78a56694"
+      }
+    },
+    {
+      "case_id": "case_00056",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00056.nii.gz",
+        "bytes": 45668159,
+        "git_oid": "d0581a4d135621eefaf6b7a2ecf1d841e4e9d2ff",
+        "lfs": {
+          "oid": "bceeed3355ab099678d5ef009cb8a0258eac51fb6fc2530017fe702434c46140",
+          "size": 45668159,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00056/segmentation.nii.gz",
+        "bytes": 182198,
+        "git_blob_sha1": "9d3a99b907da3f4941f17741e24a17759c146461"
+      }
+    },
+    {
+      "case_id": "case_00057",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00057.nii.gz",
+        "bytes": 37609735,
+        "git_oid": "7a490fe2dcbbc1ca7ddf7df4b490a15bec3bc0b8",
+        "lfs": {
+          "oid": "e7f73fded2c62e41d3b835bd8d65c075dd0b930347e16c5a55b854c6493ebdb6",
+          "size": 37609735,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00057/segmentation.nii.gz",
+        "bytes": 140630,
+        "git_blob_sha1": "8efadd5e3418d8443b5c3cf477b6ae3bb15d5d9c"
+      }
+    },
+    {
+      "case_id": "case_00058",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00058.nii.gz",
+        "bytes": 43100380,
+        "git_oid": "d80f26e558dca459b05c0e0c454dd03e037faec6",
+        "lfs": {
+          "oid": "6909f6f33d6ad42d48a04b2a392af6ff05431b5021a4aac0d9a00c1dde80530b",
+          "size": 43100380,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00058/segmentation.nii.gz",
+        "bytes": 162883,
+        "git_blob_sha1": "49cfb80d7b22eac0debe9d2e4db9c3f49ab31a05"
+      }
+    },
+    {
+      "case_id": "case_00059",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00059.nii.gz",
+        "bytes": 324407591,
+        "git_oid": "b1b4bf68dafb6bfa066c0e8e75e1dd2e1fd5e2e0",
+        "lfs": {
+          "oid": "67a94a63adcee23ee66bba448d3229c47a1d33029524dde26dfa7d8fa1c2afae",
+          "size": 324407591,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00059/segmentation.nii.gz",
+        "bytes": 944705,
+        "git_blob_sha1": "85d95426f7f9f00aa87e8a17d98344f850f03a5d"
+      }
+    },
+    {
+      "case_id": "case_00060",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00060.nii.gz",
+        "bytes": 62615177,
+        "git_oid": "43302112ff72eaff9af109b5cb448e1785df465a",
+        "lfs": {
+          "oid": "f4a8660114ba14a05f354d37511b50a0e6abfc26d6e0409b7b1bf6c2a8147fdd",
+          "size": 62615177,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00060/segmentation.nii.gz",
+        "bytes": 213248,
+        "git_blob_sha1": "8ab60e4ccaf1a1ab79828a74357547de255e56d6"
+      }
+    },
+    {
+      "case_id": "case_00061",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00061.nii.gz",
+        "bytes": 11577207,
+        "git_oid": "fbbc40a9bdf320fc216d4fa32f81726ccce8ab24",
+        "lfs": {
+          "oid": "95eb42261e22f552e2b6bda39c2d72e3fbc376983d6bf9485122e968609f2cbf",
+          "size": 11577207,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00061/segmentation.nii.gz",
+        "bytes": 59432,
+        "git_blob_sha1": "3cbe29412ea44af170c59eab94cd5029f742502f"
+      }
+    },
+    {
+      "case_id": "case_00062",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00062.nii.gz",
+        "bytes": 32540525,
+        "git_oid": "d9e175459e1a6dc773874a43bf9bbbfda1a09d0d",
+        "lfs": {
+          "oid": "abaac9f1ca45105517719b9bbedf402214ebf12050305c70904a982ae59b084a",
+          "size": 32540525,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00062/segmentation.nii.gz",
+        "bytes": 117597,
+        "git_blob_sha1": "8c1ec0a8d6b2c0cb20c2450c8e54a6536b55260a"
+      }
+    },
+    {
+      "case_id": "case_00063",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00063.nii.gz",
+        "bytes": 231715658,
+        "git_oid": "b36985987001de7910dadd2014c8af82b1efa8a0",
+        "lfs": {
+          "oid": "0e27c6255a9305feb5bc4e95f48eb36c10c4d35a89acc0f3838d0629f314304c",
+          "size": 231715658,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00063/segmentation.nii.gz",
+        "bytes": 739430,
+        "git_blob_sha1": "4f9da7a890caf986bed056173f56bff506154f6c"
+      }
+    },
+    {
+      "case_id": "case_00064",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00064.nii.gz",
+        "bytes": 21721710,
+        "git_oid": "a9db17772c561a51dfa6b549a3616793c5ee7ccd",
+        "lfs": {
+          "oid": "d8de0bdfa099c9cd4fda5a69ed188f57cf01849e676d31473f5f0df4a83c832d",
+          "size": 21721710,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00064/segmentation.nii.gz",
+        "bytes": 86784,
+        "git_blob_sha1": "cf7d37a6098d4f52fc71857109a4e933542a95eb"
+      }
+    },
+    {
+      "case_id": "case_00065",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00065.nii.gz",
+        "bytes": 48274302,
+        "git_oid": "2ed77563999ef10e5e9742c91e987893616821e4",
+        "lfs": {
+          "oid": "6ff1b71bd873306c88e90fa463cbd740bbeb79cb5c3bc8b5089e3fff81622e6e",
+          "size": 48274302,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00065/segmentation.nii.gz",
+        "bytes": 190388,
+        "git_blob_sha1": "04b84f68bd09957223f1319da659e4e00de7492b"
+      }
+    },
+    {
+      "case_id": "case_00066",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00066.nii.gz",
+        "bytes": 186603335,
+        "git_oid": "c06900b91452ee751e41824c8303f38bd6d17729",
+        "lfs": {
+          "oid": "d8fbf08d1628afa013c3b0050b6f7b60ff5e184c295bea2ee5b0d173459ed82f",
+          "size": 186603335,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00066/segmentation.nii.gz",
+        "bytes": 597100,
+        "git_blob_sha1": "f93de57b5373dc7b975381394f958cf859436cad"
+      }
+    },
+    {
+      "case_id": "case_00067",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00067.nii.gz",
+        "bytes": 134477869,
+        "git_oid": "81e3b01cd1b5d9ceec9d192d67991dc015b267d8",
+        "lfs": {
+          "oid": "a819c539f52b093658cf59afcb08f7f66b41adff9fec05125c47c2f5186b1f95",
+          "size": 134477869,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00067/segmentation.nii.gz",
+        "bytes": 506486,
+        "git_blob_sha1": "a8cfe30631a41b0ea246eb4b6de3f7b7c5b4d4ce"
+      }
+    },
+    {
+      "case_id": "case_00068",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00068.nii.gz",
+        "bytes": 300829627,
+        "git_oid": "32d5dc56cea9128f1da981a91c55d5033214515b",
+        "lfs": {
+          "oid": "274e408499a644791a18e8287b10b8124932d28ad5ae6f80f3fd9a6cbf94d48c",
+          "size": 300829627,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00068/segmentation.nii.gz",
+        "bytes": 916983,
+        "git_blob_sha1": "eaca540243c658d3c0c7cb18e4fdbf7cb456903d"
+      }
+    },
+    {
+      "case_id": "case_00069",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00069.nii.gz",
+        "bytes": 46183471,
+        "git_oid": "a9f47df9fc478b9ffd4d8bc09de2afc7e1e7dafe",
+        "lfs": {
+          "oid": "f56e721684cdfb9d43e7860dd002e70858a33b0549bafe8c21be987c193c3592",
+          "size": 46183471,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00069/segmentation.nii.gz",
+        "bytes": 160312,
+        "git_blob_sha1": "af1c1b05722881136784583020418fd522bc8493"
+      }
+    },
+    {
+      "case_id": "case_00070",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00070.nii.gz",
+        "bytes": 29478344,
+        "git_oid": "74cd4024b3f9b7bd3c9c92b2fb342b1d61df5851",
+        "lfs": {
+          "oid": "18025b039e3a098437eac420ef50d2fa3cb1ac879a78ae339037d90ef5330126",
+          "size": 29478344,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00070/segmentation.nii.gz",
+        "bytes": 126108,
+        "git_blob_sha1": "ae8f4daaee6adaed24b1b0817a479e9854f46685"
+      }
+    },
+    {
+      "case_id": "case_00071",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00071.nii.gz",
+        "bytes": 268825824,
+        "git_oid": "0e265a5f9d936b41f0eaa9c72586cb88dd22d504",
+        "lfs": {
+          "oid": "f7caca0580f003bc43e6d2d795d37e252665a31c949c2486fb55d835b675b25a",
+          "size": 268825824,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00071/segmentation.nii.gz",
+        "bytes": 802629,
+        "git_blob_sha1": "7f296ffc5019ca9a961578583210a86d6d8bef7b"
+      }
+    },
+    {
+      "case_id": "case_00072",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00072.nii.gz",
+        "bytes": 79384535,
+        "git_oid": "fd0138838433ad3024af5983cfed534db35ca3c5",
+        "lfs": {
+          "oid": "2be7605792b5cc9c3303d1ccd4547da8b5839f75a3296ffc8826668de180cc56",
+          "size": 79384535,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00072/segmentation.nii.gz",
+        "bytes": 264014,
+        "git_blob_sha1": "81e577401424ed9abac40f52f2e794b4775bd398"
+      }
+    },
+    {
+      "case_id": "case_00073",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00073.nii.gz",
+        "bytes": 66227643,
+        "git_oid": "e308c3a3f0526b85b15515cb808a54d0229ceb61",
+        "lfs": {
+          "oid": "54da755f9b760abea084d3cbe31a6279c3fc254a68f99733b2df19709c7b22f5",
+          "size": 66227643,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00073/segmentation.nii.gz",
+        "bytes": 225027,
+        "git_blob_sha1": "a1485bace15a9cd395c96661227fa647d4213d53"
+      }
+    },
+    {
+      "case_id": "case_00074",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00074.nii.gz",
+        "bytes": 39078517,
+        "git_oid": "743d5c2474b191386d63e8730573587544e33f7c",
+        "lfs": {
+          "oid": "1eb8693c31ac80dd360a3f91b610a60136ad276a5b334545c3f8e64765de5f17",
+          "size": 39078517,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00074/segmentation.nii.gz",
+        "bytes": 133049,
+        "git_blob_sha1": "ee84eae4589e01e42e32c23daae1a82152c26709"
+      }
+    },
+    {
+      "case_id": "case_00075",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00075.nii.gz",
+        "bytes": 44705075,
+        "git_oid": "202336102374838173808f5b164091d9e31e07ea",
+        "lfs": {
+          "oid": "44f3ac4045ce34305eadfc48af7f11782c7699ed986d71089ec82f744cdbb64e",
+          "size": 44705075,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00075/segmentation.nii.gz",
+        "bytes": 134355,
+        "git_blob_sha1": "28c38614bd08ea04428329b30f717a0ecb736fe5"
+      }
+    },
+    {
+      "case_id": "case_00076",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00076.nii.gz",
+        "bytes": 32585283,
+        "git_oid": "7811860c8e60b328c691ebc04c0b7ff168af3855",
+        "lfs": {
+          "oid": "24e7268fcd904b5d92aeddc37d6e2714ffb080de7c8e8497482c64116ce2f3e6",
+          "size": 32585283,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00076/segmentation.nii.gz",
+        "bytes": 105766,
+        "git_blob_sha1": "aee85862beb05471cfbd260a06b9ac4af50a7f30"
+      }
+    },
+    {
+      "case_id": "case_00077",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00077.nii.gz",
+        "bytes": 42628319,
+        "git_oid": "a0f4fd172cfebee531be9703abf01b0baed2fd1b",
+        "lfs": {
+          "oid": "64d7f1fb5be850c6b30051e5244a7cfdfcdea1e185f8f8bea7e6056f8f1bd0c9",
+          "size": 42628319,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00077/segmentation.nii.gz",
+        "bytes": 135677,
+        "git_blob_sha1": "3df48efecb1f97ea19d7eaaef8e995e9cbd314c8"
+      }
+    },
+    {
+      "case_id": "case_00078",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00078.nii.gz",
+        "bytes": 132219049,
+        "git_oid": "6d32d70c7df375e96053a2599e6bd35e69ee7553",
+        "lfs": {
+          "oid": "08563035343423b6011eddfe64e16447b2e9b8a62fbfffc0be97103a10664e44",
+          "size": 132219049,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00078/segmentation.nii.gz",
+        "bytes": 538585,
+        "git_blob_sha1": "5d80b8db1b0a5478aa94b5b7e731f9d7a391b646"
+      }
+    },
+    {
+      "case_id": "case_00079",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00079.nii.gz",
+        "bytes": 60760713,
+        "git_oid": "5905443c8f141e313a45b55acc536a06c8bc3182",
+        "lfs": {
+          "oid": "2062d34914ce3c0d00d7a92320a2cbc8e8f82d88217feeff4df2d6c7ac6d6915",
+          "size": 60760713,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00079/segmentation.nii.gz",
+        "bytes": 206593,
+        "git_blob_sha1": "04cdc020ebc4202047541ca8d2210bc741b02022"
+      }
+    },
+    {
+      "case_id": "case_00080",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00080.nii.gz",
+        "bytes": 43158941,
+        "git_oid": "2402ad3f535778052b7b09657828869b5d870fc3",
+        "lfs": {
+          "oid": "53d2195627a643feeebe65087baba6169af0f1707a26de5f7ee13943d3a4a0fd",
+          "size": 43158941,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00080/segmentation.nii.gz",
+        "bytes": 137429,
+        "git_blob_sha1": "c78414eb7487894e6e150f3933463a072325baa6"
+      }
+    },
+    {
+      "case_id": "case_00081",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00081.nii.gz",
+        "bytes": 60350821,
+        "git_oid": "1b329977529fa345fae0d0a096edc6d9da51b6c3",
+        "lfs": {
+          "oid": "78bc51ca3da42af7ceecc094b0709daf20925d8558a4175feffa31fdfcbcefc1",
+          "size": 60350821,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00081/segmentation.nii.gz",
+        "bytes": 221924,
+        "git_blob_sha1": "df74e86ee921d59d6b67759e86273f47ac271544"
+      }
+    },
+    {
+      "case_id": "case_00082",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00082.nii.gz",
+        "bytes": 57346577,
+        "git_oid": "88d9f72fd936512ca300add925a77da8d5320e98",
+        "lfs": {
+          "oid": "321ff379b9ee8166faebe129184ca75f8715bed42ff10edd91001a8a3d3fd8b7",
+          "size": 57346577,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00082/segmentation.nii.gz",
+        "bytes": 177439,
+        "git_blob_sha1": "00266318d5c507a6ffacd43b98aa6cb7c645c12f"
+      }
+    },
+    {
+      "case_id": "case_00083",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00083.nii.gz",
+        "bytes": 38295161,
+        "git_oid": "16e8a959a11c1101a8434eb6b16a73c805d6183f",
+        "lfs": {
+          "oid": "7748e2dc080c6f9df479e7db2b03d17c7b32e62ee081741fd5d0d0786cc1fa23",
+          "size": 38295161,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00083/segmentation.nii.gz",
+        "bytes": 160837,
+        "git_blob_sha1": "fbfc670a5d68f0d94a6422f5a109cde137052726"
+      }
+    },
+    {
+      "case_id": "case_00084",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00084.nii.gz",
+        "bytes": 112681578,
+        "git_oid": "5f41c0d1c7c706c6f57fbf6983ec3b1669522943",
+        "lfs": {
+          "oid": "d2c54a087dc9b2e1229a326ed12055dfbee596cf2bc7ad8a247b9fde540738d7",
+          "size": 112681578,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00084/segmentation.nii.gz",
+        "bytes": 394399,
+        "git_blob_sha1": "620a97995525753ca8b01f05541d3ed7a385efa3"
+      }
+    },
+    {
+      "case_id": "case_00085",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00085.nii.gz",
+        "bytes": 36294311,
+        "git_oid": "5e5351bc5d91bffb1e6ec5212b681805db8978c7",
+        "lfs": {
+          "oid": "b875d694ee4e8c3e8125ee8be2f8d317af0dd4124929da8546297b3ab324772b",
+          "size": 36294311,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00085/segmentation.nii.gz",
+        "bytes": 126540,
+        "git_blob_sha1": "77b35978583944f82ae54ec192796a1fc3cd35f2"
+      }
+    },
+    {
+      "case_id": "case_00086",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00086.nii.gz",
+        "bytes": 81962715,
+        "git_oid": "bc145a9bf5aa93acb3216851b448a30adc917a7e",
+        "lfs": {
+          "oid": "f05018951244e877cc6cb3aa842ed2287a32bab86b4cd5e8564e0ce6210930d1",
+          "size": 81962715,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00086/segmentation.nii.gz",
+        "bytes": 301891,
+        "git_blob_sha1": "5e44f7cccb1e9e8e7320f84b9acd0cb196c4dbf5"
+      }
+    },
+    {
+      "case_id": "case_00087",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00087.nii.gz",
+        "bytes": 25303768,
+        "git_oid": "2f70dd83e1c9f3776bbf982dab827fc7ec91423b",
+        "lfs": {
+          "oid": "f4658463b4480b411d7b5e283294a828145acf95cef70f9e35f88161167a5298",
+          "size": 25303768,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00087/segmentation.nii.gz",
+        "bytes": 97327,
+        "git_blob_sha1": "2878eaca6056d7c2f5d875ace550359f4b747bbf"
+      }
+    },
+    {
+      "case_id": "case_00088",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00088.nii.gz",
+        "bytes": 47969595,
+        "git_oid": "c7363a14176c9bb51c11ccb2132dce45aebbb89a",
+        "lfs": {
+          "oid": "393684ed2220f0e030c09f3ed36e832740e5e9a8c98bffad7480e2d60e79d152",
+          "size": 47969595,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00088/segmentation.nii.gz",
+        "bytes": 200670,
+        "git_blob_sha1": "ca90dfaf326540ec52452c513985ce63a3cf503b"
+      }
+    },
+    {
+      "case_id": "case_00089",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00089.nii.gz",
+        "bytes": 24690956,
+        "git_oid": "e954fd0285a473d32c07171450b512ec79f3f2a8",
+        "lfs": {
+          "oid": "3fed1d4f01ff7e04d618fd48000937ea455aa32bc8b1d693697b2e258c95dd40",
+          "size": 24690956,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00089/segmentation.nii.gz",
+        "bytes": 95133,
+        "git_blob_sha1": "a97129f35f6d7ff96ee6e928f85fee695b470e5d"
+      }
+    },
+    {
+      "case_id": "case_00090",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00090.nii.gz",
+        "bytes": 35861921,
+        "git_oid": "956d6184b4d8a01e2ba7728ff4cb8606b6e3b043",
+        "lfs": {
+          "oid": "5bfa1c15f922bdbeaffa7cd12c3f9f3cb7b6100db29ec7811ead40e977bb490a",
+          "size": 35861921,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00090/segmentation.nii.gz",
+        "bytes": 128371,
+        "git_blob_sha1": "6435b7147b2961c41e122bf96cec719a9d114470"
+      }
+    },
+    {
+      "case_id": "case_00091",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00091.nii.gz",
+        "bytes": 320735560,
+        "git_oid": "3611aaebfb9dc27f2db277a3e1eec32072bbd9dd",
+        "lfs": {
+          "oid": "56f4a7e6531497523448ab4b2c23f61cdb907880161ca349e1cef88e3a3f31ac",
+          "size": 320735560,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00091/segmentation.nii.gz",
+        "bytes": 987389,
+        "git_blob_sha1": "60f850ed82eda37c97d198b702840115be729da2"
+      }
+    },
+    {
+      "case_id": "case_00092",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00092.nii.gz",
+        "bytes": 51076798,
+        "git_oid": "88767ab75e15d0a36728be3520171ffe4754a2f1",
+        "lfs": {
+          "oid": "0e5beede1e2deec31a4bf8f6c0cd51c47e053c3a4644341a4178678be59131f4",
+          "size": 51076798,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00092/segmentation.nii.gz",
+        "bytes": 196674,
+        "git_blob_sha1": "15a9a58e8883caddb010421cfc53fe405185cadd"
+      }
+    },
+    {
+      "case_id": "case_00093",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00093.nii.gz",
+        "bytes": 324309850,
+        "git_oid": "ab5b83e0f0932b8072dcd647a036008953799cd3",
+        "lfs": {
+          "oid": "023bae3d476a6993ed654e9a7af46c9b659a6aa6903d2cb3829af5533e5ba42c",
+          "size": 324309850,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00093/segmentation.nii.gz",
+        "bytes": 1014446,
+        "git_blob_sha1": "1621f4e0fe444352ffe85b032b3ff2db286e52a5"
+      }
+    },
+    {
+      "case_id": "case_00094",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00094.nii.gz",
+        "bytes": 17428859,
+        "git_oid": "64b0421f7cd8e1056d110756e2befbae5d312e09",
+        "lfs": {
+          "oid": "48802f2c1d197f63c9be459d2402c9823ca9387ad4699e482ca3a2da4d8b2c6b",
+          "size": 17428859,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00094/segmentation.nii.gz",
+        "bytes": 96536,
+        "git_blob_sha1": "482caa9e9d9dafc4cf4ff2ea301b6f003bebbd34"
+      }
+    },
+    {
+      "case_id": "case_00095",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00095.nii.gz",
+        "bytes": 127649269,
+        "git_oid": "60df874349529bf58b288bbcdbe828e5cea380a9",
+        "lfs": {
+          "oid": "7908ff06fd6c82652ad1591b650c71529f616bf4f904fee75e6604dcf5e3a1e2",
+          "size": 127649269,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00095/segmentation.nii.gz",
+        "bytes": 422647,
+        "git_blob_sha1": "59883c67cc69c1621acd6c29e5a37ea54982aaf6"
+      }
+    },
+    {
+      "case_id": "case_00096",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00096.nii.gz",
+        "bytes": 303181978,
+        "git_oid": "18cd71054f1f6ef8d57ba94c837dc94a428b32bd",
+        "lfs": {
+          "oid": "d0570233199a3c59ff8e049f98732d3990564bf45ff67e28702709feddfd1085",
+          "size": 303181978,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00096/segmentation.nii.gz",
+        "bytes": 910464,
+        "git_blob_sha1": "bbad5595be1c92f98f0bcdf712a2bea90f17eab8"
+      }
+    },
+    {
+      "case_id": "case_00097",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00097.nii.gz",
+        "bytes": 35994201,
+        "git_oid": "1f78c442da244a881881b79b1477ef3b9d68d1cc",
+        "lfs": {
+          "oid": "78c2d1a5c4cf9d7f492b01db67dde00a1c106dd0dcde7d3a3fb66b790c58019f",
+          "size": 35994201,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00097/segmentation.nii.gz",
+        "bytes": 131748,
+        "git_blob_sha1": "84d2e29d1af663c8ea87075e6200b9f453084607"
+      }
+    },
+    {
+      "case_id": "case_00098",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00098.nii.gz",
+        "bytes": 113065659,
+        "git_oid": "c7f3b77098ea335f9955e094e1eee5e594d0e4f7",
+        "lfs": {
+          "oid": "7b90ea447c544442524c07d999eebd142c95645f5e033e14f6dd138fdf59d3be",
+          "size": 113065659,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00098/segmentation.nii.gz",
+        "bytes": 378476,
+        "git_blob_sha1": "f942c3a5080da8e10e58e0a72ea19d9f5fe0e89a"
+      }
+    },
+    {
+      "case_id": "case_00099",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00099.nii.gz",
+        "bytes": 44531186,
+        "git_oid": "6da64fe301cf69ab6d5fce9703ffa1629d12143f",
+        "lfs": {
+          "oid": "48d45ad59be0e4ca0a51531a74ffdee5ce530119ce0acaa406d08d8a66062063",
+          "size": 44531186,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00099/segmentation.nii.gz",
+        "bytes": 165536,
+        "git_blob_sha1": "4fffe344674d5a211900f322049ddf3fbbb5f636"
+      }
+    },
+    {
+      "case_id": "case_00100",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00100.nii.gz",
+        "bytes": 217447355,
+        "git_oid": "c37d7b5a917f558f818b2a5dfae0ac44ab7dd4eb",
+        "lfs": {
+          "oid": "2391adf361de6377cc4271e4180d2be74b052303833bd60ad26356be9cefcbbd",
+          "size": 217447355,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00100/segmentation.nii.gz",
+        "bytes": 615813,
+        "git_blob_sha1": "a8396597cb0245b24f0239659504687bcd73bc5a"
+      }
+    },
+    {
+      "case_id": "case_00101",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00101.nii.gz",
+        "bytes": 222646868,
+        "git_oid": "8d898674c6be21b26adbe823e9aa535635526655",
+        "lfs": {
+          "oid": "fb57e0feba61718803ed3756f5b880ea7be85e43d374e67eeafb22ec1bdf0ea2",
+          "size": 222646868,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00101/segmentation.nii.gz",
+        "bytes": 687785,
+        "git_blob_sha1": "133ed4c76e5d9c77a8227013ee2e0709c0eea3ed"
+      }
+    },
+    {
+      "case_id": "case_00102",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00102.nii.gz",
+        "bytes": 139727628,
+        "git_oid": "34fe79a987c5ef0f6e814f235e28f2eda3f0c401",
+        "lfs": {
+          "oid": "ce1f4182738e0cc5b36ad02efd719b805699b8f5e647e7ca12aac2fe9147c4da",
+          "size": 139727628,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00102/segmentation.nii.gz",
+        "bytes": 516738,
+        "git_blob_sha1": "e120129996332d1ce6ddc23c26bc5d39bae47a56"
+      }
+    },
+    {
+      "case_id": "case_00103",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00103.nii.gz",
+        "bytes": 286971910,
+        "git_oid": "685d7cdf39b4d717ff322ac7b7361aee24e4bf12",
+        "lfs": {
+          "oid": "0b8a27bd9af3a52f55c5a17fee98043bbbcc997c1a66a356984d3d0d4ee66375",
+          "size": 286971910,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00103/segmentation.nii.gz",
+        "bytes": 846324,
+        "git_blob_sha1": "5f01b49d8f9d19f4830e2659d6392eab8f1eb141"
+      }
+    },
+    {
+      "case_id": "case_00104",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00104.nii.gz",
+        "bytes": 58853229,
+        "git_oid": "02a52223b929733995056c72648beaad2a659426",
+        "lfs": {
+          "oid": "16b1c9224a730305486c5a741f8ca04cd82852e3ba14850cdc53fe07ec96ec5c",
+          "size": 58853229,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00104/segmentation.nii.gz",
+        "bytes": 170129,
+        "git_blob_sha1": "88365bb933dec1b5b50a375c8592a43ba00cb281"
+      }
+    },
+    {
+      "case_id": "case_00105",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00105.nii.gz",
+        "bytes": 60940672,
+        "git_oid": "ec043646a651722ab323318365f9001091e1bffd",
+        "lfs": {
+          "oid": "e4d2fe3b5af221ccb405e8e892cd8c03077f926c156ed23b054c9b7b9badd886",
+          "size": 60940672,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00105/segmentation.nii.gz",
+        "bytes": 216948,
+        "git_blob_sha1": "a0d293e455fb2fb5e500e6433e6a416d587ffea5"
+      }
+    },
+    {
+      "case_id": "case_00106",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00106.nii.gz",
+        "bytes": 47144713,
+        "git_oid": "4bdb438377c19c26eb54163cf993bc1ad3566d0b",
+        "lfs": {
+          "oid": "384c34749a9c849a2e0d4bf70335ba15696f79e53b136cba21f18d44d65e34ca",
+          "size": 47144713,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00106/segmentation.nii.gz",
+        "bytes": 159874,
+        "git_blob_sha1": "d0d2d1c7e2a97ae4db308b2ead508b32dbdf5ce1"
+      }
+    },
+    {
+      "case_id": "case_00107",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00107.nii.gz",
+        "bytes": 34804025,
+        "git_oid": "6d6ccb274f5d621b04cfe58e828b635c2f1f0ea4",
+        "lfs": {
+          "oid": "1c1e8da81cb453a4a4da056f056302a97b51bd7f34cfd254d15d80d49540848d",
+          "size": 34804025,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00107/segmentation.nii.gz",
+        "bytes": 152798,
+        "git_blob_sha1": "5a4b0becb0fa0eb8f95de01eb005f973bb70cf8f"
+      }
+    },
+    {
+      "case_id": "case_00108",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00108.nii.gz",
+        "bytes": 23687235,
+        "git_oid": "30c88b02e2bd9dba289d50ecaf93a2976fb2754f",
+        "lfs": {
+          "oid": "543e722f44db15e7452bfcc39d97acf5803952344c7a3a7ae31d4c4577bd3aa0",
+          "size": 23687235,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00108/segmentation.nii.gz",
+        "bytes": 99927,
+        "git_blob_sha1": "3b62547bc6642b99b5fc97eaa33fb2a61179dfd3"
+      }
+    },
+    {
+      "case_id": "case_00109",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00109.nii.gz",
+        "bytes": 32402891,
+        "git_oid": "9c372b08e02271205e56ad8cee0b2446d0582c5b",
+        "lfs": {
+          "oid": "7539f075fbcc4dacec246cef7e0e4e879a06a93d2dd98bfebaaa6c8930895a77",
+          "size": 32402891,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00109/segmentation.nii.gz",
+        "bytes": 159257,
+        "git_blob_sha1": "ab38ed1ed18f8b250e936131d07bc289cf2f265f"
+      }
+    },
+    {
+      "case_id": "case_00110",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00110.nii.gz",
+        "bytes": 16481496,
+        "git_oid": "496f27d88776291c882296f957bd52c28ea2f28a",
+        "lfs": {
+          "oid": "e85aff843a39845a1a0bbe488ced890bb50ff3d098721d9bbf39d4d188acc627",
+          "size": 16481496,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00110/segmentation.nii.gz",
+        "bytes": 68684,
+        "git_blob_sha1": "5076dd4d10be8b6eff5185791d0604129bd26c07"
+      }
+    },
+    {
+      "case_id": "case_00111",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00111.nii.gz",
+        "bytes": 78705328,
+        "git_oid": "798e402ef3e0929f8cd61b541957aff958e528e0",
+        "lfs": {
+          "oid": "4acbc48b42d3a56e0eab6dd7b6537b819f58ffebbad6043b76245a75d4176cda",
+          "size": 78705328,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00111/segmentation.nii.gz",
+        "bytes": 292498,
+        "git_blob_sha1": "08861f132f920c4907b5b7c9e8e1fea797ab0589"
+      }
+    },
+    {
+      "case_id": "case_00112",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00112.nii.gz",
+        "bytes": 55840497,
+        "git_oid": "b306487808d58c2e3a386067b0e50761e0e54cc3",
+        "lfs": {
+          "oid": "935e66df54397a86338502072f2212fa25d51f648669e16ab7733abbd19d8241",
+          "size": 55840497,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00112/segmentation.nii.gz",
+        "bytes": 227812,
+        "git_blob_sha1": "efee1bf6c9e635c69a55a0a0a5771a98d9b74a42"
+      }
+    },
+    {
+      "case_id": "case_00113",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00113.nii.gz",
+        "bytes": 22107071,
+        "git_oid": "106b09c5a659842e2f28d8d21015fb87db00a13b",
+        "lfs": {
+          "oid": "ea0aa6393a3bb4734c152730b605b595775646807edd953d36714b9377300e61",
+          "size": 22107071,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00113/segmentation.nii.gz",
+        "bytes": 88557,
+        "git_blob_sha1": "4aece258fb63635507422e3add6824683b7dd591"
+      }
+    },
+    {
+      "case_id": "case_00114",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00114.nii.gz",
+        "bytes": 147217241,
+        "git_oid": "2f288f076130158ac33a17e9292ae657765be5ca",
+        "lfs": {
+          "oid": "09a8723f8afa6a7b811e32bccd8643b2c4fe9efd9f164085cde62757ab7bd0d8",
+          "size": 147217241,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00114/segmentation.nii.gz",
+        "bytes": 595197,
+        "git_blob_sha1": "8849767d903dfdcdc3cd218e0645e82e1f5202a8"
+      }
+    },
+    {
+      "case_id": "case_00115",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00115.nii.gz",
+        "bytes": 147301746,
+        "git_oid": "3d2a938257409c020edfcb2db7ced2e28aebda0e",
+        "lfs": {
+          "oid": "bbf592e97e02fc0c611db54c53080d4ec35981f4185fab0e89994e4ea2a438e8",
+          "size": 147301746,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00115/segmentation.nii.gz",
+        "bytes": 464576,
+        "git_blob_sha1": "00df07214afeae93a372936e02bda3eb34d25c49"
+      }
+    },
+    {
+      "case_id": "case_00116",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00116.nii.gz",
+        "bytes": 196707070,
+        "git_oid": "a826c71a415ff8744e29d3c90a2877b4fe2e04b3",
+        "lfs": {
+          "oid": "525f60083da40205dda79a4cb1298b9b97a70f6bae26f20cd421cd67caf81546",
+          "size": 196707070,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00116/segmentation.nii.gz",
+        "bytes": 284248,
+        "git_blob_sha1": "5cdda26888f19446569e990cf242d27ffe203396"
+      }
+    },
+    {
+      "case_id": "case_00117",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00117.nii.gz",
+        "bytes": 30684538,
+        "git_oid": "11f37b9c21a8045a8aa099e3342042c7dcacaf61",
+        "lfs": {
+          "oid": "37e270565cae64838698ed6dab7f0a23867901e69d8673dfa0c083efb36cb463",
+          "size": 30684538,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00117/segmentation.nii.gz",
+        "bytes": 143049,
+        "git_blob_sha1": "b956162b49e3b3a52964a0d0eaa61457167714b1"
+      }
+    },
+    {
+      "case_id": "case_00118",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00118.nii.gz",
+        "bytes": 303939757,
+        "git_oid": "0798998375843dbc5b9ad3cc2ac7b342eee8e60b",
+        "lfs": {
+          "oid": "46deca3f230a031ff2fb5d03b0922a382e67e5dde0c7d387c442cb89084d2283",
+          "size": 303939757,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00118/segmentation.nii.gz",
+        "bytes": 923055,
+        "git_blob_sha1": "7565a52eae07855cdb4a37fc3a8dd4f7cd8dbe13"
+      }
+    },
+    {
+      "case_id": "case_00119",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00119.nii.gz",
+        "bytes": 44352103,
+        "git_oid": "5addbb96ceb1824dddcb86e09231e7dfcdb28f30",
+        "lfs": {
+          "oid": "14539f65234f068b1e349e753b422f564198021879612264556eafc1e1fdcc67",
+          "size": 44352103,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00119/segmentation.nii.gz",
+        "bytes": 159150,
+        "git_blob_sha1": "ec89eaf9679364c7d63df043f24bd58873a11cb0"
+      }
+    },
+    {
+      "case_id": "case_00120",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00120.nii.gz",
+        "bytes": 135413522,
+        "git_oid": "ab03a0e18d1f2c92a00a858dff17a96e3ec26667",
+        "lfs": {
+          "oid": "3332d84141993f42dc03d7977a7bc81e199f94be54bb567ce09554ab2f7b5732",
+          "size": 135413522,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00120/segmentation.nii.gz",
+        "bytes": 393310,
+        "git_blob_sha1": "0e0286e1feccc583de29068eeed4ea69abddf8f8"
+      }
+    },
+    {
+      "case_id": "case_00121",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00121.nii.gz",
+        "bytes": 35289520,
+        "git_oid": "a0898411c7b311b881c52a19cdad82c0de05bb48",
+        "lfs": {
+          "oid": "3fe7568dbf5446747878ab9ce27760cad28b4cc043295457a5869469e34cf914",
+          "size": 35289520,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00121/segmentation.nii.gz",
+        "bytes": 123282,
+        "git_blob_sha1": "961b4f1b73aa1e992211cc486876ff2a0a77650b"
+      }
+    },
+    {
+      "case_id": "case_00122",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00122.nii.gz",
+        "bytes": 25550117,
+        "git_oid": "6d6b8121e1d8b1e1557b4cece8f2542b41fdb46e",
+        "lfs": {
+          "oid": "ca3f77c9ac09245d7290364a08c9efea4d0e7870a93bb73ae8755c5bb1b34ff7",
+          "size": 25550117,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00122/segmentation.nii.gz",
+        "bytes": 106264,
+        "git_blob_sha1": "b8ca67cc119ab94352f513cb2e99fb1c2e204b8c"
+      }
+    },
+    {
+      "case_id": "case_00123",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00123.nii.gz",
+        "bytes": 150859371,
+        "git_oid": "2285b99c522a00476ac865a1721c25d0e18e5071",
+        "lfs": {
+          "oid": "be132ec55663137296e74c7e8f42df74a6676c347c05c2a0afb2b6c512dd31c2",
+          "size": 150859371,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00123/segmentation.nii.gz",
+        "bytes": 507414,
+        "git_blob_sha1": "c739beaeb9b9bdde5f2e972c6e65eabbbfde605a"
+      }
+    },
+    {
+      "case_id": "case_00124",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00124.nii.gz",
+        "bytes": 113055034,
+        "git_oid": "9d0a42bf7d6b0ca20aa13964ec96b925a192e309",
+        "lfs": {
+          "oid": "57eb0b37673a18c9d81257afb7c6e8a079574bf2ab8250eadeced0d915060a00",
+          "size": 113055034,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00124/segmentation.nii.gz",
+        "bytes": 377219,
+        "git_blob_sha1": "67eb871b7c5e81197015c1c5f5c475374d24903a"
+      }
+    },
+    {
+      "case_id": "case_00125",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00125.nii.gz",
+        "bytes": 64037453,
+        "git_oid": "5dc398f46f3fcd6e9321fd109375723645be6a12",
+        "lfs": {
+          "oid": "7025178cb9775c773dceeca725b5cf1354c9547786483bec867044d40ae7d069",
+          "size": 64037453,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00125/segmentation.nii.gz",
+        "bytes": 113159,
+        "git_blob_sha1": "5a9386057a2947a7f931b1699b45dc10dd4b297c"
+      }
+    },
+    {
+      "case_id": "case_00126",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00126.nii.gz",
+        "bytes": 46555768,
+        "git_oid": "93c32234f650d972719ca93b9e5cbe2c23ffc1a7",
+        "lfs": {
+          "oid": "af6b9438df4a10b5561bdf9072b806189784e2ece7b38e2f1440ad2fdd51b9ac",
+          "size": 46555768,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00126/segmentation.nii.gz",
+        "bytes": 168783,
+        "git_blob_sha1": "b94c4025019fa1e74f8f4787607af9c75b6ba105"
+      }
+    },
+    {
+      "case_id": "case_00127",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00127.nii.gz",
+        "bytes": 41530807,
+        "git_oid": "4aa6753592e7f86b9a1f4b7e0e78755ab4bd0ab8",
+        "lfs": {
+          "oid": "bf94415e76b8bf0a28b5569afa08e402718ca902ad485d0ce4267b47919502f4",
+          "size": 41530807,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00127/segmentation.nii.gz",
+        "bytes": 164643,
+        "git_blob_sha1": "efcc581d2f06a021efa72bb10f37337059213361"
+      }
+    },
+    {
+      "case_id": "case_00128",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00128.nii.gz",
+        "bytes": 87078506,
+        "git_oid": "f952238e735f8c8e95ad4338513dfebc8baefa80",
+        "lfs": {
+          "oid": "44aadb43ffdfca340cec735f990c875e407dbcee7a73d2bd184f401b7f6eb05e",
+          "size": 87078506,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00128/segmentation.nii.gz",
+        "bytes": 307906,
+        "git_blob_sha1": "d8ad626e8dec0459b38e5c26540fa0b449efdd76"
+      }
+    },
+    {
+      "case_id": "case_00129",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00129.nii.gz",
+        "bytes": 24054442,
+        "git_oid": "59516744b1b89712351a4f1d9c70e3c9b28bedcc",
+        "lfs": {
+          "oid": "0d7b29ba62bab0a031a98fec6651230e7dfc8d3fc599e3d2201dfe6ce114f245",
+          "size": 24054442,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00129/segmentation.nii.gz",
+        "bytes": 85161,
+        "git_blob_sha1": "3048d4ea3ca81db8612b99b61802c6a9261fc46b"
+      }
+    },
+    {
+      "case_id": "case_00130",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00130.nii.gz",
+        "bytes": 26677591,
+        "git_oid": "8817169933819aa34a18f16ede881538ea0931fa",
+        "lfs": {
+          "oid": "5d8c6a9f58ea6644879b2ad760560e743a5f86a4cb2b3682f5e1e0cbd4f5dc69",
+          "size": 26677591,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00130/segmentation.nii.gz",
+        "bytes": 130391,
+        "git_blob_sha1": "d60417b22118c7d74fae97ec30f1048b8337762e"
+      }
+    },
+    {
+      "case_id": "case_00131",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00131.nii.gz",
+        "bytes": 66542549,
+        "git_oid": "521f1df313b377d3adc03703f4f59e1652adcc8b",
+        "lfs": {
+          "oid": "cb146cf250f9607c325ba34dd21d7f126121045dfcab4d409e6c934de997d82e",
+          "size": 66542549,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00131/segmentation.nii.gz",
+        "bytes": 250313,
+        "git_blob_sha1": "51143a8da70bfbb32b43cc18ba7cbdd996bd51b7"
+      }
+    },
+    {
+      "case_id": "case_00132",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00132.nii.gz",
+        "bytes": 240243768,
+        "git_oid": "7040a1306d46adcbbc9576eb68e4d15ab3b965af",
+        "lfs": {
+          "oid": "8ed0c03970a1e6681a63f3de19d09e45ca84d90290877baa7ed6c82a9efcd4fe",
+          "size": 240243768,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00132/segmentation.nii.gz",
+        "bytes": 731887,
+        "git_blob_sha1": "124865441239e97af47b6b60e62fcbe6359e7046"
+      }
+    },
+    {
+      "case_id": "case_00133",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00133.nii.gz",
+        "bytes": 73000317,
+        "git_oid": "7e6b592ac158aa00991da277a80e4581d6301377",
+        "lfs": {
+          "oid": "5d91b6b7ececbb86722b23911236cd6f53d983b5dafa8be556e3254c692c88f0",
+          "size": 73000317,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00133/segmentation.nii.gz",
+        "bytes": 255614,
+        "git_blob_sha1": "5ff2aec195ffaf5399f0265b2f3bf35d0f74499f"
+      }
+    },
+    {
+      "case_id": "case_00134",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00134.nii.gz",
+        "bytes": 24422346,
+        "git_oid": "60d09b7646a8a6b0011fd94cf1fc025659c63727",
+        "lfs": {
+          "oid": "8b4cf8b847bce58032c426ad57f0fa2a942eba2883c2082ea0396b88fc2df9f0",
+          "size": 24422346,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00134/segmentation.nii.gz",
+        "bytes": 103496,
+        "git_blob_sha1": "a9e3e88e85d37ac4b3d3a77d6d1bf921e0522792"
+      }
+    },
+    {
+      "case_id": "case_00135",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00135.nii.gz",
+        "bytes": 269658966,
+        "git_oid": "ced78378db07807aaedce09a5ee03103302135d4",
+        "lfs": {
+          "oid": "92e38761c584811e0904318abaaffc45fb7812aeb5a84df8a24c35796a1a401f",
+          "size": 269658966,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00135/segmentation.nii.gz",
+        "bytes": 904626,
+        "git_blob_sha1": "4f88b0deb0be0bd2f3bcef7fd2f378089dae5b70"
+      }
+    },
+    {
+      "case_id": "case_00136",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00136.nii.gz",
+        "bytes": 51986338,
+        "git_oid": "ffcc89a034d940ec8f9adbe3f9d15bd39fe0d4df",
+        "lfs": {
+          "oid": "3e294c34dd7099d849f8a7d5259864d4f8a40a467f3dcedfc458ad93a6c4a6c0",
+          "size": 51986338,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00136/segmentation.nii.gz",
+        "bytes": 162972,
+        "git_blob_sha1": "105383515ed19bf66582bb59485e0dabcc7ced59"
+      }
+    },
+    {
+      "case_id": "case_00137",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00137.nii.gz",
+        "bytes": 47700994,
+        "git_oid": "0933b282ad94705b4856c12d93237496daf467c0",
+        "lfs": {
+          "oid": "d6a732fdec037453469c5ba6f6ec0bcee49130530e9c10dbfef2ac21d36ddf03",
+          "size": 47700994,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00137/segmentation.nii.gz",
+        "bytes": 177060,
+        "git_blob_sha1": "2cfd166b49492a71587cdc168c35c17e90398fa7"
+      }
+    },
+    {
+      "case_id": "case_00138",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00138.nii.gz",
+        "bytes": 40601700,
+        "git_oid": "dd24896bafe712606a105f4e8e8119ac24f61244",
+        "lfs": {
+          "oid": "7b7c931a5f23f2db73739064109ebba8c206c7e13681138e8adb74ec7c243b6a",
+          "size": 40601700,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00138/segmentation.nii.gz",
+        "bytes": 155518,
+        "git_blob_sha1": "5ea6ed5aae0b0f0e2370a356fb40df1309419eb2"
+      }
+    },
+    {
+      "case_id": "case_00139",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00139.nii.gz",
+        "bytes": 48587729,
+        "git_oid": "f26800ce22c8dbb8961ce6f31ae5983c2dc1802f",
+        "lfs": {
+          "oid": "5041d20b2db1f2e09b1711707be1df1e95ba3c9ff65d5fed6de537dc1e023e21",
+          "size": 48587729,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00139/segmentation.nii.gz",
+        "bytes": 201588,
+        "git_blob_sha1": "63e499cccdfa5115eb03b3ec78ad9197e1d5c6f0"
+      }
+    },
+    {
+      "case_id": "case_00140",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00140.nii.gz",
+        "bytes": 129580387,
+        "git_oid": "994fe51f39344e52769e870df5c5d1a0243f2853",
+        "lfs": {
+          "oid": "34d5740ad5dfa4f638a531e12b880b99add5270ecbd1a7ac42c98a465b8a4142",
+          "size": 129580387,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00140/segmentation.nii.gz",
+        "bytes": 405363,
+        "git_blob_sha1": "3a5234c6ed2dddcc4004450544acc5a4bbab8039"
+      }
+    },
+    {
+      "case_id": "case_00141",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00141.nii.gz",
+        "bytes": 271847392,
+        "git_oid": "e49f3385fb768550160e593ca57eef28ea9a661a",
+        "lfs": {
+          "oid": "02595d667b7ac5c714200dca7ef4bb6f83d95e9c3882d5e1f7605191986097c3",
+          "size": 271847392,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00141/segmentation.nii.gz",
+        "bytes": 822855,
+        "git_blob_sha1": "60120a354fef27484c4fc4988b28374d6c796a2e"
+      }
+    },
+    {
+      "case_id": "case_00142",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00142.nii.gz",
+        "bytes": 119786560,
+        "git_oid": "19588575a77efc57e853c69d6f998c0b19acbc69",
+        "lfs": {
+          "oid": "d11ef32d69bbb5d455f825a9ae7d36d9d5aee00e4aa0ace4b0aa2c6d0b96c419",
+          "size": 119786560,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00142/segmentation.nii.gz",
+        "bytes": 404563,
+        "git_blob_sha1": "c8e8baa16015dbcf1108c9cedba8f2a01a612ecc"
+      }
+    },
+    {
+      "case_id": "case_00143",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00143.nii.gz",
+        "bytes": 39109278,
+        "git_oid": "2d35de61cfbe91efe4e39f36902b114171ff7d24",
+        "lfs": {
+          "oid": "b9780eb096da190e3327b60d85eee9d6f11ecba54613d4c62254fa03ecdcbc6e",
+          "size": 39109278,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00143/segmentation.nii.gz",
+        "bytes": 133931,
+        "git_blob_sha1": "c0a6830a2184dbc4c15dd8407d9e45b67e3899e6"
+      }
+    },
+    {
+      "case_id": "case_00144",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00144.nii.gz",
+        "bytes": 86697738,
+        "git_oid": "c70d9063a87758c1c39f096f4ae88023a3243d48",
+        "lfs": {
+          "oid": "2d4b5d233f28e4a9bcc01e9928fb51926604177a41985bfcec8f9d3d2d2fd779",
+          "size": 86697738,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00144/segmentation.nii.gz",
+        "bytes": 141145,
+        "git_blob_sha1": "a6226b2bf257852ef9b442238557f94471b2fd40"
+      }
+    },
+    {
+      "case_id": "case_00145",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00145.nii.gz",
+        "bytes": 32713163,
+        "git_oid": "5ea32bd16808c9acf524c55befe393e89c7a708c",
+        "lfs": {
+          "oid": "9657b6eb9974a9be4f45bac54e877c360ca5016cfe3ae09a4fa4ff8e645d319b",
+          "size": 32713163,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00145/segmentation.nii.gz",
+        "bytes": 143981,
+        "git_blob_sha1": "a456417515a559d38e1035347eefb10ac2dba3a1"
+      }
+    },
+    {
+      "case_id": "case_00146",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00146.nii.gz",
+        "bytes": 281605168,
+        "git_oid": "95e00493db7dc21c50e45b3b14a8383216e9a0db",
+        "lfs": {
+          "oid": "1d94dc738a69e50c72cfab4203452eaf4771b30ac17ed818e9c0e3d140b155a2",
+          "size": 281605168,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00146/segmentation.nii.gz",
+        "bytes": 868635,
+        "git_blob_sha1": "56d91505a2296c13713df59ca4e7be142fe85d32"
+      }
+    },
+    {
+      "case_id": "case_00147",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00147.nii.gz",
+        "bytes": 28532981,
+        "git_oid": "9300e4228e03445c0dbdb31e1d83e995c5ec7266",
+        "lfs": {
+          "oid": "0f37a518fa0141a332f6230aebe7deacb55adfcb32d6a40c3b6171b0a007bc05",
+          "size": 28532981,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00147/segmentation.nii.gz",
+        "bytes": 111200,
+        "git_blob_sha1": "91b19133313839441e764743e377b4f7c2d0a667"
+      }
+    },
+    {
+      "case_id": "case_00148",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00148.nii.gz",
+        "bytes": 15411691,
+        "git_oid": "8c05b59f15589f30b7c5800f79e4909eb253d05c",
+        "lfs": {
+          "oid": "b4c93d60edc9e0ead4bab9390370aa379e3bac6c4f25e9a746c50de30596efac",
+          "size": 15411691,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00148/segmentation.nii.gz",
+        "bytes": 67170,
+        "git_blob_sha1": "853fc5b66789e3cc6f8626dbcb686e5fc3aeb1ad"
+      }
+    },
+    {
+      "case_id": "case_00149",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00149.nii.gz",
+        "bytes": 47822495,
+        "git_oid": "affadcf525b0606a24cf02cd7f6cb10005f8b0de",
+        "lfs": {
+          "oid": "c4fd6735554a08d6c10242c98116d054d16b8e8483cad1985ee661af2b4ad204",
+          "size": 47822495,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00149/segmentation.nii.gz",
+        "bytes": 185614,
+        "git_blob_sha1": "8ee220dece587aae0e23bfb3476b9046fdec4336"
+      }
+    },
+    {
+      "case_id": "case_00150",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00150.nii.gz",
+        "bytes": 43249791,
+        "git_oid": "0abde72f3173ffc1245b47967e4e0808b6980983",
+        "lfs": {
+          "oid": "35b19b44daad521f9de69b0eb9e6f5fdaaad33af9139415249247dc23d4e3d16",
+          "size": 43249791,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00150/segmentation.nii.gz",
+        "bytes": 194708,
+        "git_blob_sha1": "f4df24a929d1d38b222c76b0024ae07845bb971b"
+      }
+    },
+    {
+      "case_id": "case_00151",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00151.nii.gz",
+        "bytes": 495993341,
+        "git_oid": "b5dfcc420c2f80ebc7cc99b1e2f84df93be4daaa",
+        "lfs": {
+          "oid": "26f294ac7284e56a477e4a05579729cfd2364d39731c7cdf5a9e85a53960b7af",
+          "size": 495993341,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00151/segmentation.nii.gz",
+        "bytes": 1428190,
+        "git_blob_sha1": "6936ad32b0d927345a5fcd83946270698cbad0c1"
+      }
+    },
+    {
+      "case_id": "case_00152",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00152.nii.gz",
+        "bytes": 19368559,
+        "git_oid": "02611ba5c9f1bfe24dac22b9b02e8a8daf39f356",
+        "lfs": {
+          "oid": "b407f2d86257173d4ade726b97dc53853a80d88b4226cfde330b56d1fd6da71b",
+          "size": 19368559,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00152/segmentation.nii.gz",
+        "bytes": 74665,
+        "git_blob_sha1": "d1e03bf68f6f1c79a6818fe714bffd31544c4dbf"
+      }
+    },
+    {
+      "case_id": "case_00153",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00153.nii.gz",
+        "bytes": 35727661,
+        "git_oid": "59b882325c0362967a22238a310c79c223b84272",
+        "lfs": {
+          "oid": "b26b7c7e247f7a36939919c6608c7a6a3e240bf62cb9d614a7f57a213b9e2abb",
+          "size": 35727661,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00153/segmentation.nii.gz",
+        "bytes": 154943,
+        "git_blob_sha1": "f276666f7d3d468db222e8c0ecd3ae0c560bed11"
+      }
+    },
+    {
+      "case_id": "case_00154",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00154.nii.gz",
+        "bytes": 185019263,
+        "git_oid": "41507e2fbb3fc614d4740326067cb7ed46ef18ec",
+        "lfs": {
+          "oid": "cc58b880f22132050d2ad632e2032460b63ca37acca746384e5ccc2b9de39b38",
+          "size": 185019263,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00154/segmentation.nii.gz",
+        "bytes": 647871,
+        "git_blob_sha1": "9d49f8ba6fae1f9b8ed832efd58a562f97127d8e"
+      }
+    },
+    {
+      "case_id": "case_00155",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00155.nii.gz",
+        "bytes": 235923313,
+        "git_oid": "cb254b3799a3fd73513d154977249e22333b5fe4",
+        "lfs": {
+          "oid": "8f5e3dd8e441e1f81a16ff3ff6144973e5e9056b1ec3c79ed31de2d71120a296",
+          "size": 235923313,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00155/segmentation.nii.gz",
+        "bytes": 726769,
+        "git_blob_sha1": "4eca6324a0347239d7e1d28b7b550887da42661c"
+      }
+    },
+    {
+      "case_id": "case_00156",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00156.nii.gz",
+        "bytes": 363352307,
+        "git_oid": "cc824bc3b984914a34a6a76b21e9f5984804583b",
+        "lfs": {
+          "oid": "a5424e47cd0a55d041abd22636ebcf01c718e9df918db967f78fb91a98a7c90a",
+          "size": 363352307,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00156/segmentation.nii.gz",
+        "bytes": 1228558,
+        "git_blob_sha1": "d125d9eafc9d8b98d46c5e8ecf855addb2c5ec7d"
+      }
+    },
+    {
+      "case_id": "case_00157",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00157.nii.gz",
+        "bytes": 231036073,
+        "git_oid": "ede8840adcca3cde18581c58b0600b9f7c070499",
+        "lfs": {
+          "oid": "777b7014743ac0e78b88f33e7c0af01a89403abf7980c1f4aaae8417e011e995",
+          "size": 231036073,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00157/segmentation.nii.gz",
+        "bytes": 344893,
+        "git_blob_sha1": "5b9dc12d6f46657e518ef718bc51e9466358e0c1"
+      }
+    },
+    {
+      "case_id": "case_00158",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00158.nii.gz",
+        "bytes": 345812852,
+        "git_oid": "9e969b368f8790e1a52bde07e40ff1e5117535f1",
+        "lfs": {
+          "oid": "e2abf83f652dd3667b108c84521d30bcf0c55befaa9ecd734128902eb51bde59",
+          "size": 345812852,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00158/segmentation.nii.gz",
+        "bytes": 946121,
+        "git_blob_sha1": "b415a0ee84c42aedcd0d07614768288d61e4c4ca"
+      }
+    },
+    {
+      "case_id": "case_00159",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00159.nii.gz",
+        "bytes": 321877085,
+        "git_oid": "3bbd9b7a380dd8d4b87a84f027a82240447f49ef",
+        "lfs": {
+          "oid": "8ee241aaa90c58b817bae1511437b73dcde02f5639e57acb0867eebb75dba233",
+          "size": 321877085,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00159/segmentation.nii.gz",
+        "bytes": 962731,
+        "git_blob_sha1": "c855383856338b5515bd927930cfdfd3eccac6c4"
+      }
+    },
+    {
+      "case_id": "case_00160",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00160.nii.gz",
+        "bytes": 196732920,
+        "git_oid": "238d5956de366098c5f7270e01b9c0b01be009ff",
+        "lfs": {
+          "oid": "94b8a15327097349f4f5afce36c7d0f5228dd7e7045b07c6325930a79d5ecd9a",
+          "size": 196732920,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00160/segmentation.nii.gz",
+        "bytes": 723271,
+        "git_blob_sha1": "333d73b36e91f6aa4ff9ead98a2de79cb45e7a5f"
+      }
+    },
+    {
+      "case_id": "case_00161",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00161.nii.gz",
+        "bytes": 25615080,
+        "git_oid": "5ff935965dcc1c69388acf0a8637f0235565866c",
+        "lfs": {
+          "oid": "763b5306cfd062bc22a169f37c0917cf639b8534e59b748def6094e4e7ef6281",
+          "size": 25615080,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00161/segmentation.nii.gz",
+        "bytes": 97779,
+        "git_blob_sha1": "8cf696ba9fbe1df28362a7c27c2f507bf10f4e20"
+      }
+    },
+    {
+      "case_id": "case_00162",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00162.nii.gz",
+        "bytes": 45384396,
+        "git_oid": "39037bf9f19c30b82e8fe48133ede63dd8c506ca",
+        "lfs": {
+          "oid": "1ff33933b02751241021af304a6e9c0f2e937aa9ed09f26bc62cb0c96a316444",
+          "size": 45384396,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00162/segmentation.nii.gz",
+        "bytes": 147257,
+        "git_blob_sha1": "be037e08c12f0ea4297b507748b3b8c55d1d87b3"
+      }
+    },
+    {
+      "case_id": "case_00163",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00163.nii.gz",
+        "bytes": 40205054,
+        "git_oid": "26bd918579a885cc42bfbd8027f5d96767598447",
+        "lfs": {
+          "oid": "9adaeba960c7ecdcae5a2fb0ce0249c71ee54ff2d9760f8470f693a0d0489957",
+          "size": 40205054,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00163/segmentation.nii.gz",
+        "bytes": 158292,
+        "git_blob_sha1": "509e5bb66142f4bee5f50929e74d0a72f91f1402"
+      }
+    },
+    {
+      "case_id": "case_00164",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00164.nii.gz",
+        "bytes": 44482192,
+        "git_oid": "874892800bb0a2cbb929ad06090450e2da14548b",
+        "lfs": {
+          "oid": "fdca69677341cf4750386d3c2effb407594504760ea26e5e1230f02988c40bf9",
+          "size": 44482192,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00164/segmentation.nii.gz",
+        "bytes": 140376,
+        "git_blob_sha1": "69d6bddba38c016dfdcdfb156122a214cfa4461d"
+      }
+    },
+    {
+      "case_id": "case_00165",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00165.nii.gz",
+        "bytes": 283401628,
+        "git_oid": "ee9b3484b247d3621d1ad0648b8ab08d050ceb4b",
+        "lfs": {
+          "oid": "d4f322c24dde02a115754678bc3b8761512fc83ced045b4b26c0efdafdf49889",
+          "size": 283401628,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00165/segmentation.nii.gz",
+        "bytes": 887644,
+        "git_blob_sha1": "5656e6df423148b30a24f86395457f8740297beb"
+      }
+    },
+    {
+      "case_id": "case_00166",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00166.nii.gz",
+        "bytes": 41559822,
+        "git_oid": "c1f0990588546e3699f1caf868f92ec33affedb2",
+        "lfs": {
+          "oid": "83ed3f82c0aa87821882ad9290d5507389caaac175c6443f8d4f213689458fbb",
+          "size": 41559822,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00166/segmentation.nii.gz",
+        "bytes": 182865,
+        "git_blob_sha1": "2a762a4627beeff783358735c2a2e573cb7f56bd"
+      }
+    },
+    {
+      "case_id": "case_00167",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00167.nii.gz",
+        "bytes": 41129566,
+        "git_oid": "940aca5f66070e3ff35217595b7c22824a47213f",
+        "lfs": {
+          "oid": "41bf260c248a2e0f49f755e6f25c8850b6d8b8ddaef7ea34df1157dc33399ba6",
+          "size": 41129566,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00167/segmentation.nii.gz",
+        "bytes": 151943,
+        "git_blob_sha1": "1bed9804a794c031d58fadca01cffd0fb8989071"
+      }
+    },
+    {
+      "case_id": "case_00168",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00168.nii.gz",
+        "bytes": 32048051,
+        "git_oid": "451f21058a543664a6db03a3c004ae32aba77abf",
+        "lfs": {
+          "oid": "0eedcb23583f504986afdbfbafa88d6a025591af407b3a331e81ff5b2cd14fec",
+          "size": 32048051,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00168/segmentation.nii.gz",
+        "bytes": 119260,
+        "git_blob_sha1": "79774d7fd6b1da75ee0aee93ccaff0bbef781339"
+      }
+    },
+    {
+      "case_id": "case_00169",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00169.nii.gz",
+        "bytes": 42056633,
+        "git_oid": "097105cbd69e8c7a6231b4b83c6c0f26d6a1dd07",
+        "lfs": {
+          "oid": "9bad338921a2361779642c080c0faf06dff4a0c4003ab77eab1c1c2364145d94",
+          "size": 42056633,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00169/segmentation.nii.gz",
+        "bytes": 155606,
+        "git_blob_sha1": "5195127adc36e7894732e9c45132bbb1dc681dcf"
+      }
+    },
+    {
+      "case_id": "case_00170",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00170.nii.gz",
+        "bytes": 130206791,
+        "git_oid": "4fe045353287d9b666f383cb311ef9d29ca27d7e",
+        "lfs": {
+          "oid": "d2bb42b0dcb29cf3b343944b0c47a0af83b7cee5a2e8882b901f5e52ef51679b",
+          "size": 130206791,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00170/segmentation.nii.gz",
+        "bytes": 447885,
+        "git_blob_sha1": "fd03dfa1e052749a0253b6c5ba8452969cf7e627"
+      }
+    },
+    {
+      "case_id": "case_00171",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00171.nii.gz",
+        "bytes": 63813232,
+        "git_oid": "db568af30a87a9f38f3735c239fb24d02006d7b9",
+        "lfs": {
+          "oid": "de426f4f308eb551d44caeb50bcbbd671b18324dc6b2c81c5200dcff4b4e3c11",
+          "size": 63813232,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00171/segmentation.nii.gz",
+        "bytes": 190618,
+        "git_blob_sha1": "da5a5c6c230690f6ae25a145dfd6325af92d2a52"
+      }
+    },
+    {
+      "case_id": "case_00172",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00172.nii.gz",
+        "bytes": 37626783,
+        "git_oid": "dde5cb75bdf4849dcf3d4e9e0586bc1c009d3cc3",
+        "lfs": {
+          "oid": "1440a94e1d52368c97b87c04ff8dbc8787ad57fa313fc12bce625e6834703b34",
+          "size": 37626783,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00172/segmentation.nii.gz",
+        "bytes": 160134,
+        "git_blob_sha1": "a851400a465ca59a818332338957c6ecd2a44f08"
+      }
+    },
+    {
+      "case_id": "case_00173",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00173.nii.gz",
+        "bytes": 45244475,
+        "git_oid": "b3f447c8a9965f434e1528f634292ee14d6da6a0",
+        "lfs": {
+          "oid": "9134f2224becf6351934aad08aa1d9102882da585c4807606ad235e5251d53a0",
+          "size": 45244475,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00173/segmentation.nii.gz",
+        "bytes": 143306,
+        "git_blob_sha1": "dfa1e58e0f18b0a2d1cd220d8e5f279d2b975db6"
+      }
+    },
+    {
+      "case_id": "case_00174",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00174.nii.gz",
+        "bytes": 31894170,
+        "git_oid": "eab6b7549b128797d8cbe2406603c037e72b1430",
+        "lfs": {
+          "oid": "04a27e7e46effcd43c912d8cef93eab4c91b1cfc76a3f3c5be2122c50f4a0b89",
+          "size": 31894170,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00174/segmentation.nii.gz",
+        "bytes": 123370,
+        "git_blob_sha1": "cb0c715e3828a7a9f96bac06eba7b00d7066b59f"
+      }
+    },
+    {
+      "case_id": "case_00175",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00175.nii.gz",
+        "bytes": 54239063,
+        "git_oid": "90e163f35da80133f3e6f207e4c99362603dcc43",
+        "lfs": {
+          "oid": "8542e7533ed4a498b737e04926e7af31d11425bd7ee3a15932ab9ecdbc06ebfd",
+          "size": 54239063,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00175/segmentation.nii.gz",
+        "bytes": 171162,
+        "git_blob_sha1": "e5714d2959697d4d5a1556cf27a53c18bf41f2ee"
+      }
+    },
+    {
+      "case_id": "case_00176",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00176.nii.gz",
+        "bytes": 41461140,
+        "git_oid": "649e199bbbea276dc7fe92ac530ba82e5425b841",
+        "lfs": {
+          "oid": "8bb524fccfb6cd242cc4330a0a71d854f9ed3c26f8acd857c3ae148f559b160d",
+          "size": 41461140,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00176/segmentation.nii.gz",
+        "bytes": 76102,
+        "git_blob_sha1": "06c9d5da6d97ccf60dad483829de91c0f206d18c"
+      }
+    },
+    {
+      "case_id": "case_00177",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00177.nii.gz",
+        "bytes": 42626421,
+        "git_oid": "08a29622a8bc71d611abf643c00459bbde3d8832",
+        "lfs": {
+          "oid": "50e24db7ce59be43326851c1e9b5a9627a6c0f311742c3795b9fe41378b35fb2",
+          "size": 42626421,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00177/segmentation.nii.gz",
+        "bytes": 130445,
+        "git_blob_sha1": "e184e1f9c30b40beaabf7d9a28a59aa887a02029"
+      }
+    },
+    {
+      "case_id": "case_00178",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00178.nii.gz",
+        "bytes": 35857922,
+        "git_oid": "bc3024573f2aa94b4e5810e2fc175aad0575f7cf",
+        "lfs": {
+          "oid": "bad36ed206f18e17bd51e44d5a2cf6cb68e236e6e6f72b98f2c26ebcce449bd0",
+          "size": 35857922,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00178/segmentation.nii.gz",
+        "bytes": 132993,
+        "git_blob_sha1": "ba2f20f8a9a84a672fbb352c4c397320e5620e6e"
+      }
+    },
+    {
+      "case_id": "case_00179",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00179.nii.gz",
+        "bytes": 49463821,
+        "git_oid": "2564dce57fe034c6af68fcb7c1af06094dbe1d64",
+        "lfs": {
+          "oid": "990eaba41833f11e9d627a47f5a02efa77ada784f9f565217f1be3a82a2c7d9c",
+          "size": 49463821,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00179/segmentation.nii.gz",
+        "bytes": 168195,
+        "git_blob_sha1": "9c5c97081a2057ad43872cd81082b01775df8909"
+      }
+    },
+    {
+      "case_id": "case_00180",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00180.nii.gz",
+        "bytes": 66993063,
+        "git_oid": "f6320d4d0cd58b472764a89a9e75430aa7049c30",
+        "lfs": {
+          "oid": "6f1734503a768aeeb1911bacf82e62fc5c4822081c8a964363f163a57d5369d7",
+          "size": 66993063,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00180/segmentation.nii.gz",
+        "bytes": 215411,
+        "git_blob_sha1": "637beee47ff79b716e6c4252a6edd08f4d44a5fe"
+      }
+    },
+    {
+      "case_id": "case_00181",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00181.nii.gz",
+        "bytes": 49292022,
+        "git_oid": "a1576ffecba76c70e61f06c0ff64e7e752da8b53",
+        "lfs": {
+          "oid": "c3af31c5f53db0dc483af00e3c41ad76b43a23d1c8c7122790e9be594520c973",
+          "size": 49292022,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00181/segmentation.nii.gz",
+        "bytes": 206234,
+        "git_blob_sha1": "04c982f2b146475fad86d048863c86be40df6623"
+      }
+    },
+    {
+      "case_id": "case_00182",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00182.nii.gz",
+        "bytes": 38436116,
+        "git_oid": "2ee3b9d6b976fd50b970fbd3d1cf0434b934f564",
+        "lfs": {
+          "oid": "212ac0948ec7cc787e5748a74e2390a3e14cef1351f56c163c17880116ae6c61",
+          "size": 38436116,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00182/segmentation.nii.gz",
+        "bytes": 138370,
+        "git_blob_sha1": "81c91f4c13f315f186101a73becf9f5a81628d95"
+      }
+    },
+    {
+      "case_id": "case_00183",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00183.nii.gz",
+        "bytes": 99950548,
+        "git_oid": "a5671afed10b0b4149ae8125341679eb8c4c12c6",
+        "lfs": {
+          "oid": "d5bc20c81c4eedfc6898e02d3078471b37fceb215b1121211d8541676bfe8498",
+          "size": 99950548,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00183/segmentation.nii.gz",
+        "bytes": 314852,
+        "git_blob_sha1": "1f3624a7d38ad8bf68ca60e4ecc08143451e7c6c"
+      }
+    },
+    {
+      "case_id": "case_00184",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00184.nii.gz",
+        "bytes": 70271243,
+        "git_oid": "6c83b567ef417618e54e9a03891b79f191e838ef",
+        "lfs": {
+          "oid": "d65b497d685e52ba8b87dcfc10a0fa4b31ad17023510f3e0f7a2bfb61f0e3873",
+          "size": 70271243,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00184/segmentation.nii.gz",
+        "bytes": 232428,
+        "git_blob_sha1": "af81549360735ece1793ce54a554d683fbb6c2a2"
+      }
+    },
+    {
+      "case_id": "case_00185",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00185.nii.gz",
+        "bytes": 99730672,
+        "git_oid": "51ec7d0c77889f6082b88b85daa5961197effc5c",
+        "lfs": {
+          "oid": "8d69db0601b8030a38f399c3458e05543395f2ef68cd4029696f02821ec503f1",
+          "size": 99730672,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00185/segmentation.nii.gz",
+        "bytes": 355129,
+        "git_blob_sha1": "6ed13ea20c8a5f3c4181db4cfc601d1c27e2b2c5"
+      }
+    },
+    {
+      "case_id": "case_00186",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00186.nii.gz",
+        "bytes": 68574602,
+        "git_oid": "94b8862bfad9894381aacca63a207099280cb2e1",
+        "lfs": {
+          "oid": "8ea25ef6082aca0b95ed4b06b968ec155a736bbe5711d93bfe772d38a0676768",
+          "size": 68574602,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00186/segmentation.nii.gz",
+        "bytes": 224414,
+        "git_blob_sha1": "999cb2a760c452014162d7e44c2933168ede96e6"
+      }
+    },
+    {
+      "case_id": "case_00187",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00187.nii.gz",
+        "bytes": 41465147,
+        "git_oid": "7c04fc2ef7b1e8ac4a038f91ae054d99fb2b4384",
+        "lfs": {
+          "oid": "56e4971bfbc4afa83efefdab2a4e316bd3af5e6cd0f5a9049982c83cc4833f1e",
+          "size": 41465147,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00187/segmentation.nii.gz",
+        "bytes": 151948,
+        "git_blob_sha1": "8244e6ec03652e1f389726090db08a1058173247"
+      }
+    },
+    {
+      "case_id": "case_00188",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00188.nii.gz",
+        "bytes": 173648780,
+        "git_oid": "e2a977e5a2eca5347f34b1bdb01793827bcf0ffb",
+        "lfs": {
+          "oid": "bc7663ac0340226690949107d1cb2b735cbbf7d9a2275d3456f408cbbccb81ef",
+          "size": 173648780,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00188/segmentation.nii.gz",
+        "bytes": 531067,
+        "git_blob_sha1": "19260c3745c6a6f3a43b698df590d4a3af938d4e"
+      }
+    },
+    {
+      "case_id": "case_00189",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00189.nii.gz",
+        "bytes": 69794230,
+        "git_oid": "be549cd0f186da61f5cf05e6f511a28c8fe696c0",
+        "lfs": {
+          "oid": "27e70b8e75d4151a880cfdb1d18e9edd79a1e328501af744b8733e1cee6a37c6",
+          "size": 69794230,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00189/segmentation.nii.gz",
+        "bytes": 237456,
+        "git_blob_sha1": "8caed785b63ae80e8991d319a881d9e2d1722d1c"
+      }
+    },
+    {
+      "case_id": "case_00190",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00190.nii.gz",
+        "bytes": 80969548,
+        "git_oid": "b84bb3e09cd4d20d58a2b31f0e8b7bfc36b8f417",
+        "lfs": {
+          "oid": "5ebf726ac1dd126fa5b382041a2cca35fd1a65522394ae24770a1cd30fe14caf",
+          "size": 80969548,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00190/segmentation.nii.gz",
+        "bytes": 269768,
+        "git_blob_sha1": "e510026359928f13ba6fbce44d78914fde1e1309"
+      }
+    },
+    {
+      "case_id": "case_00191",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00191.nii.gz",
+        "bytes": 146751277,
+        "git_oid": "11065c8f0d6e966abd8ef471143501c321abb85b",
+        "lfs": {
+          "oid": "0978a60e2575988d4fc900b094d46e0d7a56ab9e199961aa5b407ed67aaa08c6",
+          "size": 146751277,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00191/segmentation.nii.gz",
+        "bytes": 500989,
+        "git_blob_sha1": "d0bd96b71beed2ef99c5c93cdb53ad94f1e8048b"
+      }
+    },
+    {
+      "case_id": "case_00192",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00192.nii.gz",
+        "bytes": 56112884,
+        "git_oid": "534378d23e0e937123863b3524fabb38a18c613d",
+        "lfs": {
+          "oid": "e8ecd933dd2e7cbf924af5441aeb6e6e8876c35b4dce28957a6b53e85cad7d3b",
+          "size": 56112884,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00192/segmentation.nii.gz",
+        "bytes": 238831,
+        "git_blob_sha1": "6c613239d8a0ca93f76c25984102e0544de800d0"
+      }
+    },
+    {
+      "case_id": "case_00193",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00193.nii.gz",
+        "bytes": 94515487,
+        "git_oid": "603f4ff9fd59ba86761c5a0d8718fe0149c7a9e0",
+        "lfs": {
+          "oid": "89bb0eb8074c3b343e2c7b5319b9f89db590a0dc1544c02c1e2ca81074c3dfbc",
+          "size": 94515487,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00193/segmentation.nii.gz",
+        "bytes": 348382,
+        "git_blob_sha1": "6ded08b87155c7e9ac1c196dfa63bbd3b96a680c"
+      }
+    },
+    {
+      "case_id": "case_00194",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00194.nii.gz",
+        "bytes": 56502711,
+        "git_oid": "6bb28dede43936fac98d8b235dbdddf87100cc21",
+        "lfs": {
+          "oid": "7ff7425f0749f7aafc5587cc4518539dbf58ea8c15bf5a2328e2b00b0d9c550a",
+          "size": 56502711,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00194/segmentation.nii.gz",
+        "bytes": 185383,
+        "git_blob_sha1": "c31b6d973e6b9db8e3e22763e5163d7f8109791a"
+      }
+    },
+    {
+      "case_id": "case_00195",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00195.nii.gz",
+        "bytes": 47638710,
+        "git_oid": "e6eb5359ec01abefbd403e2f19388b732dbe1cfd",
+        "lfs": {
+          "oid": "c86e5275d7fb29dfe82371b8a0283d71572fdda2db8c032ac6642ebc6c81fe69",
+          "size": 47638710,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00195/segmentation.nii.gz",
+        "bytes": 165269,
+        "git_blob_sha1": "4983657d57fc3ee282f7dd502793653bfc98414a"
+      }
+    },
+    {
+      "case_id": "case_00196",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00196.nii.gz",
+        "bytes": 80043050,
+        "git_oid": "879dcfd17f1756c7b3670d355d026165de83a8fc",
+        "lfs": {
+          "oid": "04ac9fcdd99588e040a25542709a87cf959268e1c8fda0266344bc2160b8fd12",
+          "size": 80043050,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00196/segmentation.nii.gz",
+        "bytes": 260701,
+        "git_blob_sha1": "6ee80d0299d53acfb311707ed2b3e7c9549b8ada"
+      }
+    },
+    {
+      "case_id": "case_00197",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00197.nii.gz",
+        "bytes": 71480975,
+        "git_oid": "3acac3034daf71bfba0179ad59be16d48a450e7f",
+        "lfs": {
+          "oid": "e98863429d6a4b036dcf4c3483fb5b4a2e009ddc6390d0da647424772b77b9b8",
+          "size": 71480975,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00197/segmentation.nii.gz",
+        "bytes": 245115,
+        "git_blob_sha1": "b4e4ddad77c9d41b9211d5e61c6ddddc2dc1db08"
+      }
+    },
+    {
+      "case_id": "case_00198",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00198.nii.gz",
+        "bytes": 130795162,
+        "git_oid": "93f9d77c7ffeca5a3b6212fe27284d49eab1f322",
+        "lfs": {
+          "oid": "ea3140416a4eef35fa25a3051eacec1acde2b97180d3d247113cbcb6db81edf9",
+          "size": 130795162,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00198/segmentation.nii.gz",
+        "bytes": 384016,
+        "git_blob_sha1": "189bade0412c6e8fcea9902c4b283bb1d1ce1bd9"
+      }
+    },
+    {
+      "case_id": "case_00199",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00199.nii.gz",
+        "bytes": 48897494,
+        "git_oid": "f0887ff4a69d45cfe0a8f7f94b7fb28ac80a8419",
+        "lfs": {
+          "oid": "8005f1e4040b41d78e9c926769217bd94b75c7c40db8d65db96e87c9605f2593",
+          "size": 48897494,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00199/segmentation.nii.gz",
+        "bytes": 220848,
+        "git_blob_sha1": "8dc8844aa6de916b45faac6dfa34f62b89077436"
+      }
+    },
+    {
+      "case_id": "case_00200",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00200.nii.gz",
+        "bytes": 51449540,
+        "git_oid": "91fd41b470dc55ece08222a13f08e7a580b3e661",
+        "lfs": {
+          "oid": "a442caf95f7ccd561c502176c6ec759b116a32a604c49fa06633d506d2bfc5ea",
+          "size": 51449540,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00200/segmentation.nii.gz",
+        "bytes": 174898,
+        "git_blob_sha1": "10dc2ae26f4850d8ef84879e2abadc82657df296"
+      }
+    },
+    {
+      "case_id": "case_00201",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00201.nii.gz",
+        "bytes": 47090706,
+        "git_oid": "8acd96757e0ca18a77d28425674265ec4b995e7f",
+        "lfs": {
+          "oid": "62e9e470bdead6a6bbbacbebfb7669055e2ebb3e8a1177882fd028e0c7ec1623",
+          "size": 47090706,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00201/segmentation.nii.gz",
+        "bytes": 191340,
+        "git_blob_sha1": "eee9d9cf38b59c1b565165918c86a6a4d52dd9ee"
+      }
+    },
+    {
+      "case_id": "case_00202",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00202.nii.gz",
+        "bytes": 145466695,
+        "git_oid": "288c6d8591961931d80aa7bd8b8dc0a9b20e6a36",
+        "lfs": {
+          "oid": "f56e642d587bb2ac75172d9aae45c2b43e1f496424802e7ca261e672596315d1",
+          "size": 145466695,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00202/segmentation.nii.gz",
+        "bytes": 515154,
+        "git_blob_sha1": "bf3f9a6418cc2c8b331540e6894f818e03de0deb"
+      }
+    },
+    {
+      "case_id": "case_00203",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00203.nii.gz",
+        "bytes": 295206306,
+        "git_oid": "9339b0867bb19d9549941f3ba94853b6e1c3e1ff",
+        "lfs": {
+          "oid": "db1ace382d198df990ea7bc6131aa03cf4a446eb5692e1edeea9a59f77a27c80",
+          "size": 295206306,
+          "pointerSize": 134
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00203/segmentation.nii.gz",
+        "bytes": 805887,
+        "git_blob_sha1": "26d5ffeb676a4c3e72fef253580c67df3022d625"
+      }
+    },
+    {
+      "case_id": "case_00204",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00204.nii.gz",
+        "bytes": 31576322,
+        "git_oid": "50a5bd3735df832b2491e2e00677bd56fe8738e2",
+        "lfs": {
+          "oid": "2623b07d547eacea478765df84cb6710e0460248a32750a81cf6d212b762e93d",
+          "size": 31576322,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00204/segmentation.nii.gz",
+        "bytes": 137486,
+        "git_blob_sha1": "1252fc54c8fdbda2fa070ea4f24a9b9e97e0b7cb"
+      }
+    },
+    {
+      "case_id": "case_00205",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00205.nii.gz",
+        "bytes": 44138736,
+        "git_oid": "49c723085a19f2f4edec87e5eaf30ee2b5a736ee",
+        "lfs": {
+          "oid": "169aa122b7169223c28794f88d5c3f5cb45b644676ef1b614d9101f8381cbe2c",
+          "size": 44138736,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00205/segmentation.nii.gz",
+        "bytes": 135944,
+        "git_blob_sha1": "ed1f632886efab798f2b55eef59be1f0fcd724d2"
+      }
+    },
+    {
+      "case_id": "case_00206",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00206.nii.gz",
+        "bytes": 22988003,
+        "git_oid": "aa6b27b0d0c0c68a6adf9f50de09ea8cc044556f",
+        "lfs": {
+          "oid": "573e65adbcd6a8b709e83bff588fbad8cc4641a6fbab422bad1d927e4772ed53",
+          "size": 22988003,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00206/segmentation.nii.gz",
+        "bytes": 94798,
+        "git_blob_sha1": "0da069e7bf4475ffc3f7767665ace09062da1bdd"
+      }
+    },
+    {
+      "case_id": "case_00207",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00207.nii.gz",
+        "bytes": 68719670,
+        "git_oid": "1a60b66a7b92e130a5fe2de1289a6276ea5974fc",
+        "lfs": {
+          "oid": "c665dcf69398aee4644526535425c29fc1f0ed2ba0cfb4e9e1d0c6ce0b8f3a9d",
+          "size": 68719670,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00207/segmentation.nii.gz",
+        "bytes": 207255,
+        "git_blob_sha1": "99f7ef24523ef1f7e1315f3e2f3f8c416f93da6b"
+      }
+    },
+    {
+      "case_id": "case_00208",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00208.nii.gz",
+        "bytes": 39898045,
+        "git_oid": "fc8743d9776b8e2a21e36e6a30b1b37bd94bcc1a",
+        "lfs": {
+          "oid": "99cccfcb17a7379ab67ba264c44d83015fab1254b27a090f991177a3e629d270",
+          "size": 39898045,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00208/segmentation.nii.gz",
+        "bytes": 129627,
+        "git_blob_sha1": "3ebfc71def65204bb7bc5c6ae6e3cf8ca621098f"
+      }
+    },
+    {
+      "case_id": "case_00209",
+      "image": {
+        "url": "https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/65f1f295873a326230153c7e1de0c7dba10f0b29/images/case_00209.nii.gz",
+        "bytes": 50270697,
+        "git_oid": "a76b34b256c7f76be7882f27d8f77d2967a86352",
+        "lfs": {
+          "oid": "b050ce75765edefab6097dcfc87568800f49d03e09c306e3f4375c66eae45e41",
+          "size": 50270697,
+          "pointerSize": 133
+        }
+      },
+      "segmentation": {
+        "url": "https://raw.githubusercontent.com/neheller/kits19/456b293435b25303bbc7995f094f83a0afdff0eb/data/case_00209/segmentation.nii.gz",
+        "bytes": 157555,
+        "git_blob_sha1": "4cc29bab6bb445f6e3d0a52f01ad74131f945d54"
+      }
+    }
+  ]
+}

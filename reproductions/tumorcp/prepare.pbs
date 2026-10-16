@@ -1,0 +1,24 @@
+#!/bin/bash
+# Submitted with explicit CPU/RAM/queue settings by remote.py; no fixed host.
+set -eu
+: "${CP_ROOT:?Explicit isolated reproduction root required}"
+: "${CP_BASE_PYTHON:?Verified shared Python runtime required}"
+export CUDA_VISIBLE_DEVICES=""
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+
+CP_CODE="$CP_ROOT/code/reproductions/tumorcp"
+printf 'KiTS19 preparation | root=%s | PBS=%s | host=%s\n' "$CP_ROOT" "${PBS_JOBID:?PBS allocation required}" "$(hostname)"
+mkdir -p "$CP_ROOT/downloads"
+if test ! -x "$CP_ROOT/.env/bin/python"; then
+  "$CP_BASE_PYTHON" -m venv --system-site-packages "$CP_ROOT/.env"
+fi
+"$CP_ROOT/.env/bin/python" -m pip install --no-cache-dir -r "$CP_CODE/requirements.txt"
+"$CP_ROOT/.env/bin/python" -B -u "$CP_CODE/download.py" \
+  --fetch-labels --metadata "$CP_CODE/sources.json" \
+  --data "$CP_ROOT/data/kits19/data" \
+  --output "$CP_ROOT/downloads/${PBS_JOBID}" --workers 8
+"$CP_ROOT/.env/bin/python" -B -u "$CP_CODE/run.py" \
+  --root "$CP_ROOT/run" --data "$CP_ROOT/data/kits19/data" \
+  --upstream "$CP_ROOT/upstream" --workers 4 --prepare-workers 8 --phase prepare
+printf 'KiTS19 preparation complete; GPU job still requires actual CUDA smoke.\n'
