@@ -22,6 +22,7 @@ class ActiveContinuationDEBUGTests(unittest.TestCase):
         self.temporary=tempfile.TemporaryDirectory(prefix='DEBUG_active_continuation_',dir=str(self.workspace))
         self.addCleanup(self.temporary.cleanup);self.root=Path(self.temporary.name).resolve()
         self.assertIn(self.workspace,self.root.parents)
+        self.fixture_number=0;self.document_revision=0;self.fixture_root=self.root/'fixture_0'
         self.slots={'multi5':0,'multi7':6,'multi10':2,'candidates512':3,'candidates1024':4,'candidates2048':5}
         if os.name=='nt':
             # Managed Windows denies GetFinalPathName on freshly written JSON.
@@ -33,15 +34,18 @@ class ActiveContinuationDEBUGTests(unittest.TestCase):
             admitted=patch.object(resource,'exact',side_effect=fixture_exact);admitted.start();self.addCleanup(admitted.stop)
 
     def write(self,name,value):
-        path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True)
+        path=self.fixture_root/name;path.parent.mkdir(parents=True,exist_ok=True)
         data=value if isinstance(value,bytes)else json.dumps(value,sort_keys=True).encode()
-        path.write_bytes(data)
+        with path.open('xb')as stream:stream.write(data)
         return {'path':str(path),'sha256':hashlib.sha256(data).hexdigest()}
 
     def fixture(self):
+        # Each fixture is immutable and has fresh paths even on filesystems
+        # with coarse stat timestamps. Production's SHA cache stays untouched.
+        self.fixture_number+=1;self.fixture_root=self.root/('fixture_'+str(self.fixture_number))
         active=['candidates512','candidates1024','candidates2048'];evidence={}
         for arm in ('multi5','multi7','multi10'):
-            output=self.root/arm;cases=['CPU_DEBUG_case_'+str(i)for i in range(26)]
+            output=self.fixture_root/arm;cases=['CPU_DEBUG_case_'+str(i)for i in range(26)]
             fold=output/'nnUNet_results'/'CPU_DEBUG_trainer'/'fold_0'
             best=self.write(str(Path(arm)/'nnUNet_results'/'CPU_DEBUG_trainer'/'fold_0'/'checkpoint_best.pth'),
                 ('CPU_DEBUG_BEST_bytes_'+arm).encode())
@@ -66,7 +70,9 @@ class ActiveContinuationDEBUGTests(unittest.TestCase):
     def change_document(self,value,arm,key,update):
         old=value['retained_completion_evidence'][arm][key];document=json.loads(Path(old['path']).read_bytes())
         update(document)
-        value['retained_completion_evidence'][arm][key]=self.write(arm+'/changed_'+key+'.json',document)
+        self.document_revision+=1
+        value['retained_completion_evidence'][arm][key]=self.write(
+            arm+'/changed_'+key+'_'+str(self.document_revision)+'.json',document)
 
     def test_legacy_six_continue_with_only_completed_blend50_retained(self):
         self.assertEqual(runner.continuation_arms({'retained_complete_arms':['blend50'],'debug':False}),ARMS)
