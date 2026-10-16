@@ -1,4 +1,4 @@
-"""Prepare exact six-arm bindings and one shared131-case admission; no training.
+"""Prepare exact unfinished bindings and one shared131-case admission; no training.
 
 Input snapshot is the captured old G2 host_inputs JSON. Bindings name already
 transferred checkpoint/effective-bank/preflight/log artifacts by exact SHA.
@@ -17,8 +17,8 @@ import time
 import psutil
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
-from hiercp_v1x.basic_cp_single_parent_resources import ARMS,EPOCHS,digest,pin,require,signature
-from tools.run_basic_cp_single_parent import seal,FORMAT,bound_completed_epochs
+from hiercp_v1x.basic_cp_single_parent_resources import ARMS,EPOCHS,digest,pin,require,signature,execution_arms
+from tools.run_basic_cp_single_parent import seal,FORMAT,bound_completed_epochs,continuation_arms
 
 
 def inventory(preprocessed,cases,data_identifier):
@@ -106,12 +106,20 @@ def main():
     parser.add_argument('--root',type=Path,required=True)
     parser.add_argument('--shared-preprocessed-dataset-directory',type=Path,required=True)
     parser.add_argument('--evaluator-root',type=Path,required=True);parser.add_argument('--project',type=Path,required=True)
+    parser.add_argument('--continuation-inputs',type=Path);parser.add_argument('--continuation-inputs-sha256')
     args=parser.parse_args();require(os.getuid()==41833,'Own experiment account required')
     refs={name:dict(path=str(getattr(args,name)),sha256=getattr(args,name+'_sha256'))
         for name in('source_snapshot','bindings','allocation')}
     snapshot=json.loads(pin(refs['source_snapshot']).read_bytes());bindings=json.loads(pin(refs['bindings'],owner=True).read_bytes())
     allocation=json.loads(pin(refs['allocation'],owner=True).read_bytes())
-    require(set(bindings)==set(ARMS),'Exactly six explicit transferred artifact bindings required')
+    arms=execution_arms(allocation)
+    continuation=dict(retained_complete_arms=['blend50'],debug=False)
+    if args.continuation_inputs:
+        continuation=json.loads(pin(dict(path=str(args.continuation_inputs),sha256=args.continuation_inputs_sha256),owner=True).read_bytes())
+        require(continuation.get('bindings')==refs['bindings']and continuation.get('source_snapshot')==refs['source_snapshot'],
+            'Explicit continuation inputs must bind the identical scientific artifacts')
+    require(continuation_arms(continuation)==arms,'Allocation and explicit unfinished experiment list differ')
+    require(set(bindings)==set(arms),'Exact explicit unfinished artifact bindings required')
     rows={row['arm']:row for row in snapshot['host_inputs']}
     require(set(rows)==set(ARMS)|{'blend50'},'Original all-seven captured metadata required; blend50 stays complete')
     root=args.root;require(root.is_absolute()and root.is_relative_to(Path('/dev/shm'))and not(root/'cohort.json').exists(),
@@ -137,7 +145,7 @@ def main():
         and(Path(name.decode()).suffix=='.py'or name.decode()=='config/nnunet_result_report_schema_v1.json')}
     experiments={}
     import torch
-    for arm in ARMS:
+    for arm in arms:
         old=rows[arm]['native'];path=original_native/(arm+'.json');seal(path,old)
         row=dict(bindings[arm])
         epoch=bound_completed_epochs(arm,row)
@@ -163,13 +171,15 @@ def main():
             actual_resume_checkpoint_proof=resume,actual_original_BEST_proof=best_state)
     cohort=dict(format=FORMAT,root=str(root),canonical_code=dict(path=str(ROOT),commit=commit,files_sha256=sources),
         allocation=refs['allocation'],physical_parent_index=allocation['physical_parent_index'],
-        installed_runtime_files_sha256=installed,experiments=experiments,retained_complete_arms=['blend50'],debug=False,
+        installed_runtime_files_sha256=installed,experiments=experiments,active_arms=list(arms),
+        retained_complete_arms=continuation['retained_complete_arms'],
+        retained_completion_evidence=continuation.get('retained_completion_evidence',{}),debug=False,
         historical_reference_inputs=dict(path=str(historical_path),sha256=digest(historical_path)),
         original_snapshot=refs['source_snapshot'],input_bindings=refs['bindings'],
         source_arrays_copied=False,preprocessing_executed=False,private_code_copies_created=False)
     path=root/'cohort.json';seal(path,cohort)
     print(json.dumps(dict(cohort=str(path),sha256=digest(path),canonical_commit=commit,
-        unfinished_arms=list(ARMS),completed_blend50_retained=True,production_launched=False)),flush=True)
+        unfinished_arms=list(arms),retained_complete_arms=continuation['retained_complete_arms'],production_launched=False)),flush=True)
 
 
 if __name__=='__main__':main()

@@ -1,6 +1,6 @@
-"""Six unchanged full Basic CP continuations from ONE canonical Git checkout.
+"""Unchanged unfinished Basic CP continuations from ONE canonical Git checkout.
 
-The launcher consumes a SHA-bound cohort, starts six independently registered
+The launcher consumes a SHA-bound cohort, starts independently registered
 processes inside its existing PBS allocation and preserves native log/UI data.
 No code tree, runtime package, source bank or preprocessed dataset is copied.
 Only exact checkpoint bytes and small immutable evidence enter new output roots.
@@ -22,7 +22,7 @@ import traceback
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from hiercp_v1x.basic_cp_single_parent_resources import(ARMS,EPOCHS,GIB,DIRECT_MODE,Lease,digest,exact,
+from hiercp_v1x.basic_cp_single_parent_resources import(ARMS,EPOCHS,GIB,DIRECT_MODE,Lease,digest,exact,execution_arms,
     exact_actor,identity,pin,require,signature,validate_allocation,nvml_devices,_memory_cgroup,observe_holder,cgroup_identity)
 import psutil
 
@@ -102,20 +102,67 @@ def validate_bound_resume(arm,row,binding):
     return epoch
 
 
+def continuation_arms(value):
+    """Omitted arms must be explicitly complete, never silently dropped."""
+    arms=value.get('active_arms',list(ARMS))
+    require(isinstance(arms,(list,tuple))and len(arms)>0
+        and list(arms)==[arm for arm in ARMS if arm in arms],
+        'Explicit unique canonical-order unfinished experiment arms required')
+    retained=[arm for arm in ARMS if arm not in arms]
+    require(value.get('retained_complete_arms')==['blend50',*retained]and value.get('debug')is False,
+        'Every omitted experiment must be retained complete; DEBUG production is forbidden')
+    evidence=value.get('retained_completion_evidence',{})
+    require(isinstance(evidence,dict)and set(evidence)==set(retained),
+        'Every omitted experiment needs SHA-pinned full completion evidence')
+    for arm in retained:
+        record=evidence[arm]
+        require(set(record)=={'status','training_and_BEST26','BEST','FINAL','reports','archive','request','output_root','logical_slot'},
+            'Exact retained completion artifact set required: '+arm)
+        status=read(pin(record['status']));proof=read(pin(record['training_and_BEST26']))
+        require(status.get('arm')==arm and status.get('status')=='COMPLETE'and status.get('stage')=='complete'
+            and status.get('completed_epochs')==250 and status.get('evaluated_cases')==26
+            and all(status.get(key)is True for key in('full_native_training','full_native_evaluation','historical_metrics_complete')),
+            'Omitted experiment has not completed full250 training, BEST26 and statistics: '+arm)
+        require(proof.get('epochs')==250 and proof.get('checkpoint')=='checkpoint_best.pth'
+            and proof.get('evaluation_checkpoint_is_final')is False
+            and len(set(proof.get('validation_cases',[])))==26,
+            'Omitted experiment needs its own BEST26 completion witness: '+arm)
+        pin(record['BEST']);pin(record['FINAL'])
+        require(record['BEST']['sha256']==proof.get('best_sha256')
+            and record['FINAL']['sha256']==proof.get('final_training_witness_sha256'),
+            'Retained own BEST or full250 FINAL witness bytes changed: '+arm)
+        require(set(record['reports'])=={'evidence','text','json'},'All fixed-schema result reports must be retained')
+        for name,reference in record['reports'].items():
+            pin(reference)
+            require(reference['sha256']==status['reports'][name]['sha256'],'Retained result report bytes changed')
+        pin(record['archive']);request=read(pin(record['request']))
+        require(request.get('arm')==arm and request.get('logical_slot')==record['logical_slot']
+            and Path(record['status']['path'])==Path(record['output_root'])/'status.json'
+            and Path(record['request']['path'])==Path(record['output_root'])/'request.json',
+            'Retained viewer route must point to that exact original experiment')
+        require(set(proof['validation_cases'])==set(request['split']['outer_val'])
+            and Path(record['BEST']['path']).relative_to(Path(record['output_root']))==
+                Path(proof['fold']).relative_to(Path(request['root']))/'checkpoint_best.pth'
+            and Path(record['FINAL']['path']).relative_to(Path(record['output_root']))==
+                Path(proof['fold']).relative_to(Path(request['root']))/'checkpoint_final.pth',
+            'Retained BEST26 witness must belong to the same complete original experiment')
+        require(record['archive']['sha256']==status['archive']['sha256'],'Retained complete archive marker changed')
+    return tuple(arms)
+
+
 def validate_cohort(value):
-    require(value.get('format')==FORMAT and set(value.get('experiments',{}))==set(ARMS),
-        'Exactly six unfinished experiments required; completed blend50 is retained separately')
-    require(value.get('retained_complete_arms')==['blend50']and value.get('debug')is False,
-        'Completed blend50 cannot be rerun and production cannot use a DEBUG profile')
+    arms=continuation_arms(value)
+    require(value.get('format')==FORMAT and set(value.get('experiments',{}))==set(arms),
+        'Exact unfinished experiments required; completed experiments are retained separately')
     require(Path(value['canonical_code']['path'])==ROOT,
         'Every process must execute the one explicit canonical Git checkout')
-    require(Path(value['root']).is_absolute()and len({row['output_root']for row in value['experiments'].values()})==6,
-        'Six distinct absolute result folders required')
+    require(Path(value['root']).is_absolute()and len({row['output_root']for row in value['experiments'].values()})==len(arms),
+        'Distinct absolute unfinished result folders required')
     require(Path(value['root']).is_relative_to(Path('/dev/shm')),
         'The existing independent archive contract requires actual tmpfs output roots')
     bindings=read(pin(value['input_bindings'],owner=True))
-    require(isinstance(bindings,dict)and set(bindings)==set(ARMS),
-        'Exactly six SHA-pinned original or saved-resume input bindings required')
+    require(isinstance(bindings,dict)and set(bindings)==set(arms),
+        'Exact SHA-pinned original or saved-resume unfinished input bindings required')
     for arm,row in value['experiments'].items():
         validate_bound_resume(arm,row,bindings[arm])
         require(row.get('physical_batch')==2
@@ -211,7 +258,7 @@ def native_for(cohort,arm,source,bank,preprocessed,actor):
     native['original_hardware']={name:source[name]for name in hardware_keys if name in source}
     for name in hardware_keys:native.pop(name,None)
     token=allocation['execution_UUID_by_arm'][arm];device=allocation['execution_device_observations'][token]
-    cpus=allocation['CPU_affinity'];offset=ARMS.index(arm)*8
+    cpus=allocation['CPU_affinity'];offset=execution_arms(allocation).index(arm)*8
     native.update(gpu=allocation['physical_parent_index'],gpu_uuid=allocation['physical_parent_GPU_UUID'],
         execution_physical_GPU=allocation['physical_parent_index'],execution_GPU_UUID=token,
         GPU_memory_total_MiB=device['total_bytes']//2**20,cpu_affinity=cpus[offset:offset+8],
@@ -399,12 +446,15 @@ def main():
     require(args.execute,'Explicit --execute required for production continuation')
     cohort=validate_cohort(read(pin({'path':str(args.cohort),'sha256':args.cohort_sha256},owner=True)))
     cohort.update(_execution_cohort_path=str(args.cohort),_execution_cohort_SHA256=args.cohort_sha256)
-    allocation=read(pin(cohort['allocation'],owner=True));root=Path(cohort['root']);root.mkdir(mode=0o700,exist_ok=True)
+    allocation=read(pin(cohort['allocation'],owner=True));arms=execution_arms(allocation)
+    require(arms==continuation_arms(cohort),'Allocation arms differ from SHA-pinned unfinished cohort')
+    root=Path(cohort['root']);root.mkdir(mode=0o700,exist_ok=True)
     require(root.stat().st_uid==41833 and root.resolve()==root,'Own fresh cohort output root required')
     registry=root/'single_parent_actors.json'
     if args.arm:
+        require(args.arm in arms,'Completed or unbound experiment cannot be dispatched')
         try:
-            index=ARMS.index(args.arm);psutil.Process().cpu_affinity(allocation['CPU_affinity'][index*8:index*8+8])
+            index=arms.index(args.arm);psutil.Process().cpu_affinity(allocation['CPU_affinity'][index*8:index*8+8])
             deadline=time.monotonic()+120
             while not registry.exists():
                 require(time.monotonic()<deadline,'Exact actor registry not published within120seconds');time.sleep(.1)
@@ -432,10 +482,10 @@ def main():
         'Initial owned execution devices must be free of unknown existing CUDA actors')
     if direct:
         from hiercp_v1x.basic_cp_direct_MIG_access import observe_direct_memory
-        prospective=observe_direct_memory({arm:0 for arm in ARMS},
-            {holder.pid,*[p.pid for p in holder.children(recursive=True)]})
+        prospective=observe_direct_memory({arm:0 for arm in arms},
+            {holder.pid,*[p.pid for p in holder.children(recursive=True)]},expected_arms=len(arms))
     processes={};actors={}
-    for index,arm in enumerate(ARMS):
+    for index,arm in enumerate(arms):
         row=cohort['experiments'][arm];output=Path(row['output_root']);output.mkdir(mode=0o700)
         arm_status(cohort,arm,'prepare','RUNNING',completed_epochs=row['completed_epochs'],
             native_substage='admission_and_full_source_verification')
@@ -459,8 +509,11 @@ def main():
     seal(root/'launch.json',dict(group=str(root),code=str(ROOT),commit=cohort['canonical_code']['commit'],
         code_sha256=cohort['canonical_code']['files_sha256'],registration={str(cohort['experiments'][arm]['logical_slot']):
             dict(root=cohort['experiments'][arm]['output_root'],arm=arm,controller_identity=actors[arm],
-                request_sha256=digest(Path(cohort['experiments'][arm]['output_root'])/'request.json'))for arm in ARMS},
-        retained_complete_arms=['blend50'],UI_version=2,canonical_code_shared_by_all_arms=True,
+                request_sha256=digest(Path(cohort['experiments'][arm]['output_root'])/'request.json'))for arm in arms}|
+            {str(record['logical_slot']):dict(root=record['output_root'],arm=arm,
+                request_sha256=record['request']['sha256'],retained_complete=True)
+                for arm,record in cohort.get('retained_completion_evidence',{}).items()},
+        retained_complete_arms=cohort['retained_complete_arms'],UI_version=2,canonical_code_shared_by_all_arms=True,
         source_arrays_copied=False,private_runtime_copies_created=False,full_training_complete_claimed=False))
     while any(p.poll()is None for p in processes.values()):time.sleep(2)
     result={arm:p.returncode for arm,p in processes.items()}

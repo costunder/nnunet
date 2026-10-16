@@ -26,7 +26,7 @@ from hiercp_v1x.basic_cp_single_parent_resources import (
     ARMS, FORMAT, GIB, UID, _memory_cgroup, digest, identity, nvml_devices,
     pin, require, validate_allocation, validate_capacity,
 )
-from tools.run_basic_cp_single_parent import read, seal, publish
+from tools.run_basic_cp_single_parent import read, seal, publish, continuation_arms
 
 INPUT_FORMAT = 'basic_cp_single_parent_staged_inputs_v1'
 
@@ -90,13 +90,13 @@ def parent_proof(parent_UUID):
 
 
 def admit_inputs(value):
-    require(value.get('format') == INPUT_FORMAT and value.get('debug') is False
-            and value.get('retained_complete_arms') == ['blend50'],
-            'Staged six-arm production inputs required; completed blend50 must stay retained')
+    arms=continuation_arms(value)
+    require(value.get('format') == INPUT_FORMAT,
+            'Staged unchanged production inputs required; completed experiments must stay retained')
     require(value.get('canonical_code') == str(ROOT), 'One canonical code checkout required')
     for key in ('source_snapshot', 'bindings', 'VRAM_measurement_evidence'):
         pin(value[key])
-    require(set(read(pin(value['bindings']))) == set(ARMS), 'Exactly six explicit input bindings required')
+    require(set(read(pin(value['bindings']))) == set(arms), 'Exact unfinished input bindings required')
     require(Path(value['output_root']) == Path('/dev/shm/aicompetition06_basic_cp/experiments'),
             'Use the fixed experiment output root; no GPU-specific code trees')
     return value
@@ -110,6 +110,7 @@ def main():
     require(os.getuid() == UID and socket.gethostname().split('.')[0] == 'ece-agpu16',
             'Actual intended account and execution node required')
     inputs = admit_inputs(read(pin(dict(path=str(args.inputs), sha256=args.inputs_sha256), owner=True)))
+    require(continuation_arms(inputs)==ARMS,'PBS six-slot bootstrap requires all six unfinished arms; use direct entry for partial resume')
     job_id = os.environ.get('PBS_JOBID', '')
     require(re.fullmatch(r'\d+\.ECE-util1', job_id), 'Actual current PBS job identity required')
     control = Path('/dev/shm/aicompetition06_basic_cp/control')

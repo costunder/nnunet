@@ -33,6 +33,21 @@ def require(value,message):
     if not value:raise ValueError(message)
 
 
+def execution_arms(receipt):
+    """Explicit operational subset; the six scientific experiment names stay fixed."""
+    arms=receipt.get('active_arms',ARMS)
+    require(isinstance(arms,(list,tuple))and bool(arms)
+        and all(isinstance(arm,str)and arm in ARMS for arm in arms)
+        and len(set(arms))==len(arms)
+        and tuple(arms)==tuple(arm for arm in ARMS if arm in arms),
+        'active_arms must be a nonempty unique canonical-ordered subset of the original experiments')
+    selected=receipt.get('execution_UUID_by_arm')
+    require(isinstance(selected,dict)and set(selected)==set(arms)
+        and all(isinstance(token,str)and bool(token)for token in selected.values()),
+        'Execution UUID keys must exactly match the selected active experiments')
+    return tuple(arms)
+
+
 def signature(path):
     s=Path(path).stat()
     return(s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_uid,s.st_mode)
@@ -243,29 +258,29 @@ def validate_allocation(receipt,job,holder,devices,*,now_monotonic,node_boot_id,
         'Explicit same-owner allocation receipt required')
     require(receipt.get('mode')in('full_GPU_shared6','six_MIG_same_parent',DIRECT_MODE),
         'Explicit allocated or previously authorized direct execution mode required')
-    selected=receipt.get('execution_UUID_by_arm',{})
-    require(set(selected)==set(ARMS)and all(isinstance(v,str)for v in selected.values()),
-        'All six unfinished experiments need explicit execution UUIDs')
+    arms=execution_arms(receipt);count=len(arms)
+    selected=receipt['execution_UUID_by_arm']
     parent=receipt.get('physical_parent_GPU_UUID');mode=receipt['mode'];assigned=set(selected.values())
     require(isinstance(parent,str)and parent.startswith('GPU-')and
         ((mode=='full_GPU_shared6'and assigned=={parent})or
-         (mode in('six_MIG_same_parent',DIRECT_MODE)and len(assigned)==6 and all(v.startswith('MIG-')for v in assigned))),
-        'One parent full GPU or six distinct MIG UUIDs required')
+         (mode in('six_MIG_same_parent',DIRECT_MODE)and len(assigned)==count and all(v.startswith('MIG-')for v in assigned))),
+        'One parent full GPU or '+('six'if count==6 else str(count))+' distinct MIG UUIDs required')
     require(receipt.get('job_id')==job.get('job_id')and job.get('job_state')=='R'
         and job.get('Job_Owner','').split('@')[0]=='aicompetition06'
         and job.get('exec_host')and all(x.split('/')[0]==receipt['node']for x in job['exec_host'].split('+')),
         'Actual own running same-host PBS allocation required')
     resources=job['Resource_List']
     if mode!=DIRECT_MODE:
-        require(int(resources.get('ngpus',0))==(1 if mode=='full_GPU_shared6'else 6)
-            and int(resources.get('ncpus',0))>=48,'Actual allocation must provide the requested GPU(s) and48CPUs')
+        require(int(resources.get('ngpus',0))==(1 if mode=='full_GPU_shared6'else count)
+            and int(resources.get('ncpus',0))>=8*count,
+            'Actual allocation must provide the requested GPU(s) and'+str(8*count)+'CPUs')
     validate_lifetime(receipt,job,now_monotonic=now_monotonic,node_boot_id=node_boot_id,
         query_started_monotonic=query_started_monotonic)
     cpus=receipt.get('CPU_affinity')
-    require(isinstance(cpus,list)and len(cpus)>=48 and len(set(cpus))==len(cpus)
+    require(isinstance(cpus,list)and len(cpus)>=8*count and len(set(cpus))==len(cpus)
         and holder['identity'].get('UID')==UID
         and set(cpus)<=set(holder['CPU_affinity'])and holder['identity']==receipt['holder_identity'],
-        'Original own execution holder and48 actually allowed CPUs required')
+        'Original own execution holder and'+str(8*count)+' actually allowed CPUs required')
     if mode==DIRECT_MODE:
         require(receipt.get('PBS_GPU_owned_reservation')is False and receipt.get('PBS_CPU_owned_reservation')is False
             and receipt.get('PBS_job_role')=='host_lifetime_only'
@@ -284,10 +299,11 @@ def validate_allocation(receipt,job,holder,devices,*,now_monotonic,node_boot_id,
             'Original owned PBS execution holder required')
         observed=holder['environment'].get('CUDA_VISIBLE_DEVICES')
         require(set(_visible(observed,devices))==assigned,'Unmodified scheduler visibility does not authorize the execution devices')
-    require(holder['memory_limit_bytes']>=208*GIB,'Allocation cgroup cannot reserve six32GiB native trees plus16GiB auxiliary')
+    require(holder['memory_limit_bytes']>=(count*32+16)*GIB,
+        'Allocation cgroup cannot reserve selected32GiB native trees plus16GiB auxiliary')
     if mode!= 'full_GPU_shared6':
-        require(len({devices[token]['GI']for token in assigned if token in devices})==6,
-            'Six independent MIG memory partitions required; compute instances cannot double-charge one shared GI')
+        require(len({devices[token]['GI']for token in assigned if token in devices})==count,
+            'Selected independent MIG memory partitions required; compute instances cannot double-charge one shared GI')
     for token in assigned:
         require(token in devices and devices[token]['parent_UUID']==parent,
             'Assigned execution devices must independently map to one physical parent')
@@ -303,8 +319,10 @@ def validate_allocation(receipt,job,holder,devices,*,now_monotonic,node_boot_id,
     return assigned
 
 
-def validate_capacity(receipt,devices,*,native_RSS,auxiliary_RSS,cgroup_usage_bytes):
-    require(set(native_RSS)==set(ARMS)and all(type(x)is int and x>=0 for x in native_RSS.values()),
+def validate_capacity(receipt,devices,*,native_RSS,auxiliary_RSS,cgroup_usage_bytes,arm=None):
+    arms=execution_arms(receipt)
+    require(arm is None or arm in arms,'CUDA capacity scope must be a selected experiment')
+    require(set(native_RSS)==set(arms)and all(type(x)is int and x>=0 for x in native_RSS.values()),
         'Actual per-experiment RSS required')
     require(all(x<=32*GIB for x in native_RSS.values())and 0<=auxiliary_RSS<=16*GIB,
         'Native32GiB or auxiliary16GiB RAM ceiling exceeded')
@@ -313,30 +331,59 @@ def validate_capacity(receipt,devices,*,native_RSS,auxiliary_RSS,cgroup_usage_by
     peaks=receipt.get('VRAM_reservation_bytes_by_arm',{})
     require(type(receipt.get('VRAM_floor_bytes'))is int and receipt['VRAM_floor_bytes']>=256*2**20,
         'Explicit positive CUDA floor of at least256MiB required')
-    require(set(peaks)==set(ARMS)and all(type(v)is int and v>0 for v in peaks.values()),
+    require(set(peaks)==set(arms)and all(type(v)is int and v>0 for v in peaks.values()),
         'Measured per-experiment VRAM reservations required')
     for token in set(receipt['execution_UUID_by_arm'].values()):
-        row=devices[token];reserved=sum(peaks[a]for a in ARMS if receipt['execution_UUID_by_arm'][a]==token)
+        row=devices[token];reserved=sum(peaks[a]for a in arms if receipt['execution_UUID_by_arm'][a]==token)
         require(reserved+receipt['VRAM_floor_bytes']<=row['total_bytes'],
             'Reserved native stages and CUDA floor exceed actual execution memory')
-        require(row['used_bytes']<=row['total_bytes']-receipt['VRAM_floor_bytes'],
-            'Execution device lost its reserved CUDA memory floor')
+        if arm is None or token==receipt['execution_UUID_by_arm'][arm]:
+            require(row['used_bytes']<=row['total_bytes']-receipt['VRAM_floor_bytes'],
+                'Execution device lost its reserved CUDA memory floor')
     return dict(native_RSS_bytes=sum(native_RSS.values()),auxiliary_RSS_bytes=auxiliary_RSS,
         actual_cgroup_RAM_bytes=cgroup_usage_bytes,aggregate_RAM_cap_bytes=512*GIB)
 
 
-def validate_execution_actors(receipt,devices,owners):
-    for token,row in devices.items():
+def _unknown_CUDA_actor(pid):
+    """Keep readable process evidence even when an unregistered actor then exits."""
+    observed={'pid':pid}
+    try:process=psutil.Process(pid)
+    except psutil.Error as error:
+        observed['process_read_error']=type(error).__name__+': '+str(error)
+        return observed
+    for name,reader in(('UID',lambda:process.uids().real),('create_time',process.create_time),
+            ('command',process.cmdline),('PPID',process.ppid)):
+        try:observed[name]=reader()
+        except(psutil.Error,OSError)as error:
+            observed[name+'_read_error']=type(error).__name__+': '+str(error)
+    return observed
+
+
+def validate_execution_actors(receipt,devices,owners,*,arm=None,observations=None):
+    """Preflight checks every selected device; a live lease checks its own MIG.
+
+    Shared full-GPU actors still share the same execution token, so unrelated
+    or unknown processes on that token cannot be hidden by an arm filter.
+    """
+    selected=receipt['execution_UUID_by_arm']
+    if 'active_arms'in receipt:execution_arms(receipt)
+    require(arm is None or arm in selected,'CUDA actor scope must be a selected experiment')
+    tokens=set(selected.values())if arm is None else{selected[arm]}
+    require(tokens<=set(devices),'Every scoped execution device needs an actual NVML observation')
+    for token in sorted(tokens):
+        row=devices[token]
         for actor in row['compute_actors']:
             owner=owners.get(actor['pid'])
+            observed=dict(observed_token=token,observed_parent_UUID=row.get('parent_UUID'),
+                observed_GPU_index=row.get('index'),observed_GPU_instance=row.get('GI'),
+                observed_compute_instance=row.get('CI'),actor=dict(actor),owner=owner)
+            if owner is None:observed['unregistered_process']=_unknown_CUDA_actor(actor['pid'])
+            if observations is not None:observations.append(observed)
             require(owner is not None and owner.get('UID')==UID,
-                'Unknown own or foreign CUDA actor uses an execution device: '+json.dumps(
-                    dict(observed_token=token,observed_GPU_instance=row.get('GI'),observed_compute_instance=row.get('CI'),
-                        actor=actor,owner=owner),sort_keys=True))
-            require(receipt['execution_UUID_by_arm'][owner['arm']]==token,
-                'A native actor created CUDA work on another execution device: '+json.dumps(
-                    dict(observed_token=token,expected_token=receipt['execution_UUID_by_arm'][owner['arm']],
-                        observed_GPU_instance=row.get('GI'),observed_compute_instance=row.get('CI'),actor=actor,owner=owner),sort_keys=True))
+                'Unknown own or foreign CUDA actor uses an execution device: '+json.dumps(observed,sort_keys=True))
+            expected=selected.get(owner.get('arm'));observed['expected_token']=expected
+            require(expected==token,
+                'A native actor created CUDA work on another execution device: '+json.dumps(observed,sort_keys=True))
 
 
 def refresh_terminal_CUDA_observations(receipt,devices,owners,known,*,released):
@@ -499,9 +546,10 @@ class Lease:
         measured=max(row['peak_reserved_bytes']for row in evidence['measurements'])
         require(all(value>=measured for value in self.receipt['VRAM_reservation_bytes_by_arm'].values()),
             'VRAM reservations cannot fall below the measured actual cold-stage peak')
-        require(set(actors)==set(ARMS),'Exact six independently captured native actor identities required')
+        arms=execution_arms(self.receipt)
+        require(arm in arms and set(actors)==set(arms),'Exact selected independently captured native actor identities required')
         require(actors[arm]==self.own,'Calling native process differs from its own admitted actor')
-        for peer in ARMS:
+        for peer in arms:
             expected=[sys.executable,'-B','-u',str(self.canonical/'tools/run_basic_cp_single_parent.py'),
                 '--cohort',cohort['_execution_cohort_path'],'--cohort-sha256',cohort['_execution_cohort_SHA256'],
                 '--arm',peer,'--execute']
@@ -559,7 +607,8 @@ class Lease:
         for previous in self.previous_trees.values():known_actor_identities.update(previous)
         cpus=self.receipt['CPU_affinity'];trees={};native_RSS={};all_PIDs=set();released=[]
         self.last_probe['naturally_released_processes']=released
-        for index,arm in enumerate(ARMS):
+        arms=execution_arms(self.receipt)
+        for index,arm in enumerate(arms):
             expected=cpus[index*8:index*8+8];tree={};native_RSS[arm]=0
             self.last_probe['native_children'][arm]=dict(expected_CPU_affinity=expected,
                 expected_cgroup=cgroup_identity(mem),observations=[])
@@ -613,7 +662,8 @@ class Lease:
                 now_monotonic=time.monotonic(),node_boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
                 query_started_monotonic=observation['query_started_monotonic'])
         self.last_probe.update(phase='CUDA_actor_ownership',owners=owners,devices=devices)
-        validate_execution_actors(self.receipt,devices,owners)
+        validate_execution_actors(self.receipt,devices,owners,arm=self.arm,
+            observations=self.last_probe.setdefault('execution_actor_observations',[]))
         if direct:
             from .basic_cp_direct_MIG_access import observe_direct_memory
             cohort_PIDs={holder.pid}
@@ -635,12 +685,13 @@ class Lease:
                         'Direct native/auxiliary snapshots observed different births for the same live PID')
                     cohort_identities[pid]=value['identity']
             memory=observe_direct_memory(native_RSS,cohort_PIDs,
-                native_PIDs_by_arm={arm:set(tree)for arm,tree in trees.items()},cohort_identities=cohort_identities)
+                native_PIDs_by_arm={arm:set(tree)for arm,tree in trees.items()},cohort_identities=cohort_identities,
+                expected_arms=len(arms))
             self.last_probe.update(phase='direct_memory',memory=memory)
             native_RSS=memory['native_RSS_by_arm']
             global_RAM=memory['current_uid_RSS_bytes']+memory['own_tmpfs_allocated_bytes']
             result=validate_capacity(self.receipt,devices,native_RSS=native_RSS,
-                auxiliary_RSS=memory['cohort_auxiliary_RSS_bytes'],cgroup_usage_bytes=global_RAM)
+                auxiliary_RSS=memory['cohort_auxiliary_RSS_bytes'],cgroup_usage_bytes=global_RAM,arm=self.arm)
             result['actual_global_own_UID_and_tmpfs_RAM_bytes']=result.pop('actual_cgroup_RAM_bytes')
             result.update(direct_memory=memory,PBS_GPU_owned_reservation=False,PBS_CPU_owned_reservation=False,
                 PBS_job_role='host_lifetime_only',RAM_accounting='own UID RSS plus owned tmpfs allocated blocks')
@@ -653,5 +704,6 @@ class Lease:
                 if p.pid not in all_PIDs and p.uids().real==UID and _memory_cgroup(p.pid)['path']==mem['path']:
                     auxiliary+=p.memory_info().rss
             except(psutil.NoSuchProcess,FileNotFoundError):continue
-        result=validate_capacity(self.receipt,devices,native_RSS=native_RSS,auxiliary_RSS=auxiliary,cgroup_usage_bytes=mem['usage'])
+        result=validate_capacity(self.receipt,devices,native_RSS=native_RSS,auxiliary_RSS=auxiliary,
+            cgroup_usage_bytes=mem['usage'],arm=self.arm)
         self.last=time.monotonic();return result
