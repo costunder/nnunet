@@ -88,13 +88,69 @@ class RuntimeContractTests(unittest.TestCase):
     def test_holdout_monitor_and_final_contract(self):
         text = (self.destination / 'nnunet/training/network_training/nnUNetTrainerV2_TumorCPPaper.py').read_text()
         tree = ast.parse(text)
-        klass = next(n for n in tree.body if isinstance(n, ast.ClassDef))
+        klass = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'nnUNetTrainerV2_TumorCPPaper')
         methods = {n.name for n in klass.body if isinstance(n, ast.FunctionDef)}
         self.assertTrue({'do_split', 'process_plans', 'enter_evaluation', 'validate'} <= methods)
         self.assertIn('chosen = holdout if self._paper_holdout_evaluation else train', text)
         self.assertIn('self.load_final_checkpoint(train=False)', text)
         self.assertIn("kwargs['run_postprocessing_on_folds'] = False", text)
         self.assertIn('(500, 250, 50)', text)
+
+    def test_explicit_liver_profile_preserves_full_saved_split_and_default_kits(self):
+        import hashlib
+        import os
+        from unittest.mock import patch
+        source = (HERE / 'paper_trainer.py').read_text()
+        node = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef) and n.name == '_dataset_profile')
+        scope = {'Path': Path, 'os': os, 'json': json, 'hashlib': hashlib}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<profile unit>', 'exec'), scope)
+        getter = scope['_dataset_profile']
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(getter(), (None, None, None))
+        split = json.loads((HERE.parents[1] / 'config/split_cp80_fold0.json').read_text())
+        profile = dict(format='tumorcp_paper_dataset_profile_v1', dataset='MSD Task03_Liver',
+                       task='Task029_Liver', train_ids=split['outer_train'], heldout_ids=split['outer_val'],
+                       all_ids=sorted(split['outer_train'] + split['outer_val']),
+                       split_provenance='unit exact project split', allow_empty_intra=True)
+        path = self.base / 'unit-only-liver-profile.json'
+        path.write_text(json.dumps(profile), encoding='utf-8')
+        with patch.dict(os.environ, {'TUMORCP_PAPER_DATASET_JSON': str(path)}, clear=True):
+            loaded, bound_path, digest = getter()
+            self.assertEqual(loaded, profile)
+            self.assertEqual(len(loaded['all_ids']), 131)
+            self.assertEqual(digest, hashlib.sha256(path.read_bytes()).hexdigest())
+            invalid = dict(profile, train_ids=profile['train_ids'][:-1])
+            path.write_text(json.dumps(invalid), encoding='utf-8')
+            with self.assertRaises(ValueError):
+                getter()
+
+    def test_liver_empty_intra_skips_only_cp_and_requires_proved_empty_locations(self):
+        text = (self.destination / 'nnunet/training/dataloading/dataset_loading.py').read_text()
+        self.assertIn("locations is not None and len(locations) == 0", text)
+        self.assertIn("self.cp_configs.get('allow_empty_intra', False)", text)
+        self.assertIn("event['status'] = 'no_source'", text)
+        self.assertIn("'cp_audit': paper_cp_audit", text)
+        self.assertIn("event['status'] = 'applied' if self._paper_last_paste_voxels else 'empty_transform'", text)
+
+    def test_only_consumed_batch_metadata_is_counted(self):
+        from types import SimpleNamespace
+        tree = ast.parse((HERE / 'paper_trainer.py').read_text())
+        wrapper = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == '_ConsumedCPAudit')
+        trainer = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'nnUNetTrainerV2_TumorCPPaper')
+        counter = next(n for n in trainer.body if isinstance(n, ast.FunctionDef) and n.name == '_record_consumed_cp')
+        scope = {}
+        exec(compile(ast.Module(body=[wrapper, counter], type_ignores=[]), '<consumed CP audit unit>', 'exec'), scope)
+        owner = SimpleNamespace(batch_size=2, _paper_cp_counts={}, cp_configs={'allow_empty_intra': True})
+        events = [dict(status='no_source', attempted=True, mode='intra'),
+                  dict(status='applied', attempted=True, mode='inter')]
+        source = iter([{'cp_audit': events}, {'cp_audit': events}])
+        observed = scope['_ConsumedCPAudit'](source, lambda rows: scope['_record_consumed_cp'](owner, rows))
+        self.assertEqual(owner._paper_cp_counts, {})
+        self.assertEqual(next(observed)['cp_audit'], events)
+        self.assertEqual(owner._paper_cp_counts['consumed_batches'], 1)
+        self.assertEqual(owner._paper_cp_counts['no_source_skip'], 1)
+        self.assertEqual(owner._paper_cp_counts['applied'], 1)
+        self.assertEqual(owner._paper_cp_counts['recipients'], 2)
 
     def test_modern_checkpoint_loading_is_explicit(self):
         for relative in ('nnunet/training/network_training/network_trainer.py',

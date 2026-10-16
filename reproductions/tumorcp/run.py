@@ -1,4 +1,4 @@
-"""Own the complete KiTS19 TumorCP paper reproduction without touching liver runs.
+"""Run one complete TumorCP paper profile on a fixed, explicit CT cohort.
 
 Source preparation uses the standard library. Imaging/model packages are imported
 only by an explicitly requested preparation, smoke or CUDA training stage.
@@ -33,6 +33,8 @@ TASK = 'Task040_KiTS'
 TRAINER = 'nnUNetTrainerV2_TumorCPPaper'
 PLANS = 'nnUNetPlansv2.1'
 CASE_IDS = tuple(f'case_{index:05d}' for index in range(210))
+DATASET_PROFILE = None
+RAW_LAYOUT = 'kits19'
 HERE = Path(__file__).resolve().parent
 
 
@@ -74,6 +76,59 @@ def utc_now():
     return datetime.now(timezone.utc).isoformat()
 
 
+def configure_profile(path: Path | None, root: Path):
+    """Keep KiTS19 default, or bind the complete original liver 105/26 split."""
+    global DATASET_PROFILE, CASE_IDS, TASK, RAW_LAYOUT
+    saved = Path(root) / 'dataset_profile.json'
+    if path is None and saved.is_file():
+        path = saved
+    if path is None:
+        return
+    profile = read_json(path)
+    if (profile.get('format') != 'tumorcp_paper_dataset_profile_v1'
+            or profile.get('dataset') != 'MSD Task03_Liver'
+            or profile.get('task') != 'Task029_Liver'
+            or profile.get('raw_layout') != 'msd'
+            or profile.get('allow_empty_intra') is not True):
+        raise ValueError('Only the complete fixed MSD Task03 Liver paper transfer is accepted')
+    expected = {f'liver_{i}' for i in range(131)}
+    all_ids, train, heldout = (profile.get(k, []) for k in ('all_ids', 'train_ids', 'heldout_ids'))
+    if (len(all_ids) != 131 or set(all_ids) != expected
+            or len(train) != 105 or len(set(train)) != 105
+            or len(heldout) != 26 or len(set(heldout)) != 26
+            or set(train) & set(heldout) or set(train) | set(heldout) != expected):
+        raise ValueError('Preserve all 131 liver patients and the disjoint 105/26 split')
+    source = Path(profile['source_split_file'])
+    expected_sha = '7a993854c570b2cabe98dffc5df97550d74da3a688c3c3b75942ce4cbd15bc44'
+    if profile.get('source_split_sha256') != expected_sha or fingerprint(source) != expected_sha:
+        raise ValueError('Original liver split bytes changed; no new partition substituted')
+    original = read_json(source)[0]
+    source_tr = original.get('train', original.get('outer_train', []))
+    source_va = original.get('val', original.get('outer_val', []))
+    if set(source_tr) != set(train) or set(source_va) != set(heldout):
+        raise ValueError('Liver profile does not match the historical source split')
+    if saved.exists():
+        if read_json(saved) != profile:
+            raise ValueError('Saved dataset profile differs; existing output preserved')
+    else:
+        atomic_json(saved, profile)
+    DATASET_PROFILE, CASE_IDS, TASK, RAW_LAYOUT = profile, tuple(sorted(expected)), profile['task'], 'msd'
+
+
+def cohort_counts():
+    return (len(CASE_IDS), len(DATASET_PROFILE['train_ids']), len(DATASET_PROFILE['heldout_ids'])) if DATASET_PROFILE else (210, 168, 42)
+
+
+def raw_paths(data: Path, case: str):
+    if RAW_LAYOUT == 'msd':
+        return data / 'imagesTr' / (case + '.nii.gz'), data / 'labelsTr' / (case + '.nii.gz')
+    return data / case / 'imaging.nii.gz', data / case / 'segmentation.nii.gz'
+
+
+def final_report_path(root: Path):
+    return root / f'final{cohort_counts()[2]}_report.json'
+
+
 def runtime_env(root: Path, workers: int) -> dict:
     """Return the exact environment also used by the independent smoke command.
 
@@ -95,6 +150,9 @@ def runtime_env(root: Path, workers: int) -> dict:
         # Each Python loader process is parallel; avoid nested BLAS oversubscription.
         'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1',
     })
+    profile = root / 'dataset_profile.json'
+    if profile.is_file():
+        env['TUMORCP_PAPER_DATASET_JSON'] = str(profile)
     return env
 
 
@@ -253,18 +311,24 @@ def bind_contract(root: Path, data: Path, upstream: Path, workers: int):
     source = upstream / 'nnunet'
     if not source.is_dir():
         raise FileNotFoundError(source)
+    total, training, heldout = cohort_counts()
     payload = {
         'format': 'tumorcp_kits19_paper_request_v1', 'data': str(data),
         'upstream': str(upstream),
-        'trainer': TRAINER, 'dataset': TASK, 'cases': 210, 'train': 168, 'heldout': 42,
+        'trainer': TRAINER, 'dataset': TASK, 'cases': total, 'train': training, 'heldout': heldout,
         'fold': 0, 'split_seed': 12345, 'epochs': 500, 'updates_per_epoch': 250,
         'physical_batch': 2, 'accumulation': 1, 'effective_batch': 2,
-        'checkpoint': 'model_final_checkpoint', 'evaluation': '42 full CTs, raw, fixed FINAL',
+        'checkpoint': 'model_final_checkpoint', 'evaluation': f'{heldout} full CTs, raw, fixed FINAL',
         'paper_exact_split_ids_published': False,
         'builder_sha256': fingerprint(HERE / 'runtime.py'),
         'trainer_sha256': fingerprint(HERE / 'paper_trainer.py'),
         'runner_sha256': fingerprint(Path(__file__)),
     }
+    if DATASET_PROFILE:
+        payload.update(format='tumorcp_liver_paper_request_v1', dataset_profile=DATASET_PROFILE,
+                       dataset_profile_sha256=fingerprint(root / 'dataset_profile.json'),
+                       split_seed=None, split_provenance=DATASET_PROFILE['split_provenance'],
+                       comparison_scope='paper settings transferred to liver, not KiTS19 numerical reproduction')
     destination = root / 'contract.json'
     if destination.exists():
         if read_json(destination) != payload:
@@ -277,10 +341,10 @@ def bind_contract(root: Path, data: Path, upstream: Path, workers: int):
 def validate_raw_case(case_id: str, data: Path):
     import nibabel as nib
     import numpy as np
-    image_path, label_path = data / case_id / 'imaging.nii.gz', data / case_id / 'segmentation.nii.gz'
+    image_path, label_path = raw_paths(data, case_id)
     for path in (image_path, label_path):
         if not path.is_file() or path.stat().st_size == 0:
-            raise FileNotFoundError(f'Complete KiTS19 data required: {path}')
+            raise FileNotFoundError(f'Complete fixed CT cohort required: {path}')
     image, label = nib.load(image_path), nib.load(label_path)
     if len(image.shape) != 3 or image.shape != label.shape:
         raise ValueError(f'KiTS19 CT/GT shape mismatch: {case_id}')
@@ -303,9 +367,11 @@ def validate_raw_case(case_id: str, data: Path):
 def validate_raw(data: Path, workers: int, root: Path):
     _dependencies(('numpy', 'nibabel'))
     expected = set(CASE_IDS)
-    present = {path.name for path in data.iterdir() if path.is_dir() and path.name.startswith('case_')}
+    total = len(CASE_IDS)
+    present = ({p.name[:-7] for p in (data / 'imagesTr').glob('liver_*.nii.gz')} if RAW_LAYOUT == 'msd' else
+               {path.name for path in data.iterdir() if path.is_dir() and path.name.startswith('case_')})
     if not expected <= present:
-        raise ValueError(f'All 210 labelled KiTS19 patients are required; missing {sorted(expected - present)}')
+        raise ValueError(f'All {total} labelled patients are required; missing {sorted(expected - present)}')
     records = []
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='kits19_verify') as pool:
@@ -313,12 +379,16 @@ def validate_raw(data: Path, workers: int, root: Path):
         for future in as_completed(tasks):
             records.append(future.result())
             elapsed = time.monotonic() - started
-            print(f'KiTS19 data verification {len(records)}/210 {len(records)/210:.1%} | {tasks[future]} | {elapsed:.1f}s', flush=True)
-            _state(root, 'verify_data', completed_cases=len(records), total_cases=210, elapsed_seconds=elapsed)
+            print(f'{TASK} data verification {len(records)}/{total} {len(records)/total:.1%} | {tasks[future]} | {elapsed:.1f}s', flush=True)
+            _state(root, 'verify_data', completed_cases=len(records), total_cases=total, elapsed_seconds=elapsed)
     records.sort(key=lambda row: row['case_id'])
     report = {'format': 'tumorcp_kits19_verified_data_v1', 'complete': True,
-              'source_cases': 210, 'data': str(data), 'workers': workers, 'records': records,
+              'source_cases': total, 'data': str(data), 'workers': workers, 'records': records,
               'wall_seconds': time.monotonic() - started}
+    if DATASET_PROFILE:
+        report.update(format='tumorcp_liver_verified_data_v1', raw_layout=RAW_LAYOUT,
+                      dataset_profile=DATASET_PROFILE,
+                      dataset_profile_sha256=fingerprint(root / 'dataset_profile.json'))
     atomic_json(root / 'data_verified.json', report)
     return report
 
@@ -347,9 +417,10 @@ def materialize_task(root: Path, data: Path):
         (task / name).mkdir(parents=True, exist_ok=True)
     storage = []
     for case in CASE_IDS:
+        image_source, label_source = raw_paths(data, case)
         for name, source, target in (
-                ('CT', data / case / 'imaging.nii.gz', task / 'imagesTr' / f'{case}_0000.nii.gz'),
-                ('GT', data / case / 'segmentation.nii.gz', task / 'labelsTr' / f'{case}.nii.gz')):
+                ('CT', image_source, task / 'imagesTr' / f'{case}_0000.nii.gz'),
+                ('GT', label_source, task / 'labelsTr' / f'{case}.nii.gz')):
             storage.append({'case_id': case, 'kind': name, 'path': str(target),
                             'storage': _link_or_copy(source, target)})
     descriptor = {
@@ -357,10 +428,15 @@ def materialize_task(root: Path, data: Path):
         'tensorImageSize': '4D', 'reference': 'KiTS19 official annotated cohort',
         'licence': 'KiTS19 dataset terms', 'release': '0.0', 'modality': {'0': 'CT'},
         'labels': {'0': 'background', '1': 'Kidney', '2': 'Tumor'},
-        'numTraining': 210, 'numTest': 0,
+        'numTraining': len(CASE_IDS), 'numTest': 0,
         'training': [{'image': f'./imagesTr/{case}.nii.gz', 'label': f'./labelsTr/{case}.nii.gz'} for case in CASE_IDS],
         'test': [],
     }
+    if DATASET_PROFILE:
+        descriptor.update(name='Liver', description='liver and liver tumor segmentation',
+                          reference='MSD Task03_Liver, original project 105/26 split',
+                          licence='MSD CC BY-SA 4.0',
+                          labels={'0': 'background', '1': 'Liver', '2': 'Tumor'})
     path = task / 'dataset.json'
     if path.exists():
         if read_json(path) != descriptor:
@@ -383,7 +459,7 @@ def _plans_information(root: Path):
     files = root / 'preprocessed' / TASK / f"{plans['data_identifier']}_stage{stage}"
     npzs = {p.stem for p in files.glob('*.npz')}
     if npzs != set(CASE_IDS):
-        raise ValueError(f'Preprocessing must contain exactly all 210 cases, no subset: {files}')
+        raise ValueError(f'Preprocessing must contain exactly all {len(CASE_IDS)} cases, no subset: {files}')
     return plans, path, stage, files
 
 
@@ -391,15 +467,19 @@ def _write_split(root: Path):
     import numpy as np
     from sklearn.model_selection import KFold
     from collections import OrderedDict
-    keys = np.asarray(CASE_IDS)
-    splits = [OrderedDict(train=keys[tr], val=keys[va])
-              for tr, va in KFold(5, shuffle=True, random_state=12345).split(keys)]
+    if DATASET_PROFILE:
+        splits = [OrderedDict(train=np.asarray(sorted(DATASET_PROFILE['train_ids'])),
+                              val=np.asarray(sorted(DATASET_PROFILE['heldout_ids'])))]
+    else:
+        keys = np.asarray(CASE_IDS)
+        splits = [OrderedDict(train=keys[tr], val=keys[va])
+                  for tr, va in KFold(5, shuffle=True, random_state=12345).split(keys)]
     path = root / 'preprocessed' / TASK / 'splits_final.pkl'
     if path.exists():
         with path.open('rb') as stream:
             previous = pickle.load(stream)
-        if len(previous) != 5 or any(list(a[k]) != list(b[k]) for a, b in zip(previous, splits) for k in ('train', 'val')):
-            raise ValueError('Existing KiTS19 split differs; no split was overwritten')
+        if len(previous) != len(splits) or any(list(a[k]) != list(b[k]) for a, b in zip(previous, splits) for k in ('train', 'val')):
+            raise ValueError('Existing fixed split differs; no split was overwritten')
     else:
         with path.open('xb') as stream:
             pickle.dump(splits, stream, protocol=4)
@@ -422,16 +502,18 @@ def prepare(root: Path, data: Path, upstream: Path, workers: int):
         _, plans_file, _, fullres = _plans_information(root)
         if fingerprint(plans_file) != receipt['plans_sha256'] or fingerprint(Path(receipt['split_file'])) != receipt['split_sha256']:
             raise ValueError('Completed plans/split bytes changed; no cache silently reused')
-        if len(list(fullres.glob('*_tumor.npy'))) != 210:
+        expected_donors = {case for case, has_tumor in receipt['tumor_presence'].items() if has_tumor} if 'tumor_presence' in receipt else set(CASE_IDS)
+        if {p.name[:-10] for p in fullres.glob('*_tumor.npy')} != expected_donors:
             raise ValueError('Completed tumor extraction inventory differs')
-        print('Verified completed 210-case preparation reused: ' + str(root / 'prepared.json'), flush=True)
+        print(f'Verified completed {len(CASE_IDS)}-case preparation reused: ' + str(root / 'prepared.json'), flush=True)
         return receipt
-    validate_raw(data, workers, root)
+    verified = validate_raw(data, workers, root)
+    tumor_presence = {r['case_id']: r['label_counts'].get('2', 0) > 0 for r in verified['records']}
     build_runtime(upstream, root / 'runtime')
     materialize_task(root, data)
     env = runtime_env(root, workers)
     command = [sys.executable, '-B', '-u', '-m', 'nnunet.experiment_planning.nnUNet_plan_and_preprocess',
-               '-t', '40', '-pl2d', 'None', '-tf', str(workers), '-tl', str(workers), '--verify_dataset_integrity']
+               '-t', str(int(TASK[4:7])), '-pl2d', 'None', '-tf', str(workers), '-tl', str(workers), '--verify_dataset_integrity']
     preprocessing = run_command(command, root=root, stage='plan_and_preprocess', env=env)
     plans, plans_file, stage, fullres = _plans_information(root)
     # Run the preserved extractor implementation from the isolated runtime, but
@@ -441,12 +523,19 @@ from pathlib import Path
 import numpy as np
 from nnunet.extract_tumors import TumorExtractor
 directory=Path(sys.argv[1]); workers=int(sys.argv[2])
+verified=json.loads(Path(sys.argv[3]).read_text())
+presence={r['case_id']:r['label_counts'].get('2',0)>0 for r in verified['records']}
 extractor=TumorExtractor(str(directory),num_processes=workers)
-cases=[f"case_{i:05d}" for i in range(210)]
+cases=sorted(presence)
 def one(case):
     output=directory/(case+"_tumor.npy")
+    if not presence[case]:
+        with np.load(directory/(case+'.npz')) as archive:
+            if np.any(archive['data'][-1]==2): raise RuntimeError('Resampled tumor present despite raw-empty claim: '+case)
+        if output.exists(): raise RuntimeError('Unexpected tumor file for actual tumor-free patient: '+case)
+        return case,0,0
     if not output.exists(): extractor.extract(case+".npz")
-    if not output.is_file(): raise RuntimeError("KiTS19 case has no extracted tumor: "+case)
+    if not output.is_file(): raise RuntimeError("Tumor-bearing patient has no extracted tumor: "+case)
     tumors=np.load(output,allow_pickle=True)
     if len(tumors)==0: raise RuntimeError("Empty extracted tumor container: "+case)
     for data,mask in tumors:
@@ -458,17 +547,18 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
     futures=[pool.submit(one,case) for case in cases]
     for number,future in enumerate(concurrent.futures.as_completed(futures),1):
         case,count,size=future.result()
-        print(f"Tumor extraction {number}/210 {number/210:.1%} | {case} | components={count} bytes={size} elapsed={time.monotonic()-started:.1f}s",flush=True)
+        print(f"Tumor extraction {number}/{len(cases)} {number/len(cases):.1%} | {case} | components={count} bytes={size} elapsed={time.monotonic()-started:.1f}s",flush=True)
 '''
-    extraction = run_command([sys.executable, '-B', '-u', '-c', script, str(fullres), str(workers)],
+    extraction = run_command([sys.executable, '-B', '-u', '-c', script, str(fullres), str(workers), str(root / 'data_verified.json')],
                              root=root, stage='tumor_extraction', env=env)
     split, training, heldout = _write_split(root)
     selected = plans['plans_per_stage'][stage]
     receipt = {
         'format': 'tumorcp_kits19_prepared_v1', 'complete': True, 'prepared_at': utc_now(),
-        'source_cases': 210, 'train_ids': training, 'heldout_ids': heldout, 'workers': workers,
+        'source_cases': len(CASE_IDS), 'train_ids': training, 'heldout_ids': heldout, 'workers': workers,
         'runtime': str(root / 'runtime'),
         'data': str(data), 'data_verified_file': str(root / 'data_verified.json'),
+        'raw_layout': RAW_LAYOUT, 'tumor_presence': tumor_presence,
         'runtime_receipt_sha256': fingerprint(root / 'runtime/runtime_receipt.json'),
         'data_verified_sha256': fingerprint(root / 'data_verified.json'),
         'plans_file': str(plans_file), 'plans_sha256': fingerprint(plans_file),
@@ -483,9 +573,13 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         'training_started': False, 'full_training_complete': False,
         'full_evaluation_complete': False, 'quality_verified': False,
     }
+    if DATASET_PROFILE:
+        receipt.update(format='tumorcp_liver_prepared_v1', dataset_profile=DATASET_PROFILE,
+                       dataset_profile_file=str(root / 'dataset_profile.json'),
+                       dataset_profile_sha256=fingerprint(root / 'dataset_profile.json'))
     atomic_json(root / 'prepared.json', receipt)
     _state(root, 'preparation_complete', status='PREPARED', prepared=str(root / 'prepared.json'))
-    print('PREPARED: all 210 CTs, 168/42 official-code split; no training yet.', flush=True)
+    print(f'PREPARED: all {len(CASE_IDS)} CTs, {len(training)}/{len(heldout)} fixed split; no training yet.', flush=True)
     return receipt
 
 
@@ -507,6 +601,8 @@ def check_smoke(root: Path, path: Path):
                        ('runtime_receipt_sha256', prepared['runtime_receipt_sha256'])):
         if receipt.get(key) != value:
             raise ValueError(f'Smoke is not bound to these actual inputs/runtime: {key}')
+    if DATASET_PROFILE and receipt.get('dataset_profile_sha256') != fingerprint(root / 'dataset_profile.json'):
+        raise ValueError('Actual CT smoke is not bound to the fixed liver dataset profile')
     return receipt
 
 
@@ -525,38 +621,56 @@ def _checkpoint_evidence(path: Path):
 def evaluate_report(root: Path, data: Path, heldout):
     import nibabel as nib
     import numpy as np
-    folder = _training_folder(root) / 'validation_final_42_raw'
-    predictions = {path.name for path in folder.glob('case_*.nii.gz')}
+    count = len(heldout)
+    organ = 'liver' if DATASET_PROFILE else 'kidney'
+    folder = _training_folder(root) / f'validation_final_{count}_raw'
+    predictions = {path.name for path in folder.glob('*.nii.gz')}
     expected = {case + '.nii.gz' for case in heldout}
     if predictions != expected:
-        raise ValueError(f'All and only the held-out 42 predictions are required: missing {expected-predictions}, extra {predictions-expected}')
+        raise ValueError(f'All and only the held-out {count} predictions are required: missing {expected-predictions}, extra {predictions-expected}')
     rows = []
     for number, case in enumerate(heldout, 1):
-        ref_img, pred_img = nib.load(data / case / 'segmentation.nii.gz'), nib.load(folder / (case + '.nii.gz'))
+        ref_img, pred_img = nib.load(raw_paths(data, case)[1]), nib.load(folder / (case + '.nii.gz'))
         if ref_img.shape != pred_img.shape or not np.allclose(ref_img.affine, pred_img.affine, atol=1e-4):
             raise ValueError(f'Original-resolution final prediction geometry differs: {case}')
         ref, pred = np.asanyarray(ref_img.dataobj), np.asanyarray(pred_img.dataobj)
         row = {'case_id': case}
-        for name, truth, result in (('kidney', ref > 0, pred > 0), ('tumor', ref == 2, pred == 2)):
+        for name, truth, result in ((organ, ref > 0, pred > 0), ('tumor', ref == 2, pred == 2)):
             denominator = int(truth.sum()) + int(result.sum())
-            row[name + '_Dice'] = 2. * int(np.count_nonzero(truth & result)) / denominator if denominator else None
+            row[name + '_Dice'] = (2. * int(np.count_nonzero(truth & result)) / denominator if denominator
+                                    else (1.0 if DATASET_PROFILE else None))
+            row[name + '_empty_both'] = denominator == 0
         rows.append(row)
-        print(f'FINAL full-CT Dice {number}/42 {number/42:.1%} | {case} | tumor={row["tumor_Dice"]}', flush=True)
+        row['GT_tumor_positive'] = bool(np.any(ref == 2))
+        print(f'FINAL full-CT Dice {number}/{count} {number/count:.1%} | {case} | tumor={row["tumor_Dice"]}', flush=True)
     summary = {}
-    for name in ('kidney', 'tumor'):
+    for name in (organ, 'tumor'):
         values = [row[name + '_Dice'] for row in rows if row[name + '_Dice'] is not None]
         if not values:
             raise ValueError(f'No evaluable real {name} cases; no zero metric substituted')
         summary[name] = {'mean_Dice': float(np.mean(values)), 'std_Dice_population': float(np.std(values)),
-                         'evaluable_cases': len(values), 'empty_both_cases': 42 - len(values)}
+                         'evaluable_cases': len(values),
+                         'empty_both_cases': sum(r[name + '_empty_both'] for r in rows)}
     report = {'format': 'tumorcp_kits19_final42_patient_Dice_v1', 'full_evaluation_complete': True,
-              'cases': 42, 'checkpoint': 'fixed epoch500 FINAL', 'postprocessing_selected_on_holdout': False,
+              'cases': count, 'checkpoint': 'fixed epoch500 FINAL', 'postprocessing_selected_on_holdout': False,
               'kidney_definition': 'foreground union labels 1 and 2, official KiTS evaluation helper',
               'tumor_definition': 'label 2; per-patient Sorensen Dice',
               'metrics': summary, 'metric_per_case': rows, 'published_target_tumor_Dice': 0.8475,
               'paper_exact_split_ids_published': False,
               'quality_verified': False, 'target_reached_claim': False}
-    atomic_json(root / 'final42_report.json', report)
+    if DATASET_PROFILE:
+        positive = [r['tumor_Dice'] for r in rows if r['GT_tumor_positive'] and r['tumor_Dice'] is not None]
+        report.pop('kidney_definition')
+        report.update(format='tumorcp_liver_final26_patient_Dice_v1',
+                      dataset_profile_sha256=fingerprint(root / 'dataset_profile.json'),
+                      liver_definition='foreground union labels 1 and 2',
+                      published_target_tumor_Dice=None,
+                      paper_result_reproduction=False,
+                      comparison_scope='TumorCP paper settings on fixed MSD liver split',
+                      empty_both_Dice_policy=1.0,
+                      GT_tumor_positive_cases=len(positive),
+                      mean_tumor_Dice_GT_positive=float(np.mean(positive)) if positive else None)
+    atomic_json(final_report_path(root), report)
     return report
 
 
@@ -572,14 +686,14 @@ def train(root: Path, data: Path, upstream: Path, workers: int, smoke_path: Path
     final, latest = folder / 'model_final_checkpoint.model', folder / 'model_latest.model'
     env = runtime_env(root, workers)
     command = [sys.executable, '-B', '-u', '-m', 'nnunet.run.run_training',
-               '3d_fullres', TRAINER, '40', '0', '-epoch', '500', '--disable_postprocessing_on_folds']
+               '3d_fullres', TRAINER, str(int(TASK[4:7])), '0', '-epoch', '500', '--disable_postprocessing_on_folds']
     if (root / 'completion.json').is_file():
         completed = read_json(root / 'completion.json')
         if not completed.get('full_training_complete') or not completed.get('full_evaluation_complete'):
             raise ValueError('Existing completion receipt does not prove full training and full evaluation')
-        if fingerprint(final) != completed['checkpoint']['sha256'] or fingerprint(root / 'final42_report.json') != completed['report_sha256']:
+        if fingerprint(final) != completed['checkpoint']['sha256'] or fingerprint(final_report_path(root)) != completed['report_sha256']:
             raise ValueError('Existing completed checkpoint/report bytes changed; no completion silently reused')
-        print('Verified prior full500 training and FINAL42 evaluation; no neural evaluation repeated.', flush=True)
+        print('Verified prior full500 training and full heldout evaluation; no neural evaluation repeated.', flush=True)
         return completed
     if final.is_file():
         evidence = _checkpoint_evidence(final)
@@ -593,7 +707,8 @@ def train(root: Path, data: Path, upstream: Path, workers: int, smoke_path: Path
             raise ValueError('Latest checkpoint cursor is inconsistent with this 500epoch run')
         command.append('--continue_training')
         print(f'Resume own model/optimizer/AMP checkpoint after {evidence["completed_epochs"]}/500 epochs.', flush=True)
-    invocation = run_command(command, root=root, stage='train500_and_final42', env=env)
+    heldout_count = cohort_counts()[2]
+    invocation = run_command(command, root=root, stage=f'train500_and_final{heldout_count}', env=env)
     if not final.is_file():
         raise RuntimeError('Native command returned without a FINAL checkpoint; full training not claimed')
     evidence = _checkpoint_evidence(final)
@@ -604,15 +719,18 @@ def train(root: Path, data: Path, upstream: Path, workers: int, smoke_path: Path
               'full_training_complete': True, 'completed_epochs': 500,
               'scheduled_update_iterations': 125000,
               'AMP_skipped_optimizer_steps': 'not instrumented by the preserved official training loop',
-              'full_evaluation_complete': True, 'evaluation_cases': 42, 'checkpoint': evidence,
+              'full_evaluation_complete': True, 'evaluation_cases': heldout_count, 'checkpoint': evidence,
               'metrics': report['metrics'], 'published_tumor_Dice': 0.8475,
-              'report_sha256': fingerprint(root / 'final42_report.json'),
+              'report_sha256': fingerprint(final_report_path(root)),
               'paper_exact_split_ids_published': False, 'quality_verified': False,
               'smoke_receipt_sha256': fingerprint(smoke_path), 'native_invocation': invocation}
+    if DATASET_PROFILE:
+        result.update(format='tumorcp_liver_paper_transfer_completion_v1',
+                      published_tumor_Dice=None, dataset_profile=DATASET_PROFILE)
     atomic_json(root / 'completion.json', result)
-    _state(root, 'fixed_FINAL_full42_evaluation', status='COMPLETE', training_complete=True,
+    _state(root, f'fixed_FINAL_full{heldout_count}_evaluation', status='COMPLETE', training_complete=True,
            evaluation_complete=True, result=str(root / 'completion.json'))
-    print('COMPLETE: full500 training and fixed FINAL42 evaluation; numerical reproduction assessed from final42_report.json.', flush=True)
+    print(f'COMPLETE: full500 training and fixed FINAL{heldout_count} evaluation; results in {final_report_path(root)}.', flush=True)
     print(json.dumps(result['metrics'], ensure_ascii=False), flush=True)
     return result
 
@@ -627,6 +745,8 @@ def main():
                         help='Independent preparation concurrency; defaults to --workers, may differ from GPU DA workers')
     parser.add_argument('--phase', choices=('prepare', 'train', 'status', 'all'), required=True)
     parser.add_argument('--smoke-receipt', type=Path)
+    parser.add_argument('--dataset-profile', type=Path,
+                        help='Explicit full liver 131 / original 105:26 contract; omitted keeps official KiTS19')
     args = parser.parse_args()
     root = args.root.resolve()
     if args.phase == 'status':
@@ -646,6 +766,7 @@ def main():
     if root == data or root == upstream or data in root.parents or upstream in root.parents:
         raise ValueError('Use a separate reproduction output root, outside source/raw data directories')
     root.mkdir(parents=True, exist_ok=True)
+    configure_profile(args.dataset_profile, root)
     bind_contract(root, data, upstream, args.workers)
     prepare_workers = args.prepare_workers if args.prepare_workers is not None else args.workers
     if prepare_workers < 1:

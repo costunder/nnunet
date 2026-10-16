@@ -1,0 +1,20 @@
+#!/bin/bash
+# One complete liver cohort, separate from KiTS19 and the old sweep.
+set -euo pipefail
+: "${CP_ROOT:?Isolated liver root required}"
+: "${CP_ENV_PYTHON:?Verified read-only private interpreter required}"
+: "${CP_UPSTREAM:?Verified official source required}"
+: "${CP_DATA:?Original MSD Liver CT/GT root required}"
+: "${PBS_JOBID:?New independent PBS allocation required}"
+mkdir -p "$CP_ROOT/logs"
+exec > >(tee -a "$CP_ROOT/logs/live_prepare.log") 2>&1
+export CUDA_VISIBLE_DEVICES=""
+export PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+printf 'Single liver TumorCP preparation | PBS=%s | host=%s | root=%s\n' "$PBS_JOBID" "$(hostname)" "$CP_ROOT"
+"$CP_ENV_PYTHON" -B -u "$CP_ROOT/code/reproductions/tumorcp/run.py" \
+  --root "$CP_ROOT/run" --data "$CP_DATA" --upstream "$CP_UPSTREAM" \
+  --dataset-profile "$CP_ROOT/profile.json" \
+  --workers 4 --prepare-workers 8 --phase prepare
+printf 'Complete liver preparation finished; GPU job requires actual CUDA smoke.\n'

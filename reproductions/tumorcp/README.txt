@@ -35,6 +35,11 @@ paper_trainer.py      Paper settings on the official trainer/network/loss.
 run.py                Complete preparation, 500-epoch training and FINAL42.
 smoke.py              Separate actual-CT/CUDA gradient and resource checks.
 test_runtime.py       Source/contract checks; not model-quality evaluation.
+liver.json            Single paper-profile liver experiment; all131,105/26.
+liver_remote.py       Independent liver deployment and PBS submission.
+liver_prepare.pbs     Existing liver CT -> original full-resolution preparation.
+liver_train.pbs       Actual CT smoke -> full500 -> fixed FINAL26.
+test_liver.py         Split and metric-scope unit checks; generated tiny arrays.
 upstream/             Local official checkout, ignored by this repository.
 env/                  Private local environment, ignored; not training evidence.
 
@@ -50,6 +55,18 @@ Storage
 Keep one verified raw CT/label copy. Task040 inputs use hardlinks where allowed.
 Preprocessed arrays and checkpoints belong to this reproduction only. No prior
 liver experiments, remote sessions or unrelated processes are modified.
+
+Single liver experiment
+The separately requested liver run uses liver.json: all131 MSD Task03 patients,
+the original project105/26 split, official nnU-Net v1 fullres/B2/500epochs and
+one paper TumorCP arm. --dataset-profile binds the original split file SHA and
+IDs. Raw inputs use existing imagesTr/labelsTr. A tumor-free intra recipient
+keeps its training sample and skips only that impossible CP event; actual CP
+attempts, pasted events and skips are logged. Final26 reports all-patient Dice
+(empty GT and prediction both empty =1) and positive-only tumor Dice separately.
+This is a paper-setting transfer to liver, not KiTS19 accuracy reproduction or
+the project's ResEncM250 matched comparison. The KiTS19 jobs use their original
+pinned checkout and are unaffected by the separate liver checkout/output.
 
 작업 완료 체크리스트
 - [x] 서버 또는 원격 세션 종료 위험이 있는 명령을 사용하지 않았다.

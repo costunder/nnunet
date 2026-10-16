@@ -1,7 +1,7 @@
-"""Independent actual-CT CUDA diagnostic for the full KiTS19 paper network.
+"""Independent actual-CT CUDA diagnostic for the full TumorCP paper network.
 
 This is a DEBUG admission measurement, not production training or an accuracy
-experiment. It never opens a production checkpoint. The 42 held-out image,
+experiment. It never opens a production checkpoint. Held-out image,
 label, property and preprocessed-array files are not read by this diagnostic.
 """
 from __future__ import annotations
@@ -25,6 +25,70 @@ import uuid
 FORMAT = "tumorcp_kits19_real_cuda_smoke_v1"
 REPEATS = 3
 BATCH_CANDIDATES = (2, 4)
+LIVER_SPLIT_SHA256 = "7a993854c570b2cabe98dffc5df97550d74da3a688c3c3b75942ce4cbd15bc44"
+
+
+def dataset_contract(root: Path, prepared: dict) -> dict:
+    """Bind an explicit dataset profile, preserving legacy KiTS19 receipts."""
+    profile = prepared.get("dataset_profile")
+    if profile is None:
+        if prepared.get("format") != "tumorcp_kits19_prepared_v1":
+            raise ValueError("Non-KiTS preparation requires an explicit dataset profile")
+        profile = dict(dataset="KiTS19", task="Task040_KiTS", raw_layout="kits19",
+                       all_ids=[f"case_{index:05d}" for index in range(210)],
+                       train_ids=prepared["train_ids"], heldout_ids=prepared["heldout_ids"],
+                       split_provenance="official-code KFold5 shuffle seed12345 fold0",
+                       allow_empty_intra=False)
+    else:
+        path = Path(prepared["dataset_profile_file"]).resolve()
+        if path != root / "dataset_profile.json" or sha_file(path) != prepared["dataset_profile_sha256"]:
+            raise ValueError("Dataset profile is not bound to the isolated prepared root")
+        if json.loads(path.read_text(encoding="utf-8")) != profile:
+            raise ValueError("Prepared dataset profile differs from its exact manifest")
+        if profile.get("format") != "tumorcp_paper_dataset_profile_v1":
+            raise ValueError("Unsupported explicit dataset profile format")
+    if (profile.get("dataset"), profile.get("task")) == ("KiTS19", "Task040_KiTS"):
+        expected = {f"case_{index:05d}" for index in range(210)}
+        counts, layout, empty_intra = (168, 42), "kits19", False
+        if prepared.get("format") != "tumorcp_kits19_prepared_v1":
+            raise ValueError("KiTS dataset requires its original prepared receipt format")
+    elif (profile.get("dataset"), profile.get("task")) == ("MSD Task03_Liver", "Task029_Liver"):
+        expected = {f"liver_{index}" for index in range(131)}
+        counts, layout, empty_intra = (105, 26), "msd", True
+        if prepared.get("format") != "tumorcp_liver_prepared_v1":
+            raise ValueError("Liver dataset requires the explicit Liver prepared receipt format")
+    else:
+        raise ValueError("Unknown dataset/task; no implicit cohort or split fallback")
+    all_ids, train, heldout = profile["all_ids"], profile["train_ids"], profile["heldout_ids"]
+    if (len(all_ids) != len(expected) or set(all_ids) != expected
+            or len(train) != counts[0] or len(set(train)) != counts[0]
+            or len(heldout) != counts[1] or len(set(heldout)) != counts[1]
+            or set(train) & set(heldout) or set(train) | set(heldout) != expected):
+        raise ValueError(f"Full {profile['dataset']} cohort/split must remain {counts[0]}/{counts[1]}")
+    if (set(prepared["train_ids"]) != set(train) or set(prepared["heldout_ids"]) != set(heldout)
+            or profile["allow_empty_intra"] is not empty_intra
+            or profile["raw_layout"] != layout
+            or prepared.get("raw_layout", layout) != layout
+            or not isinstance(profile.get("split_provenance"), str) or not profile["split_provenance"]):
+        raise ValueError("Prepared split/layout/empty-source contract differs from the dataset manifest")
+    if layout == "kits19":
+        from sklearn.model_selection import KFold
+        keys = sorted(expected)
+        indices_tr, indices_val = next(KFold(5, shuffle=True, random_state=12345).split(keys))
+        if set(train) != {keys[i] for i in indices_tr} or set(heldout) != {keys[i] for i in indices_val}:
+            raise ValueError("Prepared KiTS split differs from preserved official-code fold0")
+    else:
+        source = Path(profile["source_split_file"])
+        if (profile["source_split_sha256"] != LIVER_SPLIT_SHA256
+                or sha_file(source) != LIVER_SPLIT_SHA256):
+            raise ValueError("Liver source split differs from the frozen Dataset730 manifest")
+        original = json.loads(source.read_text(encoding="utf-8"))
+        original = original[0] if isinstance(original, list) else original
+        source_train = original.get("train", original.get("outer_train"))
+        source_val = original.get("val", original.get("outer_val"))
+        if set(source_train or ()) != set(train) or set(source_val or ()) != set(heldout):
+            raise ValueError("Liver split was redefined instead of preserving the existing 105/26 split")
+    return profile
 
 
 class AuditedCPBatchLoader:
@@ -153,8 +217,9 @@ def publish(path: Path, report: dict):
 def validate_prepared(root: Path) -> tuple[dict, dict]:
     prepared_path = root / "prepared.json"
     prepared = json.loads(prepared_path.read_text(encoding="utf-8"))
-    if prepared.get("format") != "tumorcp_kits19_prepared_v1" or prepared.get("complete") is not True:
-        raise ValueError("Complete, full-cohort KiTS19 preparation receipt required")
+    if prepared.get("format") not in ("tumorcp_kits19_prepared_v1", "tumorcp_liver_prepared_v1") or prepared.get("complete") is not True:
+        raise ValueError("Complete, explicitly identified full-cohort preparation receipt required")
+    profile = dataset_contract(root, prepared)
     runtime_path = root / "runtime" / "runtime_receipt.json"
     runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
     if sha_file(runtime_path) != prepared["runtime_receipt_sha256"]:
@@ -171,27 +236,36 @@ def validate_prepared(root: Path) -> tuple[dict, dict]:
     split_path = Path(prepared["split_file"]).resolve()
     if root not in split_path.parents or sha_file(split_path) != prepared["split_sha256"]:
         raise ValueError("Prepared original-code split is missing or changed")
-    expected = {f"case_{index:05d}" for index in range(210)}
-    train, heldout = prepared["train_ids"], prepared["heldout_ids"]
-    if (len(train) != 168 or len(heldout) != 42 or len(set(train)) != 168
-            or len(set(heldout)) != 42 or set(train) & set(heldout)
-            or set(train) | set(heldout) != expected):
-        raise ValueError("Prepared split must contain all 210 annotated cases, 168/42 disjoint")
+    expected = set(profile["all_ids"])
+    if prepared.get("source_cases") != len(expected):
+        raise ValueError("Preparation source-case count contradicts its full cohort")
+    with split_path.open("rb") as stream:
+        saved_splits = pickle.load(stream)
+    if (not isinstance(saved_splits, list) or not saved_splits
+            or set(saved_splits[0]["train"]) != set(profile["train_ids"])
+            or set(saved_splits[0]["val"]) != set(profile["heldout_ids"])):
+        raise ValueError("Prepared native split pickle differs from the frozen dataset profile")
     data_receipt = root / "data_verified.json"
     if sha_file(data_receipt) != prepared["data_verified_sha256"]:
         raise ValueError("Original NIfTI/label verification receipt changed")
     data = json.loads(data_receipt.read_text(encoding="utf-8"))
-    if (data.get("format") != "tumorcp_kits19_verified_data_v1" or data.get("complete") is not True
-            or len(data["records"]) != 210 or {row["case_id"] for row in data["records"]} != expected):
-        raise ValueError("Complete original 210-case NIfTI verification receipt required")
+    data_format = ("tumorcp_liver_verified_data_v1" if profile["raw_layout"] == "msd"
+                   else "tumorcp_kits19_verified_data_v1")
+    if (data.get("format") != data_format or data.get("complete") is not True
+            or len(data["records"]) != len(expected) or {row["case_id"] for row in data["records"]} != expected):
+        raise ValueError("Complete original cohort NIfTI verification receipt required")
+    if profile["raw_layout"] == "msd":
+        if (data.get("raw_layout") != "msd" or set(prepared["tumor_presence"]) != expected
+                or data.get("dataset_profile") != profile
+                or data.get("dataset_profile_sha256") != prepared["dataset_profile_sha256"]):
+            raise ValueError("Liver raw layout and all-patient tumor-presence contract required")
+        for row in data["records"]:
+            present = int(row["label_counts"].get("2", 0)) > 0
+            if prepared["tumor_presence"][row["case_id"]] is not present:
+                raise ValueError("Liver tumor-presence receipt differs from the actual original GT counts")
     directory = Path(prepared["fullres_directory"]).resolve()
     if root not in directory.parents or not directory.is_dir():
         raise ValueError("Full-resolution data directory must stay inside the isolated root")
-    from sklearn.model_selection import KFold
-    keys = sorted(expected)
-    indices_tr, indices_val = next(KFold(5, shuffle=True, random_state=12345).split(keys))
-    if set(train) != {keys[i] for i in indices_tr} or set(heldout) != {keys[i] for i in indices_val}:
-        raise ValueError("Prepared split differs from the preserved official-code fold 0")
     return prepared, runtime
 
 
@@ -214,16 +288,68 @@ def resource_snapshot():
                 process_CPU_seconds=sum(process.cpu_times()[:2]))
 
 
-def build_inputs(trainer, prepared, workers: int):
+def validate_cp_audit(event: dict, profile: dict, raw_cases: dict):
+    train = set(profile["train_ids"])
+    target, donor = event["target_case"], event["donor_case"]
+    status, mode = event["status"], event["mode"]
+    if target not in train or donor is not None and donor not in train:
+        raise ValueError("Runtime CP audit contains a heldout/unknown donor or target")
+    if status not in ("applied", "no_source", "gate_off", "empty_transform"):
+        raise ValueError("Unknown runtime CP audit status")
+    voxels = event["paste_voxels"]
+    if type(voxels) is not int or voxels < 0 or type(event["attempted"]) is not bool:
+        raise ValueError("Runtime CP audit paste count/attempt marker is invalid")
+    if status == "gate_off":
+        if event["attempted"] or donor is not None or voxels != 0:
+            raise ValueError("Gate-off event cannot contain a donor/paste attempt")
+    elif status == "no_source":
+        if (not profile["allow_empty_intra"] or mode != "intra" or not event["attempted"]
+                or donor is not None or voxels != 0
+                or int(raw_cases[target]["label_counts"].get("2", 0)) != 0):
+            raise ValueError("No-source skip requires an actual tumor-free intra-CP patient")
+    else:
+        if not event["attempted"] or donor not in train or mode not in ("intra", "inter"):
+            raise ValueError("Applied/transformed CP requires an actual training donor")
+        if (mode == "intra" and donor != target) or (mode == "inter" and donor == target):
+            raise ValueError("Runtime CP audit changed the intra/inter donor condition")
+        if (status == "applied" and voxels == 0) or (status == "empty_transform" and voxels != 0):
+            raise ValueError("Runtime CP audit paste count contradicts its status")
+
+
+def build_inputs(trainer, prepared, workers: int, profile: dict):
     """Use the original CP loader and image-augmentation transform on train only."""
     import numpy as np
     import torch
     from nnunet.training.dataloading.dataset_loading import DataLoader3D
     from nnunet.training.data_augmentation.data_augmentation_moreDA import get_moreDA_augmentation
 
-    # Avoid load_dataset's eager loading of all 210 patients' property pickles.
+    # Avoid eager loading of the held-out patients' property pickles.
     directory = Path(prepared["fullres_directory"]).resolve()
     train = sorted(prepared["train_ids"])
+    raw_receipt = json.loads(Path(prepared["data_verified_file"]).read_text(encoding="utf-8"))
+    raw_cases = {row["case_id"]: row for row in raw_receipt["records"]}
+    absence_checks = []
+    for case in train:
+        bank = directory / f"{case}_tumor.npy"
+        present = prepared.get("tumor_presence", {}).get(case, True)
+        if bank.is_file():
+            if not present:
+                raise ValueError(f"Tumor-free original GT has a contradictory tumor source bank: {case}")
+            continue
+        if present or not profile["allow_empty_intra"] or int(raw_cases[case]["label_counts"].get("2", 0)):
+            raise FileNotFoundError(f"Required actual tumor source bank missing: {bank}")
+        npy = directory / f"{case}.npy"
+        if npy.is_file():
+            volume = np.load(npy, mmap_mode="r")
+            count = int(np.count_nonzero(volume[-1] == 2))
+            del volume
+        else:
+            with np.load(directory / f"{case}.npz") as archive:
+                count = int(np.count_nonzero(archive["data"][-1] == 2))
+        if count:
+            raise ValueError(f"Missing tumor bank but actual full-resolution GT contains a tumor: {case}")
+        absence_checks.append(dict(case_id=case, raw_GT_tumor_voxels=0,
+                                   preprocessed_GT_tumor_voxels=0, source_bank_absent=True))
     trainer.dataset_tr = OrderedDict((key, OrderedDict(
         data_file=str(directory / f"{key}.npz"),
         properties_file=str(directory / f"{key}.pkl"))) for key in train)
@@ -245,7 +371,7 @@ def build_inputs(trainer, prepared, workers: int):
         seeds_train=list(range(12345, 12345 + workers * 2)),
         seeds_val=list(range(22345, 22345 + workers)),
         pin_memory=True, use_nondetMultiThreadedAugmenter=False)
-    batches, cp_events = [], []
+    batches, cp_events, runtime_audit = [], [], []
     start = time.perf_counter()
     try:
         for index in range(REPEATS * 2):
@@ -257,8 +383,14 @@ def build_inputs(trainer, prepared, workers: int):
             data, target = value["data"], value["target"]
             for event in value["tumorcp_smoke_events"]:
                 if event["target_case"] not in train or event["donor_case"] not in train:
-                    raise ValueError("Original CP accessed a donor/target outside the training168 cohort")
+                    raise ValueError("Original CP accessed a donor/target outside the full training cohort")
                 cp_events.append(event)
+            audit = value.get("cp_audit")
+            if profile["allow_empty_intra"] and (not isinstance(audit, list) or len(audit) != 2):
+                raise ValueError("Liver loader must expose each actual CP gate/skip/paste audit")
+            for event in audit or ():
+                validate_cp_audit(event, profile, raw_cases)
+                runtime_audit.append(event)
             if not torch.is_tensor(data) or not isinstance(target, (list, tuple)):
                 raise TypeError("Original augmented deep-supervision tensor batch required")
             if list(data.shape) != [2, trainer.num_input_channels, *list(map(int, trainer.patch_size))]:
@@ -267,7 +399,7 @@ def build_inputs(trainer, prepared, workers: int):
                 raise ValueError("Actual CT/target batch contains nonfinite values")
             batches.append(dict(data=data.contiguous(), target=[t.contiguous() for t in target],
                                 cases=selected, preparation_seconds=time.perf_counter() - before))
-            print(f"DEBUG actual KiTS19 input {index + 1}/{REPEATS * 2} | "
+            print(f"DEBUG actual {profile['dataset']} input {index + 1}/{REPEATS * 2} | "
                   f"cases={','.join(selected)} | shape={list(data.shape)}", flush=True)
     finally:
         # These APIs finish only the augmenters created by this process.
@@ -279,14 +411,13 @@ def build_inputs(trainer, prepared, workers: int):
         raise RuntimeError("Random actual-CT diagnostic did not cover three distinct training patients; no fake replacement")
     if not cp_events or not any(event["actual_GT_changed"] for event in cp_events):
         raise RuntimeError("No observed actual TumorCP GT change in diagnostic inputs; no completion claim")
-    raw_receipt = json.loads(Path(prepared["data_verified_file"]).read_text(encoding="utf-8"))
-    raw_cases = {row["case_id"]: row for row in raw_receipt["records"]}
     bindings = []
     for case in sorted(set(cases) | {event["donor_case"] for event in cp_events}):
         row = dict(case_id=case, split="train", files={})
         for suffix in (".npz", ".pkl", ".npy", "_tumor.npy"):
             path = directory / f"{case}{suffix}"
-            if suffix in (".npz", ".pkl", "_tumor.npy") and not path.is_file():
+            required_bank = suffix == "_tumor.npy" and prepared.get("tumor_presence", {}).get(case, True)
+            if (suffix in (".npz", ".pkl") or required_bank) and not path.is_file():
                 raise FileNotFoundError(path)
             if path.is_file():
                 row["files"][suffix] = dict(path=str(path), bytes=path.stat().st_size,
@@ -294,7 +425,11 @@ def build_inputs(trainer, prepared, workers: int):
         row["original_NIfTI"] = {}
         for name, digest_key in (("imaging.nii.gz", "image_sha256"),
                                  ("segmentation.nii.gz", "label_sha256")):
-            path = Path(raw_receipt["data"]) / case / name
+            if profile["raw_layout"] == "msd":
+                folder = "imagesTr" if digest_key == "image_sha256" else "labelsTr"
+                path = Path(raw_receipt["data"]) / folder / f"{case}.nii.gz"
+            else:
+                path = Path(raw_receipt["data"]) / case / name
             digest = sha_file(path)
             if digest != raw_cases[case][digest_key]:
                 raise ValueError(f"Actual training NIfTI changed after preparation: {path}")
@@ -302,11 +437,13 @@ def build_inputs(trainer, prepared, workers: int):
         bindings.append(row)
     info = dict(representative_cases=cases, case_bindings=bindings,
                 loader="official DataLoader3D + official moreDA, paper CP profile",
-                loader_training_cohort=168, heldout_content_files_read=0,
+                loader_training_cohort=len(train), heldout_content_files_read=0,
+                tumor_free_source_absence_checks=absence_checks,
                 requested_worker_threads=workers, actual_augmentation_processes=workers * 2,
                 official_cached_per_thread=params["num_cached_per_thread"] * 10,
                 pin_memory=True, mmap="original copy-on-write .npy; otherwise original .npz; no source mutation",
                 actual_CP_events=cp_events, actual_CP_GT_changes=sum(e["actual_GT_changed"] for e in cp_events),
+                runtime_CP_audit=runtime_audit,
                 prepared_real_batches=len(batches), production_input_patch=list(map(int, trainer.patch_size)),
                 basic_generator_patch=list(map(int, trainer.basic_generator_patch_size)),
                 preparation_wall_seconds=time.perf_counter() - start,
@@ -440,18 +577,26 @@ def run(root: Path, workers: int, output: Path) -> dict:
     trainer, saved, outer_rng, original_backends = None, None, None, None
     try:
         prepared, runtime = validate_prepared(root)
+        profile = dataset_contract(root, prepared)
         report.update(prepared_sha256=sha_file(root / "prepared.json"),
                       plans_sha256=prepared["plans_sha256"],
                       runtime_receipt_sha256=prepared["runtime_receipt_sha256"],
-                      full_training_cases=168, full_heldout_cases=42,
+                      dataset_profile=profile,
+                      full_training_cases=len(profile["train_ids"]),
+                      full_heldout_cases=len(profile["heldout_ids"]),
                       preprocessing_workers=int(prepared["workers"]),
                       actual_smoke_DA_setting=workers,
-                      data_fraction="12 actual training patches for DEBUG; production cohort unchanged 168/42",
+                      data_fraction=f"12 actual training patches for DEBUG; production cohort unchanged {len(profile['train_ids'])}/{len(profile['heldout_ids'])}",
                       production_epochs=500, production_updates_per_epoch=250,
                       production_train_monitor_batches_per_epoch=50)
         os.environ.update(nnUNet_raw_data_base=str(root / "data"),
                           nnUNet_preprocessed=str(root / "preprocessed"),
                           RESULTS_FOLDER=str(root / "results"))
+        if prepared.get("dataset_profile") is not None:
+            report["dataset_profile_sha256"] = prepared["dataset_profile_sha256"]
+            os.environ["TUMORCP_PAPER_DATASET_JSON"] = prepared["dataset_profile_file"]
+        elif "TUMORCP_PAPER_DATASET_JSON" in os.environ:
+            raise ValueError("Legacy KiTS receipt cannot inherit a different dataset-profile environment")
         runtime_directory = root / "runtime"
         sys.path.insert(0, str(runtime_directory))
         import numpy as np
@@ -514,7 +659,7 @@ def run(root: Path, workers: int, output: Path) -> dict:
         report["expected_zero_weight_deep_supervision_parameters"] = inactive
         report["zero_weight_head_rule"] = "Original MultipleOutputLoss2 deliberately skips zero-weight DS heads; never connected artificially"
         publish(output, report)
-        batches, inputs = build_inputs(trainer, prepared, workers)
+        batches, inputs = build_inputs(trainer, prepared, workers, profile)
         report.update(actual_CT=True, **inputs)
         for batch in BATCH_CANDIDATES:
             trial = dict(physical_batch=batch, status="STARTING", DEBUG=True)
@@ -569,7 +714,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     result = run(args.root, args.workers, args.output)
-    print(f"DEBUG complete: actual KiTS19 / full Generic_UNet / production B2 unchanged | {args.output}", flush=True)
+    print(f"DEBUG complete: actual {result['dataset_profile']['dataset']} / full Generic_UNet / production B2 unchanged | {args.output}", flush=True)
     print(json.dumps({key: result[key] for key in ("completed", "actual_CT", "CUDA", "parameters",
                                                  "representative_cases", "original_state_preserved",
                                                  "production_training_started")}), flush=True)

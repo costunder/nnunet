@@ -67,19 +67,28 @@ def _patch_loader(text: str) -> str:
                 mode = _paper_tumorcp_mode(float(np.random.uniform()),
                                            float(np.random.uniform()),
                                            self.cp_configs['p_cp'])
-                if mode == 'intra':
-                    source_file = self._paper_tumor_files[i]
-                    tumors = np.load(source_file, allow_pickle=True)
+                event = dict(target_case=str(i), donor_case=None, mode=mode,
+                             attempted=mode is not None, status='gate_off', paste_voxels=0)
+                if mode == 'intra' and i in self._paper_empty_tumor_ids:
+                    event['status'] = 'no_source'
+                elif mode == 'intra':
+                    tumors = np.load(self._paper_tumor_files[i], allow_pickle=True)
+                    event['donor_case'] = str(i)
                 elif mode == 'inter':
                     donor_keys = [key for key in self._paper_tumor_files if key != i]
                     if not donor_keys:
                         raise RuntimeError("Inter-CP requires another tumor-bearing training patient")
                     tumor_key = np.random.choice(donor_keys)
                     tumors = np.load(self._paper_tumor_files[tumor_key], allow_pickle=True)
-                if mode is not None:
+                    event['donor_case'] = str(tumor_key)
+                if event['donor_case'] is not None:
+                    self._paper_last_paste_voxels = 0
                     case_all_data = self.aug_one_pair(source_tumors=tumors,
                                                       target_data=case_all_data,
                                                       target_organ_positions=properties['class_locations'][1])
+                    event['paste_voxels'] = self._paper_last_paste_voxels
+                    event['status'] = 'applied' if self._paper_last_paste_voxels else 'empty_transform'
+                paper_cp_audit.append(event)
             else:
 '''
     original = text[start:end]
@@ -94,14 +103,43 @@ def _patch_loader(text: str) -> str:
         if self.cp_configs.get('paper_profile', False):
             # Immutable donor availability is verified once, not 168 NFS stats
             # on every online CP event. The row set remains all 168 patients.
-            self._paper_tumor_files = {
-                key: self._data[key]['data_file'][:-4] + "_tumor.npy"
-                for key in self.list_of_keys}
-            missing = [key for key, filename in self._paper_tumor_files.items()
-                       if not os.path.isfile(filename)]
+            self._paper_tumor_files = {}
+            self._paper_empty_tumor_ids = set()
+            missing = []
+            for key in self.list_of_keys:
+                filename = self._data[key]['data_file'][:-4] + "_tumor.npy"
+                if os.path.isfile(filename):
+                    self._paper_tumor_files[key] = filename
+                elif self.cp_configs.get('allow_empty_intra', False):
+                    record = self._data[key]
+                    props = record.get('properties')
+                    if props is None:
+                        props = load_pickle(record['properties_file'])
+                    locations = props.get('class_locations', {}).get(TUMOR_LABEL)
+                    if locations is not None and len(locations) == 0:
+                        self._paper_empty_tumor_ids.add(key)
+                    else:
+                        missing.append(key)
+                else:
+                    missing.append(key)
             if missing:
                 raise RuntimeError("Training patients lack extracted tumors: " + str(missing))
+            if not self._paper_tumor_files:
+                raise RuntimeError("No actual training tumor is available for TumorCP")
 ''', 'static paper donor inventory')
+    # Limit these additions to the active CP-enabled DataLoader3D class.
+    loader_start = text.index('class DataLoader3D(SlimDataLoaderBase):')
+    head, body = text[:loader_start], text[loader_start:]
+    body = _replace_once(body, '        selected_keys = np.random.choice(self.list_of_keys, self.batch_size, True, None)\n',
+                         '        selected_keys = np.random.choice(self.list_of_keys, self.batch_size, True, None)\n        paper_cp_audit = []\n',
+                         'CP batch audit initialization')
+    body = _replace_once(body, "        return {'data': data, 'seg': seg, 'properties': case_properties, 'keys': selected_keys}",
+                         "        return {'data': data, 'seg': seg, 'properties': case_properties, 'keys': selected_keys, 'cp_audit': paper_cp_audit}",
+                         'CP batch audit metadata')
+    body = _replace_once(body, "        if self.cp_configs['do_inter_cp'] and self.cp_configs['do_match']:\n",
+                         "        self._paper_last_paste_voxels = int(np.count_nonzero(seg_patch == TUMOR_LABEL))\n        if self.cp_configs['do_inter_cp'] and self.cp_configs['do_match']:\n",
+                         'actual clipped paste mask audit')
+    text = head + body
     old = """                                                               do_rotation=cp_configs['do_rotation'], p_rot=cp_configs['p_rot'],
                                                                do_elastic=cp_configs['do_elastic'], p_elas=cp_configs['p_eldef'])"""
     new = """                                                               do_rotation=cp_configs['do_rotation'], p_rot=cp_configs['p_rot'],
@@ -199,7 +237,7 @@ def build_runtime(upstream: Path, destination: Path) -> dict:
         'runtime_sha256': {p.relative_to(destination).as_posix(): _sha(p)
                            for p in sorted((destination / 'nnunet').rglob('*')) if p.is_file()},
         'paper_exact_split_ids_published': False,
-        'split': 'official code default KFold(5, shuffle=True, random_state=12345), fold 0',
+        'split': 'Explicit TUMORCP_PAPER_DATASET_JSON profile when supplied; otherwise official KiTS19 KFold5 seed12345 fold0',
         'training_started': False, 'full_evaluation_complete': False,
         'quality_verified': False,
     }
